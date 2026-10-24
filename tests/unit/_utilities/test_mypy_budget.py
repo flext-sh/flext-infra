@@ -19,7 +19,10 @@ class TestsFlextInfraMypyBudget:
     """Verify policy validation and the public checker execution contract."""
 
     @staticmethod
-    @pytest.mark.parametrize("budget", ["0", "-1", "true", "1.5", "'12'"])
+    @pytest.mark.parametrize(
+        "budget",
+        [c.ParserBooleanToken.ZERO, "-1", c.ParserBooleanToken.TRUE, "1.5", "'12'"],
+    )
     def test_project_budget_rejects_invalid_values(tmp_path: Path, budget: str) -> None:
         """Malformed project budgets cannot launch an unbounded child."""
         (tmp_path / "config").mkdir()

@@ -9,6 +9,8 @@ from __future__ import annotations
 import shlex
 from typing import TYPE_CHECKING
 
+from flext_cli import u
+
 from flext_infra import c, config, m
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocs,
@@ -26,8 +28,8 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
     def _docs_command_candidates(
         line: str,
         *,
-        fence_marker: str,
-        fence_language: str,
+        fence_language: str | None,
+        spans: t.SequenceOf[m.Cli.MarkdownCodeSpan],
     ) -> t.StrSequence:
         """Return executable shell snippets, excluding surrounding prose.
 
@@ -35,7 +37,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             Executable shell snippets, excluding surrounding prose.
 
         """
-        if fence_marker:
+        if fence_language is not None:
             return (
                 (line,) if fence_language in c.Infra.DOCS_SHELL_FENCE_LANGUAGES else ()
             )
@@ -43,34 +45,35 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         if stripped.startswith("$ "):
             return (stripped[2:],)
         return tuple(
-            match.group(0)[1:-1]
-            for match in c.Infra.INLINE_CODE_RE.finditer(line)
-            if len(match.group(0)[1:-1].split()) > 1
-            and c.Infra.DOCS_INLINE_COMMAND_DIRECTIVE_RE.search(line[: match.start()])
-            is not None
+            span.content
+            for span in spans
+            if len(span.content.split()) > 1
+            and c.Infra.DOCS_INLINE_COMMAND_DIRECTIVE_RE.search(span.prefix) is not None
         )
 
     @staticmethod
-    def _docs_fence_transition(
-        line: str,
-        fence_marker: str,
-        fence_language: str,
-    ) -> t.Pair[str, str] | None:
-        """Return the fence state after one line, or ``None`` outside fences.
+    def _docs_fence_lines(
+        content: str,
+    ) -> t.Pair[t.MappingKV[int, str], frozenset[int]]:
+        """Map fence body lines to their language and collect delimiter lines.
 
         Returns:
-            The resulting ``(fence marker, fence language)`` pair.
+            The ``(body line -> language, delimiter lines)`` pair.
 
         """
-        stripped = line.lstrip()
-        if not stripped.startswith(("```", "~~~")):
-            return None
-        marker = stripped[:3]
-        if fence_marker:
-            return (
-                (fence_marker, fence_language) if marker != fence_marker else ("", "")
+        bodies: dict[int, str] = {}
+        delimiters: set[int] = set()
+        for fence in u.Cli.markdown_fences(content):
+            body_end = fence.opening_line + len(fence.code.splitlines())
+            bodies.update(
+                dict.fromkeys(
+                    range(fence.opening_line + 1, body_end + 1), fence.language
+                ),
             )
-        return (marker, stripped[3:].strip().partition(" ")[0].lower())
+            delimiters.add(fence.opening_line)
+            if body_end < fence.closing_line:
+                delimiters.add(fence.closing_line)
+        return (bodies, frozenset(delimiters))
 
     @staticmethod
     def _make_selector_issue(
@@ -137,8 +140,8 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         cls,
         line: str,
         *,
-        fence_marker: str,
-        fence_language: str,
+        fence_language: str | None,
+        spans: t.SequenceOf[m.Cli.MarkdownCodeSpan],
         effective_verbs: t.SequenceOf[m.Infra.MakeVerbSpec],
     ) -> str:
         """Return the command-contract issue one document line violates.
@@ -152,8 +155,8 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             candidate
         ) in FlextInfraUtilitiesDocsCommandContractMixin._docs_command_candidates(
             line,
-            fence_marker=fence_marker,
             fence_language=fence_language,
+            spans=spans,
         ):
             issue = cls._candidate_issue(candidate, effective_verbs)
             if issue:
@@ -183,17 +186,17 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
 
         """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
-        fence_marker = ""
-        fence_language = ""
+        bodies, delimiters = cls._docs_fence_lines(content)
+        spans: dict[int, list[m.Cli.MarkdownCodeSpan]] = {}
+        for span in u.Cli.markdown_code_spans(content):
+            spans.setdefault(span.line, []).append(span)
         for number, line in enumerate(content.splitlines(), start=1):
-            fence = cls._docs_fence_transition(line, fence_marker, fence_language)
-            if fence is not None:
-                fence_marker, fence_language = fence
+            if number in delimiters:
                 continue
             issue = cls._docs_line_issue(
                 line,
-                fence_marker=fence_marker,
-                fence_language=fence_language,
+                fence_language=bodies.get(number),
+                spans=spans.get(number, ()),
                 effective_verbs=effective_verbs,
             )
             if issue:

@@ -358,7 +358,10 @@ class TestsArtifactRuntime:
         uv = str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, producer)))
         # Git remains file-only at authenticated mirrors; native registry wheels
         # and isolated build requirements retain their real provisioning contract.
-        git_environment = {**hermetic_git_environment, "UV_OFFLINE": "0"}
+        git_environment = {
+            **hermetic_git_environment,
+            "UV_OFFLINE": c.ParserBooleanToken.ZERO,
+        }
         options = m.Cli.ProcessOptions(
             env=git_environment,
             remove_env_keys=tuple(

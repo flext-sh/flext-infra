@@ -27,7 +27,7 @@ class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
     @staticmethod
-    @pytest.mark.parametrize("mode", ["basic", "off"])
+    @pytest.mark.parametrize("mode", ["basic", c.ParserBooleanToken.OFF])
     def test_native_options_cannot_weaken_strict_analysis(
         tool_config_document: m.Infra.ToolConfigDocument,
         mode: str,
@@ -64,7 +64,7 @@ class TestsFlextInfraDepsModernizerPyright:
                 **tool_config_document.settings,
                 c.Infra.PYRIGHT: (
                     *tool_config_document.settings[c.Infra.PYRIGHT],
-                    ("typeCheckingMode", "off"),
+                    ("typeCheckingMode", c.ParserBooleanToken.OFF),
                     ("typeCheckingMode", expected),
                 ),
             },
@@ -136,7 +136,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(second, eq=first)
         document = tm.ok(u.Cli.toml_mapping_from_text_result(first))
         tools = u.Tests.toml_mapping(document["tool"])
-        tm.that(tools["unrelated"], eq={"keep": "yes"})
+        tm.that(tools["unrelated"], eq={"keep": c.ParserBooleanToken.YES})
         tm.that(document["project"], eq={"name": "fixture", "version": "0.1.0"})
         pyright = u.Tests.toml_mapping(tools["pyright"])
         tm.that(pyright, lacks="venv")

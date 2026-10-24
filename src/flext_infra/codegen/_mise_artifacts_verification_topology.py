@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, t
+from flext_infra import c, m, r, t, u
 from flext_infra._constants import FlextInfraConstantsCodegenProject
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
@@ -39,17 +39,78 @@ class FlextInfraMiseArtifactsVerificationTopology:
         by_selector = cls._verified_recorded_identities(layout, journal)
         if by_selector.failure:
             return r[bool].from_failure(by_selector)
+        return cls._journal_bindings(layout, journal, by_selector.value)
+
+    @classmethod
+    def journal_retirement_topology(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[bool]:
+        """Authorize original temporary paths at their current native Git anchor.
+
+        Returns:
+            The same complete binding proof after durable retirement admission.
+
+        """
+        scope = u.Infra.exact_worktree_git_dir(layout.scope_root)
+        if scope.failure:
+            return r[bool].from_failure(scope)
+        if scope.value / c.Infra.JOURNAL_NAME != layout.journal_path:
+            return r[bool].fail("generation journal Git anchor differs from layout")
+        if (
+            layout.transaction_id != journal.transaction_id
+            or tuple(project.selector for project in journal.projects)
+            != tuple(project.selector for project in layout.projects)
+            or tuple(
+                (item.selector, item.root, item.transaction_root)
+                for item in journal.file_participants
+            )
+            != tuple(
+                (item.selector, item.root, item.transaction_root)
+                for item in layout.file_participants
+            )
+        ):
+            return r[bool].fail("generation retirement topology differs from layout")
+        by_selector = {
+            project.selector: project
+            for project in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
+        }
+        for project in by_selector.values():
+            current = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                project.root
+            )
+            if current.failure:
+                return r[bool].from_failure(current)
+        return cls._journal_bindings(layout, journal, by_selector)
+
+    @classmethod
+    def _journal_bindings(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        by_selector: t.MappingKV[
+            str,
+            m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant,
+        ],
+    ) -> p.Result[bool]:
+        """Bind every original directory and file through one topology engine.
+
+        Returns:
+            The complete original directory and entry path-closure proof.
+
+        """
         directory_targets = cls._resolved_directory_targets(layout, journal)
         if directory_targets.failure:
             return r[bool].from_failure(directory_targets)
         bindings = cls._verified_directory_bindings(
             journal,
-            by_selector.value,
+            by_selector,
             directory_targets.value,
         )
         if bindings.failure:
             return bindings
-        return cls._verified_entry_bindings(layout, journal, by_selector.value)
+        return cls._verified_entry_bindings(layout, journal, by_selector)
 
     @classmethod
     def _verified_topology_identifiers(

@@ -431,7 +431,7 @@ class TestsFlextInfraCodemodGate:
                     "--file",
                     str(declaration),
                     f"submodule.src/vendor.{c.Infra.GITMODULE_MANAGED_KEY}",
-                    "false",
+                    c.ParserBooleanToken.FALSE,
                 ),
                 cwd=project,
             ),

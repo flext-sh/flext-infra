@@ -65,7 +65,6 @@ class FlextInfraUtilitiesMiseBinary:
             tool.version_probe.binary,
             owner_root,
             Path(reader),
-            f"{selector}@{pinned.value}",
         )
 
     @staticmethod
@@ -126,7 +125,6 @@ class FlextInfraUtilitiesMiseBinary:
                         c.Infra.MISE,
                         owner_root,
                         qualified,
-                        f"{config.Infra.codegen.toolchain.mise_selector}@{pinned}",
                     ),
                 )
                 .flat_map(
@@ -236,11 +234,9 @@ class FlextInfraUtilitiesMiseBinary:
         return r[Path].ok(binary)
 
     @staticmethod
-    def _managed_mise_path(
-        name: str, owner_root: Path, reader: Path, selector: str
-    ) -> p.Result[Path]:
+    def _managed_mise_path(name: str, owner_root: Path, reader: Path) -> p.Result[Path]:
         located = u.Cli.run_raw(
-            (str(reader), "-C", str(owner_root), "which", name, "--tool", selector),
+            (str(reader), "-C", str(owner_root), "which", name),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )

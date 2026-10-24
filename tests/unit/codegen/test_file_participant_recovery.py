@@ -714,7 +714,9 @@ class TestsFlextInfraFileParticipantRecovery:
             tm.ok(session.journal_state.path.exists())
 
     @staticmethod
-    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["replace", "create", "delete"])
+    @pytest.mark.parametrize(
+        c.ContextScope.OPERATION, [c.MergeStrategy.REPLACE, "create", "delete"]
+    )
     @pytest.mark.parametrize("drift", ["none", "published-inode", "pending-inode"])
     def test_interrupted_group_retirement_preserves_exact_current_destinations(
         tmp_path: Path,
@@ -1035,7 +1037,11 @@ class TestsFlextInfraFileParticipantRecovery:
             session = tm.ok(owner.begin_files_locked(scope_root, roots, ()))
             layout = session.plan.layout
             identifier = tm.not_none(layout.transaction_id)
-            other_identifier = ("0" if identifier[0] != "0" else "1") + identifier[1:]
+            other_identifier = (
+                c.ParserBooleanToken.ZERO
+                if identifier[0] != c.ParserBooleanToken.ZERO
+                else c.ParserBooleanToken.ONE
+            ) + identifier[1:]
             foreign = session.model_copy(
                 update={
                     "plan": session.plan.model_copy(
@@ -1125,7 +1131,7 @@ class TestsFlextInfraFileParticipantRecovery:
         "journal_change", ["unchanged", "replaced", "missing", "directory"]
     )
     @pytest.mark.parametrize(
-        "failure_kind", ["validator", "exception", "abort", "false"]
+        "failure_kind", ["validator", "exception", "abort", c.ParserBooleanToken.FALSE]
     )
     @pytest.mark.parametrize("error", [None, "", "consumer rejected publication"])
     def test_session_failure_never_recovers_changed_journal(
@@ -1154,7 +1160,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 raise cause
             return (
                 r[bool].fail("consumer rejected")
-                if failure_kind == "false"
+                if failure_kind == c.ParserBooleanToken.FALSE
                 else original
             )
 
@@ -1194,7 +1200,7 @@ class TestsFlextInfraFileParticipantRecovery:
                     )
                 )
                 tm.fail(failed)
-                if failure_kind == "false":
+                if failure_kind == c.ParserBooleanToken.FALSE:
                     tm.that(failed.error, eq="consumer rejected")
                 else:
                     tm.that(failed.error, eq=original.error)

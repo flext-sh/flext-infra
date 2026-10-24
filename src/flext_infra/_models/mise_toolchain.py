@@ -11,9 +11,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from flext_core import m
+from flext_core import c, m
 
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
@@ -218,7 +218,7 @@ class FlextInfraModelsMiseToolchain:
                 )
                 raise ValueError(msg)
             # A malformed expression raises re.PatternError unchanged here.
-            re.compile(self.pattern.replace(placeholder, "0"))
+            re.compile(self.pattern.replace(placeholder, c.ParserBooleanToken.ZERO))
             if self.tool is not None and not self.resources:
                 msg_0 = "external version probes require installed resources"
                 raise ValueError(msg_0)
@@ -687,15 +687,6 @@ class FlextInfraModelsMiseToolchain:
 
             """
             return {entry.name: entry.selector or entry.name for entry in self.tools}
-
-        @m.computed_field
-        @property
-        def mise_platforms_by_host(self) -> t.MappingKV[str, str]:
-            """Project the canonical host identities into shell case keys."""
-            return {
-                f"{system}/{machine}": platform
-                for (system, machine), platform in c.Infra.MISE_PLATFORM_BY_HOST.items()
-            }
 
         @m.computed_field
         @property

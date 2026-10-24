@@ -7,11 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import p
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
+)
 
 
 class FlextInfraCodegenHandlers:
-    """Compose fresh conform invocations from the caller's actual capabilities."""
+    """Compose each codegen operation from the caller's actual capabilities."""
 
     def codegen_generate(
         self: p.Infra.CodegenExecutionContext,
@@ -25,7 +28,7 @@ class FlextInfraCodegenHandlers:
             The delegated generation Result, including any reported failure.
 
         """
-        return FlextInfraCodegenConform.generate_request(
+        return FlextInfraCodegenConformExecute.execute_request(
             request,
             execution_context=self,
         )

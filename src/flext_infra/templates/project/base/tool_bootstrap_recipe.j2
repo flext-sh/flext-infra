@@ -86,7 +86,7 @@
 	bootstrap_stage=tool-install; \
 	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --locked --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
-	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise --tool "{{ mise_selector }}@$${mise_active}")"; \
+	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
 	bootstrap_stage=shims; \
 	"$${mise_binary}" -C "{{ project_root }}" reshim; \

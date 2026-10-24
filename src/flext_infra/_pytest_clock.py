@@ -18,8 +18,10 @@ import tempfile
 import time
 import traceback
 from collections.abc import Callable, Iterator
+from contextvars import ContextVar
 from pathlib import Path
-from types import FrameType, TracebackType
+from threading import get_ident
+from types import BuiltinMethodType, FrameType, MethodType
 from typing import ClassVar
 from uuid import uuid4
 
@@ -29,11 +31,59 @@ class FlextInfraPytestClock:
 
     started_at_monotonic: ClassVar[float] = time.monotonic()
     _publishing: ClassVar[set[cProfile.Profile]] = set()
-    profiler: ClassVar[cProfile.Profile | None] = (
-        cProfile.Profile() if sys.argv[1:2] == ["profile"] else None
+    _threads: ClassVar[dict[cProfile.Profile, int]] = {}
+    _operation_profile: ClassVar[ContextVar[cProfile.Profile | None]] = ContextVar(
+        "flext_infra_operation_profile", default=None
     )
-    if profiler is not None:
-        profiler.enable()
+    profiler: ClassVar[cProfile.Profile | None] = None
+
+    @staticmethod
+    def _gate[**P, R](callback: Callable[P, R], owner: int) -> Callable[P, R | None]:
+        def dispatch(*args: P.args, **kwargs: P.kwargs) -> R | None:
+            return callback(*args, **kwargs) if get_ident() == owner else None
+
+        return dispatch
+
+    @classmethod
+    def create_profiler(cls) -> cProfile.Profile:
+        """Return a native profiler gated before any productive stack events."""
+        profile = cProfile.Profile()
+        owner = cls._threads[profile] = get_ident()
+        tool = sys.monitoring.PROFILER_ID
+        try:
+            profile.enable()
+            mask = sys.monitoring.get_events(tool)
+            sys.monitoring.set_events(tool, 0)
+            if not mask:
+                msg = "native profiler enabled no monitoring events"
+                raise RuntimeError(msg)
+            remaining = mask
+            if mask & sys.monitoring.events.CALL:
+                remaining |= (
+                    sys.monitoring.events.C_RETURN | sys.monitoring.events.C_RAISE
+                )
+            while remaining:
+                event = remaining & -remaining
+                remaining ^= event
+                callback = sys.monitoring.register_callback(tool, event, None)
+                if not isinstance(callback, (BuiltinMethodType, MethodType)) or (
+                    callback.__self__ is not profile
+                ):
+                    sys.monitoring.register_callback(tool, event, callback)
+                    msg = "monitoring callback belongs to another engine"
+                    raise RuntimeError(msg)
+                sys.monitoring.register_callback(
+                    tool, event, cls._gate(callback, owner)
+                )
+            profile.clear()
+            sys.monitoring.set_events(tool, mask)
+        except BaseException as failure:
+            failure.add_note(
+                "native profiler acquisition failed; registration state is unrecovered; "
+                "retained engine, no foreign-owner cleanup attempted"
+            )
+            raise
+        return profile
 
     class SignalCheckpoint:
         """Observe once, preserving native actions and deferred publication failure."""
@@ -49,66 +99,40 @@ class FlextInfraPytestClock:
         ) -> None:
             self.profile = profile
             self.output = output
-            self.previous = previous
+            self.previous: int | Callable[[int, FrameType | None], None] = previous
             self.immutable_output = immutable_output
             self.previous_output = previous_output
             self._attempt: Iterator[bool] = iter((True,))
             self._failure: BaseException | None = None
-            self._failure_traceback: TracebackType | None = None
-
-        def on_operator_signal(self, signum: int, frame: FrameType | None) -> None:
-            """Capture without restoring handlers, terminating or raising failure."""
-            # Consume the attempt in one native step, including reentrant delivery.
-            if not next(self._attempt, False):
-                return
-            if self.profile in FlextInfraPytestClock._publishing:
-                return
-            try:
-                if frame is not None:
-                    traceback.print_stack(frame)
-                FlextInfraPytestClock.publish_profile(
-                    self.profile,
-                    self.output,
-                    immutable_output=self.immutable_output,
-                    previous_output=self.previous_output,
-                )
-            except BaseException as failure:
-                self._failure = failure
-                self._failure_traceback = failure.__traceback__
-            finally:
-                # create_stats() disables profiling even when publication fails.
-                try:
-                    self.profile.enable()
-                except BaseException as failure:
-                    if self._failure is None:
-                        self._failure = failure
-                        self._failure_traceback = failure.__traceback__
-                    else:
-                        self._failure.add_note(
-                            "profile resumption failed:\n"
-                            + "".join(traceback.format_exception(failure, chain=False))
-                        )
 
         def __call__(self, signum: int, frame: FrameType | None) -> None:
             """Capture once, then preserve the original native signal action."""
-            self.on_operator_signal(signum, frame)
-            if signal.getsignal(signum) is self:
+            if next(self._attempt, False) and (
+                self.profile not in FlextInfraPytestClock._publishing
+            ):
+                try:
+                    if frame is not None:
+                        traceback.print_stack(frame)
+                    FlextInfraPytestClock.publish_profile(
+                        self.profile,
+                        self.output,
+                        partial=True,
+                        immutable_output=self.immutable_output,
+                        previous_output=self.previous_output,
+                    )
+                except BaseException as failure:
+                    self._failure = failure
+            handler: Callable[[int, FrameType | None], None] = self
+            if signal.getsignal(signum) is handler:
                 signal.signal(signum, self.previous)
             try:
                 if callable(self.previous):
                     self.previous(signum, frame)
                 else:
                     try:
-                        if (
-                            self.previous == signal.SIG_DFL
-                            and self._failure is not None
-                        ):
-                            traceback.print_exception(
-                                type(self._failure),
-                                self._failure,
-                                self._failure_traceback,
-                                chain=False,
-                            )
+                        failure = self._failure
+                        if self.previous == signal.SIG_DFL and failure is not None:
+                            traceback.print_exception(failure, chain=False)
                     finally:
                         signal.raise_signal(signum)
             except BaseException as primary:
@@ -118,7 +142,8 @@ class FlextInfraPytestClock:
 
         def retire(self) -> None:
             """Release only owned registration and surface failure after cleanup."""
-            if signal.getsignal(signal.SIGTERM) is self:
+            handler: Callable[[int, FrameType | None], None] = self
+            if signal.getsignal(signal.SIGTERM) is handler:
                 signal.signal(signal.SIGTERM, self.previous)
             primary = sys.exception()
             if isinstance(primary, SystemExit) and (
@@ -128,29 +153,18 @@ class FlextInfraPytestClock:
             self._surface_failure(primary)
 
         def _surface_failure(self, primary: BaseException | None) -> None:
-            if self._failure is None:
+            failure = self._failure
+            if failure is None:
                 return
             if primary is None:
-                raise self._failure.with_traceback(self._failure_traceback)
+                raise failure
             primary.add_note(
                 "profile checkpoint publication failed:\n"
-                + "".join(
-                    traceback.format_exception(
-                        type(self._failure),
-                        self._failure,
-                        self._failure_traceback,
-                        chain=False,
-                    )
-                )
+                + "".join(traceback.format_exception(failure, chain=False))
             )
             if isinstance(primary, SystemExit):
                 try:
-                    traceback.print_exception(
-                        type(self._failure),
-                        self._failure,
-                        self._failure_traceback,
-                        chain=False,
-                    )
+                    traceback.print_exception(failure, chain=False)
                 except (OSError, ValueError) as diagnostic_failure:
                     primary.add_note(
                         f"profile failure diagnostic failed: {diagnostic_failure}"
@@ -158,97 +172,96 @@ class FlextInfraPytestClock:
 
     @staticmethod
     def profile_command(command: Callable[[], int], output: Path) -> int:
-        """Profile a command while retaining its native status and first exception.
+        """Return the native command status without replacing its first failure."""
+        return FlextInfraPytestClock.profile_operation(command, output, is_failure=bool)
 
-        Returns:
-            The command exit status.
-
-        """
+    @staticmethod
+    def profile_operation[T](
+        operation: Callable[[], T],
+        output: Path,
+        *,
+        is_failure: Callable[[T], bool],
+    ) -> T:
+        """Return the original operation value with immutable native evidence."""
+        current = FlextInfraPytestClock._operation_profile.get()
+        if (
+            current is not None
+            and FlextInfraPytestClock._threads[current] == get_ident()
+        ):
+            return operation()
         immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
         previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
-        profiler = cProfile.Profile()
-        status: int | None = None
+        profiler = FlextInfraPytestClock.create_profiler()
+        failed = False
+        completed = False
 
-        retire = FlextInfraPytestClock.register_signal_checkpoint(
-            profiler,
-            output,
-            immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
-            previous_output=previous_output.with_suffix(".checkpoint.pstats"),
-        )
-        profiler.enable()
         try:
-            status = command()
-            return status
+            retire = FlextInfraPytestClock.register_signal_checkpoint(
+                profiler,
+                output,
+                immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
+                previous_output=previous_output.with_suffix(".checkpoint.pstats"),
+            )
+        except BaseException as primary:
+            try:
+                profiler.disable()
+            except BaseException as cleanup_failure:
+                primary.add_note(
+                    "profile setup cleanup failed:\n"
+                    + "".join(traceback.format_exception(cleanup_failure, chain=False))
+                )
+            raise
+        profile_token = FlextInfraPytestClock._operation_profile.set(profiler)
+        try:
+            value = operation()
+            failed = is_failure(value)
+            completed = True
+            return value
         finally:
-            profiler.disable()
-            primary = sys.exception() if status is None else None
+            FlextInfraPytestClock._operation_profile.reset(profile_token)
+            primary = None if completed else sys.exception()
             if isinstance(primary, SystemExit) and (
                 primary.code is None or primary.code == 0
             ):
                 primary = None
-            try:
-                retire()
-            except BaseException as checkpoint_failure:
-                if primary is not None:
-                    primary.add_note(
-                        "profile checkpoint retirement failed:\n"
-                        + "".join(
-                            traceback.format_exception(checkpoint_failure, chain=False)
-                        )
-                    )
-                elif status:
-                    traceback.print_exception(checkpoint_failure)
-                else:
-                    primary = checkpoint_failure
-                    raise
-            finally:
+            for finalize in (
+                retire,
+                lambda: FlextInfraPytestClock.publish_profile(
+                    profiler,
+                    output,
+                    immutable_output=immutable_output,
+                    previous_output=previous_output,
+                ),
+            ):
                 try:
-                    FlextInfraPytestClock.publish_profile(
-                        profiler,
-                        output,
-                        immutable_output=immutable_output,
-                        previous_output=previous_output,
-                    )
-                except BaseException as publication_failure:
+                    finalize()
+                except BaseException as failure:
                     if primary is not None:
                         primary.add_note(
-                            "profile publication failed:\n"
-                            + "".join(
-                                traceback.format_exception(
-                                    publication_failure, chain=False
-                                )
-                            )
+                            "profile finalization failed:\n"
+                            + "".join(traceback.format_exception(failure, chain=False))
                         )
-                    elif status:
-                        traceback.print_exception(publication_failure)
+                    elif failed:
+                        traceback.print_exception(failure)
                     else:
-                        raise
+                        primary = failure
+            if primary is not None and primary is not sys.exception():
+                raise primary
 
     @classmethod
     def start_profiler(cls) -> cProfile.Profile:
-        """Share the process profiler across startup, launcher and entrypoint.
-
-        Returns:
-            The active profiler owned by this process.
-
-        """
-        if cls.profiler is None:
-            cls.profiler = cProfile.Profile()
-            cls.profiler.enable()
+        """Share the owning thread's native profiler across startup and entrypoint."""
+        current = cls._operation_profile.get()
+        if current is not None and cls._threads[current] == get_ident():
+            return current
+        if cls.profiler is None or cls._threads[cls.profiler] != get_ident():
+            cls.profiler = cls.create_profiler()
+        cls._operation_profile.set(cls.profiler)
         return cls.profiler
 
     @staticmethod
     def _guard_staging_identity(staging: Path, identity: os.stat_result) -> None:
-        """Fail when the staging file no longer matches its recorded identity.
-
-        Args:
-            staging: The staging path whose live identity is compared.
-            identity: The device and inode captured when the file was opened.
-
-        Raises:
-            OSError: If the live device and inode differ from ``identity``.
-
-        """
+        """Reject a staging path that no longer names the captured device/inode."""
         current = staging.stat(follow_symlinks=False)
         if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
             msg = "profile staging identity changed"
@@ -256,16 +269,7 @@ class FlextInfraPytestClock:
 
     @staticmethod
     def _discard_staging(staging: Path, identity: os.stat_result) -> None:
-        """Remove the staging file or attach its cleanup failure to the active error.
-
-        Args:
-            staging: The staging path replaced by a successful publication.
-            identity: The device and inode that authorize the removal.
-
-        Raises:
-            OSError: If cleanup fails while no earlier exception is active.
-
-        """
+        """Remove only owned staging; retain the original failure on cleanup error."""
         failure = sys.exception()
         try:
             if staging.exists() or staging.is_symlink():
@@ -283,25 +287,24 @@ class FlextInfraPytestClock:
         *,
         immutable_output: Path | None = None,
         previous_output: Path | None = None,
+        partial: bool = False,
     ) -> None:
-        """Publish native profiling evidence without exposing partial artifacts.
-
-        Args:
-            profile: The real profiler whose current stats are recorded.
-            output: The destination elected by the profiling invocation.
-            immutable_output: Optional invocation-owned raw link and text statistics.
-            previous_output: Optional retained link to the previous completed artifact.
-
-        Raises:
-            OSError: If staging identity or atomic publication fails.
-            RuntimeError: If the same profiler is already being published.
-
-        """
+        """Atomically publish native stats; partial checkpoints keep frames active."""
+        if FlextInfraPytestClock._threads[profile] != get_ident():
+            msg = "profile publication belongs to another thread"
+            raise RuntimeError(msg)
         if profile in FlextInfraPytestClock._publishing:
             msg = "profile publication is already active"
             raise RuntimeError(msg)
         FlextInfraPytestClock._publishing.add(profile)
         try:
+            if not partial:
+                profile.disable()
+                if FlextInfraPytestClock._operation_profile.get() is profile:
+                    FlextInfraPytestClock._operation_profile.set(None)
+                if FlextInfraPytestClock.profiler is profile:
+                    FlextInfraPytestClock.profiler = None
+            profile.snapshot_stats()
             descriptor, name = tempfile.mkstemp(
                 dir=output.parent,
                 prefix=f".{output.name}.",
@@ -311,7 +314,6 @@ class FlextInfraPytestClock:
             identity = os.fstat(descriptor)
             try:
                 with os.fdopen(descriptor, "wb") as stream:
-                    profile.create_stats()
                     marshal.dump(profile.stats, stream)
                     stream.flush()
                     os.fsync(stream.fileno())
@@ -332,7 +334,13 @@ class FlextInfraPytestClock:
                         ) as report_stream:
                             report_stream.write(
                                 "Native profile snapshot, not operation acceptance.\n"
-                                f"Raw capture: {immutable_output.name}\n\n"
+                                f"Raw capture: {immutable_output.name}\n"
+                                f"Process ID: {os.getpid()}\n"
+                                f"Owner thread: {FlextInfraPytestClock._threads[profile]}\n"
+                                f"Partial completed-entry checkpoint: {partial}\n"
+                                "Owner-thread wall timing, not worker CPU "
+                                "or elapsed-time proof.\n"
+                                f"Capture monotonic ns: {time.monotonic_ns()}\n\n"
                             )
                             FlextInfraPytestClock._guard_staging_identity(
                                 immutable_output, identity
@@ -381,21 +389,7 @@ class FlextInfraPytestClock:
         immutable_output: Path | None = None,
         previous_output: Path | None = None,
     ) -> Callable[[], None]:
-        """Persist measured progress before preserving native termination handling.
-
-        Args:
-            profile: The real profiler elected by the invocation.
-            output: The profile artifact elected by the canonical launcher.
-            immutable_output: Invocation-owned link to the interrupted profile.
-            previous_output: Retained link to the previously published profile.
-
-        Returns:
-            A callback retiring only this checkpoint's signal ownership.
-
-        Raises:
-            RuntimeError: If the native termination handler cannot be observed.
-
-        """
+        """Return retirement for one partial checkpoint and its previous signal action."""
         previous = signal.getsignal(signal.SIGTERM)
         if previous is None:
             msg = "cannot observe native profiler termination handler"
@@ -411,5 +405,8 @@ class FlextInfraPytestClock:
         signal.signal(signal.SIGTERM, checkpoint)
         return checkpoint.retire
 
+
+if sys.argv[1:2] == ["profile"]:
+    FlextInfraPytestClock.start_profiler()
 
 __all__: list[str] = ["FlextInfraPytestClock"]

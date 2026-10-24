@@ -289,7 +289,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "-p",
             "no:randomly",
             "-n",
-            "0",
+            c.ParserBooleanToken.ZERO,
             "--no-cov",
         )
         if self.profile_enabled or self.collection_command_prefix:
@@ -333,16 +333,16 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         # manifest.
         budget = self.parallel_worker_budget(pytest)
         if serialize or selection == ():
-            workers = "0"
+            workers = c.ParserBooleanToken.ZERO
         elif selection:
             workers = str(min(budget, len(selection)))
         else:
             workers = str(budget)
         # A serial dispatch keeps one item in flight, so its drain reserve is
         # the single-item budget instead of the xdist two-deep worst case.
-        serial = workers in {"0", "1"}
+        serial = workers in {c.ParserBooleanToken.ZERO, c.ParserBooleanToken.ONE}
         if serial:
-            workers = "0"
+            workers = c.ParserBooleanToken.ZERO
         manifest_args: t.StrTuple = ()
         if selection_plan is not None:
             manifest_args = (
@@ -411,7 +411,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
-        workers = "0" if serialize else str(self.parallel_worker_budget(pytest))
+        workers = (
+            c.ParserBooleanToken.ZERO
+            if serialize
+            else str(self.parallel_worker_budget(pytest))
+        )
         return self._suite_argv(
             report_dir,
             limits=self._bounded_limits(
@@ -443,7 +447,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         suite_stop = self.suite_stop_monotonic(
-            serial=workers == "0",
+            serial=workers == c.ParserBooleanToken.ZERO,
             execution_mode=execution_mode,
         )
         return (

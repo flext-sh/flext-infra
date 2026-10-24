@@ -631,7 +631,7 @@ class TestsFlextInfraPytestFullInventory:
                         c.Infra.PYTEST_ENV_TARGET_FILE: "",
                         c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
                         cache.database_environment_variable: str(runner.testmon_db),
-                        "FLEXT_INFRA_PROFILE": "true",
+                        "FLEXT_INFRA_PROFILE": c.ParserBooleanToken.TRUE,
                     },
                     deadline=m.Cli.ProcessDeadline(
                         expires_at_monotonic=(

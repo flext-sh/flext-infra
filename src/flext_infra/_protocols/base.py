@@ -666,7 +666,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def plan_repositories(
             self,
-            request: m.Infra.CodegenConformRequest,
+            request: FlextInfraProtocolsBase.CodegenGenerateRequest,
             inputs: m.Infra.CodegenInputs,
         ) -> p.Result[m.Infra.CodegenPlan]:
             """Plan one declared target from its captured inputs without publishing."""

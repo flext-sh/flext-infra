@@ -26,7 +26,7 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     @pytest.mark.parametrize("handler", ["default", "raise", "return"])
-    @pytest.mark.parametrize("event", ["tempfile.mkstemp", "marshal.dumps"])
+    @pytest.mark.parametrize(c.HandlerType.EVENT, ["tempfile.mkstemp", "marshal.dumps"])
     def test_sigterm_during_publication_never_reenters_snapshot(
         tmp_path: Path, handler: str, event: str
     ) -> None:

@@ -496,7 +496,11 @@ class FlextInfraConfigModelsWorkspace:
         ]
         user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
         auto_commit: Annotated[
-            Literal["off", "on", "batch"],
+            Literal[
+                c.ParserBooleanToken.OFF,
+                c.ParserBooleanToken.ON,
+                c.ProcessingMode.BATCH,
+            ],
             m.Field(description="Dolt auto-commit policy"),
         ]
 

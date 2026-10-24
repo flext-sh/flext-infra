@@ -45,7 +45,7 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
                 (
                     item
                     for item in cls._registered_worktree_entries(
-                        repo.git.worktree("list", "--porcelain"),
+                        repo.git.worktree(c.Action.LIST, "--porcelain"),
                     )
                     if item.path == worktree_root.resolve()
                 ),
@@ -76,7 +76,9 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         """
         try:
             worktree_repo = cls._repo(worktree_root)
-            with worktree_repo.git.custom_environment(GIT_OPTIONAL_LOCKS="0"):
+            with worktree_repo.git.custom_environment(
+                GIT_OPTIONAL_LOCKS=c.ParserBooleanToken.ZERO
+            ):
                 dirty = cls._nested_submodule_changes(worktree_repo)
                 porcelain = worktree_repo.git.status(
                     "--porcelain",

@@ -744,7 +744,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.fail(environment.exists())
         native_environment = {
             **hermetic_git_environment,
-            "UV_OFFLINE": "0",
+            "UV_OFFLINE": c.ParserBooleanToken.ZERO,
             inputs.spec.make.ci.variable: inputs.spec.make.ci.value,
             policy.hosted_variable: policy.hosted_value,
         }
@@ -939,7 +939,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "-f",
                 c.Infra.GITMODULES,
                 f"submodule.{member.path.as_posix()}.flext-managed",
-                "true",
+                c.ParserBooleanToken.TRUE,
             ),
         )
         u.Tests.commit_git_changes(root, "attach upgrade consumer")

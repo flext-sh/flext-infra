@@ -9,6 +9,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import ClassVar
 
+from flext_core import c
+
 from flext_infra import e
 from flext_infra._constants import FlextInfraConstantsSharedInfra
 
@@ -40,7 +42,7 @@ class FlextInfraConstantsPromoted:
         VERB = "verb"
         WHAT = "what"
         DOMAIN = "domain"
-        SUMMARY = "summary"
+        SUMMARY = c.MetricType.SUMMARY
         DESCRIPTION = "description"
         EXAMPLE = "example"
         MUTATES = "mutates"
@@ -123,7 +125,7 @@ class FlextInfraConstantsPromoted:
         "-h",
     })
     PROMOTED_ENV_ENABLED_VALUES: ClassVar[frozenset[str]] = frozenset({
-        "1",
+        c.ParserBooleanToken.ONE,
         "Y",
         "YES",
         "TRUE",

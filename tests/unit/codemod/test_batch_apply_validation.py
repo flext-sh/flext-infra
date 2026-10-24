@@ -104,7 +104,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                     f"{owner}Base as upstream_c\n"
                     "value = t.scalar_mapping_adapter().validate_python("
                     "{'name': 'value'})\n"
-                    "constant = upstream_c.JOINT_VALUE\n"
+                    "constant = c.JOINT_VALUE\n"
                     "local = c.JOINT_VALUE\n"
                 )
                 + ("broken: str = 1\n" if broken else "")
@@ -293,7 +293,11 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         final = (
             "2"
             if outcome == "converged"
-            else ("0" if outcome == "cycle" else "missing_candidate_binding")
+            else (
+                c.ParserBooleanToken.ZERO
+                if outcome == "cycle"
+                else "missing_candidate_binding"
+            )
         )
         u.Tests.declare_codemod_rules(
             mod_workspace,

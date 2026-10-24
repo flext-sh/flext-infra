@@ -92,7 +92,7 @@ class TestsFlextInfraGitSubmoduleComposition:
             "--file",
             c.Infra.GITMODULES,
             f"submodule.beta.{c.Infra.GITMODULE_MANAGED_KEY}",
-            "false",
+            c.ParserBooleanToken.FALSE,
         )
         declared = tm.ok(u.Infra.git_submodule_declarations(parent))
         tm.that([item.path for item in declared], eq=[Path("alpha"), Path("beta")])

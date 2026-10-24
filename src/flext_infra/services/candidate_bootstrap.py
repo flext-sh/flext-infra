@@ -260,11 +260,9 @@ class FlextInfraCandidateBootstrapService:
             return result_type.fail(
                 f"candidate bootstrap requires one declared surface: {root}",
             )
-        request = m.Infra.CodegenConformRequest(
+        request = m.Infra.CodegenGenerateRequest(
             root=root,
             what=target.what,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
         )
         planned = self._planner.plan_repositories(request, captured)
         if planned.failure:

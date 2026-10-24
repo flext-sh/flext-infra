@@ -44,10 +44,6 @@ class FlextInfraConstantsRelease:
         MINOR = "minor"
         MAJOR = "major"
 
-    VERSION_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^version\s*=\s*['\"](.+?)['\"]",
-        re.MULTILINE,
-    )
     CONVENTIONAL_SUBJECT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?P<type>[a-z]+)(?:\([^)]+\))?(?P<breaking>!)?: \S",
     )

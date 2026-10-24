@@ -284,7 +284,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Lint embedded ``python`` fenced blocks under one docs scope.
 
-        Captures every ``python`` fenced block via ``c.Infra.PYTHON_FENCE_RE``
+        Captures every ``python`` fenced block via ``u.Infra.docs_is_python_fence``
         and gates each block through ``ruff check --stdin-filename`` (piped
         body bytes — no temp files). Failures land as ``m.Infra.AuditIssue``
         records flowing through the standard audit report pipeline.
@@ -297,7 +297,12 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
-            for index, match in enumerate(c.Infra.PYTHON_FENCE_RE.finditer(content)):
+            for index, fence in enumerate(
+                filter(
+                    FlextInfraUtilitiesDocs.docs_is_python_fence,
+                    u.Cli.markdown_fences(content),
+                ),
+            ):
                 # Ruff via running interpreter (venv SSOT);
                 # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
                 outcome = u.Cli.run_raw(
@@ -315,7 +320,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                     ],
                     cwd=scope.path,
                     options=m.Cli.ProcessOptions(
-                        input_data=match.group("body").encode(),
+                        input_data=fence.code.encode(),
                     ),
                 )
                 if outcome.failure:

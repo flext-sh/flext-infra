@@ -195,69 +195,6 @@ class FlextInfraPyprojectModernizerDocument(
             changes.append("removed empty poetry group container")
         return changes
 
-    @staticmethod
-    def _ordered_keys(
-        container: t.Cli.TomlDocument | t.Cli.TomlTable,
-        preferred_first: t.StrSequence,
-    ) -> t.Pair[t.StrSequence, t.StrSequence]:
-        """Return current keys and their preferred-first, then alphabetical order.
-
-        Returns:
-            Current keys and their preferred-first, then alphabetical order.
-
-        """
-        current = [str(key) for key in container]
-        ordered = [key for key in preferred_first if key in current]
-        ordered.extend(sorted(set(current) - set(ordered)))
-        return current, ordered
-
-    @classmethod
-    def _reorder_child(
-        cls,
-        container: t.Cli.TomlDocument | t.Cli.TomlTable,
-        table_key: str,
-    ) -> None:
-        """Reorder a table child or every table in an array child."""
-        table = u.Cli.toml_table_child(container, table_key)
-        if table is not None:
-            cls._reorder_table(table)
-            return
-        item = u.Cli.toml_item_child(container, table_key)
-        if item is not None and u.Cli.toml_is_aot(item):
-            for entry in item.body:
-                cls._reorder_table(entry)
-
-    @classmethod
-    def _reorder_table(cls, table: t.Cli.TomlTable) -> None:
-        """Reorder one validated TOML table and its table-like children."""
-        current, ordered = cls._ordered_keys(table, ())
-        for key in ordered:
-            cls._reorder_child(table, key)
-        items = {key: table[key] for key in current}
-        if ordered != current:
-            for key in current:
-                del table[key]
-            for key in ordered:
-                table[key] = items[key]
-
-    @classmethod
-    def _reorder_document(
-        cls,
-        doc: t.Cli.TomlDocument,
-        *,
-        preferred_first: t.StrSequence,
-    ) -> None:
-        """Apply deterministic ordering to top-level groups and nested tables."""
-        current, ordered = cls._ordered_keys(doc, preferred_first)
-        if ordered != current:
-            items = {key: doc[key] for key in current}
-            for key in current:
-                del doc[key]
-            for key in ordered:
-                doc[key] = items[key]
-        for key in ordered:
-            cls._reorder_child(doc, key)
-
     def _process_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
@@ -334,15 +271,16 @@ class FlextInfraPyprojectModernizerDocument(
                 ),
                 skip_comments=skip_comments,
             )
-        if (
-            rendered.success
-            and state.rendered == state.original_rendered.rstrip() + "\n"
-        ):
+        if rendered.failure:
+            return rendered
+        if state.rendered == state.original_rendered:
             return r[t.StrSequence].ok(())
-        if rendered.success and not dry_run:
+        if not dry_run:
             u.write_file(
                 state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
             )
+        if not rendered.value:
+            return r[t.StrSequence].ok(("canonical pyproject rendering changed bytes",))
         return rendered
 
     def _apply_document_phases(
@@ -500,8 +438,15 @@ class FlextInfraPyprojectModernizerDocument(
             doc = state.document
             self._sync_document_values(doc, state.payload)
         else:
-            doc = u.Cli.toml_document_from_mapping(state.payload)
-            self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
+            canonical = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.Cli.json_sort_keys(state.payload),
+            )
+            preferred = {
+                key: canonical[key]
+                for key in self.tomlsort_sort_first
+                if key in canonical
+            }
+            doc = u.Cli.toml_document_from_mapping({**preferred, **canonical})
         rendered = doc.as_string()
         comment_changes: t.StrSequence = ()
         if not skip_comments:

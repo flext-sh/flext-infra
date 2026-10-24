@@ -96,7 +96,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             ("enable-error-code", True),
             ("overrides", False),
             ("ignore_errors", True),
-            ("ignore_errors", "true"),
+            ("ignore_errors", c.ParserBooleanToken.TRUE),
         ],
     )
     def test_generic_options_cannot_shadow_typed_policy(

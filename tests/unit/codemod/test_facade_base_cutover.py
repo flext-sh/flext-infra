@@ -175,7 +175,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             tmp_path,
             "from other_pkg import m as other_m\nfrom parent_pkg import m\n\n\n"
             "class ChildModels(m, other_m):\n    base = m.BaseModel\n"
-            "    other = other_m.BaseModel\n\n\nm = ChildModels\n",
+            "    other = m.BaseModel\n\n\nm = ChildModels\n",
         )
         other = tmp_path / "other/src/other_pkg"
         sources[other / "__init__.py"] = (

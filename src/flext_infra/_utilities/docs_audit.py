@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, config, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocs,
@@ -51,45 +53,6 @@ class FlextInfraUtilitiesDocsAudit(
             return False
         looks_like_prose = ".md" not in raw and "/" not in raw
         return looks_like_prose and ("," in raw or " " in raw)
-
-    @staticmethod
-    def docs_strip_inline_code(line: str) -> str:
-        """Remove inline-code spans from one markdown line.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        pieces: list[str] = []
-        in_code = False
-        for char in line:
-            if char == "`":
-                in_code = not in_code
-                continue
-            if not in_code:
-                pieces.append(char)
-        return "".join(pieces)
-
-    @staticmethod
-    def docs_markdown_link_targets(line: str) -> t.StrSequence:
-        """Return markdown link targets from one line.
-
-        Returns:
-            Markdown link targets from one line.
-
-        """
-        targets: list[str] = []
-        index = 0
-        while index < len(line):
-            close_label = line.find("](", index)
-            if close_label < 0:
-                break
-            close_target = line.find(")", close_label + 2)
-            if close_target < 0:
-                break
-            targets.append(line[close_label + 2 : close_target])
-            index = close_target + 1
-        return targets
 
     @staticmethod
     def docs_audit_policy(scope: m.Infra.DocScope) -> m.Infra.DocsAuditPolicySpec:
@@ -199,26 +162,15 @@ class FlextInfraUtilitiesDocsAudit(
         rel: str,
         issues: t.MutableSequenceOf[m.Infra.AuditIssue],
     ) -> None:
-        """Scan one markdown file's non-fenced lines for broken link targets."""
-        in_fenced_code = False
-        for number, line in enumerate(content.splitlines(), start=1):
-            stripped = line.lstrip()
-            if stripped.startswith("```"):
-                in_fenced_code = not in_fenced_code
-                continue
-            if in_fenced_code:
-                continue
-            clean_line = FlextInfraUtilitiesDocsAudit.docs_strip_inline_code(line)
-            for raw in FlextInfraUtilitiesDocsAudit.docs_markdown_link_targets(
-                clean_line,
-            ):
-                FlextInfraUtilitiesDocsAudit._link_issue(
-                    issues,
-                    md_file,
-                    rel,
-                    number,
-                    raw,
-                )
+        """Check every parsed link and image destination of one markdown file."""
+        for link in u.Cli.markdown_links(content):
+            FlextInfraUtilitiesDocsAudit._link_issue(
+                issues,
+                md_file,
+                rel,
+                link.line,
+                link.target,
+            )
 
     @staticmethod
     def docs_broken_link_issues(

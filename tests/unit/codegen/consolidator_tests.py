@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_cli import m as cli_m
 
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -24,19 +23,19 @@ class TestsFlextInfraCodegenConsolidator:
     class _ConsolidatorFilePayload(cli_m.ContractModel):
         """Typed JSON row emitted by the consolidator command."""
 
-        file: str = cli_m.Field(description="Relative file path")
-        status: str = cli_m.Field(description="File processing status")
-        changes: t.StrSequence = cli_m.Field(description="Changes applied to the file")
+        file: str = m.Field(description="Relative file path")
+        status: str = m.Field(description="File processing status")
+        changes: t.StrSequence = m.Field(description="Changes applied to the file")
 
     class _ConsolidatorJsonPayload(cli_m.ContractModel):
         """Typed JSON payload emitted by the consolidator command."""
 
-        total_found: int = cli_m.Field(description="Total replacements found")
-        total_applied: int = cli_m.Field(description="Total replacements applied")
-        total_failed: int = cli_m.Field(description="Total files that failed")
+        total_found: int = m.Field(description="Total replacements found")
+        total_applied: int = m.Field(description="Total replacements applied")
+        total_failed: int = m.Field(description="Total files that failed")
         files: t.SequenceOf[
             TestsFlextInfraCodegenConsolidator._ConsolidatorFilePayload
-        ] = cli_m.Field(description="Per-file consolidator results")
+        ] = m.Field(description="Per-file consolidator results")
 
     @staticmethod
     def _consolidator_payload(

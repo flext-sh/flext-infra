@@ -103,7 +103,7 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         if output.outcome.raw_return_code != int(bool(parsed.root)):
             return result_type.fail("deptry exit status contradicts its native report")
         coverage = tuple(
-            int(match.group("count"))
+            int(match.group(c.Aggregation.COUNT))
             for line in (*output.stdout.splitlines(), *output.stderr.splitlines())
             if (match := c.Infra.DEPTRY_SCAN_COVERAGE_RE.fullmatch(line)) is not None
         )

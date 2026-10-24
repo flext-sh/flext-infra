@@ -21,7 +21,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
 
     def _prepare_scaffold_directories(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
         """Create config-declared scaffold parent chains under the generation lock.
 
@@ -54,7 +54,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
 
     def _scaffold_plan(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[
         t.Pair[
             t.Pair[m.Infra.WorkspaceSpec | None, m.Infra.ProjectSpec | None],
@@ -81,8 +81,6 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
                 bool,
             ]
         ]
-        if request.mode is not c.Infra.CodegenConformMode.APPLY:
-            return result_type.ok(((None, None), False))
         if (request.root / c.PYPROJECT_FILENAME).is_file():
             return result_type.ok(((None, None), False))
         scaffolding = self.state.initial_workspace
@@ -103,7 +101,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
 
     @staticmethod
     def _scaffold_destination_directories(
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         workspace: m.Infra.WorkspaceSpec,
         project: m.Infra.ProjectSpec,
         codegen: m.Infra.CodegenConfigSpec,

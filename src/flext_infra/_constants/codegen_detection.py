@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -22,8 +24,8 @@ class FlextInfraConstantsCodegenDetection:
         "True",
         "False",
         "None",
-        "0",
-        "1",
+        c.ParserBooleanToken.ZERO,
+        c.ParserBooleanToken.ONE,
         "2",
         "3",
         "4",

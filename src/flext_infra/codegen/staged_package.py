@@ -1145,6 +1145,8 @@ class FlextInfraStagedPackage:
 
         Git membership alone does not make unrelated content a source input.
         Explicit originals and native consumed reads are retained by their owners.
+        Each parent contributes one membership query; every source retains its
+        own file query in that same authority.
 
         Args:
             layout: The provider layout whose source paths are collected.
@@ -1181,8 +1183,9 @@ class FlextInfraStagedPackage:
             return r[list[Path]].from_failure(walked)
         paths.extend(walked.value)
         if source_project is not None:
+            for parent in dict.fromkeys(path.parent for path in paths):
+                source_project.source_children(parent, follow_aliases=False)
             for path in paths:
-                source_project.source_children(path.parent, follow_aliases=False)
                 source_project.source_query(path, "isfile")
         return r[list[Path]].ok(sorted(set(paths)))
 
@@ -1279,7 +1282,15 @@ class FlextInfraStagedPackage:
         *,
         runtime_only: bool = True,
     ) -> tuple[ast.Import | ast.ImportFrom, ...]:
+        """Retain import order and inspect type-only guards only when excluded."""
         tree = ast.parse(content.decode(c.DEFAULT_ENCODING), filename=str(path))
+        imports = tuple(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+        )
+        if not runtime_only:
+            return imports
         excluded = {
             id(child)
             for guard in ast.walk(tree)
@@ -1294,12 +1305,7 @@ class FlextInfraStagedPackage:
             for statement in guard.body
             for child in ast.walk(statement)
         }
-        return tuple(
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, (ast.Import, ast.ImportFrom))
-            and (not runtime_only or id(node) not in excluded)
-        )
+        return tuple(node for node in imports if id(node) not in excluded)
 
     @classmethod
     def _pin_family_surfaces(

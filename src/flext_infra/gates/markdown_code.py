@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fnmatch
-import re
 import tempfile
 import time
 from collections.abc import Mapping
@@ -30,8 +29,6 @@ from flext_infra.gates import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from flext_infra import p, t
 
 
@@ -330,52 +327,25 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         """
         content = md_path.read_text(c.DEFAULT_ENCODING)
         relative_posix = md_path.relative_to(project_dir).as_posix()
-        # Preserve indexes across fragments the formatter does not own.
-        staged: t.MutableSequenceOf[t.Pair[int, str]] = []
-        for index, match in enumerate(
-            match
-            for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
-            if c.Infra.MARKDOWN_CODE_SKIP_MARKER not in match.group("info")
-        ):
-            code = match.group("code")
-            if FlextInfraMarkdownCodeSources.syntax_broken(code, md_path):
-                continue
-            staged.append((index, code))
+        staged = FlextInfraMarkdownCodeSources.formattable_fences(content, md_path)
         if not staged:
             return None
         blocks, round_trips = self._formatted_blocks(
-            staged,
+            tuple(index for index, _fence in staged),
             relative_posix,
             sources_dir,
             md_path,
         )
         if not round_trips:
             return None
-        blocks_iter = iter(blocks)
-
-        def _resubstitute(
-            match: re.Match[str],
-            *,
-            origin_path: Path = md_path,
-            replacements: Iterator[str] = blocks_iter,
-        ) -> str:
-            """Splice formatted code; prose fragments stay byte-identical.
-
-            Returns:
-                The resulting ``str``.
-
-            """
-            keep = c.Infra.MARKDOWN_CODE_SKIP_MARKER in match.group(
-                "info",
-            ) or FlextInfraMarkdownCodeSources.syntax_broken(
-                match.group("code"),
-                origin_path,
-            )
-            if keep:
-                return match.group(0)
-            return match.group(0).replace(match.group("code"), next(replacements))
-
-        updated = c.Infra.MARKDOWN_PY_FENCE_RE.sub(_resubstitute, content)
+        updated = u.Cli.markdown_rewrite_fences(
+            content,
+            {
+                fence: (fence.info, block)
+                for (_index, fence), block in zip(staged, blocks, strict=True)
+                if block != fence.code
+            },
+        )
         if updated == content:
             return None
         md_path.write_text(updated, c.DEFAULT_ENCODING)
@@ -383,7 +353,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
     @staticmethod
     def _formatted_blocks(
-        staged: t.SequenceOf[t.Pair[int, str]],
+        staged: t.SequenceOf[int],
         relative_posix: str,
         sources_dir: Path,
         md_path: Path,
@@ -396,7 +366,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
         """
         blocks: t.MutableSequenceOf[str] = []
-        for index, _original in staged:
+        for index in staged:
             source = sources_dir / FlextInfraMarkdownCodeSources.source_name(
                 relative_posix,
                 index,

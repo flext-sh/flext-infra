@@ -801,7 +801,16 @@ class TestsFlextInfraLazyAliasOrdering:
     """Validate the native lazy-builder literal ordering contract."""
 
     @staticmethod
-    @pytest.mark.parametrize("ordering", ["0", "1", "None", '"true"', "True and False"])
+    @pytest.mark.parametrize(
+        "ordering",
+        [
+            c.ParserBooleanToken.ZERO,
+            c.ParserBooleanToken.ONE,
+            "None",
+            "c.ParserBooleanToken.TRUE",
+            "True and False",
+        ],
+    )
     def test_builder_rejects_non_boolean_literals(
         tmp_path: Path, ordering: str
     ) -> None:

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u as cli_u
-
 from flext_infra import m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsContract,
@@ -146,14 +144,14 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                 ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
 
         """
-        planned = cli_u.Cli.atomic_plan_directory_chain(root)
+        planned = u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 planned,
             )
         if planned.value.directories:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(())
-        inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
+        inventory = u.Cli.atomic_inventory_physical_tree(root)
         if inventory.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 inventory,

@@ -75,8 +75,8 @@ class TestsFlextInfraPytestDiag:
         """Test extract valid junit xml."""
         junit = tmp_path / "junit.xml"
         junit.write_text(
-            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
-            ' failures="0" errors="0" skipped="0"></testsuite></testsuites>',
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests=c.ParserBooleanToken.ONE'
+            " failures=c.ParserBooleanToken.ZERO errors=c.ParserBooleanToken.ZERO skipped=c.ParserBooleanToken.ZERO></testsuite></testsuites>",
         )
         log = tmp_path / "log.txt"
         log.write_text("")
@@ -127,8 +127,8 @@ class TestsFlextInfraPytestDiag:
         log.write_text("")
         fail_xml = tmp_path / "fail.xml"
         fail_xml.write_text(
-            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
-            ' failures="1" errors="0" skipped="0"><testcase name="test_fail"'
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests=c.ParserBooleanToken.ONE'
+            ' failures=c.ParserBooleanToken.ONE errors=c.ParserBooleanToken.ZERO skipped=c.ParserBooleanToken.ZERO><testcase name="test_fail"'
             ' classname="TC" time="0.1"><failure message="fail">Traceback</failure>'
             "</testcase></testsuite></testsuites>",
         )
@@ -146,8 +146,8 @@ class TestsFlextInfraPytestDiag:
 
         err_xml = tmp_path / "err.xml"
         err_xml.write_text(
-            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
-            ' failures="0" errors="1" skipped="0"><testcase name="test_err"'
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests=c.ParserBooleanToken.ONE'
+            ' failures=c.ParserBooleanToken.ZERO errors=c.ParserBooleanToken.ONE skipped=c.ParserBooleanToken.ZERO><testcase name="test_err"'
             ' classname="TC" time="0.1"><error message="err">Trace</error>'
             "</testcase></testsuite></testsuites>",
         )
@@ -167,8 +167,8 @@ class TestsFlextInfraPytestDiag:
         log.write_text("")
         skip_xml = tmp_path / "skip.xml"
         skip_xml.write_text(
-            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
-            ' failures="0" errors="0" skipped="1"><testcase name="test_skip"'
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests=c.ParserBooleanToken.ONE'
+            ' failures=c.ParserBooleanToken.ZERO errors=c.ParserBooleanToken.ZERO skipped=c.ParserBooleanToken.ONE><testcase name="test_skip"'
             ' classname="TC" time="0.1"><skipped message="skip"/>'
             "</testcase></testsuite></testsuites>",
         )
@@ -221,7 +221,7 @@ class TestsFlextInfraPytestDiag:
         log = tmp_path / "pytest.log"
         log.write_text("", encoding="utf-8")
         junit.write_text(
-            '<testsuites><testsuite tests="1" failures="0" errors="0" skipped="1">'
+            "<testsuites><testsuite tests=c.ParserBooleanToken.ONE failures=c.ParserBooleanToken.ZERO errors=c.ParserBooleanToken.ZERO skipped=c.ParserBooleanToken.ONE>"
             '<testcase classname="tests.test_case" name="test_skip" time="0.1">'
             '<properties><property name="flext_connectivity_prerequisite" '
             'value="ordinary skip"/>'
@@ -250,7 +250,7 @@ class TestsFlextInfraPytestDiag:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests=c.ParserBooleanToken.ZERO/></testsuites>',
         )
 
         with pytest.raises(FileNotFoundError):
@@ -265,7 +265,7 @@ class TestsFlextInfraPytestDiag:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests=c.ParserBooleanToken.ZERO/></testsuites>',
         )
         log_is_dir = tmp_path / "log_is_dir"
         log_is_dir.mkdir()
@@ -282,7 +282,7 @@ class TestsFlextInfraPytestDiag:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests=c.ParserBooleanToken.ZERO/></testsuites>',
         )
         log = tmp_path / "log.txt"
         log.write_text(
@@ -320,7 +320,7 @@ class TestsFlextInfraPytestDiag:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests=c.ParserBooleanToken.ZERO/></testsuites>',
         )
         log = tmp_path / "log.txt"
         log.write_text("2 passed")
@@ -350,7 +350,7 @@ class TestsFlextInfraPytestDiag:
         """Test extract invalid duration preserves value error."""
         junit = tmp_path / "junit.xml"
         junit.write_text(
-            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1">'
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests=c.ParserBooleanToken.ONE>'
             '<testcase name="invalid" time="not-a-number"/>'
             "</testsuite></testsuites>",
         )

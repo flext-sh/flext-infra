@@ -141,7 +141,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             '{"results":[],"errors":[{}]}',
             '{"results":[],"errors":[{"filename":"source.py","reason":7}]}',
             (
-                '{"results":[{"filename":"source.py","line_number":"1",'
+                '{"results":[{"filename":"source.py","line_number":c.ParserBooleanToken.ONE,'
                 '"test_id":"B101","issue_text":"assert used"}],"errors":[]}'
             ),
         ],

@@ -9,7 +9,7 @@ from __future__ import annotations
 from functools import partial
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import (
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             Source-directory presence after physical path authentication.
 
         """
-        planned = cli_u.Cli.atomic_plan_directory_chain(path)
+        planned = u.Cli.atomic_plan_directory_chain(path)
         if planned.failure:
             return r[bool].from_failure(planned)
         return r[bool].ok(not planned.value.directories)
@@ -48,20 +48,20 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        planned = cli_u.Cli.atomic_plan_directory_chain(root)
+        planned = u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
             return r[t.VariadicTuple[Path]].from_failure(planned)
         if planned.value.directories:
             return r[t.VariadicTuple[Path]].ok(())
         if recursive:
-            inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
+            inventory = u.Cli.atomic_inventory_physical_tree(root)
             if inventory.failure:
                 return r[t.VariadicTuple[Path]].from_failure(inventory)
             paths = (
                 entry.path for entry in inventory.value.entries if entry.kind == "file"
             )
         else:
-            directory = cli_u.Cli.atomic_inventory_physical_directory(root)
+            directory = u.Cli.atomic_inventory_physical_directory(root)
             if directory.failure:
                 return r[t.VariadicTuple[Path]].from_failure(directory)
             paths = (
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 root,
                 source_scope,
             ):
-                state = cli_u.Cli.atomic_plan_directory_chain(path)
+                state = u.Cli.atomic_plan_directory_chain(path)
                 if state.failure:
                     return r[
                         t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]
@@ -241,7 +241,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 if state.content is not None
             )
         templates_root = FlextInfraConfig.ssot_config_dir().parent / "templates"
-        templates = cli_u.Cli.template_capture_sources((
+        templates = u.Cli.template_capture_sources((
             templates_root / c.Infra.TEMPLATE_MKDOCS_PROJECT,
             templates_root / c.Infra.TEMPLATE_MKDOCS_ROOT,
         ))
@@ -370,7 +370,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
         """
         for fixed_path in fixed_paths:
-            state = cli_u.Cli.atomic_read_binary_file_state(
+            state = u.Cli.atomic_read_binary_file_state(
                 fixed_path,
                 required=False,
             )
@@ -427,7 +427,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         """
         created = {item.path: item for item in created_directories}
         for expected in bundle.source_directories:
-            observed = cli_u.Cli.atomic_plan_directory_chain(expected.target)
+            observed = u.Cli.atomic_plan_directory_chain(expected.target)
             if observed.failure:
                 return r[bool].from_failure(observed)
             if observed.value != expected:

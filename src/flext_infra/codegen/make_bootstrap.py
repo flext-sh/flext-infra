@@ -12,6 +12,7 @@ from flext_infra import c, m, p, r, u
 from flext_infra._conform_wiring import FlextInfraConformWiring
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenExecutionBase,
     FlextInfraCodegenFileLeases,
     FlextInfraMiseArtifactsVerification,
@@ -61,32 +62,32 @@ class FlextInfraCodegenMakeBootstrap(
                     "bootstrap kind conflicts with the new target's own declaration: "
                     f"{requested}",
                 )
-        mode = (
-            c.Infra.CodegenConformMode.CHECK
-            if self.effective_dry_run
-            else c.Infra.CodegenConformMode.APPLY
-        )
-        request = m.Infra.CodegenConformRequest(
-            root=requested,
-            what=(
-                c.Infra.CodegenConformSurface.ALL
-                if new_project
-                else c.Infra.CodegenConformSurface.MAKEFILE
-            ),
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=mode,
-            declaration_kind=None if new_project else self.kind,
-        )
-        if mode is c.Infra.CodegenConformMode.CHECK:
-            with FlextInfraCodegenFileLeases.mutation_lease(requested):
-                return FlextInfraMiseArtifactsVerification.publication_current(
-                    request,
-                ).map(lambda _: True)
-        conformed = FlextInfraCodegenConform.execute_request(
-            request,
-            execution_context=self if new_project else None,
-            generation_only=new_project,
-        )
+        if new_project:
+            request = m.Infra.CodegenGenerateRequest(root=requested)
+            if self.effective_dry_run:
+                with FlextInfraCodegenFileLeases.mutation_lease(requested):
+                    return FlextInfraMiseArtifactsVerification.publication_current(
+                        request,
+                    ).map(lambda _: True)
+            conformed = FlextInfraCodegenConformExecute.execute_request(
+                request, execution_context=self
+            )
+        else:
+            conformed = FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=requested,
+                    what=c.Infra.CodegenConformSurface.MAKEFILE,
+                    mode=(
+                        c.Infra.CodegenConformMode.CHECK
+                        if self.effective_dry_run
+                        else c.Infra.CodegenConformMode.APPLY
+                    ),
+                    declaration_kind=self.kind,
+                ),
+                execution_context=None,
+            )
+            if self.effective_dry_run:
+                return conformed.map(lambda _: True)
         if conformed.success and conformed.value.publication_receipt is None:
             return r[bool].fail(
                 f"Makefile bootstrap has no completed publication receipt: {requested}",

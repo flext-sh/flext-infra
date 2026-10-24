@@ -43,7 +43,7 @@ class TestsFlextInfraPyrightPublicContract:
             (tests / "__init__.py").write_text(
                 "from typing import TYPE_CHECKING\n"
                 "if TYPE_CHECKING:\n"
-                "    from tests.constants import c as c\n",
+                "    from tests.constants import c\n",
                 encoding="utf-8",
             )
             (tests / "constants.py").write_text(

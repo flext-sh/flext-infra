@@ -104,14 +104,15 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
     def python_resources(
         rope_project: t.Infra.RopeProject,
     ) -> t.SequenceOf[t.Infra.RopeFile]:
-        """Return Rope's already-filtered Python resources without a path roundtrip.
+        """Return native Python resources from their project's source election.
 
         Every yielded resource passed the ``file_resource`` predicate, so the
         element contract is the file shape with content access, not the wider
-        file-or-folder resource.
+        file-or-folder resource. Authenticated projects elect scoped candidate
+        sources before constructing resources for unrelated directory entries.
 
         Returns:
-            Rope's already-filtered Python resources without a path roundtrip.
+            The project's elected native Python file resources.
 
         """
         return tuple(

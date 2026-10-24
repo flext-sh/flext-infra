@@ -174,7 +174,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         u.Tests.provision_checkout(tmp_path)
 
     @staticmethod
-    @pytest.mark.parametrize("batch", [False, True])
+    @pytest.mark.parametrize(c.ProcessingMode.BATCH, [False, True])
     def test_callback_failure_preserves_written_source(
         tmp_path: Path,
         *,
@@ -224,7 +224,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
 
     @staticmethod
-    @pytest.mark.parametrize("batch", [False, True])
+    @pytest.mark.parametrize(c.ProcessingMode.BATCH, [False, True])
     def test_invalid_ruff_configuration_reports_failure_and_preserves_source(
         tmp_path: Path,
         *,
@@ -269,7 +269,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
 
     @staticmethod
-    @pytest.mark.parametrize("batch", [False, True])
+    @pytest.mark.parametrize(c.ProcessingMode.BATCH, [False, True])
     @pytest.mark.parametrize(
         ("introduced", "nonfixable"),
         [(False, False), (True, False), (True, True)],

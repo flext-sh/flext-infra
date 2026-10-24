@@ -3989,8 +3989,13 @@ class FlextInfraWorkspaceNativeReference:
     ) -> p.Result[bool]:
         """Observe native callable storage, registered callbacks and receiver inputs.
 
+        Receiver failures retain their exception and gain only stored graph context.
+
         Returns:
             The original category evidence or its first native failure.
+
+        Raises:
+            ValueError: If the value cannot be observed as a native callable.
 
         """
         observe_value = partial(
@@ -4116,19 +4121,52 @@ class FlextInfraWorkspaceNativeReference:
                     )
                 )
             else:
-                receiver_operands = (
-                    (
-                        "receiver",
-                        observe_value(
-                            receiver,
-                            construction=True,
-                            binding=(
-                                f"{context.binding}; supplier={actual_supplier}; "
-                                f"method={native_name}"
+                try:
+                    receiver_operands = (
+                        (
+                            "receiver",
+                            observe_value(
+                                receiver,
+                                construction=True,
+                                binding=(
+                                    f"{context.binding}; supplier={actual_supplier}; "
+                                    f"method={native_name}"
+                                ),
                             ),
                         ),
-                    ),
-                )
+                    )
+                except ValueError as error:
+                    breadcrumb: list[str] = []
+                    edge = context.incoming
+                    while edge and edge not in breadcrumb:
+                        breadcrumb.append(edge)
+                        parent = edge.partition(".")[0]
+                        if not parent.startswith("@"):
+                            break
+                        edge = next(
+                            (
+                                alias
+                                for alias, target in context.edges.items()
+                                if target == parent
+                            ),
+                            "",
+                        )
+                    BaseException.add_note(
+                        error,
+                        "native receiver ownership context: "
+                        + dumps({
+                            "incoming": context.incoming,
+                            "binding_context": context.binding_context,
+                            "supplier": context.supplier,
+                            "owner_source": context.owner_source,
+                            "role": context.role,
+                            "native_supplier": actual_supplier,
+                            "native_method": native_name,
+                            "native_qualname": qualified,
+                            "ownership_edges_leaf_first": breadcrumb,
+                        }),
+                    )
+                    raise
         context.evidence.append(
             m.Infra.NativeBindingEvidence(
                 binding=context.binding,
@@ -4442,14 +4480,13 @@ class FlextInfraWorkspaceNativeReference:
                 item,
                 facts.supplier,
                 context.owner_source,
-                "execution",
+                "storage_type" if cls._is_class(item) else "execution",
             )
             for name, item in facts.global_bindings.items()
             if item is not None
             and (
                 cls._is_class(item)
-                or type(item) is FunctionType
-                or type(item) is MethodType
+                or type(item) in {FunctionType, MethodType}
                 or cls._native_builtin(item)
                 or cls._callable_storage(item)
             )

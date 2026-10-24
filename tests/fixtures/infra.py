@@ -655,7 +655,7 @@ def _provision_make_template(
     parent = _run_scoped(run_root, "make-templates", profile.value)
     # Git inputs remain immutable file-only mirrors. Native registry wheels,
     # build requirements and cold Mise artifacts still require provisioning.
-    git_environment = {**git_environment, "UV_OFFLINE": "0"}
+    git_environment = {**git_environment, "UV_OFFLINE": c.ParserBooleanToken.ZERO}
     root, _ = u.Tests.render_make_environment(parent, profile, bootstrap=True)
     candidate_url = u.Tests.repository_ref(
         config.Infra.codegen.infra_repository.distribution,

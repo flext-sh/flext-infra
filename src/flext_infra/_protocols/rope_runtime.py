@@ -465,6 +465,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             *,
             consumer_root: Path | None = None,
+            source_states: tuple[m.Cli.AtomicFileState, ...] = (),
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = None,
+            additional_source_folders: tuple[str, ...] = (),
         ) -> AbstractContextManager[Self]: ...
 
         @property

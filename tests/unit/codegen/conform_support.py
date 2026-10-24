@@ -135,8 +135,14 @@ class TestsFlextInfraConformSupport:
             for path in sorted(expected_files.keys() | actual_files.keys())
             if expected_files.get(path) != actual_files.get(path)
             for line in unified_diff(
-                expected_files.get(path, b"").decode(errors="replace").splitlines(),
-                actual_files.get(path, b"").decode(errors="replace").splitlines(),
+                expected_files
+                .get(path, b"")
+                .decode(errors=c.MergeStrategy.REPLACE)
+                .splitlines(),
+                actual_files
+                .get(path, b"")
+                .decode(errors=c.MergeStrategy.REPLACE)
+                .splitlines(),
                 fromfile=f"created/{path}",
                 tofile=f"conformed/{path}",
                 lineterm="",

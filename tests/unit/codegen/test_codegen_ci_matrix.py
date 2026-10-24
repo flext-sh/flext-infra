@@ -792,7 +792,7 @@ class TestsFlextInfraCodegenCiMatrixArtifacts:
             tm.that(blocking, has=f"      - {integration}")
         tm.that(blocking, has="draft == false")
         tm.that(blocking, has="ready_for_review")
-        triggers = matrix.split('"on":', maxsplit=1)[1].split(
+        triggers = matrix.split("c.ParserBooleanToken.ON:", maxsplit=1)[1].split(
             "# End SECTION: triggers",
             maxsplit=1,
         )[0]

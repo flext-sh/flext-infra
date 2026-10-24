@@ -149,7 +149,10 @@ class TestsFlextInfraWorkspaceLockCompleteness:
 
     @pytest.mark.parametrize(
         "marker",
-        ['python_version < "0"', 'extra == "unselected-audit-extra"'],
+        [
+            "python_version < c.ParserBooleanToken.ZERO",
+            'extra == "unselected-audit-extra"',
+        ],
     )
     def test_inactive_distribution_metadata_is_not_a_resolved_edge(
         self,
@@ -200,7 +203,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             "package = []",
             'package = ["invalid"]',
             (
-                '[[package]]\nname = ""\nversion = "1"\n'
+                '[[package]]\nname = ""\nversion = c.ParserBooleanToken.ONE\n'
                 'source = {registry = "https://example.com"}'
             ),
         ],

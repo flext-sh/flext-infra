@@ -77,7 +77,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         module = tier / "consumer.py"
         source = (
             "from __future__ import annotations\n"
-            "from tests import m\n"
+            "from tests import c, m\n"
             f"from flext_tests import {imported_name} as {local_alias}\n\n"
             "local_models = m\n"
             "class ClassScope:\n    m = 'class-local'\n\n"
@@ -113,7 +113,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     (
                         "from typing import get_type_hints; "
                         "from flext_tests import m, tm; "
-                        "from tests import m as local_m; "
+                        "from tests import c, m as local_m; "
                         "from tests.consumer import "
                         "ClassScope, build, local, local_models, sibling; "
                         "user = m.Tests.User.model_validate("
@@ -350,8 +350,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
 
         tm.that(normalized, has="from tests import c\n")
-        tm.that(normalized, has="from tests import u\n")
-        tm.that(normalized, has="from tests import m\n")
+        tm.that(normalized, has="from tests import c, u\n")
+        tm.that(normalized, has="from tests import c, m\n")
         tm.that(normalized, has="from demo_pkg import DemoApi\n")
         tm.that(
             normalized,

@@ -151,10 +151,10 @@ Infra:
       uv_constraint_dependencies: []
       # Explicit resolver-wide SDK source election. Repository/local declarations
       # of the same normalized name and marker take precedence at rendering.
-      # The fork release repairs region coverage for try/else/finally matching;
-      # stale transitive metadata must not select the earlier broken source.
+      # The integrated fork preserves region coverage and resolves opaque source
+      # bindings lazily; stale transitive metadata must not select an older source.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@2bf3ad55a32cc117f5321e1467695eba540be97b
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@ff1c992a100ae983baa79188a6a970c2858734de
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -479,6 +479,7 @@ Infra:
       gate_receipts_directory: .reports/gates
       check_report_output_environment_variable: FLEXT_CHECK_REPORT_OUTPUT
       generation_profile_path: .reports/codegen/gen.pstats
+      modification_profile_path: .reports/refactor/mod.pstats
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -634,12 +635,6 @@ Infra:
       - rewire-cli-json-list-adapter
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
-      - codegen-conform-state-request-workspace
-      - codegen-conform-state-workspace-request
-      - codegen-conform-state-request
-      - codegen-conform-state-workspace
-      - codegen-conform-state-workspace-only
-      - codegen-conform-state-ports
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local, ci ] }

@@ -97,7 +97,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
                 continue
             metadata, raw_path = row.split("\t", 1)
             mode, oid, stage = metadata.split()
-            if stage != "0":
+            if stage != c.ParserBooleanToken.ZERO:
                 msg = f"capture requires resolved index entries: {raw_path}"
                 raise ValueError(msg)
             entries.append(

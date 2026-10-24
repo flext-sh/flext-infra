@@ -62,7 +62,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
             GIT_INDEX_FILE=str(index_file) if index_file else None,
         ):
             if removed or entries:
-                absent_oid = "0" * len(repo.head.commit.hexsha)
+                absent_oid = c.ParserBooleanToken.ZERO * len(repo.head.commit.hexsha)
                 removals = "".join(
                     f"0 {absent_oid}\t{path.as_posix()}\0" for path in removed
                 )

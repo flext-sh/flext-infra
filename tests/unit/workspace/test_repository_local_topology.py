@@ -596,7 +596,7 @@ class TestsFlextInfraRepositoryLocalTopology:
                     c.Infra.GITMODULES,
                     # The fixture names the section after the distribution.
                     "submodule.fixture-member.flext-managed",
-                    "false",
+                    c.ParserBooleanToken.FALSE,
                 ),
                 cwd=root,
             ),

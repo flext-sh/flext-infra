@@ -468,7 +468,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(outcome.exit_code, eq=0, msg=outcome.stderr)
             tm.that(outcome.stderr, eq="")
 
-    @pytest.mark.parametrize("collection", ["dict", "list"])
+    @pytest.mark.parametrize("collection", ["dict", c.Action.LIST])
     def test_typing_collection_fixes_preserve_runtime_values(
         self,
         tmp_path: Path,

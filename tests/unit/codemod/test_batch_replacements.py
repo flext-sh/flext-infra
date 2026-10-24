@@ -446,7 +446,7 @@ class TestsFlextInfraBatchReplacements:
     @pytest.mark.parametrize(
         ("original", "replacement", "accepted"),
         [
-            (b"value = before\n", "1", True),
+            (b"value = before\n", c.ParserBooleanToken.ONE, True),
             (b"before = 1\nvalue = before\n", "after", False),
             (b"value = before\nvalue = missing\n", "1\n\n# shifted", True),
             (b"value = before\nvalue = before\n", "another_missing", False),

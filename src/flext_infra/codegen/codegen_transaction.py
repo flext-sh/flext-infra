@@ -693,16 +693,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             authorized = self._authorize_journal(layout, loaded.value[0])
             if authorized.failure:
                 return result_type.from_failure(authorized)
-            for participant in loaded.value[0].file_participants:
-                current = participants.get(participant.root)
-                if current is not None and (current.device, current.inode) != (
-                    participant.device,
-                    participant.inode,
-                ):
-                    return result_type.fail(
-                        "file capability identity changed before recovery",
-                    )
-                participants[participant.root] = participant
+            recorded = loaded.value[0]
+            if recorded.file_participants:
+                current = self._planner.file_layout(
+                    layout.scope_root,
+                    {item.selector: item.root for item in recorded.file_participants},
+                    transaction_id=recorded.transaction_id,
+                )
+                if current.failure:
+                    return result_type.from_failure(current)
+                participants.update(
+                    (participant.root, participant)
+                    for participant in current.value.file_participants
+                )
         return result_type.ok(tuple(participants.values()))
 
     def begin_files_locked(

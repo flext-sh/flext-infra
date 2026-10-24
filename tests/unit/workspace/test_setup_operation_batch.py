@@ -146,7 +146,7 @@ class TestsFlextInfraSetupOperationBatch:
             "--file",
             c.Infra.GITMODULES,
             f"submodule.{first.name}.{c.Infra.GITMODULE_MANAGED_KEY}",
-            "false",
+            c.ParserBooleanToken.FALSE,
         )
         (first / c.Infra.CONFIG_SPEC[0]).write_text(
             "[tools\n",

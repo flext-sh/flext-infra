@@ -54,7 +54,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
         )
         requirement = f"{member_ref.distribution} @ git+{member_ref.url}@{branch}"
         if marked:
-            requirement += ' ; python_version >= "0"'
+            requirement += " ; python_version >= c.ParserBooleanToken.ZERO"
         authored = Requirement(requirement)
         u.Tests.write_native_resolution_project(
             root,
@@ -185,7 +185,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             u.Tests.resolve_native_identity_fixture(
                 standalone_directory,
                 git_environment={
-                    "GIT_CONFIG_COUNT": "1",
+                    "GIT_CONFIG_COUNT": c.ParserBooleanToken.ONE,
                     "GIT_CONFIG_KEY_0": f"url.{origin.as_uri()}.insteadOf",
                     "GIT_CONFIG_VALUE_0": member_ref.url,
                 },
@@ -318,7 +318,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
         document = u.Tests.toml_doc(conformed)
         stale = (
             f"{member_ref.distribution} @ git+{member_ref.url}@{previous}"
-            ' ; python_version >= "0"'
+            " ; python_version >= c.ParserBooleanToken.ZERO"
         )
         u.Cli.toml_sync_string_list(
             u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS),
@@ -350,9 +350,9 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "override",
+        c.MergeStrategy.OVERRIDE,
         [
-            "true",
+            c.ParserBooleanToken.TRUE,
             "17",
             '{name = "foreign"}',
             "{package = {name = 17}, dependencies = []}",
@@ -407,7 +407,9 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             "not-requested>=1",
             {
                 "package": selector,
-                "dependencies": ['marker-inactive[feature]>=1 ; python_version < "0"'],
+                "dependencies": [
+                    "marker-inactive[feature]>=1 ; python_version < c.ParserBooleanToken.ZERO"
+                ],
             },
         ]
         policy_source = u.Cli.toml_dumps(

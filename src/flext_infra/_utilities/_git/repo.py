@@ -240,7 +240,8 @@ class FlextInfraUtilitiesGitRepo:
         return (
             primary_backpointer != common_dir
             or (configured_primary is not None and checkout != configured_primary)
-            or primary_repo.git.rev_parse("--is-inside-work-tree").strip() != "true"
+            or primary_repo.git.rev_parse("--is-inside-work-tree").strip()
+            != c.ParserBooleanToken.TRUE
         )
 
     @classmethod
@@ -295,7 +296,7 @@ class FlextInfraUtilitiesGitRepo:
             return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
         scope = cls._publication_index.get()
         if scope is not None:
-            repo.git.update_environment(GIT_OPTIONAL_LOCKS="0")
+            repo.git.update_environment(GIT_OPTIONAL_LOCKS=c.ParserBooleanToken.ZERO)
             if Path(repo.working_tree_dir).resolve() == scope.repo_root:
                 repo.git.update_environment(GIT_INDEX_FILE=str(scope.index_file))
         return r[Repo].ok(repo)
@@ -363,7 +364,7 @@ class FlextInfraUtilitiesGitRepo:
                 ()
                 if git_dir == common_dir
                 else cls._registered_worktree_entries(
-                    repo.git.worktree("list", "--porcelain"),
+                    repo.git.worktree(c.Action.LIST, "--porcelain"),
                 )
             )
         except GitCommandError as exc:

@@ -246,7 +246,7 @@ for schema, payload in (
         tm.reject(f"Generated schema accepts undeclared input: {schema}")
 for schema, payload, error_type in (
     (m.Demo.PingResult, {"message": message.encode()}, "string_type"),
-    (m.Demo.SettingsNamespace, {"enabled": "false"}, "bool_type"),
+    (m.Demo.SettingsNamespace, {"enabled": c.ParserBooleanToken.FALSE}, "bool_type"),
 ):
     try:
         schema.model_validate(payload)

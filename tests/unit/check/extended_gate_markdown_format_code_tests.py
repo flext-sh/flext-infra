@@ -58,7 +58,9 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         )
         return project_dir
 
-    @pytest.mark.parametrize("force_color", ["0", "1"])
+    @pytest.mark.parametrize(
+        "force_color", [c.ParserBooleanToken.ZERO, c.ParserBooleanToken.ONE]
+    )
     def test_format_gate_reports_unformatted_markdown(
         self,
         tmp_path: Path,

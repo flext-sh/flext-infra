@@ -112,7 +112,7 @@ class TestsFlextInfraRuntimeModuleOwners:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize("override", [False, True])
+    @pytest.mark.parametrize(c.MergeStrategy.OVERRIDE, [False, True])
     def test_generated_owners_keep_lazy_singletons_for_every_import_order(
         tmp_path: Path, *, override: bool
     ) -> None:

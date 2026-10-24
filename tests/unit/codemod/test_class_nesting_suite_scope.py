@@ -114,7 +114,7 @@ class TestsFlextInfraClassNestingSuiteScope:
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
-                            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+                            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": c.ParserBooleanToken.ONE,
                             "PYTEST_ADDOPTS": "",
                             "PYTEST_PLUGINS": "",
                             cache.database_environment_variable: str(

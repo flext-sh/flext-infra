@@ -210,7 +210,10 @@ class TestsFlextInfraReleaseProtocol:
                     u.Tests.run_isolated_make(
                         [verb],
                         cwd=workspace,
-                        env={**runtime_environment, "UV_OFFLINE": "0"},
+                        env={
+                            **runtime_environment,
+                            "UV_OFFLINE": c.ParserBooleanToken.ZERO,
+                        },
                         private_env={
                             "GITHUB_TOKEN": t.SecretStr(os.environ["GITHUB_TOKEN"]),
                         },
@@ -930,7 +933,7 @@ class TestsFlextInfraReleaseProtocol:
                     cwd=workspace,
                 ),
             ).strip()
-            tm.that(lane_commits, eq="1")
+            tm.that(lane_commits, eq=c.ParserBooleanToken.ONE)
             head = tm.ok(
                 u.Cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace),
             ).strip()

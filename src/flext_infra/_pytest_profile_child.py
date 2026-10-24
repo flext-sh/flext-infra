@@ -122,7 +122,6 @@ class FlextInfraPytestProfileChild:
             original.loader.exec_module(module)
         if native_profile:
             clock.FlextInfraPytestClock.publish_profile(profile, profile_output)
-            profile.disable()
 
     @classmethod
     def launcher(

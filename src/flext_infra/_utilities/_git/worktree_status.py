@@ -22,7 +22,7 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
         registered = {
             entry.path
             for entry in cls._registered_worktree_entries(
-                repo.git.worktree("list", "--porcelain"),
+                repo.git.worktree(c.Action.LIST, "--porcelain"),
             )
         }
         administrative = {
@@ -60,7 +60,9 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
         repo_path = request.repo_root.expanduser().resolve()
         try:
             repo = cls._repo(repo_path)
-            with repo.git.custom_environment(GIT_OPTIONAL_LOCKS="0"):
+            with repo.git.custom_environment(
+                GIT_OPTIONAL_LOCKS=c.ParserBooleanToken.ZERO
+            ):
                 lifecycle = cls._lifecycle_porcelain(
                     repo,
                     repo_path,

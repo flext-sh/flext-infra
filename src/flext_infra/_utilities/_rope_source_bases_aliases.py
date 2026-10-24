@@ -10,7 +10,7 @@ import ast
 import importlib.util
 from pathlib import Path
 
-from flext_core import build_lazy_import_map, u as core_u
+from flext_core import build_lazy_import_map
 from typing_extensions import TypeForm
 
 from flext_infra import c, m, p, t
@@ -383,11 +383,11 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 cls._declared_alias_mapping_source(expression, module, ancestors)
             )
             if name == "module_groups":
-                modules = core_u.type_adapter(
+                modules = u.type_adapter(
                     TypeForm(t.MappingKV[str, t.StrSequence])
                 ).validate_python(literal, strict=True)
             else:
-                aliases = core_u.type_adapter(
+                aliases = u.type_adapter(
                     TypeForm(t.MappingKV[str, t.SequenceOf[t.StrPair]])
                 ).validate_python(literal, strict=True)
         sort = arguments.get("sort_keys", ast.Constant(value=True))

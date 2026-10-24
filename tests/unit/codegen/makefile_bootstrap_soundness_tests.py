@@ -1042,9 +1042,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             "MISE_TRUSTED_CONFIG_PATHS": str(project),
             "GIT_CONFIG_GLOBAL": str(home / ".gitconfig"),
             "GIT_CONFIG_SYSTEM": os.devnull,
-            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_NOSYSTEM": c.ParserBooleanToken.ONE,
             "GIT_CONFIG_PARAMETERS": "",
-            "GIT_CONFIG_COUNT": "0",
+            "GIT_CONFIG_COUNT": c.ParserBooleanToken.ZERO,
         }
 
         process = tm.ok(

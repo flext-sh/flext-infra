@@ -44,7 +44,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def plan(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing.
 
@@ -59,7 +59,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _plan_single_surface(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         *,
         inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[t.Pair[m.Infra.CodegenPlan, m.Infra.CodegenPhaseAnalysis]]:
@@ -82,7 +82,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def plan_repositories(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Dispatch the declared surface using its captured repository inputs.
@@ -133,7 +133,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def plan_facade(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[t.Pair[m.Infra.CodegenPlan, m.Infra.CodegenPhaseAnalysis]]:
         """Plan one declared facade through its canonical family renderer.
@@ -423,7 +423,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _plan_lazy_init(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[t.Pair[m.Infra.CodegenPlan, m.Infra.CodegenPhaseAnalysis]]:
         """Plan only initializer destinations in one authenticated repository.
@@ -486,7 +486,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _planning_workspace(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         root: Path,
         *,
         inputs: m.Infra.CodegenInputs,
@@ -1164,8 +1164,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             project_root = (root / repository.path).resolve()
             if (
-                self.state.generation_only
-                and surface is c.Infra.CodegenConformSurface.ALL
+                surface is c.Infra.CodegenConformSurface.ALL
                 and not (project_root / c.PYPROJECT_FILENAME).exists()
                 and repository.name != current_target.repository.name
             ):
@@ -1189,7 +1188,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     current_target=current_target,
                     repository=repository,
                     surface=surface,
-                    generation_only=self.state.generation_only,
                     selected_inputs=selected_inputs,
                 ),
             )
@@ -1309,7 +1307,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             state=m.Infra.CodegenConformState(
                 repository_root=task.current_target.toolchain_root,
                 initial_workspace=task.initial_workspace,
-                generation_only=task.generation_only,
                 provider_plans=task.provider_plans,
             ),
         )
@@ -1695,7 +1692,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     @staticmethod
     def _select_repositories(
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         workspace: m.Infra.WorkspaceSpec,
         current_repository: m.Infra.RepositoryRef,
     ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:

@@ -65,7 +65,14 @@ class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
         tm.fail(updated_head == base)
         parents = tm.ok(
             u.Cli.capture(
-                [c.Infra.GIT, "rev-list", "--parents", "-n", "1", "HEAD"],
+                [
+                    c.Infra.GIT,
+                    "rev-list",
+                    "--parents",
+                    "-n",
+                    c.ParserBooleanToken.ONE,
+                    "HEAD",
+                ],
                 cwd=lane,
             ),
         ).split()

@@ -287,8 +287,10 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         )
         if content.failure:
             return r[bool].from_failure(content)
-        match = c.Infra.VERSION_RE.search(content.value)
-        base_version = match.group(1) if match else ""
+        base = u.Infra.project_version_from_text(content.value)
+        if base.failure:
+            return r[bool].from_failure(base)
+        base_version = base.value
         subjects = cls._subjects(root, base_oid, merges_only=False)
         if subjects.failure:
             return r[bool].from_failure(subjects)

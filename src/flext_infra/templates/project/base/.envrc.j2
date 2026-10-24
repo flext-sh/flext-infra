@@ -85,7 +85,7 @@ export MISE_SYSTEM_CONFIG_DIR="${MISE_CONFIG_DIR}"
 export MISE_LOCKED=1 MISE_AUTO_INSTALL=0
 unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE
 mise_active="$("${bootstrap_mise}" -C "${RUNTIME_ROOT}" tool "{{ toolchain.mise_selector }}" --active)" || return $?
-mise_binary="$("${bootstrap_mise}" -C "${RUNTIME_ROOT}" which mise --tool "{{ toolchain.mise_selector }}@${mise_active}")" || return $?
+mise_binary="$("${bootstrap_mise}" -C "${RUNTIME_ROOT}" which mise)" || return $?
 if [[ "${OS:-}" == Windows_NT ]]; then
   mise_binary="$(cygpath --unix "${mise_binary}")" || return $?
 fi

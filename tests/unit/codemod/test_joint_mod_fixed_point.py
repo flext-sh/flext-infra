@@ -50,7 +50,7 @@ class TestsFlextInfraJointModFixedPoint:
             "id: joint-ast\nlanguage: Python\nrule:\n"
             "  pattern: marker = dict()\nfix: marker = tuple()\nseverity: warning\n",
         ).unwrap()
-        source = "tuple" if cycle else "list"
+        source = "tuple" if cycle else c.Action.LIST
         u.Cli.atomic_write_text_file(
             root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
             "rules:\n  - id: joint-text\n"
@@ -200,7 +200,7 @@ class TestsFlextInfraJointModFixedPoint:
         sample = mod_workspace / "sample.py"
         unrelated = mod_workspace / "unrelated.py"
         for source in (sample, unrelated):
-            constructor = "list" if source == sample else "dict"
+            constructor = c.Action.LIST if source == sample else "dict"
             tm.ok(
                 u.Cli.atomic_write_text_file(
                     source,

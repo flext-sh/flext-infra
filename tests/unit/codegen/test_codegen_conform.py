@@ -763,7 +763,7 @@ class TestsFlextInfraCodegenConform:
             projected_python.resolve(),
             eq=u.Infra.runtime_python(root, runtime_root=root),
         )
-        tm.that(editor_settings["editor.wordWrap"], eq="on")
+        tm.that(editor_settings["editor.wordWrap"], eq=c.ParserBooleanToken.ON)
         tm.that(
             str(tmp_path) in settings_path.read_text(encoding=c.DEFAULT_ENCODING),
             eq=False,
@@ -787,7 +787,7 @@ class TestsFlextInfraCodegenConform:
         settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(
-            '{"editor.wordWrap": "on"}\n',
+            '{"editor.wordWrap": c.ParserBooleanToken.ON}\n',
             encoding=c.DEFAULT_ENCODING,
         )
         TestsFlextInfraCodegenConform._declare_new_project(

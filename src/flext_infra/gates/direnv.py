@@ -176,7 +176,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
 
         """
         _ = ctx, check_dirs
-        return (c.Infra.CLI_DIRENV, "exec", str(project_dir), "true")
+        return (c.Infra.CLI_DIRENV, "exec", str(project_dir), c.ParserBooleanToken.TRUE)
 
     @override
     def _parse_check_output(

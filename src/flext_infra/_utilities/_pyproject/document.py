@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Annotated
 
 from flext_cli import u

@@ -120,7 +120,12 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
     @staticmethod
     @pytest.mark.parametrize(
         ("value", "managed"),
-        [("yes", True), ("on", True), ("off", False), ("0", False)],
+        [
+            (c.ParserBooleanToken.YES, True),
+            (c.ParserBooleanToken.ON, True),
+            (c.ParserBooleanToken.OFF, False),
+            (c.ParserBooleanToken.ZERO, False),
+        ],
     )
     def test_management_values_follow_native_git_boolean_grammar(
         tmp_path: Path,

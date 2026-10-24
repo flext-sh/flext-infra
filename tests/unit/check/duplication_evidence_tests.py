@@ -155,7 +155,7 @@ class TestsFlextInfraDuplicationEvidence:
     ) -> None:
         """No path, hash, golden spelling or data format proves independence."""
         source = (
-            '{"command": "run_real_operation"}\n'
+            '{c.HandlerType.COMMAND: "run_real_operation"}\n'
             if format_name == "json"
             else "command: run_real_operation\n"
         )

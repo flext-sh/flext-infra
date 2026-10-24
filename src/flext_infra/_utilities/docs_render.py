@@ -125,20 +125,23 @@ class FlextInfraUtilitiesDocsRender:
             The resulting ``str``.
 
         """
-        rendered: t.MutableSequenceOf[str] = []
-        in_fence = False
-        for line in lines:
-            stripped = line.lstrip()
-            if stripped.startswith("```"):
-                in_fence = not in_fence
-                rendered.append(line)
-            elif in_fence:
-                rendered.append(line)
-            else:
-                rendered.extend(
-                    FlextInfraUtilitiesDocsRender._wrap_markdown_line(line, width=width)
+        document = "\n".join(lines)
+        verbatim = frozenset(
+            number
+            for fence in u.Cli.markdown_fences(document)
+            for number in range(fence.opening_line, fence.closing_line + 1)
+        )
+        return "\n".join(
+            wrapped
+            for number, line in enumerate(document.split("\n"), start=1)
+            for wrapped in (
+                (line,)
+                if number in verbatim
+                else FlextInfraUtilitiesDocsRender._wrap_markdown_line(
+                    line, width=width
                 )
-        return "\n".join(rendered)
+            )
+        )
 
     @staticmethod
     def _is_object_list(value: t.JsonValue | None) -> bool:

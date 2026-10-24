@@ -176,9 +176,9 @@ class TestsFlextInfraModEvidenceInputs:
                     "rule": {"pattern": "$CAPTURED"},
                     "transform": {
                         "DECLARED": {
-                            "replace": {
+                            c.MergeStrategy.REPLACE: {
                                 "source": "$CAPTURED",
-                                "replace": "^.*$",
+                                c.MergeStrategy.REPLACE: "^.*$",
                                 "by": "derived",
                             }
                         }

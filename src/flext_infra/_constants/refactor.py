@@ -416,7 +416,7 @@ class FlextInfraConstantsRefactor:
     CODEMOD_TEXT_KEY_EXCLUDE: ClassVar[str] = "exclude"
     CODEMOD_TEXT_KEY_DISTRIBUTIONS: ClassVar[str] = "distributions"
     CODEMOD_TEXT_KEY_FIND: ClassVar[str] = "find"
-    CODEMOD_TEXT_KEY_REPLACE: ClassVar[str] = "replace"
+    CODEMOD_TEXT_KEY_REPLACE: ClassVar[str] = c.MergeStrategy.REPLACE
     CODEMOD_TEXT_KEY_FLAGS: ClassVar[str] = "flags"
     CODEMOD_TEXT_KEY_EXPECTED: ClassVar[str] = "expected"
     CODEMOD_TEXT_KEY_CAPTURE_EQUALS: ClassVar[str] = "capture_equals"

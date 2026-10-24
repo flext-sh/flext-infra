@@ -35,7 +35,7 @@ class TestsFlextInfraCodegenVscode:
             tm.ok(
                 u.Cli.json_dumps({
                     "python.languageServer": "None",
-                    "python.analysis.typeCheckingMode": "off",
+                    "python.analysis.typeCheckingMode": c.ParserBooleanToken.OFF,
                     "files.exclude": {"**/.retired-cache": True},
                     "python.analysis.diagnosticSeverityOverrides": {
                         "reportUnknownMemberType": "none",

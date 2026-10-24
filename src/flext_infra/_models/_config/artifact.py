@@ -1150,39 +1150,43 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(description="Ordered immutable sources consumed by composition"),
         ] = ()
 
-    class CodegenRenderInputs(FlextInfraConfigModelsContract.ConfigContract):
-        """Resolved inputs shared by every governed render of one repository.
-
-        A conform planner resolves them once per repository; every template
-        render, overlay composition, and pyproject conformance of that
-        repository then reads these same values.
-        """
+    class CodegenRenderInputs(m.StrictModel):
+        """One repository planner's managed state over frozen policy references."""
 
         target: Annotated[
             FlextInfraConfigModelsContexts.RepositoryConformTarget,
-            m.Field(description="Conformance identity and root being rendered"),
+            m.Field(
+                frozen=True, description="Conformance identity and root being rendered"
+            ),
         ]
         workspace: Annotated[
             FlextInfraConfigModelsWorkspace.WorkspaceSpec,
-            m.Field(description="Workspace manifest governing the repository"),
+            m.Field(
+                frozen=True, description="Workspace manifest governing the repository"
+            ),
         ]
         codegen: Annotated[
             FlextInfraConfigModelsArtifact.CodegenConfigSpec,
-            m.Field(description="Codegen contract the repository renders under"),
-        ]
-        tooling_runtime: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext | None,
             m.Field(
-                description="Tooling values resolved only when outputs consume them"
+                frozen=True, description="Codegen contract the repository renders under"
             ),
         ]
+        tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext | None = (
+            m.Field(
+                description="Tooling values resolved only when outputs consume them"
+            )
+        )
         managed_artifacts: Annotated[
             FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsSnapshot,
-            m.Field(description="Project managed-artifact catalog overlaid on renders"),
+            m.Field(
+                frozen=True,
+                description="Project managed-artifact catalog overlaid on renders",
+            ),
         ]
         integration_branch: Annotated[
             str | None,
             m.Field(
+                frozen=True,
                 description=(
                     "Integration branch the repository integrates on, resolved "
                     "once per plan for the project context and every workflow; "
@@ -1191,18 +1195,16 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ]
-        planned_direct_sources: Annotated[
-            t.VariadicTuple[str] | None,
-            m.Field(
-                description=(
-                    "Requirement names the pyproject composed in this plan "
-                    "takes by direct reference (forks and local projects). "
-                    "Planners compose the pyproject first and record them; "
-                    "None means this plan composes no pyproject, so the "
-                    "committed one is the source"
-                ),
+        planned_direct_sources: t.VariadicTuple[str] | None = m.Field(
+            default=None,
+            description=(
+                "Requirement names the pyproject composed in this plan "
+                "takes by direct reference (forks and local projects). "
+                "Planners compose the pyproject first and record them; "
+                "None means this plan composes no pyproject, so the "
+                "committed one is the source"
             ),
-        ] = None
+        )
 
     class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
         """Exact before state and desired state for one managed file."""
@@ -1385,10 +1387,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
-        generation_only: Annotated[
-            bool,
-            m.Field(description="Retain the invoking operation's generation boundary"),
-        ] = False
         provider_plans: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan] | None,
             m.Field(

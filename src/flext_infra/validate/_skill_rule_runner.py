@@ -165,7 +165,9 @@ class FlextInfraSkillRuleRunnerMixin:
             payload_result = u.Cli.json_parse(line)
             if payload_result.success and isinstance(payload_result.value, Mapping):
                 payload = payload_result.value
-                maybe = payload.get("violation_count", payload.get("count", 0))
+                maybe = payload.get(
+                    "violation_count", payload.get(c.Aggregation.COUNT, 0)
+                )
                 if isinstance(maybe, int):
                     count += maybe
         return count

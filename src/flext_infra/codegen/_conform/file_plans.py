@@ -10,11 +10,11 @@ from functools import partial
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
+from flext_infra.codegen._conform import FlextInfraCodegenConformBootstrap
 from flext_infra.deps.phases import FlextInfraEnsurePackagingPhase
 
 
-class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
+class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     """Desired-state file, environment, and retirement plans."""
 
     @classmethod

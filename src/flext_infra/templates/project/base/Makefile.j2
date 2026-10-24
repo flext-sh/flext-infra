@@ -231,7 +231,7 @@ $(error Cannot resolve the physical bootstrap scope for $(MAKEFILE_ROOT))
 endif
 ifneq ($(strip $(VERB_CONTRACT) $(filter setup,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
-else ifeq ($(strip $(filter-out help _setup_native_prepare post-upg,$(MAKECMDGOALS))),)
+else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare post-upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else
 override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', uv_tool, mise_selector, make.native_environment_unset, true) }})
@@ -297,8 +297,8 @@ MYPY_PATHS := $(RUFF_PATHS)
 # Source: the repository's declared Mise toolchain, provisioned by make setup.
 # Native Mise interprets the lock and resolves each declared executable. The
 # owned acquisition binary, never host PATH, starts that read-only selection.
-override MISE = "$$(set -eu; mise_active="$$("$(BOOTSTRAP_MISE)" -C "$(RUNTIME_ROOT)" tool "{{ mise_selector }}" --active)"; mise_path="$$("$(BOOTSTRAP_MISE)" -C "$(RUNTIME_ROOT)" which mise --tool "{{ mise_selector }}@$$mise_active")"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$mise_path"; else printf '%s\n' "$$mise_path"; fi)"
-override UV = "$$(set -eu; uv_mise=$(MISE); uv_active="$$("$$uv_mise" -C "$(RUNTIME_ROOT)" tool "{{ uv_tool.selector or uv_tool.name }}" --active)"; uv_path="$$("$$uv_mise" -C "$(RUNTIME_ROOT)" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@$$uv_active")"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$uv_path"; else printf '%s\n' "$$uv_path"; fi)"
+override MISE = "$$(set -eu; mise_path="$$("$(BOOTSTRAP_MISE)" -C "$(RUNTIME_ROOT)" which mise)"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$mise_path"; else printf '%s\n' "$$mise_path"; fi)"
+override UV = "$$(set -eu; uv_mise=$(MISE); uv_path="$$("$$uv_mise" -C "$(RUNTIME_ROOT)" which "{{ uv_tool.version_probe.binary }}")"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$uv_path"; else printf '%s\n' "$$uv_path"; fi)"
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
@@ -386,8 +386,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # Only installation mode changes in CI; no resolver or source is substituted.
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
-	python_active="$$($(MISE) -C "$(RUNTIME_ROOT)" tool python --active)"; \
-	desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which python --tool "python@$$python_active")"; \
+	desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which python)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then desired_python="$$(cygpath --unix "$$desired_python")"; fi; \
 	if [ ! -x "$$desired_python" ]; then \
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
@@ -699,7 +698,7 @@ _builtin_gen_all: _builtin_require_interpreter
 
 # Structural rewrites use the target's existing semantic operation.
 _builtin_mod_apply: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry "$(PROJECT_ROOT)/{{ make.modification_profile_path }}" refactor mod --repository-root "$(PROJECT_ROOT)" --apply
 
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts

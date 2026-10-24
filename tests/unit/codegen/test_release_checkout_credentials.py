@@ -129,7 +129,9 @@ class TestsFlextInfraReleaseCheckoutCredentials:
     def test_dispatch_checkpoint_is_version_only_environment_data(self) -> None:
         """Both dispatch choices are explicit; only version consumes ownership."""
         document = self.render_release()
-        triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+        triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            document[c.ParserBooleanToken.ON]
+        )
         dispatch = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
             triggers["workflow_dispatch"]
         )
@@ -155,7 +157,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         tm.that("LANE_CHECKPOINT_REF" in publish_env, eq=False)
 
     @pytest.mark.parametrize(
-        ("event", "selection", "succeeds", "release"),
+        (c.HandlerType.EVENT, "selection", "succeeds", "release"),
         [
             ("push", ("", ""), True, False),
             ("workflow_dispatch", ("fixture-release", ""), True, True),
@@ -244,7 +246,9 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         document = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(u.Cli.yaml_parse(rendered)),
         )
-        triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+        triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            document[c.ParserBooleanToken.ON]
+        )
         call = u.Cli.JSON_MAPPING_ADAPTER.validate_python(triggers["workflow_call"])
         inputs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(call["inputs"])
         ref = u.Cli.JSON_MAPPING_ADAPTER.validate_python(inputs["ref"])

@@ -461,7 +461,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(
         repo_root = request.repo_root.expanduser().resolve()
         try:
             repo = cls._repo(repo_root)
-            porcelain = repo.git.worktree("list", "--porcelain")
+            porcelain = repo.git.worktree(c.Action.LIST, "--porcelain")
             entries = cls._worktree_registry(repo, porcelain)
         except GitCommandError as exc:
             return r[m.Infra.GitWorktreeListReport].fail(str(exc), exception=exc)
@@ -735,7 +735,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(
         """
         try:
             repo = cls._repo(request.repo_root)
-            text = repo.git.stash("list", "--format=%H")
+            text = repo.git.stash(c.Action.LIST, "--format=%H")
         except GitCommandError as exc:
             return r[m.Infra.GitOidListReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

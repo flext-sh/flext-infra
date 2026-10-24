@@ -22,7 +22,7 @@ from flext_infra import (
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
-    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenFixer,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
@@ -73,11 +73,10 @@ class FlextInfra(
         """
         return FlextInfraWorkspaceEnvironmentMixin.sync_environment_files(
             request,
-            planner=FlextInfraCodegenConform(
+            planner=FlextInfraCodegenConformExecute(
                 repository_root=request.repository_root,
                 state=m.Infra.CodegenConformState(
                     repository_root=request.repository_root,
-                    generation_only=True,
                 ),
             ),
             runner=u.Cli if runner is None else runner,
@@ -109,7 +108,7 @@ class FlextInfra(
         if workspace.failure:
             return r[bool].from_failure(workspace)
         return FlextInfraCandidateBootstrapService(
-            planner=FlextInfraCodegenConform(
+            planner=FlextInfraCodegenConformExecute(
                 repository_root=source_root,
                 state=m.Infra.CodegenConformState(repository_root=source_root),
             ),

@@ -1,4 +1,4 @@
-"""Tests for check model types — _m.Infra.Issue and _ProjectResult.
+"""Tests for check model types — m.Infra.Issue and _ProjectResult.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -119,7 +119,7 @@ class TestsFlextInfraModels:
     # (ruff SLF001).
     @staticmethod
     def test_formatted_with_code() -> None:
-        """Test _m.Infra.Issue.formatted property with a code."""
+        """Test m.Infra.Issue.formatted property with a code."""
         issue = m.Infra.Issue(
             file="test.py",
             line=10,
@@ -133,7 +133,7 @@ class TestsFlextInfraModels:
 
     @staticmethod
     def test_formatted_without_code() -> None:
-        """Test _m.Infra.Issue.formatted property without a code."""
+        """Test m.Infra.Issue.formatted property without a code."""
         issue = m.Infra.Issue(
             file="test.py",
             line=10,

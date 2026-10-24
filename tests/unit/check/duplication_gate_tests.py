@@ -376,7 +376,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             package = member / "src" / f"peer_{name}"
             package.mkdir(parents=True, exist_ok=True)
             (member / c.PYPROJECT_FILENAME).write_text(
-                f'[project]\nname = "peer-{name}"\nversion = "0"\n',
+                f'[project]\nname = "peer-{name}"\nversion = c.ParserBooleanToken.ZERO\n',
                 encoding="utf-8",
             )
             (package / "duplicated.py").write_text(block, encoding="utf-8")

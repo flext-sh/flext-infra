@@ -57,6 +57,19 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         return FlextInfraUtilitiesDocs.docs_url_scheme(target) == secure_scheme
 
     @staticmethod
+    def docs_is_python_fence(fence: m.Cli.MarkdownFence) -> bool:
+        """Return whether a fence is ``python`` code governed by the code checks.
+
+        Returns:
+            ``True`` for a ``python`` fence without the ``notest`` marker.
+
+        """
+        return (
+            fence.language.startswith(c.Infra.MARKDOWN_CODE_LANGUAGE)
+            and c.Infra.MARKDOWN_CODE_SKIP_MARKER not in fence.info
+        )
+
+    @staticmethod
     def docs_is_external(target: str) -> bool:
         """Return whether a target has a permitted external scheme.
 

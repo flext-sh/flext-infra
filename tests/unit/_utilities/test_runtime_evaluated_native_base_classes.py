@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
@@ -489,7 +489,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("value", ["0", "RuntimeRoot()"])
+    @pytest.mark.parametrize("value", [c.ParserBooleanToken.ZERO, "RuntimeRoot()"])
     def test_field_or_call_value_cannot_be_a_class_alias(
         tmp_path: Path,
         value: str,

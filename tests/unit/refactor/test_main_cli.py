@@ -204,7 +204,7 @@ class TestsFlextInfraRefactorMainCli:
         "from __future__ import annotations\n\n"
         "import typing as _t\n\n"
         "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
-        "if _t.TYPE_CHECKING:\n"
+        "if t.TYPE_CHECKING:\n"
         "    from sample_pkg.operations import helper_used, only_for_tests\n"
         "_LAZY_IMPORTS = build_lazy_import_map(\n"
         "    {\n"

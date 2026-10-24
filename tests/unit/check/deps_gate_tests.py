@@ -523,7 +523,9 @@ class TestsFlextInfraDepsGate:
             supplier = inputs.providers[0]
             invalid = supplier.model_copy(
                 update={
-                    "package": supplier.package.model_copy(update={"version": "0"}),
+                    "package": supplier.package.model_copy(
+                        update={"version": c.ParserBooleanToken.ZERO}
+                    ),
                 }
             )
             rejected = u.Infra.runtime_dependency_plan(
@@ -666,7 +668,7 @@ class TestsFlextInfraDepsGate:
             '[{"error":{},"module":"x","location":{}}]',
             (
                 '[{"error":{"code":"DEP001","message":"missing"},"module":"x",'
-                '"location":{"file":"src/x.py","line":"1","column":0}}]'
+                '"location":{"file":"src/x.py","line":c.ParserBooleanToken.ONE,"column":0}}]'
             ),
         ],
     )

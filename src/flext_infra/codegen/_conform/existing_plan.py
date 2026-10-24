@@ -131,6 +131,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
                 list[m.Infra.CodegenPhaseAnalysis],
             ] = ([], [])
+            original_project = next(
+                (
+                    binding[0]
+                    for (original_root, _effects), binding in opened.items()
+                    if original_root == root
+                ),
+                None,
+            )
             source_binding = stack.enter_context(
                 u.Infra.facade_source_project(
                     root,
@@ -138,6 +146,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         inputs=source_states, declared_files=declared_files
                     ),
                     source_publications=publications,
+                    original_project=original_project,
                 )
             )
             opened[key] = (*source_binding, publications)
@@ -690,21 +699,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         if managed.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(managed)
-        final_inputs = (
-            self.planned_source_render_inputs(
+        tooling = render_inputs.tooling_runtime
+        if contract.pyproject:
+            render_inputs.tooling_runtime = self.planned_source_tooling(
                 render_inputs,
                 [*initializers, *managed.value, *custom],
                 source_project=source_project,
             )
-            if contract.pyproject
-            else render_inputs
-        )
         templates = (
             self._plan_existing_templates(
-                render_inputs=final_inputs,
+                render_inputs=render_inputs,
                 contract=contract,
             )
-            if contract.pyproject and final_inputs is not render_inputs
+            if render_inputs.tooling_runtime is not tooling
             else managed
         )
         if templates.failure:
@@ -1227,8 +1234,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     rendered.error or "managed file rendering failed",
                 )
                 continue
-            render_inputs, planned_file = rendered.value
-            planned.append(planned_file)
+            planned.append(rendered.value)
         return self._artifact_dependency_plans(codegen, root, planned)
 
     @staticmethod
@@ -1390,16 +1396,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         managed: m.Infra.ManagedFileSpec,
         entry: m.Infra.TemplateEntrySpec,
         path: Path,
-    ) -> p.Result[t.Pair[m.Infra.CodegenRenderInputs, m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Render, compose, record, and plan one managed artifact.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenRenderInputs,
-                m.Infra.CodegenFilePlan]]`` where the inputs carry the planned
-            pyproject when this artifact is the pyproject itself.
+            The finalized file plan using this operation's existing render state.
 
         """
-        result_type = r[t.Pair[m.Infra.CodegenRenderInputs, m.Infra.CodegenFilePlan]]
+        result_type = r[m.Infra.CodegenFilePlan]
         root = render_inputs.target.root
         rendered = (
             r[m.Infra.CodegenArtifactComposition].fail(
@@ -1436,11 +1440,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
             return result_type.from_failure(composed)
         rendered_content = composed.value.rendered
+        names = None
         if entry.destination == c.PYPROJECT_FILENAME:
-            recorded = self.with_planned_pyproject(render_inputs, rendered_content)
-            if recorded.failure:
-                return result_type.from_failure(recorded)
-            render_inputs = recorded.value
+            names = self.direct_sources(render_inputs, composed=rendered_content)
+            if names.failure:
+                return result_type.from_failure(names)
         conflict_marker = u.Infra.first_merge_conflict_marker(rendered_content)
         if conflict_marker is not None:
             return result_type.fail(
@@ -1454,18 +1458,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             composed.value,
             mode=managed.mode,
         )
-        if planned.failure:
-            return result_type.from_failure(planned)
-        return result_type.ok((
-            render_inputs,
-            planned.value.model_copy(
+        if planned.success and names is not None:
+            render_inputs.planned_direct_sources = names.value
+        return planned.map(
+            lambda file: file.model_copy(
                 update={
                     "owner": managed.owner,
                     "policy": managed.policy,
                     "tracking": managed.tracking,
                 }
             ),
-        ))
+        )
 
     def _plan_existing_custom(
         self,

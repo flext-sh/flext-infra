@@ -398,7 +398,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     @classmethod
     def publish_operation_receipt(
         cls,
-        request: p.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         publication: p.Infra.CodegenPublicationOutcome,
@@ -1023,6 +1023,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         identity: m.Infra.GitIdentityReport,
     ) -> p.Result[m.Infra.CodegenFootprint]:
+        """Capture current journal facts and bound topology in one final footprint."""
         result_type = r[m.Infra.CodegenFootprint]
         layout = self._planner.journal_layout(identity)
         if layout.failure:
@@ -1042,6 +1043,11 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         return result_type.ok(
             m.Infra.CodegenFootprint(
                 scope_root=identity.repo_root,
+                authorized_roots=(
+                    tuple(root.target for root in self._participant_policy.roots)
+                    if self._participant_policy is not None
+                    else ()
+                ),
                 journal_path=layout.value.journal_path,
                 snapshot_identity=snapshot.model_dump_json(exclude={"content"}),
                 snapshot_sha256=(
@@ -1555,7 +1561,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             recovery_layout = reconstructed.value
         if recovery_layout.journal_path != layout.journal_path:
             return r[bool].fail("file journal identity changed during recovery")
-        with self._lease_file_participants(journal.file_participants):
+        with self._lease_file_participants(recovery_layout.file_participants):
             recovered = self._recovery.execute(
                 recovery_layout,
                 journal,

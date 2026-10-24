@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Literal
 
-from flext_cli import m, t
+from flext_cli import c, m, t
 
 
 class FlextInfraSettingsModels:
@@ -39,7 +39,9 @@ class FlextInfraSettingsModels:
             validation_alias="FLEXT_REPOSITORY_ROOT",
             description="Explicit repository root for dependency orchestration.",
         )
-        github_actions: Literal["true", "false"] | None = m.Field(
+        github_actions: (
+            Literal[c.ParserBooleanToken.TRUE, c.ParserBooleanToken.FALSE] | None
+        ) = m.Field(
             default=None,
             validation_alias="GITHUB_ACTIONS",
             description="Actual hosted-runner signal used before host-path election.",
@@ -48,7 +50,7 @@ class FlextInfraSettingsModels:
             default=False,
             validation_alias="FLEXT_INFRA_PROFILE",
             description=(
-                "Measure generation, captured checks and test execution through "
+                "Measure generation, modification, captured checks and tests through "
                 "the shared profilers without changing operation, status or deadline."
             ),
         )

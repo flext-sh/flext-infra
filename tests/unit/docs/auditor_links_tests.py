@@ -76,6 +76,18 @@ class TestsFlextInfraAuditorLinks:
                 pytest.param("[link](https://example.com)", id="external-links"),
                 pytest.param("[link](#section)", id="fragment-links"),
                 pytest.param("```\n[link](nonexistent.md)\n```", id="code-block-links"),
+                pytest.param(
+                    "~~~\n[link](nonexistent.md)\n~~~", id="tilde-fence-links"
+                ),
+                pytest.param(
+                    "- item\n\n  ```md\n  [link](nonexistent.md)\n  ```\n",
+                    id="nested-fence-links",
+                ),
+                pytest.param("Use `[link](nonexistent.md)` here.", id="inline-code"),
+                pytest.param(
+                    "Use ``a ` [link](nonexistent.md)`` here.",
+                    id="double-backtick-inline-code",
+                ),
                 pytest.param("[a, b]", id="should-skip-target-text"),
                 pytest.param("[some text]", id="plain-bracket-text"),
             ],
@@ -84,7 +96,7 @@ class TestsFlextInfraAuditorLinks:
             tmp_path: Path,
             markdown: str,
         ) -> None:
-            """Test docs_broken_link_issues ignores well-formed non-finding markdown."""
+            """Links inside code and bracketed prose never produce findings."""
             docs_dir = tmp_path / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
             (docs_dir / "test.md").write_text(markdown)
@@ -94,7 +106,7 @@ class TestsFlextInfraAuditorLinks:
                 report_dir=tmp_path / "reports",
             )
             issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
+            tm.that(issues, empty=True)
 
         @staticmethod
         def test_broken_link_issues_with_missing_target(tmp_path: Path) -> None:
@@ -108,8 +120,36 @@ class TestsFlextInfraAuditorLinks:
                 report_dir=tmp_path / "reports",
             )
             issues = u.Infra.docs_broken_link_issues(scope)
-            tm.ok(len(issues) > 0)
-            tm.ok(any("missing.md" in issue.message for issue in issues))
+            tm.that(
+                [issue.message for issue in issues],
+                eq=["line 1: target not found -> missing.md"],
+            )
+
+        @staticmethod
+        def test_broken_link_issues_locate_image_reference_and_wrapped_links(
+            tmp_path: Path,
+        ) -> None:
+            """Images, reference links and wrapped paragraphs report their own line."""
+            docs_dir = tmp_path / "docs"
+            docs_dir.mkdir(parents=True, exist_ok=True)
+            (docs_dir / "test.md").write_text(
+                "Intro text that wraps\nonto [a link](gone.md) here.\n\n"
+                "![diagram](gone.png)\n\n[ref link][r]\n\n[r]: absent.md\n",
+            )
+            scope = m.Infra.DocScope(
+                name="test",
+                path=tmp_path,
+                report_dir=tmp_path / "reports",
+            )
+            issues = u.Infra.docs_broken_link_issues(scope)
+            tm.that(
+                [issue.message for issue in issues],
+                eq=[
+                    "line 2: target not found -> gone.md",
+                    "line 4: target not found -> gone.png",
+                    "line 6: target not found -> absent.md",
+                ],
+            )
 
         @staticmethod
         def test_broken_link_issues_rejects_cross_project_relative_link(
@@ -152,8 +192,7 @@ class TestsFlextInfraAuditorLinks:
                 report_dir=tmp_path / "reports",
             )
             issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-            tm.that(len(issues), eq=0)
+            tm.that(issues, empty=True)
 
     class TestAuditorGithubLinks:
         """Audit and repair links through real native repository facts."""

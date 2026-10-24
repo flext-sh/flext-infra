@@ -304,7 +304,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             )
             tm.ok(
                 u.Cli.run_checked(
-                    ["git", "config", "remote.origin.skipDefaultUpdate", "true"],
+                    [
+                        "git",
+                        "config",
+                        "remote.origin.skipDefaultUpdate",
+                        c.ParserBooleanToken.TRUE,
+                    ],
                     cwd=project_root,
                 ),
             )
@@ -450,7 +455,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             )
             tm.ok(
                 u.Cli.run_checked(
-                    ["git", "config", "remote.origin.skipDefaultUpdate", "true"],
+                    [
+                        "git",
+                        "config",
+                        "remote.origin.skipDefaultUpdate",
+                        c.ParserBooleanToken.TRUE,
+                    ],
                     cwd=root,
                 ),
             )

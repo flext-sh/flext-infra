@@ -244,7 +244,7 @@ class TestsFlextInfraGitSweepSemantics:
         tm.ok(u.Infra.git_publish_checkpoint_branch(checkpoint, publication, "lane"))
         published = tm.ok(u.Infra.git_remote_branch_oid(remote))
         stale = u.Infra.git_delete_checkpoint_branch(
-            checkpoint, publication, "lane", "0" * len(oid)
+            checkpoint, publication, "lane", c.ParserBooleanToken.ZERO * len(oid)
         )
         tm.ok(
             u.Infra.git_delete_checkpoint_branch(checkpoint, publication, "lane", oid),

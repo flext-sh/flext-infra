@@ -105,7 +105,7 @@ class TestsFlextInfraInfraVersioning:
         [
             ('[project]\nversion = "1.2.3"\n', "1.2.3", ""),
             (None, "", ""),
-            ('[tool]\nname = "test"\n', "", "version not found"),
+            ('[tool]\nname = "test"\n', "", "missing [project] table"),
             ('[project]\nname = "test"\n', "", "version not found"),
             ('[project]\nversion = ""\n', "", "version not found"),
         ],
@@ -165,6 +165,23 @@ class TestsFlextInfraInfraVersioning:
         tm.ok(u.Infra.current_workspace_version(tmp_path), eq=expected)
 
     @staticmethod
+    def test_render_project_version_preserves_layout_and_scopes_to_project() -> None:
+        """Only ``[project].version`` changes; comments and other tables stay."""
+        content = (
+            '[tool.other]\nversion = "9.9.9"\n\n'
+            '[project]\nname = "demo"\n  version = "1.0.0"  # release-owned\n'
+        )
+        tm.ok(
+            u.Infra.render_project_version(content, "1.0.1"),
+            eq=content.replace('"1.0.0"', '"1.0.1"'),
+        )
+
+    @staticmethod
+    def test_render_project_version_rejects_invalid_document() -> None:
+        """An unparseable pyproject fails before any rendering."""
+        tm.fail(u.Infra.render_project_version("[project\n", "1.0.1"), has="invalid")
+
+    @staticmethod
     def test_version_publisher_returns_original_native_effects(
         tmp_path: Path, native_consumer: p.Tests.NativeConsumer
     ) -> None:
@@ -217,7 +234,7 @@ def publish(file: m.Infra.CodegenFilePlan) -> p.Result[m.Infra.CodegenPhaseOutco
         )
     return r[m.Infra.CodegenPhaseOutcome].ok(receipts[0])
 
-receipt = tm.ok(u.Infra.publish_project_version(root, version, publish))
+receipt = tm.ok(publish(plan))
 tm.that(receipt is receipts[0], eq=True)
 tm.that(receipt.written_files, eq=(pyproject,))
 tm.ok(codegen.FlextInfraMiseArtifactsVerification.publication_birth_current(receipt))

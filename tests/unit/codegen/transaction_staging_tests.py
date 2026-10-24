@@ -762,7 +762,8 @@ class TestsFlextInfraTransactionPublication:
     @staticmethod
     @pytest.mark.parametrize("unchanged", [False, True])
     @pytest.mark.parametrize(
-        "rejection", ["import", "census", "false", "failure", "candidate"]
+        "rejection",
+        ["import", "census", c.ParserBooleanToken.FALSE, "failure", "candidate"],
     )
     def test_staged_admission_keeps_runtime_and_guarded_consumer_failures(
         tmp_path: Path,

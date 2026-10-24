@@ -173,7 +173,12 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         tm.ok(
             u.Cli.run_checked(
-                [c.Infra.GIT, "config", "remote.origin.skipDefaultUpdate", "true"],
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "remote.origin.skipDefaultUpdate",
+                    c.ParserBooleanToken.TRUE,
+                ],
                 cwd=member_checkout,
             ),
         )

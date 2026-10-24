@@ -164,7 +164,9 @@ class FlextInfraUtilitiesDocsContract:
             The first rendered H1 label, or no title when none exists.
 
         """
-        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(content, "1")
+        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(
+            content, c.ParserBooleanToken.ONE
+        )
         if not rendered.toc_tokens:
             return None
         return (

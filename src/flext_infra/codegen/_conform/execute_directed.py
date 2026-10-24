@@ -11,11 +11,9 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenFileLeases,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
 )
 from flext_infra.codegen._conform.execute_scaffold import (
@@ -29,29 +27,8 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
     """Publish file-only surfaces through the existing locked transaction."""
 
     @staticmethod
-    def _observe_publication(
-        request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[p.Infra.CodegenResult]:
-        """Observe physical publication evidence without a general code audit.
-
-        Returns:
-            The verified publication result, or the verification failure.
-
-        """
-        with FlextInfraCodegenFileLeases.mutation_lease(request.root):
-            observed = FlextInfraMiseArtifactsVerification.publication_current(
-                request,
-            )
-            if observed.failure:
-                return r[p.Infra.CodegenResult].from_failure(observed)
-            payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
-                verified_publication=observed.value,
-            )
-            return r[p.Infra.CodegenResult].ok(payload)
-
-    @staticmethod
     def _run_publication(
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         transaction: FlextInfraCodegenTransaction,
         roots: t.MappingKV[str, Path],
         publisher: Callable[
@@ -107,7 +84,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
     def _execute_lazy_init(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Run the initializer-only surface under the existing file transaction.
 
@@ -115,8 +92,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             The checked or atomically published initializer plan.
 
         """
-        if request.mode is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
         )
@@ -148,7 +123,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
     def _lazy_init_roots(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
         repository: m.Infra.RepositoryRef,
@@ -192,7 +167,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
     def _execute_lazy_init_locked(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         transaction: FlextInfraCodegenTransaction,
         scope: t.Pair[t.MappingKV[str, Path], Path],
         receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
@@ -204,8 +179,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
         """
         roots, scope_root = scope
-        if request.mode is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
         planned = self._plan_single_surface(request)
         if planned.failure:
             return r[p.Infra.CodegenResult].from_failure(planned)
@@ -254,7 +227,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
     def _publish_directed_phase(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         transaction: FlextInfraCodegenTransaction,
         scope: t.Pair[t.MappingKV[str, Path], Path],
         candidate: t.Triple[
@@ -354,7 +327,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
     @staticmethod
     def _directed_stage_inputs(
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[
         t.Pair[m.Infra.CodegenPhaseAnalysis, m.Infra.StagePackagePlan | None]

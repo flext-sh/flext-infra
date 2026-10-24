@@ -43,13 +43,13 @@ class FlextInfraCProfileReport(s[bool]):
     run_receipt: Annotated[
         Path | None,
         m.Field(
-            description="Parent profile receipt for a collection profiling run",
+            description="Native pytest parent profile receipt",
         ),
     ] = None
 
     @m.model_validator(mode="after")
     def _validate_report_paths(self) -> Self:
-        """Keep profile input and output inside the workspace report tree.
+        """Confine report paths to their repository or authenticated Git owner.
 
         Returns:
             The resulting ``Self``.
@@ -58,9 +58,8 @@ class FlextInfraCProfileReport(s[bool]):
             ValueError: If cProfile path must stay under.
 
         """
-        report_root = (self.repository_root / ".reports").resolve()
+        report_root = (self.repository_root / c.Infra.REPORTS_DIR_NAME).resolve()
         for path in (
-            self.profile,
             self.output,
             *((self.run_receipt,) if self.run_receipt is not None else ()),
         ):
@@ -68,6 +67,16 @@ class FlextInfraCProfileReport(s[bool]):
                 path.resolve().relative_to(report_root)
             except ValueError as exc:
                 msg = f"cProfile path must stay under {report_root}: {path}"
+                raise ValueError(msg) from exc
+        if not self.profile.resolve().is_relative_to(report_root):
+            storage = u.Infra.refactor_report_evidence_root(
+                self.repository_root
+            ).unwrap()
+            profile_root = (storage / c.Infra.REPORTS_DIR_NAME).resolve()
+            try:
+                self.profile.resolve().relative_to(profile_root)
+            except ValueError as exc:
+                msg = f"cProfile input must stay under {profile_root}: {self.profile}"
                 raise ValueError(msg) from exc
         return self
 
@@ -272,9 +281,13 @@ class FlextInfraCProfileReport(s[bool]):
         source_filter = "^(?:" + "|".join((*source_prefixes, root_module)) + ")"
         for profile in self._run_profiles():
             stream.write(f"Profile: {profile}\n")
+            stream.write(f"Profile SHA-256 at report: {u.Cli.sha256_file(profile)}\n")
             stream.write(f"Project scope: {root}\n")
+            stream.write(f"Capture-time receipt: {self.run_receipt}\n")
             stats = pstats.Stats(str(profile), stream=stream)
             stats.sort_stats(self.sort).print_stats(self.limit)
+            stream.write("Native hot-path callers:\n")
+            stats.print_callers(self.limit)
             stream.write("Repository source functions:\n")
             stats.print_stats(source_filter, self.limit)
             stream.write("Repository source callers:\n")

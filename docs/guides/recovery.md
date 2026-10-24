@@ -90,18 +90,37 @@ invalidates a receipt by itself nor authorizes discarding work to obtain a clean
 tree. Physical source, declaration, topology and destination checks still apply.
 
 The transaction owner holds the journal lease during recovery and publication.
-It authenticates journal version, participant roots, directory identities and
-original manifests before retiring interrupted proposals or compensating selected
-dependent groups. An incompatible journal is a blocking input, not permission to
-delete it, rewrite its version or generate with an older engine. Preserve the
-original bytes and witnesses while resolving the transition at that owner.
+Temporary retirement authenticates the current exact Git control directory,
+caller-authorized participant roots, journal version and transaction, original
+path closure, manifests and registered staging intentions. Historical device,
+inode and mount numbers are observations of the originating execution; their
+equality across mounts is not durable ownership. The original records remain
+unchanged, including their internal parent bindings. Retirement authorizes the
+recorded logical tree in the currently authorized scope; it does not establish
+physical continuity across indistinguishable clones or snapshots.
+
+The durable manifest comparison preserves entry paths and kinds, permissions,
+owner/group and host attributes. Manifested files also retain their size, digest,
+link count and modification/change timestamps. Incomplete intentions retain only
+the fields actually recorded, their available original parent bindings and the
+same current transaction-path closure. Unregistered residents, aliases and changed
+recorded file metadata remain refusals. After that authorization, the existing cleanup
+primitive receives the complete newly observed manifest and applies its exact
+device, inode, mount, descriptor and journal CAS checks. Registration, active
+publication, source validation and selected dependent-group compensation retain
+their physical identity contracts, including the physical topology verifier used
+by active journal preparation and committed-destination checks. The retirement
+entry point composes its durable authorization with the same directory/entry
+binding engine. An incompatible journal remains a blocking
+input, not permission to rewrite its version or widen its authority.
 
 The operator's 2026-10-24 authorization permits punctual retirement of the
 prepared v8 journal `ad1c00b704d18eb06a7012e4508eaadb` in `~/cosmos-docgen`,
 whose recorded destination-entry inventory is empty. The last known v8 tree,
 `ceb2b84d5985f6748e493b7d59304ef1f0742586`, supplies the original protocol
-owner; it is not established as the journal's exact producer. Prepare that
-unchanged tree in its own physical worktree and environment through native
+owner; it is not established as the journal's exact producer. Apply the reviewed
+durable-retirement correction to those same source owners in its existing
+isolated maintenance worktree, then rebuild its own wheel through native
 UV with its committed lock, without editable installation, development groups,
 borrowed environments or source overlays. This is authorized protocol
 maintenance, not an alternative setup or generation path for Docgen. The
@@ -109,11 +128,13 @@ one-shot public API holds `FlextInfraCodegenFileLeases.mutation_lease`, reads
 the original journal through `FlextInfraMiseArtifactsJournal.read`, and pins
 its exact path, transaction ID, prepared state, sole root selector and empty
 destination inventory before calling `FlextInfraMiseRecovery.execute` under
-that same lease. The v8 owner must authenticate physical identities and the
-original staging manifest before cleanup and retain its guarded journal CAS.
+that same lease. The corrected v8 owner must authenticate the current scope and
+the original staging authority before passing the fresh manifest to exact native
+cleanup and retaining its guarded journal CAS.
 Any original failure leaves recovery incomplete. Do not run historical general
 generation or setup, change the journal version, widen its manifest, copy its
-decoder into the current engine, or remove state directly.
+decoder into the current engine, patch an installed package, or remove state
+directly. This maintenance adds no legacy protocol support to the current engine.
 
 ## Orphan imports
 

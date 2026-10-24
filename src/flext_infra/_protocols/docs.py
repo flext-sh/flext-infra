@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_cli import p as cli_p
-
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
 
@@ -53,7 +51,7 @@ class FlextInfraProtocolsDocs(Protocol):
         """Exact source objects and derived public documentation facts."""
 
         @property
-        def metadata(self) -> cli_p.ProjectMetadata: ...
+        def metadata(self) -> p.ProjectMetadata: ...
 
         @property
         def repository(self) -> FlextInfraProtocolsDocs.DocsRepositoryRef | None: ...

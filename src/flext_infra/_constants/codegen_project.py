@@ -20,6 +20,8 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
+from flext_core import c
+
 from flext_infra._constants import FlextInfraConstantsSharedInfra
 from flext_infra._constants.config import FlextInfraConstantsConfig
 
@@ -203,7 +205,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
     "Placeholder a toolchain version_probe pattern carries for the lock version."
     MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[t.StrMapping] = MappingProxyType({
-        "MISE_DISABLE_UPDATE_WARNING": "1",
+        "MISE_DISABLE_UPDATE_WARNING": c.ParserBooleanToken.ONE,
     })
     """Environment of the mise version-identity probes, and of nothing else.
 

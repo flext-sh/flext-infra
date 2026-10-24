@@ -124,7 +124,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @staticmethod
     def codegen_target_snapshot(
         path: Path,
-    ) -> p.Result[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]:
+    ) -> p.Result[cli_m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]:
         """Capture the original leaf or the exact still-missing parent chain.
 
         Returns:
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             chain plan when it does not, or the propagated read failure.
 
         """
-        result_type = r[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]
+        result_type = r[cli_m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
         observed = u.Cli.atomic_read_binary_file_state(path, required=False)
         if observed.failure:
             return result_type.from_failure(observed)
@@ -289,7 +289,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             A publishable state only after its parent physically exists.
 
         """
-        if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
+        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
             return r[cli_m.Cli.AtomicFileState].fail(
                 f"codegen destination parent is absent: {plan.path.parent}",
             )
@@ -297,7 +297,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def atomic_file_state_differs(
-        before: cli_m.Cli.AtomicFileState,
+        before: m.Cli.AtomicFileState,
         *,
         desired_content: bytes | None,
         desired_mode: int | None,
@@ -324,7 +324,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         """
         if plan.index_before is not None:
             return True
-        if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
+        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
             return plan.desired_content is not None
         return FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
             plan.before,
@@ -384,7 +384,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             raise ValueError(msg)
         parts: list[str] = []
         for plan in plans:
-            if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
                 parts.append(f"{plan.path}: absent parent chain gains content")
                 continue
             raw_before = plan.before.content

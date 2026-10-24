@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import m, t
 from flext_infra._utilities import FlextInfraUtilitiesDocsCollectionSources
@@ -63,7 +63,7 @@ class FlextInfraUtilitiesDocsCollectionVerify(FlextInfraUtilitiesDocsCollectionS
             msg = "plan collection source topology changed during publication"
             raise ValueError(msg)
         for expected in bundle.source_states:
-            current = cli_u.Cli.atomic_read_binary_file_state(
+            current = u.Cli.atomic_read_binary_file_state(
                 expected.path,
                 required=False,
             ).unwrap()
@@ -98,7 +98,7 @@ class FlextInfraUtilitiesDocsCollectionVerify(FlextInfraUtilitiesDocsCollectionS
             msg = "plan collection source topology changed after publication"
             raise ValueError(msg)
         for plan in bundle.files:
-            current = cli_u.Cli.atomic_read_binary_file_state(
+            current = u.Cli.atomic_read_binary_file_state(
                 plan.path,
                 required=False,
             ).unwrap()
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesDocsCollectionVerify(FlextInfraUtilitiesDocsCollectionS
         for expected in bundle.source_states:
             if expected.path in outputs:
                 continue
-            current = cli_u.Cli.atomic_read_binary_file_state(
+            current = u.Cli.atomic_read_binary_file_state(
                 expected.path,
                 required=False,
             ).unwrap()

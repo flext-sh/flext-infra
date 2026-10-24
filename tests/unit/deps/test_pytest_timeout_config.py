@@ -43,7 +43,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         """A text flag cannot silently become an execution policy boolean."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
-        payload["loadscope-reorder"] = "false"
+        payload["loadscope-reorder"] = c.ParserBooleanToken.FALSE
 
         with pytest.raises(c.ValidationError, match="valid boolean"):
             type(policy).model_validate(payload)
@@ -114,7 +114,7 @@ class TestsFlextInfraPytestTimeoutConfig:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "override",
+        c.MergeStrategy.OVERRIDE,
         [
             "-o",
             "-o=addopts=",

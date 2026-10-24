@@ -677,10 +677,10 @@ class FlextInfraDocGeneratorBundleMixin:
                     )
                 normalized_content = content
                 if normalized_content is not None and target.suffix == ".md":
-                    normalized_content = c.Infra.FENCE_NOTEST_RE.sub(
-                        r"```\1",
+                    normalized_content = u.Infra.docs_rewrite_bare_notest(
                         normalized_content,
-                    )
+                        "{}",
+                    )[0]
                     normalized_content = u.Infra.docs_contract_update_toc(
                         normalized_content,
                     )[0]

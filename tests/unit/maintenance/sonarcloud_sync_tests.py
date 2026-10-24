@@ -147,7 +147,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
             f"{self._REPOSITORY}",
         )
 
-    @pytest.mark.parametrize("count", [None, 0, 1, 3])
+    @pytest.mark.parametrize(c.Aggregation.COUNT, [None, 0, 1, 3])
     def test_plan_selects_reset_or_the_complete_property_set(
         self,
         count: int | None,
@@ -180,7 +180,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         tm.that(plan.api_url, eq=spec.api_url)
         tm.that(plan.timeout_seconds, eq=spec.api_timeout_seconds)
 
-    @pytest.mark.parametrize("count", [0, 1, 3])
+    @pytest.mark.parametrize(c.Aggregation.COUNT, [0, 1, 3])
     @pytest.mark.parametrize("inherited", [False, True])
     def test_plan_matches_effective_server_values(
         self,
@@ -213,7 +213,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         )
         tm.fail(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, extra))
 
-    @pytest.mark.parametrize("count", [1, 3])
+    @pytest.mark.parametrize(c.Aggregation.COUNT, [1, 3])
     def test_repeated_config_entries_fail_and_server_duplicates_require_a_write(
         self,
         count: int,

@@ -1,5 +1,13 @@
 """Census-derived constant consumer cutover across declared workspace members.
 
+Declaration owners are not constant consumers. Equal literal bytes do not prove
+shared domain identity: enum vocabularies, builtin names and prose retain their
+declaring contracts. Consumer rewrites exclude constant-definition sources and
+must not introduce a reference to the facade being assembled. Explicit upstream
+bindings and their genuine consumer defaults remain valid.
+Literal rewrites replace complete native literal regions, never a prefix inside
+another word or quoted payload; grammatical validity does not prove domain ownership.
+
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -26,6 +34,9 @@ from flext_infra._utilities import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
+from flext_infra._utilities._semantic_cutover.constant_sources import (
+    FlextInfraUtilitiesSemanticConstantSources,
+)
 from flext_infra._utilities._semantic_cutover.contracts import (
     FlextInfraUtilitiesSemanticContracts,
 )
@@ -38,6 +49,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     FlextInfraUtilitiesSemanticCutoverEdits,
 ):
     """Derive constant paths from declarations and rewrite proven bindings."""
+
+    ConstantSources = FlextInfraUtilitiesSemanticConstantSources
 
     @classmethod
     def _plan_constant_consumers(
@@ -251,9 +264,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             sources,
             tuple(
                 rule
-                for rule in contracts.declared_contract_rules(
-                    Path(workspace.rope_project.root.real_path)
-                )
+                for rule in contracts.declared_contract_rules(workspace.repository_root)
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
             ),
         )

@@ -729,9 +729,9 @@ class TestsFlextInfraRopeFieldContracts:
     @pytest.mark.parametrize(
         ("contract", "factory", "native"),
         [
-            ("tuple[str, ...]", "list", "tuple"),
+            ("tuple[str, ...]", c.Action.LIST, "tuple"),
             ("frozenset[str]", "set", "frozenset"),
-            ("Mapping[str, int]", "list", "dict"),
+            ("Mapping[str, int]", c.Action.LIST, "dict"),
         ],
     )
     def test_canonical_empty_repairs_return_contract_with_default_validation_disabled(
@@ -812,8 +812,8 @@ class TestsFlextInfraRopeFieldContracts:
     @pytest.mark.parametrize(
         ("origin", "factory", "changes"),
         [
-            ("Sequence", "list", True),
-            ("MutableSequence", "list", False),
+            ("Sequence", c.Action.LIST, True),
+            ("MutableSequence", c.Action.LIST, False),
             ("Mapping", "dict", True),
             ("MutableMapping", "dict", False),
             ("Set", "set", True),

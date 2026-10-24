@@ -235,7 +235,7 @@ class FlextInfraModelsCodegenPipelineModels:
             description="First native target failure carried into publication",
         )
         request: Annotated[
-            FlextInfraConfigModels.CodegenConformRequest,
+            p.Infra.CodegenGenerateRequest,
             m.Field(description="Validated public request"),
         ]
         repositories: Annotated[
@@ -473,17 +473,12 @@ class FlextInfraModelsCodegenPipelineModels:
         )
 
     class CodegenConformState(m.ArbitraryTypesModel):
-        """Mutable request-local data owned by one conform invocation."""
+        """Mutable request-local data owned by one projection invocation."""
 
-        request: FlextInfraConfigModels.CodegenConformRequest | None = m.Field(
+        request: p.Infra.CodegenGenerateRequest | None = m.Field(
             default=None,
             exclude=True,
-            description="Validated conform request",
-        )
-        generation_only: bool = m.Field(
-            default=False,
-            exclude=True,
-            description="Project outputs without repairing authored inputs",
+            description="Validated projection request retained by reference",
         )
         provider_plans: (
             t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] | None

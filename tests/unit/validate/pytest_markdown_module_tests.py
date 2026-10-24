@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraMarkdownModule:
@@ -111,7 +111,7 @@ class TestsFlextInfraMarkdownModule:
                 cwd=tmp_path,
                 timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds,
                 options=m.Cli.ProcessOptions(
-                    env={"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"},
+                    env={"PYTEST_DISABLE_PLUGIN_AUTOLOAD": c.ParserBooleanToken.ONE},
                     remove_env_keys=("PYTEST_ADDOPTS",),
                 ),
             ),

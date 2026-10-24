@@ -195,7 +195,7 @@ class FlextInfraGitLanes:
                 (
                     c.Infra.GH,
                     "pr",
-                    "list",
+                    c.Action.LIST,
                     "--state",
                     "open",
                     "--limit",
@@ -270,11 +270,11 @@ class FlextInfraGitLanes:
             (
                 *spec.ownership_command_prefix,
                 "--readonly",
-                "list",
+                c.Action.LIST,
                 "--all",
                 "--flat",
                 "--limit",
-                "0",
+                c.ParserBooleanToken.ZERO,
                 "--json",
             ),
             cwd.resolve(),

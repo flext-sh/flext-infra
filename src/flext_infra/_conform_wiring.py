@@ -1,4 +1,4 @@
-"""Conform wiring collaborators for the public API facade.
+"""Projection wiring collaborators for the public API facade.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraConformWiring:
-    """Bind the cross-family collaborators conform crosses into."""
+    """Bind the cross-family capabilities the projection executor consumes."""
 
     @staticmethod
     def generation_participant_policy(
@@ -44,7 +44,7 @@ class FlextInfraConformWiring:
     def codegen_footprint(
         request: m.Infra.CodegenFootprintRequest,
     ) -> p.Result[str]:
-        """Inspect recorded effects against physical topology without planning writes.
+        """Report original authority, then authorize a fresh footprint without copies.
 
         Returns:
             The resulting ``p.Result[str]``.
@@ -61,28 +61,14 @@ class FlextInfraConformWiring:
         policy = transaction.participant_policy()
         if policy.failure:
             return r[str].from_failure(policy)
-        footprint = observed.value.model_copy(
-            update={
-                "authorized_roots": tuple(root.target for root in policy.value.roots)
-            },
-        )
-        u.Cli.info(footprint.model_dump_json())
         bounded = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
             participant_policy=policy.value,
         )
-        authorized = bounded.validate_footprint(footprint)
+        authorized = bounded.validate_footprint(observed.value)
         if authorized.failure:
             return r[str].from_failure(authorized)
-        return r[str].ok(
-            authorized.value.model_copy(
-                update={
-                    "authorized_roots": tuple(
-                        root.target for root in policy.value.roots
-                    ),
-                },
-            ).model_dump_json(),
-        )
+        return r[str].ok(authorized.value.model_dump_json())
 
     @staticmethod
     def docs_artifact_planner(

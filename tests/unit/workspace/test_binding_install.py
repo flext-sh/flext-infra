@@ -103,7 +103,7 @@ class TestsFlextInfraBindingInstall:
             declaration
             for enabled, declaration in (
                 (
-                    scenario in {"override", "override-constraint"},
+                    scenario in {c.MergeStrategy.OVERRIDE, "override-constraint"},
                     'override-dependencies = ["binding-candidate==1"]',
                 ),
                 (
@@ -120,8 +120,9 @@ class TestsFlextInfraBindingInstall:
         constraints = "\n[tool.uv]\n" + "\n".join(policy) if policy else ""
         minimum = (
             "2"
-            if scenario in {"override", "override-constraint", "inactive-override"}
-            else "1"
+            if scenario
+            in {c.MergeStrategy.OVERRIDE, "override-constraint", "inactive-override"}
+            else c.ParserBooleanToken.ONE
         )
         declaration = consumer / c.PYPROJECT_FILENAME
         declaration.write_text(
@@ -182,7 +183,7 @@ class TestsFlextInfraBindingInstall:
             "inactive",
             "borrowed",
             "borrowed-member",
-            "override",
+            c.MergeStrategy.OVERRIDE,
             "override-constraint",
             "inactive-override",
         ],
@@ -246,7 +247,7 @@ class TestsFlextInfraBindingInstall:
         )
         output = f"{outcome.stdout}{outcome.stderr}"
         tm.that(declaration.read_bytes(), eq=original)
-        if scenario not in {"extras", "override", "transitive-source"}:
+        if scenario not in {"extras", c.MergeStrategy.OVERRIDE, "transitive-source"}:
             tm.that(outcome.outcome.raw_return_code != 0, eq=True, msg=output)
             if scenario == "inactive":
                 tm.that(output, has="no active declared dependency")

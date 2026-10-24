@@ -52,7 +52,7 @@ class FlextInfraWorkspaceLockCompleteness:
             ),
             cwd=selected.runtime_root,
             options=m.Cli.ProcessOptions(
-                env={"MISE_AUTO_INSTALL": "0"},
+                env={"MISE_AUTO_INSTALL": c.ParserBooleanToken.ZERO},
                 remove_env_keys=config.Infra.codegen.make.native_environment_unset,
             ),
             timeout=c.Infra.TIMEOUT_LONG,

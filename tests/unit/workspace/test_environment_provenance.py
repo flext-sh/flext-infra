@@ -2363,7 +2363,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 vcs_info=m.Infra.DirectUrlVcsInfo(
                     vcs="hg" if defect == "vcs" else "git",
                     commit_id=(
-                        "0" * len(identity.head_oid)
+                        c.ParserBooleanToken.ZERO * len(identity.head_oid)
                         if defect == "revision"
                         else identity.head_oid
                     ),

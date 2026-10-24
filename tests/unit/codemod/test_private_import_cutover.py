@@ -45,7 +45,7 @@ class TestsFlextInfraPrivateImportCutover(
                     "assert example_c is c\n"
                     "assert example_p is p\n"
                     "assert example_t is ExamplesFlextGrpcTypes\n"
-                    "assert example_t.Grpc.CompleteSetup.__value__ "
+                    "assert t.Grpc.CompleteSetup.__value__ "
                     "is FlextGrpcModels.Grpc.CompleteSetup\n"
                 ),
             ),

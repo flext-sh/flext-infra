@@ -98,11 +98,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         result_type = r[m.Infra.CodegenPlan]
         envrc = root / c.Infra.ENVRC_FILENAME
         planned = planner.plan_repositories(
-            m.Infra.CodegenConformRequest(
+            m.Infra.CodegenGenerateRequest(
                 root=root,
                 what=c.Infra.CodegenConformSurface.ENVRC,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
             ),
             inputs,
         )

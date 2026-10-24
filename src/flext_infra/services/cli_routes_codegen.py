@@ -7,7 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import flext_infra
-from flext_infra import c, codegen, deps, m, p, r, t
+from flext_infra import c, codegen, deps, m, p, r, settings, t, u
+from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
 def execute_codegen_generate(
@@ -20,7 +21,19 @@ def execute_codegen_generate(
         static route message is the CLI output.
 
     """
-    generated = flext_infra.infra.codegen_generate(request)
+    if settings.Infra.profile:
+        storage = u.Infra.refactor_report_evidence_root(request.root).unwrap()
+        output = (
+            storage / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        ).with_suffix(".pstats")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        generated = FlextInfraPytestClock.profile_operation(
+            lambda: flext_infra.infra.codegen_generate(request),
+            output,
+            is_failure=lambda result: result.failure,
+        )
+    else:
+        generated = flext_infra.infra.codegen_generate(request)
     if generated.failure:
         return r[t.Cli.ResultValue].from_failure(generated)
     return r[t.Cli.ResultValue].ok(value=True)

@@ -11,6 +11,8 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c
+
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
 
@@ -290,14 +292,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "``rumdl fmt --check`` unified-diff header pair naming one file the "
         "formatter would rewrite; consecutive lines carry the same path."
     )
-    MARKDOWN_PY_FENCE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^```(?P<info>python\S*(?:\s+notest)?)\s*$\n(?P<code>.*?)^```\s*$",
-        re.MULTILINE | re.DOTALL,
-    )
-    (
-        "Canonical fenced-Python-block extractor; "
-        "the flext-tests markdown validator consumes the same pattern."
-    )
+    MARKDOWN_CODE_LANGUAGE: ClassVar[str] = "python"
+    "Fence language prefix (``python``, ``python3``) the embedded-code gates own."
     MARKDOWN_CODE_SOURCE_FORMAT: ClassVar[str] = "{}_b{}.py"
     "Temp-file name for one extracted block: sanitized doc path plus block index."
     MARKDOWN_CODE_SKIP_MARKER: ClassVar[str] = "notest"
@@ -453,7 +449,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "nohup",
         "xargs",
         "sudo",
-        "command",
+        c.HandlerType.COMMAND,
         "nice",
         "ionice",
         "stdbuf",

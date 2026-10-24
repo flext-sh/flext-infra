@@ -139,7 +139,7 @@ class TestsFlextInfraWorktreeBinding:
                 cwd=tmp_path,
                 options=m.Cli.ProcessOptions(
                     env={
-                        policy.hosted_variable: "false",
+                        policy.hosted_variable: c.ParserBooleanToken.FALSE,
                         "HOME": str(tmp_path),
                         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
                     },

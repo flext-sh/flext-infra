@@ -80,7 +80,9 @@ class TestsFlextInfraCProfileReport:
             suite.write_bytes(profile.read_bytes())
             suite.with_suffix(".pstats.json").write_text(
                 (
-                    receipt.model_copy(update={"profile_sha256": "0" * 64})
+                    receipt.model_copy(
+                        update={"profile_sha256": c.ParserBooleanToken.ZERO * 64}
+                    )
                     if suite_state == "stale"
                     else receipt
                 ).model_dump_json(),

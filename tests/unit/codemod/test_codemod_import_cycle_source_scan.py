@@ -219,8 +219,8 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             u.Tests.initialize_git_repo(project)
         live_paths = (
             project / "root.py",
-            project / "arbitrary" / "deep" / "tier" / "worker.py",
-            project / "arbitrary" / "deep" / "tier" / "__init__.py",
+            project / "arbitrary" / c.MergeStrategy.DEEP / "tier" / "worker.py",
+            project / "arbitrary" / c.MergeStrategy.DEEP / "tier" / "__init__.py",
         )
         for path in live_paths:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -445,7 +445,10 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             "message: Active source finding\nrule:\n  pattern: probe($VALUE)\n",
             encoding="utf-8",
         )
-        paths = (project / "root.py", project / "arbitrary" / "deep" / "worker.py")
+        paths = (
+            project / "root.py",
+            project / "arbitrary" / c.MergeStrategy.DEEP / "worker.py",
+        )
         for path in paths:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("probe(1)\n", encoding="utf-8")

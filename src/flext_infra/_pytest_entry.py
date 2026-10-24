@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+import traceback
 from pathlib import Path
 
 import flext_infra
@@ -53,7 +54,21 @@ class FlextInfraPytestEntry:
                     profile=profiler,
                 )
             finally:
-                profiler.disable()
+                primary = sys.exception()
+                try:
+                    profiler.disable()
+                except BaseException as cleanup_failure:
+                    if primary is None or (
+                        isinstance(primary, SystemExit)
+                        and (primary.code is None or primary.code == 0)
+                    ):
+                        raise
+                    primary.add_note(
+                        "profile stop failed:\n"
+                        + "".join(
+                            traceback.format_exception(cleanup_failure, chain=False)
+                        )
+                    )
             return status
 
         slow_phase = mode in {"slow", "full-slow", "file-slow"}

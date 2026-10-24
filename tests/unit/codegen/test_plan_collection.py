@@ -10,9 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import m, u
-from flext_infra.docs.collector import FlextInfraDocCollector
-from tests import tm
+from flext_infra.docs import FlextInfraDocCollector
+from tests import c, m, tm, u
 
 
 def _projection_config(projection: Path) -> m.Infra.PlanCollectionConfig:
@@ -33,7 +32,7 @@ def _projection_config(projection: Path) -> m.Infra.PlanCollectionConfig:
                 root=projection,
                 adapter="files",
                 driver="fixture",
-                driver_version="1",
+                driver_version=c.ParserBooleanToken.ONE,
                 plan_globs=("*.md",),
                 publication="plan-artifacts",
             ),
@@ -62,7 +61,7 @@ class TestsFlextInfraPlanCollection:
                     root=Path("input"),
                     adapter="files",
                     driver="fixture",
-                    driver_version="1",
+                    driver_version=c.ParserBooleanToken.ONE,
                     plan_globs=("*.md",),
                     publication="plan-artifacts",
                 ),
@@ -136,7 +135,7 @@ class TestsFlextInfraPlanCollection:
                     "root": ".kilo/plans",
                     "adapter": "files",
                     "driver": "flext-infra-files",
-                    "driver_version": "1",
+                    "driver_version": c.ParserBooleanToken.ONE,
                     "plan_globs": ["**/*.md"],
                     "exclude_globs": [],
                     "publication": "plan-artifacts",
@@ -325,7 +324,7 @@ class TestsFlextInfraPlanCollection:
                     root=Path("sessions"),
                     adapter="private-inventory",
                     driver="fixture",
-                    driver_version="1",
+                    driver_version=c.ParserBooleanToken.ONE,
                     plan_globs=("*.jsonl",),
                     publication="private",
                 ),

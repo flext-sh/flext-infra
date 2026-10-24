@@ -73,7 +73,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
             ),
             "gh",
         )
-        extraction = "0" if source == "gh" else "not-selected"
+        extraction = c.ParserBooleanToken.ZERO if source == "gh" else "not-selected"
         tm.that(
             process.stdout,
             has=f"github-auth source={source} extraction-exit={extraction} present=yes",

@@ -40,7 +40,12 @@ class FlextInfraMiseRecovery:
             The cleanup outcome, preserving its original failure.
 
         """
-        topology = FlextInfraMiseArtifactsVerification.journal_topology(layout, journal)
+        topology_verifier = (
+            FlextInfraMiseArtifactsVerification.journal_topology
+            if any(entry.recover_group for entry in journal.entries)
+            else FlextInfraMiseArtifactsVerification.journal_retirement_topology
+        )
+        topology = topology_verifier(layout, journal)
         if topology.failure:
             return topology
         current = FlextInfraMiseArtifactsVerification.states_current((journal_state,))

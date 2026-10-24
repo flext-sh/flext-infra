@@ -70,7 +70,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     def _trigger_section(rendered: str) -> str:
-        return rendered.split('"on":', maxsplit=1)[1].split(
+        return rendered.split("c.ParserBooleanToken.ON:", maxsplit=1)[1].split(
             "# End SECTION: triggers",
             maxsplit=1,
         )[0]
@@ -100,7 +100,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_pull_request_title_edits_revalidate_release_metadata(self) -> None:
         """GitHub dispatches the workflow when release-plan's PR title changes."""
         workflow = tm.ok(u.Cli.yaml_parse(self.render_ci(repository_branch="develop")))
-        events = workflow["on"]
+        events = workflow[c.ParserBooleanToken.ON]
         tm.that(isinstance(events, Mapping), truth=True)
         pull_request = events["pull_request"]
         tm.that(isinstance(pull_request, Mapping), truth=True)
@@ -136,7 +136,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         template = template_root / template_source
         rendered = tm.ok(u.Cli.template_render(template, spec))
         document = tm.ok(u.Cli.yaml_parse(rendered))
-        events = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+        events = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            document[c.ParserBooleanToken.ON]
+        )
 
         tm.that(
             "github.event.pull_request" in rendered and "pull_request" not in events,
@@ -466,7 +468,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                         env={
                             "CACHE_BRANCH": branch,
                             "CACHE_SEED_BRANCH": spec.repository_branch,
-                            "CACHE_WRITE_ALLOWED": "true",
+                            "CACHE_WRITE_ALLOWED": c.ParserBooleanToken.TRUE,
                             "CACHE_INPUTS": inputs,
                             "CACHE_PLATFORM": "fixture-platform",
                             "CACHE_GENERATION": str(index),

@@ -70,7 +70,7 @@ class TestsFlextInfraPytestCollectionManifest:
                 ],
                 cwd=project,
                 options=m.Cli.ProcessOptions(
-                    env={"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"},
+                    env={"PYTEST_DISABLE_PLUGIN_AUTOLOAD": c.ParserBooleanToken.ONE},
                     remove_env_keys=("PYTEST_ADDOPTS",),
                 ),
             ),

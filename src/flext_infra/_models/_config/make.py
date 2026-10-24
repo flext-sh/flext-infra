@@ -761,6 +761,10 @@ class FlextInfraConfigModelsMake(
             Path,
             m.Field(description="Repository-relative canonical generation profile"),
         ]
+        modification_profile_path: Annotated[
+            Path,
+            m.Field(description="Repository-relative canonical modification profile"),
+        ]
         check_report_output_environment_variable: Annotated[
             str,
             m.Field(
@@ -1021,6 +1025,7 @@ class FlextInfraConfigModelsMake(
             for name, path in (
                 ("docs.reports_dir", self.docs.reports_dir),
                 ("generation_profile_path", self.generation_profile_path),
+                ("modification_profile_path", self.modification_profile_path),
             ):
                 if path.is_absolute() or ".." in path.parts or not path.parts:
                     msg = f"make {name} must be nonempty and repository-relative"

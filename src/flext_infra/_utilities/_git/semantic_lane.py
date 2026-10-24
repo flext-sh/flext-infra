@@ -234,7 +234,7 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
             return r[bool].from_failure(ahead)
         return (
             cls._git_discard_empty_lane(request)
-            if ahead.value.strip() == "0"
+            if ahead.value.strip() == c.ParserBooleanToken.ZERO
             else cls._git_open_pull_request(request)
         )
 

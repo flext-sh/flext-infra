@@ -232,7 +232,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
                 "-f",
                 c.Infra.GITMODULES,
                 f"submodule.{member.path.as_posix()}.flext-managed",
-                "true",
+                c.ParserBooleanToken.TRUE,
             ),
         )
         u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, member.path.as_posix()))
@@ -290,7 +290,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
                 "-f",
                 c.Infra.GITMODULES,
                 f"submodule.{added.path.as_posix()}.flext-managed",
-                "true",
+                c.ParserBooleanToken.TRUE,
             ),
         )
         u.Tests.commit_git_changes(root, "Declare additional governed member")

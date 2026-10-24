@@ -99,7 +99,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
                 env={
                     **(git_environment or {}),
                     "GIT_ALLOW_PROTOCOL": "file",
-                    "UV_NO_GITHUB_FAST_PATH": "1",
+                    "UV_NO_GITHUB_FAST_PATH": c.ParserBooleanToken.ONE,
                 },
                 remove_env_keys=(*c.Tests.MAKE_ISOLATION_ENV_KEYS, "UV_OFFLINE"),
             ),
@@ -288,12 +288,12 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         environment = {
             "GIT_CONFIG_GLOBAL": os.devnull,
             "GIT_CONFIG_SYSTEM": os.devnull,
-            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_NOSYSTEM": c.ParserBooleanToken.ONE,
             "GIT_CONFIG_PARAMETERS": "",
             "GIT_CONFIG_COUNT": str(len(hosts)),
             "GIT_ALLOW_PROTOCOL": "file",
-            "UV_OFFLINE": "1",
-            "UV_NO_GITHUB_FAST_PATH": "1",
+            "UV_OFFLINE": c.ParserBooleanToken.ONE,
+            "UV_NO_GITHUB_FAST_PATH": c.ParserBooleanToken.ONE,
         }
         for index, host in enumerate(hosts):
             environment[f"GIT_CONFIG_KEY_{index}"] = (

@@ -377,9 +377,9 @@ class TestsFlextInfraFailedInvocationProgress:
                     f"fix: value = {after}()\n"
                 )
                 for name, before, after in (
-                    ("start", "dict", "list"),
-                    ("forward", "list", "tuple"),
-                    ("cycle", "tuple", "list"),
+                    ("start", "dict", c.Action.LIST),
+                    ("forward", c.Action.LIST, "tuple"),
+                    ("cycle", "tuple", c.Action.LIST),
                 )
             },
         )

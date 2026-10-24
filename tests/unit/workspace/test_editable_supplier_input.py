@@ -59,7 +59,11 @@ class TestsFlextInfraEditableSupplierInput:
     @staticmethod
     @pytest.mark.parametrize(
         ("hosted", "supplier"),
-        [("true", "missing"), ("true", "relative"), ("false", "empty")],
+        [
+            (c.ParserBooleanToken.TRUE, "missing"),
+            (c.ParserBooleanToken.TRUE, "relative"),
+            (c.ParserBooleanToken.FALSE, "empty"),
+        ],
     )
     def test_cold_import_ignores_unselected_supplier(
         tmp_path: Path, hosted: str, supplier: str
@@ -108,7 +112,7 @@ class TestsFlextInfraEditableSupplierInput:
                 cwd=tmp_path,
                 options=m.Cli.ProcessOptions(
                     env={
-                        c.Infra.ENV_VAR_GITHUB_ACTIONS: "false",
+                        c.Infra.ENV_VAR_GITHUB_ACTIONS: c.ParserBooleanToken.FALSE,
                         type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: "relative",
                         "HOME": str(tmp_path),
                         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
@@ -190,7 +194,7 @@ class TestsFlextInfraEditableSupplierInput:
                 if receipt == "relative"
                 else "assert 'one UTF-8 line' in result.error, result.error\n"
             ),
-            {policy.hosted_variable: "false"},
+            {policy.hosted_variable: c.ParserBooleanToken.FALSE},
         )
         tm.that(declaration.read_bytes(), eq=before)
         tm.that(selection.lstat().st_ino, eq=state.st_ino)
@@ -222,7 +226,9 @@ class TestsFlextInfraEditableSupplierInput:
         supplier.mkdir()
         hosted = mode.startswith("hosted")
         environment = {
-            policy.hosted_variable: policy.hosted_value if hosted else "false"
+            policy.hosted_variable: policy.hosted_value
+            if hosted
+            else c.ParserBooleanToken.FALSE
         }
         if mode != "hosted":
             environment[type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT] = (
@@ -303,7 +309,7 @@ class TestsFlextInfraEditableSupplierInput:
                 else "assert isinstance(result.exception, FileNotFoundError)\n"
                 f"assert str(result.exception.filename) == {str(native.value.filename)!r}\n"
             ),
-            {policy.hosted_variable: "false"},
+            {policy.hosted_variable: c.ParserBooleanToken.FALSE},
         )
         tm.that(selection.read_bytes(), eq=payload)
         tm.that(declaration.read_bytes(), eq=before)

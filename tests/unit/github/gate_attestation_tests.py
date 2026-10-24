@@ -13,7 +13,7 @@ from pathlib import Path
 from shlex import quote
 
 import pytest
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import config, m, p
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
@@ -63,7 +63,7 @@ class TestsFlextInfraGithubGateAttestation:
             ("user.name", "Attestation Test"),
             ("user.email", "attestation@example.test"),
             ("gpg.format", "ssh"),
-            ("commit.gpgsign", "false"),
+            ("commit.gpgsign", c.ParserBooleanToken.FALSE),
         ):
             u.Tests.git_bootstrap(root, ("config", key, value))
         u.Tests.git_bootstrap(
@@ -77,7 +77,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
         key_path = root / "signing_key"
         tm.ok(
-            cli_u.Cli.run_raw(
+            u.Cli.run_raw(
                 ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key_path)],
                 cwd=root,
             ),
@@ -209,7 +209,7 @@ class TestsFlextInfraGithubGateAttestation:
                 report.path.is_relative_to(first_receipt.parent.relative_to(tmp_path)),
                 truth=True,
             )
-            digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
+            digest = u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             tm.that(report.digest == f"sha256:{digest}", truth=True)
 
     @staticmethod
@@ -327,14 +327,16 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Native absence is observable, not selection of a signing capability."""
         u.Tests.git_bootstrap(tmp_path, ("init", "-b", c.Infra.GIT_MAIN))
-        u.Tests.git_bootstrap(tmp_path, ("config", "commit.gpgsign", "false"))
+        u.Tests.git_bootstrap(
+            tmp_path, ("config", "commit.gpgsign", c.ParserBooleanToken.FALSE)
+        )
         u.Tests.initialize_git_repo(tmp_path)
         isolated = tmp_path / "isolated.gitconfig"
         isolated.write_text("", encoding="utf-8")
         for key, value in declarations:
             u.Tests.git_bootstrap(tmp_path, ("config", key, value))
         native = tm.ok(
-            cli_u.Cli.run_raw(
+            u.Cli.run_raw(
                 [
                     sys.executable,
                     "-m",
@@ -427,7 +429,7 @@ class TestsFlextInfraGithubGateAttestation:
             encoding="utf-8",
         )
         native = tm.ok(
-            cli_u.Cli.run_raw(
+            u.Cli.run_raw(
                 (
                     "git",
                     "config",
@@ -930,7 +932,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         foreign = tmp_path / "foreign-signing-key"
         tm.ok(
-            cli_u.Cli.run_raw(
+            u.Cli.run_raw(
                 ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(foreign)],
                 cwd=tmp_path,
             ),
@@ -971,7 +973,7 @@ class TestsFlextInfraGithubGateAttestation:
             },
         )
         tm.ok(
-            cli_u.Cli.atomic_write_text_file(
+            u.Cli.atomic_write_text_file(
                 request.receipt,
                 updated.model_dump_json(round_trip=True),
             ),

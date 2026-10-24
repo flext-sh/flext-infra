@@ -44,7 +44,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 cwd=project_root,
                 env={
                     "GIT_CONFIG_GLOBAL": str(global_config),
-                    "GIT_CONFIG_NOSYSTEM": "1",
+                    "GIT_CONFIG_NOSYSTEM": c.ParserBooleanToken.ONE,
                 },
             ),
         )

@@ -8,16 +8,28 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Self, cast, overload, override
 
 from rope.base.project import Project
 from rope.base.resources import File, Folder, Resource
 
 from flext_infra import c, p, t
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraRopeNativeProject(Project):
-    """Preserve native SDK identities behind the consumed project interface."""
+    """Preserve native SDK identities behind the consumed project interface.
+
+    Authenticated Python inventories elect source paths before native resource
+    construction. Unrelated non-Python entries are not import inputs; selected
+    Python aliases remain visible to the strict source-query boundary. Declared
+    folders include project-root lookup anchors as well as source trees: lookup
+    alone never selects non-Python root aliases. Dependency paths and added
+    package-lookup parents do not enlarge the source election.
+    Unbound SDK projects retain their SDK-owned inventory, including closed
+    snapshots whose virtual modules need not exist on disk.
+    """
 
     fscommands: p.Infra.RopeProjectFiles
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
@@ -163,6 +175,46 @@ class FlextInfraRopeNativeProject(Project):
             message = "Rope resource lookup did not elect a native resource"
             raise TypeError(message)
         return found
+
+    @override
+    def get_python_files(self) -> list[File]:
+        """Elect scoped Python inputs before constructing native file resources.
+
+        Returns:
+            Native files in the declared source scope or closed SDK inventory.
+
+        Raises:
+            TypeError: A selected Python resource is not a native file.
+
+        """
+        project = cast("p.Infra.RopeProject", self)
+        resources: t.SequenceOf[p.Infra.RopeResource]
+        if project.authenticated_sources:
+            root = Path(self.root.real_path)
+            paths = {
+                path
+                for folder in self._custom_source_folders
+                if isinstance(folder, Folder)
+                for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                    Path(folder.real_path),
+                    workspace_excluded_top_dirs=frozenset(),
+                    source_project=project,
+                )
+                if path.suffix == c.Infra.EXT_PYTHON
+            }
+            resources = tuple(
+                project.get_resource(path.relative_to(root).as_posix())
+                for path in sorted(paths)
+            )
+        else:
+            resources = cast("p.Infra.RopeProject", super()).get_python_files()
+        files: list[File] = []
+        for resource in resources:
+            if not isinstance(resource, File):
+                message = "Rope Python inventory did not elect a native file"
+                raise TypeError(message)
+            files.append(resource)
+        return files
 
     @staticmethod
     @overload

@@ -964,7 +964,9 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.fail(target.exists())
 
     @staticmethod
-    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["append", "commit"])
+    @pytest.mark.parametrize(
+        c.ContextScope.OPERATION, [c.MergeStrategy.APPEND, "commit"]
+    )
     def test_same_content_journal_replacement_is_not_adopted(
         tmp_path: Path,
         operation: str,
@@ -987,7 +989,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             replacement = tm.ok(
                 u.Cli.atomic_read_binary_file_state(journal, required=True),
             )
-            if operation == "append":
+            if operation == c.MergeStrategy.APPEND:
                 planned = m.Infra.CodegenFilePlan(
                     project=root,
                     path=target,

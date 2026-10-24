@@ -1173,7 +1173,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             )
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "config", "remote.origin.skipDefaultUpdate", "true"],
+                    [
+                        c.Infra.GIT,
+                        "config",
+                        "remote.origin.skipDefaultUpdate",
+                        c.ParserBooleanToken.TRUE,
+                    ],
                     cwd=root,
                 ),
             )

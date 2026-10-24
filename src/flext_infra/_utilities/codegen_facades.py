@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import sys
 from collections.abc import Callable, Generator, MutableMapping
-from contextlib import closing, contextmanager
+from contextlib import ExitStack, closing, contextmanager
 from importlib.util import resolve_name
 from pathlib import Path
 from typing import Literal, override
@@ -71,6 +71,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         source_options: m.Infra.StageSourceOptions | None = None,
         planned_sources: t.MappingKV[Path, str | None] | None = None,
         project_roots: t.VariadicTuple[Path] = (),
+        original_project: p.Infra.RopeProject | None = None,
         source_publications: t.Pair[
             t.MutableSequenceOf[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
             t.MutableSequenceOf[m.Infra.CodegenPhaseAnalysis],
@@ -94,7 +95,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         ``source_options`` supplies the pinned inputs and declared file effects
         of the existing staging contract; capture, overlay and publication
-        verification remain owned by this source graph.
+        verification remain owned by this source graph. Provider receipts stay
+        available for native ancestry reads, but never elect publication targets.
+        The selected project roots' native source discovery owns the complete
+        returned source view, including proposed additions and retirements.
+        An injected original project derives a candidate through its native read
+        owner instead of electing and capturing the physical tree again.
 
         Yields:
             The native Rope project, original-state reader and planned sources.
@@ -113,126 +119,113 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if any(not project.is_relative_to(root) for project in project_roots):
             msg = "Rope declared project root is outside the original authority"
             raise ValueError(msg)
-        known = {
-            *(state.path for state in source_states),
-            *(plan.path for plan in declared_files),
-            *(state.path for plan in declared_files for state in plan.source_states),
-        }
-        iteration = FlextInfraUtilitiesIterationDirectory
-        paths = {
-            path
-            for project in project_roots or (root,)
-            if project.is_dir()
-            for path in iteration.iter_directory_python_files(project)
-        }
-        source_states = (
-            *source_states,
-            *(
-                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in sorted(paths)
-                if path not in known
-            ),
-        )
+        if original_project is None:
+            known = {
+                *(state.path for state in source_states),
+                *(plan.path for plan in declared_files),
+                *(
+                    state.path
+                    for plan in declared_files
+                    for state in plan.source_states
+                ),
+            }
+            iteration = FlextInfraUtilitiesIterationDirectory
+            paths = {
+                path
+                for project in project_roots or (root,)
+                if project.is_dir()
+                for path in iteration.iter_directory_python_files(project)
+            }
+            source_states = (
+                *source_states,
+                *(
+                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                    for path in sorted(paths)
+                    if path not in known
+                ),
+            )
         if planned_sources:
             source_states, declared_files = (
                 FlextInfraUtilitiesCodegenFacades._facade_declared_sources(
                     root, source_states, declared_files, planned_sources
                 )
             )
-        original_states = m.Infra.CodemodBindingSnapshot(
-            states=(
-                *source_states,
-                *(state for plan in declared_files for state in plan.source_states),
-                *(
-                    plan.before
-                    for plan in declared_files
-                    if isinstance(plan.before, m.Cli.AtomicFileState)
-                ),
-            ),
-        ).states
-        proposed = {
-            plan.path: plan.desired_content
-            for plan in declared_files
-            if plan.desired_content is not None
-        }
-        retired = frozenset(
-            plan.path for plan in declared_files if plan.desired_content is None
-        )
-        # Dependency modules native reads load from the checkout-local
-        # environment are read for inference only and never authenticated;
-        # only repository-owned sources are planning targets (70dc29f1b9
-        # republished site-packages/flext_cli/utilities.py otherwise).
-        original_sources = FlextInfraUtilitiesCodegenFacades.facade_original_sources(
-            root, source_states
-        )
-        sources = {
-            **{
-                path: source
-                for path, source in original_sources.items()
-                if path not in retired
-            },
-            **{
-                plan.path: proposed[plan.path].decode(c.DEFAULT_ENCODING)
-                for plan in declared_files
-                if plan.path.is_relative_to(root)
-                and plan.path.suffix == c.Infra.EXT_PYTHON
-                and plan.path in proposed
-                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    root, plan.path
-                )
-            },
-        }
-        with (
-            FlextInfraUtilitiesRopeCore.open_project(
-                next(path for path in (root, *root.parents) if path.is_dir()),
-                project_roots=project_roots or None,
-            ) as live,
-            closing(
-                FlextInfraRopeProject.from_atomic_reads(
-                    live,
-                    original_states,
-                    election=m.Infra.RopeProjectElection(
-                        ignored_resources=tuple(
-                            sorted(config.Infra.codegen.source_scan_ignored)
+        with ExitStack() as stack:
+            if original_project is None:
+                original_states = m.Infra.CodemodBindingSnapshot(
+                    states=(
+                        *source_states,
+                        *(
+                            state
+                            for plan in declared_files
+                            for state in plan.source_states
                         ),
-                        source_folders=tuple(
-                            sorted({
-                                *(folder.path for folder in live.get_source_folders()),
-                                *(
-                                    ""
-                                    if folder == Path(live.root.real_path)
-                                    else folder.relative_to(
-                                        live.root.real_path
-                                    ).as_posix()
-                                    for folder in (
-                                        root,
-                                        *project_roots,
-                                        *(
-                                            project / name
-                                            for project in (root, *project_roots)
-                                            for name in config.Infra.source_scan.roots
-                                        ),
-                                    )
-                                    if any(
-                                        path.is_relative_to(folder) for path in proposed
-                                    )
-                                ),
-                            })
-                        ),
-                        extension_modules=FlextInfraUtilitiesRopeRuntime.extension_module_names(
-                            live
-                        ),
-                        python_path_folders=tuple(
-                            folder.real_path
-                            for folder in live.get_python_path_folders()
-                            if folder.is_folder()
+                        *(
+                            plan.before
+                            for plan in declared_files
+                            if isinstance(plan.before, m.Cli.AtomicFileState)
                         ),
                     ),
-                    sources={},
-                    declared_files=declared_files,
+                ).states
+                live = stack.enter_context(
+                    FlextInfraUtilitiesRopeCore.open_project(
+                        next(path for path in (root, *root.parents) if path.is_dir()),
+                        project_roots=project_roots or None,
+                    ),
                 )
-            ) as project,
-        ):
+                election = m.Infra.RopeProjectElection(
+                    ignored_resources=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    ),
+                    source_folders=tuple(
+                        sorted(folder.path for folder in live.get_source_folders())
+                    ),
+                    extension_modules=(
+                        FlextInfraUtilitiesRopeRuntime.extension_module_names(live)
+                    ),
+                    python_path_folders=tuple(
+                        folder.real_path
+                        for folder in live.get_python_path_folders()
+                        if folder.is_folder()
+                    ),
+                )
+                project = stack.enter_context(
+                    closing(
+                        FlextInfraRopeProject.from_atomic_reads(
+                            live,
+                            original_states,
+                            election=election,
+                            sources={},
+                            declared_files=declared_files,
+                            additional_source_folders=(
+                                FlextInfraUtilitiesCodegenFacades._planned_folders(
+                                    root,
+                                    project_roots,
+                                    declared_files,
+                                    original_root=Path(live.root.real_path),
+                                )
+                            ),
+                        ),
+                    ),
+                )
+            else:
+                if Path(original_project.root.real_path).resolve() != root:
+                    msg = "Rope candidate view belongs to another original root"
+                    raise ValueError(msg)
+                project = stack.enter_context(
+                    original_project.source_consumer(
+                        source_states=source_states,
+                        declared_files=declared_files,
+                        additional_source_folders=(
+                            FlextInfraUtilitiesCodegenFacades._planned_folders(
+                                root,
+                                project_roots,
+                                declared_files,
+                                original_root=Path(original_project.root.real_path),
+                            )
+                        ),
+                    ),
+                )
 
             def consumed() -> t.Triple[
                 tuple[m.Cli.AtomicFileState, ...],
@@ -250,6 +243,18 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 source_project = (
                     FlextInfraUtilitiesCodegenFacades.require_source_project(project)
                 )
+                with source_project.source_capture():
+                    sources = {
+                        path: source_project.source_text(path)
+                        for scope in project_roots or (root,)
+                        for path in (
+                            FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                                scope,
+                                workspace_excluded_top_dirs=frozenset(),
+                                source_project=source_project,
+                            )
+                        )
+                    }
                 yield source_project, consumed, sources
             # A body failure escapes at the yield; only a completed pass verifies.
             if source_publications is None:
@@ -262,6 +267,41 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     source_publications[1].append(verified)
 
     @staticmethod
+    def _planned_folders(
+        root: Path,
+        project_roots: tuple[Path, ...],
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        *,
+        original_root: Path,
+    ) -> tuple[str, ...]:
+        """Derive the configured import roots covered by declared candidate effects.
+
+        Returns:
+            The same virtual source-folder election for fresh and derived views.
+
+        """
+        proposed = tuple(
+            plan.path for plan in declared_files if plan.desired_content is not None
+        )
+        return tuple(
+            sorted({
+                ""
+                if folder == original_root
+                else folder.relative_to(original_root).as_posix()
+                for folder in (
+                    root,
+                    *project_roots,
+                    *(
+                        project / name
+                        for project in (root, *project_roots)
+                        for name in config.Infra.source_scan.roots
+                    ),
+                )
+                if any(path.is_relative_to(folder) for path in proposed)
+            }),
+        )
+
+    @staticmethod
     def verify_source_publications(
         project: p.Infra.RopeProject,
         publications: t.SequenceOf[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
@@ -271,7 +311,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Empty selections remain strict direct consumers. Authentication errors
         escape before physical failure collection; data-shaped receipts cannot
         replace the native issuer's original observations.
-        Successful current directory inventories are shared only within this call;
+        Fresh native observations are allocated only by the read owner for this call;
         every output keeps its independent authentication and comparisons.
 
         Returns:
@@ -281,21 +321,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         issues: list[m.Infra.Issue] = []
         failed: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         first: BaseException | None = None
-        observations: dict[Path, m.Cli.AtomicDirectoryInventory] = {}
-        if not publications:
-            project.verify_source_states(observations=observations)
-        for target, receipt in publications:
-            with project.source_consumption():
-                project.replay_source_consumption(receipt)
-            if not (
-                receipt.inputs
-                or receipt.source_directories
-                or receipt.source_query_topology
-            ):
-                project.verify_source_states(observations=observations)
-            try:
-                project.verify_source_states(receipt, observations=observations)
-            except (OSError, ValueError, TypeError, RuntimeError) as exc:
+        if not isinstance(project, FlextInfraRopeProject):
+            msg = "Source publications require the authenticated Rope read owner"
+            raise TypeError(msg)
+        failures = project.verify_source_receipts(
+            tuple(receipt for _, receipt in publications)
+        )
+        for (target, receipt), exc in zip(publications, failures, strict=True):
+            if exc is not None:
                 if first is None:
                     first = exc
                 failed.append((target, receipt))
@@ -576,7 +609,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 and path.suffix == c.Infra.EXT_PYTHON
             ),
         }):
-            cls._facade_source_membership(project, parent, sources)
+            cls._facade_source_membership(project, parent)
         owners = tuple(
             path
             for path, content in sources.items()
@@ -632,17 +665,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     def _facade_source_membership(
         project: p.Infra.RopeProject,
         directory: Path,
-        sources: t.MappingKV[Path, str],
     ) -> tuple[Path, ...]:
         """Authenticate the native immediate Python election before parsing.
 
+        Source text maps may contain only consumed provider files. Complete
+        membership belongs to the injected native snapshot, not that partial
+        text inventory; declared additions and retirements remain in that view.
+
         Returns:
-            Native source paths matching the captured declaration inventory.
+            Native source paths matching the complete source snapshot.
 
         Raises:
-            ValueError: Native membership differs from captured source paths.
+            ValueError: Native membership differs from its complete source snapshot.
 
         """
+        expected = tuple(
+            sorted(
+                path
+                for path in project.source_children(directory)
+                if path.suffix == c.Infra.EXT_PYTHON
+                and project.source_query(path, "isfile")
+            )
+        )
         folder = project.get_folder(
             directory.relative_to(Path(project.root.real_path)).as_posix()
         )
@@ -654,14 +698,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
             )
         )
-        expected = tuple(
-            sorted(
-                path
-                for path in sources
-                if path.parent == directory and path.suffix == c.Infra.EXT_PYTHON
-            )
-        )
-        if expected and actual != expected:
+        if actual != expected:
             message = (
                 f"native facade source membership differs: {directory}; "
                 f"added={sorted(set(actual) - set(expected))}; "
@@ -703,7 +740,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     pkg_dir, family, project=captured, sources=contents
                 )
         owners: list[Path] = []
-        for module in cls._facade_source_membership(project, pkg_dir, sources):
+        for module in cls._facade_source_membership(project, pkg_dir):
             if module.name == c.Infra.INIT_PY:
                 continue
             resource = project.get_resource(
@@ -793,7 +830,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if facade_path is None:
             # Conform preflights its family directories before rendering files.
             # An empty directory contains no owner requiring a public surface.
-            if not cls._facade_source_membership(project, owners_dir, sources):
+            if not cls._facade_source_membership(project, owners_dir):
                 return None
             message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
@@ -2540,7 +2577,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if not package_name:
             message = f"Facade package has no elected import namespace: {pkg_dir}"
             raise ValueError(message)
-        cls._facade_source_membership(project, owners_dir, contents)
+        cls._facade_source_membership(project, owners_dir)
         sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
         declarations: list[m.Infra.SourceClassReference] = []
         captured = {
@@ -2659,7 +2696,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             for path in contents
             if path.is_relative_to(pkg_dir) and path.suffix == c.Infra.EXT_PYTHON
         }):
-            cls._facade_source_membership(project, parent, contents)
+            cls._facade_source_membership(project, parent)
         family = c.Infra.FacadeFamily.P
         methods: set[str] = set()
         for path, source in sorted(
@@ -2764,7 +2801,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         }
         parents.add(owners_dir)
         for parent in sorted(parents):
-            cls._facade_source_membership(project, parent, contents)
+            cls._facade_source_membership(project, parent)
         owners: list[t.Triple[str, str, frozenset[str]]] = []
         ancestors: MutableMapping[str, frozenset[str]] = {}
         for path, source in sorted(contents.items()):

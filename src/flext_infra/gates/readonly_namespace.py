@@ -283,7 +283,7 @@ class FlextInfraReadonlyNamespace:
             not isinstance(annotation, ast.Name)
             or not isinstance(vars(builtins).get(annotation.id), type)
             or annotation.id
-            in {"object", "type", "list", "dict", "set", "frozenset", "tuple"}
+            in {"object", "type", c.Action.LIST, "dict", "set", "frozenset", "tuple"}
             or cls._bindings(tree, annotation.id)
         ):
             msg = (

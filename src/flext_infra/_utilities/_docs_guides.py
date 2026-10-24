@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_cli import u
 
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
@@ -40,13 +41,10 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         lines = content.splitlines()
         title = Path(guide_name).stem.replace("_", " ").replace("-", " ").strip()
         body_lines = lines
-        for index, line in enumerate(lines):
-            match = c.Infra.HEADING_RE.match(line)
-            if match is None:
-                continue
-            title = match.group(1).strip() or title
-            body_lines = lines[index + 1 :]
-            break
+        heading = next(iter(u.Cli.markdown_headings(content)), None)
+        if heading is not None:
+            title = heading.text or title
+            body_lines = lines[heading.line :]
         body = "\n".join(body_lines).lstrip()
         header = (
             "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
@@ -71,14 +69,13 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             c.Infra.DOCS_FRAGMENT_PREFIX,
         )
 
-        def sanitize_link(match: re.Match[str]) -> str:
-            # The declared scheme catalog is the only authority for what
-            # survives: a second list here drifted into preserving `http://`
-            # while the insecure scheme is rejected elsewhere.
-            target = match.group(2)
-            return match.group(0) if target.startswith(preserved) else match.group(1)
-
-        return re.sub(c.Infra.MARKDOWN_LINK_RE, sanitize_link, content)
+        # The declared scheme catalog is the only authority for what survives:
+        # a second list here drifted into preserving `http://` while the
+        # insecure scheme is rejected elsewhere.
+        return u.Cli.markdown_unlink(
+            content,
+            lambda link: not link.image and not link.target.startswith(preserved),
+        )
 
     @staticmethod
     def _classified_guide_sources(

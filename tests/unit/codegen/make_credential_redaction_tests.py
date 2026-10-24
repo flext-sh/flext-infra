@@ -36,7 +36,7 @@ class TestsFlextInfraMakeCredentialRedaction:
         credential_url = f"https://{username}:{credential}@github.com/"
         environment = {
             "GIT_CONFIG_GLOBAL": str(global_config),
-            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_NOSYSTEM": c.ParserBooleanToken.ONE,
             "GITHUB_TOKEN": "fixture-only-explicit-token",
         }
         configured = tm.ok(

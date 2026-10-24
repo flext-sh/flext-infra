@@ -163,8 +163,10 @@ class FlextInfraUtilitiesCodemodProject(
     ) -> t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
         """Read runtime imports from an immutable proposed-source Rope graph.
 
-        A live caller supplies governed resources. An immutable snapshot keeps
-        its complete captured inventory, including proposed virtual modules.
+        A live caller supplies governed resources. An authenticated candidate
+        elects its complete native Python source scope before constructing
+        resources; provider receipts do not enlarge that scope. An immutable
+        snapshot keeps its captured inventory, including proposed virtual modules.
 
         Returns:
             The resulting ``t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path,

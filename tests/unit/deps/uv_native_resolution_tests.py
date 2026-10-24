@@ -55,7 +55,9 @@ class TestsFlextInfraUvNativeResolution:
                 supplier_root, member, distribution=name, relative_path=name
             )
         extra = "[feature]" if with_extra else ""
-        transitive = f'closure-b{extra}>=1,<2 ; python_version >= "0"'
+        transitive = (
+            f"closure-b{extra}>=1,<2 ; python_version >= c.ParserBooleanToken.ZERO"
+        )
         u.Tests.write_native_resolution_project(
             supplier_root / names[0],
             names[0],
@@ -68,7 +70,9 @@ class TestsFlextInfraUvNativeResolution:
         u.Tests.write_native_resolution_project(
             supplier_root / names[1],
             names[1],
-            dependencies=('closure-a>=1 ; python_version >= "0"',),
+            dependencies=(
+                "closure-a>=1 ; python_version >= c.ParserBooleanToken.ZERO",
+            ),
             groups="[project.optional-dependencies]\nfeature = ['closure-c>=1']\n",
         )
         for name in names[2:]:

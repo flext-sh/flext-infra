@@ -13,7 +13,7 @@ from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
 
 class FlextInfraMiseArtifactsJournalRelocation:
-    """Rebind paths only after proving the journal's unchanged physical owners."""
+    """Bind original journal paths to their currently authorized Git anchor."""
 
     @classmethod
     def source_record(
@@ -95,7 +95,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[m.Infra.CodegenTransactionJournal]:
-        """Rebind authenticated paths when the same physical worktree was moved.
+        """Rebind original paths within the currently authorized Git worktree.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionJournal]``.
@@ -157,14 +157,12 @@ class FlextInfraMiseArtifactsJournalRelocation:
             the current scope, nothing to relocate).
 
         """
-        identity = FlextInfraMiseArtifactsFiles.physical_directory_identity(
-            layout.scope_root
-        )
-        if identity.failure:
-            return r[t.Pair[Path, bool]].from_failure(identity)
-        if identity.value != (journal.scope_device, journal.scope_inode):
+        control = u.Infra.exact_worktree_git_dir(layout.scope_root)
+        if control.failure:
+            return r[t.Pair[Path, bool]].from_failure(control)
+        if control.value / c.Infra.JOURNAL_NAME != layout.journal_path:
             return r[t.Pair[Path, bool]].fail(
-                "generation journal belongs to another physical scope",
+                "generation journal differs from the authenticated Git anchor",
             )
         recorded_root = cls._recorded_scope_root(journal, layout.scope_root)
         if recorded_root.failure:
@@ -178,7 +176,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
         recorded_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
         current_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
     ) -> p.Result[bool]:
-        """Require identical participant inventories and physical identities.
+        """Require the original participant inventory and transaction paths.
 
         Returns:
             Whether the recorded participants match the current layout.
@@ -190,9 +188,11 @@ class FlextInfraMiseArtifactsJournalRelocation:
             )
         for selector, recorded in recorded_participants.items():
             current = current_participants[selector]
-            if (recorded.device, recorded.inode) != (current.device, current.inode):
+            if recorded.transaction_root.relative_to(recorded.root) != (
+                current.transaction_root.relative_to(current.root)
+            ):
                 return r[bool].fail(
-                    f"generation journal file participant changed: {selector}",
+                    f"generation journal file participant staging changed: {selector}",
                 )
         return r[bool].ok(value=True)
 

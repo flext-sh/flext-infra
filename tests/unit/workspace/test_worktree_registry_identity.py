@@ -95,7 +95,9 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         config_before = (common / "config").read_bytes()
         pointer_before = (primary / c.Infra.GIT_DIR).read_bytes()
         registry_before = tm.ok(
-            u.Cli.capture((c.Infra.GIT, "worktree", "list", "--porcelain"), cwd=linked),
+            u.Cli.capture(
+                (c.Infra.GIT, "worktree", c.Action.LIST, "--porcelain"), cwd=linked
+            ),
         )
 
         from_linked = tm.ok(
@@ -123,7 +125,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         tm.that(
             tm.ok(
                 u.Cli.capture(
-                    (c.Infra.GIT, "worktree", "list", "--porcelain"), cwd=linked
+                    (c.Infra.GIT, "worktree", c.Action.LIST, "--porcelain"), cwd=linked
                 ),
             ),
             eq=registry_before,

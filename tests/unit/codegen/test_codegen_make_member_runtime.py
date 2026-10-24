@@ -240,7 +240,9 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
                         options=m.Cli.ProcessOptions(
                             env={
                                 resolution.hosted_variable: (
-                                    resolution.hosted_value if hosted else "false"
+                                    resolution.hosted_value
+                                    if hosted
+                                    else c.ParserBooleanToken.FALSE
                                 )
                             },
                             remove_env_keys=(
@@ -345,7 +347,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "upg"],
                 cwd=workspace / member_source.name,
-                env={"GITHUB_ACTIONS": "false"},
+                env={"GITHUB_ACTIONS": c.ParserBooleanToken.FALSE},
             ),
         )
 

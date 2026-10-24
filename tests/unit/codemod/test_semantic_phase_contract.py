@@ -612,7 +612,7 @@ class TestsFlextInfraSemanticPhaseContract:
                 't = FlextReviewedTypes\n__all__ = ["FlextReviewedTypes", "t"]\n'
             ),
             private / "base.py": (
-                "from flext_core import u as u\n"
+                "from flext_core import u\n"
                 "class FlextReviewedBase(u):\n"
                 "    @classmethod\n"
                 "    def scalar_mapping_adapter(cls):\n"
@@ -697,14 +697,14 @@ class TestsFlextInfraSemanticPhaseContract:
             "pending imports": (
                 "from flext_core import t as core_t\n"
                 "from flext_cli import t as cli_t\n"
-                "def first():\n    return core_t.scalar_mapping_adapter()\n"
-                "def second():\n    return cli_t.json_dict_adapter()\n"
+                "def first():\n    return t.scalar_mapping_adapter()\n"
+                "def second():\n    return t.json_dict_adapter()\n"
             ),
             "pending module imports": (
                 "from flext_core import t as core_t\n"
                 "from flext_cli import t as cli_t\n"
-                "first = core_t.scalar_mapping_adapter()\n"
-                "second = cli_t.json_dict_adapter()\n"
+                "first = t.scalar_mapping_adapter()\n"
+                "second = t.json_dict_adapter()\n"
             ),
             "unreachable owner": (
                 "from flext_reviewed import t\nvalue = t.scalar_mapping_adapter()\n"
@@ -737,7 +737,9 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(accepted, eq=[])
 
     @staticmethod
-    @pytest.mark.parametrize("variant", ["override", "diamond", "static-internal"])
+    @pytest.mark.parametrize(
+        "variant", [c.MergeStrategy.OVERRIDE, "diamond", "static-internal"]
+    )
     def test_public_utility_c3_elects_effective_owner(
         tmp_path: Path,
         variant: str,
@@ -880,7 +882,7 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("binding", ["inherited", "override", "mask"])
+    @pytest.mark.parametrize("binding", ["inherited", c.MergeStrategy.OVERRIDE, "mask"])
     def test_contextual_utilities_resolve_real_inherited_members(
         tmp_path: Path,
         binding: str,
@@ -903,7 +905,7 @@ class TestsFlextInfraSemanticPhaseContract:
         )
         member = (
             "    @staticmethod\n    def json_dict_adapter():\n        return None\n"
-            if binding == "override"
+            if binding == c.MergeStrategy.OVERRIDE
             else "    json_dict_adapter = None\n"
             if binding == "mask"
             else "    pass\n"
@@ -1134,7 +1136,7 @@ class TestsFlextInfraSemanticPhaseContract:
         family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
         owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
         path = package / "consumer.py"
-        shadowed = "def local(core_c):\n    return core_c.PRIMITIVES_TYPES\n"
+        shadowed = "def local(core_c):\n    return c.PRIMITIVES_TYPES\n"
         sources = {
             package / c.Infra.CONSTANTS_PY: (
                 "from flext_cli import c\n"
@@ -1146,7 +1148,7 @@ class TestsFlextInfraSemanticPhaseContract:
             path: (
                 f"{upstream_import}\n"
                 f"from {package.name} import c\n"
-                "upstream = core_c.PRIMITIVES_TYPES\n"
+                "upstream = c.PRIMITIVES_TYPES\n"
                 "downstream = c.PRIMITIVES_TYPES\n\n"
                 f"{shadowed}"
             ),
@@ -1216,7 +1218,7 @@ class TestsFlextInfraSemanticPhaseContract:
             package / "consumer.py": (
                 "from flext_upstream import c as core_c\n"
                 f"from {package.name} import c\n"
-                "value = core_c.PRIMITIVES_TYPES\n"
+                "value = c.PRIMITIVES_TYPES\n"
             ),
             upstream / c.Infra.INIT_PY: (
                 "from .left import Left as c\nfrom .right import Right as c\n"

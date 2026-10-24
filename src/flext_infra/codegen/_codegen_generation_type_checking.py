@@ -12,7 +12,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import config, p, u
+from flext_infra import c, config, p, u
 from flext_infra.codegen import FlextInfraCodegenGenerationImportsMixin
 
 if TYPE_CHECKING:
@@ -299,7 +299,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         if mod.startswith("."):
             return ("2", mod.lower())  # local-folder section
         own_top = mod.split(".", maxsplit=1)[0]
-        return ("1" if own_top in root_names else "0", mod.lower())
+        return (
+            c.ParserBooleanToken.ONE
+            if own_top in root_names
+            else c.ParserBooleanToken.ZERO,
+            mod.lower(),
+        )
 
     @staticmethod
     def _merge_root_alias_groups(

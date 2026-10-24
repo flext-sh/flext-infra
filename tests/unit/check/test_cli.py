@@ -202,7 +202,7 @@ class TestsFlextInfraWorkspaceCheckCli:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize("parallel", [False, True])
+    @pytest.mark.parametrize(c.ProcessingMode.PARALLEL, [False, True])
     @pytest.mark.parametrize("directory_option", [None, "--reports-dir"])
     def test_real_cli_invocations_preserve_independent_reports(
         tmp_path: Path,

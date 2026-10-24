@@ -353,6 +353,10 @@ class FlextInfraUtilitiesProjectDiscovery(
     ) -> t.StrSequence:
         """Return owned top-level directories containing active Python sources.
 
+        Native directory candidates share the source walk's declared-root
+        election, so configured source aliases remain subject to strict queries.
+        Lexical namespace exclusions precede those candidate queries.
+
         Returns:
             Directory names in deterministic order.
 
@@ -376,18 +380,21 @@ class FlextInfraUtilitiesProjectDiscovery(
             for subdir in (
                 sorted(project_dir.iterdir())
                 if source_project is None
-                else source_project.source_children(project_dir, follow_aliases=False)
+                else (
+                    project_dir / name
+                    for name in next(source_project.source_walk(project_dir))[1]
+                )
             )
-            if (
+            if not subdir.name.startswith(".")
+            and subdir.name not in effective_skip
+            and subdir.name not in workspace_excluded_top_dirs
+            and not cls._is_nonparticipant(subdir, project_dir, nonparticipants)
+            and (
                 subdir.is_dir()
                 if source_project is None
                 else source_project.source_query(subdir, "isdir")
             )
             and (not subdir.is_symlink() if source_project is None else True)
-            and not subdir.name.startswith(".")
-            and subdir.name not in effective_skip
-            and subdir.name not in workspace_excluded_top_dirs
-            and not cls._is_nonparticipant(subdir, project_dir, nonparticipants)
             and not (
                 (subdir / c.PYPROJECT_FILENAME).is_file()
                 if source_project is None
@@ -417,6 +424,9 @@ class FlextInfraUtilitiesProjectDiscovery(
     ) -> t.StrSequence:
         """Return owned Python directories and standalone root modules.
 
+        Root module names are elected before their native file query. Python
+        aliases must not disappear from a prefiltered child inventory.
+
         Returns:
             Every active source target owned by one project.
 
@@ -438,18 +448,16 @@ class FlextInfraUtilitiesProjectDiscovery(
                 for path in (
                     sorted(project_dir.iterdir())
                     if source_project is None
-                    else source_project.source_children(
-                        project_dir, follow_aliases=False
-                    )
+                    else source_project.source_children(project_dir)
                 )
-                if (
+                if not path.name.startswith(".")
+                and path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                and (
                     path.is_file()
                     if source_project is None
                     else source_project.source_query(path, "isfile")
                 )
                 and (not path.is_symlink() if source_project is None else True)
-                and not path.name.startswith(".")
-                and path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                 and cls._python_file_belongs_to_project(
                     project_dir, path, source_project=source_project
                 )
@@ -562,11 +570,16 @@ class FlextInfraUtilitiesProjectDiscovery(
     ) -> t.SequenceOf[Path]:
         """Enumerate sources once without crossing project or artifact boundaries.
 
+        Injected source paths stay lexical until native admission, so a selected
+        aliased scan root cannot disappear through path resolution.
+
         Returns:
             Sorted absolute Python source and stub paths.
 
         """
-        project_dir = project_dir.resolve()
+        project_dir = (
+            project_dir.resolve() if source_project is None else project_dir.absolute()
+        )
         if not (
             project_dir.is_dir()
             if source_project is None
@@ -628,6 +641,10 @@ class FlextInfraUtilitiesProjectDiscovery(
         owned_path_admission: bool = False,
     ) -> Iterator[Path]:
         """Yield sources while pruning hidden, ignored, and nested repository trees.
+
+        Native traversal preserves alias candidates. Prune unselected namespaces
+        before querying directory candidates; selected Python files and source
+        containers retain the native physical-alias rejection.
 
         Yields:
             Each eligible Python source path.
@@ -1033,7 +1050,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             cwd=project_root,
             timeout=c.Infra.TIMEOUT_SHORT,
             options=m.Cli.ProcessOptions(
-                env={"MISE_AUTO_INSTALL": "0"},
+                env={"MISE_AUTO_INSTALL": c.ParserBooleanToken.ZERO},
                 remove_env_keys=config.Infra.codegen.make.native_environment_unset,
             ),
         )

@@ -426,7 +426,7 @@ class TestsVerifyLanes:
         u.Tests.git_run(repo, "worktree", "add", "--detach", str(lane), "HEAD")
         if artifact == "orphan":
             lane.rename(tmp_path / "preserved-worktree")
-        registry = u.Tests.git_capture(repo, "worktree", "list", "--porcelain")
+        registry = u.Tests.git_capture(repo, "worktree", c.Action.LIST, "--porcelain")
         tm.that(main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         expected = (
@@ -437,7 +437,7 @@ class TestsVerifyLanes:
         tm.that(output.out + output.err, has=expected)
         tm.that(output.out + output.err, has=str(lane))
         tm.that(
-            u.Tests.git_capture(repo, "worktree", "list", "--porcelain"),
+            u.Tests.git_capture(repo, "worktree", c.Action.LIST, "--porcelain"),
             eq=registry,
         )
 

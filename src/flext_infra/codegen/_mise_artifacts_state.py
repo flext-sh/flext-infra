@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t, u
+from flext_infra.codegen._mise_artifacts_comparison import (
+    FlextInfraMiseArtifactsComparison,
+)
 from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
 from flext_infra.codegen._mise_artifacts_verification_manifest import (
     FlextInfraMiseArtifactsVerificationManifest,
@@ -633,7 +636,7 @@ class FlextInfraMiseArtifactsState:
             The resulting ``p.Result[bool]``.
 
         """
-        bound = FlextInfraMiseArtifactsVerificationTopology.journal_topology(
+        bound = FlextInfraMiseArtifactsVerificationTopology.journal_retirement_topology(
             layout, journal
         )
         if bound.failure:
@@ -694,7 +697,9 @@ class FlextInfraMiseArtifactsState:
                 if cls._hosts_lease_lock(layout, transaction_root):
                     removed_temporary_roots.add(entry.path)
                     continue
-                removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
+                removed = cls._retirement_directory_input(entry.created).flat_map(
+                    u.Cli.atomic_delete_empty_directory_guarded
+                )
             else:
                 observed = FlextInfraMiseArtifactsVerificationManifest.authorized_cleanup_manifest(
                     layout, journal, entry
@@ -752,7 +757,9 @@ class FlextInfraMiseArtifactsState:
                 # transactions, so its home directory is durable state the
                 # cleanup must leave in place rather than delete empty.
                 continue
-            removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
+            removed = cls._retirement_directory_input(entry.created).flat_map(
+                u.Cli.atomic_delete_empty_directory_guarded
+            )
             if removed.failure:
                 journaled = {j.path for j in journal.entries}
                 preserved = set(removed_temporary_roots) | {
@@ -995,33 +1002,16 @@ class FlextInfraMiseArtifactsState:
             (item for item in journal.directories if item.path == relative.value),
             None,
         )
-        if (
-            recorded is None
-            or recorded.created is None
-            or (recorded.created.device, recorded.created.inode) != transaction.value
-        ):
-            reason = (
-                "missing entry"
-                if recorded is None
-                else "created absent"
-                if recorded.created is None
-                else "identity mismatch"
-            )
-            expected = (
-                (recorded.created.device, recorded.created.inode)
-                if recorded is not None and recorded.created is not None
-                else None
-            )
+        if recorded is None or recorded.created is None:
+            reason = "missing entry" if recorded is None else "created absent"
             return r[bool].fail(
                 f"Mise transaction root identity is not journaled: {relative.value}; "
                 f"journal_path={layout.journal_path}; reason={reason}; "
-                f"expected_device_inode={expected}; "
                 f"observed_device_inode={transaction.value}",
             )
         return cls._validated_root_evidence(
             layout,
             journal,
-            transaction_root,
             recorded,
             reconciliation_inputs=reconciliation_inputs,
         )
@@ -1031,7 +1021,6 @@ class FlextInfraMiseArtifactsState:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-        transaction_root: Path,
         recorded: m.Infra.CodegenJournalDirectory,
         *,
         reconciliation_inputs: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
@@ -1054,14 +1043,35 @@ class FlextInfraMiseArtifactsState:
             if authorized.failure:
                 return r[bool].from_failure(authorized)
             return r[bool].ok(value=True)
-        empty = u.Cli.atomic_read_empty_directory_state(transaction_root, required=True)
+        if recorded.created is None:
+            return r[bool].fail(
+                f"temporary tree has no original created receipt: {recorded.path}",
+            )
+        empty = cls._retirement_directory_input(recorded.created)
         if empty.failure:
             return r[bool].from_failure(empty)
-        if empty.value != recorded.created:
-            return r[bool].fail(
-                (f"unmanifested transaction root identity changed: {recorded.path}"),
-            )
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _retirement_directory_input(
+        expected: m.Cli.AtomicDirectoryState,
+    ) -> p.Result[m.Cli.AtomicDirectoryState]:
+        """Authorize a declared empty directory and retain its fresh native state.
+
+        Returns:
+            The current receipt for exact native removal, never a rewritten record.
+
+        """
+        observed = u.Cli.atomic_read_empty_directory_state(expected.path, required=True)
+        if observed.failure:
+            return observed
+        if not FlextInfraMiseArtifactsComparison.same_retirement_directory(
+            observed.value, expected
+        ):
+            return r[m.Cli.AtomicDirectoryState].fail(
+                f"journaled empty directory metadata changed: {expected.path}",
+            )
+        return observed
 
     @classmethod
     def _validate_transaction_root(

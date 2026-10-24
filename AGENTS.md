@@ -39,7 +39,7 @@ src/flext_infra/
 | `FlextInfraCli`                 | class | `cli.py`                       | CLI entry                                                  |
 | `FlextInfraCodegenLazyInitPlanner` | class | `codegen/lazy_init_planner.py` | lazy-init export planning (service composite)              |
 | `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
-| `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | body-less conform facade over `codegen/_conform/execute.py` |
+| `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | explicit conform composition over the shared projection executor, without Service inheritance |
 | `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
 | `FlextInfraPromoted`            | class | `promoted.py`                  | promoted command framework facade                          |
 

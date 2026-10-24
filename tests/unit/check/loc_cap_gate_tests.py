@@ -124,7 +124,7 @@ class TestsFlextInfraLocCapGate:
             '[{"Name":"Python","Files":[{"Location":"sample.py"}]}]',
             '[{"Name":"Python","Files":[{"Location":"","Code":1}]}]',
             '[{"Name":"Python","Files":[{"Location":"sample.py","Code":-1}]}]',
-            '[{"Name":"Python","Files":[{"Location":"sample.py","Code":"1"}]}]',
+            '[{"Name":"Python","Files":[{"Location":"sample.py","Code":c.ParserBooleanToken.ONE}]}]',
             '[{"Name":"Python","Files":[{"Location":"sample.py","Code":true}]}]',
         ],
     )

@@ -39,7 +39,7 @@ class FlextInfraMiseArtifactsVerification(
     @classmethod
     def publication_current(
         cls,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Verify a completed publication's physical inputs and effects.
 
@@ -84,7 +84,7 @@ class FlextInfraMiseArtifactsVerification(
     def _publication_covers_request(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
         root: Path,
     ) -> bool:
         """Report whether the authenticated receipt covers this exact request.

@@ -516,7 +516,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Subprocess env overrides for lint and validation commands.
 
         """
-        return {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
+        return {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: c.ParserBooleanToken.ONE}
 
     @classmethod
     def _lint_command(

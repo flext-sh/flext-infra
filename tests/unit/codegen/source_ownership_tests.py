@@ -360,7 +360,7 @@ class TestsFlextInfraSourceOwnership:
                 contexts.close()
 
     @staticmethod
-    @pytest.mark.parametrize("replace", [False, True])
+    @pytest.mark.parametrize(c.MergeStrategy.REPLACE, [False, True])
     def test_declared_source_ancestry_remains_authenticated(
         tmp_path: Path, *, replace: bool
     ) -> None:

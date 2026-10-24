@@ -257,5 +257,75 @@ class FlextInfraMiseArtifactsComparison:
             observed.reparse_tag,
         )
 
+    @staticmethod
+    def same_retirement_entry(
+        observed: m.Cli.AtomicPhysicalTreeEntry,
+        expected: m.Cli.AtomicPhysicalTreeEntry,
+    ) -> bool:
+        """Authorize original tree content without claiming cross-mount identity.
+
+        Returns:
+            Whether the original logical entry and its durable metadata survive.
+
+        """
+        if (
+            observed.path,
+            observed.kind,
+            observed.mode,
+            observed.uid,
+            observed.gid,
+            observed.file_attributes,
+            observed.reparse_tag,
+        ) != (
+            expected.path,
+            expected.kind,
+            expected.mode,
+            expected.uid,
+            expected.gid,
+            expected.file_attributes,
+            expected.reparse_tag,
+        ):
+            return False
+        if expected.kind == "directory":
+            return True
+        return observed.kind == "file" and (
+            observed.size,
+            observed.sha256,
+            observed.link_count,
+            observed.mtime_ns,
+            observed.ctime_ns,
+        ) == (
+            expected.size,
+            expected.sha256,
+            expected.link_count,
+            expected.mtime_ns,
+            expected.ctime_ns,
+        )
+
+    @staticmethod
+    def same_retirement_directory(
+        observed: m.Cli.AtomicDirectoryState,
+        expected: m.Cli.AtomicDirectoryState,
+    ) -> bool:
+        """Authorize an original empty directory before fresh guarded removal.
+
+        Returns:
+            Whether the current empty directory retains its declared metadata.
+
+        """
+        return observed.exists and (
+            observed.path,
+            observed.exists,
+            observed.mode,
+            observed.file_attributes,
+            observed.reparse_tag,
+        ) == (
+            expected.path,
+            expected.exists,
+            expected.mode,
+            expected.file_attributes,
+            expected.reparse_tag,
+        )
+
 
 __all__: list[str] = ["FlextInfraMiseArtifactsComparison"]

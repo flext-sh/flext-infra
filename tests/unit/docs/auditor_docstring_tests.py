@@ -132,7 +132,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
             (report_dir / "audit-summary.json").read_text(encoding="utf-8"),
         )
         metric = m.Infra.DocstringCoverage.model_validate(
-            u.Tests.toml_mapping(summary["summary"])["docstring_coverage"],
+            u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])["docstring_coverage"],
         )
         tm.ok(metric.checked > 0)
         tm.ok(0.0 <= metric.percent < self._FULL_COVERAGE_PERCENT)
@@ -150,7 +150,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (project / ".reports/docs/audit-summary.json").read_text(encoding="utf-8"),
         )
-        summary = u.Tests.toml_mapping(summary["summary"])
+        summary = u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])
         tm.that(summary["checks"], eq=["docstrings"])
         tm.that(u.Tests.number(summary["issues"]), gt=0)
         coverage = m.Infra.DocstringCoverage.model_validate(
@@ -168,7 +168,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (project / ".reports/docs/audit-summary.json").read_text(encoding="utf-8"),
         )
-        summary = u.Tests.toml_mapping(summary["summary"])
+        summary = u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])
         tm.that(summary["checks"], has="docstrings")
         tm.that(summary["checks"], has="links")
         tm.that(u.Tests.number(summary["issues"]), gt=0)
@@ -190,7 +190,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (project / ".reports/docs/audit-summary.json").read_text(encoding="utf-8"),
         )
-        summary = u.Tests.toml_mapping(summary["summary"])
+        summary = u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])
         tm.that(
             (
                 u.Tests.number(

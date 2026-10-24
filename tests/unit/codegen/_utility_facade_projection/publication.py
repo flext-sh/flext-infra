@@ -607,7 +607,7 @@ class UtilityFacadePublication:
             "tm.that(projected.read(), eq='owner')\n"
             "class ProjectedReceiver(projected):\n    marker = 'facade'\n"
             "tm.that(ProjectedReceiver.read(), eq='facade')\n"
-            "service = test_u.Tests.create_lazy_init_service(root)\n"
+            "service = u.Tests.create_lazy_init_service(root)\n"
             "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
             "tm.that(u.Infra.render_utility_facade(package), eq=rendered)\n"
             "initializer = package / '__init__.py'\n"

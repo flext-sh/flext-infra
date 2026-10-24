@@ -88,7 +88,7 @@ class FlextInfraWorkspaceDetector(
                 pyproject_path=runtime_root / c.PYPROJECT_FILENAME,
                 lock_path=runtime_root / c.Infra.UV_LOCK_FILENAME,
                 environment_path=runtime_root / c.Infra.ENVIRONMENT_DIRECTORY,
-                standalone=settings.Infra.github_actions == "true",
+                standalone=settings.Infra.github_actions == c.ParserBooleanToken.TRUE,
             ),
         )
 

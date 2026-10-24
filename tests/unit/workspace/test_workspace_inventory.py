@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, e, m, u
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraWorkspaceInventory:
@@ -24,7 +24,13 @@ class TestsFlextInfraWorkspaceInventory:
         text: str | None,
     ) -> None:
         """Validate real host stdout and preserve native transport/ingress failures."""
-        command = ("printf", "%s", text) if text else ("false",) if text == "" else ()
+        command = (
+            ("printf", "%s", text)
+            if text
+            else (c.ParserBooleanToken.FALSE,)
+            if text == ""
+            else ()
+        )
         inputs = m.Infra.CodegenInputs(
             spec=m.Infra.CodegenConfigSpec.model_validate(
                 config.Infra.codegen.model_dump(

@@ -140,16 +140,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return result_type.ok(tuple(by_path.values()))
 
     @staticmethod
-    def planned_source_render_inputs(
+    def planned_source_tooling(
         render_inputs: m.Infra.CodegenRenderInputs,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.CodegenRenderInputs:
+    ) -> m.Infra.ToolingRuntimeContext:
         """Derive tooling from the Python sources the transaction will publish.
 
         Returns:
-            Render inputs with the source-derived tooling fields reconciled.
+            The original or finalized source-derived tooling context.
 
         Raises:
             ValueError: If Python source rendering has no resolved tooling context.
@@ -211,60 +211,35 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if first_party == isort.get(c.Infra.KNOWN_FIRST_PARTY_HYPHEN) and list(
             runtime_bases
         ) == list(current_runtime):
-            return render_inputs.model_copy(
-                update={
-                    "tooling_runtime": tooling.model_copy(
-                        update={"sources": tooling.sources}
-                    )
-                }
-            )
+            return tooling
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
         runtime["runtime-evaluated-base-classes"] = list(runtime_bases)
-        refreshed = FlextInfraPyprojectModernizer.tooling_context_from_payload(
+        return FlextInfraPyprojectModernizer.tooling_context_from_payload(
             payload,
             project_kind=tooling.project_kind,
             tool_config=tool_config,
             sources=tooling.sources,
         ).unwrap()
-        return render_inputs.model_copy(update={"tooling_runtime": refreshed})
-
-    @staticmethod
-    def with_planned_pyproject(
-        render_inputs: m.Infra.CodegenRenderInputs,
-        composed: str,
-    ) -> p.Result[m.Infra.CodegenRenderInputs]:
-        """Record the direct-reference requirements of the pyproject just planned.
-
-        Planners compose the pyproject before every other destination, so a
-        scaffold (no pyproject on disk yet) and a conformance that changes the
-        requirements both render from the planned bytes, never stale ones.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenRenderInputs]``.
-
-        """
-        document = u.Cli.toml_parse_text(composed)
-        if document is None:
-            return r[m.Infra.CodegenRenderInputs].fail(
-                "planned pyproject is not valid TOML",
-            )
-        names = u.Infra.direct_source_names(document)
-        if names.failure:
-            return r[m.Infra.CodegenRenderInputs].from_failure(names)
-        return r[m.Infra.CodegenRenderInputs].ok(
-            render_inputs.model_copy(update={"planned_direct_sources": names.value}),
-        )
 
     @staticmethod
     def direct_sources(
         render_inputs: m.Infra.CodegenRenderInputs,
+        *,
+        composed: str | None = None,
     ) -> p.Result[t.VariadicTuple[str]]:
-        """Return the planned direct-reference names, else the committed ones.
+        """Read direct references from composed, finalized, or committed metadata.
 
         Returns:
-            The planned direct-reference names, else the committed ones.
+            The selected metadata's direct-reference names without advancing state.
 
         """
+        if composed is not None:
+            document = u.Cli.toml_parse_text(composed)
+            if document is None:
+                return r[t.VariadicTuple[str]].fail(
+                    "planned pyproject is not valid TOML",
+                )
+            return u.Infra.direct_source_names(document)
         if render_inputs.planned_direct_sources is not None:
             return r[t.VariadicTuple[str]].ok(render_inputs.planned_direct_sources)
         document = u.Cli.toml_read_document(

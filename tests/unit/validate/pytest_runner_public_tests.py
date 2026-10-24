@@ -32,7 +32,7 @@ class TestsFlextInfraPytestRunner:
         for key, value in (
             ("user.name", "Original Suite Test"),
             ("user.email", "suite@example.test"),
-            ("commit.gpgsign", "false"),
+            ("commit.gpgsign", c.ParserBooleanToken.FALSE),
         ):
             u.Tests.git_bootstrap(root, ("config", key, value))
         if has_origin:
@@ -534,7 +534,13 @@ class TestsFlextInfraPytestRunner:
         reports_root = cached_runner_project / cache.reports_directory
         (report_path,) = reports_root.glob("*/junit.xml")
         report = tm.ok(u.Cli.files_read_text(report_path))
-        tm.that(report, has=['errors="0"', 'skipped="0"'])
+        tm.that(
+            report,
+            has=[
+                "errors=c.ParserBooleanToken.ZERO",
+                "skipped=c.ParserBooleanToken.ZERO",
+            ],
+        )
         executed = int(report.split(' tests="', 1)[1].split('"', 1)[0])
         failed = int(report.split(' failures="', 1)[1].split('"', 1)[0])
         tm.that(failed, gte=1)

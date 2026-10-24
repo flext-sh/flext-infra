@@ -401,7 +401,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             workspace,
             "clone",
             "--depth",
-            "1",
+            c.ParserBooleanToken.ONE,
             "--no-checkout",
             "--separate-git-dir",
             str(git_dir),

@@ -50,7 +50,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         if binary.failure:
             return r[bool].from_failure(binary)
         options = m.Cli.ProcessOptions(
-            env={"MISE_AUTO_INSTALL": "0"},
+            env={"MISE_AUTO_INSTALL": c.ParserBooleanToken.ZERO},
             remove_env_keys=config.Infra.codegen.make.native_environment_unset,
         )
         locked = u.Cli.run_live(

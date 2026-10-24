@@ -12,7 +12,6 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_cli import u as cli_u
 from git import (
     GitCommandError,
     HookExecutionError,
@@ -134,7 +133,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         if len(entries) != 1 or entries[0] != request.entry:
             msg = f"index artifact changed after planning: {relative}"
             raise ValueError(msg)
-        captured = cli_u.Cli.atomic_read_binary_file_state(index_path, required=True)
+        captured = u.Cli.atomic_read_binary_file_state(index_path, required=True)
         if captured.failure:
             return result_type.from_failure(captured)
         if captured.value.content is None:
@@ -459,7 +458,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
     @staticmethod
     def _git_publication_digest(state: m.Infra.GitPublicationState) -> str:
         index = state.index_before.content
-        return cli_u.Cli.sha256_content(
+        return u.Cli.sha256_content(
             state.model_dump_json()
             + (cli_u.Cli.sha256_bytes(index) if index is not None else "absent")
         )
@@ -482,7 +481,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             or repo.active_branch.name != state.caller_branch
         ):
             return r[bool].fail("caller branch or HEAD changed after Git admission")
-        return cli_u.Cli.atomic_verify_binary_file_states((state.index_before,))
+        return u.Cli.atomic_verify_binary_file_states((state.index_before,))
 
     @classmethod
     @contextmanager
@@ -750,7 +749,9 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
     @classmethod
     def _git_publication_branch_current(cls, root: Path, branch: str) -> None:
         repo = cls._repo(root)
-        entries = cls._worktree_registry(repo, repo.git.worktree("list", "--porcelain"))
+        entries = cls._worktree_registry(
+            repo, repo.git.worktree(c.Action.LIST, "--porcelain")
+        )
         if any(entry.branch == branch and entry.path != root for entry in entries):
             msg = f"owned candidate is active in another checkout: {branch}"
             raise ValueError(msg)
@@ -760,7 +761,9 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         cls._git_publication_branch_current(state.repo_root, state.branch)
         owned = f"refs/heads/{state.branch}"
         previous = (
-            state.previous_oid if state.previous_oid is not None else "0" * len(oid)
+            state.previous_oid
+            if state.previous_oid is not None
+            else c.ParserBooleanToken.ZERO * len(oid)
         )
         commands = f"start\nverify {state.integration_ref} {state.base_oid}\n"
         if state.branch != state.caller_branch:

@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Set as AbstractSet
+from collections.abc import Callable, MutableMapping, Set as AbstractSet
+from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -20,6 +21,16 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 type _JournalFileRole = Literal["desired"]
+type _ManifestAuthority = (
+    m.Cli.AtomicPhysicalTreeEntry
+    | m.Cli.AtomicFileState
+    | m.Cli.AtomicDirectoryState
+    | m.Infra.CodegenStagingIntent
+    | m.Infra.CodegenJournalEntry
+)
+type _ManifestEntryMatches = Callable[
+    [m.Cli.AtomicPhysicalTreeEntry, _ManifestAuthority], bool
+]
 
 
 class FlextInfraMiseArtifactsVerificationManifest:
@@ -160,6 +171,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             journal,
             manifest,
             observed.value,
+            entry_matches=cls._physical_manifest_entry_matches,
             created=created,
         )
         if transition.failure:
@@ -237,6 +249,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
                     journal,
                     authorized,
                     compared,
+                    entry_matches=cls._retirement_manifest_entry_matches,
                 ),
             )
             .map(lambda _: observed.value)
@@ -346,6 +359,11 @@ class FlextInfraMiseArtifactsVerificationManifest:
             None,
         )
         before = intent.before
+        parent_identity = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            target.parent
+        )
+        if parent_identity.failure:
+            return r[bool].from_failure(parent_identity)
         if (
             before is None
             or owner is None
@@ -398,8 +416,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             parent is None
             or (before.parent_device, before.parent_inode)
             != (parent.device, parent.inode)
-            or (current.parent_device, current.parent_inode)
-            != (parent.device, parent.inode)
+            or (current.parent_device, current.parent_inode) != parent_identity.value
             or (current.mode, current.file_attributes, current.reparse_tag)
             != (
                 owner.created.mode,
@@ -420,6 +437,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         authorized: m.Cli.AtomicPhysicalTreeManifest,
         observed: m.Cli.AtomicPhysicalTreeManifest,
         *,
+        entry_matches: _ManifestEntryMatches,
         created: t.VariadicTuple[
             m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState
         ] = (),
@@ -433,9 +451,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             The resulting ``p.Result[bool]``.
 
         """
-        if not FlextInfraMiseArtifactsComparison.same_directory_identity(
-            authorized.root, observed.root
-        ):
+        if not entry_matches(observed.root, authorized.root):
             return r[bool].fail(
                 f"temporary tree root identity changed: {authorized.root.path}",
             )
@@ -453,7 +469,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 if preimage.failure:
                     return r[bool].from_failure(preimage)
                 consumable.add(preimage.value)
-        expected_check = cls._verified_expected_entries(expected, current, consumable)
+        expected_check = cls._verified_expected_entries(
+            expected, current, consumable, entry_matches=entry_matches
+        )
         if expected_check.failure:
             return expected_check
         created_by_path = {receipt.path: receipt for receipt in created}
@@ -468,8 +486,10 @@ class FlextInfraMiseArtifactsVerificationManifest:
         registered = cls._registered_staging_intents(
             layout,
             journal,
+            authorized.root,
             expected,
             current,
+            entry_matches=entry_matches,
         )
         if registered.failure:
             return r[bool].from_failure(registered)
@@ -479,6 +499,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             registered.value,
             file_specs.value,
             created_by_path,
+            entry_matches=entry_matches,
         )
 
     @classmethod
@@ -486,8 +507,11 @@ class FlextInfraMiseArtifactsVerificationManifest:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
+        root: m.Cli.AtomicPhysicalTreeEntry,
         expected: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         current: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
+        *,
+        entry_matches: _ManifestEntryMatches,
     ) -> p.Result[t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry]]:
         """Authenticate staging intentions before admitting tree additions.
 
@@ -511,28 +535,30 @@ class FlextInfraMiseArtifactsVerificationManifest:
             entry = remaining.get(path)
             if entry is None or path in expected:
                 continue
-            if intent.created is not None:
-                if entry != intent.created:
-                    return result_type.fail(
-                        f"finalized staging identity changed: {path}",
-                    )
-            elif (
-                entry.kind,
-                entry.sha256,
-                entry.mode,
-                entry.parent_device,
-                entry.parent_inode,
-                entry.link_count,
-            ) != (
-                "file",
-                intent.sha256,
-                intent.mode,
-                intent.before.parent_device,
-                intent.before.parent_inode,
-                1,
+            parents = chain(
+                (root,),
+                expected.values(),
+                (
+                    directory.created
+                    for directory in journal.directories
+                    if directory.created is not None
+                ),
+            )
+            if any(
+                parent.path == path.parent
+                and (parent.device, parent.inode)
+                != (intent.before.parent_device, intent.before.parent_inode)
+                for parent in parents
             ):
                 return result_type.fail(
-                    f"pending staging identity differs from intention: {path}",
+                    f"staging intention differs from its original parent: {path}",
+                )
+            authority = intent.created if intent.created is not None else intent
+            if not entry_matches(entry, authority):
+                return result_type.fail(
+                    f"finalized staging identity changed: {path}"
+                    if intent.created is not None
+                    else f"pending staging identity differs from intention: {path}",
                 )
             # Exact bytes or a finalized identity have now been authenticated.
             del remaining[path]
@@ -544,6 +570,8 @@ class FlextInfraMiseArtifactsVerificationManifest:
         expected: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         current: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         consumable: AbstractSet[Path],
+        *,
+        entry_matches: _ManifestEntryMatches,
     ) -> p.Result[bool]:
         """Prove every authorized entry survived with a stable identity.
 
@@ -559,15 +587,10 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 return r[bool].fail(
                     f"journaled temporary-tree entry is missing: {path}",
                 )
-            if entry.kind == "directory":
-                if not FlextInfraMiseArtifactsComparison.same_directory_identity(
-                    entry, current_entry
-                ):
-                    return r[bool].fail(
-                        f"temporary-tree directory identity changed: {path}",
-                    )
-            elif current_entry != entry:
-                return r[bool].fail(f"temporary-tree file identity changed: {path}")
+            if not entry_matches(current_entry, entry):
+                return r[bool].fail(
+                    f"temporary-tree {entry.kind} identity changed: {path}"
+                )
         return r[bool].ok(value=True)
 
     @classmethod
@@ -584,6 +607,8 @@ class FlextInfraMiseArtifactsVerificationManifest:
             Path,
             m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState,
         ],
+        *,
+        entry_matches: _ManifestEntryMatches,
     ) -> p.Result[bool]:
         """Authenticate every observed addition against receipts or the journal.
 
@@ -611,7 +636,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         for entry in additions:
             receipt = created_by_path.get(entry.path)
             if receipt is not None:
-                if not cls._matches_state_entry(entry, receipt):
+                if not entry_matches(entry, receipt):
                     return r[bool].fail(
                         f"created temporary-tree identity changed: {entry.path}",
                     )
@@ -623,11 +648,116 @@ class FlextInfraMiseArtifactsVerificationManifest:
                     )
                 continue
             spec = file_specs.get(entry.path)
-            if spec is None or not cls._matches_journal_file(entry, *spec):
+            if spec is None or not entry_matches(entry, spec[1]):
                 return r[bool].fail(
                     f"unregistered temporary-tree file exists: {entry.path}",
                 )
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _physical_manifest_entry_matches(
+        cls,
+        observed: m.Cli.AtomicPhysicalTreeEntry,
+        expected: _ManifestAuthority,
+    ) -> bool:
+        """Keep active registration bound to its exact physical receipts.
+
+        Returns:
+            Whether the active entry retains its original physical authority.
+
+        """
+        if isinstance(expected, m.Cli.AtomicPhysicalTreeEntry):
+            return (
+                FlextInfraMiseArtifactsComparison.same_directory_identity(
+                    expected, observed
+                )
+                if expected.kind == "directory"
+                else observed == expected
+            )
+        if isinstance(expected, (m.Cli.AtomicFileState, m.Cli.AtomicDirectoryState)):
+            return cls._matches_state_entry(observed, expected)
+        if isinstance(expected, m.Infra.CodegenJournalEntry):
+            return cls._matches_journal_file(observed, "desired", expected)
+        return (
+            observed.kind,
+            observed.sha256,
+            observed.mode,
+            observed.parent_device,
+            observed.parent_inode,
+            observed.link_count,
+        ) == (
+            "file",
+            expected.sha256,
+            expected.mode,
+            expected.before.parent_device,
+            expected.before.parent_inode,
+            1,
+        )
+
+    @staticmethod
+    def _retirement_manifest_entry_matches(
+        observed: m.Cli.AtomicPhysicalTreeEntry,
+        expected: _ManifestAuthority,
+    ) -> bool:
+        """Authorize only original logical temporary entries for native cleanup.
+
+        Returns:
+            Whether the recorded content and metadata authorize this current entry.
+
+        """
+        if isinstance(expected, m.Cli.AtomicPhysicalTreeEntry):
+            return FlextInfraMiseArtifactsComparison.same_retirement_entry(
+                observed, expected
+            )
+        if isinstance(expected, m.Infra.CodegenJournalEntry):
+            return observed.kind == "file" and (
+                observed.sha256,
+                observed.mode,
+                observed.link_count,
+                observed.file_attributes,
+                observed.reparse_tag,
+            ) == (
+                expected.desired_sha256,
+                expected.desired_mode,
+                expected.desired_link_count,
+                expected.desired_file_attributes,
+                expected.desired_reparse_tag,
+            )
+        if isinstance(expected, m.Infra.CodegenStagingIntent):
+            return (
+                observed.path,
+                observed.kind,
+                observed.sha256,
+                observed.mode,
+                observed.link_count,
+            ) == (
+                expected.before.path,
+                "file",
+                expected.sha256,
+                expected.mode,
+                1,
+            )
+        if (
+            observed.path,
+            observed.mode,
+            observed.file_attributes,
+            observed.reparse_tag,
+        ) != (
+            expected.path,
+            expected.mode,
+            expected.file_attributes,
+            expected.reparse_tag,
+        ):
+            return False
+        if isinstance(expected, m.Cli.AtomicDirectoryState):
+            return observed.kind == "directory" and expected.exists
+        return (
+            observed.kind == "file"
+            and expected.content is not None
+            and observed.sha256 == FlextInfraMiseArtifactsFiles.digest(expected.content)
+            and observed.size == len(expected.content)
+            and observed.link_count == expected.link_count
+        )
 
     @classmethod
     def _matches_state_entry(

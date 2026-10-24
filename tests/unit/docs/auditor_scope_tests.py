@@ -175,7 +175,7 @@ class TestsFlextInfraAuditorScope:
         summary = u.Tests.json_payload(
             (scope.report_dir / "audit-summary.json").read_text(encoding="utf-8"),
         )
-        tm.that(u.Tests.toml_mapping(summary["summary"])["issues"], eq=1)
+        tm.that(u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])["issues"], eq=1)
         tm.that(
             (scope.report_dir / "audit-report.md").read_text(encoding="utf-8"),
             has="missing.md",

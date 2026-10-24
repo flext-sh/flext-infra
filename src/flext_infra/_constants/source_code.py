@@ -230,9 +230,6 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: ruff summary line (Found N errors / N fixable)."
 
-    # --- Semantic versioning (was: class Versioning) ---
-    SEMVER_PROJECT_SECTION: ClassVar[str] = "[project]"
-    "TOML section header for project metadata."
     # --- Reporting paths (was: class Reporting) ---
     REPORTS_DIR_NAME: ClassVar[str] = ".reports"
     "Standard directory name for report output."

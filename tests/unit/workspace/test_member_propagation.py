@@ -220,7 +220,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             tm.that(self._propagate(root), eq=0)
 
             changed, settled = root / self.CHANGED, root / self.SETTLED
-            tm.that(self._lane_commits(changed), eq="1")
+            tm.that(self._lane_commits(changed), eq=c.ParserBooleanToken.ONE)
             subject = u.Tests.git_capture(
                 changed,
                 "log",
@@ -271,7 +271,9 @@ class TestsFlextInfraWorkspaceMemberPropagation:
 
             tm.that(self._propagate(root), eq=0)
 
-            tm.that(self._lane_commits(root / self.CHANGED), eq="1")
+            tm.that(
+                self._lane_commits(root / self.CHANGED), eq=c.ParserBooleanToken.ONE
+            )
             tm.that(self._published(tmp_path, self.CHANGED), eq=first)
             tm.that(self._published(tmp_path, self.SETTLED), eq="")
             tm.ok(self._on_clean_base(root / self.CHANGED))

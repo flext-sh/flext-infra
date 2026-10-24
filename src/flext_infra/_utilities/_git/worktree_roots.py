@@ -137,12 +137,15 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                         f"invalid Git submodule management declaration: {exc}",
                         exception=exc,
                     )
-                if normalized not in {"true", "false"}:
+                if normalized not in {
+                    c.ParserBooleanToken.TRUE,
+                    c.ParserBooleanToken.FALSE,
+                }:
                     error = ValueError(
                         "Git returned a noncanonical management boolean",
                     )
                     return result.fail(str(error), exception=error)
-                managed = normalized == "true"
+                managed = normalized == c.ParserBooleanToken.TRUE
             raw_layer = values.get(c.Infra.GITMODULE_LAYER_KEY)
             layer: c.Infra.MemberArchitectureLayer | None = None
             if raw_layer is not None:

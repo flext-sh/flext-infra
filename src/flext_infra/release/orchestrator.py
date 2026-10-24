@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.release import FlextInfraReleasePlanMixin
 
 
@@ -125,8 +125,8 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
     ) -> p.Result[bool]:
         """Write the version SSOT, settle its projections, then the release notes.
 
-        Ordering version -> conform -> notes makes each step a pure
-        function of the SSOT already on disk: conform settles pyproject.toml's
+        Ordering version -> generation -> notes makes each step a pure
+        function of the SSOT already on disk: generation settles pyproject.toml's
         dependencies and every rendered projection (docs render the version),
         and the packaged-project list the notes name is the settled tree's.
         Locks remain unchanged; explicit ``make upg`` owns their resolution.
@@ -140,11 +140,10 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
-        settled = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
+        settled = FlextInfraCodegenConformExecute.execute_request(
+            m.Infra.CodegenGenerateRequest(
                 root=root,
                 scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.APPLY,
             ),
             execution_context=self,
         )
@@ -188,7 +187,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
         if ctx.dry_run:
             return r[bool].ok(value=True)
         existing = u.Cli.capture(
-            [c.Infra.GIT, "rev-list", "-n", "1", ctx.tag],
+            [c.Infra.GIT, "rev-list", "-n", c.ParserBooleanToken.ONE, ctx.tag],
             cwd=root,
         )
         if existing.success and existing.value.strip():
@@ -244,7 +243,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
                 "log",
                 f"--grep={expected}",
                 "-n",
-                "1",
+                c.ParserBooleanToken.ONE,
                 "--format=%H",
                 c.Infra.GIT_HEAD,
             ],
