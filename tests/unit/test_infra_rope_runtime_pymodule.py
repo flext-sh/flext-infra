@@ -258,10 +258,10 @@ class TestsFlextInfraRopeRuntimePymodule:
         )
 
     @staticmethod
-    def test_regular_package_precedes_namespace_in_captured_sources(
+    def test_regular_package_precedes_namespace_in_snapshot_view(
         tmp_path: Path,
     ) -> None:
-        """The same source package wins before and after capturing its files."""
+        """The same source package wins in the live view and its snapshot view."""
         roots = (tmp_path / "first", tmp_path / "second")
         namespace, package = (root / "provider" for root in roots)
         namespace.mkdir(parents=True)
@@ -291,7 +291,6 @@ class TestsFlextInfraRopeRuntimePymodule:
                 ),
                 eq="PublishedContract",
             )
-            initializer.unlink()
             tm.that(
                 TestsFlextInfraRopeRuntimePymodule._published_name(
                     u.Infra.require_semantic_module(
@@ -302,28 +301,22 @@ class TestsFlextInfraRopeRuntimePymodule:
             )
 
     @staticmethod
-    def test_snapshot_project_uses_only_captured_sources(tmp_path: Path) -> None:
-        """A later disk edit cannot change the closed Rope source view."""
-        captured = tmp_path / "captured.py"
-        captured.write_text("VALUE = 42\n", encoding=c.Infra.ENCODING_DEFAULT)
+    def test_snapshot_project_overlays_proposed_sources_without_writing(
+        tmp_path: Path,
+    ) -> None:
+        """A proposed source is visible in the snapshot view and never written."""
+        planned = tmp_path / "planned.py"
         with (
             closing(u.Infra.init_rope_project(tmp_path)) as original,
             closing(
-                u.Infra.snapshot_project(
-                    original,
-                    {captured: captured.read_text(encoding=c.Infra.ENCODING_DEFAULT)},
-                ),
+                u.Infra.snapshot_project(original, {planned: "VALUE = 42\n"}),
             ) as project,
         ):
-            captured.unlink()
-            (tmp_path / "uncaptured.py").write_text(
-                "VALUE = 99\n", encoding=c.Infra.ENCODING_DEFAULT
-            )
             resource = u.Infra.require_file_resource(
-                tm.not_none(project.find_module("captured")), captured
+                tm.not_none(project.find_module("planned")), planned
             )
             tm.that(resource.read(), eq="VALUE = 42\n")
-            tm.that(project.find_module("uncaptured"), none=True)
+            tm.that(planned.exists(), eq=False)
 
     @staticmethod
     def test_declared_package_root_resolves_its_qualified_name(
