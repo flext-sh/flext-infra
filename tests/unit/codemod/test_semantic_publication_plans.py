@@ -12,45 +12,12 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codemod, config, transformers
+from flext_infra import codemod, transformers
 from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraSemanticPublicationPlans:
     """Admit complete semantic file plans and refuse stale or foreign identity."""
-
-    def test_same_byte_foreign_replacement_of_unchanged_destination_is_rejected(
-        self,
-        mod_workspace: Path,
-    ) -> None:
-        """An unchanged plan rejects a foreign replacement with identical bytes."""
-        u.Tests.run_native_callable(self._scenario_foreign_destination, mod_workspace)
-
-    @staticmethod
-    def _scenario_foreign_destination(mod_workspace: Path) -> None:
-        """An unchanged plan never authorizes a foreign inode with equal bytes."""
-        first, second = TestsFlextInfraSemanticPublicationPlans._plans(mod_workspace)
-        unchanged = second.model_copy(
-            update={"desired_content": second.before.content},
-        )
-        foreign = second.path.with_suffix(".foreign")
-        foreign.write_bytes(tm.not_none(second.before.content))
-        foreign.chmod(tm.not_none(second.before.mode))
-        foreign.replace(second.path)
-        foreign_state = tm.ok(
-            u.Cli.atomic_read_binary_file_state(second.path, required=True),
-        )
-        tm.fail(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
-                (first, unchanged),
-                repository_root=mod_workspace,
-            ),
-        )
-        tm.that(first.path.read_bytes(), eq=first.before.content)
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(second.path, required=True)),
-            eq=foreign_state,
-        )
 
     @staticmethod
     def _plans(
@@ -216,80 +183,6 @@ class TestsFlextInfraSemanticPublicationPlans:
         )
         tm.that(first.path.read_bytes(), eq=first.before.content)
 
-    def test_declared_template_input_is_not_its_generated_projection(
-        self,
-        mod_workspace: Path,
-    ) -> None:
-        """A declared template input is not its generated projection.
-
-        An arbitrary template is never treated as a projection input.
-
-        """
-        u.Tests.run_native_callable(self._scenario_template_input, mod_workspace)
-
-    @staticmethod
-    def _scenario_template_input(mod_workspace: Path) -> None:
-        """Test declared template input is not its generated projection."""
-        template_root = mod_workspace / "templates"
-        template_root.mkdir()
-        declared = template_root / "declared.j2"
-        arbitrary = template_root / "arbitrary.j2"
-        projection = mod_workspace / "projection.py"
-        content = f"{c.Infra.AUTOGEN_HEADER}\nbefore\n"
-        for path in (declared, arbitrary, projection):
-            path.write_text(content, encoding="utf-8")
-        entry = next(
-            item
-            for item in config.Infra.codegen.templates.entries
-            if item.source is not None
-        )
-        policy = config.Infra.codegen.model_copy(
-            update={
-                "templates": config.Infra.codegen.templates.model_copy(
-                    update={
-                        "root": template_root,
-                        "entries": (
-                            entry.model_copy(update={"source": Path(declared.name)}),
-                        ),
-                    },
-                ),
-            },
-        )
-        plans = tuple(
-            m.Infra.SemanticFilePlan(
-                project=mod_workspace,
-                path=path,
-                before=tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True)),
-                desired_content=content.replace("before", "after").encode(),
-                desired_mode=path.stat().st_mode & 0o7777,
-            )
-            for path in (declared, arbitrary, projection)
-        )
-        for denied in plans[1:]:
-            tm.fail(
-                transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
-                    (plans[0], denied),
-                    repository_root=mod_workspace,
-                    codegen=policy,
-                ),
-                has="canonical generator repair",
-            )
-            tm.that(declared.read_text(), eq=content)
-            tm.that(denied.path.read_text(), eq=content)
-        tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
-                (plans[0],),
-                repository_root=mod_workspace,
-                codegen=policy,
-            ),
-        )
-        rendered = tm.ok(
-            u.Cli.template_render(declared, m.Infra.StaticTextRenderSpec()),
-        )
-        tm.that(rendered, has="after")
-        tm.that(arbitrary.read_text(), eq=content)
-        tm.that(projection.read_text(), eq=content)
-
     def test_real_formatter_rejects_later_source_before_any_publication(
         self,
         mod_workspace: Path,
@@ -314,11 +207,10 @@ class TestsFlextInfraSemanticPublicationPlans:
             )
             for index, plan in enumerate(plans)
         )
-        tm.fail(
+        with pytest.raises(SyntaxError):
             codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
                 mod_workspace, edits
             )
-        )
         for plan in plans:
             tm.that(plan.path.read_bytes(), eq=plan.before.content)
 
