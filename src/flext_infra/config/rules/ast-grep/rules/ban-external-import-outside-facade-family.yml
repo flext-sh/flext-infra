@@ -1,0 +1,42 @@
+# FLEXT law (operator order 2026-10-24): only the facade families (c, t, p, m,
+# u and their private _constants/_typings/_protocols/_models/_utilities
+# modules) import third-party libraries. Every other module — services, api,
+# cli, codegen, gates, tests, examples — reaches a library only through its
+# project's c/t/p/m/u facades. Python's standard library and FLEXT facade
+# packages (flext_core, flext_cli, ... — packages that publish c/t/p/m/u) are
+# not external. Configuration and settings modules are layer zero of the chain
+# and keep their foundation imports.
+#
+# Every operand is derived, nothing is listed: stdlib-module reads the running
+# interpreter, own-package the project's declared package, facade-package the
+# runtime closure's packages that publish facade aliases, family-file and
+# layer-zero-file the import-law role classifier.
+id: ban-external-import-outside-facade-family
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  context:
+    MODULE:
+      - not: stdlib-module
+      - not: own-package
+      - not: facade-package
+      - not: family-file
+      - not: layer-zero-file
+rule:
+  all:
+    - pattern: $MODULE
+    - matches: library-import-name
+message: >-
+  `$MODULE` is a third-party library imported outside the c/t/p/m/u facade families.
+note: >-
+  Where: this import. Why: FLEXT law — only the facade families own
+  third-party libraries (ADR-028); every other module consumes them through
+  c (constants/exceptions), t (types/aliases), p (protocols), m (models) or u
+  (runtime utilities). How: expose the needed surface in the owning family
+  module of this project (or of flext-core when it is a fleet-wide library),
+  for example a `type` alias in `_typings`, a protocol in `_protocols`, a
+  runtime helper in `_utilities`, then import that facade letter here.

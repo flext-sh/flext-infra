@@ -67,10 +67,10 @@ class TestsFlextInfraFacadeMemberRelocation:
         owners = {
             "field_validator": "m",
             "model_validator": "m",
-            "BeforeValidator": "t",
+            "BeforeValidator": "m",
             "PrivateAttr": "m",
             "Field": "m",
-            "AfterValidator": "t",
+            "AfterValidator": "m",
             "computed_field": "m",
         }
         expected = body
@@ -193,7 +193,7 @@ class TestsFlextInfraFacadeMemberRelocation:
             path.read_text(encoding="utf-8"),
             eq=source.replace(
                 "eligible = Annotated[str, u.BeforeValidator(validate)]",
-                "eligible = Annotated[str, t.BeforeValidator(validate)]",
+                "eligible = Annotated[str, m.BeforeValidator(validate)]",
             ).replace(
                 "other = Annotated[str, u.PrivateAttr()]",
                 "other = Annotated[str, m.PrivateAttr()]",

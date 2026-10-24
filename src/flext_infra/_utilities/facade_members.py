@@ -46,16 +46,23 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         origin = FlextInfraUtilitiesFacadeMembers._typing_origin(value)
         kind = c.Infra.FacadeMemberKind
+        policy = config.Infra.tooling.facade_members
         if isinstance(origin, type):
+            module = origin.__module__
             classes = (
                 (issubclass(origin, BaseException), kind.EXCEPTION),
                 (issubclass(origin, Enum), kind.ENUM),
                 (is_protocol(origin), kind.PROTOCOL),
                 (isinstance(origin, p.ModelType) or is_typeddict(origin), kind.MODEL),
+                # A subscripted wrapper (``SerializeAsAny[T]``) builds a type that
+                # annotations in t itself need, so it is a type constructor.
+                ("__class_getitem__" in vars(origin), kind.TYPE),
+                # ADR-027: field specifiers and the Annotated validator and
+                # serializer classes declare models.
+                (module in policy.model_declaration_modules, kind.MODEL_DECLARATION),
             )
             return next((found for hit, found in classes if hit), kind.TYPE)
         if isroutine(origin):
-            policy = config.Infra.tooling.facade_members
             module = origin.__module__ if isinstance(origin, p.ModuleOwned) else ""
             if module in policy.type_constructor_modules:
                 return kind.TYPE

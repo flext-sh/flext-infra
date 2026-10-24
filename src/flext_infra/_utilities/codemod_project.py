@@ -2034,6 +2034,7 @@ class FlextInfraUtilitiesCodemodProject(
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE
                 | c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+                | c.Infra.CodemodContextPredicate.FAMILY_FILE
                 | c.Infra.CodemodContextPredicate.IMPORT_CYCLE
                 | c.Infra.CodemodContextPredicate.COMPOSES_FAMILY
                 | c.Infra.CodemodContextPredicate.FAMILY_MEMBER
@@ -2290,7 +2291,10 @@ class FlextInfraUtilitiesCodemodProject(
                     if predicate is c.Infra.CodemodContextPredicate.FAMILY_BASE
                     else cls._family_base_file(root, file_path)
                 )
-            case c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE:
+            case (
+                c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+                | c.Infra.CodemodContextPredicate.FAMILY_FILE
+            ):
                 owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                     root, file_path
                 )
@@ -2300,9 +2304,13 @@ class FlextInfraUtilitiesCodemodProject(
                 located = FlextInfraUtilitiesImportLaw.import_namespace(
                     owner, file_path
                 )
+                role = (
+                    "layer0"
+                    if predicate is c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+                    else "family"
+                )
                 return located is not None and (
-                    FlextInfraUtilitiesImportLaw.import_module_role(located[1])
-                    == "layer0"
+                    FlextInfraUtilitiesImportLaw.import_module_role(located[1]) == role
                 )
             case c.Infra.CodemodContextPredicate.IMPORT_CYCLE:
                 return cls.import_closes_cycle(root, file_path, value, of, facts)

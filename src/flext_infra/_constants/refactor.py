@@ -286,6 +286,7 @@ class FlextInfraConstantsRefactor:
         UNREFERENCED_IMPORT = "unreferenced-import"
         IMPLEMENTATION_OWNER = "implementation-owner"
         ISOLATED_EXECUTION = "isolated-execution"
+        FAMILY_FILE = "family-file"
         FOREIGN_FACADE_MEMBER = "foreign-facade-member"
         FACADE_MEMBER_OWNER = "facade-member-owner"
 
