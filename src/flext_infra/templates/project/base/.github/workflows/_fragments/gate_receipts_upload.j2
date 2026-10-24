@@ -1,0 +1,13 @@
+
+      # Why: a failed gate's job log prints only counts; its raw receipts under
+      # the declared gate receipts directory are the evidence, so every job
+      # publishes them when it fails.
+      - name: Upload gate receipts on failure
+        if: {% raw %}${{ failure() }}{% endraw %}
+        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].version }}
+        with:
+          name: flext-gate-receipts-{% raw %}${{ github.job }}-${{ github.run_id }}{% endraw %}
+          path: {{ make.gate_receipts_directory }}/**
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
