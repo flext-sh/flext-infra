@@ -308,15 +308,17 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         if producer.failure:
             return result.from_failure(producer)
         document, name, _payload = producer.value
-        force_include = u.Cli.toml_table_path(
+        extra_metadata = u.Cli.toml_table_path(
             document,
-            ("tool", "hatch", "build", "targets", "wheel", "force-include"),
+            ("tool", "hatch", "build", "targets", "wheel", "extra-metadata"),
         )
+        metadata_dir = resource.parent
         if (
             u.Infra.dep_name(name) != u.Infra.dep_name(repository.distribution)
-            or force_include is None
-            or u.Cli.toml_value(force_include, c.PYPROJECT_FILENAME)
-            != resource.as_posix()
+            or extra_metadata is None
+            or u.Cli.toml_value(extra_metadata, c.PYPROJECT_FILENAME) != resource.name
+            or metadata_dir.name != c.Infra.WHEEL_EXTRA_METADATA_DIR
+            or not metadata_dir.parent.name.endswith(c.Infra.DIST_INFO_SUFFIX)
         ):
             return result.fail(
                 "packaged declaration differs from its producer build contract: "

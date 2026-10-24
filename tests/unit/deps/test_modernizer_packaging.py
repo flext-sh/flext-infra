@@ -178,9 +178,21 @@ class TestsFlextInfraDepsModernizerPackaging:
             u.Tests.toml_mapping(sdist["force-include"])[module_path],
             eq=module_path,
         )
+        # Hatch copies forced files into editable wheels, so nothing may be
+        # forced at an import package's location; the producer declaration
+        # rides as distribution metadata instead.
         tm.that(
-            u.Tests.toml_mapping(wheel["force-include"])[c.PYPROJECT_FILENAME],
-            eq=f"{primary_package}/{c.PYPROJECT_FILENAME}",
+            u.Tests.toml_mapping(wheel["extra-metadata"])[c.PYPROJECT_FILENAME],
+            eq=c.PYPROJECT_FILENAME,
+        )
+        forced_destinations = {
+            str(destination)
+            for destination in u.Tests.toml_mapping(wheel["force-include"]).values()
+        }
+        tm.that(forced_destinations, eq={f"{root_module}.py"})
+        tm.that(
+            u.Tests.toml_strings(wheel.get("exclude", [])),
+            lacks=f"/{c.Infra.DEFAULT_SRC_DIR}/{primary_package}/{c.CONFIG_DIR_NAME}",
         )
         tm.that(
             u.Tests.toml_mapping(sdist["force-include"])[c.PYPROJECT_FILENAME],
@@ -280,6 +292,7 @@ class TestsFlextInfraDepsModernizerPackaging:
                 source, "tool", "hatch", "build", "targets", target
             )
             tm.that(observed["force-include"], eq=expected["force-include"])
+            tm.that(observed.get("extra-metadata"), eq=expected.get("extra-metadata"))
             tm.that(
                 set(u.Tests.toml_strings(observed["only-include"])),
                 eq=set(u.Tests.toml_strings(expected["only-include"])),

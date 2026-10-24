@@ -397,7 +397,8 @@ class FlextInfraModelsDeps(
             t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
             m.Field(
                 description=(
-                    "Declared producer metadata source and wheel resource destination"
+                    "Declared producer metadata source and wheel extra-metadata "
+                    "destination"
                 ),
             ),
         ] = None

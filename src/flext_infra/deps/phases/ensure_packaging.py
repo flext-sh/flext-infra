@@ -3,11 +3,11 @@
 Every project's wheel gets an explicit ``[tool.hatch.build.targets.wheel]``
 with the primary ``src/<pkg>`` plus every project-declared additional package.
 Project-declared standalone modules under ``src/<module>.py`` and root data
-paths declared by the project are validated and mapped into the package.
-Directories use the same Hatch selection rules in both archives; explicit files
-are included individually. The source
-distribution is bounded to the package source and those validated data roots,
-preventing caches and ignored workspace state from entering release artifacts.
+paths declared by the project are validated and mapped into the package through
+``sources`` remapping, never force-included at the package location. The producer
+declaration ships as wheel ``extra-metadata`` inside the distribution metadata.
+The source distribution is bounded to the package source and those validated data
+roots, preventing caches and ignored workspace state from entering release artifacts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -25,45 +25,19 @@ class FlextInfraEnsurePackagingPhase:
     """Ensure bounded Hatch wheel and source-distribution targets."""
 
     @staticmethod
-    def declaration_resource(
-        *,
-        package_name: str,
-        package: bool,
-    ) -> t.Pair[str, str] | None:
-        """Derive the metadata resource from the declared packaging identity.
+    def declaration_resource(*, package: bool) -> t.Pair[str, str] | None:
+        """Derive the producer declaration carried as wheel distribution metadata.
+
+        Hatch writes ``extra-metadata`` under ``<dist>.dist-info/extra_metadata/``
+        in standard and editable wheels alike, so the declaration never creates a
+        directory at the import package's installed location.
 
         Returns:
-            The source and installed destination, or no resource for a non-package.
+            The source and ``extra_metadata`` destination, or no resource for a
+            non-package.
 
         """
-        return (
-            (c.PYPROJECT_FILENAME, f"{package_name}/{c.PYPROJECT_FILENAME}")
-            if package
-            else None
-        )
-
-    @staticmethod
-    def config_resource(
-        project_dir: Path,
-        package_name: str,
-        planned_files: t.StrSequence = (),
-    ) -> t.Pair[str, str] | None:
-        """Elect package-owned defaults for standard and editable wheels.
-
-        Returns:
-            The existing or planned config directory and installed destination.
-
-        """
-        source = Path(c.Infra.DEFAULT_SRC_DIR) / package_name / c.CONFIG_DIR_NAME
-        if not (project_dir / source).is_dir() and not any(
-            Path(planned).is_relative_to(source) for planned in planned_files
-        ):
-            return None
-        if (project_dir / source).exists():
-            FlextInfraEnsurePackagingPhase._validate_data_tree(
-                project_dir.resolve(), project_dir / source, frozenset()
-            )
-        return source.as_posix(), f"{package_name}/{c.CONFIG_DIR_NAME}"
+        return (c.PYPROJECT_FILENAME, c.PYPROJECT_FILENAME) if package else None
 
     @staticmethod
     def _validate_data_tree(
@@ -227,9 +201,14 @@ class FlextInfraEnsurePackagingPhase:
         data: m.Infra.PackagedDataSelection,
         data_excludes: t.StrSequence,
         topology: m.Infra.PyprojectDeclaredTopology,
-        package_config_resource: t.Pair[str, str] | None,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
+
+        Package sources, their ``config/`` defaults and declared data reach the
+        wheel through ordinary selection and ``sources`` remapping only. Nothing
+        is force-included at an import package's location, because Hatch copies
+        forced files into editable wheels and would install a stale namespace
+        portion beside the editable source.
 
         Returns:
             The resulting ``m.Infra.DepsToml.PhaseConfig``.
@@ -247,44 +226,25 @@ class FlextInfraEnsurePackagingPhase:
         module_paths = tuple(
             f"{c.Infra.DEFAULT_SRC_DIR}/{module}.py" for module in root_modules
         )
-        selected_directories = (
+        data_paths = (*data.files, *data.directories)
+        selected_paths = (
             *package_paths,
-            *data.directories,
+            *data_paths,
             *repository_namespace_packages,
         )
         toml = m.Infra.DepsToml
-        wheel_excludes = (
-            *(f"/{item}" for item in data_excludes),
-            *((f"/{package_config_resource[0]}",) if package_config_resource else ()),
+        data_exclude_patterns = tuple(f"/{item}" for item in data_excludes)
+        force_include = tuple(
+            (module_path, f"{module}.py")
+            for module_path, module in zip(module_paths, root_modules, strict=True)
         )
-        force_include = (
-            (
-                (project_declaration_resource,)
-                if project_declaration_resource is not None
-                else ()
-            )
-            + (
-                (package_config_resource,)
-                if package_config_resource is not None
-                else ()
-            )
-            + tuple(
-                (data_dir, f"{package_name}/{data_dir}")
-                for data_dir in data.files
-                if (
-                    project_declaration_resource is None
-                    or data_dir != project_declaration_resource[0]
-                )
-            )
-            + tuple(
-                (module_path, f"{module}.py")
-                for module_path, module in zip(module_paths, root_modules, strict=True)
-            )
+        extra_metadata = (
+            (project_declaration_resource,)
+            if project_declaration_resource is not None
+            else ()
         )
         sdist_force_include = tuple(
-            (source, source)
-            for source, destination in force_include
-            if (source, destination) != package_config_resource
+            (source, source) for source, _destination in extra_metadata + force_include
         ) + (
             (
                 (
@@ -306,7 +266,7 @@ class FlextInfraEnsurePackagingPhase:
                     operations=(
                         toml.ListOp(
                             key="only-include",
-                            values=selected_directories,
+                            values=selected_paths,
                             strategy=c.Infra.TomlMergeMode.MERGE,
                         ),
                         toml.RemoveOp(key="packages"),
@@ -314,11 +274,11 @@ class FlextInfraEnsurePackagingPhase:
                             (
                                 toml.ListOp(
                                     key="exclude",
-                                    values=wheel_excludes,
+                                    values=data_exclude_patterns,
                                     strategy=c.Infra.TomlMergeMode.MERGE,
                                 ),
                             )
-                            if wheel_excludes
+                            if data_exclude_patterns
                             else ()
                         ),
                     ),
@@ -336,8 +296,8 @@ class FlextInfraEnsurePackagingPhase:
                                 strict=True,
                             ),
                             *(
-                                (directory, f"{package_name}/{directory}")
-                                for directory in data.directories
+                                (data_path, f"{package_name}/{data_path}")
+                                for data_path in data_paths
                             ),
                             *(
                                 (namespace, namespace)
@@ -353,7 +313,7 @@ class FlextInfraEnsurePackagingPhase:
                     operations=(
                         toml.ListOp(
                             key="only-include",
-                            values=selected_directories,
+                            values=selected_paths,
                             strategy=c.Infra.TomlMergeMode.MERGE,
                         ),
                         toml.RemoveOp(key="packages"),
@@ -361,11 +321,11 @@ class FlextInfraEnsurePackagingPhase:
                             (
                                 toml.ListOp(
                                     key="exclude",
-                                    values=tuple(f"/{item}" for item in data_excludes),
+                                    values=data_exclude_patterns,
                                     strategy=c.Infra.TomlMergeMode.MERGE,
                                 ),
                             )
-                            if data_excludes
+                            if data_exclude_patterns
                             else ()
                         ),
                     ),
@@ -399,6 +359,24 @@ class FlextInfraEnsurePackagingPhase:
                         ),
                     )
                     if force_include
+                    else toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("wheel",),
+                        operations=(),
+                    )
+                ),
+                (
+                    toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("wheel", "extra-metadata"),
+                        operations=tuple(
+                            toml.SetOp(key=key, value=value)
+                            for key, value in extra_metadata
+                        ),
+                    )
+                    if extra_metadata
                     else toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
@@ -524,9 +502,6 @@ class FlextInfraEnsurePackagingPhase:
                 data=data_paths,
                 data_excludes=data_excludes,
                 topology=topology,
-                package_config_resource=self.config_resource(
-                    project_dir, package_name, topology.planned_data_files
-                ),
             ),
         )
 

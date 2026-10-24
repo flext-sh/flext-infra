@@ -281,8 +281,8 @@ The catalog/help cutover is tracked in `algar-723.1.3`; runtime and gate receipt
 not this required contract, establish which generated consumers have adopted it.
 
 Generated README quality guidance is owned by `DocumentationText.QUALITY_BODY`
-in `src/flext_infra/_constants/docs.py`, consumed by `_quality_gates_lines` in
-`_utilities/docs_render.py`. Both languages point to `make help` for the current
+in `src/flext_infra/_constants/docs.py`, consumed by the `quality_gates` macro in
+`templates/docs/_macros.md.j2`. Both languages point to `make help` for the current
 command surface rather than copying a verb list. Each verb performs only its
 declared operation; `make check` validates without applying repairs. Change this
 authored contract before its presentation text, then publish through the docs owner,
@@ -682,13 +682,17 @@ Installed-wheel acceptance must identify and exercise the actual distributed art
 an editable source read or a prior editable pass cannot retroactively prove wheel
 resources, template identity or consumer behavior.
 
-The packaging owner force-includes the declared package's existing or planned
-`config/` source directory at its installed package-relative destination. Hatch's
-editable builder records forced resources but does not archive data selected only
-through Python source directories. The same mapping applies to standard wheels;
-the manifest excludes that source from ordinary wheel selection, so each resource
-ships once. The sdist retains the original package source. Configuration values
-remain owned by the YAML sources, not by the manifest.
+The packaging owner never force-includes a file at an import package's installed
+location. Hatch copies forced files into editable wheels too, which installs a
+stale namespace portion beside the editable source: static resolvers see it and
+runtime resource lookups read the copy instead of the live tree. A package's
+`config/` defaults live in `src/<pkg>/config/` and ship once through the ordinary
+`only-include` selection of `src/<pkg>`; editable installs read that source
+directly. Declared repository data paths ship through `sources` remapping into the
+package. The producer `pyproject.toml` ships as wheel `extra-metadata`, installed
+at `<dist>.dist-info/extra_metadata/pyproject.toml` in standard and editable wheels
+alike. The sdist retains every original source. Configuration values remain owned
+by the YAML sources, not by the manifest.
 
 Modernization preserves authored Hatch `include`, `exclude`, `only-include`,
 source mappings and forced resources while adding declared distribution inputs.
@@ -1308,12 +1312,11 @@ from the primary checkout or Git common directory. The generated Makefile, gener
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
 
-Editable imports and force-included configuration resources have different delivery
-semantics. The generated native UV cache keys include the existing packaged config
-resource and declared build hook, retaining UV's ordinary project inputs. Configuration
-changes therefore rebuild copied package data during `make setup`, without a second
-installer, unconditional reinstall or a loader fallback to checkout data. A required
-configuration declaration stays required when stale installed data is detected.
+Editable imports and packaged configuration share one delivery path: both resolve
+from the editable source tree, so a configuration edit is live without `make setup`.
+Only a declared build hook adds generated native UV cache keys, retaining UV's
+ordinary project inputs plus the hook module, because the hook alone changes the
+built editable artifact.
 
 Authenticated source previews keep their staged source root separate from this runtime
 owner. Candidate validation uses the same typed `RUNTIME_ROOT` selection as fresh-import;

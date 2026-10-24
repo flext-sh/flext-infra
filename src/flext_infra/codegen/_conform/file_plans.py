@@ -183,7 +183,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                 selected,
                 project.packaged_data_excludes,
             )
-            FlextInfraEnsurePackagingPhase.config_resource(root, project.package_name)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,

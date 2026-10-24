@@ -130,6 +130,10 @@ class FlextInfraConstantsWorkspace:
     "PEP 610 installer receipt recording a distribution's direct-reference origin."
     DISTRIBUTION_RECORD_ROW_FIELDS: ClassVar[int] = 3
     "Native RECORD CSV rows contain path, hash and size columns."
+    DIST_INFO_SUFFIX: ClassVar[str] = ".dist-info"
+    "PEP 427 suffix of an installed distribution's metadata directory."
+    WHEEL_EXTRA_METADATA_DIR: ClassVar[str] = "extra_metadata"
+    "Hatch wheel ``extra-metadata`` directory inside ``<dist>.dist-info``."
     BINDING_PACKAGE_SCRIPT: ClassVar[
         str
     ] = """import importlib.util, json, sys, sysconfig

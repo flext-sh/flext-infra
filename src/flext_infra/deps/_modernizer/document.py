@@ -275,15 +275,6 @@ class FlextInfraPyprojectModernizerDocument(
             ),
             "project_declaration_resource": (
                 FlextInfraEnsurePackagingPhase.declaration_resource(
-                    package_name=(
-                        project.package_name
-                        if project is not None
-                        else u.Infra.package_name_from_payload(
-                            state.pyproject_path.parent,
-                            state.payload,
-                            u.Infra.docs_meta_from_payload(state.payload),
-                        )
-                    ),
                     package=u.Infra.project_package_participation(packaging),
                 )
             ),

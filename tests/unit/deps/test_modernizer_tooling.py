@@ -415,7 +415,6 @@ class TestsFlextInfraDepsModernizerTooling:
                     "root_modules": [],
                     "repository_namespace_packages": [],
                     "packaged_data_paths": [],
-                    "packaged_data_files": [],
                     "packaged_data_excludes": [],
                     "project_declaration_resource": None,
                     "hatch_build_hook_path": "",

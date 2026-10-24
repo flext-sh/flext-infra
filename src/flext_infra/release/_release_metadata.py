@@ -335,18 +335,21 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         wheel: t.Cli.TomlTable,
         sdist: t.Cli.TomlTable,
     ) -> p.Result[t.StrSequence]:
-        """Prove the sdist retains every forced wheel source.
+        """Prove the sdist retains every forced and extra-metadata wheel source.
+
+        A wheel built from the sdist reads both tables' sources from the sdist
+        tree, so each one must ride in it under its own path.
 
         Returns:
-            The resulting forced wheel source keys.
+            The resulting forced and extra-metadata wheel source keys.
 
         """
-        wheel_forced = u.Cli.toml_table_child(wheel, "force-include")
         sdist_forced = u.Cli.toml_table_child(sdist, "force-include")
-        sources = (
-            tuple(str(source) for source in wheel_forced)
-            if wheel_forced is not None
-            else ()
+        sources = tuple(
+            str(source)
+            for key in ("force-include", "extra-metadata")
+            if (table := u.Cli.toml_table_child(wheel, key)) is not None
+            for source in table
         )
         retained: t.StrMapping = {}
         if sdist_forced is not None:
@@ -360,7 +363,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             retained = parsed.value
         if retained != {source: source for source in sources}:
             return r[t.StrSequence].fail(
-                "Hatch sdist must retain every forced wheel source",
+                "Hatch sdist must retain every forced and extra-metadata wheel source",
             )
         return r[t.StrSequence].ok(sources)
 

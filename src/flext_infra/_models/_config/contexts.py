@@ -421,22 +421,14 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
                 description="Validated relative data paths shipped in distributions",
             ),
         ]
-        packaged_data_files: Annotated[
-            t.StrSequence,
-            m.Field(description="Validated individually declared data files"),
-        ]
         project_declaration_resource: Annotated[
             t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
             m.Field(
                 description=(
-                    "Producer declaration source and wheel resource destination"
+                    "Producer declaration source and wheel extra-metadata destination"
                 ),
             ),
         ]
-        package_config_resource: Annotated[
-            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
-            m.Field(description="Package-owned defaults source and wheel destination"),
-        ] = None
         packaged_data_excludes: Annotated[
             t.StrSequence,
             m.Field(description="Validated files excluded from packaged data roots"),
