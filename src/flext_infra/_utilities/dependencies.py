@@ -71,7 +71,7 @@ class FlextInfraUtilitiesDependencies(
             declarations.value,
             suppliers.value,
             development_only=inputs.development_only,
-            invoked_executables=inputs.invoked_executables,
+            used_without_import=(*inputs.invoked_executables, *inputs.loaded_plugins),
         )
         return result_type.ok(
             m.Infra.RuntimeDependencyPlan(
@@ -208,12 +208,13 @@ class FlextInfraUtilitiesDependencies(
         ],
         *,
         development_only: t.StrTuple,
-        invoked_executables: t.StrTuple,
+        used_without_import: t.StrTuple,
     ) -> t.Pair[list[str], list[str]]:
         """Select retained runtime requirements and collect unresolved modules.
 
-        A requirement deptry reports unused stays when the project invokes one
-        of its console scripts: executable usage is never an import.
+        A requirement deptry reports unused stays when the project uses it
+        without an import: it invokes one of its console scripts, or pytest
+        autoloads it through its plugin entry point.
 
         Returns:
             The retained requirement strings and the unresolved import modules.
@@ -239,7 +240,7 @@ class FlextInfraUtilitiesDependencies(
             canonicalize_name(item.module)
             for item in scan.report.root
             if item.error.code == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
-        } - set(invoked_executables)
+        } - set(used_without_import)
         selected = [
             raw
             for raw, requirement in zip(runtime, parsed_runtime, strict=True)

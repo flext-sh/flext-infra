@@ -10,14 +10,13 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 from uuid import uuid4
 
-from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_core import FlextRuntime
 
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, config, m, t, u
+from flext_infra.gates.base_gate import FlextInfraGate
 
 
 class FlextInfraDepsGate(FlextInfraGate):
@@ -58,10 +57,90 @@ class FlextInfraDepsGate(FlextInfraGate):
             ctx: The gate context containing configuration and report directories.
 
         Returns:
-            The complete scan receipt with every dependency issue.
+            The complete scan receipt with every dependency issue, including
+            each internal requirement reference off the integration line.
+
+        Raises:
+            ValueError: If the dependency declaration is not valid TOML.
 
         """
-        return self._scan(project_dir, ctx)[0]
+        execution = self._scan(project_dir, ctx)[0]
+        pyproject = project_dir / c.PYPROJECT_FILENAME
+        document = u.Cli.toml_parse_text(
+            pyproject.read_text(encoding=c.DEFAULT_ENCODING)
+        )
+        if document is None:
+            msg = f"invalid dependency declaration: {pyproject}"
+            raise ValueError(msg)
+        changes = self._aligned_references(project_dir, document)
+        if not changes:
+            return execution
+        issues = tuple(
+            m.Infra.Issue(
+                file=str(pyproject),
+                line=0,
+                column=0,
+                code=f"{self.gate_id}-internal-ref",
+                message=change,
+                severity=c.Infra.GateSeverity.ERROR.value,
+            )
+            for change in changes
+        )
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=False,
+                outcome=(
+                    execution.outcome
+                    if execution.outcome is c.Infra.ToolOutcome.ERROR
+                    else c.Infra.ToolOutcome.FINDINGS
+                ),
+                issues=(*execution.issues, *issues),
+                raw_output=execution.raw_output + "\n" + "\n".join(changes),
+                started=time.monotonic(),
+            ),
+            ctx=ctx,
+        )
+
+    @staticmethod
+    def _aligned_references(
+        project_dir: Path,
+        document: t.Cli.TomlDocument,
+    ) -> t.StrSequence:
+        """Move internal requirement references onto the integration line.
+
+        Mutates only the given parsed document through the existing Git-ref
+        migration owner; the manifest keeps the URL and the lock alone pins
+        the exact commit.
+
+        Returns:
+            The change notes of every reference moved onto the line.
+
+        """
+        integration = (
+            u.Infra
+            .load_codegen_inputs(project_dir)
+            .unwrap()
+            .spec.branch_policy.integration_branch
+        )
+        migrations = u.Infra.internal_reference_migrations(
+            document, target_ref=integration
+        ).unwrap()
+        if not migrations:
+            return ()
+        payload = u.validate_value(
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
+            FlextRuntime.normalize_to_json_value(document.unwrap()),
+        ).unwrap()
+        changes = tuple(
+            change
+            for migration in migrations
+            for change in u.Infra.rewrite_git_source_references(
+                payload, migration
+            ).unwrap()
+        )
+        u.Infra.sync_document_values(document, payload)
+        return changes
 
     @override
     def fix(
@@ -89,6 +168,21 @@ class FlextInfraDepsGate(FlextInfraGate):
             raise ValueError(msg)
         started = time.monotonic()
         with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
+            declaration = u.Cli.atomic_read_binary_file_state(
+                project_dir / c.PYPROJECT_FILENAME, required=True
+            ).unwrap()
+            document = u.Cli.toml_parse_text(
+                (declaration.content or b"").decode(c.DEFAULT_ENCODING)
+            )
+            if document is None:
+                msg = f"invalid dependency declaration: {declaration.path}"
+                raise ValueError(msg)
+            if self._aligned_references(project_dir, document):
+                u.Cli.atomic_write_binary_file_guarded(
+                    declaration,
+                    document.as_string().encode(c.DEFAULT_ENCODING),
+                    permission_mode=declaration.mode,
+                ).unwrap()
             execution, scan = self._scan(project_dir, ctx)
             if execution.outcome is not c.Infra.ToolOutcome.FINDINGS or scan is None:
                 return execution

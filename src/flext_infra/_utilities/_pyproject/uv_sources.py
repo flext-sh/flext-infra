@@ -13,7 +13,10 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesRepository,
+)
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectRequirements
 from flext_infra._utilities.dependency_requirements import (
     FlextInfraUtilitiesDependencyRequirements,
@@ -186,6 +189,56 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         return r[t.StrSequence].ok(
             tuple(f"{name} @ {url}" for name, url in sorted(urls.items()))
         )
+
+    @classmethod
+    def internal_reference_migrations(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        target_ref: str,
+    ) -> p.Result[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]:
+        """Elect one Git-ref migration per internal requirement off the line.
+
+        Every declared internal requirement whose direct Git source names a
+        reference other than ``target_ref`` (the declared integration line)
+        yields the existing source-reference migration scoped to its own source
+        directory and current reference; the manifest keeps the URL, the lock
+        alone pins the exact commit.
+
+        Returns:
+            The distinct migrations aligning internal references, or the first
+            invalid declared source.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]
+        lines = cls.document_requirement_lines(document)
+        if lines.failure:
+            return result_type.from_failure(lines)
+        migrations: t.MutableMappingKV[
+            t.Pair[str, str], m.Infra.GitSourceReferenceMigration
+        ] = {}
+        for line in lines.value:
+            name = cls._internal_dependency_name(
+                line, declared_sources={}, candidate_sources={}
+            )
+            if name is None or not cls._declares_direct_source(line):
+                continue
+            declared = FlextInfraUtilitiesRepository.declared_git_source(line)
+            if declared.failure:
+                return result_type.from_failure(declared)
+            url, reference = declared.value
+            if not url or reference == target_ref:
+                continue
+            prefix = f"{url.rpartition('/')[0]}/"
+            migrations.setdefault(
+                (prefix, reference),
+                m.Infra.GitSourceReferenceMigration(
+                    url_prefix=prefix,
+                    source_ref=reference,
+                    target_ref=target_ref,
+                ),
+            )
+        return result_type.ok(tuple(migrations.values()))
 
     @classmethod
     def _sync_uv_candidates(

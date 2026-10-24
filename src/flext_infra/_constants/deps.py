@@ -63,6 +63,8 @@ class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
     """Deptry rule code for a declared dependency the code never imports."""
     CONSOLE_SCRIPTS_ENTRY_POINT_GROUP: ClassVar[str] = "console_scripts"
     """Entry-point group naming the executables an installed distribution ships."""
+    PYTEST_PLUGIN_ENTRY_POINT_GROUP: ClassVar[str] = "pytest11"
+    """Entry-point group through which pytest autoloads an installed plugin."""
     DEPTRY_SCAN_COVERAGE_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^Scanning (?P<count>[0-9]+) files?\.\.\.$",
     )

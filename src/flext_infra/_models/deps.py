@@ -145,6 +145,16 @@ class FlextInfraModelsDeps(
                 ),
             ),
         ]
+        loaded_plugins: Annotated[
+            t.StrTuple,
+            m.Field(
+                description=(
+                    "Canonical unimported requirements whose installed "
+                    "distribution registers a pytest plugin entry point, "
+                    "which pytest autoloads"
+                ),
+            ),
+        ]
         inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(

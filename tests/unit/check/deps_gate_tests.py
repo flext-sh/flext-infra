@@ -19,6 +19,7 @@ import pytest
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraToolTablesPhase
+from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 from tests import c, m, t, tm, u
 
 
@@ -126,6 +127,7 @@ class TestsFlextInfraDepsGate:
             ),
             development_only=(),
             invoked_executables=(),
+            loaded_plugins=(),
             inputs=(
                 u.Cli.atomic_read_binary_file_state(
                     root / "src" / "fixturepkg" / "__init__.py",
@@ -466,6 +468,97 @@ class TestsFlextInfraDepsGate:
         ).unwrap()
         plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
         tm.that(plan.dependencies, eq=(name,) if invoked else ())
+
+    @staticmethod
+    @pytest.mark.parametrize("loaded", [False, True])
+    def test_pytest_plugin_only_dependency_stays_runtime(
+        tmp_path: Path,
+        *,
+        loaded: bool,
+    ) -> None:
+        """A dependency pytest only autoloads is never pruned (flext-czazx)."""
+        plugin = distribution("pytest-timeout")
+        name = plugin.metadata["Name"]
+        identity = u.Infra.distribution_identity(name)
+        root = TestsFlextInfraDepsGate._project(tmp_path, dumps(name), "")
+        loaded_plugins = (
+            FlextInfraRuntimeDependencyCollector.pytest_plugin_distributions({
+                identity: plugin
+            })
+            if loaded
+            else ()
+        )
+        tm.that(loaded_plugins, eq=(identity,) if loaded else ())
+        inputs = TestsFlextInfraDepsGate._dependency_inputs(root).model_copy(
+            update={"loaded_plugins": loaded_plugins},
+        )
+        scan = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=tmp_path / "native.json",
+        ).unwrap()
+        plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+        tm.that(plan.dependencies, eq=(name,) if loaded else ())
+
+    @staticmethod
+    def test_internal_reference_off_the_line_is_flagged_and_fixed(
+        tmp_path: Path,
+    ) -> None:
+        """Check flags an internal ref off the integration line; fix moves it.
+
+        The manifest keeps the Git URL and moves only its reference onto the
+        declared integration line; the lock alone pins exact commits.
+        """
+        source = "https://github.com/fixture-org/flext-fixture.git"
+        pinned = f"flext-fixture @ git+{source}@{'a' * 40}"
+        root = TestsFlextInfraDepsGate._project(tmp_path, dumps(pinned), "")
+        integration = (
+            u.Infra
+            .load_codegen_inputs(root)
+            .unwrap()
+            .spec.branch_policy.integration_branch
+        )
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+        checked = gate.check(
+            root,
+            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "check"),
+        )
+        tm.fail(checked.result.passed)
+        tm.that(
+            any(
+                issue.code == f"{c.Infra.DEPS}-internal-ref" for issue in checked.issues
+            ),
+            truth=True,
+        )
+        gate.fix(
+            root,
+            m.Infra.GateContext(
+                repository_root=root,
+                reports_dir=tmp_path / "fix",
+                apply_fixes=True,
+            ),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(
+                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                "project",
+                "dependencies",
+            ),
+            eq=(f"flext-fixture @ git+{source}@{integration}",),
+        )
+
+    @staticmethod
+    def test_import_only_distribution_is_not_a_pytest_plugin() -> None:
+        """A distribution without the plugin entry point is not plugin evidence."""
+        library = distribution("requests")
+        identity = u.Infra.distribution_identity(library.metadata["Name"])
+        tm.that(
+            FlextInfraRuntimeDependencyCollector.pytest_plugin_distributions({
+                identity: library
+            }),
+            eq=(),
+        )
 
     @staticmethod
     @pytest.mark.parametrize(

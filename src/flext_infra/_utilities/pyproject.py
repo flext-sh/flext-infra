@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from functools import cache, lru_cache
 from pathlib import Path
 
@@ -479,6 +480,30 @@ class FlextInfraUtilitiesPyproject:
         if not payload:
             return {}
         return payload
+
+    @classmethod
+    def sync_document_values(
+        cls,
+        document: t.Cli.TomlDocument | t.Cli.TomlTable,
+        payload: t.JsonMapping,
+    ) -> None:
+        """Synchronize changed semantic values through the original TOML tree."""
+        for key, value in payload.items():
+            if u.Cli.toml_value(document, key) == value:
+                continue
+            child = u.Cli.toml_table_child(document, key)
+            if child is not None and isinstance(value, Mapping):
+                cls.sync_document_values(child, value)
+            elif isinstance(value, list) and all(
+                isinstance(item, str) for item in value
+            ):
+                u.Cli.toml_sync_string_list(
+                    document,
+                    key,
+                    tuple(item for item in value if isinstance(item, str)),
+                )
+            else:
+                u.Cli.toml_sync_value(document, key, value)
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:
