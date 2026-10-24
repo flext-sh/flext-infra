@@ -23,6 +23,9 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 class FlextInfraCodegenLayoutGitignoreMixin:
     """Ensure the layout gitignore patterns for one project directory."""
 
+    # Mixin contract: the composing command service owns the resolved root.
+    repository_root: Path
+
     def _apply_gitignore(
         self,
         project_dir: Path,
@@ -34,18 +37,39 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             The resulting ``p.Result[t.Infra.LayoutStatus]``.
 
         """
-        managed = self._managed_profile(project_dir)
-        if managed.failure:
-            return r[t.Infra.LayoutStatus].from_failure(managed)
-        profile = managed.value
-        if profile is not None:
-            return self._apply_gitignore_managed(project_dir, profile)
-        return self._apply_gitignore_append(project_dir, patterns)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            u.Infra.resolve_repository_root_or_cwd(project_dir),
+        )
+        if workspace.failure:
+            return r[t.Infra.LayoutStatus].from_failure(workspace)
+        target = FlextInfraWorkspaceDetector.conform_target(
+            project_dir,
+            workspace.value,
+        )
+        if target.failure:
+            return r[t.Infra.LayoutStatus].from_failure(target)
+        profile = target.value.make_profile
+        if profile is None:
+            return self._apply_gitignore_append(project_dir, patterns)
+        # The render reads the same layered repository contract the layout
+        # plan demands its patterns from: the packaged defaults alone drop the
+        # repository's own layout overrides and the workspace topology.
+        inputs = u.Infra.load_codegen_inputs(self.repository_root)
+        if inputs.failure:
+            return r[t.Infra.LayoutStatus].from_failure(inputs)
+        return self._apply_gitignore_managed(
+            project_dir,
+            profile,
+            inputs.value.spec,
+            workspace.value,
+        )
 
     @staticmethod
     def _apply_gitignore_managed(
         project_dir: Path,
         profile: c.Infra.MakeProfile,
+        codegen: m.Infra.CodegenConfigSpec,
+        workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Write the canonical rendered gitignore for a governed project.
 
@@ -54,11 +78,12 @@ class FlextInfraCodegenLayoutGitignoreMixin:
 
         """
         rendered = u.Infra.render_project_gitignore(
-            config.Infra.codegen,
+            codegen,
             profile=profile,
             project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
                 project_dir,
             ),
+            workspace=workspace,
             project_dir=project_dir,
         )
         if rendered.failure:
@@ -148,27 +173,6 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             return r[t.Infra.LayoutStatus].from_failure(written)
         applied_status: t.Infra.LayoutStatus = "applied"
         return r[t.Infra.LayoutStatus].ok(applied_status)
-
-    @staticmethod
-    def _managed_profile(project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:
-        """Make profile when the project is governed by a workspace.
-
-        Returns:
-            The resulting ``p.Result[c.Infra.MakeProfile | None]``.
-
-        """
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            u.Infra.resolve_repository_root_or_cwd(project_dir),
-        )
-        if workspace.failure:
-            return r[c.Infra.MakeProfile | None].from_failure(workspace)
-        target = FlextInfraWorkspaceDetector.conform_target(
-            project_dir,
-            workspace.value,
-        )
-        if target.failure:
-            return r[c.Infra.MakeProfile | None].from_failure(target)
-        return r[c.Infra.MakeProfile | None].ok(target.value.make_profile)
 
 
 __all__: list[str] = ["FlextInfraCodegenLayoutGitignoreMixin"]

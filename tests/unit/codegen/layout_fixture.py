@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import FlextInfraConfig, config
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
-from tests import u
+from tests import c, m, tm, u
 
 
 def build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
@@ -95,3 +95,37 @@ def archive_root() -> str:
 
     """
     return config.Infra.codegen.layout.archive_root
+
+
+def declare_layout_override(
+    repository_root: Path,
+    project_name: str,
+    override: m.Infra.LayoutProjectOverrideSpec,
+) -> None:
+    """Declare one project's layout delta in the repository's own config layer.
+
+    The packaged fleet config never lists its consumers (its
+    ``project_overrides`` stays empty); a project's layout delta lives in the
+    repository's own layered ``codegen.yaml``, which the real loader merges.
+    """
+    _, _, local_overlay = FlextInfraConfig.config_layer_paths_for_repository(
+        repository_root,
+        filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+    )
+    local_overlay.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(
+        u.Cli.yaml_dump(
+            local_overlay,
+            {
+                "Infra": {
+                    "codegen": {
+                        "layout": {
+                            "project_overrides": {
+                                project_name: override.model_dump(mode="json"),
+                            },
+                        },
+                    },
+                },
+            },
+        ),
+    )

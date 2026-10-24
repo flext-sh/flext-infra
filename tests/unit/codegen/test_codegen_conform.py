@@ -128,6 +128,10 @@ class TestsFlextInfraCodegenConform:
         """
         template = tmp_path_factory.mktemp("conform-template") / "conformed"
         template.mkdir()
+        # The governed tree above the seed carries the committed Mise
+        # declaration and lock that activate its locked tools (Taplo formats
+        # the TOML projections before the seed's own declaration exists).
+        u.Tests.copy_tracked_mise_seeds(template.parent)
         u.Tests.initialize_git_repo(
             template,
             origin_url=u.Tests.repository_ref(config.Infra.name).url,

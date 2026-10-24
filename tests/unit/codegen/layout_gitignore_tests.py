@@ -14,10 +14,11 @@ from flext_infra import c, config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import tm, u
+from tests import m, tm, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,
+    declare_layout_override,
     layout_engine,
 )
 
@@ -25,11 +26,19 @@ from tests.unit.codegen.layout_fixture import (
 class TestsFlextInfraCodegenLayoutGitignore:
     """Test suite for layout gitignore, tracked-file moves, and canonical render."""
 
-    @staticmethod
-    def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
+    # Scenario data: the project-owned layout delta each repository declares in
+    # its own config layer (the packaged fleet config lists no consumer).
+    _SETTINGS_OVERRIDE = m.Infra.LayoutProjectOverrideSpec(
+        archive_names=("settings.json",),
+        gitignore_additions=("settings.json",),
+    )
+
+    @classmethod
+    def test_apply_adds_gitignore_entries_exactly_once(cls, tmp_path: Path) -> None:
         """Gitignore additions from the SSOT are appended once across applies."""
         project = build_loose_project(tmp_path, name="flext-cli")
         (project / "settings.json").write_text("{}\n", encoding="utf-8")
+        declare_layout_override(tmp_path, project.name, cls._SETTINGS_OVERRIDE)
         engine = layout_engine(tmp_path, apply_changes=True)
 
         first = engine.execute()
@@ -68,11 +77,15 @@ class TestsFlextInfraCodegenLayoutGitignore:
             eq=False,
         )
 
-    @staticmethod
-    def test_managed_gitignore_render_includes_layout_additions() -> None:
+    @classmethod
+    def test_managed_gitignore_render_includes_layout_additions(
+        cls,
+        tmp_path: Path,
+    ) -> None:
         """The canonical gitignore render owns the layout SSOT additions."""
+        declare_layout_override(tmp_path, "flext-cli", cls._SETTINGS_OVERRIDE)
         rendered = FlextInfraCodegenConform.render_project_gitignore(
-            config.Infra.codegen,
+            tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name="flext-cli",
         )
@@ -103,10 +116,11 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
         tm.that(tracked.failure, eq=True)
 
-    @staticmethod
+    @classmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("directory_suffix", ["", "-lane"])
     def test_rendered_gitignore_satisfies_layout_additions(
+        cls,
         tmp_path: Path,
         directory_suffix: str,
     ) -> None:
@@ -122,17 +136,14 @@ class TestsFlextInfraCodegenLayoutGitignore:
         checkout directory: a linked worktree named after its lane renders the same
         additions (conform used ``repository_root.name`` and dropped them there).
         """
-        owner, override = next(
-            (name, item)
-            for name, item in sorted(
-                config.Infra.codegen.layout.project_overrides.items(),
-            )
-            if item.gitignore_additions
-        )
+        owner = "flext-cli"
+        override = cls._SETTINGS_OVERRIDE
         # The new project is created inside a governed workspace: its Taplo pin
         # resolves through the nearest committed mise.lock above it.
         u.Tests.copy_tracked_mise_seeds(tmp_path)
         root = tmp_path / f"{owner}{directory_suffix}"
+        # The project owns its layout delta in its own config layer.
+        declare_layout_override(root, owner, override)
         repository = u.Tests.repository_ref(owner)
         project = u.Tests.project_spec(owner)
         tm.ok(
