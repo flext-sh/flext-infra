@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -85,6 +86,20 @@ class TestsFlextInfraEnforcementCatalogGate:
         )
         error = tm.fail(u.Infra.enforcement_catalog(path))
         tm.that(error, has=rule_id)
+
+    @staticmethod
+    def test_accessor_prefix_util_projects_the_tooling_policy(
+        tmp_path: Path,
+    ) -> None:
+        """The generated util matches exactly the declared accessor prefixes."""
+        produced = u.Infra.accessor_prefix_constraints(tmp_path)
+        tm.that(tuple(produced), eq=(c.Infra.ACCESSOR_PREFIX_UTIL_ID,))
+        pattern = re.compile(
+            str(produced[c.Infra.ACCESSOR_PREFIX_UTIL_ID]["regex"]),
+        )
+        prefixes = config.Infra.tooling.accessor_policy.forbidden_prefixes
+        tm.ok(all(pattern.match(f"{prefix}value") for prefix in prefixes))
+        tm.fail(any(pattern.match(f"x{prefix}value") for prefix in prefixes))
 
     @staticmethod
     def test_ruling_disabled_ruff_rule_fails_the_load(tmp_path: Path) -> None:

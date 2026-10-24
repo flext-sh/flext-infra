@@ -237,6 +237,7 @@ rules:
   skills: [lib-pydantic-settings]
   rules:
   - {engine: ast-grep, id: ban-flext-core-settings-library-import}
+  - {engine: ast-grep, id: require-settings-base}
 - id: ENFORCE-043
   severity: MEDIUM
   description: No pass-through wrapper delegating to another callable with identical arguments.

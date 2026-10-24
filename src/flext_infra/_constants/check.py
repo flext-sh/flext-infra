@@ -246,6 +246,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         LOW = "LOW"
 
     ENFORCEMENT_RULE_ID_PATTERN: ClassVar[str] = r"^ENFORCE-\d{3}$"
+    ACCESSOR_PREFIX_UTIL_ID: ClassVar[str] = "accessor-forbidden-prefix"
+    "Generated ast-grep util projecting tooling accessor-policy prefixes."
     RUFF_SELECT_ALL: ClassVar[str] = "ALL"
 
     @unique

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from flext_cli import u
@@ -19,6 +20,26 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesEnforcementCatalog:
     """Load ``config/rules/catalog.yaml`` and prove every owner it names."""
+
+    @staticmethod
+    def accessor_prefix_constraints(
+        _project: Path,
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Project the accessor-policy prefixes into a native ast-grep util.
+
+        Tooling ``accessor-policy.forbidden-prefixes`` is the one owner of the
+        accessor prefixes; ``ban-accessor-method-name`` matches this util
+        instead of repeating them.
+
+        Returns:
+            The ``accessor-forbidden-prefix`` util keyed by its id.
+
+        """
+        prefixes = config.Infra.tooling.accessor_policy.forbidden_prefixes
+        alternation = "|".join(re.escape(prefix) for prefix in prefixes)
+        return {
+            c.Infra.ACCESSOR_PREFIX_UTIL_ID: {"regex": f"^(?:{alternation})"},
+        }
 
     @staticmethod
     def enforcement_catalog(
