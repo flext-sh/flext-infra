@@ -1,0 +1,19 @@
+id: retire-publication-stack-receipt-keyword
+valid:
+  - |
+    plan = file_plan(root, "a.py", rendered, mode=0o644)
+  - |
+    def file_plan(root, relative_path, rendered, *, mode=0o644): ...
+  - |
+    states = source_states(project)
+invalid:
+  - |
+    plan = file_plan(root, "a.py", rendered, source_states=states)
+  - |
+    plan = file_plan(root, "a.py", rendered, source_states=states, mode=0o644)
+  - |
+    publish(plans, publication_receipts=receipts)
+  - |
+    def file_plan(root, rendered, *, source_states: tuple[int, ...] = ()): ...
+  - |
+    def stage(files, dependency_group=None): ...

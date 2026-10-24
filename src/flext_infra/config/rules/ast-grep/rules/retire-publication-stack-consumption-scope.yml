@@ -1,0 +1,15 @@
+id: retire-publication-stack-consumption-scope
+language: Python
+severity: error
+rule:
+  any:
+    - pattern: |
+        with $PROJECT.source_consumption() as $CONSUMPTION:
+            $$$BODY
+    - pattern: |
+        with $PROJECT.source_consumption():
+            $$$BODY
+fix: $$$BODY
+message: >-
+  Source consumption scopes are retired: planning reads sources directly and
+  the shared publisher verifies each destination before writing.

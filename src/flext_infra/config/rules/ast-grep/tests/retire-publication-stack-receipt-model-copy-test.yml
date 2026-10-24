@@ -1,0 +1,21 @@
+id: retire-publication-stack-receipt-model-copy
+valid:
+  - |
+    plan.model_copy(update={"desired_content": content})
+  - |
+    plan.model_copy(update={"source_states": states, "desired_content": content})
+  - |
+    plan.model_copy(update={})
+invalid:
+  - |
+    files = tuple(plan.model_copy(update={"source_states": receipt.inputs}) for plan in planned)
+  - |
+    plan = plan.model_copy(
+        update={
+            "source_states": inputs,
+            "source_directories": directories,
+            "source_query_topology": topology,
+        }
+    )
+  - |
+    grouped = item.model_copy(update={"dependency_group": group})

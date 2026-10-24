@@ -61,7 +61,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """Repair then format one Python candidate through Ruff on stdin.
 
         ``path`` is the destination; it selects the owning project's Ruff
-        configuration. An unfixable violation fails with Ruff's diagnostics.
+        configuration. The flags are the declared ``make.ruff`` repair and
+        format surfaces; remaining findings never break repair (``make check``
+        enforces them), only a Ruff error does.
 
         Returns:
             The repaired and formatted source, or Ruff's native failure.
@@ -72,7 +74,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
         environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
             FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
         )
-        for arguments in (("check", "--fix", "--quiet"), ("format", "--quiet")):
+        declared = config.Infra.codegen.make.ruff
+        for arguments in (
+            ("check", *declared.lint_fix),
+            ("format", *declared.format_apply),
+        ):
             executed = u.Cli.run_raw(
                 (
                     *cls._workspace_tool_command(c.Infra.RUFF),
@@ -92,9 +98,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
             if executed.failure:
                 return r[str].from_failure(executed)
             output = executed.value
-            if not u.Cli.process_succeeded(output.outcome):
+            outcome = FlextInfraUtilitiesProcess.tool_outcome(
+                output.outcome,
+                findings=int(bool(output.stderr.strip())),
+                findings_exit_codes=config.Infra.tooling.tools.ruff.findings_exit_codes,
+            )
+            if outcome is c.Infra.ToolOutcome.ERROR:
                 return r[str].fail(
-                    f"ruff {arguments[0]} rejected {path}: "
+                    f"ruff {arguments[0]} failed for {path}: "
                     f"{(output.stderr or output.stdout).strip()}"
                 )
             source = output.stdout
