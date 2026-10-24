@@ -105,7 +105,7 @@ and root CI; CI checks out declared submodules and installs noneditable. Indepen
 checkouts retain their native contracts. External suppliers use native pyproject
 sources, not environment variables, persisted selection or synthetic resolvers.
 Official Mise acquisition and native locked tool provisioning precede
-`uv sync --locked` into the owned physical `.venv`. Retire authored Python setup
+`uv sync --frozen` into the owned physical `.venv`. Retire authored Python setup
 admission and copied resources, not just their filename: no replacement AWK/shell
 lock parser or installer. Native declarations and lock consistency replace the
 stronger independent pre-install supplier admission. Ordinary installed Infra

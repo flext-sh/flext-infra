@@ -57,7 +57,7 @@ Python and UV prerequisites. Setup installs the resolved destination dependencie
 into that destination's physical environment. Initialization and generation do
 not install dependencies, resolve locks, initialize Git or create commits.
 The approved native target consumes shipped declarations and locks: official Mise
-acquisition, native locked tool provisioning, then `uv sync --locked`. A cold
+acquisition, native locked tool provisioning, then `uv sync --frozen`. A cold
 checkout must not require Python generation of a copied bootstrap resource or
 synthetic resolver. Missing inputs belong to explicit generation/upgrade, not an
 AWK/shell parser or automatic lifecycle operation inside setup. This target still

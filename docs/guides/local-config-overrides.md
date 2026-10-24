@@ -120,7 +120,7 @@ managed pyproject publication. See uv's official
 and [workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/) contracts.
 
 Resolve changed native declarations through the explicit upgrade owner, then
-install through setup using `uv sync --locked` into the consumer's owned physical
+install through setup using `uv sync --frozen` into the consumer's owned physical
 `.venv`. Attached members share their containing workspace's environment; independent
 consumers never borrow a supplier's environment. Native declarations and locked
 consistency replace the stronger independent pre-install supplier admission;
