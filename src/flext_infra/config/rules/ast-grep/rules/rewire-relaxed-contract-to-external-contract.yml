@@ -85,3 +85,5 @@ message: >-
   Strict contract `$NAME` relaxes extra by hand beside its own config keys:
   `make mod` rebases it on `m.ExternalContractModel` and keeps only the keys
   the preset does not already own.
+metadata:
+  enforce: [ENFORCE-109]

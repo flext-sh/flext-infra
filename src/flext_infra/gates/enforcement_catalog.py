@@ -1,4 +1,4 @@
-"""Static enforcement catalog gate.
+"""Derived enforcement catalog gate.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraEnforcementCatalogGate(FlextInfraGate):
-    """Fail when the enforcement catalog names an owner that does not exist."""
+    """Fail when an enforcement claim is duplicated or has no active owner."""
 
     gate_id: ClassVar[str] = c.Infra.ENFORCEMENT_CATALOG
     gate_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[gate_id][0]
@@ -29,10 +29,10 @@ class FlextInfraEnforcementCatalogGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Load the catalog through its owner and report the first owner gap.
+        """Derive the catalog from its owners and report the first defect.
 
         Returns:
-            The gate execution with one issue per unresolved catalog load.
+            The gate execution with one issue for a failed derivation.
 
         """
         started = time.monotonic()
@@ -42,17 +42,17 @@ class FlextInfraEnforcementCatalogGate(FlextInfraGate):
             if loaded.success
             else (
                 m.Infra.Issue(
-                    file=str(c.Infra.ENFORCEMENT_CATALOG_RELPATH),
+                    file=str(c.Infra.CODEMOD_RULES_RELPATH),
                     line=0,
                     column=0,
                     code=self.gate_id,
-                    message=loaded.error or "enforcement catalog failed to load",
+                    message=loaded.error or "enforcement catalog derivation failed",
                     severity=c.Infra.GateSeverity.ERROR.value,
                 ),
             )
         )
         raw = (
-            f"rules={len(loaded.value.rules)}"
+            f"claims={len(loaded.value.claims)}"
             if loaded.success
             else "\n".join(issue.formatted for issue in issues)
         )

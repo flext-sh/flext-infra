@@ -1,4 +1,4 @@
-"""Fail-closed public behavior of the static enforcement catalog.
+"""Public behavior of the enforcement catalog derived from its owners.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,8 +9,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.gates.enforcement_catalog import FlextInfraEnforcementCatalogGate
@@ -18,36 +16,58 @@ from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraEnforcementCatalogGate:
-    """The packaged catalog loads; every unresolved owner fails the load."""
+    """Owner claims derive the catalog; duplicate and orphan claims fail it."""
 
     @staticmethod
-    def _catalog_with_reference(tmp_path: Path, reference: t.JsonMapping) -> Path:
-        """Write the packaged catalog with one reference appended to its first row.
+    def _provider(tmp_path: Path, rules: t.SequenceOf[t.JsonMapping]) -> Path:
+        """Write one ast-grep provider whose rules carry the given documents.
 
         Returns:
-            The written catalog path.
+            The provider config path.
 
         """
-        packaged = tm.ok(u.Infra.enforcement_catalog())
-        payload = packaged.model_dump(mode="json")
-        rows = payload["rules"]
-        first = rows[0]
-        rows[0] = {**first, "rules": [*first["rules"], dict(reference)]}
-        path = tmp_path / "catalog.yaml"
-        tm.ok(u.Cli.yaml_dump(path, {**payload, "rules": rows}))
-        return path
+        rule_dir = tmp_path / "rules"
+        rule_dir.mkdir()
+        for document in rules:
+            tm.ok(u.Cli.yaml_dump(rule_dir / f"{document['id']}.yml", document))
+        provider = tmp_path / c.Infra.CODEMOD_CONFIG_FILENAME
+        tm.ok(u.Cli.yaml_dump(provider, {c.Infra.CODEMOD_RULE_DIRS_KEY: ["rules"]}))
+        return provider
 
     @staticmethod
-    def test_packaged_catalog_resolves_every_owner() -> None:
-        """Every row of the packaged catalog names declared, enabled owners."""
+    def _rule(rule_id: str, enforce: t.StrSequence, severity: str) -> t.JsonMapping:
+        """Build one detection rule document claiming the given law ids.
+
+        Returns:
+            The rule document.
+
+        """
+        return {
+            "id": rule_id,
+            "language": "python",
+            "severity": severity,
+            "rule": {"pattern": "breakpoint()"},
+            "message": f"{rule_id} fixture",
+            c.Infra.CODEMOD_RULE_METADATA_KEY: {
+                c.Infra.CODEMOD_RULE_ENFORCE_KEY: list(enforce),
+            },
+        }
+
+    @staticmethod
+    def test_packaged_owners_derive_a_valid_catalog() -> None:
+        """Every packaged claim is unique per owner and has an active owner."""
         catalog = tm.ok(u.Infra.enforcement_catalog())
-        ids = [row.id for row in catalog.rules]
-        tm.that(len(ids), eq=len(set(ids)))
-        tm.ok(all(row.rules for row in catalog.rules))
+        keys = [
+            (claim.id, claim.engine, claim.owner, claim.code)
+            for claim in catalog.claims
+        ]
+        tm.that(len(keys), eq=len(set(keys)))
+        active = {claim.id for claim in catalog.claims if claim.active}
+        tm.that({claim.id for claim in catalog.claims}, eq=active)
 
     @staticmethod
     def test_registry_exposes_the_catalog_gate(tmp_path: Path) -> None:
-        """The registered gate passes on the packaged catalog."""
+        """The registered gate passes on the packaged owners."""
         registry = FlextInfraGateRegistry.default()
         tm.ok(
             registry.get(c.Infra.ENFORCEMENT_CATALOG)
@@ -61,31 +81,50 @@ class TestsFlextInfraEnforcementCatalogGate:
         tm.that(execution.issues, length=0)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        ("engine", "rule_id", "code"),
-        [
-            (c.Infra.EnforcementEngine.AST_GREP, "not-a-declared-rule", None),
-            (c.Infra.EnforcementEngine.GATE, "not-a-registered-gate", None),
-            (c.Infra.EnforcementEngine.CODEGEN, "not-a-template-entry", None),
-            (c.Infra.EnforcementEngine.GATE, c.Infra.SMELLS, "qlty:not-a-check"),
-            (c.Infra.EnforcementEngine.GATE, c.Infra.LINT, "lint:any"),
-        ],
-    )
-    def test_unresolved_owner_fails_the_load(
-        tmp_path: Path,
-        engine: str,
-        rule_id: str,
-        code: str | None,
-    ) -> None:
-        """A reference the owners do not declare fails closed with its row."""
-        reference: t.JsonMapping = {"engine": engine, "id": rule_id}
-        if code is not None:
-            reference = {**reference, "code": code}
-        path = TestsFlextInfraEnforcementCatalogGate._catalog_with_reference(
-            tmp_path, reference
+    def test_active_rule_claim_enters_the_catalog(tmp_path: Path) -> None:
+        """A claim in an active rule's metadata is part of the derived catalog."""
+        cls = TestsFlextInfraEnforcementCatalogGate
+        provider = cls._provider(
+            tmp_path, [cls._rule("fixture-active", ["ENFORCE-900"], "error")]
         )
-        error = tm.fail(u.Infra.enforcement_catalog(path))
-        tm.that(error, has=rule_id)
+        catalog = tm.ok(u.Infra.enforcement_catalog(provider))
+        claimed = {
+            (claim.id, claim.owner, claim.active)
+            for claim in catalog.claims
+            if claim.engine == c.Infra.EnforcementEngine.AST_GREP
+        }
+        tm.that(claimed, eq={("ENFORCE-900", "fixture-active", True)})
+
+    @staticmethod
+    def test_repeated_claim_fails_as_duplicate(tmp_path: Path) -> None:
+        """An owner that claims the same law twice fails the derivation."""
+        cls = TestsFlextInfraEnforcementCatalogGate
+        provider = cls._provider(
+            tmp_path,
+            [cls._rule("fixture-twice", ["ENFORCE-901", "ENFORCE-901"], "error")],
+        )
+        error = tm.fail(u.Infra.enforcement_catalog(provider))
+        tm.that(error, has="ENFORCE-901")
+        tm.that(error, has="claims it twice")
+
+    @staticmethod
+    def test_claim_of_disabled_owner_fails_as_orphan(tmp_path: Path) -> None:
+        """A law claimed only by a switched-off rule has no active owner."""
+        cls = TestsFlextInfraEnforcementCatalogGate
+        provider = cls._provider(
+            tmp_path,
+            [
+                cls._rule("fixture-active", ["ENFORCE-900"], "error"),
+                cls._rule(
+                    "fixture-off",
+                    ["ENFORCE-902"],
+                    c.Infra.CODEMOD_RULE_SEVERITY_OFF,
+                ),
+            ],
+        )
+        error = tm.fail(u.Infra.enforcement_catalog(provider))
+        tm.that(error, has="ENFORCE-902")
+        tm.that(error, has="orphan")
 
     @staticmethod
     def test_accessor_prefix_util_projects_the_tooling_policy(
@@ -100,13 +139,3 @@ class TestsFlextInfraEnforcementCatalogGate:
         prefixes = config.Infra.tooling.accessor_policy.forbidden_prefixes
         tm.ok(all(pattern.match(f"{prefix}value") for prefix in prefixes))
         tm.fail(any(pattern.match(f"x{prefix}value") for prefix in prefixes))
-
-    @staticmethod
-    def test_ruling_disabled_ruff_rule_fails_the_load(tmp_path: Path) -> None:
-        """A Ruff rule the tooling SSOT disables is not an enabled owner."""
-        disabled = config.Infra.tooling.tools.ruff.lint.ruling_disabled_rules[0]
-        path = TestsFlextInfraEnforcementCatalogGate._catalog_with_reference(
-            tmp_path, {"engine": c.Infra.EnforcementEngine.RUFF, "id": disabled}
-        )
-        error = tm.fail(u.Infra.enforcement_catalog(path))
-        tm.that(error, has=disabled)

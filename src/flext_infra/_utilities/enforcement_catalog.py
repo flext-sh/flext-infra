@@ -1,4 +1,4 @@
-"""Static enforcement catalog owner.
+"""Derived enforcement catalog owner.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,9 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
-
-from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -19,7 +18,7 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesEnforcementCatalog:
-    """Load ``config/rules/catalog.yaml`` and prove every owner it names."""
+    """Derive the enforcement catalog from the owners that claim each law."""
 
     @staticmethod
     def accessor_prefix_constraints(
@@ -43,118 +42,129 @@ class FlextInfraUtilitiesEnforcementCatalog:
 
     @staticmethod
     def enforcement_catalog(
-        source: Path | None = None,
+        codemod_config: Path | None = None,
     ) -> p.Result[m.Infra.EnforcementCatalog]:
-        """Load an enforcement catalog, failing closed on any owner gap.
+        """Derive the catalog from every owner's claims, failing on the first defect.
 
-        Every ast-grep reference names a rule the packaged rule catalog
-        declares, every Ruff reference names a rule the tooling selection keeps
-        enabled, every gate reference names a registered gate (and only a
-        finding code that gate declares), and every codegen reference names a
-        template entry. The first unresolved reference fails the load.
+        Claims come from ast-grep rule ``metadata.enforce``, the Ruff rules'
+        ``tools.ruff.lint.enforce``, the smells checks' ``smells.enforce``, the
+        gate registry's ``GATE_ENFORCES`` and codegen template ``enforce``. An
+        id is valid when at least one active owner claims it. A claim the same
+        owner repeats is a duplicate; an id claimed only by disabled or
+        unregistered owners is an orphan.
 
         Args:
-            source: Catalog file to load; the packaged
-                ``config/rules/catalog.yaml`` when omitted.
+            codemod_config: ast-grep provider config whose rule documents are
+                read; the packaged provider config when omitted.
 
         Returns:
-            The validated catalog, or the first unresolved owner reference.
+            The derived catalog, or the first duplicate or orphan claim.
 
         """
         result = r[m.Infra.EnforcementCatalog]
         package_root = type(config).ssot_config_dir().parent
-        loaded = FlextInfraUtilitiesEnforcementCatalog._read_catalog(
-            package_root / c.Infra.ENFORCEMENT_CATALOG_RELPATH
-            if source is None
-            else source
-        )
-        if loaded.failure:
-            return loaded
-        declared = FlextInfraUtilitiesCodemodRules.codemod_catalog_rules(
+        rules = FlextInfraUtilitiesCodemodRules.codemod_catalog_rules(
             c.Infra.PACKAGE_IMPORT_NAME,
-            package_root / c.Infra.CODEMOD_CONFIG_RELPATH,
+            package_root / c.Infra.CODEMOD_CONFIG_RELPATH
+            if codemod_config is None
+            else codemod_config,
         )
-        if declared.failure:
-            return result.from_failure(declared)
-        catalog = loaded.value
-        owners: t.MappingKV[c.Infra.EnforcementEngine, frozenset[str]] = {
-            c.Infra.EnforcementEngine.AST_GREP: frozenset(
-                rule.id for rule in declared.value
-            ),
-            c.Infra.EnforcementEngine.RUFF: (
-                FlextInfraUtilitiesEnforcementCatalog._enabled_ruff_rules(catalog)
-            ),
-            c.Infra.EnforcementEngine.GATE: c.Infra.ALLOWED_GATES,
-            c.Infra.EnforcementEngine.CODEGEN: frozenset(
-                entry.destination for entry in config.Infra.codegen.templates.entries
-            ),
-        }
-        defect = next(
-            (
-                f"{row.id}: {reference.engine} {reference.id}: {problem}"
-                for row in catalog.rules
-                for reference in row.rules
-                for problem in (
-                    FlextInfraUtilitiesEnforcementCatalog._reference_problem(
-                        reference, owners
-                    ),
-                )
-                if problem is not None
-            ),
+        if rules.failure:
+            return result.from_failure(rules)
+        claims = FlextInfraUtilitiesEnforcementCatalog._claims(rules.value)
+        defect = FlextInfraUtilitiesEnforcementCatalog._defect(claims)
+        if defect is not None:
+            return result.fail(defect)
+        if not claims:
+            return result.fail("no owner claims any enforcement law")
+        return result.ok(m.Infra.EnforcementCatalog(claims=claims))
+
+    @staticmethod
+    def _claims(
+        rules: t.SequenceOf[m.Infra.CodemodRule],
+    ) -> t.VariadicTuple[m.Infra.EnforcementClaim]:
+        """Collect every owner's claims in declaration order.
+
+        Returns:
+            One claim per law id an owner declares.
+
+        """
+        tooling = config.Infra.tooling
+        enabled_ruff = FlextInfraUtilitiesEnforcementCatalog._enabled_ruff_rules()
+        smells_active = c.Infra.SMELLS in c.Infra.ALLOWED_GATES
+        engine = c.Infra.EnforcementEngine
+        return tuple(
+            m.Infra.EnforcementClaim(
+                id=law, engine=kind, owner=owner, code=code, active=active
+            )
+            for kind, owner, code, active, laws in (
+                *(
+                    (engine.AST_GREP, rule.id, None, not rule.disabled, rule.enforce)
+                    for rule in rules
+                ),
+                *(
+                    (engine.RUFF, rule, None, rule in enabled_ruff, laws)
+                    for rule, laws in tooling.tools.ruff.lint.enforce.items()
+                ),
+                *(
+                    (
+                        engine.GATE,
+                        c.Infra.SMELLS,
+                        f"{c.Infra.SMELLS_RULE_PREFIX}{check}",
+                        smells_active and check in tooling.smells.fix_text,
+                        laws,
+                    )
+                    for check, laws in tooling.smells.enforce.items()
+                ),
+                *(
+                    (engine.GATE, gate, None, gate in c.Infra.ALLOWED_GATES, laws)
+                    for gate, laws in c.Infra.GATE_ENFORCES.items()
+                ),
+                *(
+                    (engine.CODEGEN, entry.destination, None, True, entry.enforce)
+                    for entry in config.Infra.codegen.templates.entries
+                ),
+            )
+            for law in laws
+        )
+
+    @staticmethod
+    def _defect(claims: t.SequenceOf[m.Infra.EnforcementClaim]) -> str | None:
+        """Describe the first duplicate or orphan claim.
+
+        Returns:
+            The defect, or ``None`` when every claim is unique and owned.
+
+        """
+        repeated = Counter(
+            (claim.id, claim.engine, claim.owner, claim.code) for claim in claims
+        )
+        duplicate = next((key for key, count in repeated.items() if count > 1), None)
+        if duplicate is not None:
+            law, kind, owner, code = duplicate
+            return f"{law}: {kind} {owner}{f' {code}' if code else ''} claims it twice"
+        active_ids = frozenset(claim.id for claim in claims if claim.active)
+        orphan = next(
+            (claim for claim in claims if claim.id not in active_ids),
             None,
         )
-        return result.ok(catalog) if defect is None else result.fail(defect)
-
-    @staticmethod
-    def _read_catalog(path: Path) -> p.Result[m.Infra.EnforcementCatalog]:
-        """Read and validate one catalog document.
-
-        Returns:
-            The schema-validated catalog, before owner resolution.
-
-        """
-        result = r[m.Infra.EnforcementCatalog]
-        state = u.Cli.atomic_read_binary_file_state(path, required=True)
-        if state.failure:
-            return result.from_failure(state)
-        if state.value.content is None:
-            return result.fail(f"enforcement catalog is absent: {path}")
-        parsed = u.Cli.yaml_parse(state.value.content.decode(c.DEFAULT_ENCODING))
-        if parsed.failure:
-            return result.from_failure(parsed)
-        return result.ok(
-            m.Infra.EnforcementCatalog.model_validate_json(
-                u.json_mapping_adapter().dump_json(parsed.value)
+        if orphan is not None:
+            return (
+                f"{orphan.id}: orphan claim; its only owner {orphan.engine} "
+                f"{orphan.owner} is disabled or unregistered"
             )
-        )
-
-    @staticmethod
-    def _reference_problem(
-        reference: m.Infra.EnforcementRuleRef,
-        owners: t.MappingKV[c.Infra.EnforcementEngine, frozenset[str]],
-    ) -> str | None:
-        """Describe why one reference names no declared owner or code.
-
-        Returns:
-            The problem, or ``None`` when its owner declares the reference.
-
-        """
-        if reference.id not in owners[reference.engine]:
-            return "owner is not declared or not enabled"
-        if not FlextInfraUtilitiesEnforcementCatalog._code_declared(reference):
-            return f"declares no finding code {reference.code}"
         return None
 
     @staticmethod
-    def _enabled_ruff_rules(catalog: m.Infra.EnforcementCatalog) -> frozenset[str]:
-        """Return the catalog's Ruff rule names the tooling selection enables.
+    def _enabled_ruff_rules() -> frozenset[str]:
+        """Return the claiming Ruff rules the tooling selection enables.
 
         A rule is enabled when the selection names it or selects ``ALL`` and
         neither the native ignore list, the operator-ruled disabled rules nor
         the delegated rule owners remove it from the lint gate.
 
         Returns:
-            The enabled Ruff rule names referenced by the catalog.
+            The enabled Ruff rule names among the claiming rules.
 
         """
         tooling = config.Infra.tooling
@@ -175,34 +185,10 @@ class FlextInfraUtilitiesEnforcementCatalog:
             *lint.rule_owners,
         ))
         return frozenset(
-            reference.id
-            for row in catalog.rules
-            for reference in row.rules
-            if reference.engine == c.Infra.EnforcementEngine.RUFF
-            and reference.id not in excluded
-            and (c.Infra.RUFF_SELECT_ALL in selected or reference.id in selected)
-        )
-
-    @staticmethod
-    def _code_declared(reference: m.Infra.EnforcementRuleRef) -> bool:
-        """Whether a reference's finding code is one its gate declares.
-
-        Only the smells gate declares a finding vocabulary: its qlty checks,
-        keyed in tooling ``smells.fix-text``.
-
-        Returns:
-            True when the reference carries no code or a declared one.
-
-        """
-        if reference.code is None:
-            return True
-        prefix = c.Infra.SMELLS_RULE_PREFIX
-        return (
-            reference.engine == c.Infra.EnforcementEngine.GATE
-            and reference.id == c.Infra.SMELLS
-            and reference.code.startswith(prefix)
-            and reference.code.removeprefix(prefix)
-            in config.Infra.tooling.smells.fix_text
+            rule
+            for rule in lint.enforce
+            if rule not in excluded
+            and (c.Infra.RUFF_SELECT_ALL in selected or rule in selected)
         )
 
 

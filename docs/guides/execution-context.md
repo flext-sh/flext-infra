@@ -2349,12 +2349,14 @@ offline producers.
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. Each smell
 finding carries the repair text declared under `smells.fix-text` in
-`config/tooling.yaml`, keyed by the qlty check. Static enforcement is declared in
-`config/rules/catalog.yaml`: every row names the ast-grep, Ruff, gate, or codegen
-owner that detects it, and the `enforcement-catalog` gate in `make check` loads
-the catalog and fails when a row names an owner the packaged rule catalog, the
-Ruff selection, the gate registry, or the codegen template entries do not
-provide. An empty or
+`config/tooling.yaml`, keyed by the qlty check. Static enforcement has no
+hand-maintained catalog: each owner that detects a law claims its `ENFORCE-NNN`
+id where it is declared (ast-grep rule `metadata.enforce`, the Ruff rules'
+`tools.ruff.lint.enforce`, the qlty checks' `smells.enforce`, the gate registry's
+`GATE_ENFORCES`, a codegen template entry's `enforce`). The `enforcement-catalog`
+gate in `make check` derives the catalog from those claims and fails on a claim
+its owner repeats or on an id whose only owners are disabled or unregistered.
+An empty or
 malformed qlty SARIF response is a failed scan, not a zero-finding receipt.
 Native primary source spans and all `relatedLocations` pass through the typed issue
 and SARIF report contracts without dropping comparison locations outside the primary
