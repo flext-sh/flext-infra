@@ -210,6 +210,10 @@ class FlextInfraToolTablesPhase:
         options = u.Cli.toml_mapping_ensure_table(payload, c.Infra.INI_OPTIONS)
         options[c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS] = str(policy.slow_timeout_seconds)
         options[c.Infra.MARKERS] = list(policy.standard_markers)
+        # pytester sandboxes copy scenario trees from the one declared root
+        # (ADR-028 point 6); pytest accepts a single example directory.
+        (scenario_root,) = config.Infra.codegen.exclusions.scenario_data_roots
+        options[c.Infra.PYTESTER_EXAMPLE_DIR] = scenario_root
         return self._native_phase(c.Infra.PYTEST, payload)
 
     def _vulture_phase(self, path: Path) -> m.Infra.DepsToml.PhaseConfig:

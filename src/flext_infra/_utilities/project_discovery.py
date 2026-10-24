@@ -676,16 +676,23 @@ class FlextInfraUtilitiesProjectDiscovery(
             if artifact.source_scan_ignore
             and not (artifact.generated_source or artifact.retired_typing_root)
         ) | {c.Infra.GIT_DIR}
+        # Child directories of a declared scenario root are scenario data the
+        # engines under test consume, never sources (ADR-028 point 6).
+        scenario_roots = tuple(
+            f"/{root}" for root in config.Infra.codegen.exclusions.scenario_data_roots
+        )
         walk = (
             directory.walk(on_error=on_error)
             if source_project is None
             else source_project.source_walk(directory)
         )
         for parent, child_dirs, file_names in walk:
+            scenario_root = parent.as_posix().endswith(scenario_roots)
             child_dirs[:] = [
                 name
                 for name in child_dirs
-                if (
+                if not scenario_root
+                and (
                     (name not in skip_dirs and not name.startswith("."))
                     or (
                         name not in artifact_boundaries

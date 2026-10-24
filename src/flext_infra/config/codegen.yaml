@@ -896,6 +896,13 @@ Infra:
       - _parts
       helper_modules:
       - _cov.py
+      # Tests-tier scenario trees (ADR-028 point 6): every child directory of
+      # these roots is scenario data — sources the engines under test consume,
+      # deliberately violating ones included — never governed code. Modules
+      # directly under a root (typed fixtures) stay governed. flext-tests
+      # derives its fixture-tree location from this declaration.
+      scenario_data_roots:
+      - tests/fixtures
     vscode:
       # Ordered key/value pairs accept every extension setting and JSON value.
       # Layer composition appends pairs; the final occurrence replaces the whole value.

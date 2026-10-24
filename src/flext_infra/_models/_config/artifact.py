@@ -233,6 +233,17 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = ()
+        scenario_data_roots: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Project-relative roots of tests-tier scenario trees "
+                    "(ADR-028 point 6): each child directory is scenario data "
+                    "the engines under test consume, never governed code; "
+                    "modules directly under the root stay governed"
+                ),
+            ),
+        ] = ()
 
     class CodegenGovernedPlanRequest(FlextInfraConfigModelsContract.ConfigContract):
         """Resolved inputs for planning one governed artifact's file plan."""
@@ -650,7 +661,24 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                         if artifact.analysis_exclude or artifact.generated_source
                     }
                     | {f"**/{name}/**" for name in self.check_excluded_dirs}
+                    | set(self.scenario_data_globs)
                 )
+            )
+
+        @m.computed_field
+        @property
+        def scenario_data_globs(self) -> t.VariadicTuple[str]:
+            """Derived globs of the scenario trees under each declared root.
+
+            Only child directories are scenario data; modules directly under a
+            root (typed fixtures) remain governed.
+
+            Returns:
+                One recursive child-directory pattern per declared root.
+
+            """
+            return tuple(
+                f"**/{root}/*/**" for root in self.exclusions.scenario_data_roots
             )
 
         @m.computed_field

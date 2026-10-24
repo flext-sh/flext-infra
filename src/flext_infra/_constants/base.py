@@ -156,6 +156,8 @@ class FlextInfraConstantsBase(
     "Pytest addopts settings key."
     MARKERS: ClassVar[str] = "markers"
     "Pytest markers settings key."
+    PYTESTER_EXAMPLE_DIR: ClassVar[str] = "pytester_example_dir"
+    "Pytest ini key naming the directory pytester.copy_example copies from."
     PLUGINS: ClassVar[str] = "plugins"
     "Mypy plugins settings key."
     IGNORE: ClassVar[str] = "ignore"
