@@ -214,6 +214,11 @@ class FlextInfraToolTablesPhase:
         # (ADR-028 point 6); pytest accepts a single example directory.
         (scenario_root,) = config.Infra.codegen.exclusions.scenario_data_roots
         options[c.Infra.PYTESTER_EXAMPLE_DIR] = scenario_root
+        # Test plugins read the Make CI context through these ini keys, so no
+        # test runtime imports flext-infra to learn it.
+        ci = config.Infra.codegen.make.ci
+        options[c.Infra.FLEXT_MAKE_CI_VARIABLE] = ci.variable
+        options[c.Infra.FLEXT_MAKE_CI_VALUE] = ci.value
         return self._native_phase(c.Infra.PYTEST, payload)
 
     def _vulture_phase(self, path: Path) -> m.Infra.DepsToml.PhaseConfig:
