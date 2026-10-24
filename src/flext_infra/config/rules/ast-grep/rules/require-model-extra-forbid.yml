@@ -1,7 +1,10 @@
 # A model declared on the raw pydantic base inherits no configured preset, so
 # it must state `extra="forbid"` itself: an undeclared key is a contract
 # violation, never silently ignored. Models on an `m.*` preset inherit the
-# preset's declared extra policy.
+# preset's declared extra policy. Composition parts are not models of their
+# own: a `*Mixin` contributes fields to the model that composes it, and the
+# flext-core infrastructure presets (ArbitraryTypesModel ... WarningOutcome)
+# are the classes that declare each extra policy.
 id: require-model-extra-forbid
 language: python
 severity: error
@@ -13,6 +16,10 @@ ignores:
   - "**/legado/**"
   - "**/legacy/**"
   - "**/node_modules/**"
+constraints:
+  NAME:
+    not:
+      regex: "(?:Mixin|^(?:ArbitraryTypesModel|ContractModel|EnumManagedModel|FlexibleInternalModel|FlexibleModel|FrozenValueModel|ImmutableValueModel|InvalidOutcome|ManagedModel|Metadata|NormalizedModel|StrictBoundaryModel|StrictManagedModel|TaggedModel|TimestampedModel|ValidOutcome|WarningOutcome))$"
 rule:
   kind: class_definition
   has:
@@ -46,3 +53,4 @@ rule:
 message: >-
   Model `$NAME` extends the raw pydantic base without an extra policy: inherit
   an `m.*` preset or declare `extra="forbid"`.
+  Detection only: forbidding extra rejects payloads accepted today.

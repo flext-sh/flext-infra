@@ -1,0 +1,43 @@
+# A read-only model field (annotated with a Sequence, Mapping, frozenset or a
+# `t.*` alias, never a concrete list/dict/set) contradicts a raw
+# `default_factory=list|dict|set`: the factory hands every instance a mutable
+# container the annotation promises nobody mutates. Use the canonical empty
+# value the field contract validates:
+# `m.Field(default_factory=u.empty(TypeForm(<field annotation>)))`.
+id: ban-raw-collection-default-factory
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+rule:
+  kind: keyword_argument
+  all:
+    - has:
+        field: name
+        regex: "^default_factory$"
+    - has:
+        field: value
+        pattern: $KIND
+        regex: "^(?:list|dict|set)$"
+    - inside:
+        matches: model-field-assignment
+        stopBy: end
+        not:
+          has:
+            field: type
+            regex: "^(?:(?:typing\\.)?Annotated\\[\\s*)?(?:list|dict|set|(?:[A-Za-z_][A-Za-z0-9_]*\\.)*Mutable[A-Za-z]*)\\b"
+message: >-
+  A read-only model field defaults through raw `$KIND`: use
+  `m.Field(default_factory=u.empty(TypeForm(<field annotation>)))`.
+  Detection only: the empty value is typed by the field annotation and needs the u and TypeForm bindings.

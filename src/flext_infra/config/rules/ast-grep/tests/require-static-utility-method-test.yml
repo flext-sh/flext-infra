@@ -22,9 +22,27 @@ valid:
         class Reader(Protocol):
             def read(self) -> str: ...
   - |
+    class FlextDemoUtilities:
+        class _Collector:
+            def collect(self, value):
+                return value
+  - |
     class FlextUtilitiesLogging:
         def info(self, message):
             return message
+  - |
+    class FlextDemoUtilities:
+        @staticmethod
+        def remove(module):
+            class RemoveShadows(CSTTransformer):
+                def leave_Assign(self, original_node, updated_node):
+                    return updated_node
+            return module.visit(RemoveShadows())
+  - |
+    class FlextDemoUtilities(Base):
+        @override
+        def build(self, value):
+            return value
 invalid:
   - |
     class FlextDemoUtilities:
@@ -32,6 +50,6 @@ invalid:
             return value
   - |
     class FlextDemoUtilities:
-        @override
+        @cache
         def build(self, value):
             return value

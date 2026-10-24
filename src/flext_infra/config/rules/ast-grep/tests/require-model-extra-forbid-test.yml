@@ -9,6 +9,12 @@ valid:
   - |
     class Order(BaseModel, extra="forbid"):
         total: int
+  - |
+    class ScopeMixin(m.BaseModel):
+        projects: t.StrSequence = ()
+  - |
+    class ManagedModel(BaseModel):
+        model_config = ConfigDict(validate_assignment=True)
 invalid:
   - |
     class Order(BaseModel):

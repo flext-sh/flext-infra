@@ -15,6 +15,9 @@ ignores:
   - "**/legado/**"
   - "**/legacy/**"
   - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
 rule:
   kind: identifier
   regex: "^(?:list|set)$"
@@ -35,3 +38,4 @@ rule:
 message: >-
   Model field annotation names mutable `$KIND`: use `t.SequenceOf[...]` for a
   list and `frozenset[...]` for a set.
+  Detection only: consumers that mutate the container change with the annotation.

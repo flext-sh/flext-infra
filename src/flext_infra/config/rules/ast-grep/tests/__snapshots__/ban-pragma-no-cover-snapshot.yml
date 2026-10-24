@@ -3,7 +3,8 @@ snapshots:
   ? |-
     def unreachable():  # pragma: no cover
         raise RuntimeError
-  : labels:
+  : fixed: "def unreachable():  \n    raise RuntimeError"
+    labels:
     - source: '# pragma: no cover'
       style: primary
       start: 20
@@ -11,7 +12,8 @@ snapshots:
   ? |-
     if TYPE_CHECKING:  # pragma:no cover
         pass
-  : labels:
+  : fixed: "if TYPE_CHECKING:  \n    pass"
+    labels:
     - source: '# pragma:no cover'
       style: primary
       start: 19

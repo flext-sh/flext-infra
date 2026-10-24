@@ -2,7 +2,7 @@ id: require-static-utility-method
 snapshots:
   ? |
     class FlextDemoUtilities:
-        @override
+        @cache
         def build(self, value):
             return value
   : labels:
@@ -10,12 +10,12 @@ snapshots:
         def build(self, value):
                 return value
       style: primary
-      start: 44
-      end: 88
+      start: 41
+      end: 85
     - source: build
       style: secondary
-      start: 48
-      end: 53
+      start: 45
+      end: 50
   ? |
     class FlextDemoUtilities:
         def build(self, value):

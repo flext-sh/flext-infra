@@ -15,6 +15,9 @@ ignores:
   - "**/legado/**"
   - "**/legacy/**"
   - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
 rule:
   kind: binary_operator
   all:
@@ -65,3 +68,4 @@ rule:
 message: >-
   Inline union with more than two arms in a model field: declare it once as a
   named `t.*` alias in typings.py and annotate the field with that alias.
+  Detection only: the alias name and its typings owner are a design decision.

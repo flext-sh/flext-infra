@@ -124,6 +124,7 @@ rules:
   - {engine: ruff, id: non-pep585-annotation}
   - {engine: ruff, id: non-pep604-annotation-union}
   - {engine: ruff, id: deprecated-import}
+  - {engine: ruff, id: non-pep695-type-alias}
   - {engine: ast-grep, id: typing-dict-to-mapping-kv}
   - {engine: ast-grep, id: typing-dict-missing-t-import}
   - {engine: ast-grep, id: typing-list-to-sequence-of}
@@ -138,6 +139,7 @@ rules:
   rules:
   - {engine: ast-grep, id: ban-noqa-comment}
   - {engine: ast-grep, id: ban-pragma-no-cover}
+  - {engine: ast-grep, id: ban-pragma-no-cover-mixed-comment}
   - {engine: ast-grep, id: rewrite-bare-except-to-exception}
   - {engine: ast-grep, id: ban-silent-except-swallow}
   - {engine: ast-grep, id: ban-silent-suppress}
@@ -575,6 +577,7 @@ rules:
   skills: [flext-mro-namespace-rules]
   rules:
   - {engine: ast-grep, id: require-runtime-checkable-protocol}
+  - {engine: ast-grep, id: require-runtime-checkable-protocol-missing-import}
 - id: ENFORCE-112
   severity: MEDIUM
   description: A protocol tree nests only Protocols, namespaces and ABCs.
@@ -590,3 +593,11 @@ rules:
   skills: [flext-mro-namespace-rules]
   rules:
   - {engine: ast-grep, id: ban-accessor-method-name}
+- id: ENFORCE-114
+  severity: MEDIUM
+  description: >-
+    A read-only model field never defaults through a raw list, dict or set
+    factory; it defaults to the canonical empty value of its contract.
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: ban-raw-collection-default-factory}

@@ -25,3 +25,4 @@ rule:
 message: >-
   `cast()` outside flext-core asserts an unproven type: narrow through the
   result contract or an explicit isinstance guard.
+  Detection only: removing the cast loses the asserted type; the narrowing owner is a typed decision.

@@ -9,6 +9,9 @@ valid:
 
             class Base(ABC):
                 pass
+
+            class Issue(p.Model, Protocol):
+                code: str
 invalid:
   - |
     class FlextDemoProtocols:

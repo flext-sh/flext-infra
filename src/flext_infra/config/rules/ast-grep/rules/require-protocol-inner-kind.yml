@@ -16,6 +16,9 @@ ignores:
   - "**/legado/**"
   - "**/legacy/**"
   - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
 rule:
   kind: class_definition
   has:
@@ -30,9 +33,14 @@ rule:
         has:
           regex: "(?:^|\\.)(?:BaseModel|[A-Za-z]*Model|[A-Za-z]*Enum|[A-Za-z]*Exception|[A-Za-z]*Error|TypedDict|NamedTuple)$"
     - not:
+        has:
+          field: superclasses
+          regex: "\\bProtocol\\b"
+    - not:
         inside:
           kind: function_definition
           stopBy: end
 message: >-
   `$NAME` nests concrete data in a protocol tree: keep only Protocols,
   namespaces and ABCs here and move the declaration to its owning family.
+  Detection only: the move rewires every consumer to another family.

@@ -1,5 +1,9 @@
 # Coverage measures what runs. A `pragma: no cover` comment removes code from
 # the measurement instead of testing it or deleting it.
+#
+# A comment that is only the pragma is deleted by `make mod`. A comment that
+# carries other text beside the pragma is reported by the companion rule: the
+# remaining text is the author's, so the rewrite is left to them.
 id: ban-pragma-no-cover
 language: python
 severity: error
@@ -13,7 +17,29 @@ ignores:
   - "**/node_modules/**"
 rule:
   kind: comment
-  regex: "pragma:\\s*no\\s*cover"
+  regex: "^#\\s*pragma:\\s*no\\s*cover\\s*$"
+fix: ""
 message: >-
-  `pragma: no cover` hides code from coverage: test the code through its public
-  behaviour or delete it.
+  `pragma: no cover` hides code from coverage: `make mod` deletes it; test the
+  code through its public behaviour or delete it.
+---
+id: ban-pragma-no-cover-mixed-comment
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  kind: comment
+  regex: "pragma:\\s*no\\s*cover"
+  not:
+    regex: "^#\\s*pragma:\\s*no\\s*cover\\s*$"
+message: >-
+  `pragma: no cover` hides code from coverage. Detection only: the comment also
+  carries the author's own text, which no rewrite may delete; remove the pragma
+  and test the code or delete it.

@@ -15,6 +15,9 @@ ignores:
   - "**/legado/**"
   - "**/legacy/**"
   - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
 utils:
   non-empty-mutable-literal:
     any:
@@ -49,3 +52,4 @@ rule:
 message: >-
   Model field `$NAME` defaults to a shared mutable literal: use
   `m.Field(default_factory=...)` or an immutable default.
+  Detection only: the default and its annotation change type together.

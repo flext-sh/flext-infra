@@ -10,6 +10,22 @@ snapshots:
       style: primary
       start: 32
       end: 51
+    - source: import tomllib
+      style: secondary
+      start: 9
+      end: 23
+    - source: import tomllib
+      style: secondary
+      start: 9
+      end: 23
+    - source: |-
+        try:
+            import tomllib
+        except (ModuleNotFoundError, OSError):
+            tomllib = None
+      style: secondary
+      start: 0
+      end: 81
     - source: |-
         except (ModuleNotFoundError, OSError):
             tomllib = None
@@ -26,6 +42,22 @@ snapshots:
       style: primary
       start: 28
       end: 39
+    - source: import yaml
+      style: secondary
+      start: 9
+      end: 20
+    - source: import yaml
+      style: secondary
+      start: 9
+      end: 20
+    - source: |-
+        try:
+            import yaml
+        except ImportError:
+            yaml = None
+      style: secondary
+      start: 0
+      end: 56
     - source: |-
         except ImportError:
             yaml = None

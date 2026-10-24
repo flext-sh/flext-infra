@@ -41,3 +41,4 @@ rule:
 message: >-
   `$NAME` nests a namespace three classes deep: flatten it by prefix-merging the
   inner class into its parent domain class.
+  Detection only: flattening renames the class at every consumer.

@@ -1,0 +1,6 @@
+id: ban-pragma-no-cover-mixed-comment
+valid:
+  - "def unreachable():  # pragma: no cover\n    raise RuntimeError"
+  - "# coverage is measured"
+invalid:
+  - "def unreachable():  # defensive, pragma: no cover\n    raise RuntimeError"

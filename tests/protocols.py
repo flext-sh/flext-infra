@@ -57,6 +57,7 @@ class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
                 """Monotonic timestamp at the beginning of the profiling run."""
                 ...
 
+        @runtime_checkable
         class NativeConsumer(Protocol):
             """Run an actual isolated Python consumer with explicit source inputs."""
 

@@ -12,6 +12,11 @@ valid:
     except OSError:
         error = ImportError("x")
         raise error
+  - |
+    try:
+        repo = Repo(path)
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(path) from exc
 invalid:
   - |
     try:

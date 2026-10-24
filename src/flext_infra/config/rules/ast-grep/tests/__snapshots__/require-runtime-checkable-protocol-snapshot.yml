@@ -1,47 +1,91 @@
 id: require-runtime-checkable-protocol
 snapshots:
   ? |
+    from typing import Protocol, runtime_checkable
     class FlextDemoProtocols:
         class Reader(Protocol):
             def read(self) -> str: ...
-  : labels:
+  : fixed: |
+      from typing import Protocol, runtime_checkable
+      class FlextDemoProtocols:
+          @runtime_checkable
+          class Reader(Protocol):
+              def read(self) -> str: ...
+    labels:
     - source: |-
         class Reader(Protocol):
                 def read(self) -> str: ...
       style: primary
-      start: 30
-      end: 88
+      start: 77
+      end: 135
     - source: Protocol
       style: secondary
-      start: 43
-      end: 51
+      start: 90
+      end: 98
     - source: Protocol
       style: secondary
-      start: 43
-      end: 51
-    - source: Reader
+      start: 90
+      end: 98
+    - source: typing
       style: secondary
-      start: 36
-      end: 42
+      start: 5
+      end: 11
+    - source: runtime_checkable
+      style: secondary
+      start: 29
+      end: 46
+    - source: from typing import Protocol, runtime_checkable
+      style: secondary
+      start: 0
+      end: 46
+    - source: |
+        from typing import Protocol, runtime_checkable
+        class FlextDemoProtocols:
+            class Reader(Protocol):
+                def read(self) -> str: ...
+      style: secondary
+      start: 0
+      end: 136
   ? |
+    from typing import runtime_checkable
     class Writer(typing.Protocol[T]):
         def write(self, value: T) -> None: ...
-  : labels:
+  : fixed: |
+      from typing import runtime_checkable
+      @runtime_checkable
+      class Writer(typing.Protocol[T]):
+          def write(self, value: T) -> None: ...
+    labels:
     - source: |-
         class Writer(typing.Protocol[T]):
             def write(self, value: T) -> None: ...
       style: primary
+      start: 37
+      end: 113
+    - source: typing.Protocol[T]
+      style: secondary
+      start: 50
+      end: 68
+    - source: typing.Protocol[T]
+      style: secondary
+      start: 50
+      end: 68
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: runtime_checkable
+      style: secondary
+      start: 19
+      end: 36
+    - source: from typing import runtime_checkable
+      style: secondary
       start: 0
-      end: 76
-    - source: typing.Protocol[T]
+      end: 36
+    - source: |
+        from typing import runtime_checkable
+        class Writer(typing.Protocol[T]):
+            def write(self, value: T) -> None: ...
       style: secondary
-      start: 13
-      end: 31
-    - source: typing.Protocol[T]
-      style: secondary
-      start: 13
-      end: 31
-    - source: Writer
-      style: secondary
-      start: 6
-      end: 12
+      start: 0
+      end: 114

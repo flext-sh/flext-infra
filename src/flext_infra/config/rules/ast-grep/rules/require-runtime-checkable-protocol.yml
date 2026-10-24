@@ -2,6 +2,10 @@
 # conformance is checked at runtime (pydantic `InstanceOf`, isinstance
 # guards): every class listing `Protocol` among its bases is decorated with
 # `@runtime_checkable`.
+#
+# In a module that binds `runtime_checkable` from typing, `make mod` adds the
+# decorator. The companion rule reports modules without that binding: a blind
+# fix would emit an undefined name.
 id: require-runtime-checkable-protocol
 language: python
 severity: error
@@ -15,22 +19,96 @@ ignores:
   - "**/legado/**"
   - "**/legacy/**"
   - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+utils:
+  undecorated-protocol:
+    kind: class_definition
+    all:
+      - has:
+          field: superclasses
+          has:
+            regex: "^(?:typing\\.)?Protocol(?:\\[.*\\])?$"
+      - not:
+          inside:
+            kind: decorated_definition
+            has:
+              kind: decorator
+              regex: "^@(?:typing\\.)?runtime_checkable$"
 rule:
-  kind: class_definition
+  matches: undecorated-protocol
+  pattern: $CLASS
+  inside:
+    kind: module
+    stopBy: end
+    has:
+      kind: import_from_statement
+      stopBy: end
+      all:
+        - has:
+            field: module_name
+            regex: "^typing(?:_extensions)?$"
+        - has:
+            kind: dotted_name
+            regex: "^runtime_checkable$"
+fix: |-
+  @runtime_checkable
+  $CLASS
+message: >-
+  Protocol is not runtime-checkable: `make mod` decorates it with
+  `@runtime_checkable`.
+---
+id: require-runtime-checkable-protocol-missing-import
+language: python
+severity: error
+files:
+  - "**/protocols.py"
+  - "**/_protocols.py"
+  - "**/_protocols/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+utils:
+  undecorated-protocol:
+    kind: class_definition
+    all:
+      - has:
+          field: superclasses
+          has:
+            regex: "^(?:typing\\.)?Protocol(?:\\[.*\\])?$"
+      - not:
+          inside:
+            kind: decorated_definition
+            has:
+              kind: decorator
+              regex: "^@(?:typing\\.)?runtime_checkable$"
+rule:
+  matches: undecorated-protocol
   has:
     field: name
     pattern: $NAME
-  all:
-    - has:
-        field: superclasses
-        has:
-          regex: "^(?:typing\\.)?Protocol(?:\\[.*\\])?$"
-    - not:
-        inside:
-          kind: decorated_definition
-          has:
-            kind: decorator
-            regex: "^@(?:typing\\.)?runtime_checkable$"
+  inside:
+    kind: module
+    stopBy: end
+    not:
+      has:
+        kind: import_from_statement
+        stopBy: end
+        all:
+          - has:
+              field: module_name
+              regex: "^typing(?:_extensions)?$"
+          - has:
+              kind: dotted_name
+              regex: "^runtime_checkable$"
 message: >-
-  Protocol `$NAME` is not runtime-checkable: decorate it with
-  `@runtime_checkable`.
+  Protocol `$NAME` is not runtime-checkable. Detection only: the module does
+  not import `runtime_checkable` from typing, so the decorator would name an
+  undefined symbol; import it and `make mod` adds the decorator.

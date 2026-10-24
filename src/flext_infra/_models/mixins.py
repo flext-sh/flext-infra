@@ -236,7 +236,9 @@ class FlextInfraModelsMixins:
     class ProjectNamesListMixin(m.BaseModel):
         """Shared concrete project-name collection."""
 
-        project_names: t.StrSequence = m.Field(default_factory=tuple)
+        project_names: t.StrSequence = m.Field(
+            default_factory=tuple, description="Project names"
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsMixins"]
