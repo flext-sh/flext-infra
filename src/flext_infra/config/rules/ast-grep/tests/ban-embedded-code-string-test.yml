@@ -1,0 +1,17 @@
+id: ban-embedded-code-string
+valid:
+  - |
+    message = (
+        "a long error message split by the formatter "
+        "over two lines without line breaks"
+    )
+  - two = "first line\n" "second line\n"
+  - single = "one line\n"
+invalid:
+  - |
+    code = (
+        "from flext_cli import u\n"
+        "e = {'b': ('c',)}\n"
+        "print(u.Cli.dag_waves(e).error)\n"
+    )
+  - source = f"value = {name!r}\n" f"other = 1\n" f"third = 2\n"
