@@ -1,0 +1,7 @@
+id: codegen-conform-state-workspace
+valid:
+  - |
+    FlextInfraCodegenConform(repository_root=root, state=m.Infra.CodegenConformState(repository_root=root, initial_workspace=workspace))
+invalid:
+  - |
+    FlextInfraCodegenConform(repository_root=root, initial_workspace=workspace)

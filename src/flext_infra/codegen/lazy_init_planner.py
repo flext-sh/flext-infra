@@ -69,7 +69,7 @@ class FlextInfraCodegenLazyInitPlanner(
         default_factory=dict[str, m.Infra.LazyInitPlan],
     )
     _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
         default_factory=dict[str, t.StrSequence],

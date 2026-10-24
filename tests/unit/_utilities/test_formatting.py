@@ -24,18 +24,17 @@ class TestsFlextInfraUtilitiesformatting:
     ) -> None:
         """Format and execute candidate bytes without replacing their live receipt."""
         width = max(1, config.Infra.tooling.tools.ruff.line_length // width_factor)
-        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
-        member = root / "member"
-        tm.ok(u.Cli.ensure_dir(member))
-        tm.ok(u.Cli.atomic_write_text_file(member / c.Infra.INIT_PY, ""))
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        pyproject = root / c.PYPROJECT_FILENAME
         tm.ok(
             u.Cli.atomic_write_text_file(
-                member / c.PYPROJECT_FILENAME,
-                '[project]\nname = "formatting-member"\nversion = "0.1.0"\n'
-                f"[tool.ruff]\nline-length = {width}\n",
+                pyproject,
+                pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                    "[tool.ruff]\n", f"[tool.ruff]\nline-length = {width}\n", 1
+                ),
             )
         )
-        path = member / "candidate.py"
+        path = package / "candidate.py"
         original = "values = []\n"
         tm.ok(u.Cli.atomic_write_text_file(path, original))
         values = tuple(range(width))
@@ -60,7 +59,8 @@ class TestsFlextInfraUtilitiesformatting:
             u.Cli.run((sys.executable, "-c", normalized + "print(sum(values))\n"))
         )
         tm.that(output.stdout.strip(), eq=str(sum(values)))
-        tm.fail(u.Infra.normalize_source(root, path, "values = [\n"))
+        with pytest.raises(SyntaxError):
+            u.Infra.normalize_source(root, path, "values = [\n")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod

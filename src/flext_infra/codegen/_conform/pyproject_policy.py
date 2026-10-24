@@ -101,11 +101,11 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             if (name := u.Infra.dep_name(requirement)) is not None
         }
         targets = tuple(
-            name
+            distribution
             for repository in (workspace.value.repository, *workspace.value.subprojects)
             if repository.package
-            and (name := u.Infra.dep_name(repository.distribution)) is not None
-            and name in declared
+            and (distribution := u.Infra.dep_name(repository.distribution)) is not None
+            and distribution in declared
         )
         if not targets:
             return result_type.fail(

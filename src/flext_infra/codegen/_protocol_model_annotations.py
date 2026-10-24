@@ -57,6 +57,11 @@ class FlextInfraCodegenProtocolModelAnnotations:
 
         """
         module = value.get_module()
+        if not isinstance(value, p.Infra.RopeSourceDefinition):
+            if module is not None and u.Infra.abstract_class(value):
+                return f"{module.get_name()}.{value.get_name()}"
+            msg = f"declaration has no native class identity: {value.get_name()}"
+            raise ValueError(msg)
         scope = value.get_scope()
         if module is None or scope is None:
             msg = f"declaration has no native source identity: {value.get_name()}"
@@ -85,18 +90,19 @@ class FlextInfraCodegenProtocolModelAnnotations:
 
     @staticmethod
     def member(binding: p.Infra.RopePyName, name: str) -> p.Infra.RopePyName | None:
-        """Follow a public route through the native attribute graph.
+        """Resolve a public route through its native declaration scope.
 
         Returns:
-            The exact published binding, or absence of that route.
+            The published source binding, including declared class aliases.
 
+        Raises:
+            ValueError: If the facade has no native declaration scope.
         """
-        for member in name.split("."):
-            resolved = binding.get_object().get_attributes().get(member)
-            if resolved is None:
-                return None
-            binding = resolved
-        return binding
+        scope = binding.get_object().get_scope()
+        if scope is None:
+            msg = f"public facade has no native declaration scope: {name}"
+            raise ValueError(msg)
+        return u.Infra.resolve_symbol(scope, ast.parse(name, mode="eval").body)
 
     alias_definition = staticmethod(u.Infra.annotation_alias_definition)
 
@@ -181,7 +187,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         visiting: t.StrTuple,
     ) -> ast.expr:
         primary = node.value if isinstance(node, ast.Subscript) else node
-        binding = u.Infra.expression_name(scope, ast.unparse(primary))
+        binding = u.Infra.resolve_symbol(scope, primary)
         for module, name in (("builtins", "object"), ("typing", "Any")):
             if self.is_type(primary, scope, module, name):
                 msg = f"forbidden generated protocol annotation: {module}.{name}"

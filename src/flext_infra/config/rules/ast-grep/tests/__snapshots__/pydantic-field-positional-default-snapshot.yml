@@ -1,0 +1,69 @@
+id: pydantic-field-positional-default
+snapshots:
+  ? |
+    class Cache(m.Value):
+        backend: str = u.Field("memory", description="Backend")
+  : fixed: |
+      class Cache(m.Value):
+          backend: str = u.Field(
+              default="memory", description="Backend",
+          )
+    labels:
+    - source: u.Field("memory", description="Backend")
+      style: primary
+      start: 41
+      end: 81
+  ? |
+    class Enabled(m.Value):
+        enabled: bool = m.Field(True)
+  : fixed: |
+      class Enabled(m.Value):
+          enabled: bool = m.Field(
+              default=True,
+          )
+    labels:
+    - source: m.Field(True)
+      style: primary
+      start: 44
+      end: 57
+  ? |
+    class Location(m.ContractModel):
+        start_line: int | None = m.Field(
+            None,
+            validation_alias=m.AliasPath("physicalLocation", "region", "startLine"),
+            description="Start line",
+        )
+  : fixed: |
+      class Location(m.ContractModel):
+          start_line: int | None = m.Field(
+              default=None,
+              validation_alias=m.AliasPath("physicalLocation", "region", "startLine"),
+              description="Start line",
+          )
+    labels:
+    - source: |-
+        m.Field(
+                None,
+                validation_alias=m.AliasPath("physicalLocation", "region", "startLine"),
+                description="Start line",
+            )
+      style: primary
+      start: 62
+      end: 205
+  ? |
+    class Operation(m.ContractModel):
+        kind: Literal["set"] = m.Field("set", description="Operation")
+        locations: tuple[str, ...] = m.Field((), description="Locations")
+        receipt: Path | None = m.Field(None, description="Receipt")
+  : fixed: |
+      class Operation(m.ContractModel):
+          kind: Literal["set"] = m.Field(
+              default="set", description="Operation",
+          )
+          locations: tuple[str, ...] = m.Field((), description="Locations")
+          receipt: Path | None = m.Field(None, description="Receipt")
+    labels:
+    - source: m.Field("set", description="Operation")
+      style: primary
+      start: 61
+      end: 100

@@ -23,7 +23,9 @@ from libcst.metadata import (
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    from libcst.metadata import CodeRange
+
+    from flext_infra import m, t
 
 
 class FlextInfraUtilitiesSemanticCutoverAliasCst:
@@ -34,13 +36,17 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
         METADATA_DEPENDENCIES = (
             ParentNodeProvider,
-            PositionProvider,
             QualifiedNameProvider,
             ScopeProvider,
         )
 
-        def __init__(self, plan: m.Infra.CompatibilityAliasRewritePlan) -> None:
+        def __init__(
+            self,
+            plan: m.Infra.CompatibilityAliasRewritePlan,
+            positions: t.MappingKV[cst.CSTNode, CodeRange],
+        ) -> None:
             self.plan = plan
+            self.positions = positions
 
         def _qualified_names(self, node: cst.CSTNode) -> frozenset[QualifiedName]:
             """Verify the lexical receiver before trusting dotted import metadata.
@@ -89,7 +95,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
             """
             names = self._qualified_names(node)
             if isinstance(node, cst.Name) and node.value in self.plan.upstream_aliases:
-                position = self.get_metadata(PositionProvider, node).start
+                position = self.positions[node].start
                 if (position.line, position.column) in self.plan.preserved_reads:
                     return None
                 upstream_read = any(
@@ -350,11 +356,10 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
             The structurally rewritten source without changing its layout.
 
         """
-        return (
-            MetadataWrapper(cst.parse_module(source))
-            .visit(cls._AliasTransformer(plan))
-            .code
-        )
+        wrapper = MetadataWrapper(cst.parse_module(source))
+        return wrapper.visit(
+            cls._AliasTransformer(plan, wrapper.resolve(PositionProvider))
+        ).code
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverAliasCst"]

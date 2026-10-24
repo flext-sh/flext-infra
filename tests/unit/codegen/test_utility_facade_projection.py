@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import os
 import sys
 from pathlib import Path
@@ -2109,10 +2110,18 @@ class TestsFlextInfraUtilityFacadeProjection:
         ("published", "actual"),
         [("AclAllow", "AclTarget"), ("RegistryBound", "ServerReference")],
     )
+    @pytest.mark.parametrize("managed", [False, True])
+    @pytest.mark.parametrize("collision", [False, True])
     def test_protocol_projection_rejects_unproven_renamed_contract(
-        self, tmp_path: Path, published: str, actual: str
+        self,
+        tmp_path: Path,
+        published: str,
+        actual: str,
+        *,
+        managed: bool,
+        collision: bool,
     ) -> None:
-        """A renamed inherited entity is not evidence of a contract alias."""
+        """Managed projections consume source contracts, never obsolete aliases."""
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-sample", package_name="flext_sample"
         )
@@ -2122,12 +2131,18 @@ class TestsFlextInfraUtilityFacadeProjection:
             "from typing import Protocol\n"
             "class PayloadOwner:\n"
             f"    class {actual}(Protocol):\n        value: str\n"
-            "__all__ = ['PayloadOwner']\n",
+            + (
+                f"    class {published}(Protocol):\n        registry: str\n"
+                if collision
+                else ""
+            )
+            + "__all__ = ['PayloadOwner']\n",
         )
         facade = package / "protocols.py"
         self._write(
             facade,
-            "from flext_sample._protocols import PayloadOwner\n"
+            (f"{c.Infra.AUTOGEN_HEADER}\n" if managed else "")
+            + "from flext_sample._protocols import PayloadOwner\n"
             "class FlextSampleProtocols:\n"
             "    class Sample(PayloadOwner):\n"
             f"        {published}: type[PayloadOwner.{actual}] = "
@@ -2138,8 +2153,125 @@ class TestsFlextInfraUtilityFacadeProjection:
         service = u.Tests.create_lazy_init_service(root)
         service.target_module = f"{package.name}._protocols"
         tm.ok(u.Tests.materialize_lazy_init(service))
+        if managed:
+            rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+            self._write(facade, rendered)
+            tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
+            tree = ast.parse(rendered)
+            tm.that(
+                any(
+                    isinstance(node, ast.AnnAssign)
+                    and isinstance(node.target, ast.Name)
+                    and node.target.id == published
+                    for node in ast.walk(tree)
+                ),
+                eq=False,
+            )
+            return
         with pytest.raises(ValueError, match="ambiguous protocol class attribute"):
             u.Infra.render_utility_facade(package, family="p")
+
+    @pytest.mark.parametrize("family", ["p", "m"])
+    @pytest.mark.parametrize("annotation", ["none", "matching", "unresolved"])
+    def test_generated_contract_aliases_use_canonical_inherited_declarations(
+        self,
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        family: Literal["p", "m"],
+        *,
+        annotation: Literal["none", "matching", "unresolved"],
+    ) -> None:
+        """Derived aliases cannot replace real contracts or create legacy names."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        declaration = u.Infra.facade_families()[family]
+        directory = declaration.directory
+        module = f"{declaration.module}{c.Infra.EXT_PYTHON}"
+        self._write(package / c.Infra.INIT_PY, "")
+        protocol = family == "p"
+        base = "Protocol" if protocol else "BaseModel"
+        decorator = "    @runtime_checkable\n" if protocol else ""
+        self._write(
+            package / directory / "payload.py",
+            (
+                "from typing import Protocol, runtime_checkable\n"
+                if protocol
+                else "from pydantic import BaseModel\n"
+            )
+            + "class PayloadOwner:\n"
+            + decorator
+            + f"    class RegistryBound({base}):\n        registry: str\n"
+            + decorator
+            + f"    class ServerReference({base}):\n        server_type: str\n"
+            + decorator
+            + f"    class AclTarget({base}):\n        target_dn: str\n"
+            + "__all__ = ['PayloadOwner']\n",
+        )
+        self._write(
+            package / "foreign.py",
+            "class ForeignOwner:\n    class Extra:\n        pass\n",
+        )
+        facade = package / module
+        self._write(
+            facade,
+            c.Infra.AUTOGEN_HEADERS[0]
+            + "\n"
+            + ("from typing import Protocol, runtime_checkable\n" if protocol else "")
+            + f"from {package.name}.{directory} import PayloadOwner\n"
+            + f"from {package.name}.foreign import ForeignOwner\n"
+            + "class Facade:\n"
+            + ("    @runtime_checkable\n" if protocol else "")
+            + "    class Sample(PayloadOwner"
+            + (", Protocol" if protocol else "")
+            + "):\n"
+            + "".join(
+                f"        {published}"
+                + (
+                    f": type[PayloadOwner.{actual}]"
+                    if annotation == "matching"
+                    else ": type[MissingContract]"
+                    if annotation == "unresolved"
+                    else ""
+                )
+                + f" = PayloadOwner.{actual}\n"
+                for published, actual in (
+                    ("AclAllow", "AclTarget"),
+                    ("RegistryBound", "ServerReference"),
+                )
+            )
+            + "        Extra = ForeignOwner.Extra\n"
+            + "        marker = 'retained'\n"
+            + f"{family} = Facade\n__all__ = ['Facade', '{family}']\n",
+        )
+        service = u.Tests.create_lazy_init_service(root)
+        service.target_module = f"{package.name}.{directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import {family} as public\n"
+            f"from {package.name}.{directory} import PayloadOwner\n"
+            f"from {package.name}.foreign import ForeignOwner\n"
+            "assert public.Sample.RegistryBound is PayloadOwner.RegistryBound\n"
+            "assert public.Sample.ServerReference is PayloadOwner.ServerReference\n"
+            "assert public.Sample.AclTarget is PayloadOwner.AclTarget\n"
+            "assert public.Sample.Extra is ForeignOwner.Extra\n"
+            "assert public.Sample.marker == 'retained'\n"
+            "assert not hasattr(public.Sample, 'AclAllow')\n"
+            + (
+                "class Bound:\n    registry = 'bound'\n"
+                "class Reference:\n    server_type = 'reference'\n"
+                "bound = Bound()\nreference = Reference()\n"
+                "assert isinstance(bound, public.Sample.RegistryBound)\n"
+                "assert not isinstance(reference, public.Sample.RegistryBound)\n"
+                if protocol
+                else "bound = public.Sample.RegistryBound(registry='bound')\n"
+            )
+            + "assert bound.registry == 'bound'\n",
+            cwd=root,
+        )
 
     @staticmethod
     def test_codegen_models_are_usable_through_the_composed_facade() -> None:
@@ -2238,6 +2370,7 @@ class TestsFlextInfraUtilityFacadeProjection:
 
     @pytest.mark.parametrize("family", ["p", "m"])
     @pytest.mark.parametrize("compact", [False, True])
+    @pytest.mark.parametrize("generated", [False, True])
     def test_class_alias_removal_obeys_effective_diamond_owner(
         self,
         native_consumer: p.Tests.NativeConsumer,
@@ -2245,6 +2378,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         family: Literal["p", "m"],
         *,
         compact: bool,
+        generated: bool,
     ) -> None:
         """C3 beats the left base's inherited alias and keeps adjacent statements."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -2261,7 +2395,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         self._write(
             facade,
-            f"from {package.name}.{directory}.owners import LeftPart, RightPart\n"
+            (c.Infra.AUTOGEN_HEADERS[0] + "\n" if generated else "")
+            + f"from {package.name}.{directory}.owners import LeftPart, RightPart\n"
             "class Facade(LeftPart, RightPart):"
             + (
                 " Payload = RightPart.Payload; marker = 'retained'\n"

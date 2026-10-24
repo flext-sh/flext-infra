@@ -1,0 +1,12 @@
+id: pydantic-unset-private-attribute
+valid:
+  - |
+    class State(m.BaseModel):
+        _root: Path
+        _values: list[str] = m.PrivateAttr(default_factory=list)
+        _ready: bool = m.PrivateAttr(default=False)
+invalid:
+  - |
+    class State(m.BaseModel):
+        _root: Path = m.PrivateAttr()
+        _port: p.Port = u.PrivateAttr()

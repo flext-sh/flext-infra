@@ -1,0 +1,17 @@
+id: pydantic-unset-private-attribute
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  pattern: "$NAME: $TYPE = $FACADE.PrivateAttr()"
+constraints:
+  NAME:
+    regex: "^_[a-z][a-z0-9_]*$"
+  FACADE:
+    regex: "^(?:m|u)$"
+fix: "$NAME: $TYPE"
+message: Declare required private model attributes directly; Pydantic creates their unset descriptors from the annotation.

@@ -606,6 +606,18 @@ Infra:
       pre_push: true
       # Public refactor violations-sweep default; custom sequences use verbs below.
       violations_sweep_repair_verbs: [ fix, fmt, mod ]
+      type_contract_rules:
+      - bind-typing-adapter-utilities
+      - rewire-cli-json-mapping-adapter
+      - rewire-cli-json-list-adapter
+      - pydantic-field-positional-default
+      - pydantic-unset-private-attribute
+      - codegen-conform-state-request-workspace
+      - codegen-conform-state-workspace-request
+      - codegen-conform-state-request
+      - codegen-conform-state-workspace
+      - codegen-conform-state-workspace-only
+      - codegen-conform-state-ports
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local, ci ] }
@@ -710,6 +722,8 @@ Infra:
         description: Run this repository's explicitly declared public runtime examples module.
       - name: check
         description: Check the configured quality gates and projection conformance without writes.
+      - name: check-pyright
+        description: Run the complete configured Pyright analysis and retain its native gate receipt.
       - name: census
         description: Inventory constants, duplicate declarations and placement across every declared first-party project.
       - name: census-constants
@@ -797,6 +811,8 @@ Infra:
         requires_activation: false
       - name: mod
         description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
+      - name: mod-types
+        description: Apply the declared source type-contract migrations through the native AST fixed point.
       - name: mod-rules
         description: Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.
       - name: mod-text

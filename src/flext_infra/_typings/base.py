@@ -172,9 +172,6 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = t.SequenceOf[DomainResult]
     "Read-only sequence of typed service result payloads."
-    type StubChainRuntimeState = MutableMapping[str, t.GuardInput | None]
-    "Canonical model-construction payload for the stub supply-chain service."
-
     # ── Transformer / edit result types ──────────────────────────────
 
     type TransformResult = t.StrSequencePair
