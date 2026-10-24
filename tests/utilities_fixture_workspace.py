@@ -629,31 +629,25 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             return lane
 
         @staticmethod
-        def override_repository_manifest(
+        def override_repository_declaration(
             repository: Path,
             updates: Mapping[str, t.JsonValue],
-        ) -> m.Infra.RepositoryRef:
-            """Re-select the observed repository, apply overrides, rewrite its manifest.
+        ) -> None:
+            """Merge ``updates`` into the repository's own codegen declaration.
 
-            Returns:
-                The resulting ``m.Infra.RepositoryRef``.
-
+            The repository layer of ``Infra.codegen.repository`` is the only
+            authored repository policy; Git and project metadata own identity.
             """
-            observed = tm.ok(
-                FlextInfraWorkspaceDetector.load_workspace_spec(repository),
-            )
-            declared = observed.repository.model_copy(update=dict(updates))
-            tm.ok(
-                u.Cli.yaml_dump(
-                    repository / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                    {
-                        "version": 3,
-                        "name": declared.name,
-                        "repository": declared.model_dump(mode="json"),
-                    },
-                ),
-            )
-            return declared
+            path = repository / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+            empty: t.JsonMapping = {}
+            current = tm.ok(u.Cli.yaml_safe_load(path)) if path.is_file() else empty
+            infra = dict(u.Cli.toml_mapping_child(current, "Infra") or {})
+            codegen = dict(u.Cli.toml_mapping_child(infra, "codegen") or {})
+            declared = dict(u.Cli.toml_mapping_child(codegen, "repository") or {})
+            declared.update(updates)
+            codegen["repository"] = declared
+            infra["codegen"] = codegen
+            tm.ok(u.Cli.yaml_dump(path, {**current, "Infra": infra}))
 
         @classmethod
         def attach_member_child(cls, root: Path) -> Path:
