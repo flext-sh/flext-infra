@@ -375,6 +375,71 @@ class TestsFlextInfraPyprojectConformTopologySources(
             eq=rendered,
         )
 
+    def test_declared_internal_urls_derive_overrides_and_self_exclusions(
+        self,
+    ) -> None:
+        """Declared internal Git URL requirements become overrides at that URL.
+
+        The override and exclusion sets derive from the project's own rendered
+        requirements; no project lists them.
+        """
+        cli = self._member_ref("flext-cli", "flext-cli")
+        infra = self._member_ref("flext-infra", "flext-infra")
+        workspace = self._workspace(cli, infra, role=self._ROLE.STANDALONE)
+        line = u.Tests.integration().branch
+        own = "fixture-consumer"
+        source = (
+            f'[project]\nname = "{own}"\nversion = "0.1.0"\n'
+            f'dependencies = ["{cli.distribution} @ git+{cli.url}@{line}"]\n'
+            "[dependency-groups]\n"
+            f'dev = ["{infra.distribution} @ git+{infra.url}@{line}"]\n'
+        )
+        options = u.Infra.PyprojectConformOptions(flext_line=u.Tests.integration())
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=options,
+            ),
+        )
+        declared = {
+            u.Infra.dep_name(entry): entry
+            for entry in (
+                *u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+                *u.Tests.toml_strings_at(rendered, "dependency-groups", "dev"),
+            )
+            if u.Infra.dep_name(entry) in {cli.distribution, infra.distribution}
+        }
+        tm.that(sorted(declared), eq=sorted((cli.distribution, infra.distribution)))
+        overrides = u.Tests.toml_strings_at(
+            rendered, "tool", "uv", "override-dependencies"
+        )
+        for name, entry in declared.items():
+            tm.that(overrides, has=f"{name} @ {entry.partition('@')[2].strip()}")
+        parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
+        uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
+        tm.that(
+            uv.get("exclude-dependencies"),
+            eq=[
+                {"package": {"name": name}, "dependencies": [own]}
+                for name in sorted(declared)
+            ],
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    rendered,
+                    workspace=workspace,
+                    required_dev_dependencies=(),
+                    uv_resolution=self._toolchain_resolution(),
+                    options=options,
+                ),
+            ),
+            eq=rendered,
+        )
+
     def test_candidate_commit_is_project_specific_and_reaches_fixed_point(self) -> None:
         """An explicit candidate changes only its declared distribution."""
         cli = self._member_ref("flext-cli", "flext-cli")

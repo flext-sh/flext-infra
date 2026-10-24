@@ -137,50 +137,104 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         )
 
     @staticmethod
+    def _own_distribution(document: t.Cli.TomlDocument) -> str | None:
+        """Return this document's canonical distribution name.
+
+        Returns:
+            The canonical ``[project].name``, or None when undeclared.
+
+        """
+        payload = u.Cli.toml_as_mapping(document)
+        project = None if payload is None else payload.get(c.Infra.PROJECT)
+        name = project.get("name") if isinstance(project, Mapping) else None
+        return canonicalize_name(name) if isinstance(name, str) else None
+
+    @classmethod
+    def _declared_internal_overrides(
+        cls, document: t.Cli.TomlDocument
+    ) -> p.Result[t.StrSequence]:
+        """Derive internal overrides from this project's own Git URL requirements.
+
+        Every declared internal requirement carrying a direct Git URL (runtime,
+        optional or development) becomes one override at exactly that URL, so a
+        transitive request for the same distribution resolves to the line this
+        project declares. The project itself never overrides itself.
+
+        Returns:
+            The derived overrides by distribution, or the conflicting declaration.
+
+        """
+        lines = cls.document_requirement_lines(document)
+        if lines.failure:
+            return r[t.StrSequence].from_failure(lines)
+        own = cls._own_distribution(document)
+        urls: t.MutableMappingKV[str, str] = {}
+        for line in lines.value:
+            name = cls._internal_dependency_name(
+                line, declared_sources={}, candidate_sources={}
+            )
+            if name is None or name == own or not cls._declares_direct_source(line):
+                continue
+            url = Requirement(line).url
+            if url is None or not url.startswith(c.Infra.GIT_URL_SCHEME_PREFIX):
+                continue
+            if urls.setdefault(name, url) != url:
+                return r[t.StrSequence].fail(
+                    f"internal requirement {name} declares conflicting Git URLs: "
+                    f"{urls[name]} and {url}"
+                )
+        return r[t.StrSequence].ok(
+            tuple(f"{name} @ {url}" for name, url in sorted(urls.items()))
+        )
+
+    @classmethod
     def _sync_uv_candidates(
+        cls,
         uv: t.Cli.TomlTable,
+        document: t.Cli.TomlDocument,
+        *,
         candidate_sources: t.StrMapping,
         requirements: t.StrSequence,
         resolution: m.Infra.UvResolutionSpec,
     ) -> None:
-        """Publish explicit toolchain overrides and authenticated candidate pins."""
-        overrides = list(resolution.override_dependencies)
+        """Publish declared, derived internal and candidate overrides once.
+
+        Each internal override also excludes this project from that
+        distribution's requirements: the distribution may require this project
+        back by its own Git URL, which native uv cannot reconcile with the local
+        project in a standalone lock. The scoped exclusion removes only that
+        reciprocal requirement and does nothing where it is absent.
+        """
+        overrides: list[str | m.Infra.UvScopedOverride] = list(
+            resolution.override_dependencies
+        )
         for name, source in sorted(candidate_sources.items()):
             extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
                 requirements, name
             )
             overrides.append(f"{name}{extras} @ {source}")
-        if overrides:
-            u.Cli.toml_sync_value(
-                uv,
-                "override-dependencies",
-                FlextInfraUtilitiesPyprojectUvSources._uv_override_wire(overrides),
-            )
+        wire = cls._uv_override_wire(overrides) if overrides else []
+        if wire:
+            u.Cli.toml_sync_value(uv, "override-dependencies", wire)
         else:
             u.Cli.toml_remove_key_if_present(uv, "override-dependencies")
-
-    @staticmethod
-    def _sync_uv_self_exclusions(
-        uv: t.Cli.TomlTable,
-        document: t.Cli.TomlDocument,
-        candidate_sources: t.StrMapping,
-    ) -> None:
-        """Exclude this project from each internal candidate's requirements.
-
-        An internal candidate reached by Git URL may require this project by its
-        own Git URL, which native uv cannot reconcile with the local project in
-        a standalone lock. One scoped exclusion per candidate removes only that
-        reciprocal requirement; it does nothing where the candidate does not
-        require this project.
-        """
-        project = u.Cli.toml_as_mapping(document)
-        table = None if project is None else project.get(c.Infra.PROJECT)
-        name = table.get("name") if isinstance(table, Mapping) else None
-        own = canonicalize_name(name) if isinstance(name, str) else None
+        own = cls._own_distribution(document)
+        internal = sorted({
+            name
+            for entry in wire
+            if isinstance(entry, str)
+            and (
+                name := cls._internal_dependency_name(
+                    entry, declared_sources={}, candidate_sources={}
+                )
+            )
+            is not None
+            and name != own
+        })
         exclusions: t.JsonValueList = [
-            {"package": {"name": candidate}, "dependencies": [own]}
-            for candidate in sorted(candidate_sources)
-            if own is not None and candidate != own
+            {"package": {"name": name}, "dependencies": [own]}
+            for name in internal
+            if own is not None
         ]
         if exclusions:
             u.Cli.toml_sync_value(uv, "exclude-dependencies", exclusions)
@@ -282,8 +336,29 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
                 "members",
                 tuple(member.path.as_posix() for member in members),
             )
-        cls._sync_uv_candidates(uv, candidate_sources, local_requirements, resolution)
-        cls._sync_uv_self_exclusions(uv, document, candidate_sources)
+        # A workspace root lowers its members through native workspace sources;
+        # only a project resolving its internal requirements by URL derives them.
+        derived = (
+            r[t.StrSequence].ok(())
+            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            else cls._declared_internal_overrides(document)
+        )
+        if derived.failure:
+            return r[bool].from_failure(derived)
+        cls._sync_uv_candidates(
+            uv,
+            document,
+            candidate_sources=candidate_sources,
+            requirements=local_requirements,
+            resolution=resolution.model_copy(
+                update={
+                    "override_dependencies": (
+                        *resolution.override_dependencies,
+                        *derived.value,
+                    ),
+                },
+            ),
+        )
         cls._sync_uv_constraints(uv, resolution)
         cls._sync_uv_environments(uv, resolution)
         u.Cli.toml_remove_key_if_present(uv, "required-version")

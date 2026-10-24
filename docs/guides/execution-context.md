@@ -1151,11 +1151,15 @@ attached member. Pins of internal Git requirements follow the line each member's
 `pyproject.toml` declares: the manifest keeps the Git URL and the lock pins its exact
 SHA (tracker memory `operator-ruling-2026-10-24-lock-sha-pyproject-url-waves`). An
 internal dependency may require the locking member back by its own Git URL, which
-native uv cannot reconcile with the local project, so the pyproject generator emits
-one scoped `[tool.uv] exclude-dependencies` entry per internal distribution of the
-member's `override-dependencies`, removing only that distribution's requirement on the
-member. The entry does nothing where the distribution does not require the member, and
-the workspace root, which has no internal override candidates, carries none.
+native uv cannot reconcile with the local project. The pyproject generator derives
+one internal override per declared internal Git URL requirement of the member
+(runtime, optional or development) at exactly that URL, and emits one scoped
+`[tool.uv] exclude-dependencies` entry per internal override, removing only that
+distribution's requirement on the member. A repository declares an internal override
+in `toolchain.uv_override_dependencies` only when the distribution is not its own
+requirement and reaches it transitively. An entry does nothing where the distribution
+does not require the member; the workspace root, which lowers members through native
+workspace sources, derives none.
 Each owner supplies its declared paths and
 source identities. An editable supplier supplies sources, never its physical
 environment. Upgrade does not generate manifests or Makefiles, install tools,
