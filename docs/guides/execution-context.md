@@ -574,7 +574,12 @@ composes authored consumer-owned `p` contracts through the same native declarati
 and MRO owners; it never copies model fields or public signatures into a second
 typing surface. A dependency port declares only capabilities its consumers use.
 Existing-project conformance and new-project scaffolding generate ordinary facades
-and lazy exports, not model-shaped protocol mirrors. The utility path delegates
+and lazy exports. The one exception is the model→protocol stage, which the operator
+ordered restored and run on every `make gen` (2026-10-24: "fazer os protocolos de
+forma automática por flext-infra (já existe e tem que estar ativo e sempre rodar no
+make)"). Its generated `p.*` protocols are projections of the declared models, not
+authored mirrors. Restoration is tracked by bead `flext-vjj1s.8`; until it lands, no
+such stage exists. The utility path delegates
 directly to the declaration planner. Static and runtime consumer checks retain
 their own import-failure verdicts.
 Generated protocol and model namespace assignments are derived output, not new
@@ -1074,9 +1079,10 @@ reading a gate identity does not load the pytest execution or collection owners.
 The producer declares the Markdown collection plugin as a runtime dependency
 because its shipped pytest collection implementation imports that plugin.
 
-An associated project inherits the locks and physical environment of its native
-UV workspace within the authenticated Git scope. Its `make setup` and `make upg`
-delegate full toolchain provisioning and dependency resolution to that root.
+An associated project installs from the lock and physical environment of its native
+UV workspace within the authenticated Git scope, while still tracking its own
+`uv.lock` for standalone installs and frozen CI (see below). Its `make setup` and
+`make upg` delegate full toolchain provisioning and dependency resolution to that root.
 A standalone checkout owns those operations itself. Only `upg` resolves moving
 Git branches; `setup` installs the
 exact committed lock without changing it.
@@ -1867,7 +1873,10 @@ the original failure. Finalization also releases a successfully acquired profile
 when signal registration fails; a cleanup diagnostic cannot replace that cause.
 
 The existing opt-in public CLI form is
-`FLEXT_INFRA_PROFILE=true flext-infra codegen generate ...`. Raw profiles,
+`FLEXT_INFRA_PROFILE=true flext-infra codegen generate ...`. Current state
+(2026-10-24): the generated Makefile still calls the private
+`flext_infra._profile_entry` wrapper instead of this handler (`Makefile.j2:685,689`);
+bead `flext-dngq7` rewires it and deletes the wrapper. Raw profiles,
 including the existing clock's immutable per-invocation versions, remain in the
 authenticated exact worktree Git control directory's report tree; they are not
 copied into the source repository. The report reader admits a selected native
