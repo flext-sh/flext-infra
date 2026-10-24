@@ -698,6 +698,34 @@ Infra:
       # Callables of these modules build constrained annotation types.
       type-constructor-modules:
       - pydantic.types
+    # qlty owns smell detection and its thresholds (its own defaults); this
+    # block owns only the repair text the smells gate appends to a finding,
+    # keyed by the qlty check name (the SARIF ruleId suffix).
+    smells:
+      fix-text:
+        function-parameters: >-
+          Decompose into smaller functions or pass a context/model object only
+          when it carries domain meaning; adding a params model solely to silence
+          this rule is abominable.
+        return-statements: >-
+          Refactor to a single result path; use early returns only when they
+          improve readability.
+        nested-control-flow: Extract helper functions to flatten control flow.
+        boolean-logic: Simplify boolean expressions or introduce named predicates.
+        function-complexity: >-
+          Decompose the function into smaller, single-responsibility helpers.
+        file-complexity: Split the module into focused units.
+        identical-code: Extract a shared helper or canonical constant.
+        similar-code: >-
+          Refactor to a shared abstraction or delegate to a common helper.
+    # A public method whose name starts with one of these prefixes declares an
+    # accessor; the accessor migration reports it with the replacement guidance.
+    # The proven renames live in config/rules/rope/accessor-migrations.yaml.
+    accessor-policy:
+      forbidden-prefixes:
+        get_: fetch_/resolve_/compute_
+        set_: configure_/apply_/update_
+        is_: a noun/adjective (success, expired, connected, ...)
     mod:
       phases:
         # Component toggles for make mod (rule: toggles are data, not flags).

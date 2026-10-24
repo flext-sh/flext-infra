@@ -674,7 +674,7 @@ class FlextInfraModelsDepsToolConfig(
                 raise ValueError(msg)
             return self
 
-    class SmellsConfig(m.ArbitraryTypesModel):
+    class SmellsConfig(m.FrozenModel):
         """Repair guidance attached to qlty smell findings."""
 
         fix_text: Annotated[
@@ -689,7 +689,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
 
-    class AccessorPolicyConfig(m.ArbitraryTypesModel):
+    class AccessorPolicyConfig(m.FrozenModel):
         """Accessor naming policy enforced by the accessor migration."""
 
         forbidden_prefixes: Annotated[
