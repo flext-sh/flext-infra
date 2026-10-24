@@ -105,7 +105,7 @@ class TestsFlextInfraCProfileCli:
         consumer = (
             "import runpy, sys\n"
             "from flext_cli import cli\n"
-            "from flext_infra import main\n"
+            "from flext_infra import FlextInfraCli\n"
             "sys.stdout.close()\n"
             "module = sys.argv[1]\n"
             "sys.argv = sys.argv[1:]\n"
