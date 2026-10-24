@@ -89,11 +89,13 @@ class FlextInfraModelsCodegenLazyInitModels:
         )
         eager_dunders: t.LazyAliasMap = m.Field(
             description=(
-                "Dunder exports that must be eagerly imported at __init__.py "
-                "load time. Required for the ``__version__.py`` submodule case "
-                "where the submodule name collides with the dunder string it "
-                "exports — eager binding pins the canonical string in the "
-                "package dict before any submodule re-import can shadow it."
+                "Dunder exports bound eagerly right after the lazy installer. "
+                "Required for the ``__version__.py`` submodule case where the "
+                "submodule name collides with the dunder string it exports — "
+                "the first submodule load rebinds the package attribute to the "
+                "module, so only an eager binding pins the canonical string; "
+                "running after the installer lets the submodule consume the "
+                "package's own facades without an initialization cycle."
             ),
         )
         child_packages_for_lazy: t.StrSequence = m.Field(

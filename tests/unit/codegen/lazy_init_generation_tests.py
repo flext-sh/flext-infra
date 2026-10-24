@@ -198,11 +198,8 @@ class TestsFlextInfraLazyInitGeneration:
         tm.that(
             content,
             has=[
-                (
-                    "from flext_core.lazy import install_lazy_exports\n\n"
-                    f"from {package.name}.__version__ import __version__\n"
-                ),
                 f"    from {package.name} import services as services\n",
+                f"    from {package.name}.__version__ import __version__\n",
                 f"    from {package.name}.api import Demo\n",
                 '__all__: tuple[str, ...] = ("Demo", "__version__", "services")',
                 '"Demo": ".api"',
@@ -212,6 +209,14 @@ class TestsFlextInfraLazyInitGeneration:
         )
         runtime_prefix = content.split("if TYPE_CHECKING:", maxsplit=1)[0]
         tm.that(runtime_prefix, lacks=f"from {package.name}.api import Demo")
+        tm.that(runtime_prefix, lacks=f"from {package.name}.__version__ import")
+        tm.that(
+            content.split("install_lazy_exports(", maxsplit=2)[-1],
+            has=(
+                "if not TYPE_CHECKING:\n"
+                f"    from {package.name}.__version__ import __version__\n"
+            ),
+        )
         tm.that(content, lacks="DemoRunner")
         tm.that(u.Tests.generated_init(services), has='"DemoRunner": ".runner"')
 

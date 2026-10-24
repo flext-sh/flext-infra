@@ -500,9 +500,14 @@ class FlextInfraModelsCodegenRender:
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
         runtime_import_lines: t.NonEmptyStr = m.Field(
+            description="Isort-ordered runtime imports of the lazy helpers.",
+        )
+        eager_binding_lines: str = m.Field(
+            default_factory=str,
             description=(
-                "Isort-ordered runtime imports: the lazy helpers plus any "
-                "eager or wildcard reexports."
+                "Runtime-only eager dunder bindings emitted after the lazy "
+                "installer, so the bound submodule may consume the package's "
+                "own facades while its static contract stays in TYPE_CHECKING."
             ),
         )
         type_checking_lines: str = m.Field(

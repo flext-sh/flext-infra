@@ -100,12 +100,13 @@ class FlextInfraUtilitiesLazyInitRender:
             m.Infra.LazyInitRootRender(
                 autogen_header=c.Infra.AUTOGEN_HEADER,
                 docstring=cls._lazy_init_docstring(plan, project_root, model),
-                runtime_import_lines=cls._lazy_init_runtime_imports(
-                    plan, helpers, first_party
-                ),
+                runtime_import_lines=cls._lazy_init_runtime_imports(helpers),
                 type_checking_lines="\n".join(
-                    cls._lazy_init_type_checking(public, plan, first_party, model)
+                    cls._lazy_init_type_checking(
+                        {**public, **plan.eager_dunders}, plan, first_party, model
+                    )
                 ),
+                eager_binding_lines=cls._lazy_init_eager_bindings(plan, first_party),
                 exports_tuple=cls._lazy_init_exports_tuple((
                     *(
                         name
@@ -243,48 +244,68 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _lazy_init_runtime_imports(
-        cls,
-        plan: m.Infra.LazyInitPlan,
-        helpers: t.StrSequence,
-        first_party: frozenset[str],
-    ) -> str:
-        """Render eager and lazy-helper imports as one isort-ordered block.
+    def _lazy_init_runtime_imports(cls, helpers: t.StrSequence) -> str:
+        """Render the lazy-helper import, the only pre-installer runtime import.
 
         Returns:
             The runtime import lines.
+
+        """
+        return "\n".join(
+            cls._lazy_init_import(
+                "",
+                c.Infra.LAZY_BOOTSTRAP_MODULE,
+                helpers or ("install_lazy_exports",),
+            )
+        )
+
+    @classmethod
+    def _lazy_init_eager_bindings(
+        cls,
+        plan: m.Infra.LazyInitPlan,
+        first_party: frozenset[str],
+    ) -> str:
+        """Render eager dunder bindings that run after the lazy installer.
+
+        A dunder named like its submodule (``__version__``) must be bound
+        eagerly: the import system rebinds the package attribute to the
+        submodule object on the submodule's first load, so a lazy entry is
+        shadowed whenever the submodule loads first. Binding after the
+        installer lets that submodule consume the package's own facades
+        without an initialization cycle; ``TYPE_CHECKING`` carries the static
+        contract, so the runtime-only block is invisible to type checkers.
+
+        Returns:
+            The guarded runtime block, empty without eager dunders.
 
         """
         groups: defaultdict[str, list[t.StrPair]] = defaultdict(list)
         for name in sorted(plan.eager_dunders):
             module, attr = plan.eager_dunders[name]
             groups[module].append((name, attr))
-        statements = [
+        if not groups:
+            return ""
+        statements = sorted(
             (
-                cls._lazy_init_section(module, first_party),
-                cls._lazy_init_import(
-                    "",
-                    module,
-                    tuple(
-                        attr if attr == name else f"{attr} as {name}"
-                        for name, attr in sorted(items)
-                        if attr
+                (
+                    cls._lazy_init_section(module, first_party),
+                    cls._lazy_init_import(
+                        "    ",
+                        module,
+                        tuple(
+                            attr if attr == name else f"{attr} as {name}"
+                            for name, attr in sorted(items)
+                            if attr
+                        ),
                     ),
-                ),
-            )
-            for module, items in groups.items()
-        ]
-        statements.append((
-            cls._lazy_init_section(c.Infra.LAZY_BOOTSTRAP_MODULE, first_party),
-            cls._lazy_init_import(
-                "",
-                c.Infra.LAZY_BOOTSTRAP_MODULE,
-                helpers or ("install_lazy_exports",),
+                )
+                for module, items in groups.items()
             ),
-        ))
-        lines: list[str] = []
+            key=itemgetter(0),
+        )
+        lines = ["if not TYPE_CHECKING:"]
         previous: int | None = None
-        for (section, _), statement in sorted(statements, key=itemgetter(0)):
+        for (section, _), statement in statements:
             if previous is not None and section != previous:
                 lines.append("")
             lines.extend(statement)

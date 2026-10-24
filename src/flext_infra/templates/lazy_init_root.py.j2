@@ -21,3 +21,7 @@ install_lazy_exports(
 {{ lazy_export_mapping }}
     public_exports=__all__,
 )
+{%- if eager_binding_lines %}
+
+{{ eager_binding_lines }}
+{%- endif %}
