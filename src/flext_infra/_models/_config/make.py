@@ -938,6 +938,7 @@ class FlextInfraConfigModelsMake(
             # valid configuration and `flext_infra.config` could not be built at
             # all. The serialized set no longer exists; the guard has no object.
             self._validate_workflow(declared, admissible)
+            self._validate_workflow_requirements()
             self._validate_docs_policy()
             return self
 
@@ -1005,6 +1006,22 @@ class FlextInfraConfigModelsMake(
                     "CI requires setup followed by the check and complete tests owners"
                 )
                 raise ValueError(msg)
+            hook = tuple(
+                step.verb for step in self.workflow if "pre_commit" in step.contexts
+            )
+            if hook != (c.Infra.VERB_CHECK,):
+                msg = "the pre-commit hook requires only the check operation"
+                raise ValueError(msg)
+
+        def _validate_workflow_requirements(self) -> None:
+            """Admit each step only after the earlier verbs it requires.
+
+            Raises:
+                ValueError: If a required verb does not precede the step or does
+                    not run in every one of its contexts; or if the tests step
+                    does not require check (tests run only on a green check).
+
+            """
             for index, step in enumerate(self.workflow):
                 earlier = {
                     prior.verb: set(prior.contexts) for prior in self.workflow[:index]
@@ -1029,12 +1046,6 @@ class FlextInfraConfigModelsMake(
                 msg = (
                     "tests run only on a green check: the tests step must require check"
                 )
-                raise ValueError(msg)
-            hook = tuple(
-                step.verb for step in self.workflow if "pre_commit" in step.contexts
-            )
-            if hook != (c.Infra.VERB_CHECK,):
-                msg = "the pre-commit hook requires only the check operation"
                 raise ValueError(msg)
 
         def _validate_docs_policy(self) -> None:

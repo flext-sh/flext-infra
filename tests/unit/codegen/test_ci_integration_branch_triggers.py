@@ -69,7 +69,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     def _trigger_section(rendered: str) -> str:
-        return rendered.split("c.ParserBooleanToken.ON:", maxsplit=1)[1].split(
+        return rendered.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers",
             maxsplit=1,
         )[0]
