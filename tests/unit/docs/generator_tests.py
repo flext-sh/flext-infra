@@ -535,7 +535,7 @@ class TestsFlextInfraDocsGenerator:
         )
         _ = FlextInfraMarkdownFormatGate(workspace).fix(project, context)
         tm.that(before == readme.read_text(encoding="utf-8"), truth=True)
-        tm.that(result.result.passed, truth=True, msg=result.issues)
+        tm.that(result.result.passed, truth=True, msg=str(result.issues))
 
     @staticmethod
     def test_generated_prose_wraps_without_reformatting_directive_blocks(
@@ -548,6 +548,9 @@ class TestsFlextInfraDocsGenerator:
             report_dir=tmp_path / ".reports/docs",
             project_class="library",
             package_name="flext_a",
+            governance_source=m.Infra.CodegenBootstrapSource(
+                url=c.Infra.GITHUB_REPO_URL, ref="0.12.0-dev"
+            ),
         )
         local_width = u.Infra.docs_markdown_line_length(config.Infra.tooling) + 7
         (tmp_path / "config").mkdir()
@@ -598,16 +601,16 @@ class TestsFlextInfraDocsGenerator:
             max(map(len, description_lines)) <= width,
             eq=True,
         )
+        directive = rendered.split("::: flext_a\n\n", 1)[1].split("\n\n", 1)[0]
+        options = tm.ok(u.Cli.yaml_parse(directive))["options"]
         tm.that(
-            rendered,
-            has=(
-                "::: flext_a\n\n"
-                "    options:\n"
-                "      members: false\n"
-                "      show_root_heading: false\n"
-                "      show_root_toc_entry: false\n"
-                "      show_source: false\n"
-            ),
+            options,
+            eq={
+                "members": False,
+                "show_root_heading": False,
+                "show_root_toc_entry": False,
+                "show_source": False,
+            },
         )
 
     @staticmethod

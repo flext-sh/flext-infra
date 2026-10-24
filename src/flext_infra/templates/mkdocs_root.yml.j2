@@ -5,7 +5,7 @@ site_description: {{ site_description }}
 site_url: {{ site_url }}
 repo_name: {{ repo_name }}
 repo_url: {{ repo_url }}
-{{ mk.site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block, documentation_language, dark_mode_label, light_mode_label) }}
+{{ mk.site_components(exclude_docs, exclude_plugin_patterns, mkdocstrings_paths, documentation_language, dark_mode_label, light_mode_label) }}
 
 # MkDocs discovers the complete documentation tree, including maintained pages.
 # A fixed three-page nav silently omitted guides, standards, and decisions.

@@ -20,6 +20,28 @@ class FlextInfraConstantsCodegenRenderNames:
     "Per-project ``mkdocs.yml`` template."
     TEMPLATE_MKDOCS_ROOT: ClassVar[str] = "mkdocs_root.yml.j2"
     "Workspace ``mkdocs.yml`` template."
+    TEMPLATE_DOCS_DIRECTIVE_PAGE: ClassVar[str] = "docs/directive_page.md.j2"
+    "Generated mkdocstrings directive page template."
+    TEMPLATE_DOCS_PROJECT_INDEX: ClassVar[str] = "docs/project_index.md.j2"
+    "Generated ``<project>/docs/index.md`` landing page template."
+    TEMPLATE_DOCS_PROJECT_README: ClassVar[str] = "docs/project_readme.md.j2"
+    "Generated ``<project>/README.md`` page template."
+    TEMPLATE_DOCS_GUIDES_INDEX: ClassVar[str] = "docs/guides_index.md.j2"
+    "Generated guides index page template."
+    TEMPLATE_DOCS_API_README: ClassVar[str] = "docs/api_readme.md.j2"
+    "Generated project API readme page template."
+    TEMPLATE_DOCS_OVERVIEW_PAGE: ClassVar[str] = "docs/overview_page.md.j2"
+    "Generated project API overview page template."
+    TEMPLATE_DOCS_MODULES_INDEX: ClassVar[str] = "docs/modules_index.md.j2"
+    "Generated module index page template."
+    TEMPLATE_DOCS_ROOT_OVERVIEW_PAGE: ClassVar[str] = "docs/root_overview_page.md.j2"
+    "Generated workspace API overview page template."
+    TEMPLATE_DOCS_ROOT_PROJECTS_INDEX: ClassVar[str] = "docs/root_projects_index.md.j2"
+    "Generated workspace module-page index page template."
+    TEMPLATE_DOCS_PROJECT_CATALOG_PAGE: ClassVar[str] = (
+        "docs/project_catalog_page.md.j2"
+    )
+    "Generated workspace project catalog page template."
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenRenderNames"]

@@ -15,7 +15,7 @@ from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.structure.files import get_files
 from mkdocs.structure.nav import get_navigation
 
-from tests import m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -89,7 +89,7 @@ class TestsFlextInfraDocsRender:
             page.write_text("# Maintained page\n", encoding="utf-8")
         config_file = tmp_path / "mkdocs.yml"
         config_file.write_text(
-            u.Infra.docs_project_mkdocs(scope, {}, []),
+            u.Infra.docs_project_mkdocs(scope, {}),
             encoding="utf-8",
         )
         configuration = mkdocs_project_config(mkdocs.config, str(config_file))
@@ -109,7 +109,7 @@ class TestsFlextInfraDocsRender:
             report_dir=tmp_path / ".reports/docs",
         )
 
-        rendered = u.Infra.docs_project_mkdocs(scope, {}, [])
+        rendered = u.Infra.docs_project_mkdocs(scope, {})
 
         # flext-i6nq.10: Validate the rendered public artifact through pathspec's
         # documented text-stream boundary, without an ad-hoc extraction helper.
@@ -171,7 +171,7 @@ class TestsFlextInfraDocsRender:
             "site_title": "Consumer",
         }
 
-        project = u.Infra.docs_project_mkdocs(scope, contract, [])
+        project = u.Infra.docs_project_mkdocs(scope, contract)
         root = u.Infra.docs_root_mkdocs(contract)
 
         tm.that(project, has="repo_name: example/consumer")
@@ -188,30 +188,58 @@ class TestsFlextInfraDocsRender:
             report_dir=tmp_path / ".reports/docs",
         )
 
-        rendered = u.Infra.docs_project_mkdocs(scope, {}, [])
+        rendered = u.Infra.docs_project_mkdocs(scope, {})
+
+        parsed = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.yaml_roundtrip_load_map_text(rendered))
+        )
+        plugins = parsed["plugins"]
+        if not isinstance(plugins, list):
+            pytest.fail("the rendered plugins must be a list")
+        revision = [
+            entry["git-revision-date-localized"]
+            for entry in plugins
+            if isinstance(entry, dict) and "git-revision-date-localized" in entry
+        ]
+        tm.that(len(revision), eq=1)
+        options = revision[0]
+        if not isinstance(options, dict):
+            pytest.fail("the revision plugin must declare its options")
+        tm.that(options["exclude"], eq=["api-reference/generated/**"])
+        tm.that(options["enable_creation_date"], eq=False)
+        tm.that(options["enable_git_follow"], eq=False)
+
+    @staticmethod
+    def test_declared_exclusions_reach_docs_and_plugin_without_duplicates(
+        tmp_path: Path,
+    ) -> None:
+        """Declared exclusions merge once with the fixed ones and feed the plugin."""
+        scope = m.Infra.DocScope(
+            name="flext-demo",
+            path=tmp_path,
+            report_dir=tmp_path / ".reports/docs",
+        )
+        fixed = c.Infra.MKDOCS_FIXED_EXCLUDE_DOCS
+        declared: t.JsonValueList = ["drafts/**", fixed[0]]
+
+        parsed = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            tm.ok(
+                u.Cli.yaml_roundtrip_load_map_text(
+                    u.Infra.docs_project_mkdocs(scope, {"exclude_docs": declared})
+                )
+            )
+        )
 
         tm.that(
-            rendered,
-            has=(
-                "  - git-revision-date-localized:\n"
-                "      # Why: enable_creation_date resolves via"
-                " 'git log --diff-filter=Ar', which returns\n"
-                "      # EMPTY for pages whose only add-commit is a merge commit."
-                " The plugin then falls back\n"
-                "      # to time.time() (build clock), making first_revision >"
-                " last_revision always true,\n"
-                "      # which logs a warning that mkdocs --strict turns into a"
-                " build failure. Revision date\n"
-                "      # from the last commit touching the page is the intended and"
-                " robust behavior.\n"
-                "      # enable_git_follow is off for the same reason: following"
-                " renames re-reads\n"
-                "      # history per page and reintroduces the same empty-result"
-                " fallback.\n"
-                "      enable_creation_date: false\n"
-                "      enable_git_follow: false\n"
-                "      type: date\n"
-                "      exclude:\n"
-                "        - api-reference/generated/**\n"
-            ),
+            str(parsed["exclude_docs"]).split(),
+            eq=list(dict.fromkeys([*declared, *fixed])),
         )
+        plugins = parsed["plugins"]
+        if not isinstance(plugins, list):
+            pytest.fail("the rendered plugins must be a list")
+        exclusion = [
+            entry["exclude"]
+            for entry in plugins
+            if isinstance(entry, dict) and "exclude" in entry
+        ]
+        tm.that(exclusion, eq=[{"glob": declared}])

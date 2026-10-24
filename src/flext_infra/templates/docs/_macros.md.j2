@@ -1,0 +1,41 @@
+{#- Shared Markdown fragments of the generated docs pages: imported by every page template. -#}
+{%- macro preview(values, limit, text) -%}
+{%- set items = values | select | list -%}
+{%- if not items -%}
+{{ text.NONE }}
+{%- else -%}
+{%- for item in items[:limit] -%}
+`{{ item }}`{{ ", " if not loop.last else "" }}
+{%- endfor -%}
+{%- if items | length > limit %} (+{{ items | length - limit }} {{ text.MORE }}){% endif -%}
+{%- endif -%}
+{%- endmacro %}
+{%- macro public_surface(package_name) -%}
+::: {{ package_name }}
+
+    options:
+      members: false
+      show_root_heading: false
+      show_root_toc_entry: false
+      show_source: false
+{%- endmacro %}
+{%- macro collection_rules(text, links) -%}
+## {{ text.COLLECTION_RULES }}
+
+{{ text.COLLECTION_BODY.format(agents_link=links.agents) }}
+{%- endmacro %}
+{%- macro quality_gates(text, links) -%}
+## {{ text.QUALITY_GATES }}
+
+{{ text.QUALITY_BODY }}
+
+{{ text.QUALITY_LINK.format(agents_link=links.agents) }}
+{%- endmacro %}
+{%- macro governance(text, links) -%}
+## {{ text.GOVERNANCE }}
+
+- {{ text.ENGINEERING_LAW }}: [`/flext/AGENTS.md`]({{ links.agents }})
+- {{ text.GOVERNANCE_ADRS }}: [`/flext/docs/GOVERNANCE.md`]({{ links.governance }})
+- {{ text.SKILLS_INDEX }}: [`/flext/.agents/skills/`]({{ links.skills }})
+- {{ text.ONBOARDING }}: [`/flext/docs/guides/onboarding.md`]({{ links.onboarding }})
+{%- endmacro %}

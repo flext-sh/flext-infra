@@ -1,0 +1,24 @@
+{% import "_macros.md.j2" as mk -%}
+{% filter markdown_wrap(line_width) -%}
+# {{ site_title }} {{ text.API_OVERVIEW }}
+
+{{ generated_header }}
+
+- {{ text.PACKAGE }}: `{{ package_name }}`
+- {{ text.VERSION }}: `{{ version }}`
+- {{ text.DESCRIPTION }}: {{ description }}
+- {{ text.DOC_SUMMARY }}: {{ doc_summary }}
+- {{ text.CLASSIFIERS }}: {{ classifiers | join(", ") or text.NONE }}
+- {{ text.PROJECT_CLASS }}: `{{ project_class }}`
+- {{ text.KEYWORDS }}: {{ mk.preview(keywords, preview_limits.keywords, text) }}
+- {{ text.MAIN_FACADES }}: {{ mk.preview(facades, preview_limits.facades, text) }}
+- {{ text.ALIAS_EXPORTS }}: {{ mk.preview(aliases, preview_limits.aliases, text) }}
+- {{ text.PUBLIC_SYMBOL_EXPORTS }}: {{ mk.preview(public_symbols, preview_limits.public_symbols, text) }}
+- {{ text.MODULE_SHORTCUTS }}: {{ mk.preview(module_exports, preview_limits.module_exports, text) }}
+- {{ text.GENERATED_MODULE_PAGES }}: `{{ module_count }}`
+
+## {{ text.NEXT_PAGES }}
+
+- [{{ text.PUBLIC_API }}](public-api.md)
+- [{{ text.MODULE_INDEX }}](modules/index.md)
+{% endfilter -%}

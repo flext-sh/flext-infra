@@ -198,7 +198,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                     else FlextInfraUtilitiesDocsRender.docs_project_mkdocs(
                         scope,
                         contract,
-                        module_names,
                     )
                 ),
             ),

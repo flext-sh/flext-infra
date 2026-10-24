@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 
@@ -81,6 +81,183 @@ class FlextInfraModelsDocs(
 
         project_class: Annotated[str, m.Field(description="Project class")]
         count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
+
+    class DocsGovernanceLinks(m.ContractModel):
+        """Resolved governance pointers of one generated project page."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
+        )
+
+        agents: Annotated[str, m.Field(description="AGENTS.md pointer")]
+        governance: Annotated[str, m.Field(description="GOVERNANCE.md pointer")]
+        skills: Annotated[str, m.Field(description="Skills directory pointer")]
+        onboarding: Annotated[str, m.Field(description="Onboarding guide pointer")]
+
+    class DocsGuideEntry(m.ContractModel):
+        """One guide row of a generated guides index."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
+        )
+
+        file_name: Annotated[str, m.Field(description="Guide file name")]
+        title: Annotated[str, m.Field(description="Guide link title")]
+
+    class DocsModuleEntry(m.ContractModel):
+        """One module page row of a generated module index."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
+        )
+
+        name: Annotated[str, m.Field(description="Dotted module name")]
+        path: Annotated[str, m.Field(description="Module page relative path")]
+
+    class DocsPageContext(m.ContractModel):
+        """Validated base context of every generated Markdown docs page."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
+        )
+
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Generated documentation language"
+        )
+        line_width: Annotated[
+            t.PositiveInt,
+            m.Field(description="Prose width of the Markdown line contract"),
+        ]
+        preview_limit: Annotated[
+            t.PositiveInt,
+            m.Field(description="Entries shown by a compact preview list"),
+        ] = 6
+
+        @m.computed_field
+        @property
+        def generated_header(self) -> str:
+            """The canonical generated-file marker."""
+            return c.Infra.GENERATED_HEADER
+
+        @m.computed_field
+        @property
+        def text(self) -> t.MappingKV[str, str]:
+            """Every localized presentation message keyed by its member name."""
+            return {
+                message.name: message.localized(self.documentation_language)
+                for message in c.Infra.DocumentationText
+            }
+
+    class DocsDirectivePageContext(DocsPageContext):
+        """Context of one mkdocstrings directive page."""
+
+        title: Annotated[str, m.Field(description="Page title")]
+        dotted_path: Annotated[str, m.Field(description="Documented dotted path")]
+
+    class DocsProjectIndexContext(DocsPageContext):
+        """Context of one ``<project>/docs/index.md`` landing page."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        project_class: Annotated[str, m.Field(description="Project class")]
+        package_name: Annotated[str, m.Field(description="Import package name")]
+        version: Annotated[str, m.Field(description="Declared version")]
+        description: Annotated[str, m.Field(description="Declared description")]
+        links: Annotated[
+            FlextInfraModelsDocs.DocsGovernanceLinks,
+            m.Field(description="Governance pointers"),
+        ]
+
+    class DocsProjectReadmeContext(DocsProjectIndexContext):
+        """Context of one ``<project>/README.md``."""
+
+        facades: Annotated[t.StrSequence, m.Field(description="Primary public facades")]
+
+    class DocsGuidesIndexContext(DocsPageContext):
+        """Context of one generated guides index."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        guides: Annotated[
+            t.SequenceOf[FlextInfraModelsDocs.DocsGuideEntry],
+            m.Field(description="Ordered guide rows"),
+        ]
+
+    class DocsApiReadmeContext(DocsPageContext):
+        """Context of one project API readme."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        package_name: Annotated[str, m.Field(description="Import package name")]
+        facades: Annotated[t.StrSequence, m.Field(description="Primary public facades")]
+        module_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Rendered module page count")
+        ]
+
+    class DocsOverviewContext(DocsPageContext):
+        """Context of one generated project API overview."""
+
+        site_title: Annotated[str, m.Field(description="Overview site title")]
+        package_name: Annotated[str, m.Field(description="Import package name")]
+        version: Annotated[str, m.Field(description="Declared version")]
+        description: Annotated[str, m.Field(description="Declared description")]
+        doc_summary: Annotated[
+            str, m.Field(description="Declared documentation summary")
+        ]
+        classifiers: Annotated[t.StrSequence, m.Field(description="Trove classifiers")]
+        project_class: Annotated[str, m.Field(description="Project class")]
+        keywords: Annotated[t.StrSequence, m.Field(description="Project keywords")]
+        facades: Annotated[t.StrSequence, m.Field(description="Primary facades")]
+        aliases: Annotated[t.StrSequence, m.Field(description="Alias exports")]
+        public_symbols: Annotated[
+            t.StrSequence, m.Field(description="Public symbol exports")
+        ]
+        module_exports: Annotated[
+            t.StrSequence, m.Field(description="Module shortcut exports")
+        ]
+        preview_limits: Annotated[
+            t.MappingKV[str, int],
+            m.Field(description="Preview length per exported field"),
+        ]
+        module_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Rendered module page count")
+        ]
+
+    class DocsModulesIndexContext(DocsPageContext):
+        """Context of one generated module index."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        modules: Annotated[
+            t.SequenceOf[FlextInfraModelsDocs.DocsModuleEntry],
+            m.Field(description="Ordered module page rows"),
+        ]
+
+    class DocsRootOverviewContext(DocsPageContext):
+        """Context of the generated workspace API overview."""
+
+        site_title: Annotated[str, m.Field(description="Workspace site title")]
+        version: Annotated[str, m.Field(description="Declared version")]
+        description: Annotated[str, m.Field(description="Declared description")]
+        project_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Governed project count")
+        ]
+        class_counts: Annotated[
+            t.SequenceOf[FlextInfraModelsDocs.DocsClassCount],
+            m.Field(description="Projects per documentation class"),
+        ]
+
+    class DocsRootProjectsIndexContext(DocsPageContext):
+        """Context of the generated workspace module-page index."""
+
+        entries: Annotated[
+            t.SequenceOf[FlextInfraModelsDocs.DocsProjectIndexEntry],
+            m.Field(description="Per-project module page counts"),
+        ]
+
+    class DocsProjectCatalogContext(DocsPageContext):
+        """Context of the generated workspace project catalog."""
+
+        entries: Annotated[
+            t.SequenceOf[FlextInfraModelsDocs.DocsCatalogEntry],
+            m.Field(description="Catalog rows that survive the exclusions"),
+        ]
 
     class DocsCollectRequest(m.ContractModel):
         """Fixed-effect collection command with repository-owned configuration."""

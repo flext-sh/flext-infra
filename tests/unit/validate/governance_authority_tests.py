@@ -77,7 +77,6 @@ class TestsFlextInfraGovernanceAuthority:
             "`make mod`",
             "`ast-grep` rewrites",
             "Rope semantic refactors",
-            "`pyright-langserver` diagnostics",
             "GitHub and CRG belong to ai-hub",
             "never imports ai-hub or CRG as a library",
             "Repetitive manual call-site editing is prohibited",

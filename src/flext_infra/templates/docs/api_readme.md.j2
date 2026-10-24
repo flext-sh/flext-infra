@@ -1,0 +1,28 @@
+{% import "_macros.md.j2" as mk -%}
+{% filter markdown_wrap(line_width) -%}
+# {{ name }} {{ text.API_REFERENCE }}
+
+{{ generated_header }}
+
+{{ text.API_BODY }}
+
+## {{ text.SOURCE_OF_TRUTH }}
+
+1. `pyproject.toml` {{ text.METADATA }}
+2. `src/{{ package_name }}/__init__.py` {{ text.EXPORTS }}
+3. {{ text.MODULE_DOCSTRINGS }}
+4. {{ text.CLASS_DOCSTRINGS }}
+
+## {{ text.GENERATED_PAGES }}
+
+- [{{ text.OVERVIEW }}](generated/overview.md)
+- [{{ text.PUBLIC_API }}](generated/public-api.md)
+- [{{ text.MODULE_INDEX }}](generated/modules/index.md)
+
+## {{ text.SURFACE_SUMMARY }}
+
+- {{ text.PRIMARY_FACADES }}: {{ mk.preview(facades, preview_limit, text) }}
+- {{ text.GENERATED_MODULE_PAGES }}: `{{ module_count }}`
+
+{{ text.BACK_LINK }}
+{% endfilter -%}

@@ -67,13 +67,14 @@ class TestsFlextInfraDocumentationLanguage:
         """Translate human presentation, not paths, directives or project metadata."""
         english = self._pages(self._scope(tmp_path))
         portuguese = self._pages(self._scope(tmp_path, "pt-BR"))
+        text = c.Infra.DocumentationText
         labels = (
-            "## Finalidade",
-            "## Comece aqui",
-            "# sample Guias",
-            "## Fonte de verdade",
-            "Visão geral da API",
-            "Índice de módulos",
+            f"## {text.PURPOSE.localized('pt-BR')}",
+            f"## {text.START_HERE.localized('pt-BR')}",
+            f"# sample {text.GUIDES.localized('pt-BR')}",
+            f"## {text.SOURCE_OF_TRUTH.localized('pt-BR')}",
+            text.API_OVERVIEW.localized("pt-BR"),
+            text.MODULE_INDEX.localized("pt-BR"),
         )
         for original, localized, label in zip(english, portuguese, labels, strict=True):
             tm.that(localized, has=label)
@@ -87,14 +88,15 @@ class TestsFlextInfraDocumentationLanguage:
         for page in portuguese[:2]:
             tm.that(page, has="::: sample\n\n    options:")
             tm.that(page, has="      show_source: false")
-            tm.that(page, has="Verificações de qualidade")
-        tm.that(portuguese[0], has="**Alfa (0.12.0).**")
-        tm.that(portuguese[3], has="Docstrings das classes e funções")
+            tm.that(page, has=text.QUALITY_GATES.localized("pt-BR"))
+        tm.that(portuguese[0], has=text.ALPHA_NOTE.localized("pt-BR").split("**")[1])
+        tm.that(portuguese[3], has=text.CLASS_DOCSTRINGS.localized("pt-BR"))
 
     def test_default_english_is_byte_identical_and_project_isolated(
         self, tmp_path: Path
     ) -> None:
         """Explicit and absent English retain identical bytes after Portuguese use."""
+        text = c.Infra.DocumentationText
         scope = self._scope(tmp_path)
         payload = scope.model_dump(
             exclude={"repository_root", "documentation_language"}
@@ -104,18 +106,18 @@ class TestsFlextInfraDocumentationLanguage:
         self._pages(self._scope(tmp_path / "pt", "pt-BR"))
         tm.that(self._pages(scope), eq=before)
         tm.that(self._pages(default), eq=before)
-        tm.that(before[0], has="## Purpose")
-        tm.that(before[1], has="# sample Documentation")
-        tm.that(before[2], has="- [Back to project docs](../index.md)")
-        tm.that(before[3], has="## Source of Truth")
+        tm.that(before[0], has=f"## {text.PURPOSE.localized('en')}")
+        tm.that(before[1], has=f"# sample {text.DOCUMENTATION.localized('en')}")
+        tm.that(before[2], has=f"[{text.BACK_TO_DOCS.localized('en')}](../index.md)")
+        tm.that(before[3], has=f"## {text.SOURCE_OF_TRUTH.localized('en')}")
 
     def test_material_language_and_palette_are_project_local(
         self, tmp_path: Path
     ) -> None:
         """Both standalone and member sites retain the selected Brazilian dialect."""
         portuguese = self._scope(tmp_path, "pt-BR")
-        english = u.Infra.docs_project_mkdocs(self._scope(tmp_path), {}, [])
-        member = u.Infra.docs_project_mkdocs(portuguese, {}, [])
+        english = u.Infra.docs_project_mkdocs(self._scope(tmp_path), {})
+        member = u.Infra.docs_project_mkdocs(portuguese, {})
         root = u.Infra.docs_root_mkdocs({}, documentation_language="pt-BR")
         for rendered in (member, root):
             tm.that(rendered, has="  language: pt-BR\n")
@@ -130,7 +132,7 @@ class TestsFlextInfraDocumentationLanguage:
             tm.that(theme["language"], eq="pt-BR")
         tm.that(english, lacks="  language:")
         tm.that(english, has="name: Switch to dark mode")
-        tm.that(u.Infra.docs_project_mkdocs(self._scope(tmp_path), {}, []), eq=english)
+        tm.that(u.Infra.docs_project_mkdocs(self._scope(tmp_path), {}), eq=english)
 
     @staticmethod
     @pytest.mark.parametrize("language", ["pt", "PT-BR", "fr", "", None, 1])
@@ -200,8 +202,12 @@ class TestsFlextInfraDocumentationLanguage:
             )
         tm.that(scopes[0].documentation_language, eq="pt-BR")
         tm.that(scopes[1].documentation_language, eq="en")
-        tm.that(u.Infra.docs_project_index(scopes[0], {}, width=88), has="Comece aqui")
-        tm.that(u.Infra.docs_project_index(scopes[1], {}, width=88), has="Start Here")
+        languages: tuple[t.Infra.DocumentationLanguage, ...] = ("pt-BR", "en")
+        for scope, language in zip(scopes, languages, strict=True):
+            tm.that(
+                u.Infra.docs_project_index(scope, {}, width=88),
+                has=c.Infra.DocumentationText.START_HERE.localized(language),
+            )
 
     @staticmethod
     def test_real_bundle_localizes_one_member_and_keeps_sibling_bytes(

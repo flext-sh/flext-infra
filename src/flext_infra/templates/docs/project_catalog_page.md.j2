@@ -1,0 +1,13 @@
+{% filter markdown_wrap(line_width) -%}
+# FLEXT Project Catalog
+
+{{ generated_header }}
+
+Project links resolve to the generated root API reference for each governed FLEXT package.
+
+| project | class | package | description |
+|---|---|---|---|
+{% for entry in entries -%}
+| [{{ entry.name }}]({{ entry.api_page }}) | {{ entry.project_class | replace("|", "\\|") | trim }} | `{{ entry.package_name }}` | {{ (entry.description or text.NOT_DECLARED) | replace("|", "\\|") | trim }} |
+{% endfor -%}
+{% endfilter -%}

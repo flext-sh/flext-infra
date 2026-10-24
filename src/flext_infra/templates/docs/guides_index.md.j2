@@ -1,0 +1,13 @@
+{% filter markdown_wrap(line_width) -%}
+# {{ name }} {{ text.GUIDES }}
+
+{{ generated_header }}
+
+{{ text.GUIDES_BODY }}
+
+{% for guide in guides -%}
+- [{{ guide.title }}]({{ guide.file_name }})
+{% endfor -%}
+- [{{ text.BACK_TO_DOCS }}](../index.md)
+- [{{ text.API_REFERENCE }}](../api-reference/README.md)
+{% endfilter -%}

@@ -280,6 +280,8 @@ class FlextInfraConstantsDocs:
             return self.value[1 if language == "pt-BR" else 0]
 
     DEFAULT_DOCS_OUTPUT_DIR: ClassVar[str] = ".reports/docs"
+    MKDOCS_FIXED_EXCLUDE_DOCS: ClassVar[t.StrSequence] = ("/README.md", "/API/**")
+    "Rooted exclusions: the project README mirror and the curated API mirror."
     # Registered docs CLI action names; make.docs.actions must stay inside this
     # surface so the generated Makefile loop can never dispatch a missing verb.
     DOCS_ACTION_IDS: ClassVar[frozenset[str]] = frozenset({
