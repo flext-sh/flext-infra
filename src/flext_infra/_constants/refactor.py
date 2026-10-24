@@ -84,6 +84,16 @@ class FlextInfraConstantsRefactor:
         "settings",
     })
     "Root singletons and import layers of the config/settings law (ADR-005)."
+    IMPORT_LAW_LAYER_ZERO_ROOTS: ClassVar[frozenset[str]] = (
+        IMPORT_LAW_ROOT_SINGLETONS | frozenset({"lazy"})
+    )
+    """Module roots classified layer zero: the root singletons and the lazy loader.
+
+    The lazy loader bootstraps every package, the facades included, so it
+    cannot import them without a cycle; ADR-028 declares it the one documented
+    layer-zero exception beside config/settings. It is not an importable root
+    singleton, so alias routing keeps reading ``IMPORT_LAW_ROOT_SINGLETONS``.
+    """
     IMPORT_LAW_GUARD_ERRORS: ClassVar[frozenset[str]] = frozenset({
         "ImportError",
         "ModuleNotFoundError",

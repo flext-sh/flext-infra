@@ -869,7 +869,7 @@ class FlextInfraUtilitiesImportLaw:
                 return "family"
             if index == 0 and any(
                 stem == role or stem.startswith(f"{role}_")
-                for role in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+                for role in c.Infra.IMPORT_LAW_LAYER_ZERO_ROOTS
             ):
                 return "layer0"
             if stem in config.Infra.tooling.lazy_init.import_layer_order:
