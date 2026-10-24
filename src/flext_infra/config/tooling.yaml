@@ -687,6 +687,11 @@ Infra:
       layer-aliases:
         r: u
         e: u
+      # Stdlib backports import like the standard library everywhere (operator
+      # decision 2026-10-24): the PEP 747 TypeForm special form exists only in
+      # typing_extensions on this Python line, and type checkers recognize it
+      # only through its own name binding (ADR-028).
+      stdlib-backports: [typing_extensions]
       reverse-import-mode: type_checking
       forward-import-form: absolute
     # One owner per facade member (operator order 2026-10-24): the kind of the

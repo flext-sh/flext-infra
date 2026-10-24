@@ -676,6 +676,19 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+        stdlib_backports: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="stdlib-backports",
+                description=(
+                    "Import roots of stdlib backports that every module may "
+                    "import like the standard library itself (operator "
+                    "decision 2026-10-24, ADR-028). The facade boundary "
+                    "derives stdlib from ``sys.stdlib_module_names`` and adds "
+                    "only these declared roots."
+                ),
+            ),
+        ]
         reverse_import_mode: Annotated[
             Literal["type_checking"],
             m.Field(
