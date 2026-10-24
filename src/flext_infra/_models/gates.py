@@ -454,7 +454,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         ci_context: Annotated[bool, m.Field(description="Original CI selection")]
         slow_phase: Annotated[bool, m.Field(description="Original slow-test phase")]
-        unbounded: Annotated[bool, m.Field(description="Original unbounded operation")]
         profile_enabled: Annotated[
             bool, m.Field(description="Original native process profiling")
         ]

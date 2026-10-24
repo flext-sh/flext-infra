@@ -321,10 +321,11 @@ def _provision_consumer_template(
     *,
     member_dependencies: t.MappingKV[str, t.StrSequence] | None = None,
 ) -> Path:
-    """Upgrade and set up the shared worker consumer once through real Make.
+    """Publish activation inputs, then provision the consumer through real Make.
 
     The installed session owner keeps this physical checkout at a stable path,
     preserving its editable source binding while restoring each case's data.
+    The public ENVRC producer publishes activation before sync consumes it.
 
     Returns:
         The provisioned consumer with committed locks and a physical environment.
@@ -432,9 +433,24 @@ def _provision_consumer_template(
             ).map(tuple),
         ),
     )
+    environment_plan = tm.not_none(
+        tm.ok(
+            infra.codegen_conform(
+                u.Tests.conform_request(
+                    root,
+                    what=c.Infra.CodegenConformSurface.ENVRC,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+            ),
+        ).plan,
+    )
+    if environment_plan.exception is not None:
+        raise environment_plan.exception
+    tm.that(environment_plan.issues, empty=True, msg=str(environment_plan.issues))
     tm.ok(
         infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True),
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root),
         ),
     )
     # A newly scaffolded consumer has no committed locks yet. The public upgrade

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin(
     FlextInfraCodegenExecutionBase[bool],
+    m.Infra.ModuleSelectionMixin,
 ):
     """Describe stale generated sidecars without publishing any effect."""
 

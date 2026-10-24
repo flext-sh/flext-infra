@@ -19,8 +19,7 @@ from time import monotonic
 
 import flext_cli
 
-from flext_infra import c, config, m, p, r, settings, t, u
-from flext_infra._config import FlextInfraConfig
+from flext_infra import FlextInfraConfig, c, config, m, p, r, settings, t, u
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
     FlextInfraModReplacements,
@@ -1390,20 +1389,42 @@ class FlextInfraModGateEngine:
             The first input failure or the complete current report proof.
 
         """
+        cls._progress(f"verify stage=catalog-membership repository={root}")
         membership = cls._verify_scan_membership(root, report, root)
         if membership.failure:
             return membership
         if report.source_states is None:
             return r[bool].fail("native scan report lacks authenticated source inputs")
-        verified = u.Cli.atomic_verify_binary_file_states((
-            *report.source_states,
-            *(state for entry in report.entries for state in entry.binding_states),
-        ))
+        source_paths = tuple(state.path for state in report.source_states)
+        cls._progress(
+            f"verify stage=target-inventory repository={root} "
+            f"inputs={len(report.source_states)}"
+        )
+        verified = u.Cli.atomic_verify_binary_file_states(
+            report.source_states,
+            nonsecret_source_paths=source_paths,
+        )
         if verified.failure:
             return verified
+        inputs = (
+            *report.source_states,
+            *(state for entry in report.entries for state in entry.binding_states),
+        )
+        cls._progress(
+            f"verify stage=original-snapshot repository={root} "
+            f"inputs={len(inputs)} findings={report.findings}"
+        )
+        verified = u.Cli.atomic_verify_binary_file_states(
+            inputs,
+            nonsecret_source_paths=tuple(dict.fromkeys(state.path for state in inputs)),
+        )
+        if verified.failure:
+            return verified
+        cls._progress(f"verify stage=native-records repository={root}")
         with u.Infra.mod_native_readers(report.native_artifacts) as readers:
             for entry in report.entries:
                 u.Infra.mod_native_payload(entry, readers)
+        cls._progress(f"verify stage=complete repository={root}")
         return r[bool].ok(value=True)
 
     @classmethod

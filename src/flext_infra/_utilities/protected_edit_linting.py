@@ -14,6 +14,7 @@ import sys
 import traceback
 from collections import Counter
 from collections.abc import Iterable, MutableMapping
+from functools import partial
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -109,7 +110,19 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         return codegen.FlextInfraStagedPackage.prepare_sources(
-            plan, cls._repair_staged_sources
+            plan,
+            partial(
+                cls._repair_staged_sources,
+                resource_sources=tuple(
+                    {
+                        source.path: source
+                        for file in plan.declared_files
+                        if (context := file.validation_context) is not None
+                        and file.path.suffix in {".py", ".pyi"}
+                        for source in context.source_states
+                    }.values()
+                ),
+            ),
         ).flat_map(
             lambda prepared: codegen.FlextInfraStagedPackage.seal_sources(
                 plan, prepared
@@ -121,6 +134,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         root: Path,
         candidates: t.MappingKV[Path, Path],
+        *,
+        resource_sources: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[bool]:
         """Delegate every repair phase to the native gates, never copy recipes.
 
@@ -128,6 +143,26 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Acceptance only when lint and format both confirm the prepared bytes.
 
         """
+        for source in resource_sources:
+            if source.content is None:
+                return r[bool].fail(f"resource source has no bytes: {source.path}")
+            compile(source.content, str(source.path), "exec", dont_inherit=True)
+            project = cls._command_cwd(source.path, source.path.parent)
+            context = m.Infra.GateContext(
+                repository_root=project,
+                reports_dir=root,
+                selected_files=(source.path,),
+            )
+            for gate in (
+                gates.FlextInfraRuffLintGate(project),
+                gates.FlextInfraRuffFormatGate(project),
+            ):
+                checked = gate.check_files((source.path,), project, context)
+                if not checked.result.passed:
+                    return r[bool].fail(
+                        checked.raw_output
+                        or f"resource original source quality failed: {source.path}",
+                    )
         grouped: MutableMapping[Path, list[Path]] = {}
         for path in candidates.values():
             project = cls._command_cwd(path, root)

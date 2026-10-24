@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableMapping
-from importlib.util import resolve_name
 
 from flext_infra import m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
-from flext_infra._utilities._rope_analysis.sourcescan import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 from flext_infra._utilities._rope_source_bases_inventory_collector import (
     FlextInfraUtilitiesRopeSourceBindingCollector,
@@ -68,32 +67,15 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             globals_,
             "",
         )
-        targets, references = (
-            FlextInfraUtilitiesRopeAnalysisSourceScan.lazy_import_mapping_source(
+        globals_.update(
+            FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                request.module,
+                request.path,
                 request.source,
+                project=request.project,
+                pymodule=provider,
             )
         )
-        if references and not (
-            request.module == "tests" or request.module.startswith("tests.")
-        ):
-            # Test and benchmark modules build installer maps at runtime from
-            # the constants they exercise; the declared-mapping invariant
-            # gates the production lazy-init modules only.
-            message = (
-                f"Unresolved declared lazy import mapping in {request.module}: "
-                f"{references}"
-            )
-            raise ValueError(message)
-        for target, exports in targets:
-            destination = (
-                resolve_name(target, package) if target.startswith(".") else target
-            )
-            for name in exports:
-                globals_[name] = m.Infra.SourceClassReference(
-                    target=destination,
-                    attributes=(name,),
-                    qualified_base=f"{request.module}.{name}",
-                )
         return globals_
 
     @staticmethod

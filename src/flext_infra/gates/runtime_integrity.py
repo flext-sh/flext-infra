@@ -118,7 +118,7 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
         for name, command in commands:
             execution = self.native_execution(name, command, project_dir, ctx)
             components[name] = execution
-            if not execution.result.passed and ctx.fail_fast:
+            if execution.interrupted or (not execution.result.passed and ctx.fail_fast):
                 break
         issues = tuple(
             issue for execution in components.values() for issue in execution.issues

@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSet
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
@@ -21,95 +21,10 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsProvider,
     FlextInfraConfigModelsRender,
 )
-from flext_infra._models.settings import FlextInfraSettingsModels
 
 
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
-
-    class UvResolutionViewState(m.ArbitraryTypesModel):
-        """Mutable accumulator for one native resolution view projection."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            arbitrary_types_allowed=True,
-        )
-
-        directory: Path = m.Field(
-            description="Generated view root resolving member relative paths.",
-        )
-        policy: FlextInfraConfigModelsMake.MakeUvResolutionSpec = m.Field(
-            description="Declared resolution policy owning member naming.",
-        )
-        native_uv: t.MutableJsonMapping = m.Field(
-            description="Detached root ``[tool.uv]`` table under projection.",
-        )
-        view_project: t.MutableJsonMapping = m.Field(
-            description="Generated virtual project table, empty when absent.",
-        )
-        dependencies: t.MutableJsonList = m.Field(
-            description="Root dependency requests in declaration order.",
-        )
-        member_bindings: t.MutableJsonList = m.Field(
-            description="Member dependency requests in declaration order.",
-        )
-        extras: t.MutableJsonMapping = m.Field(
-            description="View optional-dependency groups by target name.",
-        )
-        groups: t.MutableJsonMapping = m.Field(
-            description="View dependency groups by target name.",
-        )
-        group_metadata: t.MutableJsonMapping = m.Field(
-            description="Renamed group metadata keyed by target name.",
-        )
-        sources: t.MutableJsonMapping = m.Field(
-            description="Context-qualified source entries by dependency name.",
-        )
-        index_entries: t.MutableJsonMapping = m.Field(
-            description="Conflict-checked index declarations by identity.",
-        )
-        constraints: t.MutableJsonList = m.Field(
-            description="Constraints preserving replaced local sources.",
-        )
-        retained_overrides: t.ListOf[
-            str | FlextInfraModelsMiseToolchain.UvScopedOverride
-        ] = m.Field(
-            description="Declared overrides with member requests appended.",
-        )
-        overridden: MutableSet[str] = m.Field(
-            description="Canonical member names already natively bound.",
-        )
-        seen_groups: MutableSet[str] = m.Field(
-            description="Normalized group names already claimed.",
-        )
-        seen_extras: MutableSet[str] = m.Field(
-            description="Normalized extra names already claimed.",
-        )
-
-    class UvResolutionProject(FlextInfraConfigModelsContract.ConfigContract):
-        """Authenticated project input to the native development resolution view."""
-
-        role: Literal["member", "supplier"] = m.Field(
-            default="member",
-            description="Member development graph or external runtime supplier",
-        )
-        repository: Annotated[
-            FlextInfraConfigModelsContexts.RepositoryRef,
-            m.Field(
-                description="Declared identity, package status and editable policy"
-            ),
-        ]
-        directory: Annotated[
-            Path,
-            m.Field(description="Authenticated absolute physical project directory"),
-        ]
-        document: Annotated[
-            t.Cli.TomlDocument,
-            m.Field(
-                exclude=True,
-                description="Already parsed conform-owned native project metadata",
-            ),
-        ]
 
     class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
@@ -333,18 +248,13 @@ class FlextInfraModelsCodegenRender:
     class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
-        editable_supplier_environment: str = m.Field(
-            default=FlextInfraSettingsModels.InfraSettings.EDITABLE_SUPPLIER_ENVIRONMENT,
-            description="Typed settings environment alias, never a host path",
-        )
-
+        native_environment_unset: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Inherited selectors excluded by native activation"),
+        ]
         toolchain: Annotated[
             FlextInfraConfigModelsContract.ToolchainSpec,
             m.Field(description="Governed native reader shared with Make"),
-        ]
-        uv_resolution: Annotated[
-            FlextInfraConfigModelsMake.MakeUvResolutionSpec,
-            m.Field(description="Native resolver input ownership shared with Make"),
         ]
         repository_root_rel: Annotated[
             t.NonEmptyStr,

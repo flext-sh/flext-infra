@@ -16,6 +16,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraMisePublication,
     FlextInfraStagedPackage,
 )
 from flext_infra.validate import FlextInfraValidateFreshImport
@@ -83,7 +84,7 @@ class FlextInfraSemanticPublication:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        analysis = cls._semantic_phase_analysis(plans, codegen)
+        analysis = cls.plan_semantic_file_plans(plans, codegen)
         if analysis.failure:
             return r[tuple[Path, ...]].from_failure(analysis)
         selected = m.Infra.SemanticPublicationOptions() if options is None else options
@@ -150,7 +151,7 @@ class FlextInfraSemanticPublication:
             return r[tuple[Path, ...]].fail(
                 "semantic plans differ from accepted candidate"
             )
-        analysis = cls._semantic_phase_analysis(
+        analysis = cls.plan_semantic_file_plans(
             plans,
             None,
             inputs=(*candidate.inputs, *inputs),
@@ -184,14 +185,14 @@ class FlextInfraSemanticPublication:
         )
 
     @classmethod
-    def _semantic_phase_analysis(
+    def plan_semantic_file_plans(
         cls,
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
-        codegen: m.Infra.CodegenConfigSpec | None,
+        codegen: m.Infra.CodegenConfigSpec | None = None,
         *,
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Build the same authenticated analysis for both publication inputs.
+        """Plan authored sources through the shared guarded source ingress.
 
         Returns:
             The complete analysis or its first planning failure.
@@ -211,6 +212,148 @@ class FlextInfraSemanticPublication:
                 phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 files=tuple(files.value),
                 inputs=snapshots.value,
+            )
+        )
+
+    @classmethod
+    def publish_semantic_analyses(
+        cls,
+        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
+        *,
+        source_plans: t.SequenceOf[m.Infra.SemanticFilePlan] = (),
+        repository_root: Path,
+        options: m.Infra.SemanticPublicationOptions | None = None,
+        publish: bool = True,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Admit complete native analyses and publish them with authored sources.
+
+        Each original analysis is admitted before composition so another source
+        cannot repair missing or conflicting producer metadata by aggregation.
+
+        Returns:
+            Actual cohort effects, or the first original admission failure.
+
+        """
+        if options is not None and options.projection_roots:
+            return r[tuple[Path, ...]].fail(
+                "complete native analyses already own their dependent projections"
+            )
+        authored = cls.plan_semantic_file_plans(source_plans)
+        if authored.failure:
+            return r[tuple[Path, ...]].from_failure(authored)
+        for analysis in analyses:
+            if (
+                analysis.exception is not None
+                or analysis.issues
+                or analysis.failed_targets
+            ):
+                return r[tuple[Path, ...]].fail(
+                    "; ".join(issue.message for issue in analysis.issues)
+                    or "native semantic projection planning failed",
+                    exception=analysis.exception,
+                )
+            if (
+                analysis.phase == c.Infra.CodegenStagedFilePhase.LAZY_INIT
+                and not analysis.publications
+                and any(
+                    file.path.name == c.Infra.INIT_PY
+                    and file.desired_content is not None
+                    for file in analysis.files
+                )
+            ):
+                return r[tuple[Path, ...]].fail(
+                    "native lazy-init analysis lacks original publication dependencies"
+                )
+            admitted = FlextInfraMisePublication.admit_batch(analysis)
+            if admitted.failure:
+                return r[tuple[Path, ...]].from_failure(admitted)
+        combined = cls._combined_native_analysis((authored.value, *analyses))
+        return combined.flat_map(
+            lambda complete: cls._publish_joint_analysis(
+                complete,
+                repository_root=repository_root,
+                options=m.Infra.SemanticPublicationOptions()
+                if options is None
+                else options,
+                publish=publish,
+            )
+        )
+
+    @staticmethod
+    def _combined_native_analysis(
+        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Retain complete native publication and generator observations.
+
+        Returns:
+            The complete joint phase, or conflicting original producer metadata.
+
+        """
+        references = tuple(
+            analysis.generator_reference
+            for analysis in analyses
+            if analysis.generator_reference is not None
+        )
+        if references and any(
+            reference is not references[0] for reference in references
+        ):
+            return r[m.Infra.CodegenPhaseAnalysis].fail(
+                "native semantic analyses have different original producer references"
+            )
+        inputs = u.Infra.unique_states(
+            tuple(state for analysis in analyses for state in analysis.inputs)
+        )
+        if inputs.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(inputs)
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            tuple(
+                receipt
+                for analysis in analyses
+                for receipt in analysis.source_directories
+            ),
+            tuple(
+                receipt
+                for analysis in analyses
+                for receipt in analysis.source_query_topology
+            ),
+        )
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=tuple(file for analysis in analyses for file in analysis.files),
+                inputs=inputs.value,
+                source_directories=directories,
+                source_query_topology=topology,
+                generator_trees=tuple(
+                    tree for analysis in analyses for tree in analysis.generator_trees
+                ),
+                generator_modules=tuple(
+                    module
+                    for analysis in analyses
+                    for module in analysis.generator_modules
+                ),
+                generator_reference=references[0] if references else None,
+                publications=tuple(
+                    publication
+                    for analysis in analyses
+                    for publication in analysis.publications
+                ),
+                issues=tuple(
+                    issue for analysis in analyses for issue in analysis.issues
+                ),
+                failed_targets=tuple(
+                    target
+                    for analysis in analyses
+                    for target in analysis.failed_targets
+                ),
+                exception=next(
+                    (
+                        analysis.exception
+                        for analysis in analyses
+                        if analysis.exception is not None
+                    ),
+                    None,
+                ),
             )
         )
 
@@ -258,7 +401,7 @@ class FlextInfraSemanticPublication:
         )
         producer = FlextInfraValidateFreshImport.capture_producer(
             repository_root,
-            entrypoint=cls.publish_source_candidate,
+            entrypoint=cls.publish_semantic_analyses,
         )
         if producer.failure:
             return r[
@@ -506,83 +649,6 @@ class FlextInfraSemanticPublication:
         return r[m.Infra.CodegenTransactionSession].ok(session)
 
     @classmethod
-    def _validate_published(
-        cls,
-        transaction: FlextInfraCodegenTransaction,
-        session: m.Infra.CodegenTransactionSession,
-        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
-        publication: t.Pair[Path, m.Infra.SemanticPublicationOptions],
-    ) -> p.Result[bool]:
-        """Require actual phase receipts before the final consumer acceptance gate.
-
-        Returns:
-            The original receipt or consumer verdict with its first failure intact.
-
-        """
-        repository_root, options = publication
-        checked = cls._validate_phase_receipts(
-            analyses,
-            lambda phase_analysis: transaction.validate_phase_analysis_locked(
-                phase_analysis, session=session
-            ),
-        )
-        if checked.failure or not checked.value or options.validator is None:
-            return checked
-        return options.validator(repository_root)
-
-    @classmethod
-    def _apply_semantic_session(
-        cls,
-        transaction: FlextInfraCodegenTransaction,
-        session: m.Infra.CodegenTransactionSession,
-        analysis: m.Infra.CodegenPhaseAnalysis,
-        publication: t.Pair[Path, m.Infra.SemanticPublicationOptions],
-        published_files: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None,
-    ) -> p.Result[t.VariadicTuple[Path]]:
-        """Apply actual semantic/projection effects inside prepared recovery ownership.
-
-        Returns:
-            Committed actual paths or the original pre-commit failure.
-
-        """
-        repository_root = publication[0]
-        materialized = cls._materialized_semantic_parents(
-            transaction, session, analysis
-        )
-        if materialized.failure:
-            return r[tuple[Path, ...]].from_failure(materialized)
-        session = materialized.value
-        published = transaction.append_phase_locked(
-            session,
-            analysis.phase,
-            analysis.files,
-            publication_policy=m.Infra.CodegenPhasePublicationPolicy(
-                directories=(),
-                staged_validator=lambda current, staged: (
-                    FlextInfraCodegenStaging.validate_python_plans(
-                        current,
-                        staged,
-                        plans=analysis.files,
-                        runtime=m.Infra.CodegenSourceRuntime(workspace=repository_root),
-                    )
-                ),
-            ),
-        )
-        if published.failure:
-            return r[tuple[Path, ...]].from_failure(published)
-        checked = cls._validate_published(
-            transaction, published.value, (analysis,), publication
-        )
-        if checked.failure:
-            return r[tuple[Path, ...]].from_failure(checked)
-        if not checked.value:
-            return r[tuple[Path, ...]].fail("semantic acceptance rejected")
-        return transaction.commit_locked(
-            published.value,
-            published_files=published_files,
-        )
-
-    @classmethod
     def _published_paths(
         cls,
         transaction: FlextInfraCodegenTransaction,
@@ -597,7 +663,32 @@ class FlextInfraSemanticPublication:
             Published paths after actual receipts and consumer acceptance.
 
         """
-        options = publication[1]
+        repository_root, options = publication
+        staged_files: list[m.Infra.CodegenStagedFile] = []
+
+        def validate_stage(
+            session: m.Infra.CodegenTransactionSession,
+            staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            """Retain original parent witnesses and the actual staged-file objects.
+
+            Returns:
+                The native staged validation result, or its first failure.
+
+            """
+            materialized = cls._materialized_semantic_parents(
+                transaction, session, analysis
+            )
+            if materialized.failure:
+                return r[m.Infra.CodegenTransactionSession].from_failure(materialized)
+            checked = FlextInfraCodegenStaging.validate_python_plans(
+                materialized.value,
+                staged,
+                plans=analysis.files,
+                runtime=m.Infra.CodegenSourceRuntime(workspace=repository_root),
+            )
+            staged_files.extend(staged)
+            return checked
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
             """Guard the sources, begin the locked files scope and apply.
@@ -612,22 +703,27 @@ class FlextInfraSemanticPublication:
             guarded = cls._guard_source_inputs(options.source_guard)
             if guarded.failure:
                 return r[tuple[Path, ...]].from_failure(guarded)
-            started = transaction.begin_files_locked(scope_root, roots, analysis.inputs)
-            if started.failure:
-                return r[tuple[Path, ...]].from_failure(started)
-
-            def apply(
-                session: m.Infra.CodegenTransactionSession,
-            ) -> p.Result[t.VariadicTuple[Path]]:
-                return cls._apply_semantic_session(
-                    transaction,
-                    session,
-                    analysis,
-                    publication,
-                    published_files,
+            committed = transaction.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(), staged_validator=validate_stage
+                ),
+            )
+            if committed.failure:
+                return committed
+            if published_files is not None:
+                published_files.extend(
+                    file for file in staged_files if file.before.path in committed.value
                 )
-
-            return transaction.publish_prepared_locked(started.value, apply)
+            if options.validator is not None:
+                accepted = options.validator(repository_root)
+                if accepted.failure:
+                    return r[tuple[Path, ...]].from_failure(accepted)
+                if not accepted.value:
+                    return r[tuple[Path, ...]].fail("semantic acceptance rejected")
+            return committed
 
         return transaction.run_files_locked(roots, publish)
 
@@ -709,10 +805,6 @@ class FlextInfraSemanticPublication:
                 m.Infra.CodegenPhaseAnalysis,
             ]
         ]
-        prepared = cls._prepared_transaction(analysis, repository_root, options)
-        if prepared.failure:
-            return result_type.from_failure(prepared)
-        transaction, roots = prepared.value
         planned = cls._group_planned_analysis(
             analysis,
             repository_root,
@@ -726,7 +818,15 @@ class FlextInfraSemanticPublication:
         )
         if prepared_analysis.failure:
             return result_type.from_failure(prepared_analysis)
-        return result_type.ok(((transaction, roots), prepared_analysis.value))
+        guarded = cls._guard_source_inputs(options.source_guard)
+        if guarded.failure:
+            return result_type.from_failure(guarded)
+        prepared = cls._prepared_transaction(
+            prepared_analysis.value, repository_root, options
+        )
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        return result_type.ok((prepared.value, prepared_analysis.value))
 
     @classmethod
     def _python_prepared_analysis(
@@ -788,23 +888,6 @@ class FlextInfraSemanticPublication:
         )
 
     @staticmethod
-    def _validate_phase_receipts(
-        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
-        verify: Callable[[m.Infra.CodegenPhaseAnalysis], p.Result[bool]],
-    ) -> p.Result[bool]:
-        """Require every phase receipt before consumer acceptance.
-
-        Returns:
-            The first rejected receipt, or successful receipt validation.
-
-        """
-        for analysis in analyses:
-            checked = verify(analysis)
-            if checked.failure or not checked.value:
-                return checked
-        return r[bool].ok(value=True)
-
-    @staticmethod
     def _semantic_phase_roots(
         files: t.SequenceOf[m.Infra.CodegenFilePlan],
         projection_roots: t.VariadicTuple[Path] = (),
@@ -823,7 +906,7 @@ class FlextInfraSemanticPublication:
     @staticmethod
     def _concrete_file_plans(
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
-        codegen: m.Infra.CodegenConfigSpec | None,
+        codegen: m.Infra.CodegenConfigSpec | None = None,
         *,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:

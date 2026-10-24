@@ -308,19 +308,17 @@ class TestsFlextInfraBindingInstall:
 
             from flext_cli import FlextCliConfig
             from flext_core import m as core_models
-            from flext_infra import (
-                FlextInfraWorkspaceDetector,
-                FlextInfraWorkspaceEnvironmentProvenance,
-                c, config, m, u,
-            )
+            from flext_infra import c, config, m, u, workspace
 
             cli_config = FlextCliConfig.fetch_global()
             cli_roundtrip = FlextCliConfig.model_validate(cli_config.model_dump())
             assert cli_roundtrip.Cli == cli_config.Cli
             root = Path(argv[1])
-            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root).unwrap()
+            workspace_spec = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+                root
+            ).unwrap()
             declared_sources = {}
-            for repository in (workspace.repository, *workspace.subprojects):
+            for repository in (workspace_spec.repository, *workspace_spec.subprojects):
                 if repository.package:
                     expected = (root / repository.path).resolve()
                     package = u.Infra.project_package_name(expected)
@@ -363,9 +361,9 @@ class TestsFlextInfraBindingInstall:
                 assert yaml_origin.is_relative_to(declared_sources[yaml_package])
             source = u.Cli.files_read_text(root / c.PYPROJECT_FILENAME).unwrap()
             document = u.Cli.toml_parse_text(source)
-            tm.not_none(document)
+            assert document is not None
             groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
-            tm.not_none(groups)
+            assert groups is not None
             comments = u.Cli.toml_array_item_comments(groups, str(c.Infra.DEV))
             values = u.Cli.toml_as_string_list(
                 u.Cli.toml_value(groups, str(c.Infra.DEV))
@@ -374,7 +372,7 @@ class TestsFlextInfraBindingInstall:
             toolchain = config.Infra.codegen.toolchain
             rendered = u.Infra.pyproject_conform(
                 source,
-                workspace=workspace,
+                workspace=workspace_spec,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
                 uv_resolution=m.Infra.UvResolutionSpec(
                     link_mode=toolchain.uv_link_mode,
@@ -388,7 +386,7 @@ class TestsFlextInfraBindingInstall:
                     ).unwrap(),
                 ),
             ).unwrap()
-            tm.not_none(u.Cli.toml_parse_text(rendered))
+            assert u.Cli.toml_parse_text(rendered) is not None
             builder_type = dataclass(init=False, unsafe_hash=True)(core_models.Base)
             builder_type.Recursive = builder_type
             state = core_models.ContractModel.model_validate({})
@@ -409,7 +407,9 @@ class TestsFlextInfraBindingInstall:
                 recipient.__hash__ = builder_type.__hash__
                 print("transplanted compiler definition", recipient,
                       builder_type.__hash__.__qualname__, flush=True)
-            provenance = FlextInfraWorkspaceEnvironmentProvenance.validate(root)
+            provenance = workspace.FlextInfraWorkspaceEnvironmentProvenance.validate(
+                root
+            )
             if origin_case == "valid":
                 provenance.unwrap()
             else:

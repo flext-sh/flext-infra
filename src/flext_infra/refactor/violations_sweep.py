@@ -222,14 +222,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         result = r[t.Pair[t.StrSequence | None, t.StrSequence]]
-        if any(
-            selector is not None
-            for selector in (
-                self.target_module,
-                self.target_namespace,
-                self.project_filter,
-            )
-        ):
+        if self.project_filter is not None:
             return result.fail(
                 "violations sweep requires the full governed project inventory",
             )
@@ -242,7 +235,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         if focused.failure:
             return result.from_failure(focused)
         verbs = (
-            ("audit",)
+            (c.Infra.VERB_CHECK,)
             if self.audit_rules
             else tuple(verb.strip() for verb in self.repair_verbs.split(","))
             if self.repair_verbs is not None
@@ -251,18 +244,17 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         admissible = {
             verb.name
             for verb in config.Infra.codegen.make.verbs
-            if u.Infra.selector_free_make_verb(
-                verb.arguments,
+            if u.Infra.make_verb_supports_profiles(
                 verb.profiles,
                 tuple(c.Infra.MakeProfile),
             )
         }
         if not verbs or any(verb not in admissible for verb in verbs):
             return result.fail(
-                "violations sweep requires declared selector-free Make verbs: "
+                "violations sweep requires declared Make verbs in every profile: "
                 + ", ".join(verb for verb in verbs if verb not in admissible),
             )
-        if rule_ids is not None and any(verb != "audit" for verb in verbs):
+        if rule_ids is not None and any(verb != c.Infra.VERB_CHECK for verb in verbs):
             return result.fail(
                 "selected-rule mutation is not implemented; no repair verb invoked",
             )

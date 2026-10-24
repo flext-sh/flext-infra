@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, m, r, u
+from flext_infra import c, config, m, r, u
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
@@ -119,10 +120,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             context.model_dump_json(indent=2) + "\n",
         ).unwrap()
         latest = report_dir.parent / "latest.txt"
-        wait_seconds = (
-            c.Infra.JOURNAL_LEASE_WAIT_SECONDS
-            if context.deadline_monotonic is None
-            else max(0.0, context.deadline_monotonic - time.monotonic())
+        wait_seconds = max(
+            0.0,
+            context.deadline_monotonic
+            - config.Infra.tooling.tools.pytest.termination_grace_seconds
+            - time.monotonic(),
         )
         # This publication runs both before and inside the separate cache lease.
         with u.Infra.codegen_transaction_lease(latest, wait_seconds=wait_seconds):
@@ -199,8 +201,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         inventory_count = None
         owns_no_tests = False
         selection_plan: m.Infra.PytestSelectionPlan | None = None
-        # Only a testmon run publishes a selection plan; the coverage and the
-        # full operations account from their JUnit evidence alone.
+        # Testmon operations publish a plan bound to their observed inventory.
+        # Coverage owns no Testmon selection or database.
         if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (log.parent / "selection-plan.json").read_text(encoding="utf-8"),
@@ -248,7 +250,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         Returns:
             The resulting ``(deselected, inventory_count)`` pair; the inventory
-            count stays unset for a run without testmon (coverage and full).
+            count stays unset for a run without testmon (coverage).
 
         Raises:
             RuntimeError: If testmon accounting requires the durable selection
@@ -314,11 +316,13 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         )
 
     @staticmethod
-    def _collection_diagnostics(report_log: Path) -> None:
-        """Require complete collection evidence before accepting a selection.
+    def _read_collection_diagnostics(
+        report_log: Path,
+    ) -> m.Infra.PytestDiagnostics:
+        """Read and retain the collection's native typed evidence.
 
-        Raises:
-            RuntimeError: If pytest collection contains blocking findings.
+        Returns:
+            Observed collection outcomes and warning events for this child.
 
         """
         diagnostics = FlextInfraPytestDiagExtractor.extract_report_log(
@@ -329,29 +333,107 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             receipt,
             diagnostics.model_dump_json(indent=2) + "\n",
         ).unwrap()
-        expected_warnings = (
-            # The runner imports flext_infra in-process to build the pytest
-            # invocation, so pytest's assertion-rewrite hook finds the module
-            # already imported and emits this notice once. It reports the
-            # runner's own module state, not a defect of the code under test;
-            # the diagnostics receipt keeps it visible.
-            "Module already imported so cannot be rewritten; flext_infra",
-        )
-        unexpected_warnings = [
-            line
-            for line in diagnostics.warning_lines
-            if not any(expected in line for expected in expected_warnings)
-        ]
+        return diagnostics
+
+    @classmethod
+    def _collection_diagnostics(cls, report_log: Path) -> None:
+        """Require complete collection evidence before accepting a selection.
+
+        Raises:
+            RuntimeError: If pytest collection contains blocking findings.
+
+        """
+        diagnostics = cls._read_collection_diagnostics(report_log)
+        receipt = report_log.with_suffix(".diagnostics.json")
         if any((
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
-            len(unexpected_warnings),
+            diagnostics.warning_count,
         )):
             msg = f"pytest collection contains blocking findings: {receipt}"
             raise RuntimeError(msg)
 
-    @staticmethod
+    def _write_collection_failure(
+        self,
+        report_dir: Path,
+        *,
+        phase: str,
+        report_log: Path,
+        raw_log: Path,
+        outcome: p.Cli.ProcessOutcome,
+    ) -> None:
+        """Retain failed collection or incomplete suite evidence without a plan.
+
+        A suite process may have reported tests before its inventory was lost;
+        an absent inventory cannot turn that observation into zero execution.
+        """
+        required_reports = (
+            report_log,
+            report_log.with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX),
+        )
+        interrupted = (
+            outcome.timed_out
+            or outcome.forwarded_signal is not None
+            or outcome.raw_return_code < 0
+        )
+        diagnostics: m.Infra.PytestDiagnostics | None = None
+        if interrupted:
+            diagnostic_summary = "diagnostics=incomplete\n"
+        else:
+            missing_reports = tuple(
+                path
+                for path in required_reports
+                if not path.exists() and not path.is_symlink()
+            )
+            if missing_reports:
+                diagnostic_summary = "diagnostics=not_produced\n" + "".join(
+                    f"missing_report={path}\n" for path in missing_reports
+                )
+            else:
+                diagnostics = self._read_collection_diagnostics(report_log)
+                self._write_diagnostics(
+                    report_dir,
+                    diagnostics,
+                    phases=((phase, diagnostics),),
+                )
+                diagnostic_summary = (
+                    f"collection_errors={diagnostics.collection_failed_count}\n"
+                    f"collection_skips={diagnostics.collection_skipped_count}\n"
+                    f"warnings={diagnostics.warning_count}\n"
+                )
+        reported = (
+            len(diagnostics.reported_node_ids) if diagnostics is not None else "unknown"
+        )
+        execution_summary = (
+            f"suite=incomplete\nexecuted=unknown\nreported={reported}\n"
+            if phase == "suite"
+            else "suite=not_executed\nexecuted=0\n"
+        )
+        status = (
+            "interrupted"
+            if interrupted
+            else "incomplete"
+            if phase == "suite"
+            else "collection_failed"
+        )
+        summary = (
+            f"outcome={status}\n"
+            f"phase={phase}\n"
+            f"{execution_summary}"
+            f"inventory_complete={'unknown' if interrupted else 'false'}\n"
+            f"{diagnostic_summary}"
+            f"exit={outcome.raw_return_code}\n"
+            f"timed_out={outcome.timed_out}\n"
+            f"forwarded_signal={outcome.forwarded_signal}\n"
+            f"raw_log={raw_log}\n"
+        )
+        u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
+        sys.stderr.write(
+            f"Pytest {phase}: outcome={status}; reports={report_dir}; log={raw_log}\n",
+        )
+
     def _phase_diagnostics(
+        self,
         report_dir: Path,
         *,
         context: m.Infra.PytestRunContext,
@@ -359,10 +441,18 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     ) -> t.VariadicTuple[t.Pair[str, m.Infra.PytestDiagnostics]]:
         """Read each subprocess receipt once in execution order.
 
+        Whole-project FULL collection belongs to the suite process. Declared
+        file and incremental requests retain their separate collection phases.
+
         Returns:
             The resulting ``t.VariadicTuple[t.Pair[str, m.Infra.PytestDiagnostics]]``.
 
         """
+        if (
+            context.execution_mode == c.Infra.PytestExecutionMode.FULL
+            and self.target_file is None
+        ):
+            return (("suite", suite),)
         phases: t.MutableSequenceOf[t.Pair[str, m.Infra.PytestDiagnostics]] = []
         if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(

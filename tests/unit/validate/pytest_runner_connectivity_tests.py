@@ -1,4 +1,4 @@
-"""Real public runner accounting for sealed connectivity prerequisite skips.
+"""Real public runner rejects skips while retaining connectivity classification.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -20,10 +20,10 @@ class TestsFlextInfraPytestRunnerConnectivity:
     @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("owner_skip", [True, False], ids=["owner", "forged"])
-    def test_only_owner_setup_skips_are_exempt(
+    def test_connectivity_classification_keeps_native_skips_red(
         cached_runner_project: Path, *, owner_skip: bool
     ) -> None:
-        """Forged properties never exempt ordinary call or fixture setup skips."""
+        """Owned prerequisite skips and forged metadata both keep the run red."""
         root = cached_runner_project
         runner = u.Tests.PytestRunner.runner_for(root)
         test_file = root / runner.target / "test_connectivity.py"
@@ -37,11 +37,18 @@ class TestsFlextInfraPytestRunnerConnectivity:
         )
         reports = root / runner.reports
         if owner_skip:
-            tm.that(tm.ok(runner.execute_full()), eq=0)
+            tm.that(tm.ok(runner.execute_full()), eq=1)
             tm.that(
                 u.Tests.PytestRunner.summary(reports),
-                has=["skipped=1", "connectivity_prerequisite_skips=1", "exit=0"],
+                has=["skipped=1", "connectivity_prerequisite_skips=1", "exit=1"],
             )
+            latest = (reports / "latest.txt").read_text(encoding="utf-8").strip()
+            outcome = m.Cli.ProcessOutcome.model_validate_json(
+                (reports / latest / "suite-outcome.json").read_bytes(),
+            )
+            tm.that(outcome.raw_return_code, eq=0)
+            tm.fail(outcome.timed_out)
+            tm.that(outcome.forwarded_signal, none=True)
             return
         u.Cli.run_checked([*c.Cli.GIT_INIT_COMMAND, str(root)]).unwrap()
         with socket.socket() as listener:

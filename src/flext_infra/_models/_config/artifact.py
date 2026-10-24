@@ -30,7 +30,6 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsMake,
     FlextInfraConfigModelsProvider,
     FlextInfraConfigModelsRefactorCampaigns,
-    FlextInfraConfigModelsRelease,
     FlextInfraConfigModelsRender,
     FlextInfraConfigModelsScaffold,
     FlextInfraConfigModelsTemplates,
@@ -867,12 +866,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             declared_patterns = {
                 pattern for section in scaffold_sections for pattern in section.patterns
             }
-            versioned_paths = tuple(
-                managed.path for managed in self.managed_file_specs
-            ) + tuple(
-                path.with_name(c.Infra.UV_LOCK_FILENAME)
-                for path in self.uv_resolution_pyprojects
-            )
+            versioned_paths = tuple(managed.path for managed in self.managed_file_specs)
             for path in versioned_paths:
                 parts = path.parts
                 candidates = [
@@ -936,7 +930,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
         @m.computed_field
         @property
-        def managed_files(
+        def managed_file_specs(
             self,
         ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
             """Derive managed views from the single artifact declaration catalog.
@@ -953,67 +947,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for entry in self.templates.entries
                 if entry.ownership is not None
             )
-
-        @m.computed_field
-        @property
-        def uv_resolution_pyprojects(self) -> t.VariadicTuple[Path]:
-            """Derive native resolver documents from the configured directories."""
-            return tuple(
-                directory / c.PYPROJECT_FILENAME
-                for directory in (
-                    self.make.uv_resolution.local_directory,
-                    self.make.uv_resolution.standalone_directory,
-                    self.make.uv_resolution.editable_directory,
-                )
-            )
-
-        @m.computed_field
-        @property
-        def managed_file_specs(
-            self,
-        ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
-            """Compose native resolver artifacts from the one path policy.
-
-            Raises:
-                ValueError: If managed files do not declare exactly one root
-                    ``pyproject.toml`` owner, or if a derived resolver artifact
-                    collides with an already declared managed file.
-
-            """
-            roots = tuple(
-                item
-                for item in self.managed_files
-                if item.path == Path(c.PYPROJECT_FILENAME)
-            )
-            if len(roots) > 1:
-                msg = "managed files require exactly one root pyproject owner"
-                raise ValueError(msg)
-            if not roots:
-                # A projected slice (e.g. a single owner's artifacts planned by
-                # the runtime) carries no resolver projection of its own; the
-                # exactly-one-root-owner rule is a full-declaration authoring
-                # guard, enforced at config load, never on derived slices.
-                return self.managed_files
-            owner = roots[0]
-            projected = tuple(
-                FlextInfraConfigModelsTemplates.ManagedFileSpec(
-                    path=path,
-                    owner=owner.owner,
-                    policy="full",
-                    mode=owner.mode,
-                    tracking=(
-                        "runtime-local"
-                        if path.parent == self.make.uv_resolution.editable_directory
-                        else owner.tracking
-                    ),
-                )
-                for path in self.uv_resolution_pyprojects
-            )
-            declared = {item.path for item in self.managed_files}
-            if any(item.path in declared for item in projected):
-                msg = "native resolver artifacts derive from make.uv_resolution only"
-                raise ValueError(msg)
-            return (*self.managed_files, *projected)
 
         scaffold: Annotated[
             FlextInfraConfigModelsScaffold.ScaffoldSpec,
@@ -1201,6 +1134,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenArtifactComposition(FlextInfraConfigModelsContract.ConfigContract):
         """Rendered artifact plus the exact source states used to compose it."""
 
+        validation_context: (
+            FlextInfraConfigModelsTemplates.ArtifactResourceValidationContext | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Explicit original resource source role",
+        )
         rendered: Annotated[
             str,
             m.Field(description="Fully composed managed-file content"),
@@ -1271,6 +1211,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             arbitrary_types_allowed=True,
         )
 
+        validation_context: (
+            FlextInfraConfigModelsTemplates.ArtifactResourceValidationContext | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Explicit original resource source role",
+        )
         prepared_sources: p.Infra.StageSourceReceipt | None = m.Field(
             default=None,
             exclude=True,
@@ -1348,6 +1295,32 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = ()
+
+        @m.model_validator(mode="after")
+        def validate_resource_projection(self) -> Self:
+            """Bind resource bytes to their original captured source role.
+
+            Returns:
+                The plan retaining exact original resource bytes and evidence.
+
+            Raises:
+                ValueError: If resource bytes or the captured witness differ.
+
+            """
+            if self.validation_context is not None:
+                source = self.validation_context.source
+                if (
+                    source.content is None
+                    or source not in self.source_states
+                    or any(
+                        state not in self.source_states
+                        for state in self.validation_context.source_states
+                    )
+                    or self.desired_content != source.content
+                ):
+                    msg = "resource projection must retain its exact original source"
+                    raise ValueError(msg)
+            return self
 
         @m.model_validator(mode="after")
         def validate_publication_identity(self) -> Self:
@@ -1457,62 +1430,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ]
 
-    class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
-        """One repository's planned files and environment, or its failure."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-        )
-        exception: BaseException | None = m.Field(
-            default=None,
-            exclude=True,
-            description="First native target planning cause",
-        )
-        repository: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Planned repository name"),
-        ]
-        files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
-            m.Field(description="Governed and retired file plans"),
-        ] = ()
-        environment: Annotated[
-            FlextInfraConfigModelsRelease.UvEnvironmentPlan | None,
-            m.Field(description="uv environment plan of the repository"),
-        ] = None
-        error: Annotated[
-            str,
-            m.Field(description="Planning failure, empty on success"),
-        ] = ""
-        error_type: Annotated[
-            str,
-            m.Field(description="Original qualified exception type, when raised"),
-        ] = ""
-        error_traceback: Annotated[
-            str,
-            m.Field(description="Original planning traceback, without local variables"),
-        ] = ""
-        issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
-            m.Field(description="Native failures attributed to individual targets"),
-        ] = ()
-        elapsed: Annotated[
-            float,
-            m.Field(ge=0, description="Planning wall seconds"),
-        ] = 0.0
-
-        @m.computed_field
-        @property
-        def failed(self) -> bool:
-            """Include native causes even when no diagnostic was constructed."""
-            return bool(
-                self.error
-                or self.error_type
-                or self.error_traceback
-                or self.issues
-                or self.exception is not None
-            )
-
     class CodegenPlanningFileEvidence(FlextInfraConfigModelsContract.ConfigContract):
         """One planned destination without source bytes or captured file state."""
 
@@ -1568,6 +1485,10 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         ]
         error: Annotated[str, m.Field(description="Original planning failure message")]
         error_type: Annotated[str, m.Field(description="Original exception identity")]
+        error_traceback: Annotated[
+            str,
+            m.Field(description="Original planning traceback without reconstruction"),
+        ]
         elapsed: Annotated[float, m.Field(ge=0, description="Planning wall seconds")]
 
     class CodegenPlanningReport(FlextInfraConfigModelsContract.ConfigContract):
@@ -1580,42 +1501,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ],
             m.Field(description="Every selected repository's native planning outcome"),
         ]
-
-    class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
-        """Fully validated plan produced before any managed-file write."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-        )
-        exception: BaseException | None = m.Field(
-            default=None,
-            exclude=True,
-            description="First native target failure carried into publication",
-        )
-        request: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConformRequest,
-            m.Field(description="Validated public request"),
-        ]
-        repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
-            m.Field(description="Selected repositories in deterministic order"),
-        ]
-        workspace: Annotated[
-            FlextInfraConfigModelsWorkspace.WorkspaceSpec,
-            m.Field(description="Workspace governing the selection"),
-        ]
-        uv_environments: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsRelease.UvEnvironmentPlan],
-            m.Field(description="uv plans paired with selected repositories"),
-        ]
-        files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
-            m.Field(description="All render results validated before application"),
-        ]
-        issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
-            m.Field(description="Planning failures retained alongside valid outputs"),
-        ] = ()
 
 
 __all__: list[str] = ["FlextInfraConfigModelsArtifact"]

@@ -641,14 +641,31 @@ class FlextInfraWorkspaceChecker(
             for target in targets
         )
         reached: dict[Path, m.Infra.ProjectResult] = {}
+        current_summary = m.Infra.CheckReportSummary(
+            requested_gates=requested_gates,
+            targets=report_targets,
+            results=(),
+            selected_files=tuple(effective_ctx.selected_files),
+        )
+
+        def publish_summary(summary: m.Infra.CheckReportSummary) -> None:
+            """Retain this invocation's current facts through the existing writers."""
+            nonlocal current_summary, report_output_state
+            if report_output_state is not None:
+                # The external publication fence runs before the first gate too:
+                # a competing destination cannot authorize any gate effects.
+                report_output_state = self._publish_invocation_summary(
+                    summary,
+                    report_output_state,
+                )
+            self._write_reports(report_base, summary).unwrap()
+            current_summary = summary
+
+        publish_summary(current_summary)
 
         def publish_progress(project_dir: Path, project: m.Infra.ProjectResult) -> None:
-            nonlocal report_output_state
-            if report_output_state is None:
-                msg = "check progress has no invocation-owned publication target"
-                raise ValueError(msg)
             reached[project_dir.resolve()] = project
-            report_output_state = self._publish_invocation_summary(
+            publish_summary(
                 m.Infra.CheckReportSummary(
                     requested_gates=requested_gates,
                     targets=report_targets,
@@ -659,13 +676,11 @@ class FlextInfraWorkspaceChecker(
                     ),
                     selected_files=tuple(effective_ctx.selected_files),
                 ),
-                report_output_state,
             )
 
-        if report_output_state is not None:
-            effective_ctx = effective_ctx.model_copy(
-                update={"check_progress": publish_progress}
-            )
+        effective_ctx = effective_ctx.model_copy(
+            update={"check_progress": publish_progress}
+        )
         outcome = self._run_project_loop(
             targets,
             resolved_gates,
@@ -679,11 +694,11 @@ class FlextInfraWorkspaceChecker(
             # A file-scoped run never claims whole-project quality.
             selected_files=tuple(effective_ctx.selected_files),
         )
-        written = self._write_reports_and_summary(
-            resolved_gates, report_base, outcome, summary
-        )
-        if written.failure:
-            return r[m.Infra.CheckReportSummary].from_failure(written)
+        # Preserve a changed returned result without repeating an identical
+        # last-gate or zero-applicable-gate publication.
+        if summary.results != current_summary.results:
+            publish_summary(summary)
+        self._print_summary(report_base, outcome, summary)
         return r[m.Infra.CheckReportSummary].ok(summary)
 
     def _project_targets(

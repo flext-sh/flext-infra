@@ -26,8 +26,9 @@ with each `path` relative to the healthy provider and a canonical `what` surface
 The same target declaration supports `make bootstrap-candidate` to project the
 declared recovery surface without importing the candidate package. A candidate
 worktree may appear only once per invocation. Recover a conflicted pyproject with
-`what: pyproject`, then run the candidate's `make initialize` to regenerate its
-Makefile and `make gen` to complete conformance. The bootstrap authenticates the
+`what: pyproject`, then use the internal `codegen init` adapter from its
+preinstalled generation tool runtime to regenerate the existing candidate's
+Makefile and run `make gen` to complete generation. The bootstrap authenticates the
 consulted codegen declarations through publication; it requires no retired
 `config/workspace.yaml`.
 Use `what: workflows` to regenerate only the declared GitHub Actions workflows.

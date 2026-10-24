@@ -106,101 +106,6 @@ class FlextInfraConfigModelsMake(
             ),
         ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME.value
 
-    class MakeUvResolutionSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Native resolver views independent of the physical environment and gates."""
-
-        local_directory: Annotated[
-            Path,
-            m.Field(description="Runtime-root-relative local resolution directory"),
-        ]
-        standalone_directory: Annotated[
-            Path,
-            m.Field(description="Runtime-root-relative hosted resolution directory"),
-        ]
-        editable_directory: Annotated[
-            Path,
-            m.Field(
-                description="Runtime-root-relative opt-in supplier resolution directory"
-            ),
-        ]
-        supplier_selection_file: Annotated[
-            Path,
-            m.Field(description="Runtime-local persisted editable supplier selection"),
-        ]
-        bootstrap_artifact: Annotated[
-            Path,
-            m.Field(
-                description="Catalog destination of the cold setup admission resource"
-            ),
-        ]
-        control_distribution: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Distribution authenticated before lifecycle execution"
-            ),
-        ]
-        control_module: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Native import module of the lifecycle control producer"
-            ),
-        ]
-        hosted_variable: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Actual hosted runner environment key"),
-        ]
-        hosted_value: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Value identifying the actual hosted runner"),
-        ]
-        virtual_distribution_suffix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Suffix of the generated virtual distribution name"),
-        ]
-        member_group_separator: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Separator between member and native group names"),
-        ]
-
-        @m.model_validator(mode="after")
-        def _validate_directories(self) -> Self:
-            """Keep both resolver views distinct and inside their physical owner.
-
-            Returns:
-                The resulting ``Self``.
-
-            Raises:
-                ValueError: If a UV resolution directory is not a nonempty
-                    relative path or the two views share a directory.
-
-            """
-            directories = (
-                self.local_directory,
-                self.standalone_directory,
-                self.editable_directory,
-            )
-            for directory in directories:
-                if (
-                    directory.is_absolute()
-                    or ".." in directory.parts
-                    or not directory.parts
-                ):
-                    msg = "UV resolution directories must be nonempty relative paths"
-                    raise ValueError(msg)
-            if len(set(directories)) != len(directories):
-                msg = "UV resolution views must use distinct directories"
-                raise ValueError(msg)
-            for path in (self.supplier_selection_file, self.bootstrap_artifact):
-                if path.is_absolute() or ".." in path.parts or not path.parts:
-                    msg = (
-                        f"Setup admission paths must be nonempty relative paths: {path}"
-                    )
-                    raise ValueError(msg)
-            if not all(part.isidentifier() for part in self.control_module.split(".")):
-                msg = "Setup control module must be a native qualified module name"
-                raise ValueError(msg)
-            return self
-
     class MakeCiSpec(FlextInfraConfigModelsContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
@@ -824,9 +729,17 @@ class FlextInfraConfigModelsMake(
             FlextInfraConfigModelsMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
         ]
-        uv_resolution: Annotated[
-            FlextInfraConfigModelsMake.MakeUvResolutionSpec,
-            m.Field(description="Native resolver view selection and naming policy"),
+        native_environment_unset: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description="Inherited selectors excluded from native project execution"
+            ),
+        ]
+        setup_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0, description="Native environment installation wall-time budget"
+            ),
         ]
         testmon_cache: Annotated[
             TestmonCacheSpec,
@@ -995,17 +908,13 @@ class FlextInfraConfigModelsMake(
             admissible = {
                 verb.name
                 for verb in self.verbs
-                if FlextInfraMakeContract.selector_free_make_verb(
-                    verb.arguments,
+                if FlextInfraMakeContract.make_verb_supports_profiles(
                     verb.profiles,
                     tuple(FlextInfraConstantsConfig.MakeProfile),
                 )
             }
             if set(self.violations_sweep_repair_verbs) - admissible:
-                msg = (
-                    "make violations sweep requires declared selector-free verbs "
-                    "in every profile"
-                )
+                msg = "make violations sweep requires declared verbs in every profile"
                 raise ValueError(msg)
             # Why (hq-36xk, flext-lq86m): the guard that lived here read
             # `if "setup" in serialized` and protected `make setup` from being
@@ -1025,14 +934,14 @@ class FlextInfraConfigModelsMake(
             """Validate the workflow verbs against the declared public verbs.
 
             CI provisions first and runs the read-only check and complete test
-            owners in order. Hooks consume those same workflow declarations.
+            owners in order. The pre-commit rows select only the read-only check.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
                     workflow verbs are not declared public verbs; or if make
-                    workflow verbs must be selector-free in every profile; or if CI
-                    approval boundaries or milestone order are invalid; or if pre-commit
-                    must be declared in every profile.
+                    workflow verbs must be available in every profile; or if CI
+                    approval boundaries or milestone order are invalid; or if
+                    pre-commit selects an operation other than check.
 
             """
             workflow_verbs = tuple(step.verb for step in self.workflow)
@@ -1057,16 +966,21 @@ class FlextInfraConfigModelsMake(
                 if Path(path).is_absolute() or ".." in Path(path).parts:
                     msg = f"make lifecycle observed file escapes its repository: {path}"
                     raise ValueError(msg)
-            # Every consumer invokes workflow verbs without selectors in every profile.
+            # Optional data inputs do not narrow a common handler's operation.
             partial_workflow = sorted(
-                verb.name
+                f"{verb.name}(profiles="
+                f"{tuple(str(profile) for profile in verb.profiles)!r})"
                 for verb in self.verbs
                 if verb.name in workflow_verbs and verb.name not in admissible
             )
             if partial_workflow:
+                required_profiles = tuple(
+                    str(profile) for profile in FlextInfraConstantsConfig.MakeProfile
+                )
                 msg = (
-                    "make workflow verbs must be selector-free in every profile: "
-                    f"{', '.join(partial_workflow)}"
+                    "make workflow verbs must be available in every profile: "
+                    f"{', '.join(partial_workflow)}; required_profiles="
+                    f"{required_profiles!r}"
                 )
                 raise ValueError(msg)
             approval = self.approval_verbs
@@ -1083,8 +997,8 @@ class FlextInfraConfigModelsMake(
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != milestones:
-                msg = "the pre-commit hook requires the CI check and tests workflow"
+            if hook != (c.Infra.VERB_CHECK,):
+                msg = "the pre-commit hook requires only the check operation"
                 raise ValueError(msg)
 
         def _validate_docs_policy(self) -> None:
@@ -1181,7 +1095,7 @@ class FlextInfraConfigModelsMake(
         @m.computed_field
         @property
         def check_gates_fixable(self) -> t.VariadicTuple[str]:
-            """Gates ``make fix`` can actually repair.
+            """Repair-capable gates outside the declared formatter operation.
 
             Asking for a gate that cannot fix anything still pays its full cost;
             a fix pass built from the ALLOWED vocabulary once timed out doing
@@ -1191,7 +1105,11 @@ class FlextInfraConfigModelsMake(
                 The resulting ``t.VariadicTuple[str]``.
 
             """
-            return c.Infra.CANONICAL_FIXABLE_GATE_IDS
+            return tuple(
+                gate
+                for gate in c.Infra.CANONICAL_FIXABLE_GATE_IDS
+                if gate not in self.fmt_gates
+            )
 
         @m.computed_field
         @property

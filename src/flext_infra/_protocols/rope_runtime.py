@@ -181,6 +181,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeSourceClass(RopeSourceObject, RopeClassObject, Protocol):
         """A source-defined class retaining its native superclass graph."""
 
+    class RopeSourceFunction(RopeSourceObject, Protocol):
+        """A source-defined function retaining its native callable role."""
+
+        def get_kind(self) -> str: ...
+
     @runtime_checkable
     class NativeClassMetadata(Protocol):
         """CPython class metadata published by Rope's builtin class object."""
@@ -449,7 +454,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def source_capture(self) -> AbstractContextManager[None]: ...
 
         def verify_source_states(
-            self, receipt: m.Infra.CodegenPhaseAnalysis | None = None
+            self,
+            receipt: m.Infra.CodegenPhaseAnalysis | None = None,
+            *,
+            observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory]
+            | None = None,
         ) -> None: ...
 
         def source_consumer(

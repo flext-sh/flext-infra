@@ -44,7 +44,9 @@ class FlextInfraCodegenLazyInitProjectionManifest:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        projected: MutableMapping[Path, list[p.Infra.ProjectionManifestEntry]] = {}
+        projected: MutableMapping[
+            Path, list[t.Pair[Path, p.Infra.ProjectionManifestEntry]]
+        ] = {}
         for plan in files:
             if plan.desired_content is None:
                 continue
@@ -53,19 +55,23 @@ class FlextInfraCodegenLazyInitProjectionManifest:
                 continue
             if relative.name == c.Infra.MANIFEST_FILENAME:
                 continue
-            projected.setdefault(plan.project, []).append(
+            projected.setdefault(plan.project, []).append((
+                plan.path,
                 m.Infra.ProjectionManifestEntry(
                     path=relative.as_posix(),
                     sha256=hashlib.sha256(plan.desired_content).hexdigest(),
                     bytes=len(plan.desired_content),
                 ),
-            )
+            ))
         plans: t.MutableSequenceOf[m.Infra.CodegenFilePlan] = []
         for project in sorted(projected):
             payload = m.Infra.ProjectionManifest.model_validate({
                 "apiVersion": c.Infra.MANIFEST_API_VERSION,
                 "entries": tuple(
-                    sorted(projected[project], key=lambda entry: entry.path),
+                    sorted(
+                        (entry for _, entry in projected[project]),
+                        key=lambda entry: entry.path,
+                    ),
                 ),
             })
             serialized = u.Cli.json_dumps(
@@ -88,6 +94,9 @@ class FlextInfraCodegenLazyInitProjectionManifest:
                     before=state.value,
                     desired_content=content,
                     desired_mode=config.Infra.codegen.modes.file_default,
+                    tracking_dependencies=tuple(
+                        sorted(path for path, _ in projected[project])
+                    ),
                 ),
             )
         return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(plans))

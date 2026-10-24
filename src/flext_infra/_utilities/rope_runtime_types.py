@@ -178,11 +178,11 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
     @classmethod
     def py_function(
         cls, value: p.AttributeProbe
-    ) -> TypeGuard[p.Infra.RopeSourceObject]:
-        """Return whether ``value`` is a Rope Python function object.
+    ) -> TypeGuard[p.Infra.RopeSourceFunction]:
+        """Identify a native source function retaining its callable role.
 
         Returns:
-            Whether ``value`` is a Rope Python function object.
+            Whether ``value`` is the SDK's source-defined function object.
 
         """
         return isinstance(

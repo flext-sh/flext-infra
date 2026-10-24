@@ -421,6 +421,20 @@ class FlextInfraModelsCheck:
 
         @m.computed_field
         @property
+        def interrupted(self) -> bool:
+            """Whether this execution or an owned component was interrupted."""
+            process = self.process
+            return (
+                process is not None
+                and (
+                    process.timed_out
+                    or process.forwarded_signal is not None
+                    or process.raw_return_code < 0
+                )
+            ) or any(component.interrupted for component in self.components.values())
+
+        @m.computed_field
+        @property
         def finding_count(self) -> int:
             """Number of native findings, independent of approval blocking policy.
 

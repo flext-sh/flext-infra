@@ -452,8 +452,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         )
         if wheels.failure:
             return r[bool].from_failure(wheels)
-        override_option, override_filename = c.Infra.BINDING_RESOLUTION_FILES[0]
-        overrides = environment / override_filename
+        overrides = environment / "fixture-wheel-overrides.txt"
         bound = u.Cli.files_write_text(
             overrides,
             "".join(
@@ -473,7 +472,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 "install",
                 "--python",
                 str(environment),
-                override_option,
+                "--override",
                 str(overrides),
                 *(str(wheel) for wheel in wheels.value),
             ),

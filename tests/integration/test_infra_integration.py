@@ -138,6 +138,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
             project_name="flext-evidence",
             package_name="flext_evidence",
         )
+        u.Tests.provision_source_preview(root)
         definition = package / "helpers.py"
         definition.write_text("def helper() -> int:\n    return 7\n", encoding="utf-8")
         tests_dir = root / c.Infra.DIR_TESTS

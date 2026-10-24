@@ -26,15 +26,22 @@ severity, and reports each finding with its native severity. Failed rule discove
 incomplete scans, invalid diagnostics, and other native scanner failures also block,
 with their own failure diagnostics.
 
-The standalone `refactor ast` mechanical circuit remains full-corpus only. Until
-both mechanical inventories, publication preconditions, and expected-count receipts
-share an exact resolved target scope, `--module`, `--namespace`, and project filters
-fail before rule planning or scanning. Non-text `--output-format` requests also fail
+The standalone `refactor ast` mechanical circuit remains full-corpus only.
+Its request declares no module or namespace selector, so the native CLI rejects
+those options before execution. Project filters fail before rule planning or
+scanning until both mechanical inventories, publication preconditions, and
+expected-count receipts share an exact resolved target scope.
+Non-text `--output-format` requests also fail
 before scanning rather than returning a text report mislabeled as JSON. This is a
 safety boundary, not implemented bounded selection or structured reporting.
 `--dry-run` and `--check` take precedence over `--apply`: they report findings without
 applying either cascade. Scan evidence publication remains part of the scan contract;
 read-only source mode does not mean an artifact-free invocation.
+
+The namespace enforcement request consumes `--module`. Accessor migration
+consumes `--module` and `--namespace`. These requests compose the shared narrow
+selection mixins explicitly; general read/write scope does not add either
+option to other commands.
 
 Authored declaration layers cannot import their own namespace at any scope, including
 function bodies and annotation-only guards. The shared import-law owner identifies

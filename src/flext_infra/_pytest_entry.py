@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import flext_infra
+from flext_infra import settings
 from flext_infra._pytest_clock import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
@@ -24,11 +25,11 @@ class FlextInfraPytestEntry:
         ``full`` runs one complete testmon execution. ``coverage``
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
-        only, as its own bounded process outside the budgeted clock. The
-        ``file`` runs the complete declared target once without a
-        deadline, including slow items. ``file-slow`` retains its bounded
-        incremental operation. Both require Make to export the single-file target.
-        ``full-slow`` runs the full slow phase without the incremental budget.
+        only, as its own process with an aggregate operation deadline. The
+        ``file`` runs the complete declared target once within the shared
+        deadline, including slow items. ``file-slow`` retains its incremental
+        operation. Both require Make to export the single-file target.
+        ``full-slow`` runs the full slow phase under the same operation budget.
 
         Returns:
             The resulting ``int``.
@@ -58,8 +59,8 @@ class FlextInfraPytestEntry:
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
         runner = FlextInfraPytestRunner.from_environment(
             started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
+            profile_enabled=settings.Infra.profile,
             slow_phase=slow_phase,
-            unbounded=mode in {"full", "full-slow", "file"},
         )
         if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (

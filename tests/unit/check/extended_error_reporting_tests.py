@@ -186,13 +186,14 @@ class TestsFlextInfraGateErrorReporting:
         tm.fail(execution.result.passed)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(execution.raw_receipt, none=False)
+        (invocation_directory,) = tuple(reports_dir.iterdir())
         tm.that(
             execution.raw_receipt,
-            eq=execution.raw_receipt.parent
+            eq=invocation_directory
+            / tmp_path.name
+            / project_dir.relative_to(tmp_path)
             / (f"{c.Infra.SECURITY}{config.Infra.tooling.raw_check_receipt_suffix}"),
         )
-        tm.that(execution.raw_receipt.parent.name, eq=project_dir.name)
-        tm.that(execution.raw_receipt.parent.parent.parent, eq=reports_dir)
         receipt = execution.raw_receipt.read_bytes().decode("utf-8")
         tm.that(receipt, eq=execution.raw_output, has=source_marker)
         tm.that(any(issue.code == "B307" for issue in execution.issues), eq=True)
@@ -204,9 +205,7 @@ class TestsFlextInfraGateErrorReporting:
             ),
             eq=True,
         )
-        report_path = (
-            execution.raw_receipt.parent.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
-        )
+        report_path = invocation_directory / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         report = report_path.read_text(
             encoding="utf-8",
         )

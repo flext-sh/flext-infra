@@ -1,0 +1,92 @@
+rules:
+  - id: constant-source-native-ancestry
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._constant_derives_from'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._constant_derives_from
+    imports: &source_import
+      FlextInfraUtilitiesSemanticConstantSources: from flext_infra._utilities._semantic_cutover.constant_sources import FlextInfraUtilitiesSemanticConstantSources
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._constant_derives_from: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._constant_derives_from
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_derives_from]
+  - id: constant-source-native-assignment-inventory
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._constant_declaration_bindings'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._constant_declaration_bindings
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._constant_declaration_bindings: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._constant_declaration_bindings
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_declaration_bindings]
+  - id: constant-source-native-assignment-identity
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._binding_statement_matches'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._binding_statement_matches
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._binding_statement_matches: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._binding_statement_matches
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._binding_statement_matches]
+  - id: constant-source-native-literal-patterns
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._literal_constant_patterns'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._literal_constant_patterns
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._literal_constant_patterns: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._literal_constant_patterns
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._literal_constant_patterns]
+  - id: constant-source-native-import-provenance
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._constant_terminal'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._constant_terminal
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._constant_terminal: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._constant_terminal
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_terminal]
+  - id: constant-source-native-module-provider
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._constant_import_module'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._constant_import_module
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._constant_import_module: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._constant_import_module
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_import_module]
+  - id: constant-source-native-public-reference
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._constant_reference'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._constant_reference
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._constant_reference: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._constant_reference
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_reference]
+  - id: constant-source-native-class-publication
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._constant_public_paths'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._constant_public_paths
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._constant_public_paths: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._constant_public_paths
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_public_paths]
+  - id: constant-source-native-provider-identity
+    phase: constant-consumers
+    pattern: '${original}'
+    goal: 'FlextInfraUtilitiesSemanticConstantSources._constant_owner_binding'
+    arguments:
+      original: name=flext_infra._utilities._semantic_cutover.constant_consumers.FlextInfraUtilitiesSemanticConstantConsumers._constant_owner_binding
+    imports: *source_import
+    bindings:
+      FlextInfraUtilitiesSemanticConstantSources._constant_owner_binding: flext_infra._utilities._semantic_cutover.constant_sources.FlextInfraUtilitiesSemanticConstantSources._constant_owner_binding
+    ownership_transfer: [flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_owner_binding]

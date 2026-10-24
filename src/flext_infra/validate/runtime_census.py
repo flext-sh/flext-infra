@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraRuntimeCensusValidator(s[bool]):
+class FlextInfraRuntimeCensusValidator(s[bool], m.Infra.ModuleSelectionMixin):
     """Post-import runtime enforcement census across workspace projects."""
 
     project_filter: Annotated[
@@ -165,12 +165,11 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 f"runtime census: {project.name} has no importable package",
             )
         real_modules = list(self._walk_modules(layout.package_name))
-        if self.target_module is not None:
+        if self.module is not None:
             real_modules = [
                 name
                 for name in real_modules
-                if name == self.target_module
-                or name.startswith(self.target_module + ".")
+                if name == self.module or name.startswith(self.module + ".")
             ]
         real_modules = [
             name

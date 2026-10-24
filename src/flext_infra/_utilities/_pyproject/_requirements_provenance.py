@@ -16,7 +16,9 @@ class FlextInfraUtilitiesPyprojectRequirementsProvenance(m.ImmutableValueModel):
     candidate_sources: t.StrMapping = m.Field(
         description="Selected candidate Git origins"
     )
-    family_line: str | None = m.Field(description="Detected integration branch")
+    native_sources: t.StrSequence = m.Field(
+        default=(), description="Names with explicit native UV source declarations"
+    )
 
 
 __all__: list[str] = []

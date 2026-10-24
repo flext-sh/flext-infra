@@ -182,7 +182,7 @@ class FlextInfraConfigModelsBeads:
             m.Field(
                 description=(
                     "Run `direnv allow` after the existing conform planner proves "
-                    "the committed projection matches its current declaration"
+                    "the published physical projection matches its current declaration"
                 ),
             ),
         ] = True

@@ -66,15 +66,6 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         ),
     ] = False
-    unbounded: Annotated[
-        bool,
-        m.Field(
-            description=(
-                "Run every phase without a deadline: the local full suite "
-                "(make test-full) has no time limit; every other verb is budgeted."
-            ),
-        ),
-    ] = False
 
     @staticmethod
     def _environment_value(name: str) -> str:
@@ -105,7 +96,6 @@ class FlextInfraPytestRunnerBase(s[int]):
         collection_command_prefix: t.StrTuple = (),
         profile_enabled: bool = False,
         slow_phase: bool = False,
-        unbounded: bool = False,
     ) -> Self:
         """Create the runner exclusively from generated Make inputs.
 
@@ -129,7 +119,6 @@ class FlextInfraPytestRunnerBase(s[int]):
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,
             slow_phase=slow_phase,
-            unbounded=unbounded,
             ci_context=(u.Infra.env_lookup(ci.variable) or "").strip() == ci.value,
             target=Path(cls._environment_value(c.Infra.PYTEST_ENV_TARGET)),
             target_file=cls._optional_environment_path(
@@ -234,18 +223,6 @@ class FlextInfraPytestRunnerBase(s[int]):
         if "project" not in payload:
             return None
         return u.Infra.project_name_from_payload(pyproject_path, payload)
-
-    def run_timeout_seconds(self, policy: m.Infra.PytestConfig) -> int:
-        """Resolve the declared project's measured wall over the fleet default.
-
-        Returns:
-            The resulting ``int``.
-
-        """
-        name = self._declared_project_name()
-        if name is None:
-            return policy.run_timeout_seconds
-        return policy.run_timeout_overrides.get(name, policy.run_timeout_seconds)
 
     def _declared_worker_ceiling(
         self,

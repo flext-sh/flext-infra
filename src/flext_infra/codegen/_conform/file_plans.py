@@ -507,7 +507,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     def file_plan(
         root: Path,
         relative_path: str,
-        rendered: str,
+        rendered: str | m.Infra.CodegenArtifactComposition,
         *,
         mode: int = 0o644,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
@@ -518,6 +518,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
 
         """
+        validation_context: m.Infra.ArtifactResourceValidationContext | None = None
+        if isinstance(rendered, m.Infra.CodegenArtifactComposition):
+            captured = u.Infra.unique_states((*source_states, *rendered.source_states))
+            if captured.failure:
+                return r[m.Infra.CodegenFilePlan].from_failure(captured)
+            source_states = captured.value
+            validation_context = rendered.validation_context
+            rendered = rendered.rendered
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
         before = u.Infra.codegen_target_snapshot(path)
@@ -531,6 +539,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 desired_content=rendered.encode(c.DEFAULT_ENCODING),
                 desired_mode=mode,
                 source_states=source_states,
+                validation_context=validation_context,
             ),
         )
 

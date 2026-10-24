@@ -28,24 +28,24 @@ class FlextInfraCliRouteService:
             ValueError: If CLI group has no route owner.
 
         """
-        if group in {
-            c.Infra.CLI_GROUP_CHECK,
-            c.Infra.CLI_GROUP_CODEGEN,
-            c.Infra.CLI_GROUP_DEPS,
-        }:
-            return services.FlextInfraCodegenRoutes.codegen_routes[group]
+        if group == c.Infra.CLI_GROUP_CHECK:
+            return services.FlextInfraCodegenRoutes.check_routes()
+        if group == c.Infra.CLI_GROUP_CODEGEN:
+            return services.FlextInfraCodegenRoutes.codegen_routes()
+        if group == c.Infra.CLI_GROUP_DEPS:
+            return services.FlextInfraCodegenRoutes.deps_routes()
         if group in {
             c.Infra.CLI_GROUP_DOCS,
             c.Infra.CLI_GROUP_MAINTENANCE,
             c.Infra.CLI_GROUP_VALIDATE,
         }:
             return services.FlextInfraValidationRoutes.validation_routes[group]
-        if group in {
-            c.Infra.CLI_GROUP_REFACTOR,
-            c.Infra.CLI_GROUP_RELEASE,
-            c.Infra.CLI_GROUP_WORKSPACE,
-        }:
-            return services.FlextInfraWorkspaceRoutes.workspace_routes[group]
+        if group == c.Infra.CLI_GROUP_REFACTOR:
+            return services.FlextInfraRefactorRoutes.refactor_routes
+        if group == c.Infra.CLI_GROUP_RELEASE:
+            return services.FlextInfraWorkspaceRoutes.release_routes()
+        if group == c.Infra.CLI_GROUP_WORKSPACE:
+            return services.FlextInfraWorkspaceRoutes.workspace_routes()
         msg = f"CLI group has no route owner: {group}"
         raise ValueError(msg)
 

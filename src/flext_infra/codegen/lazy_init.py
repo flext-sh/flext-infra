@@ -236,9 +236,9 @@ class FlextInfraCodegenLazyInit(
         if composed_analyses.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(composed_analyses)
         analyses, _inputs, target_roots = composed_analyses.value
-        if self.target_module and not target_roots and not analyses:
+        if self.module and not target_roots and not analyses:
             return r[m.Infra.CodegenPhaseAnalysis].fail(
-                f"lazy-init target module not found: {self.target_module}",
+                f"lazy-init target module not found: {self.module}",
             )
         composed = tuple(file for analysis in analyses for file in analysis.files)
         manifests = (
@@ -469,7 +469,7 @@ class FlextInfraCodegenLazyInit(
                                 code=c.Infra.ToolOutcome.ERROR.value,
                                 message=(
                                     "lazy-init target module is ambiguous: "
-                                    f"{self.target_module}"
+                                    f"{self.module}"
                                 ),
                                 locations=(),
                                 related_locations=(),
@@ -597,7 +597,7 @@ class FlextInfraCodegenLazyInit(
         candidates: t.MutableMappingKV[
             Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
         ] = {}
-        if self.target_module:
+        if self.module:
             for root in roots:
                 if (
                     not root.is_relative_to(self.repository_root.resolve())
@@ -630,13 +630,13 @@ class FlextInfraCodegenLazyInit(
             The resulting ``t.VariadicTuple[Path]``.
 
         """
-        if self.target_module is None:
+        if self.module is None:
             return ()
-        mapped = index.package_dir_by_name.get(self.target_module)
+        mapped = index.package_dir_by_name.get(self.module)
         targets = {
             entry.package_dir.resolve()
             for entry in index.modules_by_path.values()
-            if entry.module_name == self.target_module
+            if entry.module_name == self.module
             and (self.project_scope_roots is None or entry.project_root == root)
         }
         if mapped is not None and (
@@ -729,7 +729,7 @@ class FlextInfraCodegenLazyInit(
 
         """
         result_type = r[t.Pair[Path | None, bool]]
-        if not self.target_module:
+        if not self.module:
             return result_type.ok((None, False))
         sorted_target_dirs = self._target_package_dirs(
             workspace_index,
@@ -737,16 +737,16 @@ class FlextInfraCodegenLazyInit(
         )
         if not sorted_target_dirs:
             return result_type.fail(
-                f"lazy-init target module not found: {self.target_module}",
+                f"lazy-init target module not found: {self.module}",
             )
         if sorted_target_dirs[1:]:
             return result_type.fail(
-                f"lazy-init target module is ambiguous: {self.target_module}",
+                f"lazy-init target module is ambiguous: {self.module}",
             )
         target_package_dir = sorted_target_dirs[0]
         if target_package_dir not in indexed_package_dirs:
             return result_type.fail(
-                f"lazy-init target belongs to retired support: {self.target_module}",
+                f"lazy-init target belongs to retired support: {self.module}",
             )
         return result_type.ok((target_package_dir, True))
 

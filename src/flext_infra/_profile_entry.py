@@ -1,4 +1,4 @@
-"""Profile the canonical infrastructure CLI and preserve its native outcome.
+"""Run the canonical infrastructure CLI with admitted opt-in profiling.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,25 +10,30 @@ import sys
 from pathlib import Path
 
 import flext_infra
+from flext_infra import settings
 from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
 class FlextInfraProfileEntry:
-    """Own the profiler lifetime around the existing CLI composition root."""
+    """Apply the shared runtime setting around the existing CLI composition root."""
 
     @staticmethod
     def run() -> int:
-        """Retain the profile even when the CLI raises or is interrupted.
+        """Preserve the CLI outcome and any explicitly requested profile.
 
-        Signal checkpoints update the elected report input and preserve the
-        previous artifact. They describe work up to interruption, not success.
+        Settings admission precedes capture. Enabled signal checkpoints retain
+        interrupted evidence without certifying successful execution.
 
         Returns:
             The canonical CLI exit status.
 
         """
+        if not settings.Infra.profile:
+            return flext_infra.main(sys.argv[2:])
+        output = Path(sys.argv[1])
+        output.parent.mkdir(parents=True, exist_ok=True)
         return FlextInfraPytestClock.profile_command(
-            lambda: flext_infra.main(sys.argv[2:]), Path(sys.argv[1])
+            lambda: flext_infra.main(sys.argv[2:]), output
         )
 
 

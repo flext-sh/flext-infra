@@ -662,7 +662,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
     ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
-        """Parse the typed v8 journal without deriving a second filesystem path.
+        """Parse the current typed journal without deriving another filesystem path.
 
         Returns:
             The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionJournal,

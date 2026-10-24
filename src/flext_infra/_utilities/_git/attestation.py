@@ -20,7 +20,7 @@ from typing import ClassVar
 from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r, settings, t
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
     FlextInfraUtilitiesGitWorktreeIO,
@@ -189,6 +189,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
+        Optional measurement profiles that checker through the shared CLI owner,
+        preserving the same arguments, outcome and invocation directory.
+
         Returns:
             The resulting ``p.Result[m.Infra.GateCaptureReport]``.
 
@@ -206,7 +209,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
         command = (
             sys.executable,
             "-m",
-            "flext_infra",
+            *(
+                (
+                    "flext_infra._profile_entry",
+                    str(report_root / c.Infra.CHECK_PROFILE_FILENAME),
+                )
+                if settings.Infra.profile
+                else ("flext_infra",)
+            ),
             "check",
             "run",
             "--repository-root",

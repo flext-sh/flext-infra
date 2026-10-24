@@ -65,7 +65,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return tuple(sorted(packages))
 
     @classmethod
-    def module_name_for_file(cls, file_path: Path, *, project_root: Path) -> str:
+    def module_name_for_file(
+        cls,
+        file_path: Path,
+        *,
+        project_root: Path,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Return the module name for a file.
 
         Returns:
@@ -75,6 +81,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             file_path.parent,
             project_root=project_root,
+            source_project=source_project,
         )
         if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
             return package_name
@@ -113,11 +120,30 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 captured = cls._project_sources(
                     root, planned_sources, source_project=source_project
                 )
-            sources = {
-                cls.module_name_for_file(path, project_root=root): (path, source)
-                for path, source in captured.items()
-                if cls.module_name_for_file(path, project_root=root)
+            native_roots = {
+                Path(folder.real_path) for folder in source_project.get_source_folders()
             }
+            provider_roots = tuple(
+                Path(folder.real_path)
+                for folder in source_project.get_python_path_folders()
+                if Path(folder.real_path) not in native_roots
+                and Path(folder.real_path).is_relative_to(root)
+            )
+            planned = frozenset(path.resolve() for path in planned_sources)
+            sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
+            for path, source in captured.items():
+                # Providers remain in their native import election, not the owned
+                # declaration census. Explicit plans retain their authority.
+                if path not in planned and any(
+                    path.is_relative_to(provider_root)
+                    for provider_root in provider_roots
+                ):
+                    continue
+                module = cls.module_name_for_file(
+                    path, project_root=root, source_project=source_project
+                )
+                if module:
+                    sources[module] = path, source
             if not sources:
                 return tuple(sorted(roots))
             # The original or proposed initializer owns each public alias.
@@ -152,7 +178,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         *,
         source_project: p.Infra.RopeProject,
     ) -> t.MappingKV[Path, str]:
-        """Read elected sources through the native graph before applying plans.
+        """Read each source from its declared plan or original native owner.
 
         Returns:
             Each source by resolved path.
@@ -176,13 +202,16 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 root, path
             ):
                 continue
+            if path in planned:
+                sources[path] = planned[path]
+                continue
             resource = source_project.get_resource(
                 path.relative_to(native_root).as_posix()
             )
             source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
                 resource, path
             ).read()
-            sources[path] = planned.get(path, source)
+            sources[path] = source
         return sources
 
     @staticmethod

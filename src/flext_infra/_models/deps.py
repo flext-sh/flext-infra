@@ -224,18 +224,6 @@ class FlextInfraModelsDeps(
             m.Field(description="PEP 508 interpreter platform"),
         ]
 
-    class BindingResolution(m.Value):
-        """Active consumer declarations preserved during one editable binding."""
-
-        overrides: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Active dependency source overrides"),
-        ]
-        constraints: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Active consumer resolution constraints"),
-        ]
-
     class DetectCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps detect``.
 

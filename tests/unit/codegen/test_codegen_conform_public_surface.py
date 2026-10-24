@@ -386,7 +386,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
     ) -> None:
         """Complete ALL publication proves SELF without re-planning or effects."""
         root = installed_artifact_consumer
-        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        TestsFlextInfraConformSupport.standalone_workspace(root)
         declared = u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.ALL,
@@ -396,19 +396,13 @@ class TestsFlextInfraCodegenConformPublicSurface:
         request = m.Infra.CodegenConformRequest.model_validate_json(
             declared.model_dump_json(),
         )
-        tm.ok(
-            infra.codegen_conform(
-                request,
-                initial_workspace=workspace,
-            ),
-        )
+        tm.ok(infra.codegen_conform(request))
         repeated = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
                     request=request,
-                    initial_workspace=workspace,
                 ),
             ).plan(request),
         )
@@ -419,7 +413,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
             )
             tm.that(len(matches), eq=1)
             tm.ok(matches[0].desired_content is not None)
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt_path = (
+            tm.ok(u.Infra.refactor_report_evidence_root(root))
+            / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        )
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
         )
@@ -647,7 +644,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         planned = service.plan(request)
         plan = tm.ok(planned)
-        evidence_text = (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_text(
+        evidence_text = (
+            tm.ok(u.Infra.refactor_report_evidence_root(root))
+            / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH
+        ).read_text(
             encoding="utf-8",
         )
         evidence = m.Infra.CodegenPlanningReport.model_validate_json(evidence_text)
@@ -719,34 +719,31 @@ class TestsFlextInfraCodegenConformPublicSurface:
                     if file.path == directory / c.PYPROJECT_FILENAME
                 ),
             )
-            tm.that(
-                u.Tests.toml_table_at(document, "tool", "uv", "sources"),
-                eq={
-                    repository.distribution: {
-                        "path": (root / repository.path)
-                        .resolve()
-                        .relative_to(directory, walk_up=True)
-                        .as_posix(),
-                        "editable": repository.editable,
-                    }
-                    for repository in repositories
-                    if repository.package
-                },
-            )
-            if relative == policy.standalone_directory:
-                parsed = tm.not_none(u.Cli.toml_parse_text(document))
-                declared = tm.not_none(tm.not_none(workspace.project).flext_source)
-                selected = tuple(
-                    requirement
-                    for requirement in tm.ok(u.Infra.document_requirement_lines(parsed))
-                    if u.Infra.dep_name(requirement) == u.Infra.dep_name(declared)
-                )
-                tm.ok(bool(selected))
-                for requirement in selected:
+            sources = u.Tests.toml_table_at(document, "tool", "uv", "sources")
+            for repository in repositories:
+                if repository.package:
                     tm.that(
-                        tm.ok(u.Infra.declared_git_source(requirement)),
-                        eq=tm.ok(u.Infra.declared_git_source(declared)),
+                        sources[repository.distribution],
+                        eq={
+                            "path": (root / repository.path)
+                            .resolve()
+                            .relative_to(directory, walk_up=True)
+                            .as_posix(),
+                            "editable": repository.editable,
+                        },
                     )
+            if workspace.repository.package:
+                parsed = tm.not_none(u.Cli.toml_parse_text(document))
+                project = tm.not_none(u.Cli.toml_table_child(parsed, "project"))
+                tm.that(
+                    tuple(
+                        u.Infra.dep_name(requirement)
+                        for requirement in u.Cli.toml_as_string_list(
+                            u.Cli.toml_value(project, "dependencies"),
+                        )
+                    ),
+                    has=workspace.repository.distribution,
+                )
 
     @staticmethod
     def test_docs_config_apply_materializes_an_absent_docs_parent(
@@ -827,16 +824,16 @@ class TestsFlextInfraCodegenConformPublicSurface:
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in sorted(package.iterdir())
         )
-        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        TestsFlextInfraConformSupport.standalone_workspace(root)
         request = u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.PYPROJECT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.ok(infra.codegen_conform(request))
         before = (root / c.PYPROJECT_FILENAME).read_bytes()
-        tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.ok(infra.codegen_conform(request))
         tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
         tm.ok(u.Cli.atomic_verify_binary_file_states(python_inputs))
         tm.that(

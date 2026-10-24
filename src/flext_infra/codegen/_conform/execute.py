@@ -649,8 +649,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         planning owns no expected destinations: its failure is recorded in
         the plan's issues, and aborting here would discard the valid
         siblings' publication instead of letting the aggregate carry the
-        original cause. Each repository's runtime election selects its
-        resolver views, so an unelected runtime-local view is not expected.
+        original cause.
 
         Returns:
             The expected destination paths paired with each path's owning
@@ -677,27 +676,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 return result_type.fail(
                     f"bootstrap requires declared destinations for {surface}",
                 )
-            election = FlextInfraWorkspaceDetector.runtime_election(repository_root)
-            if election.failure:
-                if repository_root not in rejected_roots:
-                    return result_type.from_failure(election)
-                continue
-            selected = {
-                directory / c.PYPROJECT_FILENAME
-                for directory in self.selected_resolution_directories(
-                    spec.make.uv_resolution,
-                    supplier_root=election.value.editable_supplier_root,
-                )
-            }
-            unselected = {
-                path.as_posix()
-                for path in spec.uv_resolution_pyprojects
-                if path not in selected
-            }
             expected_owners.update(
                 {
                     (repository_root / path).resolve(): repository_root
-                    for path in destinations - unselected
+                    for path in destinations
                 },
             )
         expected_paths = set(expected_owners)
@@ -930,11 +912,21 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 ),
             )
         )
-        documents = self._settle_generation_stage(
-            lambda: self._publish_docs_batches(
-                planned.value,
-                batches,
-            ),
+        missing_scaffold_metadata = (
+            self.state.initial_workspace is not None
+            and published.failure
+            and request.root.expanduser().resolve() / c.PYPROJECT_FILENAME
+            not in written
+        )
+        documents = (
+            r[bool].from_failure(published)
+            if missing_scaffold_metadata
+            else self._settle_generation_stage(
+                lambda: self._publish_docs_batches(
+                    planned.value,
+                    batches,
+                ),
+            )
         )
         failures: list[p.FailureLike] = [
             item for item in (published, repaired, documents) if item.failure
@@ -949,9 +941,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             )
             for item in failures
         )
-        first_exception = planned.value.exception or next(
-            (item.exception for item in failures if item.exception is not None),
-            None,
+        first_exception = planned.value.exception or (
+            failures[0].exception if failures else None
         )
         completed = self._settle_generation_stage(
             lambda: FlextInfraCodegenTransaction.publish_operation_receipt(
@@ -968,10 +959,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if completed.failure:
             u.Cli.error(f"generation receipt publication failed: {completed.error}")
+            had_failure = bool(failures)
             failures.append(completed)
-            if first_exception is None:
+            if first_exception is None and not had_failure:
                 first_exception = completed.exception
-            else:
+            elif first_exception is not None:
                 first_exception.add_note(
                     f"generation receipt publication also failed: {completed.error}"
                 )
@@ -1134,6 +1126,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
             files=plan.files,
             inputs=(),
+            failed_targets=plan.failed_targets,
             issues=issues,
             exception=exception,
         )
@@ -1240,17 +1233,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         cls,
         files: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> t.VariadicTuple[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Publish dependent effects before one complete no-op observation.
+        """Publish effect components before their independent no-op observations.
 
         Returns:
-            Whole effect components followed by the remaining no-op plans.
+            Whole effect components followed by the unchanged components.
 
         """
         connections = cls._generation_connections(files)
         positions = {file.path: index for index, file in enumerate(files)}
         by_path = {file.path: file for file in files}
         batches: list[tuple[m.Infra.CodegenFilePlan, ...]] = []
-        unchanged: list[m.Infra.CodegenFilePlan] = []
+        unchanged: list[t.VariadicTuple[m.Infra.CodegenFilePlan]] = []
         visited: set[Path] = set()
         for file in files:
             if file.path in visited:
@@ -1268,9 +1261,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             if any(u.Infra.codegen_file_requires_effect(plan) for plan in batch):
                 batches.append(batch)
             else:
-                unchanged.extend(batch)
-        if unchanged:
-            batches.append(tuple(unchanged))
+                unchanged.append(batch)
+        batches.extend(unchanged)
         return tuple(batches)
 
     def _publish_generation_batches(

@@ -250,6 +250,9 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
     ) -> p.Result[m.Infra.GitSubmoduleDeclaration]:
         """Return the one declaration of a path that carries URL and branch.
 
+        After native path election, reuse the declaration owner's contract
+        validation without enumerating the repository a second time.
+
         Returns:
             The declaration; a missing path, URL or branch fails closed.
 
@@ -271,11 +274,26 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 f"Git submodule path must be declared exactly once: "
                 f"{request.member_path}",
             )
+        return cls.git_require_submodule_contract(declaration)
+
+    @staticmethod
+    def git_require_submodule_contract(
+        declaration: m.Infra.GitSubmoduleDeclaration,
+    ) -> p.Result[m.Infra.GitSubmoduleDeclaration]:
+        """Require URL and branch on an already elected native declaration.
+
+        Returns:
+            The same declaration, or its original missing URL or branch failure.
+
+        """
+        result = r[m.Infra.GitSubmoduleDeclaration]
         if not declaration.url:
-            return result.fail(f"Git submodule URL is missing: {request.member_path}")
+            return result.fail(
+                f"Git submodule URL is missing: {declaration.path.as_posix()}",
+            )
         if not declaration.branch:
             return result.fail(
-                f"Git submodule branch is missing: {request.member_path}",
+                f"Git submodule branch is missing: {declaration.path.as_posix()}",
             )
         return result.ok(declaration)
 

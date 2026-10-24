@@ -2,8 +2,9 @@
 
 JUnit-XML parsing cluster for pytest diagnostics, composed
 into ``FlextInfraPytestDiagExtractor`` via FLEXT.
-Connectivity exemptions require the shared owner's sealed setup receipt, including
-the declared capability and the node identity represented by this JUnit testcase.
+Connectivity diagnostic attribution requires the shared owner's sealed setup
+receipt, including the declared capability and this JUnit testcase's node identity.
+That causal classification never exempts a skipped case from the final verdict.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

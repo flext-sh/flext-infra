@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, c, config, infra, m
+from flext_infra import FlextInfraConfig, config, m
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
 from tests import c, t, tm, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
@@ -45,6 +45,9 @@ class TestsFlextInfraCodegenLayoutGitignore:
                             project_name: override.model_dump(mode="json"),
                         },
                     },
+                    "repository": tm.ok(
+                        u.Infra.load_codegen_inputs(root)
+                    ).spec.repository.model_dump(mode="json", exclude_unset=True),
                 },
             },
         }
@@ -174,33 +177,46 @@ class TestsFlextInfraCodegenLayoutGitignore:
         repository = u.Tests.repository_ref(config.Infra.name)
         owner = f"{repository.name}-layout-consumer"
         root = tmp_path / f"{owner}{directory_suffix}"
+        root.mkdir(parents=True)
+        repository = u.Tests.repository_ref(owner, role=c.Infra.MakeProfile.STANDALONE)
+        integration = u.Tests.integration()
+        u.Tests.initialize_unborn_git_repo(
+            root,
+            origin_url=repository.url,
+            branch=integration.branch,
+        )
+        u.Tests.copy_tracked_mise_seeds(root)
+        u.Tests.write_project_beads_config(root, owner)
+        declaration = m.Infra.RepositoryDeltaSpec(
+            project=u.Tests.project_spec(owner).model_copy(
+                update={"upstream": "flext_cli"}
+            ),
+            integration=integration,
+            kind=repository.kind,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": declaration.model_dump(
+                                mode="json", exclude_unset=True
+                            ),
+                        },
+                    },
+                },
+            )
+        )
         cls._declare_layout_override(root, owner)
         codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
         override = codegen.layout.project_overrides[owner]
-        project = u.Tests.project_spec(config.Infra.name)
         tm.ok(
-            infra.codegen_new(
-                FlextInfraCodegenProjectNew(
-                    repository_root=Path.cwd(),
-                    flext_source=u.Tests.flext_source(),
-                    name=owner,
-                    kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
-                    output_root=root,
-                    provider=repository.provider,
-                    repository_url=(
-                        f"{repository.url.rsplit('/', maxsplit=1)[0]}/{owner}.git"
-                    ),
-                    repository_branch=u.Tests.provider_branch(),
-                    flext_repository_url=u.Tests.repository_ref(config.Infra.name).url,
-                    flext_repository_ref=u.Tests.provider_branch(),
-                    license=project.license,
-                    author_name=project.author_name,
-                    author_email=project.author_email,
-                    upstream=project.upstream,
-                    year=project.year,
-                    apply_changes=True,
-                ),
-            ),
+            FlextInfraCodegenMakeBootstrap(
+                repository_root=root,
+                kind=repository.kind,
+                apply_changes=True,
+            ).execute(),
         )
         entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
         missing = tuple(

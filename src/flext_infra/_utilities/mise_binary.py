@@ -56,7 +56,7 @@ class FlextInfraUtilitiesMiseBinary:
             return r[Path].fail(f"runtime manifest does not declare {selector}")
         pinned = FlextInfraUtilitiesMiseBinary.locked_mise_version(
             owner_root,
-            tool=tool.name,
+            tool=selector,
             selector=requested.value[0],
         )
         if pinned.failure:

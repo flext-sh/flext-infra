@@ -22,12 +22,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
     One suite builder owns every flag. Incremental and complete phases share
     the persistent testmon database. Coverage runs separately because testmon
-    refuses branch coverage through the cov plugin. The full operation runs
-    both testmon phases without a time limit.
+    refuses branch coverage through the cov plugin. Every operation shares its
+    entrypoint deadline across collection and execution.
     """
 
     _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
-    _UNBOUNDED_LIMITS: ClassVar[t.VariadicTuple[str]] = (
+    _ITEM_LIMITS: ClassVar[t.VariadicTuple[str]] = (
         f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
     )
 
@@ -81,7 +81,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             )
         else:
             reserve = pytest.termination_grace_seconds
-        return self.started_at_monotonic + self.run_timeout_seconds(pytest) - reserve
+        return self.started_at_monotonic + pytest.run_timeout_seconds - reserve
 
     def ci_excluded_markers(
         self,
@@ -215,10 +215,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "-o",
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={fixture_scope}",
             "-o",
-            (
-                f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}="
-                f"{'' if self.unbounded else pytest.slow_timeout_seconds}"
-            ),
+            f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={pytest.slow_timeout_seconds}",
             *(("-m", expression) if expression else ()),
         )
 
@@ -286,7 +283,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
-            *self._UNBOUNDED_LIMITS,
+            *self._ITEM_LIMITS,
             "-o",
             "filterwarnings=",
             "-p",
@@ -320,6 +317,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         A resolved plan carries the selected IDs and their manifest together.
         Workers record dependencies without selecting those IDs a second time.
+        Whole-project FULL execution instead publishes its inventory from this
+        suite's own collection, without an earlier selection process.
 
         Returns:
             The resulting ``t.VariadicTuple[str]``.
@@ -344,6 +343,28 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         serial = workers in {"0", "1"}
         if serial:
             workers = "0"
+        manifest_args: t.StrTuple = ()
+        if selection_plan is not None:
+            manifest_args = (
+                "-p",
+                FlextInfraPytestCollection.__module__,
+                (
+                    f"{c.Infra.PYTEST_SELECTED_COLLECTION_OPTION}="
+                    f"{selection_plan.manifest_path}"
+                ),
+            )
+        elif (
+            execution_mode == c.Infra.PytestExecutionMode.FULL
+            and self.target_file is None
+        ):
+            manifest_args = (
+                "-p",
+                FlextInfraPytestCollection.__module__,
+                (
+                    f"{c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION}="
+                    f"{report_dir / 'testmon-inventory.json'}"
+                ),
+            )
         return self._suite_argv(
             report_dir,
             limits=self._bounded_limits(workers, execution_mode=execution_mode),
@@ -359,15 +380,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             workers=workers,
             trailing=(
                 *self._plugin_policy_args(execution_mode=execution_mode),
-                *(
-                    (
-                        "-p",
-                        FlextInfraPytestCollection.__module__,
-                        f"{c.Infra.PYTEST_SELECTED_COLLECTION_OPTION}={selection_plan.manifest_path}",
-                    )
-                    if selection_plan is not None
-                    else ()
-                ),
+                *manifest_args,
                 "--testmon",
                 *(
                     ("--testmon-noselect",)
@@ -429,14 +442,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The bounded suite's time-limit arguments.
 
         """
-        if self.unbounded:
-            return self._UNBOUNDED_LIMITS
         suite_stop = self.suite_stop_monotonic(
             serial=workers == "0",
             execution_mode=execution_mode,
         )
         return (
-            *self._UNBOUNDED_LIMITS,
+            *self._ITEM_LIMITS,
             f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
         )
 
@@ -451,8 +462,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     ) -> t.VariadicTuple[str]:
         """Assemble one suite invocation; ``trailing`` owns the plugin split.
 
-        ``limits`` carries the bounded aggregate stop instant, or no limit for
-        the unbounded full operation.
+        ``limits`` carries the aggregate stop instant for this operation.
 
         Returns:
             The resulting ``t.VariadicTuple[str]``.
@@ -480,6 +490,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *trailing,
             "-n",
             workers,
+            "--max-worker-restart",
+            str(c.Infra.PYTEST_WORKER_RESTARTS_DISABLED),
             # Why: xdist queues the shutdown marker behind each worker's
             # pre-dispatched chunk, so the declared max-failures stop only took
             # effect after every worker drained its assigned items at fleet

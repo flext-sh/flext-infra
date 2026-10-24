@@ -130,18 +130,12 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(
                 alias="run-timeout-seconds",
                 gt=0,
+                le=120,
                 description=(
                     "Fleet-default wall-clock maximum for one testmon runner operation."
                 ),
             ),
         ]
-        run_timeout_overrides: Annotated[
-            Mapping[str, Annotated[int, m.Field(gt=0)]],
-            m.Field(
-                alias="run-timeout-overrides",
-                description="Per-project hard wall for one testmon runner operation.",
-            ),
-        ] = {}
         termination_grace_seconds: Annotated[
             int,
             m.Field(
@@ -358,11 +352,6 @@ class FlextInfraModelsDepsToolConfig(
             return ("--dist", self.parallel_distribution, *scheduling)
 
         @property
-        def process_timeout_seconds(self) -> int:
-            """Derive the fleet-default outer wall without a second config field."""
-            return self.run_timeout_seconds + (self.termination_grace_seconds * 2)
-
-        @property
         def slow_suite_stop_reserve_seconds(self) -> int:
             """Derive the slow-phase reserve bounded by the slow ceiling."""
             return (
@@ -410,13 +399,7 @@ class FlextInfraModelsDepsToolConfig(
             # Only the slow phase has a bounded item drain. Ordinary items are
             # stopped by the aggregate process wall, not a synthetic item cap.
             reserve = self.slow_suite_stop_reserve_seconds
-            if any(
-                timeout <= reserve
-                for timeout in (
-                    self.run_timeout_seconds,
-                    *self.run_timeout_overrides.values(),
-                )
-            ):
+            if self.run_timeout_seconds <= reserve:
                 msg = "pytest run timeout must exceed the suite stop reserve"
                 raise ValueError(msg)
             if "--verbose" not in self.progress_args:

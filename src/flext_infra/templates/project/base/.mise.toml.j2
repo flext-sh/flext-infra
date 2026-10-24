@@ -7,14 +7,14 @@
 # Free: no
 # End SECTION: header
 # NOTE: mise carries itself, the Python runtime and the native tools from the
-# config SSOT. The self-managed github:jdx/mise entry is the pinned release:
-# `mise install` provisions it from mise.lock and every later `mise` resolved
-# through the mise-managed shims runs exactly that release. Python dependency
+# config SSOT. The official installer supplies the acquisition executable; native
+# `mise install --locked` provisions the declared self entry and tools.
+# Later execution resolves that entry through native Mise. Python dependency
 # declarations remain owned by pyproject.toml. Tools are declared `latest`;
 # only `make upg` resolves them and writes the committed mise.lock. Setup
 # installs declared tools with `mise install --locked`; missing or incompatible
 # lock entries fail. `make upg` runs `mise lock --bump` against the regenerated
-# manifest before installing from the resulting lock.
+# manifest. The separate setup operation installs from the resulting lock.
 
 # === SECTION: settings (managed) ===
 # Source: config:codegen.toolchain.mise_lockfile / mise_lockfile_platforms /
@@ -25,11 +25,8 @@ lockfile = {{ "true" if mise_lockfile else "false" }}
 # The mise release moves only through mise.lock (`make upg`); a newer release
 # notice is not actionable here and only adds noise to every command.
 disable_update_warning = {{ "true" if mise_disable_update_warning else "false" }}
-# Third-party releases in the manifest (jscpd, qlty) publish no SLSA
-# attestations, so strict lock-time provenance verification can never pass
-# for them. API outages degrade to best-effort instead of failing the lock;
-# release checksums still enforce integrity, and verification resumes
-# automatically wherever attestations exist.
+# Native attestation absence is distinct from an API failure. API failures
+# remain fatal; locked installs may reuse the existing lock and checksums.
 provenance_api_failures_fatal = {{ "true" if mise_provenance_api_failures_fatal else "false" }}
 locked_verify_provenance = {{ "true" if mise_locked_verify_provenance else "false" }}
 lockfile_platforms = [{% for platform in mise_lockfile_platforms %}"{{ platform }}"{{ ", " if not loop.last }}{% endfor %}]
@@ -44,8 +41,7 @@ compile = {{ "true" if python_compile else "false" }}
 #         projection order, form fixes the rendered shape)
 [tools]
 python = "{{ python_version }}"
-# mise self-management: the [tools] entry pins the release `mise install`
-# provisions from mise.lock; a host bootstrap mise only needs to read that lock.
+# Mise interprets the self entry and its lock; Make never parses release assets.
 "{{ mise_selector }}" = "{{ mise_version }}"
 # Native toolchain (single source: Infra.codegen.toolchain.tools in codegen.yaml).
 {%- macro tool_specifier(entry) -%}

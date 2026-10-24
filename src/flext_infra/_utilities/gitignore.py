@@ -14,6 +14,7 @@ from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
 class FlextInfraUtilitiesGitignore:
@@ -38,15 +39,35 @@ class FlextInfraUtilitiesGitignore:
         codegen: m.Infra.CodegenConfigSpec,
         entry: m.Infra.TemplateEntrySpec,
     ) -> Path:
-        """Resolve a declared source inside its explicit package or template root."""
+        """Resolve a declared source inside its explicit package or template root.
+
+        Returns:
+            The confined original package asset or template source path.
+
+        Raises:
+            ValueError: If the source is absent, escapes its root, or lacks a
+                unique original package directory.
+
+        """
         if entry.source is None:
             msg = f"artifact has no source: {entry.destination}"
             raise ValueError(msg)
-        root = (
-            FlextInfraConfig.ssot_config_dir().parent.resolve()
-            if entry.source_kind == "resource"
-            else FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
-        )
+        if entry.source_kind == "template":
+            root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
+        else:
+            if entry.source_package is None:
+                msg = f"resource has no explicit package owner: {entry.destination}"
+                raise ValueError(msg)
+            package = FlextInfraUtilitiesDiscovery.declared_package_dir(
+                entry.source_package,
+            )
+            if package is None:
+                msg = (
+                    "resource source must name an importable package: "
+                    f"{entry.source_package}"
+                )
+                raise ValueError(msg)
+            root = package.resolve()
         source = root / entry.source
         if not source.resolve().is_relative_to(root):
             msg = f"declared artifact source escapes its owner root: {entry.source}"
@@ -60,19 +81,17 @@ class FlextInfraUtilitiesGitignore:
         Returns:
             The resulting ``frozenset[Path]``.
 
-        Raises:
-            ValueError: If declared template source escapes its owner root.
-
         """
         sources: set[Path] = set()
         for entry in codegen.templates.entries:
             if entry.source is None:
                 continue
-            sources.add(
+            sources.update(
                 FlextInfraUtilitiesGitignore.codegen_artifact_source(
                     codegen,
-                    entry,
-                ).resolve(),
+                    entry.model_copy(update={"source": source}),
+                ).resolve()
+                for source in entry.source_closure or (entry.source,)
             )
         return frozenset(sources)
 

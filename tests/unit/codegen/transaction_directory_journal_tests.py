@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import errno
 import os
 import stat
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -17,9 +19,9 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsCandidates,
     FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from tests import c, m, p, r, t, tm, u
@@ -43,7 +45,9 @@ class TestsFlextInfraTransactionDirectoryJournal:
 
         """
         archive = (
-            root / c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH / transaction_id
+            tm.ok(u.Infra.refactor_report_evidence_root(root))
+            / c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH
+            / transaction_id
         )
         return tuple(
             m.Infra.CodegenPhaseOutcome.model_validate_json(
@@ -125,7 +129,14 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 TestsFlextInfraConformSupport.project_tree(root),
                 eq=before,
             )
-        tm.fail((root / ".state").exists())
+        tm.that(
+            tuple((root / c.Infra.TRANSACTION_STATE_DIRNAME).iterdir()),
+            eq=(
+                root
+                / c.Infra.TRANSACTION_STATE_DIRNAME
+                / f"{c.Infra.JOURNAL_NAME}.lock",
+            ),
+        )
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         tm.that(
             FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(),
@@ -176,10 +187,10 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.ok(FlextInfraMiseArtifactsVerification.sources(observed))
         template.write_text("{{ changed }}\n", encoding="utf-8")
         tm.fail(planner.snapshot(layout, (config_plan,)), has=str(template))
-        template.write_bytes(template_state.content)
+        template.write_bytes(tm.not_none(template_state.content))
         local.write_text("scenario: changed\n", encoding="utf-8")
         tm.fail(planner.snapshot(layout, (config_plan,)), has=str(local))
-        local.write_bytes(local_state.content)
+        local.write_bytes(tm.not_none(local_state.content))
         (config_dir / "added.yaml").write_text("added: true\n", encoding="utf-8")
         tm.fail(
             FlextInfraMiseArtifactsVerification.sources(observed),
@@ -297,8 +308,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             rejected = owner.run_files_locked(roots, publish)
             tm.fail(rejected, has="source dependenc")
             tm.ok(rejected.exception is original_errors[0])
-            tm.that(rejected.error_data, none=False)
-            tm.ok(bool(rejected.error_data["cleanup_error"]))
+            tm.ok(bool(tm.not_none(rejected.error_data)["cleanup_error"]))
         tm.that(target.read_bytes(), eq=before.content)
         tm.that(source_path.read_bytes(), eq=source.content)
 
@@ -674,7 +684,14 @@ class TestsFlextInfraTransactionDirectoryJournal:
             tm.ok((root / "docs/generated").exists())
         else:
             tm.that(target.read_bytes(), eq=b"first phase\n")
-        tm.fail((root / ".state").exists())
+        tm.that(
+            tuple((root / c.Infra.TRANSACTION_STATE_DIRNAME).iterdir()),
+            eq=(
+                root
+                / c.Infra.TRANSACTION_STATE_DIRNAME
+                / f"{c.Infra.JOURNAL_NAME}.lock",
+            ),
+        )
         tm.ok(journal.with_name(f"{journal.name}.lock").is_file())
 
     @staticmethod
@@ -809,13 +826,12 @@ class TestsFlextInfraTransactionDirectoryJournal:
             planned = m.Infra.CodegenFilePlan(
                 project=root,
                 path=target,
-                before=tm.ok(
-                    u.Cli.atomic_read_binary_file_state(target, required=False),
-                ),
+                before=tm.ok(u.Infra.codegen_target_snapshot(target)),
                 desired_content=b"owned content\n",
                 desired_mode=before.mode,
                 owner="docs",
             )
+            session = tm.ok(owner.bind_publication_proof(session, (planned,)))
             session = tm.ok(
                 owner.append_directories_locked(session, "docs", (target.parent,)),
             )
@@ -825,7 +841,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
 
         failed = owner.run_files_locked(roots, replace_parent)
 
-        tm.fail(failed, has="generation destination parent differs from journal")
+        tm.fail(failed, has="generation source parent identity changed")
         tm.fail(target.exists())
         tm.ok(target.parent.is_dir())
         tm.ok(preserved.is_dir())
@@ -858,7 +874,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
 
         tm.fail(
             owner.run_files_locked(roots, begin_after_reconciliation),
-            has="no journal authority",
+            has="file transaction has unowned staging residue",
         )
         tm.that((residue / "orphan").read_bytes(), eq=b"journal-less staging")
 
@@ -982,14 +998,17 @@ class TestsFlextInfraTransactionDirectoryJournal:
                     desired_mode=session.journal_state.mode,
                     owner="docs",
                 )
-                tm.fail(
-                    owner.publish_prepared_locked(
-                        session,
-                        lambda current: owner.append_phase_locked(
-                            current, "docs", (planned,)
-                        ),
+                failed = owner.publish_prepared_locked(
+                    session,
+                    lambda current: owner.append_phase_locked(
+                        current, "docs", (planned,)
                     ),
-                    has="journal changed",
+                )
+                tm.fail(failed, has="atomic file physical state changed")
+                tm.that(
+                    failed.exception,
+                    is_=OSError,
+                    attr_eq={"errno": errno.ESTALE},
                 )
             else:
                 tm.fail(
@@ -1009,6 +1028,10 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.ok(owner.run_files_locked(roots, replace_journal))
         tm.fail(target.exists())
 
+
+class TestsFlextInfraTransactionDirectoryCleanup:
+    """Exercise physical cleanup without conflating it with journal publication."""
+
     @staticmethod
     def _layout(root: Path) -> m.Infra.MiseToolchainWorkspaceLayout:
         root.mkdir()
@@ -1022,7 +1045,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         planned = FlextInfraMiseWorkspacePlanner(owner).layout_from_selectors(
             root.resolve(),
             (".",),
-            transaction_id=TestsFlextInfraTransactionDirectoryJournal._TRANSACTION_ID,
+            transaction_id=uuid4().hex,
         )
         return tm.ok(planned)
 
@@ -1034,7 +1057,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         physical = layout.scope_root.lstat()
         return m.Infra.CodegenTransactionJournal(
             version=9,
-            transaction_id=TestsFlextInfraTransactionDirectoryJournal._TRANSACTION_ID,
+            transaction_id=tm.not_none(layout.transaction_id),
             scope_device=physical.st_dev,
             scope_inode=physical.st_ino,
             state="prepared",
@@ -1099,8 +1122,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         directories = tm.ok(planned)
         tm.fail((layout.scope_root / ".state").exists())
         directories = self._materialize(layout, directories)
-        transaction_root = layout.projects[0].transaction_root
-        tm.that(transaction_root, none=False)
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         (transaction_root / "partial-download").write_bytes(b"owned staging bytes")
         journal = self._register_manifest(layout, directories)
 
@@ -1152,8 +1174,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             FlextInfraMiseArtifactsState.plan_transaction_directories(layout),
         )
         directories = self._materialize(layout, directories)
-        transaction_root = layout.projects[0].transaction_root
-        tm.that(transaction_root, none=False)
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         journal = self._register_manifest(layout, directories)
         (transaction_root / "alias").symlink_to(layout.scope_root)
 
@@ -1207,8 +1228,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             tm.ok(FlextInfraMiseArtifactsState.plan_transaction_directories(layout)),
         )
         journal = self._register_manifest(layout, directories)
-        transaction_root = layout.projects[0].transaction_root
-        tm.that(transaction_root, none=False)
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         foreign = transaction_root / "foreign.bin"
         foreign.write_bytes(b"foreign")
 
@@ -1231,8 +1251,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             layout,
             tm.ok(FlextInfraMiseArtifactsState.plan_transaction_directories(layout)),
         )
-        transaction_root = layout.projects[0].transaction_root
-        tm.that(transaction_root, none=False)
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         payload = transaction_root / "registered.bin"
         payload.write_bytes(b"registered")
         journal = self._register_manifest(layout, directories)
@@ -1256,8 +1275,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         directories = tm.ok(
             FlextInfraMiseArtifactsState.plan_transaction_directories(layout),
         )
-        transaction_root = layout.projects[0].transaction_root
-        tm.that(transaction_root, none=False)
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         transaction_root.mkdir(parents=True)
         marker = transaction_root / "unknown-owner.bin"
         marker.write_bytes(b"preserve")

@@ -685,6 +685,7 @@ class FlextInfraModelsRefactor(
 
     class RefactorNamespaceEnforceInput(
         FlextInfraModelsMixins.WriteMixin,
+        FlextInfraModelsMixins.ModuleSelectionMixin,
         m.ContractModel,
     ):
         """CLI/service request for namespace enforcement."""
@@ -728,7 +729,12 @@ class FlextInfraModelsRefactor(
             str, m.Field(description="Output format (json|text)")
         ] = "text"
 
-    class AccessorMigrationInput(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
+    class AccessorMigrationInput(
+        FlextInfraModelsMixins.WriteMixin,
+        FlextInfraModelsMixins.ModuleSelectionMixin,
+        FlextInfraModelsMixins.NamespaceSelectionMixin,
+        m.ContractModel,
+    ):
         """CLI/service request for accessor migration dry-runs and applies."""
 
         preview_limit: Annotated[

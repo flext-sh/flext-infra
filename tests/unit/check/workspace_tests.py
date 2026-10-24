@@ -123,9 +123,9 @@ class TestsFlextInfraWorkspaceChecker:
         tm.that(selected_exit_code, eq=0)
 
     @staticmethod
-    def test_resolve_gates_with_valid_gates() -> None:
+    def test_resolve_gates_with_valid_gates(tmp_path: Path) -> None:
         """Test that resolve_gates normalizes valid gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             "lint",
             "pyrefly",
             "mypy",
@@ -134,21 +134,27 @@ class TestsFlextInfraWorkspaceChecker:
         tm.ok(result, eq=["lint", "pyrefly", "mypy", "pyright"])
 
     @staticmethod
-    def test_resolve_gates_rejects_a_repeated_gate() -> None:
+    def test_resolve_gates_rejects_a_repeated_gate(tmp_path: Path) -> None:
         """A gate named twice is an operator mistake, not something to absorb.
 
         Silently collapsing the repeat would run exactly the gates the
         operator asked for while hiding that the request did not say what
         they thought it said.
         """
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "lint",
+            "lint",
+            "format",
+        ])
         tm.fail(result)
         tm.that(result.error, has="duplicate gate 'lint'")
 
     @staticmethod
-    def test_resolve_gates_with_invalid_gate() -> None:
+    def test_resolve_gates_with_invalid_gate(tmp_path: Path) -> None:
         """Test that resolve_gates fails on invalid gate name."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["invalid_gate"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "invalid_gate",
+        ])
         tm.fail(result)
 
     @staticmethod

@@ -204,10 +204,14 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         return self._authenticated_reads.receipt_topology()
 
     def verify_source_states(
-        self, receipt: m.Infra.CodegenPhaseAnalysis | None = None
+        self,
+        receipt: m.Infra.CodegenPhaseAnalysis | None = None,
+        *,
+        observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory]
+        | None = None,
     ) -> None:
         """Verify the complete epoch or one authentic original consumer receipt."""
-        self._authenticated_reads.verify(receipt)
+        self._authenticated_reads.verify(receipt, observations=observations)
 
     _source_election: p.Infra.RopeProjectElection | None = None
 
@@ -467,10 +471,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 return self._children[source]
             ambient = self._ambient_identity(source)
             if ambient is not None and ambient.is_dir():
-                return tuple(
-                    ambient / item.name
-                    for item in sorted(ambient.iterdir(), key=lambda item: item.name)
-                )
+                return tuple(sorted(ambient.iterdir(), key=lambda item: item.name))
             msg = f"Rope snapshot folder is absent: {path}"
             raise FileNotFoundError(msg)
 
@@ -1014,8 +1015,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             return sorted(
                 name
                 for name in set(names)
-                if directory / name not in self._retired
-                and not self._is_generated_artifact(directory / name)
+                if (child := directory / name) not in self._retired
+                and not self._is_generated_artifact(child)
             )
 
         def _record_membership(
@@ -1379,16 +1380,18 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self, path: str, *, follow_aliases: bool = True
         ) -> tuple[Path, ...]:
             """Return native direct membership for the change observer."""
-            children = tuple(Path(path) / name for name in self.listdir(path))
+            names = self.listdir(path)
+            directory = Path(path)
+            children = tuple(directory / name for name in names)
             if follow_aliases:
                 return children
-            if not self._owns_query(Path(path)):
+            if not self._owns_query(directory):
                 return tuple(
                     child
                     for child in children
                     if not child.is_symlink() and (child.is_file() or child.is_dir())
                 )
-            inventory = self._inventory(Path(path))
+            inventory = self._inventory(directory)
             excluded: set[str] = (
                 {
                     entry.name
@@ -1507,7 +1510,13 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             """
             return tuple(self._consumed.values())
 
-        def verify(self, receipt: m.Infra.CodegenPhaseAnalysis | None = None) -> None:
+        def verify(
+            self,
+            receipt: m.Infra.CodegenPhaseAnalysis | None = None,
+            *,
+            observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory]
+            | None = None,
+        ) -> None:
             """Reprove an issued scope, or all original inputs for direct consumers.
 
             Raises:
@@ -1523,7 +1532,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     or issued.source_directories
                     or issued.source_query_topology
                 ):
-                    self.verify()
+                    self.verify(observations=observations)
                     return
                 states = issued.inputs
                 directories = issued.source_directories
@@ -1554,6 +1563,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                         sorted(config.Infra.codegen.source_scan_ignored)
                     )
                 ),
+                observations=observations,
             )
             if verified.failure:
                 if verified.exception is not None:

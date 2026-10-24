@@ -59,8 +59,6 @@ class FlextInfraPreviewWiring:
             check_only=request.check_only,
             dry_run=request.dry_run_mode,
             output_format=request.output_format,
-            target_module=request.module,
-            target_namespace=request.namespace,
             options=request,
             source_preview=self.source_preview(request.repository_root),
         ).execute()

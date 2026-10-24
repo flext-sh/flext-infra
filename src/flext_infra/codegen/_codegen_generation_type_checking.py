@@ -9,13 +9,14 @@ from __future__ import annotations
 import ast
 from collections import defaultdict
 from collections.abc import MutableMapping
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import config, p, u
 from flext_infra.codegen import FlextInfraCodegenGenerationImportsMixin
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import m, t
 
 
 class FlextInfraCodegenGenerationTypeCheckingMixin(
@@ -24,11 +25,50 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     """TYPE_CHECKING block generation helper methods."""
 
     @staticmethod
+    def _type_checking_provider(
+        mod: str,
+        source_project: p.Infra.RopeProject,
+        package_context: m.Infra.LazyInitPackageContext | None,
+    ) -> t.Triple[p.Infra.RopeParsedModule, str, p.Infra.RopeFile | None]:
+        """Resolve owned declarations relative to their elected package resource.
+
+        A future namespace must not lose its declarations to an installed
+        regular package before its initializer has been generated.
+
+        Returns:
+            The native declaration, proof import and lexical import resource.
+
+        """
+        if package_context is not None and (
+            mod == package_context.current_pkg
+            or mod.startswith(f"{package_context.current_pkg}.")
+        ):
+            folder = source_project.get_folder(
+                package_context.pkg_dir.relative_to(
+                    Path(source_project.root.real_path)
+                ).as_posix()
+            )
+            relative = mod.removeprefix(package_context.current_pkg).removeprefix(".")
+            owner = source_project.get_relative_module(relative, folder, 1)
+            resource = source_project.get_file(
+                package_context.init_path.relative_to(
+                    Path(source_project.root.real_path)
+                ).as_posix()
+            )
+            return u.Infra.require_parsed_module(owner), f".{relative}", resource
+        return (
+            u.Infra.require_parsed_module(source_project.get_module(mod)),
+            mod,
+            None,
+        )
+
+    @staticmethod
     def _native_class_export_binding(
         mod: str,
         attr_name: str,
         items: t.StrPairSequence,
         source_project: p.Infra.RopeProject,
+        package_context: m.Infra.LazyInitPackageContext | None = None,
     ) -> str:
         """Bind bare class aliases only to an elected original declaration.
 
@@ -36,20 +76,19 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             The published class name, or the unchanged non-class binding.
 
         Raises:
+            TypeError: If the parsed provider does not expose a module AST.
             ValueError: If the rendered import changes the proven class identity.
 
         """
-        owner = u.Infra.require_parsed_module(source_project.get_module(mod))
+        owner, proof_import, resource = (
+            FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_provider(
+                mod, source_project, package_context
+            )
+        )
         tree = owner.get_ast()
         if not isinstance(tree, ast.Module):
-            return attr_name
-        assignments = [
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Name)
-            and isinstance(node.ctx, ast.Store)
-            and node.id == attr_name
-        ]
+            message = "Static class exports require a native module AST"
+            raise TypeError(message)
         aliases = [
             node
             for node in tree.body
@@ -59,7 +98,16 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             and node.targets[0].id == attr_name
             and isinstance(node.value, ast.Name)
         ]
-        if len(assignments) != 1 or len(aliases) != 1:
+        if len(aliases) != 1:
+            return attr_name
+        assignments = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Store)
+            and node.id == attr_name
+        ]
+        if len(assignments) != 1:
             return attr_name
         alias = aliases[0]
         original = alias.value
@@ -97,7 +145,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         ):
             return attr_name
         attributes = u.Infra.build_string_module(
-            source_project, f"from {mod} import {original.id} as {attr_name}\n"
+            source_project,
+            f"from {proof_import} import {original.id} as {attr_name}\n",
+            resource=resource,
         ).get_attributes()
         if attributes[attr_name].get_object() is not target:
             message = f"Static class export identity changed: {mod}.{attr_name}"
@@ -112,6 +162,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         *,
         source_project: p.Infra.RopeProject,
         occupied_names: set[str],
+        package_context: m.Infra.LazyInitPackageContext | None = None,
     ) -> t.StrSequence:
         """Bind a proven child module's exports without importing its parent.
 
@@ -122,9 +173,11 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             ValueError: If a binding is not declared by its owner or cannot fit.
 
         """
-        owner = u.Infra.require_parsed_module(source_project.get_module(mod))
-        parent_module = u.Infra.require_parsed_module(
-            source_project.get_module(mod.rpartition(".")[0])
+        owner, proof_import, resource = cls._type_checking_provider(
+            mod, source_project, package_context
+        )
+        parent_module, _, _ = cls._type_checking_provider(
+            mod.rpartition(".")[0], source_project, package_context
         )
         # Reuse this module's existing binding so a second render is byte-stable.
         blocked = occupied_names | {
@@ -136,11 +189,11 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         while (alias := f"_owner_{index}") in blocked:
             index += 1
         occupied_names.add(alias)
-        lines = list(cls._format_type_checking_module_alias_import("    ", mod, alias))
+        prefix = cls._format_type_checking_module_alias_import("    ", mod, alias)
+        lines = list(prefix)
         for export_name, attr_name in sorted(items, key=cls._import_item_sort_key):
-            member = owner.get_attributes().get(attr_name)
-            target = member.get_object() if member is not None else None
-            if target is None or target.get_module() is not owner:
+            binding = owner.get_attributes().get(attr_name)
+            if binding is None or binding.get_object().get_module() is not owner:
                 message = (
                     "Owned child static export is not declared by its module: "
                     f"{mod}.{attr_name}"
@@ -167,7 +220,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             raise ValueError(message)
         attributes = u.Infra.build_string_module(
             source_project,
-            "\n".join(line.removeprefix("    ") for line in lines) + "\n",
+            "\n".join((
+                *cls._format_type_checking_module_alias_import("", proof_import, alias),
+                *(line.removeprefix("    ") for line in lines[len(prefix) :]),
+            ))
+            + "\n",
+            resource=resource,
         ).get_attributes()
         for export_name, attr_name in items:
             binding = attributes.get(export_name)
@@ -274,11 +332,17 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         lines: t.MutableSequenceOf[str],
         module_exports: frozenset[str],
         context: tuple[
-            str | None, p.Infra.RopeProject | None, set[str], t.MutableSequenceOf[str]
+            str | None,
+            p.Infra.RopeProject | None,
+            set[str],
+            t.MutableSequenceOf[str],
+            m.Infra.LazyInitPackageContext | None,
         ],
     ) -> None:
         """Emit one TYPE_CHECKING import from its resolved owner."""
-        local_package_root, source_project, occupied_names, aliases = context
+        local_package_root, source_project, occupied_names, aliases, package_context = (
+            context
+        )
         if (
             len(f"    from {mod} import (")
             > u.Infra.native_tool_setting(
@@ -294,6 +358,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                     items,
                     source_project=source_project,
                     occupied_names=occupied_names,
+                    package_context=package_context,
                 ),
             )
             return
@@ -311,7 +376,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 continue
             imported_name = (
                 FlextInfraCodegenGenerationTypeCheckingMixin._native_class_export_binding(
-                    mod, attr_name, items, source_project
+                    mod, attr_name, items, source_project, package_context
                 )
                 if source_project is not None
                 else attr_name
@@ -367,6 +432,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         ],
         *,
         source_project: p.Infra.RopeProject | None = None,
+        package_context: m.Infra.LazyInitPackageContext | None = None,
     ) -> t.StrSequence:
         """Render the public import contract against its optional frozen source view.
 
@@ -451,7 +517,13 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 merged_groups[mod],
                 lines,
                 module_exports,
-                (local_package_root, source_project, occupied_names, aliases),
+                (
+                    local_package_root,
+                    source_project,
+                    occupied_names,
+                    aliases,
+                    package_context,
+                ),
             )
             previous_section = type_checking_module_key(mod)[0]
         if aliases:

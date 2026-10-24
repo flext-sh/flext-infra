@@ -48,6 +48,12 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         overrides = self._read_project_config(project_dir)
         fleet_enabled = overrides.success and overrides.value.fleet
         scan = self._scan_project(project_dir, fleet_enabled=fleet_enabled)
+        if (
+            scan.outcome.timed_out
+            or scan.outcome.forwarded_signal is not None
+            or scan.outcome.raw_return_code < 0
+        ):
+            return self._parsed_gate_execution(project_dir, ctx, scan, started)
         report: m.Infra.JscpdReport | None = None
         try:
             if scan.stdout.strip():
@@ -112,12 +118,28 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                             "see assessment receipt",
                         ),
                     )
+        outcome = u.Infra.tool_outcome(
+            scan.outcome,
+            findings=len(issues),
+            findings_exit_codes=(1,),
+        )
+        if empty_failure or any(
+            issue.code == c.Infra.ToolOutcome.ERROR for issue in issues
+        ):
+            outcome = c.Infra.ToolOutcome.ERROR
         return self._build_check_gate_execution(
             project_dir,
             passed=not issues,
             issues=issues,
             evidence=evidence,
             started=started,
+        ).model_copy(
+            update={
+                "outcome": outcome,
+                "process": m.Cli.ProcessOutcome.model_validate(
+                    scan.outcome, from_attributes=True
+                ),
+            }
         )
 
     def _scan_project(
@@ -472,6 +494,12 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             The resulting ``p.Cli.CommandOutput``.
 
         """
+        if (
+            result.outcome.timed_out
+            or result.outcome.forwarded_signal is not None
+            or result.outcome.raw_return_code < 0
+        ):
+            return result
         report_path = report_dir / c.Infra.JSCPD_REPORT_FILENAME
         if not report_path.is_file():
             return result
@@ -497,7 +525,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=FlextInfraDuplicationGate.gate_id,
+            code=c.Infra.ToolOutcome.ERROR.value,
             message=message or "jscpd returned no parseable report",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
@@ -517,12 +545,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
         """
         if not scan.stdout.strip():
-            # jscpd succeeded and reported nothing, which means it was handed a
-            # scope with no comparable source. Naming the tool hid the project
-            # whose scope is empty, which is the fact the operator needs.
             return r[tuple[m.Infra.Issue, ...]].fail(
-                f"duplication scan produced no report for project "
-                f"{project_dir.name}: the scanned scope is empty",
+                f"duplication scan did not produce its required JSON report "
+                f"for project {project_dir.name}",
             )
         if report is None:
             try:

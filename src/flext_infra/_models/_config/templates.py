@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
@@ -183,7 +184,10 @@ class FlextInfraConfigModelsTemplates:
                 self.overwrite_project_keys,
             )
             if competing:
-                msg = f"project keys have competing owners: {', '.join(sorted(competing))}"
+                msg = (
+                    "project keys have competing owners: "
+                    f"{', '.join(sorted(competing))}"
+                )
                 raise ValueError(msg)
             return self
 
@@ -205,6 +209,41 @@ class FlextInfraConfigModelsTemplates:
                 ),
             )
 
+    class ArtifactResourceValidationContext(
+        FlextInfraConfigModelsContract.ConfigContract,
+    ):
+        """Original source role of an exact, non-importable resource projection."""
+
+        kind: Annotated[
+            Literal["resource"],
+            m.Field(description="Validate exact resource bytes in their original role"),
+        ] = "resource"
+        source: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Original package source captured by the renderer"),
+        ]
+        source_package: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Explicit package owner of the original closure"),
+        ]
+        source_states: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(min_length=1, description="Every original declared closure state"),
+        ]
+
+        @m.model_validator(mode="after")
+        def validate_source_closure(self) -> Self:
+            """Retain the primary original inside one complete nonempty closure."""
+            if (
+                self.source not in self.source_states
+                or any(state.content is None for state in self.source_states)
+                or len({state.path for state in self.source_states})
+                != len(self.source_states)
+            ):
+                msg = "resource validation requires unique captured closure bytes"
+                raise ValueError(msg)
+            return self
+
     class TemplateDeclarationSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Path-independent template body stored under one destination key."""
 
@@ -222,6 +261,18 @@ class FlextInfraConfigModelsTemplates:
                 description="Render a template or project the original package asset",
             ),
         ] = "template"
+        source_package: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Explicit original package owner of a resource declaration"
+                ),
+            ),
+        ] = None
+        source_closure: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Complete package-relative resource source closure"),
+        ] = ()
         requires_artifacts: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Catalog destination keys required by this artifact"),
@@ -254,6 +305,25 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="Whether the projection requires Beads participation"),
         ] = False
 
+        @m.field_validator("source_package")
+        @classmethod
+        def validate_source_package(cls, value: str | None) -> str | None:
+            """Require a qualified Python package identity without importing it.
+
+            Returns:
+                The explicit package identity, or the own-package selection.
+
+            Raises:
+                ValueError: If the identity contains an invalid package component.
+
+            """
+            if value is not None and any(
+                not part.isidentifier() or iskeyword(part) for part in value.split(".")
+            ):
+                msg = f"resource source_package must be a qualified package: {value}"
+                raise ValueError(msg)
+            return value
+
         @m.model_validator(mode="after")
         def validate_artifact_declaration(self) -> Self:
             """Confine paths and require an explicit render or specialized owner.
@@ -276,12 +346,30 @@ class FlextInfraConfigModelsTemplates:
             if len(set(self.profiles)) != len(self.profiles):
                 msg = "artifact profiles must not repeat"
                 raise ValueError(msg)
+            if (
+                self.source_package is not None or self.source_closure
+            ) and self.source_kind != "resource":
+                msg = "source_package and source_closure require a resource declaration"
+                raise ValueError(msg)
             if self.source_kind == "resource" and (
                 self.source is None
+                or self.source_package is None
+                or self.source not in self.source_closure
                 or self.ownership is None
                 or self.ownership.policy != "full"
             ):
-                msg = "resource requires an explicit source and full managed ownership"
+                msg = (
+                    "resource requires an explicit package, source closure and "
+                    "full managed ownership"
+                )
+                raise ValueError(msg)
+            if len(set(self.source_closure)) != len(self.source_closure) or any(
+                path.is_absolute() or ".." in path.parts or path == Path()
+                for path in self.source_closure
+            ):
+                msg = (
+                    "resource source closure must contain unique package-relative paths"
+                )
                 raise ValueError(msg)
             if self.source is None and (
                 self.ownership is None or self.ownership.policy != "merge"
@@ -300,7 +388,15 @@ class FlextInfraConfigModelsTemplates:
 
         @m.model_validator(mode="after")
         def validate_destination(self) -> Self:
-            """Confine the destination supplied by its catalog key."""
+            """Confine the destination supplied by its catalog key.
+
+            Returns:
+                The entry with a repository-relative destination.
+
+            Raises:
+                ValueError: If the destination escapes the repository root.
+
+            """
             path = Path(self.destination)
             if path.is_absolute() or ".." in path.parts or path == Path():
                 msg = f"artifact destination must be root-relative: {path}"
@@ -339,6 +435,8 @@ class FlextInfraConfigModelsTemplates:
                     destination=destination,
                     source=declaration.source,
                     source_kind=declaration.source_kind,
+                    source_package=declaration.source_package,
+                    source_closure=declaration.source_closure,
                     requires_artifacts=declaration.requires_artifacts,
                     profiles=declaration.profiles,
                     ownership=declaration.ownership,
@@ -349,7 +447,12 @@ class FlextInfraConfigModelsTemplates:
             )
 
         def required_destinations(self, destinations: frozenset[str]) -> frozenset[str]:
-            """Expand selected catalog keys through their explicit dependencies."""
+            """Expand selected catalog keys through their explicit dependencies.
+
+            Returns:
+                Selected keys and their transitive artifact dependencies.
+
+            """
             selected = set(destinations)
             pending = list(destinations)
             while pending:
@@ -387,14 +490,16 @@ class FlextInfraConfigModelsTemplates:
                     if required is None:
                         msg = f"artifact dependency is not declared: {dependency}"
                         raise ValueError(msg)
+                    unavailable_capability = (
+                        required.requires_beads and not declaration.requires_beads
+                    ) or (
+                        required.requires_release_protocol
+                        and not declaration.requires_release_protocol
+                    )
                     if (
                         not set(declaration.profiles) <= set(required.profiles)
                         or required.ownership is None
-                        or (required.requires_beads and not declaration.requires_beads)
-                        or (
-                            required.requires_release_protocol
-                            and not declaration.requires_release_protocol
-                        )
+                        or unavailable_capability
                     ):
                         msg = (
                             f"artifact dependency is not always available: {dependency}"

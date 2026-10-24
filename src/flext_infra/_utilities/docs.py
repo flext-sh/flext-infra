@@ -96,8 +96,38 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             The resulting ``t.SequenceOf[Path]``.
 
         """
+        return FlextInfraUtilitiesDocs.docs_scope_markdown_paths(
+            scope, FlextInfraUtilitiesDocs.iter_markdown_files(scope.path)
+        )
+
+    @staticmethod
+    def docs_scope_markdown_paths(
+        scope: m.Infra.DocScope,
+        candidates: t.SequenceOf[Path],
+    ) -> t.SequenceOf[Path]:
+        """Elect the same docs scope from captured paths without another treewalk.
+
+        Args:
+            scope: The documentation scope.
+            candidates: A sequence of candidate markdown file paths.
+
+        Returns:
+            A sequence of markdown file paths that belong to the given scope.
+
+        """
         scope_root = scope.path
-        files = FlextInfraUtilitiesDocs.iter_markdown_files(scope_root)
+        docs_root = scope_root / c.Infra.DIR_DOCS
+        search_root = docs_root if docs_root.is_dir() else scope_root
+        files = tuple(
+            path
+            for path in candidates
+            if path.suffix == ".md"
+            and path.is_relative_to(search_root)
+            and not any(
+                part in config.Infra.codegen.docs_excluded_dirs or part.startswith(".")
+                for part in path.relative_to(search_root).parts
+            )
+        )
         if scope.name == c.Infra.RK_ROOT:
             return [
                 path
@@ -109,7 +139,6 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
                     else path.relative_to(scope_root),
                 )
             ]
-        docs_root = scope_root / c.Infra.DIR_DOCS
         return [
             path
             for path in files

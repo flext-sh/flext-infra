@@ -17,6 +17,8 @@ from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
 
 class FlextInfraAccessorMigrationOrchestrator(
     FlextInfraProjectSelectionServiceBase[m.Infra.AccessorMigrationReport],
+    m.Infra.ModuleSelectionMixin,
+    m.Infra.NamespaceSelectionMixin,
     FlextInfraAccessorMigrationReportMixin,
 ):
     """Dry-run/apply orchestrator for public accessor migration candidates."""
@@ -76,8 +78,8 @@ class FlextInfraAccessorMigrationOrchestrator(
         params = m.Infra.AccessorMigrationInput(
             repository_root=self.repository_root,
             projects=self.project_names,
-            module=self.target_module,
-            namespace=self.target_namespace,
+            module=self.module,
+            namespace=self.namespace,
             gates=tuple(self.gate_names),
             preview_limit=self.preview_limit,
             apply=not self.effective_dry_run,
@@ -149,8 +151,8 @@ class FlextInfraAccessorMigrationOrchestrator(
             repository_root=params.repository_root,
             selected_projects=params.projects,
             apply_changes=params.apply,
-            target_module=params.module,
-            target_namespace=params.namespace,
+            module=params.module,
+            namespace=params.namespace,
             preview_limit=params.preview_limit,
             gates=",".join(params.gates),
         ).execute()

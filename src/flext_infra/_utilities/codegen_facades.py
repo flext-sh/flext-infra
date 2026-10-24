@@ -271,6 +271,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Empty selections remain strict direct consumers. Authentication errors
         escape before physical failure collection; data-shaped receipts cannot
         replace the native issuer's original observations.
+        Successful current directory inventories are shared only within this call;
+        every output keeps its independent authentication and comparisons.
 
         Returns:
             Existing target diagnostics for completed, independently bound plans.
@@ -279,8 +281,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         issues: list[m.Infra.Issue] = []
         failed: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         first: BaseException | None = None
+        observations: dict[Path, m.Cli.AtomicDirectoryInventory] = {}
         if not publications:
-            project.verify_source_states()
+            project.verify_source_states(observations=observations)
         for target, receipt in publications:
             with project.source_consumption():
                 project.replay_source_consumption(receipt)
@@ -289,9 +292,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 or receipt.source_directories
                 or receipt.source_query_topology
             ):
-                project.verify_source_states()
+                project.verify_source_states(observations=observations)
             try:
-                project.verify_source_states(receipt)
+                project.verify_source_states(receipt, observations=observations)
             except (OSError, ValueError, TypeError, RuntimeError) as exc:
                 if first is None:
                     first = exc
@@ -436,6 +439,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         Only the existing class/t export contract is supported. Ambiguous owners
         or extra public declarations fail rather than being silently discarded.
+        Admission shares one parsed view of the rebound source so owner, alias
+        and export nodes retain consistent identities and source offsets.
 
         Returns:
             Generated facade source inheriting its complete declared type owner.
@@ -470,21 +475,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             declarations,
         )
         if cls._explicit_class_facade(
-            project, facade_path, source, declarations, sources=declared_sources
+            project,
+            facade_path,
+            source,
+            declarations,
+            binding=(declared_sources, c.Infra.FacadeFamily.T),
         ):
             source = cls._render_explicit_class_facade(
-                pkg_dir, facade_path, source, family="t", binding=(project, sources)
+                pkg_dir,
+                facade_path,
+                source,
+                family=c.Infra.FacadeFamily.T,
+                binding=(project, sources),
             )
             return cls._generated_facade(
                 pkg_dir,
                 source,
-                family="t",
+                family=c.Infra.FacadeFamily.T,
                 contents=sources,
                 project=project,
             )
-        _, namespace = cls._facade_classes(
-            ast.parse(source, filename=str(facade_path)), facade_path
-        )
+        tree = ast.parse(source, filename=str(facade_path))
+        facade, namespace = cls._facade_classes(tree, facade_path)
         if any(
             cls._base_name(base) == item.qualified_base
             for base in namespace.bases
@@ -493,13 +505,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             return cls._generated_facade(
                 pkg_dir,
                 cls._render_declared_facade(
-                    pkg_dir, facade_path, source, family="t", binding=(project, sources)
+                    pkg_dir,
+                    facade_path,
+                    source,
+                    family=c.Infra.FacadeFamily.T,
+                    binding=(project, sources),
                 ),
-                family="t",
+                family=c.Infra.FacadeFamily.T,
                 contents=sources,
                 project=project,
             )
-        source = sources[facade_path]
         exports = tuple(
             node
             for node in tree.body
@@ -606,7 +621,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             f"{ast.get_source_segment(source, exports[0])}\n"
         )
         return cls._generated_facade(
-            pkg_dir, rendered, family="t", contents=sources, project=project
+            pkg_dir,
+            rendered,
+            family=c.Infra.FacadeFamily.T,
+            contents=sources,
+            project=project,
         )
 
     @staticmethod
@@ -710,7 +729,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         cls,
         pkg_dir: Path,
         *,
-        family: Literal["c", "u", "p", "m"] = "u",
+        family: Literal[
+            "c",
+            "u",
+            "p",
+            "m",
+            c.Infra.FacadeFamily.C,
+            c.Infra.FacadeFamily.U,
+            c.Infra.FacadeFamily.P,
+            c.Infra.FacadeFamily.M,
+        ] = "u",
         project: p.Infra.RopeProject | None = None,
         sources: t.MappingKV[Path, str] | None = None,
     ) -> str | None:
@@ -744,12 +772,15 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 return cls.render_utility_facade(
                     pkg_dir, family=family, project=captured, sources=contents
                 )
+        selected_family = c.Infra.FacadeFamily(family)
         facade_path = cls.facade_module_path(
             pkg_dir, family, project=project, sources=sources
         )
         owners_dir = (
             pkg_dir
-            / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
+            / FlextInfraUtilitiesCodegenNamespace.facade_families()[
+                selected_family
+            ].directory
         )
         # Why: only owners-without-facade is incomplete -- the owners would have
         # no public surface at all. A facade with no owners directory is the
@@ -779,7 +810,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if path.is_relative_to(pkg_dir)
                 and path.suffix == c.Infra.EXT_PYTHON
                 and (
-                    family == "p"
+                    selected_family is c.Infra.FacadeFamily.P
                     or path.parent in {pkg_dir, owners_dir}
                     or path.name == c.Infra.INIT_PY
                 )
@@ -795,25 +826,41 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             package_name, owners_dir, source, declarations
         )
         explicit_parts = cls._explicit_class_facade(
-            project, facade_path, source, declarations, sources=declared_sources
+            project,
+            facade_path,
+            source,
+            declarations,
+            binding=(declared_sources, selected_family),
         )
         source = cls._render_explicit_class_facade(
-            pkg_dir, facade_path, source, family=family, binding=(project, sources)
+            pkg_dir,
+            facade_path,
+            source,
+            family=selected_family,
+            binding=(project, sources),
         )
         if explicit_parts:
             return cls._generated_facade(
-                pkg_dir, source, family=family, contents=sources, project=project
+                pkg_dir,
+                source,
+                family=selected_family,
+                contents=sources,
+                project=project,
             )
-        if family != "p":
+        if selected_family is not c.Infra.FacadeFamily.P:
             rendered = cls._render_declared_facade(
-                pkg_dir, facade_path, source, family=family, binding=(project, sources)
+                pkg_dir,
+                facade_path,
+                source,
+                family=selected_family,
+                binding=(project, sources),
             )
         else:
             rendered = cls._render_protocol_facade(
                 pkg_dir, facade_path, source, binding=(project, sources)
             )
         return cls._generated_facade(
-            pkg_dir, rendered, family=family, contents=sources, project=project
+            pkg_dir, rendered, family=selected_family, contents=sources, project=project
         )
 
     @classmethod
@@ -823,7 +870,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         facade_path: Path,
         source: str,
         *,
-        family: Literal["c", "t", "u", "p", "m"],
+        family: c.Infra.FacadeFamily,
         binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
     ) -> str:
         """Preserve authored class publications without inheriting their owners.
@@ -852,40 +899,40 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)), facade_path
         )
-        if not cls._explicit_class_facade(
-            project, facade_path, source, declarations, sources=sources
-        ):
-            return cls._inherit_upstream_namespace(project, facade_path, source)
-        module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+        cls._explicit_class_facade(
+            project, facade_path, source, declarations, binding=(sources, family)
+        )
+        scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
             project,
             source,
             resource=project.get_resource(
                 facade_path.relative_to(Path(project.root.real_path)).as_posix()
             ),
-        )
-        scope = module.get_scope()
+        ).get_scope()
         if namespace is not facade:
             scope = next(
                 child
                 for child in scope.get_scopes()
                 if child.get_start() == facade.lineno
             )
-        owners: list[p.Infra.RopePyObject] = []
-        for item in declarations:
-            owner: p.Infra.RopePyObject = (
-                FlextInfraUtilitiesRopeRuntime.require_semantic_module(
-                    project.get_pymodule(
-                        project.get_resource(
-                            sources[item.target][0]
-                            .relative_to(Path(project.root.real_path))
-                            .as_posix()
-                        )
-                    )
-                )
+        published = tuple(
+            resolved.get_object()
+            for alias in (
+                cls._namespace_class_alias(member) for member in namespace.body
             )
-            for attribute in item.attributes:
-                owner = owner.get_attributes()[attribute].get_object()
-            owners.append(owner)
+            if alias is not None
+            for resolved in (
+                FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, alias[1]),
+            )
+            if resolved is not None
+        )
+        owners = tuple(
+            owner
+            for owner in cls._declared_facade_owners(project, declarations, sources)
+            if any(owner is value for value in published)
+        )
+        if not owners:
+            return cls._inherit_upstream_namespace(project, facade_path, source)
         retained: list[str] = []
         for base in namespace.bases:
             resolved = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
@@ -942,7 +989,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         pkg_dir: Path,
         source: str,
         *,
-        family: Literal["c", "t", "u", "p", "m"],
+        family: c.Infra.FacadeFamily,
         contents: t.MappingKV[Path, str],
         project: p.Infra.RopeProject,
     ) -> str:
@@ -1631,7 +1678,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         facade_path: Path,
         source: str,
         *,
-        family: Literal["c", "t", "p", "m", "u"],
+        family: c.Infra.FacadeFamily,
         binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
     ) -> str:
         """Compose explicitly exported declarations without reverse family imports.
@@ -1657,7 +1704,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         )
         sources[f"{package_name}.{facade_path.stem}"] = (facade_path, source)
         if cls._explicit_class_facade(
-            project, facade_path, source, declarations, sources=sources
+            project, facade_path, source, declarations, binding=(sources, family)
         ):
             return cls._render_explicit_class_facade(
                 pkg_dir, facade_path, source, family=family, binding=binding
@@ -1666,6 +1713,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
+        if family is c.Infra.FacadeFamily.M:
+            declarations = (
+                cls._model_component_declarations(
+                    project, facade_path, source, declarations, sources=sources
+                )
+                or declarations
+            )
         independent = cls._independent_publishers(
             pkg_dir, owners_dir, sources, package_name=package_name
         )
@@ -1687,7 +1741,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             )
         else:
             context = CodemodContext(full_package_name=package_name)
-        declarations, declared_names, bound_namespace = cls._declared_facade_contract(
+        contract = cls._declared_facade_contract(
             independent,
             declarations,
             facade,
@@ -1695,21 +1749,21 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             facade_target=f"{package_name}.{facade_path.stem}",
         )
         ordered = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
-            project, sources, declarations
+            project, sources, contract[0]
         )
         existing = tuple(cls._base_name(base) for base in namespace.bases)
         if existing != ordered or retired:
-            if bound_namespace:
-                cls._declared_facade_stale_imports(context, source, declared_names)
+            if contract[2]:
+                cls._declared_facade_stale_imports(context, source, contract[1])
             cls._declared_facade_declared_imports(
                 context,
-                declarations,
-                declared_names,
+                contract[0],
+                contract[1],
                 existing,
                 source,
             )
             source = cls._declared_facade_render(context, source, namespace, ordered)
-        if family == "m":
+        if family is c.Infra.FacadeFamily.M:
             source = cls._remove_model_namespace_class_shadows(
                 project, source, facade_path
             )
@@ -1723,7 +1777,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         source: str,
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
         *,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        binding: tuple[t.MappingKV[str, t.Pair[Path, str]], c.Infra.FacadeFamily],
     ) -> bool:
         """Recognize definitive authored class-owner publications by identity.
 
@@ -1734,6 +1788,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ValueError: If an explicit class namespace contains ambiguous bindings.
 
         """
+        sources, family = binding
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)), facade_path
         )
@@ -1818,7 +1873,97 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     f"Non-class binding in explicit facade namespace: {facade_path}"
                 )
                 raise ValueError(message)
-        return True
+        return (
+            family is not c.Infra.FacadeFamily.M
+            or not cls._model_component_declarations(
+                project, facade_path, source, declarations, sources=sources
+            )
+        )
+
+    @classmethod
+    def _model_component_declarations(
+        cls,
+        project: p.Infra.RopeProject,
+        facade_path: Path,
+        source: str,
+        declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+    ) -> list[m.Infra.SourceClassReference]:
+        """Elect plain namespace providers independently of whole model publications.
+
+        Returns:
+            Declared providers proven by nested class identity or existing bases.
+
+        """
+        facade, namespace = cls._facade_classes(
+            ast.parse(source, filename=str(facade_path)), facade_path
+        )
+        scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project,
+            source,
+            resource=project.get_resource(
+                facade_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+        ).get_scope()
+        if namespace is not facade:
+            scope = next(
+                child
+                for child in scope.get_scopes()
+                if child.get_start() == facade.lineno
+            )
+        aliases = tuple(
+            (alias[0], resolved.get_object())
+            for member in namespace.body
+            if (alias := cls._namespace_class_alias(member)) is not None
+            and (
+                resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                    scope, alias[1]
+                )
+            )
+            is not None
+        )
+        model = FlextInfraUtilitiesDeclarationPayload.identity_name(
+            project, "pydantic.BaseModel"
+        ).get_object()
+        components: list[m.Infra.SourceClassReference] = []
+        for declaration, owner in zip(
+            declarations,
+            cls._declared_facade_owners(project, declarations, sources),
+            strict=True,
+        ):
+            if (
+                not FlextInfraUtilitiesRopeRuntime.py_class(owner)
+                or any(owner is value for _, value in aliases)
+                or any(
+                    ancestor is model
+                    for ancestor in (
+                        FlextInfraUtilitiesDeclarationPayload.class_ancestry(owner)
+                    )
+                )
+            ):
+                continue
+            nested = tuple(
+                child.pyobject
+                for child in owner.get_scope().get_scopes()
+                if FlextInfraUtilitiesRopeRuntime.abstract_class(child.pyobject)
+            )
+            if any(
+                resolved is not None and resolved.get_object() is owner
+                for base in namespace.bases
+                for resolved in (
+                    FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                        scope, base.value if isinstance(base, ast.Subscript) else base
+                    ),
+                )
+            ) or any(
+                name in owner.get_attributes()
+                and owner.get_attributes()[name].get_object() is value
+                and any(value is child for child in nested)
+                for name, value in aliases
+            ):
+                components.append(declaration)
+        return components
 
     @staticmethod
     def _declared_facade_owners(
@@ -2377,6 +2522,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ]:
         """Capture source identities and explicitly exported family declarations.
 
+        Package election uses the same authenticated view as its declarations,
+        including proposed directories and project-boundary metadata.
+
         Returns:
             Source snapshots, declared class references and qualified package.
 
@@ -2385,7 +2533,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         """
         package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
-            pkg_dir, project_root=Path(project.root.real_path)
+            pkg_dir,
+            project_root=Path(project.root.real_path),
+            source_project=project,
         )
         if not package_name:
             message = f"Facade package has no elected import namespace: {pkg_dir}"

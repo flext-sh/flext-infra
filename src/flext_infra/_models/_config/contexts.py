@@ -23,7 +23,6 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsRepository,
     FlextInfraConfigModelsScaffold,
 )
-from flext_infra._models.settings import FlextInfraSettingsModels
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
@@ -38,10 +37,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
                 description="Release phase commands elected by repository capability"
             ),
         ] = ()
-        editable_supplier_environment: str = m.Field(
-            default=FlextInfraSettingsModels.InfraSettings.EDITABLE_SUPPLIER_ENVIRONMENT,
-            description="Typed settings environment alias, never a host path",
-        )
 
         infra_cli: Annotated[
             t.NonEmptyStr,
@@ -75,7 +70,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
 
     class MakefileRenderSpec(MakeCommandContext):
-        """Field-only render input for an existing repository Makefile."""
+        """Typed render input for an existing repository Makefile."""
 
         bootstrap_report_shell_literal: Annotated[
             t.NonEmptyStr,

@@ -774,10 +774,10 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         *,
         include_private: bool = False,
     ) -> t.StrMapping:
-        """Return {method_name: kind} for methods of a class.
+        """Return the native callable role for each selected class method.
 
         Returns:
-            {method_name: kind} for methods of a class.
+            Method names mapped to the SDK's function classification.
 
         """
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
@@ -794,13 +794,10 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         include_private: bool,
         pymodule: t.Infra.RopeSemanticModule,
     ) -> t.StrMapping:
-        """Return method symbols for a class from one resolved Rope module.
+        """Read method roles from native functions in one resolved Rope module.
 
         Returns:
-            Method symbols for a class from one resolved Rope module.
-
-        Raises:
-            TypeError: A native function has no concrete source scope kind.
+            Method names and callable roles, preserving decorator semantics.
 
         """
         result: t.MutableStrMapping = {}
@@ -816,11 +813,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             child = pyname.get_object()
             if not FlextInfraUtilitiesRopeRuntime.py_function(child):
                 continue
-            kind = child.get_scope().get_kind()
-            if kind is None:
-                message = f"native function has no scope kind: {name}"
-                raise TypeError(message)
-            result[name] = kind
+            result[name] = child.get_kind()
         return result
 
     @staticmethod

@@ -181,14 +181,25 @@ class TestsFlextInfraProjectGitignorePatterns:
         root = self._external_project(tmp_path / "project")
         tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         relative = Path("runtime-binding.json")
-        artifact = m.Infra.ManagedFileSpec(
-            path=relative,
-            owner=c.Infra.CODEGEN_OWNER_VSCODE,
-            policy="merge",
-            tracking="runtime-local",
+        artifact = m.Infra.TemplateDeclarationSpec(
+            profiles=(c.Infra.MakeProfile.STANDALONE,),
+            ownership=m.Infra.ManagedFileOwnership(
+                owner=c.Infra.CODEGEN_OWNER_VSCODE,
+                policy="merge",
+                tracking="runtime-local",
+            ),
+        )
+        templates = m.Infra.TemplatesSpec.model_validate(
+            {
+                "root": config.Infra.codegen.templates.root,
+                "entries": {
+                    **config.Infra.codegen.templates.catalog,
+                    relative.as_posix(): artifact,
+                },
+            },
         )
         codegen = config.Infra.codegen.model_copy(
-            update={"managed_files": (artifact,)},
+            update={"templates": templates},
         )
         external = (
             "# BEGIN external projection\n"

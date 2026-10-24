@@ -103,8 +103,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         cls,
         source: str,
         render_inputs: m.Infra.CodegenRenderInputs,
-        *,
-        member_declarations: t.VariadicTuple[m.Cli.AtomicFileState] | None = None,
     ) -> p.Result[str]:
         """Conform one pyproject source under the plan's render inputs.
 
@@ -155,8 +153,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
             options=u.Infra.PyprojectConformOptions(
                 flext_line=flext_line.value,
-                repository_root=target.root,
-                member_declarations=member_declarations,
             ),
         )
 

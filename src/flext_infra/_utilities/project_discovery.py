@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config, m, r, settings, t
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIterationDirectory,
@@ -472,7 +472,13 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
-    def root_namespace(cls, project_root: Path, name: str) -> bool:
+    def root_namespace(
+        cls,
+        project_root: Path,
+        name: str,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> bool:
         """Return whether a direct child folder of a project root is a namespace.
 
         Namespaces are detected, never declared: ``src`` holds the public
@@ -489,17 +495,35 @@ class FlextInfraUtilitiesProjectDiscovery(
         return name == c.Infra.DEFAULT_SRC_DIR or (
             name.isidentifier()
             and name not in cls.excluded_parts()
-            and folder.is_dir()
-            and not (folder / c.PYPROJECT_FILENAME).is_file()
+            and (
+                folder.is_dir()
+                if source_project is None
+                else source_project.source_query(folder, "isdir")
+            )
+            and not (
+                (folder / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    folder / c.PYPROJECT_FILENAME, "isfile"
+                )
+            )
         )
 
     @classmethod
-    def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
+    def package_name_for_dir(
+        cls,
+        package_dir: Path,
+        *,
+        project_root: Path,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Return the import package a directory declares inside a project.
 
         ``src`` contributes its children with its own segment stripped; an
         internal namespace keeps its name. An empty string when the directory
         sits outside the project or under no detected namespace.
+        A capture horizon may contain several declared projects; the nearest
+        original project owns the namespace without changing source authority.
 
         Returns:
             The import package a directory declares inside a project.
@@ -508,7 +532,22 @@ class FlextInfraUtilitiesProjectDiscovery(
         if not package_dir.is_relative_to(project_root):
             return ""
         parts = package_dir.relative_to(project_root).parts
-        if not parts or not cls.root_namespace(project_root, parts[0]):
+        if not parts or (
+            parts[0] != c.Infra.DEFAULT_SRC_DIR and parts[0] in cls.excluded_parts()
+        ):
+            return ""
+        if not cls.root_namespace(
+            project_root, parts[0], source_project=source_project
+        ):
+            owner = cls.nearest_project_root(
+                project_root, package_dir, source_project=source_project
+            )
+            if owner is not None:
+                project_root = owner
+                parts = package_dir.relative_to(project_root).parts
+        if not parts or not cls.root_namespace(
+            project_root, parts[0], source_project=source_project
+        ):
             return ""
         return ".".join(parts[1:] if parts[0] == c.Infra.DEFAULT_SRC_DIR else parts)
 
@@ -544,15 +583,6 @@ class FlextInfraUtilitiesProjectDiscovery(
             if owned_path_admission
             else frozenset[str]()
         )
-        retired_roots = (
-            frozenset[Path](
-                project_dir / artifact.name
-                for artifact in config.Infra.codegen.artifacts
-                if artifact.retired_typing_root
-            )
-            if owned_path_admission
-            else frozenset[Path]()
-        )
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
         )
@@ -570,7 +600,6 @@ class FlextInfraUtilitiesProjectDiscovery(
                     skip_dirs - owned_artifacts,
                     excluded_paths=excluded_paths,
                     source_project=source_project,
-                    retired_roots=retired_roots,
                     owned_path_admission=owned_path_admission,
                 )
                 if (owned_path_admission and path.suffix == ".pyi")
@@ -579,9 +608,11 @@ class FlextInfraUtilitiesProjectDiscovery(
                         part.startswith(".") or part in skip_dirs
                         for part in path.relative_to(project_dir).parts
                     )
-                    and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                        project_dir,
-                        path,
+                    and not (
+                        FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                            project_dir,
+                            path,
+                        )
                     )
                 )
             })
@@ -594,7 +625,6 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         excluded_paths: frozenset[Path] = frozenset(),
         source_project: p.Infra.RopeProject | None = None,
-        retired_roots: frozenset[Path] = frozenset(),
         owned_path_admission: bool = False,
     ) -> Iterator[Path]:
         """Yield sources while pruning hidden, ignored, and nested repository trees.
@@ -608,6 +638,15 @@ class FlextInfraUtilitiesProjectDiscovery(
             """Propagate the walk's original filesystem failure."""
             raise error
 
+        retired_roots = (
+            frozenset[Path](
+                directory / artifact.name
+                for artifact in config.Infra.codegen.artifacts
+                if artifact.retired_typing_root
+            )
+            if owned_path_admission
+            else frozenset[Path]()
+        )
         owned_roots = (
             frozenset[Path](directory / root for root in config.Infra.source_scan.roots)
             | retired_roots
@@ -662,26 +701,39 @@ class FlextInfraUtilitiesProjectDiscovery(
             ]
             for file_name in file_names:
                 stub_path = owned_path_admission and Path(file_name).suffix == ".pyi"
+                if not stub_path and (
+                    file_name.startswith(".") or file_name in skip_dirs
+                ):
+                    continue
                 if (
-                    (
-                        stub_path
-                        or (
-                            not file_name.startswith(".") and file_name not in skip_dirs
-                        )
-                    )
-                    and parent / file_name not in excluded_paths
+                    parent / file_name not in excluded_paths
                     and Path(file_name).suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-                    and (
-                        (
-                            (parent / file_name).is_file()
-                            and not (parent / file_name).is_symlink()
-                        )
-                        or (stub_path and (parent / file_name).is_symlink())
-                        if source_project is None
-                        else source_project.source_query(parent / file_name, "isfile")
+                    and FlextInfraUtilitiesProjectDiscovery._source_file_admitted(
+                        parent / file_name,
+                        source_project,
+                        owned_stub=stub_path,
                     )
                 ):
                     yield parent / file_name
+
+    @staticmethod
+    def _source_file_admitted(
+        path: Path,
+        source_project: p.Infra.RopeProject | None,
+        *,
+        owned_stub: bool,
+    ) -> bool:
+        """Preserve physical hazards for owned-stub rejection, not source execution.
+
+        Returns:
+            The original source membership or explicit retirement hazard witness.
+
+        """
+        if source_project is not None:
+            return source_project.source_query(path, "isfile")
+        return (path.is_file() and not path.is_symlink()) or (
+            owned_stub and path.is_symlink()
+        )
 
     @staticmethod
     def _python_file_belongs_to_project(
@@ -864,14 +916,6 @@ class FlextInfraUtilitiesProjectDiscovery(
         git_root = identity.value.repository_root.resolve()
         submitted = project_root.expanduser().resolve()
         project = cls.nearest_project_root(git_root, submitted) or git_root
-        inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(project)
-        if inputs.failure:
-            return r[Path].from_failure(inputs)
-        policy = inputs.value.spec.make.uv_resolution
-        if (
-            settings.env_lookup(policy.hosted_variable) or ""
-        ).strip() == policy.hosted_value:
-            return r[Path].ok(project)
         return cls._local_runtime_root(project, git_root)
 
     @classmethod
@@ -903,9 +947,11 @@ class FlextInfraUtilitiesProjectDiscovery(
         scope = cls._native_resolution_scope(project_root, git_root)
         if scope.failure:
             return r[Path].from_failure(scope)
-        if scope.value != project_root:
-            return cls._native_resolution_owner(project_root, scope.value)
-        return r[Path].ok(project_root)
+        return (
+            cls._native_resolution_owner(project_root, scope.value)
+            if scope.value != project_root
+            else r[Path].ok(project_root)
+        )
 
     @classmethod
     def _native_resolution_scope(
@@ -986,6 +1032,10 @@ class FlextInfraUtilitiesProjectDiscovery(
             (str(binary.value), "workspace", "dir", "--project", str(project_root)),
             cwd=project_root,
             timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(
+                env={"MISE_AUTO_INSTALL": "0"},
+                remove_env_keys=config.Infra.codegen.make.native_environment_unset,
+            ),
         )
         if discovered.failure:
             return result_type.from_failure(discovered)

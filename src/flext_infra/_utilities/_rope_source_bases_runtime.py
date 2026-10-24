@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import importlib.util
-import sys
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -273,8 +272,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             )
 
         def _index_modules(self) -> None:
-            """Index every captured module and its declared namespaces."""
-            sys.setrecursionlimit(max(sys.getrecursionlimit(), 4096))
+            """Index captured modules without changing interpreter resource policy."""
             self._modules = {
                 module: self._inventory(module, captured)
                 for module, captured in self._sources.items()

@@ -58,8 +58,7 @@ class TestsFlextInfraSemanticRenameAtomicity:
             root, planned, publish=True
         )
 
-        tm.fail(published)
-        tm.that(str(published.error), contains=f"atomic source changed: {consumer}")
+        tm.fail(published, has=str(consumer))
         tm.ok(source.is_file())
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq="VALUE = 1\n")
         tm.ok(not (facade / "module.py").exists())

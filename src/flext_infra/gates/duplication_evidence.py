@@ -10,19 +10,37 @@ import ast
 import hashlib
 import io
 import json
+import operator
 import time
 import tokenize
+from bisect import bisect_left, bisect_right
 from pathlib import Path
 
 from flext_infra import m, t, u
 
 
 class FlextInfraDuplicationEvidence:
-    """Own the source cache and provenance for exactly one scanner invocation."""
+    """Own source analysis and provenance for exactly one scanner invocation.
+
+    Python syntax uses disjoint half-open Unicode ranges. Retained definition
+    effects override excluded syntax without changing candidate span boundaries.
+    """
 
     def __init__(self) -> None:
         """Start an isolated source cache for one assessment."""
-        self._sources: t.MutableMappingKV[str, tuple[bytes, str]] = {}
+        self._sources: t.MutableMappingKV[
+            str,
+            tuple[
+                bytes,
+                str,
+                tuple[
+                    tuple[tokenize.TokenInfo, ...],
+                    frozenset[str],
+                    tuple[tuple[int, int], ...],
+                ]
+                | None,
+            ],
+        ] = {}
 
     @staticmethod
     def parse(raw: str) -> m.Infra.JscpdReport:
@@ -168,7 +186,7 @@ class FlextInfraDuplicationEvidence:
 
         """
         errors: t.MutableMappingKV[str, str] = {}
-        for name, (data, _) in self._sources.items():
+        for name, (data, _, _) in self._sources.items():
             try:
                 current = Path(name).read_bytes()
             except OSError as exc:
@@ -300,7 +318,7 @@ class FlextInfraDuplicationEvidence:
         removed: set[str] = set()
         uncertainty = "Data role and independent oracle consumption not proven"
         if format_name == "python":
-            retained, removed, uncertainty = self._python_tokens(source, side)
+            retained, removed, uncertainty = self._python_tokens(side)
         runs = self._runs(retained)
         return m.Infra.DuplicationSpanMeasure(
             source=side.name,
@@ -331,8 +349,8 @@ class FlextInfraDuplicationEvidence:
             raise ValueError(msg)
         if side.name not in self._sources:
             data = path.read_bytes()
-            self._sources[side.name] = (data, data.decode("utf-8"))
-        data, source = self._sources[side.name]
+            self._sources[side.name] = (data, data.decode("utf-8"), None)
+        data, source, _ = self._sources[side.name]
         lines = source.splitlines()
         start = (side.start_location.line, side.start_location.column)
         end = (side.end_location.line, side.end_location.column)
@@ -348,20 +366,21 @@ class FlextInfraDuplicationEvidence:
             lines[line - 1].encode()[:column].decode()
         return data, source
 
-    @classmethod
     def _python_tokens(
-        cls,
-        source: str,
+        self,
         side: m.Infra.JscpdFile,
     ) -> tuple[list[tokenize.TokenInfo], set[str], str]:
-        """Intersect lexical tokens and AST syntax, retaining definition effects.
+        """Intersect one captured Python analysis with this reported source span.
 
         Returns:
             Retained tokens, removed categories and uncertainty.
 
         """
-        tree = ast.parse(source, filename=side.name)
-        excluded, keep, removed = cls._syntax_ranges(tree, source.splitlines())
+        data, source, analysis = self._sources[side.name]
+        if analysis is None:
+            analysis = self._analyze_python(source, side.name)
+            self._sources[side.name] = (data, source, analysis)
+        tokens, removed, imports = analysis
         lines = source.splitlines()
         start = (
             side.start_location.line,
@@ -379,18 +398,49 @@ class FlextInfraDuplicationEvidence:
                 .decode()
             ),
         )
-        imports = (
-            node
+        uncertain = any(start[0] <= right and left <= end[0] for left, right in imports)
+        return (
+            list(
+                tokens[
+                    bisect_left(
+                        tokens, start, key=lambda token: token.start
+                    ) : bisect_right(tokens, end, key=lambda token: token.start)
+                ]
+            ),
+            set(removed),
+            "Import activation effects unproven" if uncertain else "",
+        )
+
+    @classmethod
+    def _analyze_python(
+        cls,
+        source: str,
+        name: str,
+    ) -> tuple[
+        tuple[tokenize.TokenInfo, ...],
+        frozenset[str],
+        tuple[tuple[int, int], ...],
+    ]:
+        """Analyze captured Python once, keeping token and import source ordering.
+
+        Excluded syntax and retained definition effects are independent range
+        unions; retained membership takes precedence over excluded membership.
+
+        Returns:
+            Structural tokens, original removal categories and import line ranges.
+
+        """
+        tree = ast.parse(source, filename=name)
+        excluded, keep, removed = cls._syntax_ranges(tree, source.splitlines())
+        excluded_ranges = cls._range_union(excluded)
+        retained_ranges = cls._range_union(keep)
+        imports = tuple(
+            (node.lineno, node.end_lineno or node.lineno)
             for node in ast.walk(tree)
             if isinstance(node, (ast.Import, ast.ImportFrom))
-        )
-        uncertain = any(
-            start[0] <= (node.end_lineno or node.lineno)
-            and node.lineno <= end[0]
             and (not isinstance(node, ast.ImportFrom) or node.module != "__future__")
-            for node in imports
         )
-        retained = [
+        retained = tuple(
             token
             for token in tokenize.generate_tokens(io.StringIO(source).readline)
             if token.type
@@ -403,17 +453,47 @@ class FlextInfraDuplicationEvidence:
                 tokenize.NL,
                 tokenize.COMMENT,
             }
-            and start <= token.start <= end
             and (
-                not any(left <= token.start < right for left, right in excluded)
-                or any(left <= token.start < right for left, right in keep)
+                not cls._inside_ranges(token.start, excluded_ranges)
+                or cls._inside_ranges(token.start, retained_ranges)
             )
-        ]
-        return (
-            retained,
-            removed,
-            "Import activation effects unproven" if uncertain else "",
         )
+        return retained, frozenset(removed), imports
+
+    @staticmethod
+    def _range_union(
+        ranges: list[tuple[tuple[int, int], tuple[int, int]]],
+    ) -> tuple[tuple[tuple[int, int], tuple[int, int]], ...]:
+        """Merge half-open source intervals without adding covered positions.
+
+        Returns:
+            Ordered disjoint intervals with the original membership.
+
+        """
+        merged: list[tuple[tuple[int, int], tuple[int, int]]] = []
+        for left, right in sorted(ranges):
+            if left >= right:
+                continue
+            if merged and left <= merged[-1][1]:
+                previous_left, previous_right = merged[-1]
+                merged[-1] = (previous_left, max(previous_right, right))
+            else:
+                merged.append((left, right))
+        return tuple(merged)
+
+    @staticmethod
+    def _inside_ranges(
+        position: tuple[int, int],
+        ranges: tuple[tuple[tuple[int, int], tuple[int, int]], ...],
+    ) -> bool:
+        """Query ordered half-open interval membership at a Unicode position.
+
+        Returns:
+            Whether the position belongs to the disjoint range union.
+
+        """
+        index = bisect_right(ranges, position, key=operator.itemgetter(0)) - 1
+        return index >= 0 and position < ranges[index][1]
 
     @classmethod
     def _syntax_ranges(

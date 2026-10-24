@@ -226,8 +226,6 @@ class FlextInfra(
             dry_run=request.dry_run,
             output_format=request.output_format,
             project_filter=request.project_filter,
-            target_module=request.target_module,
-            target_namespace=request.target_namespace,
             report_path=request.report_path,
             output_dir=request.output_dir,
             selected_projects=request.projects,

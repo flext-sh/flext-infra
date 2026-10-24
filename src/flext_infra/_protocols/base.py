@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
@@ -14,12 +14,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import c, m, t
     from flext_infra._protocols.check import FlextInfraProtocolsCheck
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
-    from flext_infra.constants import FlextInfraConstants as c
-    from flext_infra.models import FlextInfraModels as m
-    from flext_infra.typings import FlextInfraTypes as t
 
 
 @runtime_checkable
@@ -322,6 +320,13 @@ class FlextInfraProtocolsBase(Protocol):
         """Native distributed controller's mutable stop request."""
 
         shouldstop: bool | str
+
+    @runtime_checkable
+    class PytestWorkerConfig(Protocol):
+        """Native xdist config's output channel for plugin-owned JSON payloads."""
+
+        @property
+        def workeroutput(self) -> MutableMapping[str, object]: ...
 
     @runtime_checkable
     class SupervisedProcess(Protocol):
@@ -1094,8 +1099,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def delegate(self) -> str:
-            """Canonical template rendering delegate."""
+        def source(self) -> Path | None:
+            """Catalog template source, absent for a specialized owner."""
             ...
 
     @runtime_checkable

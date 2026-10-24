@@ -204,6 +204,26 @@ class TestsFlextInfraUtilitiesGitMixin:
         )
 
     @staticmethod
+    def initialize_unborn_git_repo(
+        repo_root: Path,
+        *,
+        origin_url: str,
+        branch: str,
+    ) -> None:
+        """Prepare a fresh Git target without staging, commits or fabricated refs."""
+        tm.that(
+            (repo_root / c.Infra.GIT_DIR).exists()
+            or (repo_root / c.Infra.GIT_DIR).is_symlink(),
+            eq=False,
+        )
+        bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
+        bootstrap(repo_root, ("init", "-b", branch))
+        TestsFlextInfraUtilitiesGitMixin.configure_git_identity(repo_root)
+        bootstrap(repo_root, ("remote", "add", c.Infra.GIT_ORIGIN, origin_url))
+        identity = tm.ok(u.Infra.exact_worktree_root(repo_root))
+        tm.that(identity.head_oid is None, eq=True)
+
+    @staticmethod
     def initialize_git_repo(repo_root: Path, origin_url: str | None = None) -> None:
         """Initialize and commit a deterministic Git fixture.
 

@@ -11,7 +11,9 @@ import pstats
 import signal
 import sys
 from collections.abc import Callable
+from math import isfinite
 from pathlib import Path
+from time import monotonic
 
 import pytest
 
@@ -688,10 +690,9 @@ class TestsFlextInfraPytestProfile:
         """The fresh entry profiles one declared file on the persistent database."""
         cache = config.Infra.codegen.make.testmon_cache
         target = Path(cache.target_directory) / "test_runtime.py"
-        unselected = (
+        (
             cached_runner_project / cache.target_directory / "test_unselected.py"
-        )
-        unselected.write_text(
+        ).write_text(
             "def test_unselected():\n    raise RuntimeError('unselected file ran')\n",
             encoding="utf-8",
         )
@@ -704,6 +705,7 @@ class TestsFlextInfraPytestProfile:
             / "profiles"
             / config.Infra.tooling.tools.pytest.profile_suite_filename
         )
+        started_at = monotonic()
         tm.that(
             u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
         )
@@ -715,7 +717,12 @@ class TestsFlextInfraPytestProfile:
             contexts[0].read_text(encoding="utf-8"),
         )
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.ok(context.deadline_monotonic is not None)
+        tm.ok(isfinite(context.deadline_monotonic))
+        tm.that(context.deadline_monotonic, gt=started_at)
+        tm.that(
+            context.deadline_monotonic,
+            lte=monotonic() + config.Infra.tooling.tools.pytest.run_timeout_seconds,
+        )
         command = (contexts[0].parent / "command.txt").read_text(encoding="utf-8")
         tm.that(command, has=str(target))
         tm.that(command, lacks="test_unselected.py")
@@ -1000,8 +1007,8 @@ class TestsFlextInfraPytestProfile:
         # The profiled incremental operation is bounded, so its receipt names
         # a deadline.
         deadline = receipt.deadline_monotonic
-        if deadline is None:
-            pytest.fail("bounded selection receipt did not record its deadline")
+        tm.ok(isfinite(deadline))
+        tm.that(deadline, gt=0)
         receipt_path.write_text(
             receipt.model_copy(
                 update={"deadline_monotonic": deadline + 1},

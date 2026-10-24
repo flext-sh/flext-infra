@@ -106,11 +106,27 @@ class FlextInfraCProfileReport(s[bool]):
         ):
             msg = "profile run receipt does not match the recorded run context"
             raise ValueError(msg)
+        suite_outcome = directory / "suite-outcome.json"
+        full_suite = False
+        if (
+            parent.testmon_lease_acquired
+            and parent.execution_mode == c.Infra.PytestExecutionMode.FULL
+            and (suite_outcome.exists() or suite_outcome.is_symlink())
+        ):
+            capture = m.Infra.GateCaptureStart.model_validate_json(
+                (directory / c.Infra.GATE_CAPTURE_START_FILENAME).read_text(
+                    encoding="utf-8",
+                ),
+            )
+            intent = capture.intent.test_selection
+            if intent is None or intent.execution_mode != parent.execution_mode:
+                msg = "profile suite intent does not match its run context"
+                raise ValueError(msg)
+            full_suite = intent.target_file is None
         policy = config.Infra.tooling.tools.pytest
         suite = directory / policy.profile_suite_filename
         suite_required = True
-        suite_outcome = directory / "suite-outcome.json"
-        if suite_outcome.is_file():
+        if suite_outcome.exists() or suite_outcome.is_symlink():
             outcome = m.Cli.ProcessOutcome.model_validate_json(
                 suite_outcome.read_text(encoding="utf-8"),
             )
@@ -143,10 +159,14 @@ class FlextInfraCProfileReport(s[bool]):
             profiles = tuple(
                 dict.fromkeys((
                     self.profile,
-                    plan.manifest_path.with_suffix(".pstats"),
+                    *(
+                        ()
+                        if full_suite
+                        else (plan.manifest_path.with_suffix(".pstats"),)
+                    ),
                     *(
                         (directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,)
-                        if plan.inventory_collected
+                        if plan.inventory_collected and not full_suite
                         else ()
                     ),
                     *(
@@ -154,6 +174,22 @@ class FlextInfraCProfileReport(s[bool]):
                         if (plan.node_ids and suite_required) or suite.is_file()
                         else ()
                     ),
+                    *sorted(
+                        (directory / policy.profile_process_directory).glob("*.pstats")
+                    ),
+                ))
+            )
+        elif full_suite:
+            outcome = m.Cli.ProcessOutcome.model_validate_json(
+                suite_outcome.read_text(encoding="utf-8"),
+            )
+            if u.Cli.process_succeeded(outcome):
+                msg = "profile selection plan is absent after a successful suite"
+                raise ValueError(msg)
+            profiles = tuple(
+                dict.fromkeys((
+                    self.profile,
+                    *((suite,) if suite_required or suite.is_file() else ()),
                     *sorted(
                         (directory / policy.profile_process_directory).glob("*.pstats")
                     ),

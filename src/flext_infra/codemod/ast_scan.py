@@ -42,15 +42,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         """
         # The engines currently own full-corpus inventories and count receipts.
-        # Refuse narrower requests before either engine can scan or publish.
-        if any(
-            selector is not None
-            for selector in (
-                self.target_module,
-                self.target_namespace,
-                self.project_filter,
-            )
-        ):
+        # Refuse project filters before either engine can scan or publish.
+        if self.project_filter is not None:
             return r[t.Cli.ResultValue].fail(
                 "ast: selected scope is not supported by both mechanical "
                 "inventories and their count receipts; no scan or rewrite executed",

@@ -11,8 +11,11 @@ import tomllib
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraServiceBase, c, p, r, t
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceLockCompleteness,
+)
 
 
 class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
@@ -28,6 +31,53 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
     _TABLE_HEADER: ClassVar[re.Pattern[str]] = re.compile(
         r"(?m)^[ \t]*(?:\[([^\][]+)\]|\[\[([^\][]+)\]\])[ \t]*(?:#.*)?$",
     )
+
+    @staticmethod
+    def upgrade_lock(request: p.Infra.WorkspaceRequest) -> p.Result[bool]:
+        """Upgrade the elected native UV lock without generation or installation.
+
+        Returns:
+            Native upgrade and freshness verification, or the first failure.
+
+        """
+        selected = FlextInfraWorkspaceDetector.resolution_context(
+            request.repository_root
+        )
+        if selected.failure:
+            return r[bool].from_failure(selected)
+        context = selected.value
+        binary = u.Infra.managed_mise_binary(c.Infra.UV, context.runtime_root)
+        if binary.failure:
+            return r[bool].from_failure(binary)
+        options = m.Cli.ProcessOptions(
+            env={"MISE_AUTO_INSTALL": "0"},
+            remove_env_keys=config.Infra.codegen.make.native_environment_unset,
+        )
+        locked = u.Cli.run_live(
+            (
+                str(binary.value),
+                "lock",
+                "--upgrade",
+                "--refresh",
+                "--project",
+                str(context.runtime_root),
+                "--python",
+                str(
+                    u.Infra.runtime_python(
+                        context.project_root, runtime_root=context.runtime_root
+                    )
+                ),
+                "--no-python-downloads",
+            ),
+            cwd=context.runtime_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+            options=options,
+        )
+        if locked.failure:
+            return r[bool].from_failure(locked)
+        return FlextInfraWorkspaceLockCompleteness.verify_lock(
+            context.runtime_root
+        ).map(lambda _checked: True)
 
     @classmethod
     def _duplicated_sections(cls, text: str) -> t.StrSequence:

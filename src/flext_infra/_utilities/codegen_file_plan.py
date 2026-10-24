@@ -370,6 +370,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
         Escaped byte lines preserve CRLF, missing final newlines, and non-UTF-8
         content. Only equal bytes with different modes are mode-only drift.
+        The observed side is the captured physical file, independent of Git state.
 
         Returns:
             The resulting ``str``.
@@ -394,14 +395,14 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 repr(line)
                 for line in (plan.desired_content or b"").splitlines(keepends=True)
             )
-            committed_mode = (
+            observed_mode = (
                 oct(plan.before.mode) if plan.before.mode is not None else "absent"
             )
             rendered_mode = (
                 oct(plan.desired_mode) if plan.desired_mode is not None else "absent"
             )
             header = (
-                f"--- {plan.path} (committed mode={committed_mode})"
+                f"--- {plan.path} (observed mode={observed_mode})"
                 f"\n+++ {plan.path} (rendered mode={rendered_mode})"
             )
             diff = tuple(
@@ -419,13 +420,13 @@ class FlextInfraUtilitiesCodegenFilePlan:
             if old_bytes == new_bytes:
                 parts.append(
                     f"{header}\n(content equal: mode-only drift "
-                    f"observed={committed_mode} desired={rendered_mode})",
+                    f"observed={observed_mode} desired={rendered_mode})",
                 )
                 continue
             # Lines are equal but bytes are not: name the exact tail difference
             # (line endings / trailing newline) instead of a false mode claim.
             parts.append(
-                f"{header}\n(lines equal, bytes differ: committed {len(old_bytes)}B "
+                f"{header}\n(lines equal, bytes differ: observed {len(old_bytes)}B "
                 f"tail={old_bytes[-24:]!r}; rendered {len(new_bytes)}B "
                 f"tail={new_bytes[-24:]!r})",
             )

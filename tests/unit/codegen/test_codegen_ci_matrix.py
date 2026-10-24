@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, c, config, infra, m
+from flext_infra import FlextInfraGitService, config, infra, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
 from tests import c, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -50,43 +50,60 @@ class TestsFlextInfraCodegenCiMatrix:
             The resulting ``Path``.
 
         """
-        # The executor owns its provisioned tools before the destination exists.
-        service = FlextInfraCodegenProjectNew(
-            repository_root=Path.cwd(),
-            flext_source=u.Tests.flext_source(),
-            name="flext-demo",
-            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
-            output_root=root,
-            repository_url="https://github.com/flext-sh/flext-demo.git",
-            repository_branch="0.12.0-dev",
-            flext_repository_url=u.Tests.repository_ref(config.Infra.name).url,
-            flext_repository_ref=u.Tests.provider_branch(),
-            provider="flext-sh",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            year=2026,
-            apply_changes=True,
+        root.mkdir(parents=True, exist_ok=True)
+        repository = u.Tests.repository_ref(
+            "flext-demo", role=c.Infra.MakeProfile.STANDALONE
         )
-        result = infra.codegen_new(service)
-        tm.ok(result)
+        if not (root / c.Infra.GIT_DIR).exists():
+            integration = u.Tests.integration()
+            u.Tests.initialize_unborn_git_repo(
+                root,
+                origin_url=repository.url,
+                branch=integration.branch,
+            )
+            u.Tests.copy_tracked_mise_seeds(root)
+            u.Tests.write_project_beads_config(root, repository.name)
+            declaration = m.Infra.RepositoryDeltaSpec(
+                project=u.Tests.project_spec(repository.name).model_copy(
+                    update={"upstream": "flext_cli"}
+                ),
+                integration=integration,
+                kind=repository.kind,
+            )
+            tm.ok(
+                u.Cli.yaml_dump(
+                    root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "repository": declaration.model_dump(
+                                    mode="json", exclude_unset=True
+                                ),
+                            },
+                        },
+                    },
+                )
+            )
+            service = FlextInfraCodegenMakeBootstrap(
+                repository_root=root,
+                kind=repository.kind,
+                apply_changes=True,
+            )
+            tm.ok(service.execute(), eq=True)
+        else:
+            tm.ok(
+                FlextInfraCodegenConform.execute_request(
+                    u.Tests.conform_request(
+                        root,
+                        what=c.Infra.CodegenConformSurface.ALL,
+                        scope=c.Infra.CodegenConformScope.SELF,
+                        mode=c.Infra.CodegenConformMode.APPLY,
+                    ),
+                    execution_context=infra,
+                    generation_only=True,
+                ),
+            )
         return root
-
-    @staticmethod
-    def _assert_dispatch_only(triggers: str) -> None:
-        """Assert a workflow trigger section selects only manual dispatch."""
-        tm.that(triggers, has="workflow_dispatch: {}")
-        for forbidden in (
-            "branches: [main]",
-            "pull_request:",
-            "ready_for_review",
-            "repository_branch",
-            "0.12.0-dev",
-            "develop",
-            "branches: [dev]",
-        ):
-            tm.that(triggers, lacks=forbidden)
 
     @staticmethod
     def test_ci_matrix_profiles_are_topology_complete() -> None:
@@ -413,8 +430,8 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(len(pushes), eq=len(expected))
         for hook, verb in zip(pushes, expected, strict=True):
             tm.that(hook["entry"], has=f"make {verb}")
-            tm.fail(hook["pass_filenames"])
-            tm.ok(hook["always_run"])
+            tm.that(hook["pass_filenames"], eq=False)
+            tm.that(hook["always_run"], eq=True)
 
     @staticmethod
     def test_ci_workflow_cancels_superseded_ref_runs(
@@ -489,6 +506,25 @@ class TestsFlextInfraCodegenCiMatrix:
             )
             for _reference, version in references:
                 tm.that(version, eq=action.version)
+
+
+class TestsFlextInfraCodegenCiMatrixArtifacts:
+    """Prove generated dependency, distro and host workflow artifacts."""
+
+    @staticmethod
+    def _assert_dispatch_only(triggers: str) -> None:
+        """Assert a workflow trigger section selects only manual dispatch."""
+        tm.that(triggers, has="workflow_dispatch: {}")
+        for forbidden in (
+            "branches: [main]",
+            "pull_request:",
+            "ready_for_review",
+            "repository_branch",
+            "0.12.0-dev",
+            "develop",
+            "branches: [dev]",
+        ):
+            tm.that(triggers, lacks=forbidden)
 
     @staticmethod
     def test_dependabot_applies_the_fleet_cooldown_everywhere(
@@ -651,7 +687,8 @@ class TestsFlextInfraCodegenCiMatrix:
             content = (docker_dir / f"{distro}.Dockerfile").read_text(encoding="utf-8")
             tm.that("libatomic" not in content, eq=True, msg=distro)
 
-    def test_dockerfiles_render_byte_idempotently(self, rendered_project: Path) -> None:
+    @staticmethod
+    def test_dockerfiles_render_byte_idempotently(rendered_project: Path) -> None:
         """Repeated project generation preserves the generated Dockerfiles."""
         root = rendered_project
         before = {
@@ -660,7 +697,7 @@ class TestsFlextInfraCodegenCiMatrix:
             ).read_bytes()
             for distro in ("ubuntu", "debian", "fedora", "alpine", "arch")
         }
-        self.render_project(root)
+        TestsFlextInfraCodegenCiMatrix.render_project(root)
         after = {
             distro: (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
@@ -825,7 +862,7 @@ class TestsFlextInfraCodegenCiMatrix:
                 ),
                 eq=True,
             )
-            tm.ok(inputs["include-hidden-files"])
+            tm.that(inputs["include-hidden-files"], eq=True)
             tm.that(inputs["if-no-files-found"], eq="error")
 
     @staticmethod
@@ -854,7 +891,7 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(docs_step.get("continue-on-error"), eq=None)
         tm.that(upload["if"], eq="failure()")
         upload_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
-        tm.ok(upload_with["include-hidden-files"])
+        tm.that(upload_with["include-hidden-files"], eq=True)
         tm.that(upload_with["if-no-files-found"], eq="error")
         report_paths = str(upload_with["path"]).splitlines()
         tm.that(report_paths, empty=False)
@@ -937,6 +974,10 @@ class TestsFlextInfraCodegenCiMatrix:
             content,
             has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';",
         )
+
+
+class TestsFlextInfraCodegenCiMatrixAnalysis:
+    """Prove static analysis and container source visibility contracts."""
 
     @staticmethod
     def _assert_sonarcloud_scope(rendered: str) -> None:

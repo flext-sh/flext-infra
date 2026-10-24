@@ -91,6 +91,14 @@ class TestsFlextInfraUtilitiesCodegenMixin(
                 else c.Infra.MakeProfile.STANDALONE
             ),
         )
+        control = root / c.Infra.GIT_DIR
+        if not control.exists() and not control.is_symlink():
+            TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+                root, ("init", "-b", fixture.provider_branch())
+            )
+            TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+                root, ("remote", "add", c.Infra.GIT_ORIGIN, repository.url)
+            )
         return TestsFlextInfraUtilitiesCodegenMixin.conform_plan(
             root,
             fixture.workspace_spec(

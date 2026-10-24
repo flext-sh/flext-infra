@@ -1,4 +1,4 @@
-"""Capture pytest timing and optional profiling before importing its runtime.
+"""Capture native operation timing and profiling before importing its runtime.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,21 +10,22 @@ import cProfile
 import errno
 import marshal
 import os
+import pstats
 import signal
 import stat
 import sys
 import tempfile
 import time
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from types import FrameType
+from types import FrameType, TracebackType
 from typing import ClassVar
 from uuid import uuid4
 
 
 class FlextInfraPytestClock:
-    """Own the process-local clock for the canonical pytest entrypoint."""
+    """Own the process-local clock and immutable native profiling evidence."""
 
     started_at_monotonic: ClassVar[float] = time.monotonic()
     _publishing: ClassVar[set[cProfile.Profile]] = set()
@@ -33,6 +34,127 @@ class FlextInfraPytestClock:
     )
     if profiler is not None:
         profiler.enable()
+
+    class SignalCheckpoint:
+        """Observe once, preserving native actions and deferred publication failure."""
+
+        def __init__(
+            self,
+            profile: cProfile.Profile,
+            output: Path,
+            previous: int | Callable[[int, FrameType | None], None],
+            *,
+            immutable_output: Path | None,
+            previous_output: Path | None,
+        ) -> None:
+            self.profile = profile
+            self.output = output
+            self.previous = previous
+            self.immutable_output = immutable_output
+            self.previous_output = previous_output
+            self._attempt: Iterator[bool] = iter((True,))
+            self._failure: BaseException | None = None
+            self._failure_traceback: TracebackType | None = None
+
+        def on_operator_signal(self, signum: int, frame: FrameType | None) -> None:
+            """Capture without restoring handlers, terminating or raising failure."""
+            # Consume the attempt in one native step, including reentrant delivery.
+            if not next(self._attempt, False):
+                return
+            if self.profile in FlextInfraPytestClock._publishing:
+                return
+            try:
+                if frame is not None:
+                    traceback.print_stack(frame)
+                FlextInfraPytestClock.publish_profile(
+                    self.profile,
+                    self.output,
+                    immutable_output=self.immutable_output,
+                    previous_output=self.previous_output,
+                )
+            except BaseException as failure:
+                self._failure = failure
+                self._failure_traceback = failure.__traceback__
+            finally:
+                # create_stats() disables profiling even when publication fails.
+                try:
+                    self.profile.enable()
+                except BaseException as failure:
+                    if self._failure is None:
+                        self._failure = failure
+                        self._failure_traceback = failure.__traceback__
+                    else:
+                        self._failure.add_note(
+                            "profile resumption failed:\n"
+                            + "".join(traceback.format_exception(failure, chain=False))
+                        )
+
+        def __call__(self, signum: int, frame: FrameType | None) -> None:
+            """Capture once, then preserve the original native signal action."""
+            self.on_operator_signal(signum, frame)
+            if signal.getsignal(signum) is self:
+                signal.signal(signum, self.previous)
+            try:
+                if callable(self.previous):
+                    self.previous(signum, frame)
+                else:
+                    try:
+                        if (
+                            self.previous == signal.SIG_DFL
+                            and self._failure is not None
+                        ):
+                            traceback.print_exception(
+                                type(self._failure),
+                                self._failure,
+                                self._failure_traceback,
+                                chain=False,
+                            )
+                    finally:
+                        signal.raise_signal(signum)
+            except BaseException as primary:
+                self._surface_failure(primary)
+                raise
+            self._surface_failure(None)
+
+        def retire(self) -> None:
+            """Release only owned registration and surface failure after cleanup."""
+            if signal.getsignal(signal.SIGTERM) is self:
+                signal.signal(signal.SIGTERM, self.previous)
+            primary = sys.exception()
+            if isinstance(primary, SystemExit) and (
+                primary.code is None or primary.code == 0
+            ):
+                primary = None
+            self._surface_failure(primary)
+
+        def _surface_failure(self, primary: BaseException | None) -> None:
+            if self._failure is None:
+                return
+            if primary is None:
+                raise self._failure.with_traceback(self._failure_traceback)
+            primary.add_note(
+                "profile checkpoint publication failed:\n"
+                + "".join(
+                    traceback.format_exception(
+                        type(self._failure),
+                        self._failure,
+                        self._failure_traceback,
+                        chain=False,
+                    )
+                )
+            )
+            if isinstance(primary, SystemExit):
+                try:
+                    traceback.print_exception(
+                        type(self._failure),
+                        self._failure,
+                        self._failure_traceback,
+                        chain=False,
+                    )
+                except (OSError, ValueError) as diagnostic_failure:
+                    primary.add_note(
+                        f"profile failure diagnostic failed: {diagnostic_failure}"
+                    )
 
     @staticmethod
     def profile_command(command: Callable[[], int], output: Path) -> int:
@@ -45,10 +167,9 @@ class FlextInfraPytestClock:
         immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
         previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
         profiler = cProfile.Profile()
-        previous = signal.getsignal(signal.SIGTERM)
         status: int | None = None
 
-        FlextInfraPytestClock.register_signal_checkpoint(
+        retire = FlextInfraPytestClock.register_signal_checkpoint(
             profiler,
             output,
             immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
@@ -60,27 +181,48 @@ class FlextInfraPytestClock:
             return status
         finally:
             profiler.disable()
-            signal.signal(signal.SIGTERM, previous)
             primary = sys.exception() if status is None else None
+            if isinstance(primary, SystemExit) and (
+                primary.code is None or primary.code == 0
+            ):
+                primary = None
             try:
-                FlextInfraPytestClock.publish_profile(
-                    profiler,
-                    output,
-                    immutable_output=immutable_output,
-                    previous_output=previous_output,
-                )
-            except BaseException as publication_failure:
+                retire()
+            except BaseException as checkpoint_failure:
                 if primary is not None:
                     primary.add_note(
-                        "profile publication failed:\n"
+                        "profile checkpoint retirement failed:\n"
                         + "".join(
-                            traceback.format_exception(publication_failure, chain=False)
+                            traceback.format_exception(checkpoint_failure, chain=False)
                         )
                     )
                 elif status:
-                    traceback.print_exception(publication_failure)
+                    traceback.print_exception(checkpoint_failure)
                 else:
+                    primary = checkpoint_failure
                     raise
+            finally:
+                try:
+                    FlextInfraPytestClock.publish_profile(
+                        profiler,
+                        output,
+                        immutable_output=immutable_output,
+                        previous_output=previous_output,
+                    )
+                except BaseException as publication_failure:
+                    if primary is not None:
+                        primary.add_note(
+                            "profile publication failed:\n"
+                            + "".join(
+                                traceback.format_exception(
+                                    publication_failure, chain=False
+                                )
+                            )
+                        )
+                    elif status:
+                        traceback.print_exception(publication_failure)
+                    else:
+                        raise
 
     @classmethod
     def start_profiler(cls) -> cProfile.Profile:
@@ -142,12 +284,12 @@ class FlextInfraPytestClock:
         immutable_output: Path | None = None,
         previous_output: Path | None = None,
     ) -> None:
-        """Publish native pstats atomically without exposing an incomplete artifact.
+        """Publish native profiling evidence without exposing partial artifacts.
 
         Args:
             profile: The real profiler whose current stats are recorded.
             output: The destination elected by the profiling invocation.
-            immutable_output: Optional invocation-owned link to the staged inode.
+            immutable_output: Optional invocation-owned raw link and text statistics.
             previous_output: Optional retained link to the previous completed artifact.
 
         Raises:
@@ -176,6 +318,41 @@ class FlextInfraPytestClock:
                 FlextInfraPytestClock._guard_staging_identity(staging, identity)
                 if immutable_output is not None:
                     immutable_output.hardlink_to(staging)
+                    report = immutable_output.with_name(f"{immutable_output.name}.txt")
+                    report_descriptor, report_name = tempfile.mkstemp(
+                        dir=report.parent,
+                        prefix=f".{report.name}.",
+                        suffix=".tmp",
+                    )
+                    report_staging = Path(report_name)
+                    report_identity = os.fstat(report_descriptor)
+                    try:
+                        with os.fdopen(
+                            report_descriptor, "w", encoding="utf-8"
+                        ) as report_stream:
+                            report_stream.write(
+                                "Native profile snapshot, not operation acceptance.\n"
+                                f"Raw capture: {immutable_output.name}\n\n"
+                            )
+                            FlextInfraPytestClock._guard_staging_identity(
+                                immutable_output, identity
+                            )
+                            pstats.Stats(
+                                str(immutable_output), stream=report_stream
+                            ).sort_stats(pstats.SortKey.CUMULATIVE).print_stats()
+                            FlextInfraPytestClock._guard_staging_identity(
+                                immutable_output, identity
+                            )
+                            report_stream.flush()
+                            os.fsync(report_stream.fileno())
+                        FlextInfraPytestClock._guard_staging_identity(
+                            report_staging, report_identity
+                        )
+                        report.hardlink_to(report_staging)
+                    finally:
+                        FlextInfraPytestClock._discard_staging(
+                            report_staging, report_identity
+                        )
                 if previous_output is not None:
                     try:
                         previous = output.lstat()
@@ -224,39 +401,15 @@ class FlextInfraPytestClock:
             msg = "cannot observe native profiler termination handler"
             raise RuntimeError(msg)
 
-        def checkpoint(signum: int, frame: FrameType | None) -> None:
-            """Persist the profiler, then delegate the original signal unchanged."""
-            signal.signal(signum, previous)
-            publishing = profile in cls._publishing
-            try:
-                if frame is not None:
-                    traceback.print_stack(frame)
-                if not publishing:
-                    cls.publish_profile(
-                        profile,
-                        output,
-                        immutable_output=immutable_output,
-                        previous_output=previous_output,
-                    )
-            finally:
-                signal.signal(signum, previous)
-                if callable(previous):
-                    previous(signum, frame)
-                else:
-                    signal.raise_signal(signum)
-                # create_stats() disables profiling; returning handlers keep
-                # the command alive and must keep measuring its remaining work.
-                if not publishing:
-                    profile.enable()
-
+        checkpoint = cls.SignalCheckpoint(
+            profile,
+            output,
+            previous,
+            immutable_output=immutable_output,
+            previous_output=previous_output,
+        )
         signal.signal(signal.SIGTERM, checkpoint)
-
-        def retire() -> None:
-            """Release only this checkpoint's signal ownership."""
-            if signal.getsignal(signal.SIGTERM) is checkpoint:
-                signal.signal(signal.SIGTERM, previous)
-
-        return retire
+        return checkpoint.retire
 
 
 __all__: list[str] = ["FlextInfraPytestClock"]

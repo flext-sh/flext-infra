@@ -924,10 +924,10 @@ class FlextInfraMisePublication:
             for before, after in published.values()
             if after.path in candidates
             or any(
-                candidate in after.path.parents
+                candidate in candidates
                 and after.path.relative_to(candidate).parts[0]
                 not in config.Infra.codegen.source_scan_ignored
-                for candidate in candidates
+                for candidate in after.path.parents
             )
         )
         effects = FlextInfraMiseArtifactsVerification.states_current(

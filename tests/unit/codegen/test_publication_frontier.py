@@ -112,11 +112,14 @@ tm.that(
         )
 
     @staticmethod
+    @pytest.mark.parametrize("policy_present", [False, True])
     @pytest.mark.parametrize("mutation", ["input-only", "aggregate-output"])
     def test_publication_rejects_source_drift_and_unowned_aggregate_outputs(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         mutation: str,
+        *,
+        policy_present: bool,
     ) -> None:
         """Consumed inputs stay physical, and only actual batches own outputs."""
         native_consumer(
@@ -129,17 +132,30 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import c, r
 from tests import c, m, tm, u
 tmp_path = Path(sys.argv[2])
 mutation = sys.argv[3]
+policy_present = sys.argv[4] == "True"
 workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 u.Tests.write_member_package(workspace, workspace.name)
 member = workspace / "flext-a"
 guide = member / c.Infra.DIR_DOCS / "guides/operator.md"
 guide.parent.mkdir(parents=True, exist_ok=True)
 guide.write_text("# Captured guide\n", encoding="utf-8")
+policies = tuple(
+    workspace / entry.destination
+    for entry in config.Infra.codegen.templates.entries
+    if entry.ownership is not None
+    and entry.ownership.policy != c.Infra.MANAGED_FILE_POLICY_FULL
+    and c.Infra.MakeProfile.WORKSPACE not in entry.profiles
+)
+policy_content = b"# Repository policy remains authored.\n{}\n"
+if policy_present:
+    for policy in policies:
+        policy.parent.mkdir(parents=True, exist_ok=True)
+        policy.write_bytes(policy_content)
 for project in (workspace, member):
+    u.Tests.copy_tracked_mise_seeds(project)
     spec = u.Tests.project_spec(project.name)
     metadata = project / c.PYPROJECT_FILENAME
     document = tm.not_none(u.Cli.toml_parse_text(metadata.read_text(encoding="utf-8")))
@@ -163,20 +179,16 @@ planned = tm.ok(
         state=m.Infra.CodegenConformState(
             repository_root=workspace,
             request=request,
-            initial_workspace=u.Tests.workspace_spec(
-                u.Tests.repository_ref(workspace.name),
-                subprojects=(
-                    u.Tests.repository_ref(member.name, path=Path(member.name)),
-                ),
-            ),
         ),
     ).plan(request)
 )
 tm.that(planned.issues, eq=(), msg=str(planned.issues))
-plan_report = (
+tm.that(any(file.path in policies for file in planned.files), eq=False)
+plan_report_path = (
     tm.ok(u.Infra.refactor_report_evidence_root(workspace))
     / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH
-).read_bytes()
+)
+plan_report = plan_report_path.read_bytes()
 tm.that(
     m.Infra.CodegenPlanningReport.model_validate_json(plan_report).root,
     eq=workspace,
@@ -214,10 +226,18 @@ published = tm.ok(
         ),
     )
 )
+tm.ok(FlextInfraMiseArtifactsVerification.publication_outputs_current(published.batches))
+tm.that(
+    tuple(output.path for receipt in published.batches for output in receipt.outputs),
+    has=workspace / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH,
+)
 tm.that(
     (workspace / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
     eq=plan_report,
 )
+if policy_present:
+    for policy in policies:
+        tm.that(policy.read_bytes(), eq=policy_content)
 if mutation == "input-only":
     guide.write_text("# Changed guide\n", encoding="utf-8")
     observed = FlextInfraMiseArtifactsVerification.publication_states_current(
@@ -238,10 +258,15 @@ else:
     )
     tm.fail(observed)
     tm.that(unowned.read_bytes(), eq=b"No publishing batch\n")
+tm.that(
+    (workspace / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
+    eq=plan_report,
+)
 """,
             str(Path(__file__).resolve().parents[3]),
             str(tmp_path),
             mutation,
+            str(policy_present),
         )
 
     @staticmethod

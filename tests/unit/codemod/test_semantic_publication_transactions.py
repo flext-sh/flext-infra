@@ -13,12 +13,240 @@ from types import FrameType
 
 import pytest
 
-from flext_infra import codemod, infra, refactor, transformers, workspace
+from flext_infra import codegen, codemod, infra, refactor, transformers, workspace
 from tests import c, m, p, r, t, tm, u
+
+
+@pytest.fixture
+def mod_workspace(mod_workspace: Path) -> Path:
+    """Initialize the selected publication runtime before recording source queries.
+
+    Returns:
+        The original native workspace with its canonical control planes ready.
+
+    """
+    tm.ok(
+        codegen.FlextInfraCodegenFileLeases.prepare_source_controlplanes((
+            mod_workspace,
+        ))
+    )
+    return mod_workspace
 
 
 class TestsFlextInfraSemanticPublicationTransactions:
     """Publish semantic candidates atomically and prove the real public consumers."""
+
+    @pytest.mark.parametrize(
+        "corruption",
+        [None, "inputs", "source_query_topology", "publications", "files", "exception"],
+    )
+    def test_native_facade_cohort_preserves_complete_analysis_before_effects(
+        self,
+        mod_workspace: Path,
+        corruption: str | None,
+    ) -> None:
+        """Admit complete native source/facade/init cohorts, never repaired metadata."""
+        u.Tests.run_native_callable(
+            self._scenario_native_facade_cohort,
+            mod_workspace,
+            corruption=corruption,
+        )
+
+    @staticmethod
+    def _native_type_candidate(
+        root: Path,
+    ) -> t.Triple[
+        m.Infra.SemanticFilePlan,
+        m.Infra.CodegenPhaseAnalysis,
+        m.Infra.CodegenPhaseAnalysis,
+    ]:
+        """Build a complete native type candidate over actual original descriptors.
+
+        Returns:
+            The authored owner and original native facade/initializer analyses.
+
+        """
+        u.Tests.standalone_workspace(root, name=root.name.replace("_", "-"))
+        package = root / "src" / root.name
+        owner = package / "_typings" / "domain.py"
+        owner.parent.mkdir()
+        (owner.parent / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        owner.write_text(
+            "from flext_cli import FlextCliTypes\n"
+            "type Payload = FlextCliTypes.JsonMapping\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "typings.py").write_text(
+            c.Infra.AUTOGEN_HEADERS[0]
+            + '\n"""Public native type facade."""\n'
+            + "from flext_cli import FlextCliTypes\n"
+            + f"from {package.name}._typings import domain\n"
+            + "class ModWorkspaceTypes(FlextCliTypes):\n"
+            + "    class Domain:\n"
+            + "        Payload = domain.Payload\n"
+            + "t = ModWorkspaceTypes\n"
+            + "__all__ = ['ModWorkspaceTypes', 't']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(owner, required=True))
+        authored = m.Infra.SemanticFilePlan(
+            project=root,
+            path=owner,
+            before=before,
+            desired_content=(
+                "from flext_cli import FlextCliTypes\n"
+                "class ModWorkspaceTypes(FlextCliTypes):\n"
+                "    class Domain:\n"
+                "        type Payload = FlextCliTypes.JsonMapping\n"
+                "t = ModWorkspaceTypes\n"
+                "__all__ = ['ModWorkspaceTypes', 't']\n"
+            ).encode(c.DEFAULT_ENCODING),
+            desired_mode=before.mode,
+        )
+        providers = tm.ok(
+            transformers.FlextInfraSemanticPublication.plan_semantic_file_plans((
+                authored,
+            ))
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        producer = codegen.FlextInfraCodegenConform(
+            repository_root=root,
+            state=m.Infra.CodegenConformState(
+                repository_root=root, provider_plans=providers.files
+            ),
+        )
+        _, facade = tm.ok(
+            producer.plan_facade(
+                m.Infra.CodegenConformRequest(
+                    root=root,
+                    what=c.Infra.CodegenConformSurface.FACADES,
+                    module=f"{package.name}.typings",
+                    scope=c.Infra.CodegenConformScope.SELF,
+                ),
+                inputs,
+            )
+        )
+        with u.Infra.facade_source_project(
+            root,
+            source_options=m.Infra.StageSourceOptions(
+                inputs=inputs.sources, declared_files=providers.files
+            ),
+        ) as binding:
+            private = tm.ok(
+                codegen.FlextInfraCodegenLazyInit(
+                    repository_root=root,
+                    project_scope_roots=(root,),
+                    target_module=f"{package.name}._typings",
+                ).plan_files(source_project=binding[0])
+            )
+        tm.that(
+            len(facade.inputs),
+            eq=len({state.path for state in facade.inputs}),
+            msg="The original native facade analysis must contain unique input paths",
+        )
+        tm.that(
+            len(private.inputs),
+            eq=len({state.path for state in private.inputs}),
+            msg=(
+                "The original native initializer analysis must contain "
+                "unique input paths"
+            ),
+        )
+        return authored, facade, private
+
+    @staticmethod
+    def _scenario_native_facade_cohort(root: Path, *, corruption: str | None) -> None:
+        """Exercise original native receipts, preview, and real cold public imports."""
+        authored, facade, private = (
+            TestsFlextInfraSemanticPublicationTransactions._native_type_candidate(root)
+        )
+        originals = tuple(
+            (file.path, file.path.read_bytes())
+            for phase in (facade, private)
+            for file in phase.files
+        )
+        first_error = ValueError("original native projection failure")
+        if corruption == "publications":
+            private = private.model_copy(update={corruption: ()})
+        elif corruption is not None:
+            facade = facade.model_copy(
+                update={
+                    corruption: first_error if corruption == "exception" else (),
+                }
+            )
+
+        def validate(candidate_root: Path) -> p.Result[bool]:
+            """Require the actual CLI alias value through the public facade.
+
+            Returns:
+                The cold native public consumer result.
+
+            """
+            consumer = u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from flext_cli import FlextCliTypes\n"
+                        f"from {root.name}.typings import t\n"
+                        "assert issubclass(t, FlextCliTypes)\n"
+                        "assert t.Domain is t.__bases__[0].Domain\n"
+                        "assert t.Domain.Payload.__value__ is "
+                        "FlextCliTypes.JsonMapping\n"
+                    ),
+                ),
+                cwd=candidate_root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(candidate_root / "src")
+                    }
+                ),
+            )
+            if consumer.failure:
+                return r[bool].from_failure(consumer)
+            return r[bool].ok(u.Cli.process_succeeded(consumer.value.outcome))
+
+        result = transformers.FlextInfraSemanticPublication.publish_semantic_analyses(
+            (facade, private),
+            source_plans=(authored,),
+            repository_root=root,
+            options=m.Infra.SemanticPublicationOptions(
+                dependency_group="complete-native-type-cohort", validator=validate
+            ),
+            publish=False,
+        )
+        tm.that(authored.path.read_bytes(), eq=authored.before.content)
+        for path, content in originals:
+            tm.that(path.read_bytes(), eq=content)
+        if corruption is not None:
+            tm.fail(result)
+            if corruption == "exception":
+                tm.that(result.exception, is_=ValueError)
+                tm.ok(result.exception is first_error)
+            else:
+                tm.that(
+                    result.error,
+                    has=(
+                        "original publication dependencies"
+                        if corruption == "publications"
+                        else "batch native source queries differ"
+                        if corruption in {"source_query_topology", "files"}
+                        else "batch inputs differ"
+                    ),
+                )
+            return
+        tm.ok(result, eq=())
+        tm.ok(
+            transformers.FlextInfraSemanticPublication.publish_semantic_analyses(
+                (facade, private),
+                source_plans=(authored,),
+                repository_root=root,
+                options=m.Infra.SemanticPublicationOptions(
+                    dependency_group="complete-native-type-cohort", validator=validate
+                ),
+            )
+        )
+        tm.ok(validate(root))
 
     @staticmethod
     def test_input_union_preserves_shared_identity_and_rejects_conflicts(

@@ -569,6 +569,10 @@ class FlextInfraModelsRope:
                 description="Canonical runtime aliases published by the package root",
             ),
         ] = ()
+        repository_namespace_packages: Annotated[
+            t.VariadicTuple[str],
+            m.Field(description="Independent packages from the captured declaration"),
+        ]
 
     class RopeModuleConvention(m.ContractModel):
         """Unified module naming and namespace convention for one file."""

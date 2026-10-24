@@ -50,6 +50,8 @@ class FlextInfraConfigModelsRepository:
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
+
         flext_source: Annotated[
             t.NonEmptyStr | None,
             m.Field(

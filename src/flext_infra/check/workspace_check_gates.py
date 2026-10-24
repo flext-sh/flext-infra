@@ -33,14 +33,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ctx: m.Infra.GateContext,
         target: m.Infra.CheckProjectTarget,
     ) -> m.Infra.GateContext:
-        """Create a fresh GateContext scoped to a single project.
+        """Create a fresh GateContext scoped to a physical project path.
 
         Returns:
             The resulting ``m.Infra.GateContext``.
 
         Raises:
             ValueError: If the context carries runtime dependency inputs
-                that belong to a different project target.
+                that belong to a different project target, or the project
+                is outside the invoked repository.
 
         """
         if (
@@ -49,7 +50,10 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ):
             msg = "dependency provenance belongs to another project"
             raise ValueError(msg)
-        return ctx.model_copy(update={"reports_dir": ctx.reports_dir / target.name})
+        root = ctx.repository_root.resolve()
+        relative = target.path.resolve().relative_to(root)
+        receipt_path = Path(root.name) / relative
+        return ctx.model_copy(update={"reports_dir": ctx.reports_dir / receipt_path})
 
     def _run_single_project(
         self,
@@ -91,6 +95,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing.
 
+        Retain the interrupted project's result before stopping the invocation.
+        Ordinary failed verdicts keep the caller's fail-fast policy.
+
         Returns:
             The resulting ``m.Infra.LoopOutcome``.
 
@@ -103,11 +110,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
             u.Cli.progress(index, total, target.name, c.Infra.VERB_CHECK)
             project_result = self._run_single_project(target, resolved_gates, ctx)
             results.append(project_result)
+            if not project_result.gates and ctx.check_progress is not None:
+                ctx.check_progress(target.path, project_result)
             project_passed: bool = project_result.passed
             if not project_passed:
                 failed += 1
-                if fail_fast:
-                    break
+            if any(
+                execution.interrupted for execution in project_result.gates.values()
+            ) or (not project_passed and fail_fast):
+                break
         return m.Infra.LoopOutcome(
             results=tuple(results),
             failed=failed,
@@ -173,8 +184,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
         Every gate runs serially through the public CLI pipeline. Whole-program
         checkers must not compete for memory, and fixers share mutable files.
-        Every independent operation retains its verdict. Only explicit fail-fast
-        stops after a failed verdict; project findings do not abort the engine.
+        Every independent operation retains its verdict. Native interruption
+        stops after its progress and status are published; ordinary project
+        findings retain the explicit fail-fast policy.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.
@@ -229,16 +241,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 passed=execution.result.passed,
                 elapsed=execution.result.duration,
             )
-            if execution.issues or not execution.result.passed:
-                for issue in execution.issues:
-                    u.Cli.info(issue.formatted)
-                if execution.raw_receipt is not None:
-                    u.Cli.info(
-                        f"{stage.stage_id}: {execution.outcome.value}; "
-                        f"Native output receipt: {execution.raw_receipt}",
-                    )
-                if not execution.result.passed and ctx.fail_fast:
-                    break
+            if (
+                execution.issues or not execution.result.passed
+            ) and execution.raw_receipt is not None:
+                u.Cli.info(
+                    f"{stage.stage_id}: {execution.outcome.value}; "
+                    f"Native output receipt: {execution.raw_receipt}",
+                )
+            if execution.interrupted or (not execution.result.passed and ctx.fail_fast):
+                break
         return result
 
     # ------------------------------------------------------------------

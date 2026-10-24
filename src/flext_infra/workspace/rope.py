@@ -145,8 +145,9 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         files and already restored the original on-disk content before the
         refresh runs. ``validate_project=False`` is reserved for those reverted
         preview flows so cleanup does not rescan an already-restored project.
-        Normal refresh also invalidates module inventory, project discovery,
-        and layouts; reverted previews retain those unchanged snapshots.
+        Normal refresh also invalidates module inventory and project discovery;
+        reverted previews retain those unchanged indexes. Layouts always
+        invalidate with their query receipts.
 
         Returns:
             The resulting ``m.Infra.RopeWorkspaceSession``.
@@ -160,10 +161,10 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         self._module_object_cache.clear()
         self._resource_cache.clear()
         self._query_receipts.clear()
+        self._project_layout_cache.clear()
         if not preserve_indexes:
             self._workspace_index = None
             self._codegen_projects = None
-            self._project_layout_cache.clear()
             self._name_index = None
             self._import_dependents_index = None
         return self.session_snapshot()
@@ -199,9 +200,22 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
 
         """
         resolved_root = project_root.resolve()
+        cache_key = str(resolved_root)
+        if self.rope_project.authenticated_sources:
+            with u.Infra.cached_source_query(
+                self.rope_project,
+                self._project_layout_cache,
+                cache_key,
+                self._query_receipts,
+                f"layout:{cache_key}",
+            ) as cached:
+                if not cached:
+                    self._project_layout_cache[cache_key] = u.Infra.layout(
+                        resolved_root, rope_project=self.rope_project
+                    )
+                return self._project_layout_cache[cache_key]
         if not self._owns_rope_project:
             return u.Infra.layout(resolved_root, rope_project=self.rope_project)
-        cache_key = str(resolved_root)
         if cache_key in self._project_layout_cache:
             return self._project_layout_cache[cache_key]
         project_info = next(

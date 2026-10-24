@@ -10,7 +10,7 @@ import ast
 from collections.abc import Callable
 from os.path import commonpath
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, gettempdir
 from types import MappingProxyType
 
 from flext_infra import c, config, m, p, r, t, u
@@ -23,6 +23,21 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 class FlextInfraStagedPackage:
     """Plan one complete package view and its static workspace import closure."""
+
+    @staticmethod
+    def source_preparation_bootstrap() -> str:
+        """Select SOURCE temporary storage and describe that same public operation.
+
+        Source preparation uses ``TemporaryDirectory(dir=None)``. Its selected
+        storage is therefore part of the prepared producer's runtime, not an
+        expected cache value to copy into a cold interpreter.
+
+        Returns:
+            The SOURCE-only cold replay of the real stdlib directory selection.
+
+        """
+        gettempdir()
+        return "from tempfile import gettempdir as _source_storage\n_source_storage()\n"
 
     @staticmethod
     def source_writes(
@@ -77,16 +92,39 @@ class FlextInfraStagedPackage:
         current = cls.source_inputs_current(plan)
         if current.failure:
             return result_type.from_failure(current)
+        cls.source_preparation_bootstrap()
         with TemporaryDirectory(prefix="flext-source-prepare-") as directory:
             root = Path(directory)
             writes = cls.source_writes(plan, root)
             materialized = cls.materialize_sources(plan, root)
             if materialized.failure:
                 return result_type.from_failure(materialized)
+            resources = {
+                file.path
+                for file in plan.declared_files
+                if file.validation_context is not None
+            }
+            for file in plan.declared_files:
+                if file.validation_context is not None and (
+                    file.validation_context.source not in plan.inputs
+                    or any(
+                        state not in plan.inputs
+                        for state in file.validation_context.source_states
+                    )
+                    or file.validation_context.source.content is None
+                    or (desired := plan.updates[file.path]) is None
+                    or desired.encode(c.DEFAULT_ENCODING)
+                    != file.validation_context.source.content
+                ):
+                    return result_type.fail(
+                        f"resource differs from its captured original: {file.path}",
+                    )
             candidates = {
                 path: root / path.relative_to(plan.workspace)
                 for path, content in plan.updates.items()
-                if content is not None and path.suffix in {".py", ".pyi"}
+                if content is not None
+                and path.suffix in {".py", ".pyi"}
+                and path not in resources
             }
             prepared = preparer(root, candidates)
             if prepared.failure:
@@ -1103,7 +1141,10 @@ class FlextInfraStagedPackage:
         governed: bool = False,
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[list[Path]]:
-        """Collect the physical paths of one layout's governed source closure.
+        """Collect declared resources and the complete applicable Python closure.
+
+        Git membership alone does not make unrelated content a source input.
+        Explicit originals and native consumed reads are retained by their owners.
 
         Args:
             layout: The provider layout whose source paths are collected.
@@ -1115,16 +1156,6 @@ class FlextInfraStagedPackage:
 
         """
         paths = [layout.project_root / c.PYPROJECT_FILENAME] if governed else []
-        if governed:
-            paths.extend(
-                path
-                for path in u.Infra.iter_matching_files(
-                    layout.project_root, includes=()
-                )
-                if not frozenset(config.Infra.codegen.check_excluded_dirs).intersection(
-                    path.relative_to(layout.project_root).parts
-                )
-            )
         directories = (
             layout.package_dir,
             layout.project_root / c.Infra.CODEGEN_CONFIG_DIR,

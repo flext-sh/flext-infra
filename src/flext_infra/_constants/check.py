@@ -172,7 +172,11 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
     PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
     """Native pytest-timeout sentinel disabling per-item deadlines."""
+    PYTEST_WORKER_RESTARTS_DISABLED: ClassVar[int] = 0
+    """Native xdist sentinel prohibiting replacement of crashed workers."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
+    PYTEST_WORKER_COLLECTION_KEY: ClassVar[str] = "flext_collection_manifest"
+    """Native xdist worker-output key carrying the observed manifest as JSON."""
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
         "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
     )
@@ -265,6 +269,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "Human-readable check report written beside the SARIF report."
     CHECK_REPORT_SARIF_FILENAME: ClassVar[str] = "check-report.sarif"
     "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
+    CHECK_PROFILE_FILENAME: ClassVar[str] = "check.pstats"
+    "Optional native profile of the captured checker in its invocation directory."
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )

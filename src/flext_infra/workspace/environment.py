@@ -44,6 +44,59 @@ class FlextInfraWorkspaceEnvironmentMixin:
         inputs = u.Infra.load_codegen_inputs(root)
         if inputs.failure:
             return result_type.from_failure(inputs)
+        planned = FlextInfraWorkspaceEnvironmentMixin._plan_environment_projection(
+            root,
+            inputs.value,
+            planner,
+        )
+        if planned.failure:
+            return result_type.from_failure(planned)
+        files = planned.value.files
+        environment_file = next(file for file in files if file.path == envrc)
+        verified = FlextInfraWorkspaceEnvironmentMixin._verify_environment_consumption(
+            inputs.value,
+            files,
+            envrc=envrc,
+        )
+        if verified.failure:
+            return result_type.from_failure(verified)
+        if request.allow_direnv:
+            allowed = FlextInfraWorkspaceEnvironmentMixin._authorize_environment(
+                root,
+                inputs.value,
+                files,
+                runner,
+            )
+            if allowed.failure:
+                return result_type.from_failure(allowed)
+        u.Cli.info(
+            f"environment projection consumed: {envrc}; "
+            f"authorized={request.allow_direnv}",
+        )
+        return result_type.ok(
+            m.Infra.WorkspaceEnvironmentSyncResult(
+                environment_file=environment_file.path,
+                authorized=request.allow_direnv,
+            ),
+        )
+
+    @staticmethod
+    def _plan_environment_projection(
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        planner: p.Infra.CandidateBootstrapPlanner,
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Plan the exact declared environment closure without publishing it.
+
+        Returns:
+            The original fixed-point plan, or its first native failure.
+
+        Raises:
+            BaseException: The original native planning exception, unchanged.
+
+        """
+        result_type = r[m.Infra.CodegenPlan]
+        envrc = root / c.Infra.ENVRC_FILENAME
         planned = planner.plan_repositories(
             m.Infra.CodegenConformRequest(
                 root=root,
@@ -51,7 +104,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             ),
-            inputs.value,
+            inputs,
         )
         if planned.failure:
             return result_type.from_failure(planned)
@@ -60,9 +113,14 @@ class FlextInfraWorkspaceEnvironmentMixin:
             raise plan.exception
         if plan.issues:
             return result_type.fail(plan.issues[0].formatted)
-        if tuple(file.path for file in plan.files) != (envrc,):
+        destinations = inputs.spec.templates.required_destinations(
+            frozenset((c.Infra.ENVRC_FILENAME,))
+        )
+        expected = frozenset(root / destination for destination in destinations)
+        observed = frozenset(file.path for file in plan.files)
+        if observed != expected or len(plan.files) != len(expected):
             return result_type.fail(
-                f"environment consumption requires one declared projection: {envrc}",
+                f"environment consumption requires its exact declared closure: {envrc}",
             )
         current = u.Infra.codegen_fixed_point(
             plan.files,
@@ -70,39 +128,72 @@ class FlextInfraWorkspaceEnvironmentMixin:
         )
         if current.failure:
             return result_type.from_failure(current)
-        file = plan.files[0]
-        if not isinstance(file.before, m.Cli.AtomicFileState):
-            return result_type.fail(f"environment projection is not a file: {envrc}")
-        states = (*inputs.value.sources, *file.source_states, file.before)
+        return result_type.ok(plan)
+
+    @staticmethod
+    def _verify_environment_consumption(
+        inputs: m.Infra.CodegenInputs,
+        files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        envrc: Path,
+    ) -> p.Result[bool]:
+        """Reverify every consumed file state and directory-query boundary.
+
+        Returns:
+            The native verification result, preserving the first failure.
+
+        """
+        before_states: list[m.Cli.AtomicFileState] = []
+        for file in files:
+            if not isinstance(file.before, m.Cli.AtomicFileState):
+                return r[bool].fail(f"environment dependency is not a file: {envrc}")
+            before_states.append(file.before)
+        states = (
+            *inputs.sources,
+            *(state for file in files for state in file.source_states),
+            *before_states,
+        )
+        inventories = tuple(
+            query for file in files for query in file.source_directories
+        )
+        topology = tuple(
+            query for file in files for query in file.source_query_topology
+        )
         verified = u.Cli.atomic_verify_binary_file_states(states)
         if verified.failure:
-            return result_type.from_failure(verified)
-        if request.allow_direnv:
-            allowed = runner.run_raw(
-                (c.Infra.CLI_DIRENV, "allow", str(root)),
-                cwd=root,
-                timeout=c.Infra.TIMEOUT_DEFAULT,
-            )
-            if allowed.failure:
-                return result_type.from_failure(allowed)
-            output = allowed.value
-            if not u.Cli.process_succeeded(output.outcome):
-                return result_type.fail(
-                    f"direnv allow failed for {root}: "
-                    f"{output.stderr.strip() or output.stdout.strip()}",
-                )
-            verified = u.Cli.atomic_verify_binary_file_states(states)
-            if verified.failure:
-                return result_type.from_failure(verified)
-        u.Cli.info(
-            f"environment projection consumed: {envrc}; "
-            f"authorized={request.allow_direnv}",
+            return r[bool].from_failure(verified)
+        return u.Cli.atomic_verify_directory_queries(inventories, topology)
+
+    @staticmethod
+    def _authorize_environment(
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        runner: p.Cli.CommandRunner,
+    ) -> p.Result[bool]:
+        """Authorize the environment and reverify its original consumption proof.
+
+        Returns:
+            The post-authorization verification, or the first native failure.
+
+        """
+        allowed = runner.run_raw(
+            (c.Infra.CLI_DIRENV, "allow", str(root)),
+            cwd=root,
+            timeout=c.Infra.TIMEOUT_DEFAULT,
         )
-        return result_type.ok(
-            m.Infra.WorkspaceEnvironmentSyncResult(
-                environment_file=envrc,
-                authorized=request.allow_direnv,
-            ),
+        if allowed.failure:
+            return r[bool].from_failure(allowed)
+        output = allowed.value
+        if not u.Cli.process_succeeded(output.outcome):
+            return r[bool].fail(
+                f"direnv allow failed for {root}: "
+                f"{output.stderr.strip() or output.stdout.strip()}",
+            )
+        return FlextInfraWorkspaceEnvironmentMixin._verify_environment_consumption(
+            inputs,
+            files,
+            envrc=root / c.Infra.ENVRC_FILENAME,
         )
 
     @staticmethod

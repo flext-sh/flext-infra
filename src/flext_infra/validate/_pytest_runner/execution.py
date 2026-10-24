@@ -120,7 +120,7 @@ class FlextInfraPytestRunnerExecution(
         execution_mode: c.Infra.PytestExecutionMode,
         complete: bool = False,
         verify_inventory: bool = True,
-    ) -> m.Infra.PytestSelectionPlan:
+    ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
         """Return the typed testmon selection and its manifest owner.
 
         Each collection is one deadline-bound child of the flext-cli process
@@ -128,7 +128,7 @@ class FlextInfraPytestRunnerExecution(
         only; the selection and the complete inventory therefore run in order.
 
         Returns:
-            The typed testmon selection and its manifest owner.
+            The typed selection or the original failed collection outcome.
 
         Raises:
             RuntimeError: If testmon selected node IDs outside the complete collection
@@ -141,6 +141,8 @@ class FlextInfraPytestRunnerExecution(
             complete=complete,
             execution_mode=execution_mode,
         )
+        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+            return selection
         if complete or not verify_inventory:
             return selection
         inventory = self._collect_selection(
@@ -148,6 +150,8 @@ class FlextInfraPytestRunnerExecution(
             complete=True,
             execution_mode=execution_mode,
         )
+        if not isinstance(inventory, m.Infra.PytestSelectionPlan):
+            return inventory
         if inventory.owns_no_tests:
             return inventory
         if not set(selection.node_ids).issubset(inventory.node_ids):
@@ -166,15 +170,14 @@ class FlextInfraPytestRunnerExecution(
         *,
         execution_mode: c.Infra.PytestExecutionMode,
         complete: bool,
-    ) -> m.Infra.PytestSelectionPlan:
+    ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
         """Run one read-only collection and publish its manifest artifacts.
 
         Returns:
-            The selection plan of the published manifest.
+            The selection plan or original failed collection outcome.
 
         Raises:
-            RuntimeError: If the collection exits with an unaccepted code, times
-                out or is signalled; if pytest reports no collection with a
+            RuntimeError: If pytest reports no collection with a
                 nonempty manifest; or if a complete inventory outside the slow
                 phase holds no test.
 
@@ -203,8 +206,9 @@ class FlextInfraPytestRunnerExecution(
             report_dir,
             "inventory" if complete else "selection",
             outcome,
+            report_log=report_log,
+            raw_log=selection_log,
         )
-        log_text = selection_log.read_text(encoding="utf-8")
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         # For a zero-test project (no test module under the config-owned
         # roots) rc=5 is the DECLARED inventory outcome in both phases.
@@ -228,9 +232,19 @@ class FlextInfraPytestRunnerExecution(
             or outcome.timed_out
             or outcome.forwarded_signal is not None
         ):
-            detail = log_text.strip()
-            msg = f"testmon selection failed ({outcome.raw_return_code}): {detail}"
-            raise RuntimeError(msg)
+            if (
+                not outcome.timed_out
+                and outcome.forwarded_signal is None
+                and outcome.raw_return_code >= 0
+            ):
+                self._write_collection_failure(
+                    report_dir,
+                    phase="inventory" if complete else "selection",
+                    report_log=report_log,
+                    raw_log=selection_log,
+                    outcome=outcome,
+                )
+            return outcome
         if self.profile_enabled or self.collection_command_prefix:
             self._bind_child_profile(report_dir, manifest_path.with_suffix(".pstats"))
         if not owns_no_tests:
@@ -310,19 +324,17 @@ class FlextInfraPytestRunnerExecution(
                     return False
         return True
 
-    def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
+    def _process_deadline(self) -> p.Cli.ProcessDeadline:
         """Use the entrypoint clock for selection, execution, and cleanup.
 
         Returns:
-            The bounded operation's deadline, or no deadline for full execution.
+            The absolute deadline shared by every phase of this operation.
 
         """
-        if self.unbounded:
-            return None
         pytest_settings = config.Infra.tooling.tools.pytest
         return m.Cli.ProcessDeadline(
             expires_at_monotonic=self.started_at_monotonic
-            + self.run_timeout_seconds(pytest_settings),
+            + pytest_settings.run_timeout_seconds,
             termination_grace_seconds=pytest_settings.termination_grace_seconds,
         )
 
@@ -355,7 +367,6 @@ class FlextInfraPytestRunnerExecution(
                         target_file=self.target_file,
                         ci_context=self.ci_context,
                         slow_phase=self.slow_phase,
-                        unbounded=self.unbounded,
                         profile_enabled=self.profile_enabled,
                     ),
                 ),
@@ -376,7 +387,13 @@ class FlextInfraPytestRunnerExecution(
                 live=True,
             ),
         ).unwrap()
-        self._record_process_outcome(report_dir, "suite", outcome)
+        self._record_process_outcome(
+            report_dir,
+            "suite",
+            outcome,
+            report_log=report_dir / "events.jsonl",
+            raw_log=report_dir / "pytest.log",
+        )
         if self.profile_enabled:
             policy = config.Infra.tooling.tools.pytest
             suite_profile = report_dir / policy.profile_suite_filename
@@ -394,16 +411,19 @@ class FlextInfraPytestRunnerExecution(
                 self._bind_child_profile(report_dir, profile)
         return outcome
 
-    @staticmethod
     def _record_process_outcome(
+        self,
         report_dir: Path,
         phase: str,
         outcome: p.Cli.ProcessOutcome,
+        *,
+        report_log: Path,
+        raw_log: Path,
     ) -> None:
         """Preserve the process owner's causal fields even when JUnit is absent.
 
         Raises:
-            RuntimeError: If pytest.
+            RuntimeError: If a zero return code follows an interrupted lifecycle.
 
         """
         recorded = m.Cli.ProcessOutcome.model_validate(outcome, from_attributes=True)
@@ -412,6 +432,18 @@ class FlextInfraPytestRunnerExecution(
             receipt,
             recorded.model_dump_json(indent=2) + "\n",
         ).unwrap()
+        if (
+            outcome.timed_out
+            or outcome.forwarded_signal is not None
+            or outcome.raw_return_code < 0
+        ):
+            self._write_collection_failure(
+                report_dir,
+                phase=phase,
+                report_log=report_log,
+                raw_log=raw_log,
+                outcome=outcome,
+            )
         if not u.Cli.process_succeeded(outcome):
             sys.stderr.write(
                 f"pytest {phase}: raw_return_code={outcome.raw_return_code} "
@@ -528,7 +560,7 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             warnings,
-            diagnostics.skipped_count > len(diagnostics.connectivity_skip_cases),
+            diagnostics.skipped_count,
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
             not accounting_complete,
@@ -761,21 +793,15 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
             testmon_db=self.testmon_db,
             testmon_lease_acquired=False,
-            deadline_monotonic=(
-                None if deadline is None else deadline.expires_at_monotonic
-            ),
+            deadline_monotonic=deadline.expires_at_monotonic,
             report_directory=report_dir,
         )
         self._write_run_context(report_dir, context)
-        wait_seconds = (
-            c.Infra.JOURNAL_LEASE_WAIT_SECONDS
-            if deadline is None
-            else max(
-                0.0,
-                deadline.expires_at_monotonic
-                - deadline.termination_grace_seconds
-                - time.monotonic(),
-            )
+        wait_seconds = max(
+            0.0,
+            deadline.expires_at_monotonic
+            - deadline.termination_grace_seconds
+            - time.monotonic(),
         )
         self._cache_publication = None
         lease_started = time.monotonic()
@@ -837,6 +863,10 @@ class FlextInfraPytestRunnerExecution(
     ) -> p.Result[int]:
         """Run one testmon phase while holding the database lease.
 
+        Whole-project FULL execution derives its selection only after the suite
+        publishes its native inventory. Other selections retain their existing
+        collection preflight and share the same execution and finalization.
+
         Returns:
             The resulting ``p.Result[int]``.
 
@@ -855,47 +885,54 @@ class FlextInfraPytestRunnerExecution(
             if not cache_restored:
                 msg = f"testmon preflight rejected cache: {pre_state.reason}"
                 raise RuntimeError(msg)
-        selection_plan = self._resolve_selection(
-            report_dir,
-            complete=complete,
-            # The slow phase and a declared file always prove their inventory,
-            # so a scope with no matching item reaches the zero-test receipt
-            # even on a cold cache.
-            verify_inventory=(
-                pre_digest is not None
-                or self.slow_phase
-                or self.target_file is not None
-            ),
-            execution_mode=execution_mode,
-        )
-        u.Cli.atomic_write_text_file(
-            report_dir / "selection-plan.json",
-            selection_plan.model_dump_json(indent=2) + "\n",
-        ).unwrap()
-        selection = selection_plan.node_ids
-        # A declared file whose inventory was collected still runs: testmon may
-        # select nothing for a file that has in-scope tests, and the declared
-        # file selection executes it. An empty scope is owns_no_tests and is not this
-        # guard. A suite with no proved inventory stays a failure.
-        if (
-            not selection
-            and not cache_restored
-            and not selection_plan.owns_no_tests
-            and not (
-                self.target_file is not None and selection_plan.inventory_collected
+        selection_plan = (
+            None
+            if execution_mode == c.Infra.PytestExecutionMode.FULL
+            and self.target_file is None
+            else self._resolve_selection(
+                report_dir,
+                complete=complete,
+                # Incremental and file requests retain their inventory proof.
+                verify_inventory=(
+                    pre_digest is not None
+                    or self.slow_phase
+                    or self.target_file is not None
+                ),
+                execution_mode=execution_mode,
             )
-        ):
-            msg = "empty incremental selection requires an integrity-checked cache"
-            raise RuntimeError(msg)
-        # Workers execute one centrally ordered selection. The collection plugin
-        # enforces that manifest for both cold and warm caches while testmon
-        # continues to collect dependencies through its xdist integration.
+        )
+        if selection_plan is not None:
+            if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
+                return r.ok(selection_plan.raw_return_code)
+            u.Cli.atomic_write_text_file(
+                report_dir / "selection-plan.json",
+                selection_plan.model_dump_json(indent=2) + "\n",
+            ).unwrap()
+            # A declared file executes its complete collected scope even when
+            # incremental selection would be empty.
+            if (
+                not selection_plan.node_ids
+                and not cache_restored
+                and not selection_plan.owns_no_tests
+                and not (
+                    self.target_file is not None and selection_plan.inventory_collected
+                )
+            ):
+                msg = "empty incremental selection requires an integrity-checked cache"
+                raise RuntimeError(msg)
+        # A selected run enforces its existing manifest; whole-project FULL
+        # publishes its inventory from the suite's own native collection.
         command = self.build_command(
             report_dir,
             selection_plan,
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
+        if selection_plan is None:
+            selection_plan = self._selection_from_suite(report_dir, outcome)
+            if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
+                return r.ok(selection_plan.raw_return_code)
+        selection = selection_plan.node_ids
         # A declared file executes its complete collected inventory, so an empty
         # incremental suite selection never grants a cache hit to a file request.
         cache_hit = (
@@ -952,6 +989,68 @@ class FlextInfraPytestRunnerExecution(
             self._publish_cache_publication(report_dir, state, policy)
         return result
 
+    def _selection_from_suite(
+        self,
+        report_dir: Path,
+        outcome: p.Cli.ProcessOutcome,
+    ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
+        """Bind a FULL plan only to the suite's observed complete inventory.
+
+        Interrupted processes retain their recorded native outcome before any
+        potentially partial manifest or diagnostic event can be consumed.
+
+        Returns:
+            The observed plan or original interrupted or failed process outcome.
+
+        Raises:
+            FileNotFoundError: If a successful suite produced no manifest.
+            RuntimeError: If a successful FULL suite collected no tests.
+
+        """
+        if (
+            outcome.timed_out
+            or outcome.forwarded_signal is not None
+            or outcome.raw_return_code < 0
+        ):
+            return outcome
+        manifest_path = report_dir / "testmon-inventory.json"
+        manifest = (
+            m.Infra.PytestCollectionManifest.model_validate_json(
+                manifest_path.read_text(encoding="utf-8"),
+            )
+            if manifest_path.exists() or manifest_path.is_symlink()
+            else None
+        )
+        if manifest is None or not manifest.node_ids:
+            if u.Cli.process_succeeded(outcome):
+                if manifest is None:
+                    raise FileNotFoundError(manifest_path)
+                msg = "complete pytest inventory must contain at least one test"
+                raise RuntimeError(msg)
+            self._write_collection_failure(
+                report_dir,
+                phase="suite",
+                report_log=report_dir / "events.jsonl",
+                raw_log=report_dir / "pytest.log",
+                outcome=outcome,
+            )
+            return outcome
+        plan = m.Infra.PytestSelectionPlan(
+            manifest_path=manifest_path,
+            node_ids=manifest.node_ids,
+            whole_target=True,
+            inventory_collected=True,
+        )
+        u.Cli.atomic_write_text_file(
+            report_dir / "testmon-inventory.txt",
+            "\n".join(manifest.node_ids) + "\n",
+        ).unwrap()
+        u.Cli.atomic_write_text_file(
+            report_dir / "selection-plan.json",
+            plan.model_dump_json(indent=2) + "\n",
+        ).unwrap()
+        return plan
+
     def _publish_cache_publication(
         self,
         report_dir: Path,
@@ -1004,19 +1103,19 @@ class FlextInfraPytestRunnerExecution(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
                 testmon_lease_acquired=None,
-                deadline_monotonic=(
-                    None if deadline is None else deadline.expires_at_monotonic
-                ),
+                deadline_monotonic=deadline.expires_at_monotonic,
                 report_directory=report_dir,
             ),
         )
         # The inventory pass enforces the same collection policy before coverage.
-        self._resolve_selection(
+        selection = self._resolve_selection(
             report_dir,
             complete=True,
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
             verify_inventory=False,
         )
+        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+            return r.ok(selection.raw_return_code)
         command = self.build_coverage_command(report_dir)
         outcome = self._run_suite(
             command,

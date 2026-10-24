@@ -46,12 +46,20 @@ class FlextInfraConstantsDocs:
         QUALITY_GATES = ("Quality Gates", "Verificações de qualidade")
         QUALITY_BODY = (
             (
-                "Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
-                "`docs`) execute their declared operations directly."
+                "Consult `make help` for the current command surface. Each verb "
+                "performs only its declared operation; `make check` validates "
+                "without applying repairs. Environment setup delegates tool "
+                "provisioning to Mise and project/workspace installation to native "
+                "uv declarations and locks. Python runs the installed project; "
+                "no custom Python bootstrap or lock parser precedes installation."
             ),
             (
-                "Os verbos canônicos do `make` (`gen`, `check`, `test`, `fmt`, "
-                "`docs`) executam diretamente as operações declaradas."
+                "Consulte `make help` para conhecer os comandos atuais. Cada verbo "
+                "executa apenas sua operação declarada; `make check` valida "
+                "sem aplicar reparos. O setup delega as ferramentas ao Mise e a "
+                "instalação do projeto/workspace às declarações e locks nativos "
+                "do uv. Python executa o projeto instalado; nenhum bootstrap Python "
+                "ou parser de lock próprio precede a instalação."
             ),
         )
         QUALITY_LINK = (

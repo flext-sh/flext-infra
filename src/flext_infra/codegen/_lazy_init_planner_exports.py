@@ -54,11 +54,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin(
         """
         package_entry = self._package_entry(context.pkg_dir)
         module_entries = self._enumerated_module_entries(context, package_entry)
-        project_layout = (
-            self.rope_workspace.layout(package_entry.project_root)
-            if package_entry is not None and package_entry.project_root is not None
-            else None
-        )
         u.Cli.info(
             f"lazy-init: export inventory package={context.current_pkg} "
             f"modules={len(module_entries)}"
@@ -74,7 +69,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin(
             targets = self._module_exports(
                 py_file,
                 entry.module_name,
-                project_layout=project_layout,
                 export_options=m.Infra.ExportOptions(
                     allow_main=True,
                     allow_assignments=True,
@@ -165,7 +159,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin(
         module_path: str,
         *,
         export_options: m.Infra.ExportOptions | None = None,
-        project_layout: m.Infra.RopeProjectLayout | None = None,
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for one Python module (cache-backed).
 
@@ -207,6 +200,12 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin(
                 self._module_exports_cache[cache_key] = {}
                 return {}
             exports = {name: (module_path, name) for name in names}
+            entry = self.rope_workspace.module(py_file)
+            project_layout = (
+                self.rope_workspace.layout(entry.project_root)
+                if entry is not None and entry.project_root is not None
+                else None
+            )
             policy = u.Infra.publication_policy(
                 py_file,
                 rope_project=self.rope_workspace.rope_project,

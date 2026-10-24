@@ -23,6 +23,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraStagedPackage,
 )
 from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.validate.native_bootstrap import FlextInfraValidateNativeBootstrap
@@ -168,6 +169,7 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
             f"stage=native-source-authority selections={len(names)} "
             f"runtime={runtime_root}",
         )
+        source_bootstrap = FlextInfraStagedPackage.source_preparation_bootstrap()
         sealed = FlextInfraCodegenPreconditions.observed_source_authority(
             runtime_root, names
         )
@@ -198,6 +200,7 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
                 ),
             ),
             observation,
+            source_bootstrap=source_bootstrap,
         )
 
     @classmethod
@@ -220,6 +223,8 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
         cls,
         request: m.Infra.NativeImportRequest,
         snapshot: m.Infra.NativeImportObservation,
+        *,
+        source_bootstrap: str = "",
     ) -> p.Result[m.Infra.NativeImportReference]:
         """Compare one loaded observation with its independently imported producer.
 
@@ -233,7 +238,7 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
         ).map(lambda _: snapshot)
         if observed.failure:
             return result_type.from_failure(observed)
-        cold = cls._cold_native_observation(request)
+        cold = cls._cold_native_observation(request, source_bootstrap=source_bootstrap)
         if cold.failure:
             return result_type.from_failure(cold)
         return FlextInfraCodegenPreconditions.admit_native_reference(
@@ -244,6 +249,8 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
     def _cold_native_observation(
         cls,
         request: m.Infra.NativeImportRequest,
+        *,
+        source_bootstrap: str = "",
     ) -> p.Result[m.Infra.NativeImportObservation]:
         """Read the complete original child outcome before decoding its evidence.
 
@@ -259,7 +266,7 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
             repository_root=request.repository_root,
             runtime_root=request.runtime_root,
         )
-        output = consumer.native_reference_probe(request)
+        output = consumer._native_reference_probe(request, source_bootstrap)
         if output.failure:
             return result_type.from_failure(output)
         diagnostics = "".join(
@@ -308,6 +315,19 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
 
         Returns:
             The real native import output, preserving its original failure.
+
+        """
+        return self._native_reference_probe(request, "")
+
+    def _native_reference_probe(
+        self,
+        request: m.Infra.NativeImportRequest,
+        source_bootstrap: str,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Import one elected epoch with only its owner's selected preparation.
+
+        Returns:
+            The original native probe outcome, with no copied runtime values.
 
         """
         if (
@@ -375,6 +395,7 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
             "m.Infra.SourceClassReference.model_validate_json(item)"
             f" for item in {selections!r})\n"
             "for item in selections: importlib.import_module(item.target)\n"
+            + source_bootstrap
             + c.Infra.FRESH_IMPORT_ORIGIN_CODE.replace(
                 c.Infra.FRESH_IMPORT_ORIGINS_PLACEHOLDER, repr(origins)
             )
@@ -917,7 +938,7 @@ _native_bootstrap.FlextInfraValidateNativeBootstrap.enable_atomic_reader(
                 plan
                 for plan in layout_plans
                 if plan.context.importable
-                and plan.action is not c.Infra.LazyInitAction.REMOVE
+                and plan.action != c.Infra.LazyInitAction.REMOVE
             )
             if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
                 return r[m.Infra.FreshImportProbe].fail(

@@ -247,8 +247,16 @@ class FlextInfraGate:
             The resulting ``m.Infra.Issue``.
 
         """
+        interrupted = (
+            result.outcome.timed_out
+            or result.outcome.forwarded_signal is not None
+            or result.outcome.raw_return_code < 0
+        )
         detail = (
-            "\n".join(
+            f"timed_out={result.outcome.timed_out}; "
+            f"forwarded_signal={result.outcome.forwarded_signal}"
+            if interrupted
+            else "\n".join(
                 stream.strip()
                 for stream in (result.stderr, result.stdout)
                 if stream.strip()
@@ -375,6 +383,32 @@ class FlextInfraGate:
             The resulting ``m.Infra.GateExecution``.
 
         """
+        evidence = self._publish_raw_receipt(ctx, self._raw_output(result))
+        process = m.Cli.ProcessOutcome.model_validate(
+            result.outcome, from_attributes=True
+        )
+        if (
+            process.timed_out
+            or process.forwarded_signal is not None
+            or process.raw_return_code < 0
+        ):
+            return self._build_check_gate_execution(
+                project_dir,
+                passed=False,
+                issues=(
+                    self._command_error_issue(
+                        result,
+                        tool=self.gate_id,
+                        file=str(project_dir),
+                        line=1,
+                        column=1,
+                    ),
+                ),
+                evidence=evidence,
+                started=started,
+            ).model_copy(
+                update={"outcome": c.Infra.ToolOutcome.ERROR, "process": process}
+            )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         if self.gate_id == c.Infra.LINT and result.stderr.strip():
             issues = (
@@ -397,9 +431,9 @@ class FlextInfraGate:
             project_dir,
             passed=passed,
             issues=issues,
-            evidence=self._publish_raw_receipt(ctx, self._raw_output(result)),
+            evidence=evidence,
             started=started,
-        ).model_copy(update={"outcome": outcome})
+        ).model_copy(update={"outcome": outcome, "process": process})
 
     def _detected_gate_execution(
         self,

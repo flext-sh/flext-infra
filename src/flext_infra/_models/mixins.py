@@ -25,6 +25,33 @@ class FlextInfraModelsMixins:
 
     # ═══════════════════ CLI PARAMETER MIXINS ═══════════════════
 
+    class ModuleSelectionMixin(m.BaseModel):
+        """Optional module selection consumed by a scoped operation."""
+
+        module: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Dotted module path to scope verb to a single module "
+                    "(e.g. flext_core.result). Mutually compatible with "
+                    "--projects/--repository-root; narrows the run."
+                ),
+            ),
+        ] = None
+
+    class NamespaceSelectionMixin(m.BaseModel):
+        """Optional facade namespace selection consumed by a scoped operation."""
+
+        namespace: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope "
+                    "the verb to a single facade slot."
+                ),
+            ),
+        ] = None
+
     class ScopeMixin(m.BaseModel):
         """Canonical CLI scope contract — workspace + project selection.
 
@@ -47,26 +74,6 @@ class FlextInfraModelsMixins:
             ),
             m.Field(
                 description="Projects to process; repeat --projects NAME as needed",
-            ),
-        ] = None
-
-        module: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Dotted module path to scope verb to a single module "
-                    "(e.g. flext_core.result). Mutually compatible with "
-                    "--projects/--repository-root; narrows the run."
-                ),
-            ),
-        ] = None
-        namespace: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope "
-                    "the verb to a single facade slot."
-                ),
             ),
         ] = None
         verbose: Annotated[bool, m.Field(description="Verbose output")] = False

@@ -6,9 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import errno
-import os
-import stat
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -54,10 +51,10 @@ class FlextInfraWorkspaceDetector(
         cls,
         repository_root: Path,
     ) -> p.Result[m.Infra.WorkspaceRuntimeContext]:
-        """Elect the physical runtime and editable supplier of one repository.
+        """Elect one repository's physical native workspace and runtime.
 
-        Metadata planning consumes the election alone: validating the selected
-        install view belongs to the consumers that read or write that view.
+        Native runtime discovery owns workspace membership. The elected owner's
+        manifest and lock also own resolution, independently of installation mode.
 
         Returns:
             The elected runtime context, or the first election failure.
@@ -79,118 +76,19 @@ class FlextInfraWorkspaceDetector(
             ),
             git_root,
         )
-        inputs = u.Infra.load_codegen_inputs(project_root)
-        if inputs.failure:
-            return result_type.from_failure(inputs)
-        policy = inputs.value.spec.make.uv_resolution
-        standalone = (
-            u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
-        )
-        runtime_root = project_root
-        if not standalone:
-            runtime = u.Infra.runtime_owner_root(project_root)
-            if runtime.failure:
-                return result_type.from_failure(runtime)
-            runtime_root = runtime.value
-        return cls._uv_runtime_context(
-            project_root,
-            runtime_root,
-            standalone=standalone,
-        )
-
-    @staticmethod
-    def _uv_runtime_context(
-        project_root: Path,
-        runtime_root: Path,
-        *,
-        standalone: bool,
-    ) -> p.Result[m.Infra.WorkspaceRuntimeContext]:
-        """Resolve paths after authenticating the runtime and hosted isolation.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceRuntimeContext]``.
-
-        Raises:
-            NotADirectoryError: If ``not
-                stat.S_ISDIR(resolved_supplier.stat().st_mode)``.
-
-        """
-        result_type = r[m.Infra.WorkspaceRuntimeContext]
-        inputs = u.Infra.load_codegen_inputs(runtime_root)
-        if inputs.failure:
-            return result_type.from_failure(inputs)
-        policy = inputs.value.spec.make.uv_resolution
-        supplier_root = None if standalone else settings.Infra.editable_supplier_root
-        if (
-            not standalone
-            and supplier_root is None
-            and type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT not in os.environ
-        ):
-            selection = runtime_root / policy.supplier_selection_file
-            captured = u.Cli.atomic_read_binary_file_state(selection)
-            if captured.failure:
-                return result_type.from_failure(captured)
-            content = captured.value.content
-            if content is not None:
-                try:
-                    selected = content.decode(c.DEFAULT_ENCODING)
-                except UnicodeError as exc:
-                    return result_type.fail(
-                        f"invalid editable supplier selection: {selection}",
-                        exception=exc,
-                    )
-                if (
-                    not selected.endswith("\n")
-                    or selected.count("\n") != 1
-                    or "\r" in selected
-                    or "\x00" in selected
-                ):
-                    return result_type.fail(
-                        f"editable supplier selection must contain one UTF-8 line: "
-                        f"{selection}"
-                    )
-                selected = selected.removesuffix("\n")
-                if selected:
-                    supplier_root = Path(selected)
-        if supplier_root is not None:
-            if not supplier_root.is_absolute():
-                return result_type.fail(
-                    "editable supplier root must be an absolute path"
-                )
-            try:
-                resolved_supplier = supplier_root.resolve(strict=True)
-                if not stat.S_ISDIR(resolved_supplier.stat().st_mode):
-                    raise NotADirectoryError(
-                        errno.ENOTDIR,
-                        "editable supplier root is not a directory",
-                        str(supplier_root),
-                    )
-            except OSError as exc:
-                return result_type.fail(
-                    f"cannot authenticate editable supplier root {supplier_root}: {exc}",
-                    exception=exc,
-                )
-            supplier_root = resolved_supplier
-            if supplier_root == runtime_root.resolve():
-                supplier_root = None
-        directory = (
-            policy.standalone_directory
-            if standalone
-            else policy.editable_directory
-            if supplier_root is not None
-            else policy.local_directory
-        )
-        resolution_root = runtime_root / directory
+        runtime = u.Infra.runtime_owner_root(project_root)
+        if runtime.failure:
+            return result_type.from_failure(runtime)
+        runtime_root = runtime.value
         return result_type.ok(
             m.Infra.WorkspaceRuntimeContext(
-                editable_supplier_root=supplier_root,
                 project_root=project_root,
                 runtime_root=runtime_root,
-                resolution_root=resolution_root,
-                pyproject_path=resolution_root / c.PYPROJECT_FILENAME,
-                lock_path=resolution_root / c.Infra.UV_LOCK_FILENAME,
+                resolution_root=runtime_root,
+                pyproject_path=runtime_root / c.PYPROJECT_FILENAME,
+                lock_path=runtime_root / c.Infra.UV_LOCK_FILENAME,
                 environment_path=runtime_root / c.Infra.ENVIRONMENT_DIRECTORY,
-                standalone=standalone,
+                standalone=settings.Infra.github_actions == "true",
             ),
         )
 
@@ -431,6 +329,7 @@ class FlextInfraWorkspaceDetector(
         path: Path = Path(),
         composed: bool = False,
         declared_url: str | None = None,
+        native_metadata: m.Infra.ProjectMetadataState | None = None,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Build identity from validated checkout metadata and native Git inputs.
 
@@ -439,7 +338,10 @@ class FlextInfraWorkspaceDetector(
 
         """
         metadata_path = repository_root / c.PYPROJECT_FILENAME
-        if metadata_path.exists() or metadata_path.is_symlink():
+        if native_metadata is not None:
+            project_name = native_metadata.metadata.project.name
+            package = u.Infra.project_package_participation(native_metadata.packaging)
+        elif metadata_path.exists() or metadata_path.is_symlink():
             metadata = u.Infra.read_project_metadata_state(repository_root)
             if metadata.failure:
                 return r[m.Infra.RepositoryRef].from_failure(metadata)
@@ -510,13 +412,16 @@ class FlextInfraWorkspaceDetector(
     def _declared_scaffold_project(
         repository_root: Path,
     ) -> p.Result[m.Infra.ProjectSpec]:
-        """Admit only a prepared new tree with its complete own declaration.
+        """Admit a prepared tree with its complete own generation declaration.
 
         Returns:
             The declared project, or the original Git/configuration failure.
 
         """
         result_type = r[m.Infra.ProjectSpec]
+        identity = u.Infra.exact_worktree_root(repository_root)
+        if identity.failure:
+            return result_type.from_failure(identity)
         inputs = u.Infra.load_codegen_inputs(repository_root)
         if inputs.failure:
             return result_type.from_failure(inputs)
@@ -565,9 +470,6 @@ class FlextInfraWorkspaceDetector(
         )
         if line.failure:
             return result_type.from_failure(line)
-        identity = u.Infra.exact_worktree_root(repository_root)
-        if identity.failure:
-            return result_type.from_failure(identity)
         path_request = m.Infra.GitRelativePathRequest(
             repo_root=repository_root,
             relative_path=c.PYPROJECT_FILENAME,
@@ -615,9 +517,11 @@ class FlextInfraWorkspaceDetector(
     ]:
         """Validate every direct governed .gitmodules entry before planning writes.
 
+        Read the native declarations once and pass each original object through
+        its member's contract and checkout decisions in declaration order.
+
         Returns:
-            The resulting ``p.Result[t.Pair[t.VariadicTuple[m.Infra.RepositoryRef],
-                t.VariadicTuple[Path]]]``.
+            The resulting repository refs, external paths and pending declarations.
 
         """
         declared = u.Infra.git_submodule_declarations(repository_root)
@@ -646,14 +550,14 @@ class FlextInfraWorkspaceDetector(
         if baseline.failure:
             return result_type.from_failure(baseline)
         context = m.Infra.SubprojectLoadContext(
-            integration_branch=baseline.value if baseline.success else None,
+            integration_branch=baseline.value,
             workspace_beads=workspace_beads,
             allow_unprovisioned_members=allow_unprovisioned_members,
         )
         for declaration in declared.value:
             loaded = cls._load_subproject(
                 repository_root,
-                declaration.path,
+                declaration,
                 context=context,
             )
             if loaded.failure:
@@ -671,7 +575,7 @@ class FlextInfraWorkspaceDetector(
     def _load_subproject(
         cls,
         repository_root: Path,
-        path: Path,
+        declaration: m.Infra.GitSubmoduleDeclaration,
         *,
         context: m.Infra.SubprojectLoadContext,
     ) -> p.Result[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
@@ -681,6 +585,8 @@ class FlextInfraWorkspaceDetector(
         dependency. An absent flag inherits participation. Managed entries
         resolve their package identity from a provisioned checkout; setup may
         retain an unprovisioned entry as its parsed Git declaration only.
+        The native declaration owner validates that captured object's URL and
+        branch before the management decision; this loader does not reread Git.
 
         Returns:
             The resulting ``p.Result[m.Infra.RepositoryRef | Path |
@@ -688,14 +594,10 @@ class FlextInfraWorkspaceDetector(
 
         """
         result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
-        contract = u.Infra.git_submodule_declaration(
-            m.Infra.GitSubmoduleContractRequest(
-                repo_root=repository_root,
-                member_path=path.as_posix(),
-            ),
-        )
+        contract = u.Infra.git_require_submodule_contract(declaration)
         if contract.failure:
             return result_type.from_failure(contract)
+        path = contract.value.path
         if contract.value.managed is False:
             return result_type.ok(path)
         subproject_root = cls._governed_subproject_root(
@@ -707,10 +609,8 @@ class FlextInfraWorkspaceDetector(
         if subproject_root.failure:
             return result_type.from_failure(subproject_root)
         return cls._undeclared_subproject(
-            repository_root,
             subproject_root.value,
-            path,
-            declared_url=contract.value.url,
+            contract.value,
             context=context,
         )
 
@@ -746,39 +646,30 @@ class FlextInfraWorkspaceDetector(
     @classmethod
     def _undeclared_subproject(
         cls,
-        repository_root: Path,
         subproject_root: Path,
-        path: Path,
+        declaration: m.Infra.GitSubmoduleDeclaration,
         *,
-        declared_url: str,
         context: m.Infra.SubprojectLoadContext,
     ) -> p.Result[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
         """Resolve a provisioned checkout without a second identity catalog.
 
         Returns:
-            Its observed identity, or its pending Git declaration for setup.
+            Its observed identity, or the same native declaration for setup.
 
         """
         result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         if not (subproject_root / c.Infra.GIT_DIR).exists():
             if not context.allow_unprovisioned_members:
                 error = FileNotFoundError(
-                    f"governed subproject checkout is missing: {path.as_posix()}",
+                    "governed subproject checkout is missing: "
+                    f"{declaration.path.as_posix()}",
                 )
                 return result_type.fail(str(error), exception=error)
-            pending = u.Infra.git_submodule_declaration(
-                m.Infra.GitSubmoduleContractRequest(
-                    repo_root=repository_root,
-                    member_path=path.as_posix(),
-                ),
-            )
-            if pending.failure:
-                return result_type.from_failure(pending)
-            return result_type.ok(pending.value)
+            return result_type.ok(declaration)
         return cls._checkout_subproject(
             subproject_root,
-            path,
-            declared_url=declared_url,
+            declaration.path,
+            declared_url=declaration.url,
             context=context,
         )
 
@@ -1123,6 +1014,9 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[t.Pair[m.Infra.BeadsProjectSpec, m.Infra.RepositoryRef]]:
         """Load the superproject's Beads ledger and the member's governed ref.
 
+        Resolve this independent member's native declaration once, after its
+        integration context has been elected.
+
         Returns:
             The resulting ``(inherited_beads, loaded_member)`` pair.
 
@@ -1142,17 +1036,27 @@ class FlextInfraWorkspaceDetector(
             superproject_root,
             policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
-        loaded_member = cls._load_subproject(
-            superproject_root,
-            member_path,
-            context=m.Infra.SubprojectLoadContext(
-                integration_branch=(baseline.value if baseline.success else None),
-                workspace_beads=inherited_beads.value,
+        if baseline.failure:
+            return result_type.from_failure(baseline)
+        context = m.Infra.SubprojectLoadContext(
+            integration_branch=baseline.value,
+            workspace_beads=inherited_beads.value,
+        )
+        loaded_member = u.Infra.git_submodule_declaration(
+            m.Infra.GitSubmoduleContractRequest(
+                repo_root=superproject_root,
+                member_path=member_path.as_posix(),
+            ),
+        ).flat_map(
+            lambda declaration: cls._load_subproject(
+                superproject_root,
+                declaration,
+                context=context,
             ),
         )
         undeclared = f"Git submodule is not a declared governed project: {member_root}"
         if loaded_member.failure:
-            return result_type.fail(loaded_member.error or undeclared)
+            return result_type.from_failure(loaded_member)
         member_ref = loaded_member.value
         if not isinstance(member_ref, m.Infra.RepositoryRef):
             return result_type.fail(undeclared)

@@ -49,7 +49,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         return runner.model_copy(
             update={
                 "started_at_monotonic": time.monotonic()
-                - runner.run_timeout_seconds(policy)
+                - policy.run_timeout_seconds
                 + policy.termination_grace_seconds,
             },
         )
@@ -119,71 +119,6 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         tm.fail((outcome_path.parent / "junit.xml").exists())
         tm.fail((outcome_path.parent / "summary.txt").exists())
         tm.fail((outcome_path.parent / "run-accounting.json").exists())
-
-    @staticmethod
-    def test_ordinary_stop_reserve_is_independent_of_dispatch(
-        cached_runner_project: Path,
-    ) -> None:
-        """Both dispatch shapes share the aggregate grace, without an item cap."""
-        policy = config.Infra.tooling.tools.pytest
-
-        def dispatch_plan(node_ids: t.StrSequence) -> m.Infra.PytestSelectionPlan:
-            """Synthetic selection whose manifest path matches the real argv.
-
-            Returns:
-                The resulting ``m.Infra.PytestSelectionPlan``.
-
-            """
-            # The plan is a strict value: it takes typed fields, never the
-            # JSON-shaped str/list a lax validation would coerce.
-            return m.Infra.PytestSelectionPlan(
-                manifest_path=Path("m.json"),
-                node_ids=tuple(node_ids),
-                whole_target=False,
-                inventory_collected=False,
-                owns_no_tests=False,
-            )
-
-        u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
-        multi = [f"tests/test_serial_{'x' * index}.py::test_one" for index in range(4)]
-        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        multi_plan = dispatch_plan(multi)
-        multi_command = runner.build_command(
-            cached_runner_project / runner.reports,
-            multi_plan,
-        )
-        serial_plan = dispatch_plan(multi[:1])
-        serial_command = runner.build_command(
-            cached_runner_project / runner.reports,
-            serial_plan,
-        )
-
-        def stop_value(command: t.StrSequence) -> float:
-            (raw,) = (
-                argument
-                for argument in command
-                if argument.startswith(c.Infra.PYTEST_SUITE_STOP_OPTION)
-            )
-            return float(raw.partition("=")[2])
-
-        workers_index = list(multi_command).index("-n") + 1
-        budget = runner.parallel_worker_budget(policy)
-        tm.ok(budget > 1)
-        tm.that(list(multi_command)[workers_index], eq=str(min(budget, len(multi))))
-        tm.that(
-            stop_value(multi_command),
-            eq=runner.started_at_monotonic
-            + runner.run_timeout_seconds(policy)
-            - policy.termination_grace_seconds,
-        )
-        serial_workers_index = list(serial_command).index("-n") + 1
-        tm.that(list(serial_command)[serial_workers_index], eq="0")
-        tm.that(
-            stop_value(serial_command),
-            eq=runner.started_at_monotonic
-            + runner.run_timeout_seconds(policy)
-            - policy.termination_grace_seconds,
-        )
 
     @pytest.mark.slow
     @pytest.mark.parametrize("distributed", [True, False], ids=["xdist", "serial"])

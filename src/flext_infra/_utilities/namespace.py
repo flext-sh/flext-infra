@@ -514,6 +514,11 @@ class FlextInfraUtilitiesCodegenNamespace:
             runtime_aliases=cls._runtime_aliases(
                 package_dir, rope_project=rope_project
             ),
+            repository_namespace_packages=tuple(
+                cls.repository_namespace_packages(
+                    resolved_root, source_project=rope_project
+                )
+            ),
         )
 
     @classmethod
@@ -665,9 +670,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         if not file_path.is_relative_to(project_root):
             return class_stem
         rel_parts = file_path.relative_to(project_root).parts
-        declared = cls.repository_namespace_packages(
-            project_root, source_project=source_project
-        )
+        declared = layout.repository_namespace_packages
         if rel_parts and rel_parts[0] in declared:
             return u.derive_class_stem(rel_parts[0].replace("_", "-"))
         surface_prefix = (

@@ -284,7 +284,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                         formatted,
                         origin,
                         default_message=(
-                            "embedded code is not ruff-formatted (fix via `make fix`)"
+                            "embedded code is not ruff-formatted (fix via `make fmt`)"
                         ),
                     ),
                 )

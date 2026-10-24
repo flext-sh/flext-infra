@@ -207,7 +207,9 @@ class UtilityFacadePublication:
                 )
             )
         plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root).plan(
+            FlextInfraCodegenConform(
+                state=m.Infra.CodegenConformState(repository_root=root),
+            ).plan(
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.ALL,

@@ -59,129 +59,80 @@ class FlextInfraUtilitiesDocsFix:
     def docs_fix_python_codeblocks(
         scope: m.Infra.DocScope,
         *,
-        apply: bool,
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Auto-fix ``python`` fenced code blocks using ``ruff check --fix``.
+        path: Path,
+        content: str,
+    ) -> str:
+        """Plan fenced-code lint repairs against one captured Markdown source.
 
         Apply only fixes that ``ruff`` resolves completely. An unfixable
         diagnostic fails this phase with the original process detail so the
         authored Markdown can be corrected before publication.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.GeneratedFile]``.
+            Repaired source bytes without publishing the source file.
 
         """
-        changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
-            original = md_file.read_text(
-                encoding=c.DEFAULT_ENCODING,
-                errors=c.Infra.IGNORE,
-            )
 
-            def _replace_fence(
-                match: re.Match[str],
-                source_file: Path = md_file,
-            ) -> str:
-                body = match.group("body")
-                rel = source_file.relative_to(scope.path).as_posix()
-                # Ruff via running interpreter (venv SSOT);
-                # bare "ruff" breaks when .venv/bin is not on PATH (CI docs fix).
-                common = [
-                    sys.executable,
-                    "-m",
-                    c.Infra.RUFF,
-                    c.Infra.VERB_CHECK,
-                    "--extend-ignore",
-                    ",".join(c.Infra.PYTHON_FENCE_RUFF_EXTEND_IGNORE),
-                    "--stdin-filename",
-                    f"{rel}#block.py",
-                    "-",
-                ]
-                fix_outcome = u.Cli.run_raw(
-                    (*common, *config.Infra.codegen.make.ruff.lint_fix),
-                    cwd=scope.path,
-                    options=m.Cli.ProcessOptions(input_data=body.encode()),
+        def _replace_fence(match: re.Match[str]) -> str:
+            body = match.group("body")
+            rel = path.relative_to(scope.path).as_posix()
+            common = [
+                sys.executable,
+                "-m",
+                c.Infra.RUFF,
+                c.Infra.VERB_CHECK,
+                "--extend-ignore",
+                ",".join(c.Infra.PYTHON_FENCE_RUFF_EXTEND_IGNORE),
+                "--stdin-filename",
+                f"{rel}#block.py",
+                "-",
+            ]
+            fixed = u.Cli.run_raw(
+                (*common, *config.Infra.codegen.make.ruff.lint_fix),
+                cwd=scope.path,
+                options=m.Cli.ProcessOptions(input_data=body.encode()),
+            ).unwrap()
+            if not u.Cli.process_succeeded(fixed.outcome):
+                msg = f"Ruff could not fix {rel}: {fixed.stdout}\n{fixed.stderr}"
+                raise RuntimeError(msg)
+            fixed_body = fixed.stdout
+            verified = u.Cli.run_raw(
+                (*common, *config.Infra.codegen.make.ruff.lint_check),
+                cwd=scope.path,
+                options=m.Cli.ProcessOptions(input_data=fixed_body.encode()),
+            ).unwrap()
+            if not u.Cli.process_succeeded(verified.outcome) or verified.stderr:
+                msg = (
+                    f"Ruff could not verify {rel}: {verified.stdout}\n{verified.stderr}"
                 )
-                if fix_outcome.failure:
-                    raise RuntimeError(
-                        fix_outcome.error or f"Ruff could not inspect {rel}",
-                    )
-                if not u.Cli.process_succeeded(fix_outcome.value.outcome):
-                    msg = (
-                        f"Ruff could not fix {rel}: "
-                        f"{fix_outcome.value.stdout}\n{fix_outcome.value.stderr}"
-                    )
-                    raise RuntimeError(msg)
-                # Verify through the same read-only policy as the auditor.
-                fixed_body = fix_outcome.value.stdout
-                verify_outcome = u.Cli.run_raw(
-                    (*common, *config.Infra.codegen.make.ruff.lint_check),
-                    cwd=scope.path,
-                    options=m.Cli.ProcessOptions(input_data=fixed_body.encode()),
-                )
-                if verify_outcome.failure:
-                    raise RuntimeError(
-                        verify_outcome.error or f"Ruff could not verify {rel}",
-                    )
-                if not u.Cli.process_succeeded(verify_outcome.value.outcome):
-                    msg = (
-                        f"Ruff could not fix {rel}: "
-                        f"{verify_outcome.value.stdout}\n{verify_outcome.value.stderr}"
-                    )
-                    raise RuntimeError(msg)
-                if verify_outcome.value.stderr:
-                    msg = (
-                        f"Ruff emitted diagnostics while fixing {rel}: "
-                        f"{verify_outcome.value.stderr}"
-                    )
-                    raise RuntimeError(msg)
-                if fixed_body == body:
-                    return match.group(0)
-                # A closing fence only closes the block when it starts its own
-                # line; ruff may return a body without the trailing newline, so
-                # reassembling blindly welds the fence onto the last code line
-                # and the block swallows every heading that follows it.
-                closed_body = (
-                    fixed_body if fixed_body.endswith("\n") else f"{fixed_body}\n"
-                )
-                indent = match.group("indent")
-                return f"{indent}{match.group('open')}{closed_body}{indent}```"
+                raise RuntimeError(msg)
+            if fixed_body == body:
+                return match.group(0)
+            closed_body = fixed_body if fixed_body.endswith("\n") else f"{fixed_body}\n"
+            indent = match.group("indent")
+            return f"{indent}{match.group('open')}{closed_body}{indent}```"
 
-            repaired = c.Infra.WELDED_FENCE_RE.sub(
-                lambda match: (
-                    f"{match.group('indent')}{match.group('body')}"
-                    f"\n{match.group('indent')}```"
-                ),
-                original,
-            )
-            sanitized = c.Infra.PYTHON_FENCE_FIX_RE.sub(_replace_fence, repaired)
-            if sanitized == original:
-                continue
-            changed.append(
-                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    md_file,
-                    sanitized,
-                    apply=apply,
-                ),
-            )
-        return changed
+        repaired = c.Infra.WELDED_FENCE_RE.sub(
+            lambda match: (
+                f"{match.group('indent')}{match.group('body')}"
+                f"\n{match.group('indent')}```"
+            ),
+            content,
+        )
+        return c.Infra.PYTHON_FENCE_FIX_RE.sub(_replace_fence, repaired)
 
     @staticmethod
     def docs_process_markdown_file(
         md_file: Path,
         *,
-        apply: bool,
-    ) -> m.Infra.DocsPhaseItemModel:
-        """Fix one markdown file and return the phase item summary.
+        content: str,
+    ) -> t.Pair[str, m.Infra.DocsPhaseItemModel]:
+        """Plan link, fence and TOC repairs without reading or writing the file.
 
         Returns:
-            The resulting ``m.Infra.DocsPhaseItemModel``.
+            The repaired source and its existing phase item summary.
 
         """
-        original = md_file.read_text(
-            encoding=c.DEFAULT_ENCODING,
-            errors=c.Infra.IGNORE,
-        )
         link_count = 0
 
         def replace_link(match: t.RegexMatch) -> str:
@@ -200,19 +151,20 @@ class FlextInfraUtilitiesDocsFix:
             link_count += 1
             return f"[{text}]({fixed})"
 
-        updated = c.Infra.MARKDOWN_LINK_RE.sub(replace_link, original)
+        updated = c.Infra.MARKDOWN_LINK_RE.sub(replace_link, content)
         fence_changed = c.Infra.FENCE_NOTEST_ATTR_RE.subn(r"```{.\1 .notest}", updated)
         updated = fence_changed[0]
         updated, toc_changed = FlextInfraUtilitiesDocsContract.docs_contract_update_toc(
             updated,
         )
-        if apply and updated != original:
-            _ = md_file.write_text(updated, encoding=c.DEFAULT_ENCODING)
-        return m.Infra.DocsPhaseItemModel(
-            phase="fix",
-            file=md_file.as_posix(),
-            links=link_count + fence_changed[1],
-            toc=toc_changed,
+        return (
+            updated,
+            m.Infra.DocsPhaseItemModel(
+                phase="fix",
+                file=md_file.as_posix(),
+                links=link_count + fence_changed[1],
+                toc=toc_changed,
+            ),
         )
 
     @staticmethod

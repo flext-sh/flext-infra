@@ -314,6 +314,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                     type_checking_root_names,
                 ),
                 source_project=source_project,
+                package_context=plan.context,
             ),
         )
         runtime_import_lines = cls._runtime_import_lines(plan, type_checking_root_names)

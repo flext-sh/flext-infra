@@ -92,13 +92,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             skip_check=True,
             managed_artifacts=u.Infra.empty_snapshot().resolution,
         )
-        analysis_exclusions = tuple(
-            path.as_posix()
-            for path in (
-                *target.external_dependency_paths,
-                *workspace.external_dependency_paths,
-            )
-        )
         # Why: a scaffold's declared roots are the complete
         # future topology only for a subproject/standalone target; a workspace
         # root aggregates subproject trees it has not declared here.
@@ -137,7 +130,13 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 declared_python_dirs_are_complete=(
                     target.make_profile is not c.Infra.MakeProfile.WORKSPACE
                 ),
-                analysis_exclusions=analysis_exclusions,
+                analysis_exclusions=tuple(
+                    path.as_posix()
+                    for path in (
+                        *target.external_dependency_paths,
+                        *workspace.external_dependency_paths,
+                    )
+                ),
             ),
         )
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
@@ -503,7 +502,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
         rendered = self._rendered_artifact_source(
             render_inputs,
-            template_relpath=entry.source,
             destination=destination,
             failure_prefix=(
                 f"stage=templates repository={render_inputs.target.repository.name} "
@@ -537,13 +535,12 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         file_plan = self.file_plan(
             root,
             destination,
-            rendered_content.value.rendered,
+            rendered_content.value,
             mode=(
                 entry.ownership.mode
                 if entry.ownership is not None
                 else render_inputs.codegen.modes.file_default
             ),
-            source_states=rendered_content.value.source_states,
         )
         if file_plan.failure:
             return result_type.from_failure(file_plan)

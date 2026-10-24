@@ -13,10 +13,6 @@ from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
@@ -28,14 +24,36 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         entry: m.Infra.TemplateEntrySpec,
         context: p.Model,
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
-        """Capture an explicit package resource or authenticate a Jinja render."""
+        """Capture an explicit package resource or authenticate a Jinja render.
+
+        Args:
+            codegen: The code generation configuration.
+            entry: The template entry specification.
+            context: The rendering context for the template.
+
+        Returns:
+            A result containing the composed artifact or an error.
+
+        """
         result_type = r[m.Infra.CodegenArtifactComposition]
         source = u.Infra.codegen_artifact_source(codegen, entry)
         if entry.source_kind == "resource":
-            captured = u.Cli.atomic_read_binary_file_state(source, required=True)
-            if captured.failure:
-                return result_type.from_failure(captured)
-            content = captured.value.content
+            if entry.source_package is None:
+                return result_type.fail(
+                    f"resource has no explicit package owner: {entry.destination}",
+                )
+            sources: list[m.Cli.AtomicFileState] = []
+            for declared_source in entry.source_closure:
+                original = u.Infra.codegen_artifact_source(
+                    codegen,
+                    entry.model_copy(update={"source": declared_source}),
+                )
+                captured = u.Cli.atomic_read_binary_file_state(original, required=True)
+                if captured.failure:
+                    return result_type.from_failure(captured)
+                sources.append(captured.value)
+            primary = next(state for state in sources if state.path == source)
+            content = primary.content
             if content is None:
                 return result_type.fail(
                     f"required resource has no captured bytes: {source}",
@@ -43,7 +61,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return result_type.ok(
                 m.Infra.CodegenArtifactComposition(
                     rendered=content.decode(c.DEFAULT_ENCODING),
-                    source_states=(captured.value,),
+                    source_states=tuple(sources),
+                    validation_context=m.Infra.ArtifactResourceValidationContext(
+                        source=primary,
+                        source_package=entry.source_package,
+                        source_states=tuple(sources),
+                    ),
                 ),
             )
         return u.Cli.template_render_authenticated(source, context).map(
@@ -59,10 +82,24 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Keep each selected artifact and its required outputs in one publication."""
+        """Keep each selected artifact and its required outputs in one publication.
+
+        Args:
+            codegen: The code generation configuration.
+            root: The root path for the generated artifacts.
+            planned: A sequence of planned file artifacts.
+
+        Returns:
+            File plans with connected publication dependencies resolved.
+
+        """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         by_path = {plan.path: plan for plan in planned}
-        groups: list[set[Path]] = []
+        existing: dict[str, set[Path]] = {}
+        for plan in planned:
+            if plan.dependency_group is not None:
+                existing.setdefault(plan.dependency_group, set()).add(plan.path)
+        groups = list(existing.values())
         for entry in codegen.templates.entries:
             path = root / entry.destination
             if path not in by_path or not entry.requires_artifacts:
@@ -79,24 +116,23 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     f"artifact {entry.destination} has unplanned dependencies: "
                     f"{', '.join(str(item) for item in sorted(missing))}",
                 )
-            for group in groups.copy():
-                if group.intersection(required):
-                    required.update(group)
-                    groups.remove(group)
             groups.append(required)
-        for group in groups:
-            # Preserve and join any publication group already elected by a planner.
-            identities = {
-                by_path[path].dependency_group
-                for path in group
-                if by_path[path].dependency_group is not None
-            }
-            group.update(
-                path
-                for path, plan in by_path.items()
-                if plan.dependency_group in identities
+        while groups:
+            group = groups.pop().copy()
+            while touching := [item for item in groups if item.intersection(group)]:
+                for item in touching:
+                    group.update(item)
+                    groups.remove(item)
+            identities = sorted(
+                identity
+                for identity, paths in existing.items()
+                if paths.intersection(group)
             )
-            identity = f"artifacts:{root}:{min(group).relative_to(root)}"
+            identity = (
+                identities[0]
+                if identities
+                else f"artifacts:{root}:{min(group).relative_to(root)}"
+            )
             for path in group:
                 by_path[path] = by_path[path].model_copy(
                     update={"dependency_group": identity},
@@ -391,16 +427,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return result_type.from_failure(combined_sources)
         source_states: list[m.Cli.AtomicFileState] = list(combined_sources.value)
         if render_inputs is not None:
-            collected = cls._member_declaration_states(
-                repository_root, render_inputs.workspace
-            )
-            if collected.failure:
-                return result_type.from_failure(collected)
-            source_states.extend(collected.value[0])
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
                 render_inputs,
-                member_declarations=collected.value[1],
             )
             if conformed.failure:
                 return result_type.from_failure(conformed)
@@ -431,75 +460,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 source_states=tuple(source_states),
             ),
         )
-
-    @classmethod
-    def _member_declaration_states(
-        cls,
-        repository_root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[
-        t.Pair[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ]
-    ]:
-        """Collect workspace member declarations for pyproject conforming.
-
-        Args:
-            repository_root: The repository root holding the lock file.
-            workspace: The workspace declaration electing packaged members.
-
-        Returns:
-            The collected source states with their member declarations, or
-            the first read failure. The pair is empty when the repository
-            declares no workspace role or elects no packaged members.
-
-        """
-        result_type = r[
-            t.Pair[
-                t.VariadicTuple[m.Cli.AtomicFileState],
-                t.VariadicTuple[m.Cli.AtomicFileState],
-            ]
-        ]
-        members = (
-            tuple(member for member in workspace.subprojects if member.package)
-            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
-            else ()
-        )
-        if not members:
-            return result_type.ok(((), ()))
-
-        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
-        if context.failure:
-            return result_type.from_failure(context)
-        locked = u.Cli.atomic_read_binary_file_state(
-            context.value.lock_path,
-            required=False,
-        )
-        if locked.failure:
-            return result_type.from_failure(locked)
-        source_states: list[m.Cli.AtomicFileState] = [locked.value]
-        declarations: list[m.Cli.AtomicFileState] = []
-        for member in members:
-            declaration = (
-                u.Cli.atomic_read_binary_file_state(
-                    repository_root / member.path / c.PYPROJECT_FILENAME,
-                    required=True,
-                )
-                if member.editable
-                else (
-                    FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-                        repository_root,
-                        member,
-                        lock_state=locked.value,
-                    )
-                )
-            )
-            if declaration.failure:
-                return result_type.from_failure(declaration)
-            declarations.append(declaration.value)
-            source_states.append(declaration.value)
-        return result_type.ok((tuple(source_states), tuple(declarations)))
 
     @classmethod
     def _composed_mise_overlay(
@@ -674,11 +634,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
-        template_relpath: Path,
+        entry: m.Infra.TemplateEntrySpec,
         destination: str,
         failure_prefix: str,
         project_context: m.Infra.ProjectRenderContext | None,
-        entry: m.Infra.TemplateEntrySpec | None = None,
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Resolve one artifact render context and render its template source.
 
@@ -689,13 +648,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         Returns:
             Rendered content and the exact templates consumed by Jinja.
 
+        Raises:
+            ValueError: If the catalog entry has no renderable source.
+
         """
-        if entry is None:
-            entry = next(
-                item
-                for item in render_inputs.codegen.templates.entries
-                if item.destination == destination
-            )
+        if entry.source is None:
+            msg = f"render entry has no source: {destination}"
+            raise ValueError(msg)
         if entry.source_kind == "resource":
             return self.render_artifact_source(
                 render_inputs.codegen,
@@ -740,7 +699,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
         return self._require_rendered_content(
             rendered.value.rendered,
-            template_relpath=template_relpath,
+            template_relpath=entry.source,
             destination=destination,
             failure_prefix=failure_prefix,
             template_source=primary.content.decode(c.DEFAULT_ENCODING),
@@ -891,8 +850,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # A repository without one must not render ledger activation.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    native_environment_unset=codegen.make.native_environment_unset,
                     toolchain=codegen.toolchain,
-                    uv_resolution=codegen.make.uv_resolution,
                     repository_root_rel=self._repository_root_rel(workspace),
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
