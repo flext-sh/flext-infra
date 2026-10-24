@@ -14,7 +14,6 @@ from __future__ import annotations
 import re
 from contextlib import closing
 from pathlib import Path
-from types import MappingProxyType
 
 from flext_infra import c, t
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
@@ -69,7 +68,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                 and entry.file_path.is_relative_to(root)
             }
             run = FlextInfraUtilitiesPythonModel.python_model_run(rope, packages)
-            return MappingProxyType({
+            return {
                 f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
                 f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}": (
                     cls.codemod_exact_names_rule(
@@ -82,7 +81,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                     )
                 )
                 for package, path in sorted(packages.items())
-            })
+            }
 
     @staticmethod
     def codemod_facade_family_package_utilities(
