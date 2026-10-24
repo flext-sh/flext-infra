@@ -1,0 +1,16 @@
+id: relocate-facade-member-to-u
+snapshots:
+  error = m.ValidationError:
+    fixed: error = u.ValidationError
+    labels:
+    - source: m.ValidationError
+      style: primary
+      start: 8
+      end: 25
+  value = m.Field:
+    fixed: value = u.Field
+    labels:
+    - source: m.Field
+      style: primary
+      start: 8
+      end: 15

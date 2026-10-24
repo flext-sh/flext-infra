@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ast
 from contextvars import ContextVar
+from importlib import import_module
 from pathlib import Path
 from typing import ClassVar
 
@@ -39,6 +40,7 @@ from flext_infra._utilities._rope_source_bases_runtime import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
 
 
 class FlextInfraUtilitiesCodemodBindingChain:
@@ -233,6 +235,50 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     sources,
                 )
                 for decorator in node.decorator_list
+            )
+
+        @staticmethod
+        def _facade_member_relocation(
+            condition: m.Infra.CodemodContextCondition,
+            captures: t.JsonMapping,
+        ) -> m.Infra.CodemodContextCondition | None:
+            """Derive the member relocation an owner policy implies.
+
+            The core package provides the facade families. When the target
+            letter owns the captured member by its runtime kind, the occurrence
+            needs exactly the native member-relocation proof from the
+            receiver letter to the owner; otherwise no relocation is implied.
+
+            Returns:
+                The member-relocation condition, or ``None`` when the target
+                letter does not own the member.
+
+            """
+            if condition.of is None or condition.of not in captures:
+                return None
+            receiver = m.Infra.AstGrepCapture.model_validate(
+                captures[condition.variable]
+            ).text
+            member = m.Infra.AstGrepCapture.model_validate(captures[condition.of]).text
+            target = condition.arg[0]
+            core = c.Infra.PKG_CORE_UNDERSCORE
+            facade = getattr(import_module(core), target, None)
+            if (
+                receiver == target
+                or not isinstance(facade, type)
+                or member not in dir(facade)
+                or FlextInfraUtilitiesFacadeMembers.facade_member_owner(
+                    getattr(facade, member)
+                )
+                != target
+            ):
+                return None
+            emitted = f"{target}.{member}"
+            return condition.model_copy(
+                update={
+                    "predicate": c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
+                    "arg": (core, receiver, emitted, core, emitted),
+                }
             )
 
         @classmethod
@@ -454,10 +500,11 @@ class FlextInfraUtilitiesCodemodBindingChain:
                         call, "relocation_callable"
                     )
                     == (start, end + len(f".{member}"))
-                    for call in finder.get_matches(
+                    for pattern in (
                         "${relocation_callable}(${relocation_call_arguments})",
-                        {},
+                        "${relocation_callable}()",
                     )
+                    for call in finder.get_matches(pattern, {})
                 ):
                     return False
             if annotated:

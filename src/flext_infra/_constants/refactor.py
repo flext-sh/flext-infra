@@ -286,6 +286,35 @@ class FlextInfraConstantsRefactor:
         UNREFERENCED_IMPORT = "unreferenced-import"
         IMPLEMENTATION_OWNER = "implementation-owner"
         ISOLATED_EXECUTION = "isolated-execution"
+        FOREIGN_FACADE_MEMBER = "foreign-facade-member"
+        FACADE_MEMBER_OWNER = "facade-member-owner"
+
+    @unique
+    class FacadeMemberKind(StrEnum):
+        """Kind of runtime object a facade member binds; config maps it to an owner."""
+
+        EXCEPTION = "exception"
+        ENUM = "enum"
+        CONSTANT = "constant"
+        PROTOCOL = "protocol"
+        MODEL = "model"
+        MODEL_DECLARATION = "model-declaration"
+        TYPE = "type"
+        FUNCTION = "function"
+
+    FACADE_MEMBER_TYPING_MODULES: ClassVar[frozenset[str]] = frozenset({
+        "typing",
+        "types",
+        "typing_extensions",
+    })
+    "Modules whose objects are typing forms (unions, literals, generic aliases)."
+
+    @unique
+    class FacadeMemberPlacement(StrEnum):
+        """Whether a foreign facade member's owner already exposes it."""
+
+        EXPOSED = "exposed"
+        MISSING = "missing"
 
     CODEMOD_RUNTIME_CLOSURE_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
         frozenset({
