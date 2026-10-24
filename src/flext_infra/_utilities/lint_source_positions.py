@@ -12,7 +12,7 @@ from pathlib import Path
 from flext_infra import c
 
 
-class FlextInfraUtilitiesLintRecipesPart:
+class FlextInfraUtilitiesLintSourcePositions:
     """Source-position primitives composed into the lint repair recipes."""
 
     @staticmethod
@@ -120,3 +120,6 @@ class FlextInfraUtilitiesLintRecipesPart:
                     return node
         msg = f"{path}: no function docstring starts at line {line}"
         raise ValueError(msg)
+
+
+__all__: list[str] = ["FlextInfraUtilitiesLintSourcePositions"]

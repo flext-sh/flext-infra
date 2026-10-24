@@ -35,10 +35,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
 )
-from flext_infra._utilities._lint_recipes_part import FlextInfraUtilitiesLintRecipesPart
+from flext_infra._utilities.lint_source_positions import (
+    FlextInfraUtilitiesLintSourcePositions,
+)
 
 
-class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
+class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     """Lint-gate policy and repair utilities behind the ``u.Infra`` facade."""
 
     @staticmethod
