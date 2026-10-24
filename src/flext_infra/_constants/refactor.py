@@ -233,6 +233,10 @@ class FlextInfraConstantsRefactor:
           of the family the finding's module belongs to: the letters its own
           ``__all__`` declares and those its private family package's facade
           module declares;
+        - ``family-peer``: the captured class name ends with the class suffix
+          of a facade family the finding's module belongs to (``file-family``
+          letters, suffixes from the facade-family declarations): a Pattern-B
+          peer of the same family, never an arbitrary concrete class;
         - ``facade-module``: the finding's module declares a facade letter in
           its ``__all__`` (the captured value is not read);
         - ``later-layer``: the captured import (a module of the own package or
@@ -300,6 +304,7 @@ class FlextInfraConstantsRefactor:
         MODULE_EXPORT = "module-export"
         PACKAGE_EXPORT = "package-export"
         FILE_FAMILY = "file-family"
+        FAMILY_PEER = "family-peer"
         FACADE_MODULE = "facade-module"
         LATER_LAYER = "later-layer"
         IMPORT_CYCLE = "import-cycle"

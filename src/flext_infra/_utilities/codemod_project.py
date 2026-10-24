@@ -2009,6 +2009,7 @@ class FlextInfraUtilitiesCodemodProject(
             case (
                 c.Infra.CodemodContextPredicate.MODULE_EXPORT
                 | c.Infra.CodemodContextPredicate.FILE_FAMILY
+                | c.Infra.CodemodContextPredicate.FAMILY_PEER
                 | c.Infra.CodemodContextPredicate.PACKAGE_EXPORT
                 | c.Infra.CodemodContextPredicate.FACADE_MODULE
                 | c.Infra.CodemodContextPredicate.LATER_LAYER
@@ -2260,6 +2261,13 @@ class FlextInfraUtilitiesCodemodProject(
                 )
             case c.Infra.CodemodContextPredicate.FILE_FAMILY:
                 return value in cls._file_families(file_path)
+            case c.Infra.CodemodContextPredicate.FAMILY_PEER:
+                families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+                return any(
+                    value.endswith(families[letter].suffix)
+                    for letter in cls._file_families(file_path)
+                    if letter in families
+                )
             case c.Infra.CodemodContextPredicate.PACKAGE_EXPORT:
                 if of is None:
                     msg = f"predicate {predicate} requires an 'of' capture"
