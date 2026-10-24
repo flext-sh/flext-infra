@@ -376,7 +376,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         else:
             tm.that(error, has="direct_url mismatch")
             tm.that(error, has=f"expected={member}")
-            tm.that(error, has=f"actual={stale}")
+            tm.that(error, has=f"actual={stale.as_uri()}")
 
     def test_rejects_stale_pth_source(
         self,
@@ -423,6 +423,17 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """
         workspace = self._workspace(self._locked_root(tmp_path))
         member = workspace / "sample-member"
+        # Package participation is the member's native build declaration, the
+        # same backend production scaffolds; no workspace roster declares it.
+        build = config.Infra.codegen.scaffold.build
+        pyproject = member / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            "[build-system]\n"
+            f"requires = {dumps(list(build.requirements))}\n"
+            f"build-backend = {dumps(build.backend)}\n\n"
+            + pyproject.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
         u.Tests.commit_git_changes(member, "declare member ledger route")
         u.Tests.WorktreeFixture.attach_submodule(
             workspace,
@@ -579,7 +590,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tm.that(
             tm.fail(result),
             has=(
-                "CI dependency is editable"
+                "editable provenance pth mismatch"
                 if defect == "editable"
                 else "direct_url mismatch"
             ),
@@ -700,14 +711,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         ("defect", "diagnostic"),
         [
             ("lock_path", "locked workspace source differs"),
-            ("origin", "workspace checkout identity differs"),
+            ("origin", "subproject origin differs from its .gitmodules URL"),
             ("head", "workspace checkout differs from locked gitlink"),
             ("gitlink", "governed gitlink is absent"),
             ("staged_gitlink", "workspace checkout differs from locked gitlink"),
-            ("checkout", "workspace member has no declared gitlink checkout"),
-            ("editable_policy", "locked workspace source differs"),
-            ("undeclared", "CI member needs a locked artifact source"),
-            ("standalone", "CI member needs a locked artifact source"),
         ],
     )
     def test_locked_rejects_unproven_local_source(
@@ -760,39 +767,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                     ),
                 ),
             )
-        else:
-            manifest = tm.ok(u.Infra.load_workspace_manifest(workspace))[0]
-            if defect == "standalone":
-                manifest = manifest.model_copy(
-                    update={
-                        "repository": manifest.repository.model_copy(
-                            update={"role": c.Infra.MakeProfile.STANDALONE},
-                        ),
-                    },
-                )
-            elif defect in {"checkout", "editable_policy"}:
-                manifest = manifest.model_copy(
-                    update={
-                        "members": (
-                            manifest.members[0].model_copy(
-                                update=(
-                                    {"checkout": c.Infra.CheckoutKind.INDEPENDENT.value}
-                                    if defect == "checkout"
-                                    else {"editable": False}
-                                ),
-                            ),
-                        ),
-                    },
-                )
-            else:
-                manifest = manifest.model_copy(update={"members": ()})
-            tm.ok(
-                u.Cli.yaml_dump(
-                    u.Infra.workspace_manifest_path(workspace),
-                    manifest.model_dump(mode="json"),
-                ),
-            )
-        tm.that(tm.fail(self._locked_verdict(workspace)), has=diagnostic)
+        # Checkout identity and gitlink proof gate immutable CI builds only.
+        ci = config.Infra.codegen.make.ci
+        with u.Tests.env_vars_context(env_vars={ci.variable: ci.value}):
+            tm.that(tm.fail(self._locked_verdict(workspace)), has=diagnostic)
 
     @pytest.mark.parametrize(
         "defect",

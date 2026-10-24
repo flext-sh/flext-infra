@@ -404,6 +404,13 @@ class FlextInfraWorkspaceDetector(
                 # against that record. Workspace-attached members carry
                 # their attachment; the self root carries the contract.
                 editable=composed or path == Path(),
+                # A composed tree is attached by its declared gitlink; the
+                # immutable provenance gate binds its HEAD to that gitlink.
+                checkout=(
+                    c.Infra.CheckoutKind.SUBMODULE.value
+                    if composed
+                    else c.Infra.CheckoutKind.ROOT.value
+                ),
                 read_only=False,
             ),
         )

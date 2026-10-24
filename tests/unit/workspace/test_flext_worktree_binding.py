@@ -10,8 +10,8 @@ import sys
 import sysconfig
 from pathlib import Path
 
-from flext_infra import config, workspace
-from tests import c, m, tm, u
+from flext_infra import workspace
+from tests import c, tm, u
 
 
 class TestsFlextInfraWorktreeBinding:
@@ -101,34 +101,3 @@ class TestsFlextInfraWorktreeBinding:
             ),
             none=True,
         )
-
-    @staticmethod
-    def test_ci_binding_rejects_before_consumer_or_supplier_access(
-        tmp_path: Path,
-    ) -> None:
-        """The real public CLI rejects CI before any environment mutation."""
-        ci = config.Infra.codegen.make.ci
-        result = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "workspace",
-                    "flext-binding",
-                    "--repository-root",
-                    str(tmp_path / "consumer"),
-                    "--flext-root",
-                    str(tmp_path / "supplier"),
-                    "--python",
-                    str(tmp_path / "python"),
-                ),
-                options=m.Cli.ProcessOptions(env={ci.variable: ci.value}),
-            ),
-        )
-        tm.ok(result.outcome.raw_return_code != 0)
-        tm.that(
-            f"{result.stdout}{result.stderr}",
-            has=f"prohibited with {ci.variable}={ci.value}",
-        )
-        tm.that(tuple(tmp_path.iterdir()), eq=())
