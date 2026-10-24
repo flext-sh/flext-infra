@@ -276,7 +276,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             m.Field(
                 alias="apply-typings",
                 description=(
-                    "Declare project.optional-dependencies.typings "
+                    "Declare dependency-groups.dev "
                     "and install through UV"
                 ),
             ),
@@ -676,7 +676,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             m.Field(
                 description=(
                     "Governed mypy follow_untyped_imports policy; when true, "
-                    "missing stubs are not findings"
+                    "stub discovery runs independently of this check policy"
                 ),
             ),
         ]

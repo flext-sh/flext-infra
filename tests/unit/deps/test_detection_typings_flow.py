@@ -62,7 +62,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         return limits
 
     def test_governed_policy_decides_stub_findings(self, tmp_path: Path) -> None:
-        """Followed untyped imports make stubs neither required nor removable."""
+        """Normal check policy is retained in the typing discovery report."""
         followed = self._governed_follow(tmp_path)
         limits = self._typed_reader(tmp_path, follow=followed)
         report = tm.ok(
@@ -77,6 +77,50 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
             report.to_remove,
             eq=[] if followed else ["types-pyyaml", "types-requests"],
         )
+
+    @staticmethod
+    @pytest.mark.parametrize("follow", [True, False])
+    def test_published_stubs_are_discovered_under_either_check_policy(
+        tmp_path: Path,
+        follow: bool,
+    ) -> None:
+        """A real untyped dependency exposes its published stubs under both policies."""
+        directory = tmp_path / c.CONFIG_DIR_NAME
+        directory.mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / "tooling.yaml",
+                {
+                    "Infra": {
+                        "tooling": {
+                            "settings": {
+                                "mypy": [
+                                    [c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS, follow]
+                                ]
+                            }
+                        }
+                    }
+                },
+            )
+        )
+        limits = TestsFlextInfraDepsDetectionTypingsFlow._typed_reader(
+            tmp_path,
+            follow=follow,
+        )
+        (tmp_path / "src" / "typed_reader" / c.Infra.INIT_PY).write_text(
+            "from six import ensure_str\n\nvalue = ensure_str(b'consumer')\n",
+            encoding="utf-8",
+        )
+        before = (tmp_path / c.PYPROJECT_FILENAME).read_bytes()
+        report = tm.ok(
+            FlextInfraDependencyDetectionService().analyze_required_typings(
+                tmp_path,
+                limits,
+            ),
+        )
+        tm.that(report.untyped_imports_followed, eq=follow)
+        tm.that(report.to_add, has="types-six")
+        tm.that((tmp_path / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
     def test_project_policy_conflict_fails_loud(self, tmp_path: Path) -> None:
         """A project mypy table that diverges from the governed policy is a conflict."""

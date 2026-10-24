@@ -717,6 +717,14 @@ Member contributions include the requirements parsed from captured declarations;
 the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
 
+After installing the resolved producer, `make upg` discovers published typing
+requirements through the existing dependency detector and declares additions in
+`dependency-groups.dev` with UV. Its dedicated Mypy invocation disables following
+untyped imports only for stub discovery; normal check policy stays unchanged.
+Subsequent generation preserves these requirements, and final reconciliation
+updates the native view locks. An unknown module never becomes an invented
+`types-*` requirement.
+
 PEP 621 optional extras and PEP 735 dependency groups retain their separate
 categories, including when both declare a name such as `dev` or `codegen`.
 Conformance preserves each extra's requirement strings, bounds, markers and

@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p
 
 
@@ -73,17 +73,31 @@ class FlextInfraDependencyDetectionRunnersMixin:
         # silently zeroing every detected stub hint. `--no-color-output`
         # matches the plain-text contract the regexes already assume (see
         # gates/mypy.py, which disables color for the same reason).
-        cmd = u.Infra.mypy_limited_command(
-            m.Infra.MypyInvocation(
-                targets=(project_path / c.Infra.DEFAULT_SRC_DIR,),
-                config_file=project_path / c.PYPROJECT_FILENAME,
-            ),
-        )
-        result = u.Cli.run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=u.Infra.mypy_runner_timeout(),
-        )
+        payload = u.Infra.pyproject_payload(project_path / c.PYPROJECT_FILENAME)
+        mypy = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY))
+        mypy[c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS] = False
+        # Keep config-relative paths at their original owner. The temporary
+        # projection is removed after the bounded checker finishes.
+        with NamedTemporaryFile(
+            mode="w",
+            encoding=c.DEFAULT_ENCODING,
+            dir=project_path,
+            prefix=".mypy-stubs-",
+            suffix=".toml",
+            delete_on_close=False,
+        ) as projected:
+            projected.write(u.Cli.toml_document_from_mapping(payload).as_string())
+            projected.flush()
+            result = u.Cli.run_raw(
+                u.Infra.mypy_limited_command(
+                    m.Infra.MypyInvocation(
+                        targets=(project_path / c.Infra.DEFAULT_SRC_DIR,),
+                        config_file=Path(projected.name),
+                    ),
+                ),
+                cwd=project_path,
+                timeout=u.Infra.mypy_runner_timeout(),
+            )
         if result.failure:
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
                 u.Infra.mypy_launch_failure_diagnostic(
@@ -94,6 +108,11 @@ class FlextInfraDependencyDetectionRunnersMixin:
         if resource_diagnostic := u.Infra.mypy_failure_diagnostic(command_output):
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(resource_diagnostic)
         output = f"{command_output.stdout}\n{command_output.stderr}"
+        if command_output.outcome.raw_return_code not in {0, 1}:
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
+                f"Mypy stub discovery failed: "
+                f"exit {command_output.outcome.raw_return_code}\n{output}",
+            )
         hinted = {
             match.group(1).strip()
             for match in c.Infra.MYPY_HINT_RE.finditer(output)

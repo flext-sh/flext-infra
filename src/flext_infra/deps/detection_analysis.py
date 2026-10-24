@@ -148,9 +148,9 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
     ) -> p.Result[m.Infra.TypingsReport]:
         """Analyze project and generate typing stubs requirements report.
 
-        Under the governed policy that follows untyped imports, mypy analyzes
-        untyped packages directly and reports no missing stub, so stub
-        packages are neither required nor removable findings.
+        Stub discovery uses a dedicated Mypy invocation. Following untyped
+        imports during normal checks must not hide installable typing packages
+        from dependency generation.
 
         Returns:
             The resulting ``p.Result[m.Infra.TypingsReport]``.
@@ -161,14 +161,10 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             return r[m.Infra.TypingsReport].from_failure(followed)
         limits = self.load_dependency_limits(limits_path)
         exclude_set = self._typing_excludes(limits)
-        hinted: t.StrSequence = []
-        missing_modules: t.StrSequence = []
-        if not followed.value:
-            hints_result = self.run_mypy_stub_hints(project_path)
-            if hints_result.failure:
-                return r[m.Infra.TypingsReport].from_failure(hints_result)
-            typed_hints: t.Pair[t.StrSequence, t.StrSequence] = hints_result.value
-            hinted, missing_modules = typed_hints
+        hints_result = self.run_mypy_stub_hints(project_path)
+        if hints_result.failure:
+            return r[m.Infra.TypingsReport].from_failure(hints_result)
+        hinted, missing_modules = hints_result.value
         required_set = self._required_set(hinted, missing_modules, limits) - exclude_set
         current = self.read_current_typings_from_pyproject(project_path)
         current_set = set(current)

@@ -68,21 +68,13 @@ class TestsFlextInfraDepsDetectorMain:
     # extra) so deptry does not flag it as an unused runtime dependency.
     # A conformed consumer's dev group already carries every stub the scaffold
     # declares, so the scenario uses untyped libraries whose stubs it lacks.
-    # The governed mypy policy decides whether those stubs are findings: when
-    # untyped imports are followed, applying typings adds nothing.
+    # Stub discovery remains active when normal checks follow untyped imports.
     @staticmethod
-    def _install_typings_and_declare_ignores(root: Path, added: set[str]) -> bytes:
-        """Install the typed stubs and declare their deptry ignore.
-
-        Why: a stub-only `types-*` package is never itself importable, so
-        deptry's own usage scan (current deptry ships no PEP 561 stub
-        awareness) flags every package this run just installed as unused
-        on the very next scan. A project that carries a `typings` extra
-        declares this exact deptry ignore for it; replicate that real
-        configuration here instead of asserting a scan deptry cannot pass.
+    def _installed_typings_snapshot(root: Path, added: set[str]) -> bytes:
+        """Verify the real installed distributions and capture their declarations.
 
         Returns:
-            The pyproject snapshot taken after the ignore was appended.
+            The pyproject snapshot after UV installed the development requirements.
 
         """
         installed = tm.ok(
@@ -101,11 +93,6 @@ class TestsFlextInfraDepsDetectorMain:
             ),
         )
         tm.that(len(installed.splitlines()), eq=len(added))
-        with (root / "pyproject.toml").open("a", encoding="utf-8") as stream:
-            stream.write(
-                "\n[tool.deptry.per_rule_ignores]\n"
-                f"DEP002 = {sorted(added)!r}\n".replace("'", '"'),
-            )
         return (root / "pyproject.toml").read_bytes()
 
     @staticmethod
@@ -119,14 +106,6 @@ class TestsFlextInfraDepsDetectorMain:
     ) -> None:
         """Test apply typings follows governed policy and preserves source."""
         root = real_detector_project
-        tooling = tm.ok(u.Infra.load_tooling_inputs(root)).document
-        followed = u.type_adapter(bool).validate_python(
-            u.Infra.native_tool_settings(tooling, "mypy").get(
-                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS,
-                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT,
-            ),
-            strict=True,
-        )
         before = u.Tests.toml_payload((root / "pyproject.toml").read_text())
         expected = {"pytz": "types-pytz", "six": "types-six"}
         declared_dev = {
@@ -157,17 +136,13 @@ class TestsFlextInfraDepsDetectorMain:
             for item in u.Infra.project_dependency_names_from_payload(before)
             if item in expected
         ]
-        added: set[str] = (
-            set() if followed else {expected[item] for item in requirements}
-        )
+        added = {expected[item] for item in requirements}
         typing_specs = u.Tests.toml_strings(
-            u.Tests.toml_mapping(
-                u.Tests.toml_mapping(after["project"])["optional-dependencies"],
-            ).get("typings", []),
+            u.Tests.toml_mapping(after["dependency-groups"])["dev"],
         )
         tm.that(
             {u.Infra.dep_name(item) for item in typing_specs},
-            eq=added,
+            eq=declared_dev | added,
             msg=(
                 f"{outcome.outcome}\n{outcome.stdout}\n{outcome.stderr}\n"
                 + (
@@ -175,7 +150,22 @@ class TestsFlextInfraDepsDetectorMain:
                 ).read_text(encoding="utf-8")
             ),
         )
-        tm.that(after["dependency-groups"], eq=before["dependency-groups"])
+        tm.that(
+            {
+                key: value
+                for key, value in u.Tests.toml_mapping(
+                    after["dependency-groups"]
+                ).items()
+                if key != "dev"
+            },
+            eq={
+                key: value
+                for key, value in u.Tests.toml_mapping(
+                    before["dependency-groups"]
+                ).items()
+                if key != "dev"
+            },
+        )
         original_project = u.Tests.toml_mapping(before["project"])
         updated_project = u.Tests.toml_mapping(after["project"])
         for key, value in original_project.items():
@@ -187,7 +177,7 @@ class TestsFlextInfraDepsDetectorMain:
             )["feature"],
             eq=["requests"],
         )
-        snapshot = TestsFlextInfraDepsDetectorMain._install_typings_and_declare_ignores(
+        snapshot = TestsFlextInfraDepsDetectorMain._installed_typings_snapshot(
             root,
             added,
         )
