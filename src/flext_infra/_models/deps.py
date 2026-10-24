@@ -86,7 +86,7 @@ class FlextInfraModelsDeps(
         """One TOML ingress retaining metadata and its native packaging declaration."""
 
         metadata: Annotated[
-            p.ProjectMetadata,
+            t.Port[p.ProjectMetadata],
             m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
         ]
         packaging: Annotated[

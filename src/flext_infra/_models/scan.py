@@ -212,7 +212,9 @@ class FlextInfraModelsScan:
             m.Field(description="Governed roots in nearest-owner precedence"),
         ]
         authenticated: Annotated[
-            t.MutableMappingKV[str, p.Result[t.Pair[Path, m.Cli.AtomicFileState]]],
+            t.MutableMappingKV[
+                str, t.Port[p.Result[t.Pair[Path, m.Cli.AtomicFileState]]]
+            ],
             m.Field(description="One authentication per file"),
         ] = m.Field(default_factory=dict)
         repositories: Annotated[

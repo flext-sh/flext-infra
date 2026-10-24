@@ -22,7 +22,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
     """
 
     conform_collaborators: Annotated[
-        p.Infra.CodegenConformPorts | None,
+        t.Port[p.Infra.CodegenConformPorts] | None,
         m.Field(
             exclude=True,
             description=(

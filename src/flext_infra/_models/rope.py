@@ -700,11 +700,11 @@ class FlextInfraModelsRope:
             m.Field(description="Nested class path leading to the symbol"),
         ] = ()
         child_scope: Annotated[
-            p.Infra.RopeScopeDsl | None,
+            t.Port[p.Infra.RopeScopeDsl] | None,
             m.Field(description="Optional child scope object from rope"),
         ] = None
         rope_workspace: Annotated[
-            p.Infra.RopeWorkspaceDsl,
+            t.Port[p.Infra.RopeWorkspaceDsl],
             m.Field(description="Shared rope workspace/session owning the resource"),
         ]
 

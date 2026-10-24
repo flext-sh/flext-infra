@@ -189,7 +189,7 @@ class FlextInfraModelsCodegenPipelineModels:
     class CodegenConformState(m.ArbitraryTypesModel):
         """Mutable request-local data owned by one projection invocation."""
 
-        request: p.Infra.CodegenGenerateRequest | None = m.Field(
+        request: t.Port[p.Infra.CodegenGenerateRequest] | None = m.Field(
             default=None,
             exclude=True,
             description="Validated projection request retained by reference",
