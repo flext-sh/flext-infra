@@ -2047,14 +2047,14 @@ class FlextInfraUtilitiesCodemodProject(
                 letter = FlextInfraUtilitiesCodegenNamespace.facade_family_of_source(
                     file_path
                 )
-                return letter is not None and (
-                    FlextInfraUtilitiesFacadeMembers.foreign_facade_member(
-                        cls._resolved_package_own(
-                            root,
-                            c.Infra.CodemodContextPredicate.OWN_PACKAGE,
-                            file_path,
-                            facts,
-                        ),
+                owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                    root, file_path
+                )
+                return (
+                    letter is not None
+                    and owner is not None
+                    and FlextInfraUtilitiesFacadeMembers.foreign_facade_member(
+                        FlextInfraUtilitiesPyproject.project_package_name(owner),
                         (letter, captured[0]),
                         c.Infra.FacadeMemberPlacement(condition.arg[0]),
                     )

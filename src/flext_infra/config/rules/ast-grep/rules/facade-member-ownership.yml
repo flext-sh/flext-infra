@@ -17,6 +17,9 @@ files:
   - "**/_protocols/**/*.py"
   - "**/_models/**/*.py"
   - "**/_utilities/**/*.py"
+constraints:
+  NAME:
+    regex: "^[A-Za-z][A-Za-z0-9_]*$"
 metadata:
   context:
     NAME:
@@ -64,6 +67,9 @@ files:
   - "**/_protocols/**/*.py"
   - "**/_models/**/*.py"
   - "**/_utilities/**/*.py"
+constraints:
+  NAME:
+    regex: "^[A-Za-z][A-Za-z0-9_]*$"
 metadata:
   context:
     NAME:

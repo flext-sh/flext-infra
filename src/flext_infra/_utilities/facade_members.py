@@ -121,6 +121,8 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         letter, member = reference
+        if member.startswith("_"):
+            return False
         module = import_module(package)
         facade = getattr(module, letter, None)
         if not isinstance(facade, type) or not cls._declared_by(
