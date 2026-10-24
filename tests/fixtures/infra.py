@@ -12,41 +12,18 @@ import hashlib
 import os
 import shutil
 import sys
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from functools import partial
 from pathlib import Path
 from shlex import quote
 
 import pytest
 
-from flext_infra import codegen, config, infra, settings, workspace
+from flext_infra import codegen, config, infra, workspace
 from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-
-@pytest.fixture
-def editable_supplier() -> Iterator[Callable[[Path | None], None]]:
-    """Select a real typed supplier setting and restore it after the scenario.
-
-    Yields:
-        The selector for the scenario's editable supplier root.
-
-    """
-    name = type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT
-    previous = os.environ.get(name)
-
-    def select(root: Path | None) -> None:
-        u.Tests.restore_env(name, None if root is None else root.as_posix())
-        type(settings).reset_for_testing()
-
-    try:
-        select(None)
-        yield select
-    finally:
-        u.Tests.restore_env(name, previous)
-        type(settings).reset_for_testing()
 
 
 @pytest.fixture

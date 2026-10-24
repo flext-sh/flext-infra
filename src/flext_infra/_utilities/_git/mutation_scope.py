@@ -66,5 +66,27 @@ class FlextInfraUtilitiesGitMutationScopeMixin:
             return r[m.Infra.GitMutationScope].fail(str(exc), exception=exc)
         return r[m.Infra.GitMutationScope].ok(scope)
 
+    @classmethod
+    def mutation_lock_path(cls, root: Path) -> p.Result[Path]:
+        """Locate the one lock shared by every writer of ``root``'s scope.
+
+        The lock lives in Git storage, or in the state directory outside Git,
+        so it never dirties the working tree.
+
+        Returns:
+            The lock path, or the scope classification failure.
+
+        """
+        return cls.git_mutation_scope(m.Infra.GitRepoRequest(repo_root=root)).map(
+            lambda scope: (
+                (
+                    scope.git_dir
+                    if scope.git_dir is not None
+                    else scope.root / c.Infra.TRANSACTION_STATE_DIRNAME
+                )
+                / c.Infra.MUTATION_LOCK_NAME
+            )
+        )
+
 
 __all__: list[str] = ["FlextInfraUtilitiesGitMutationScopeMixin"]

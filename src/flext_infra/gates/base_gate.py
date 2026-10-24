@@ -9,13 +9,10 @@ from __future__ import annotations
 import shutil
 import sys
 import time
-from collections.abc import Generator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, config, m, u
-from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -798,13 +795,6 @@ class FlextInfraGate:
     # Template method: fix
     # ------------------------------------------------------------------
 
-    @staticmethod
-    @contextmanager
-    def _mutation_lease(project_dir: Path) -> Generator[None]:
-        """Serialize direct fixer effects with generation and WIP capture."""
-        with FlextInfraCodegenFileLeases.mutation_lease(project_dir):
-            yield
-
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
         """Execute the declared repair once and retain its native result.
 
@@ -827,7 +817,7 @@ class FlextInfraGate:
         if not targets:
             return self._skip_result(project_dir, ctx, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
-        with self._mutation_lease(project_dir):
+        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
             result = self._run(
                 cmd,
                 project_dir,

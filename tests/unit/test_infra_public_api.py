@@ -154,7 +154,10 @@ class TestsFlextInfraPublicApi:
             tm.that(engine.settings is runtime_settings, truth=True)
             tm.that(engine.context is initial_context, truth=True)
             tm.that(engine.state.request, none=False)
-            tm.that(engine.state.repository_root, eq=engine.state.request.root)
+            tm.that(
+                engine.state.repository_root,
+                eq=tm.not_none(engine.state.request).root,
+            )
         tm.that(first is not second, truth=True)
         tm.that(first.state.request is not second.state.request, truth=True)
         first.state.planning_exception = ValueError("First invocation failure")

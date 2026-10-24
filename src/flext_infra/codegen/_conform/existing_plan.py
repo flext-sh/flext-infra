@@ -6,14 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import time
 import traceback
 from collections.abc import Callable, Generator, MutableMapping
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, d, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -297,6 +296,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             plans.append(planned.value)
         return self._artifact_dependency_plans(codegen, target.root, plans)
 
+    @d.log_operation("existing_managed_plan", track_perf=True)
     def _plan_existing_managed(
         self,
         target: m.Infra.RepositoryConformTarget,
@@ -316,18 +316,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        managed_started = time.monotonic()
-        u.Cli.info(f"  stage=managed-artifacts repository={target.repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(
             target.root,
             read_committed_directory=u.Infra.git_committed_directory_blobs,
         )
         if managed_artifacts.failure:
             return result_type.from_failure(managed_artifacts)
-        u.Cli.info(
-            f"  stage=managed-artifacts repository={target.repository.name} "
-            f"elapsed={time.monotonic() - managed_started:.2f}s",
-        )
         if not (contract.tooling or contract.custom):
             untooled_runtime = self._existing_untooled_runtime(
                 target, codegen, contract, identity, managed_artifacts.value
@@ -348,7 +342,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     contract=contract,
                 )
             )
-        managed_started = time.monotonic()
         sources = self._existing_managed_sources(target, codegen, contract)
         if sources.failure:
             return result_type.from_failure(sources)
@@ -386,10 +379,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     if tooling_context.failure:
                         return result_type.from_failure(tooling_context)
                     tooling_runtime = tooling_context.value
-                    u.Cli.info(
-                        f"  stage=tooling-context repository={target.repository.name} "
-                        f"elapsed={time.monotonic() - managed_started:.2f}s",
-                    )
                 render_inputs = self.resolve_render_inputs(
                     target=target,
                     workspace=workspace,
@@ -518,7 +507,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     lazy_result.value[1],
                 ))
             )
-        started = time.monotonic()
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
@@ -554,10 +542,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ))
             if custom_inputs.failure:
                 return result_type.from_failure(custom_inputs)
-        u.Cli.info(
-            f"  stage=custom-facades repository={root.name} "
-            f"elapsed={time.monotonic() - started:.2f}s"
-        )
         projected_files = {plan.path: plan for plan in (*cohort, *custom_result.value)}
         planned_exports = self._projected_exports(
             root, custom_inputs.value, tuple(projected_files.values())
@@ -1462,6 +1446,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ),
         )
 
+    @d.log_operation("custom_facades_plan", track_perf=True)
     def _plan_existing_custom(
         self,
         root: Path,
@@ -1667,7 +1652,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ValueError: If a rendered facade has no declaring package module.
 
         """
-        project, consumed_states, sources = binding
+        project, _, sources = binding
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         facade_path = u.Infra.facade_module_path(
             package_dir, family, project=project, sources=sources
@@ -1708,25 +1693,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             msg = f"rendered {family} facade has no declaring module"
             raise ValueError(msg)
         relative = facade_path.relative_to(root)
-        utility_plan = self.file_plan(root, relative.as_posix(), rendered)
-        if utility_plan.failure:
-            return result_type.from_failure(utility_plan)
-        states, directories, topology = consumed_states()
-        inputs = u.Infra.unique_states((
-            *utility_plan.value.source_states,
-            *states,
-        ))
-        if inputs.failure:
-            return result_type.from_failure(inputs)
-        return result_type.ok((
-            utility_plan.value.model_copy(
-                update={
-                    "source_states": inputs.value,
-                    "source_directories": directories,
-                    "source_query_topology": topology,
-                }
-            ),
-        ))
+        return self.file_plan(root, relative.as_posix(), rendered).map(
+            lambda plan: (plan,)
+        )
 
     def _complete_governed_plans(
         self,

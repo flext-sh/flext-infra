@@ -88,7 +88,7 @@ class FlextInfraDepsGate(FlextInfraGate):
             msg = "repair requires apply_fixes=True and check_only=False"
             raise ValueError(msg)
         started = time.monotonic()
-        with self._mutation_lease(project_dir):
+        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
             execution, scan = self._scan(project_dir, ctx)
             if execution.outcome is not c.Infra.ToolOutcome.FINDINGS or scan is None:
                 return execution
