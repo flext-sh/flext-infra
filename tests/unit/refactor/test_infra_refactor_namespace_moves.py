@@ -569,7 +569,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 tm.that(resource.read(), eq=original)
                 module = u.Infra.resolve_pymodule(snapshot, resource)
                 tm.that(
-                    module.get_attribute("CapturedProvider").get_object().get_name(),
+                    u.Infra.require_named_object(
+                        module.get_attribute("CapturedProvider").get_object(),
+                        "CapturedProvider",
+                    ).get_name(),
                     eq="CapturedProvider",
                 )
                 snapshot.validate()
