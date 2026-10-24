@@ -32,7 +32,6 @@ class TestsFlextInfraVscodeOwnerMerge:
         inherited = tm.ok(
             FlextInfraCodegen.render_vscode_settings(
                 root,
-                runtime_root=root,
                 spec=baseline,
             ),
         )
@@ -62,7 +61,6 @@ class TestsFlextInfraVscodeOwnerMerge:
             tm.ok(
                 FlextInfraCodegen.render_vscode_settings(
                     root,
-                    runtime_root=root,
                     spec=explicit,
                 ),
             ),
@@ -74,7 +72,6 @@ class TestsFlextInfraVscodeOwnerMerge:
                 root,
                 document,
                 spec=baseline,
-                runtime_root=root,
             ),
         )
         tm.that(delta.values, eq={})
@@ -204,7 +201,6 @@ class TestsFlextInfraVscodeOwnerMerge:
             tmp_path,
             {key: ["child"]},
             spec=spec,
-            runtime_root=tmp_path,
         )
         tm.fail(planned)
         tm.that(planned.exception, is_=ValueError)
@@ -293,12 +289,19 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.ok(infra.codegen_conform(checked, initial_workspace=workspace))
 
     @staticmethod
-    def test_runtime_binding_second_apply_preserves_physical_state(
+    def test_runtime_binding_preserves_versioned_editor_settings(
         tmp_path: Path,
     ) -> None:
-        """Applying the public binding twice settles without replacing any file."""
+        """Setup never rewrites the versioned editor's environment declarations."""
         root = tmp_path / "project"
         workspace = u.Tests.standalone_workspace(root)
+        settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        settings_path.parent.mkdir(parents=True)
+        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(root))
+        settings_path.write_text(rendered, encoding=c.DEFAULT_ENCODING)
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(settings_path, required=True),
+        )
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
@@ -309,28 +312,21 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that(first.plan is not None, eq=True)
         if first.plan is None:
             pytest.fail("conform did not return its actual plan")
-        before = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(file.path, required=True))
-            for file in first.plan.files
-        )
-        tm.that(bool(before), eq=True)
+        tm.that(settings_path in {file.path for file in first.plan.files}, eq=False)
 
         second = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
 
         tm.that(second.written_files, eq=())
         tm.that(
-            tuple(
-                tm.ok(u.Cli.atomic_read_binary_file_state(state.path, required=True))
-                for state in before
-            ),
+            tm.ok(u.Cli.atomic_read_binary_file_state(settings_path, required=True)),
             eq=before,
         )
 
     @staticmethod
-    def test_invalid_member_config_keeps_valid_workspace_binding(
+    def test_invalid_member_config_keeps_versioned_workspace_settings(
         tmp_path: Path,
     ) -> None:
-        """A rejected member declaration preserves the cause and valid sibling."""
+        """An invalid member never changes the workspace's committed editor file."""
         root = tmp_path / "parent"
         member = u.Tests.WorktreeFixture.copied_member(
             root,
@@ -351,6 +347,10 @@ class TestsFlextInfraVscodeOwnerMerge:
             database="fixture-database",
             issue_prefix="fixture-prefix",
         )
+        settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(root))
+        settings_path.write_text(rendered, encoding=c.DEFAULT_ENCODING)
         directory = member / c.CONFIG_DIR_NAME
         directory.mkdir(exist_ok=True)
         local = directory / Path(c.Infra.CODEGEN_CONFIG_FILENAME).with_name(
@@ -385,33 +385,19 @@ class TestsFlextInfraVscodeOwnerMerge:
         with pytest.raises(ValueError, match=r"operator\.invalid") as raised:
             rejected.unwrap()
         tm.that(raised.value is rejected.exception, eq=True)
-        settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
-        settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(
-            settings_path.read_text(encoding=c.DEFAULT_ENCODING),
-        )
-        interpreter = u.type_adapter(str).validate_python(
-            settings["python.defaultInterpreterPath"],
-        )
-        tm.that(
-            (root / interpreter.removeprefix("${workspaceFolder}/")).resolve(),
-            eq=u.Infra.runtime_python(root),
-        )
+        tm.that(settings_path.read_text(encoding=c.DEFAULT_ENCODING), eq=rendered)
         tm.that(local.is_file(), eq=True)
 
     @staticmethod
-    def test_runtime_binding_rejects_versioned_policy() -> None:
-        """A physical runtime binding cannot masquerade as a portable source."""
+    def test_editor_artifact_is_versioned_and_not_a_runtime_binding() -> None:
+        """The editor projection belongs in Git and is generated by make gen."""
         governed = next(
             item
             for item in config.Infra.codegen.managed_files
             if item.owner == c.Infra.CODEGEN_OWNER_VSCODE
         )
-        with pytest.raises(ValueError, match="runtime binding must be runtime-local"):
-            m.Infra.ManagedFileSpec.model_validate({
-                **governed.model_dump(round_trip=True),
-                "tracking": "versioned",
-                "runtime_binding": True,
-            })
+        tm.that(governed.tracking, eq="versioned")
+        tm.that(governed.runtime_binding, eq=False)
 
     @staticmethod
     def test_runtime_ignore_projection_follows_declared_paths(tmp_path: Path) -> None:
@@ -607,40 +593,8 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that("ruff.nativeServer" in doc, eq=False)
 
     @staticmethod
-    def _assert_workspace_runtime_projections(member: Path, doc: t.JsonMapping) -> None:
-        """Assert rendered settings resolve to the member's physical runtime."""
-        interpreter = u.type_adapter(str).validate_python(
-            doc["python.defaultInterpreterPath"],
-        )
-        projected = member / interpreter.removeprefix("${workspaceFolder}/")
-        tm.that(projected.resolve(), eq=u.Infra.runtime_python(member))
-        executable = u.type_adapter(str).validate_python(doc["pyrefly.lspPath"])
-        projected_tool = member / executable.removeprefix("${workspaceFolder}/")
-        tm.that(
-            projected_tool.parent.resolve(),
-            eq=u.Infra.runtime_python(member).parent,
-        )
-        terminal = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            doc["terminal.integrated.env.linux"],
-        )
-        environment = u.type_adapter(str).validate_python(terminal["VIRTUAL_ENV"])
-        tm.that(
-            (member / environment.removeprefix("${workspaceFolder}/")).resolve(),
-            eq=u.Infra.runtime_environment_dir(member),
-        )
-        interpreter_list: t.StrSequence = u.type_adapter(list[str]).validate_python(
-            doc["ruff.interpreter"],
-        )
-        tm.that(
-            (
-                member / interpreter_list[0].removeprefix("${workspaceFolder}/")
-            ).resolve(),
-            eq=u.Infra.runtime_python(member),
-        )
-
-    @staticmethod
-    def test_attached_member_projects_its_workspace_interpreter(tmp_path: Path) -> None:
-        """Opening an attached member resolves its physical workspace runtime."""
+    def test_attached_member_keeps_portable_opened_folder_settings(tmp_path: Path) -> None:
+        """Attached and independent projects emit the same portable editor bytes."""
         parent = tmp_path / "parent"
         member = u.Tests.WorktreeFixture.copied_member(
             parent,
@@ -678,10 +632,10 @@ class TestsFlextInfraVscodeOwnerMerge:
         original = path.read_text(encoding=c.DEFAULT_ENCODING)
         rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(member))
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
-        TestsFlextInfraVscodeOwnerMerge._assert_workspace_runtime_projections(
-            member,
-            doc,
-        )
+        for key, expected in config.Infra.codegen.vscode.scalar_settings.items():
+            tm.that(doc[key], eq=expected)
+        for key, expected in config.Infra.codegen.vscode.additional_settings.items():
+            tm.that(doc[key], eq=expected)
         tm.that(
             doc["operator.note"],
             eq="${workspaceFolder}/.venv-is-not-the-environment",
@@ -710,7 +664,6 @@ class TestsFlextInfraVscodeOwnerMerge:
         standalone_rendered = tm.ok(
             FlextInfraCodegen.render_vscode_settings(
                 standalone,
-                runtime_root=standalone,
             ),
         )
         standalone_doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(standalone_rendered)

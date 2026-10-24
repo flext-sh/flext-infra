@@ -46,7 +46,7 @@ class TestsFlextInfraCodegenVscode:
         )
 
         result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            project_root, runtime_root=project_root
+            project_root
         )
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
@@ -89,7 +89,7 @@ class TestsFlextInfraCodegenVscode:
         )
 
         result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            project_root, runtime_root=project_root
+            project_root
         )
 
         tm.ok(result)
@@ -107,12 +107,12 @@ class TestsFlextInfraCodegenVscode:
         project_root.mkdir()
 
         first = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            project_root, runtime_root=project_root
+            project_root
         )
         tm.ok(first)
         self._write_settings(project_root, first.value)
         second = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            project_root, runtime_root=project_root
+            project_root
         )
         tm.ok(second)
         tm.that(second.value, eq=first.value)
@@ -138,12 +138,12 @@ class TestsFlextInfraCodegenVscode:
         )
 
         result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            project_root, runtime_root=project_root
+            project_root
         )
         standalone_root = tmp_path / "standalone"
         standalone_root.mkdir()
         standalone = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            standalone_root, runtime_root=standalone_root
+            standalone_root
         )
 
         tm.ok(result)
@@ -166,7 +166,7 @@ class TestsFlextInfraCodegenVscode:
         self._write_settings(project_root, "{ invalid json")
 
         result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
-            project_root, runtime_root=project_root
+            project_root
         )
 
         tm.fail(result)

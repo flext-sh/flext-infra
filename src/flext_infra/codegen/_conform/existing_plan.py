@@ -1799,7 +1799,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 continue
             if not self._governed_entry_reachable(codegen, profile, relative):
                 continue
-            if not path.exists() and not governed.runtime_binding:
+            if (
+                not path.exists()
+                and not governed.runtime_binding
+                and governed.policy != "merge"
+            ):
                 continue
             current = self._governed_current_text(path)
             if current.failure:
@@ -2264,7 +2268,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             sources = loaded.value.sources
         merged = FlextInfraCodegenVscodeMixin.render_vscode_settings(
             request.root,
-            runtime_root=request.runtime_root,
             spec=spec,
         )
         if merged.failure:

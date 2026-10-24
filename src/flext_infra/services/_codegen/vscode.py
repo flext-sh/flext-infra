@@ -4,8 +4,8 @@ This is the only place that knows how ``.vscode/settings.json`` is produced.
 It parses that explicitly JSONC document through the canonical string-aware
 normalizer, validates the resulting mapping, merges the config-driven canonical
 keys from ``config.Infra.codegen.vscode`` plus the artifact-derived exclude maps,
-and serializes the result with ``u.Cli.json_dumps``. Rendering derives environment
-executable paths from the checkout's canonical runtime owner.
+and serializes the result with ``u.Cli.json_dumps``. Environment tokens remain
+portable and resolve against the folder opened in the editor.
 Planning, atomic writes, and fixed-point verification stay owned
 by ``FlextInfraCodegenConform``.
 
@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from functools import partial
 from pathlib import Path
@@ -56,28 +55,15 @@ class FlextInfraCodegenVscodeMixin:
         *,
         spec: m.Infra.CodegenVscodeSpec,
     ) -> p.Result[m.Infra.CodegenVscodeDeclarationDelta]:
-        """Preserve only actual local changes after removing topology bindings.
+        """Preserve actual local changes against the versioned editor document.
 
         Returns:
             Local declarations without promoting unchanged indexed defaults.
 
         """
         result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
-        substitutions = cls._runtime_substitutions(repository_root, None)
-        if substitutions.failure:
-            return result_type.from_failure(substitutions)
-        unbind = tuple(
-            (effective, declared)
-            for declared, effective in substitutions.value
-            if effective != declared
-        )
-        original = {
-            key: cls._bind_runtime_value(value, unbind)
-            for key, value in indexed.items()
-        }
-        current = {
-            key: cls._bind_runtime_value(value, unbind) for key, value in live.items()
-        }
+        original = indexed
+        current = live
         retired = {
             key
             for key in original.keys() - current.keys()
@@ -107,31 +93,17 @@ class FlextInfraCodegenVscodeMixin:
         settings: t.JsonMapping,
         *,
         spec: m.Infra.CodegenVscodeSpec,
-        runtime_root: Path | None = None,
     ) -> p.Result[m.Infra.CodegenVscodeDeclarationDelta]:
         """Extract portable project overrides through the existing editor owner.
 
         Derived settings and retired keys remain owned by their generators.
-        Runtime paths are converted back to declared environment tokens before
-        comparing values, including nested maps and lists.
+        Environment tokens are compared unchanged, including nested maps and lists.
 
         Returns:
             Minimal overrides representable by the canonical configuration merge.
 
         """
         result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
-        substitutions = cls._runtime_substitutions(repository_root, runtime_root)
-        if substitutions.failure:
-            return result_type.from_failure(substitutions)
-        unbind = tuple(
-            (effective, declared)
-            for declared, effective in substitutions.value
-            if effective != declared
-        )
-        portable = {
-            key: cls._bind_runtime_value(value, unbind)
-            for key, value in settings.items()
-        }
         expected: t.MutableJsonMapping = {}
         generated = cls._apply_canonical_settings(
             expected,
@@ -140,7 +112,7 @@ class FlextInfraCodegenVscodeMixin:
         )
         if generated.failure:
             return result_type.from_failure(generated)
-        deltas = cls._portable_vscode_deltas(portable, spec, expected)
+        deltas = cls._portable_vscode_deltas(settings, spec, expected)
         if deltas.failure:
             return result_type.from_failure(deltas)
         delta = m.Infra.CodegenVscodeDeclarationDelta(values=deltas.value)
@@ -280,14 +252,13 @@ class FlextInfraCodegenVscodeMixin:
         cls,
         repository_root: Path,
         *,
-        runtime_root: Path | None = None,
         spec: m.Infra.CodegenVscodeSpec | None = None,
     ) -> p.Result[str]:
         """Return the canonical-merged ``settings.json`` document for one root.
 
         ``spec`` is an explicitly resolved project configuration. Live custom
-        keys remain intact outside its declared ownership. ``runtime_root``
-        supplies a scaffold's declared environment before Git exists.
+        keys remain intact outside its declared ownership. Rendering never
+        consults Git or rewrites paths for an attached member's physical runtime.
 
         Returns:
             The canonical-merged ``settings.json`` document for one root.
@@ -315,10 +286,7 @@ class FlextInfraCodegenVscodeMixin:
         )
         if applied.failure:
             return r[str].from_failure(applied)
-        bound = cls._bind_runtime_settings(settings, repository_root, runtime_root)
-        if bound.failure:
-            return r[str].from_failure(bound)
-        serialized = u.Cli.json_dumps(dict(bound.value), indent=2)
+        serialized = u.Cli.json_dumps(dict(settings), indent=2)
         if serialized.failure:
             return r[str].from_failure(serialized)
         return r[str].ok(serialized.value + "\n")
@@ -598,112 +566,6 @@ class FlextInfraCodegenVscodeMixin:
             settings[key] = canonical
             changed = True
         return r[bool].ok(changed)
-
-    @classmethod
-    def _bind_runtime_settings(
-        cls,
-        settings: t.JsonMapping,
-        repository_root: Path,
-        runtime_root: Path | None,
-    ) -> p.Result[t.JsonMapping]:
-        """Bind environment declarations throughout scalar, map and list settings.
-
-        Returns:
-            Settings bound to the physical checkout environment.
-
-        """
-        substitutions = cls._runtime_substitutions(repository_root, runtime_root)
-        if substitutions.failure:
-            return r[t.JsonMapping].from_failure(substitutions)
-        return r[t.JsonMapping].ok({
-            key: cls._bind_runtime_value(value, substitutions.value)
-            for key, value in settings.items()
-        })
-
-    @classmethod
-    def _runtime_substitutions(
-        cls,
-        repository_root: Path,
-        runtime_root: Path | None,
-    ) -> p.Result[t.VariadicTuple[t.Pair[str, str]]]:
-        """Derive one reversible binding from the canonical runtime owner.
-
-        Returns:
-            Declared environment tokens and their effective checkout paths.
-
-        """
-        result_type = r[t.VariadicTuple[t.Pair[str, str]]]
-        if runtime_root is None:
-            runtime = u.Infra.git_repository_root(
-                m.Infra.GitRepoRequest(repo_root=repository_root),
-            )
-            if runtime.failure:
-                return result_type.from_failure(runtime)
-            runtime_root = runtime.value.repository_root
-        python = u.Infra.runtime_python(
-            repository_root,
-            runtime_root=runtime_root,
-        )
-        root = repository_root.resolve()
-        environment = u.Infra.runtime_environment_dir(
-            repository_root,
-            runtime_root=runtime_root,
-        )
-        token = f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}"
-        substitutions = (
-            (
-                f"{token}/bin/{c.Infra.PYTHON}",
-                (
-                    f"${{workspaceFolder}}/"
-                    f"{python.relative_to(root, walk_up=True).as_posix()}"
-                ),
-            ),
-            (
-                f"{token}/bin",
-                (
-                    f"${{workspaceFolder}}/"
-                    f"{python.parent.relative_to(root, walk_up=True).as_posix()}"
-                ),
-            ),
-            (
-                token,
-                (
-                    f"${{workspaceFolder}}/"
-                    f"{environment.relative_to(root, walk_up=True).as_posix()}"
-                ),
-            ),
-        )
-        return result_type.ok(substitutions)
-
-    @classmethod
-    def _bind_runtime_value(
-        cls,
-        value: t.JsonValue,
-        substitutions: t.VariadicTuple[t.Pair[str, str]],
-    ) -> t.JsonValue:
-        """Resolve declared environment tokens without changing unrelated content.
-
-        Returns:
-            The bound JSON value, preserving nested configuration structure.
-
-        """
-        if isinstance(value, str):
-            for token, replacement in substitutions:
-                literal = replacement.replace("\\", "\\\\")
-                value = re.sub(
-                    re.escape(token) + r"(?=$|[/\\:;\s])",
-                    literal,
-                    value,
-                )
-            return value
-        if isinstance(value, Mapping):
-            return {
-                key: cls._bind_runtime_value(item, substitutions)
-                for key, item in value.items()
-            }
-        if isinstance(value, list):
-            return [cls._bind_runtime_value(item, substitutions) for item in value]
-        return value
 
     @staticmethod
     def _apply_union_settings(
