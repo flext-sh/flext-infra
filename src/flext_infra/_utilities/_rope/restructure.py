@@ -13,7 +13,6 @@ from flext_cli import u
 from rope.base.project import Project
 from rope.refactor.restructure import Restructure
 from rope.refactor.wildcards import DefaultWildcard
-from typing_extensions import TypeForm
 
 from flext_infra import m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
@@ -108,7 +107,7 @@ class FlextInfraRopeRestructure(Restructure):
         self.admitted_count += len(selected)
 
         return u.type_adapter(
-            TypeForm(t.Port[t.Infra.RopeNativeChangeComputer])
+            t.TypeForm(t.Port[t.Infra.RopeNativeChangeComputer])
         ).validate_python(super()._compute_changes(selected, pymodule), strict=True)
 
     @override

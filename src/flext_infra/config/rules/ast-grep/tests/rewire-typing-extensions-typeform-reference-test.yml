@@ -1,0 +1,21 @@
+id: rewire-typing-extensions-typeform-reference
+# `valid` MUST NOT match: the typings member is already read, the name is not
+# bound from typing_extensions, or it is an attribute of another object.
+valid:
+  - |
+    from flext_infra import t
+    adapter = build(t.TypeForm(t.StrMapping))
+  - |
+    from typing import TypeForm
+    adapter = build(TypeForm(int))
+  - |
+    from typing_extensions import TypeForm
+    adapter = build(other.TypeForm(int))
+# `invalid` MUST match: a reference bound by the typing_extensions import.
+invalid:
+  - |
+    from typing_extensions import TypeForm
+    adapter = build(TypeForm(int))
+  - |
+    from typing_extensions import TypeForm
+    def coerce(target: TypeForm[T]) -> T: ...

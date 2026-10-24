@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.services import FlextInfraCliRouteService
@@ -318,7 +317,7 @@ class TestsFlextInfraCodegenMain:
                         config.Infra.tooling,
                         "pytest.ini_options",
                         "addopts",
-                        TypeForm(t.StrSequence),
+                        t.TypeForm(t.StrSequence),
                     )
                 ),
             )

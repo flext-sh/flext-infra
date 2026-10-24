@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from typing_extensions import TypeForm
 
 from flext_infra import config
 from tests import c, m, t, tm, u
@@ -49,7 +48,7 @@ class TestsFlextInfraPytestTargetFile:
                 config.Infra.tooling,
                 "pytest.ini_options",
                 "python_files",
-                TypeForm(t.StrSequence),
+                t.TypeForm(t.StrSequence),
             )[0].replace("*", probe)
         )
         proof = root / f"{probe}.log"

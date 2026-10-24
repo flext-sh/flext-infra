@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
@@ -153,7 +152,7 @@ class FlextInfraModelsCore:
         eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
             m.Field(
                 default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
+                    contract_factory=lambda: t.TypeForm(
                         t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin]
                     ),
                 ),
@@ -164,7 +163,7 @@ class FlextInfraModelsCore:
         collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
                 default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
+                    contract_factory=lambda: t.TypeForm(
                         t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem]
                     ),
                 ),
@@ -572,7 +571,7 @@ class FlextInfraModelsCore:
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
             default_factory=u.empty(
-                contract_factory=lambda: TypeForm(
+                contract_factory=lambda: t.TypeForm(
                     t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownAttempt]
                 ),
             ),
@@ -582,7 +581,7 @@ class FlextInfraModelsCore:
         markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
                 default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
+                    contract_factory=lambda: t.TypeForm(
                         t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem]
                     ),
                 ),

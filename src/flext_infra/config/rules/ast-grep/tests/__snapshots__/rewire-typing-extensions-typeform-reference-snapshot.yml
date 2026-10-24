@@ -1,0 +1,60 @@
+id: rewire-typing-extensions-typeform-reference
+snapshots:
+  ? |
+    from typing_extensions import TypeForm
+    adapter = build(TypeForm(int))
+  : fixed: |
+      from typing_extensions import TypeForm
+      adapter = build(t.TypeForm(int))
+    labels:
+    - source: TypeForm
+      style: primary
+      start: 55
+      end: 63
+    - source: typing_extensions
+      style: secondary
+      start: 5
+      end: 22
+    - source: TypeForm
+      style: secondary
+      start: 30
+      end: 38
+    - source: from typing_extensions import TypeForm
+      style: secondary
+      start: 0
+      end: 38
+    - source: |
+        from typing_extensions import TypeForm
+        adapter = build(TypeForm(int))
+      style: secondary
+      start: 0
+      end: 70
+  ? |
+    from typing_extensions import TypeForm
+    def coerce(target: TypeForm[T]) -> T: ...
+  : fixed: |
+      from typing_extensions import TypeForm
+      def coerce(target: t.TypeForm[T]) -> T: ...
+    labels:
+    - source: TypeForm
+      style: primary
+      start: 58
+      end: 66
+    - source: typing_extensions
+      style: secondary
+      start: 5
+      end: 22
+    - source: TypeForm
+      style: secondary
+      start: 30
+      end: 38
+    - source: from typing_extensions import TypeForm
+      style: secondary
+      start: 0
+      end: 38
+    - source: |
+        from typing_extensions import TypeForm
+        def coerce(target: TypeForm[T]) -> T: ...
+      style: secondary
+      start: 0
+      end: 81

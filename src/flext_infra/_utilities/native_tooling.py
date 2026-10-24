@@ -12,7 +12,6 @@ from copy import deepcopy
 from pathlib import Path
 
 from flext_cli import u
-from typing_extensions import TypeForm
 
 from flext_infra import m, p, r, t
 
@@ -149,7 +148,7 @@ class FlextInfraUtilitiesNativeTooling:
         document: m.Infra.ToolConfigDocument,
         table: str,
         key: str,
-        target: TypeForm[TValue],
+        target: t.TypeForm[TValue],
     ) -> TValue:
         """Validate one native option, preserving lookup and validation failures.
 
@@ -172,7 +171,7 @@ class FlextInfraUtilitiesNativeTooling:
 
         """
         return FlextInfraUtilitiesNativeTooling.native_tool_setting(
-            document, table, key, TypeForm(t.StrSequence)
+            document, table, key, t.TypeForm(t.StrSequence)
         )
 
 

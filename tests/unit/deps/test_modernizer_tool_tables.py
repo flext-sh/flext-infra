@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.deps import (
@@ -366,7 +365,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             list(u.Tests.toml_strings(tomlsort["sort_first"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+                    tooling, "tomlsort", "sort_first", t.TypeForm(t.StrSequence)
                 )
             ),
         )
@@ -409,7 +408,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                     config.Infra.tooling,
                     "coverage.run",
                     "omit",
-                    TypeForm(t.StrSequence),
+                    t.TypeForm(t.StrSequence),
                 )
             ),
         )

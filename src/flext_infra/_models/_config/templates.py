@@ -13,7 +13,6 @@ from typing import Annotated, Literal, Self
 
 import flext_core
 from flext_cli import m, u
-from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
@@ -36,7 +35,7 @@ class FlextInfraConfigModelsTemplates:
             Mapping[str, t.JsonMapping],
             m.Field(description="VS Code objects union-merged over project settings"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(TypeForm(Mapping[str, t.JsonMapping])),
+            default_factory=flext_core.u.empty(t.TypeForm(Mapping[str, t.JsonMapping])),
             validate_default=True,
         )
 
@@ -56,7 +55,7 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="Retired keys inside language-specific setting maps"),
         ] = m.Field(
             default_factory=flext_core.u.empty(
-                TypeForm(Mapping[str, t.VariadicTuple[str]])
+                t.TypeForm(Mapping[str, t.VariadicTuple[str]])
             ),
             validate_default=True,
         )

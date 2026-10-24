@@ -13,7 +13,6 @@ from inspect import getsourcefile
 from pathlib import Path
 
 from flext_cli import u
-from typing_extensions import TypeForm
 
 from flext_infra import config, m, p, r, t
 from flext_infra._utilities import (
@@ -34,7 +33,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         """
         core = u.type_adapter(
-            TypeForm(t.InstanceOf[p.Infra.RopePyCore])
+            t.TypeForm(t.InstanceOf[p.Infra.RopePyCore])
         ).validate_python(project.get_pycore(), strict=True)
         return tuple(
             sorted(

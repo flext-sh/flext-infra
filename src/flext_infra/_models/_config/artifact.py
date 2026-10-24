@@ -13,7 +13,6 @@ from typing import Annotated, ClassVar, Literal, Self
 
 import flext_core
 from flext_cli import m
-from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import (
@@ -338,7 +337,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ] = m.Field(
             default_factory=flext_core.u.empty(
-                TypeForm(
+                t.TypeForm(
                     Mapping[
                         t.NonEmptyStr,
                         Mapping[Literal["config", "settings"], t.NonEmptyStr],

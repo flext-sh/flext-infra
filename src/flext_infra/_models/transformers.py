@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m, u
-from typing_extensions import TypeForm
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsBase
@@ -182,7 +181,7 @@ class FlextInfraModelsTransformers:
         upstream_aliases: Annotated[
             t.StrMapping,
             m.Field(description="Proven upstream identities preceding local aliases"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.StrMapping)))
+        ] = m.Field(default_factory=u.empty(t.TypeForm(t.StrMapping)))
 
     class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""

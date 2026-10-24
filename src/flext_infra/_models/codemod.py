@@ -11,7 +11,6 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
@@ -292,11 +291,11 @@ class FlextInfraModelsCodemod:
             ),
         ]
         imports: t.MappingKV[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+            default_factory=u.empty(t.TypeForm(t.MappingKV[str, str])),
             description="Destination bindings and their native import declarations",
         )
         bindings: t.MappingKV[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+            default_factory=u.empty(t.TypeForm(t.MappingKV[str, str])),
             description="Destination expressions and their required Rope identities",
         )
         model_bases: t.VariadicTuple[str] = m.Field(

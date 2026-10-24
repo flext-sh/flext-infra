@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 from tomlkit.exceptions import ParseError
-from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -202,7 +201,10 @@ class TestsFlextInfraDepsModernizerWorkspace:
         package_init.write_text("", encoding="utf-8")
         expected_order = (
             u.Infra.native_tool_setting(
-                config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+                config.Infra.tooling,
+                "tomlsort",
+                "sort_first",
+                t.TypeForm(t.StrSequence),
             )
             if sort_first is None
             else sort_first
