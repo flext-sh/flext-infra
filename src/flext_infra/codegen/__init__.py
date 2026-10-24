@@ -37,7 +37,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.codegen._conform import (
         FlextInfraCodegenConformArtifactRender,
-        FlextInfraCodegenConformBeadsRoutes,
         FlextInfraCodegenConformBootstrap,
         FlextInfraCodegenConformContextRender,
         FlextInfraCodegenConformEditor,
@@ -123,7 +122,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConformArtifactRender",
-    "FlextInfraCodegenConformBeadsRoutes",
     "FlextInfraCodegenConformBootstrap",
     "FlextInfraCodegenConformContextRender",
     "FlextInfraCodegenConformEditor",
@@ -185,7 +183,6 @@ install_lazy_exports(
         "FlextInfraCodegenCensus": ".census",
         "FlextInfraCodegenConform": ".conform",
         "FlextInfraCodegenConformArtifactRender": "._conform.artifact_render",
-        "FlextInfraCodegenConformBeadsRoutes": "._conform.beads_routes",
         "FlextInfraCodegenConformBootstrap": "._conform.bootstrap",
         "FlextInfraCodegenConformContextRender": "._conform.context_render",
         "FlextInfraCodegenConformEditor": "._conform.editor",
