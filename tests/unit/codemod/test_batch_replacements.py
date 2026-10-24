@@ -468,8 +468,8 @@ class TestsFlextInfraBatchReplacements:
     ) -> None:
         """An emptied statement fix publishes skeleton-free, format-clean bytes.
 
-        The ban-test-suite-module-all rule rewrites its match to ``""``; the
-        byte-splice leaves the source line blank and the mod circuit enforces
+        The remove-breakpoint-debugger-statement rule rewrites its match to
+        ``""``; the byte-splice leaves the source line blank and the mod circuit enforces
         canonical formatting on the first pass after applying.
         """
         root = u.Tests.git_repository(tmp_path)
@@ -480,16 +480,16 @@ class TestsFlextInfraBatchReplacements:
         )
         path.parent.mkdir(parents=True)
         original = (
-            b'"""Demo."""\n\n__all__ = ["X"]\n\n\ndef t() -> None:\n    assert True\n'
+            b'"""Demo."""\n\nbreakpoint()\n\n\ndef t() -> None:\n    assert True\n'
         )
         path.write_bytes(original)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-        statement = b'__all__ = ["X"]'
+        statement = b"breakpoint()"
         start = original.index(statement)
         offsets: t.JsonDict = {"start": start, "end": start + len(statement)}
         finding = m.Infra.ModOccurrence(
             rule_file=str(root / "rule.yaml"),
-            rule_id="ban-test-suite-module-all",
+            rule_id="remove-breakpoint-debugger-statement",
             repository=root.name,
             file=path,
             source_owner="authored",

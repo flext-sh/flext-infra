@@ -1,4 +1,4 @@
-"""Publication rules distinguish pytest suites from importable source owners.
+"""Every tier publishes its single class: suites follow the same rule as src.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -25,7 +25,7 @@ class TestsFlextInfraSourceExportScope:
         *,
         exported: bool,
     ) -> None:
-        """A suite publishes nothing while the production owner still declares."""
+        """A suite module, like a source owner, must declare its class in __all__."""
         stem = u.derive_class_stem(mod_workspace.name.replace("_", "-"))
         suite = "tests/unit/scope_tests.py"
         suite_name = f"Tests{stem}Scope"
@@ -40,7 +40,7 @@ class TestsFlextInfraSourceExportScope:
             path = mod_workspace / relative
             tm.ok(u.Cli.ensure_dir(path.parent))
             tm.ok(u.Cli.atomic_write_text_file(path, text))
-        rules = ("declare-single-class-export", "ban-test-suite-module-all")
+        rules = ("declare-single-class-export",)
         exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
@@ -55,8 +55,8 @@ class TestsFlextInfraSourceExportScope:
         )
         tm.that(exit_code, ne=0, msg=console.out + console.err)
         expected = {("declare-single-class-export", "sample.py")}
-        if exported:
-            expected.add(("ban-test-suite-module-all", suite))
+        if not exported:
+            expected.add(("declare-single-class-export", suite))
         tm.that(
             {(entry.rule_id, entry.file.as_posix()) for entry in report.entries},
             eq=expected,
