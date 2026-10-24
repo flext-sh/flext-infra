@@ -179,8 +179,11 @@ class FlextInfraModelsCodegenPipelineModels:
         """
 
         docs_planner: Annotated[
-            p.Infra.DocsArtifactPlannerFactory,
-            m.Field(description="Builds the docs planner for one conform scope"),
+            t.Port[p.Infra.DocsArtifactPlannerFactory],
+            m.Field(
+                exclude=True,
+                description="Builds the docs planner for one conform scope",
+            ),
         ]
 
     class CodegenConformState(m.ArbitraryTypesModel):
@@ -217,7 +220,7 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Declared scaffold specification",
         )
-        ports: t.Port[p.Infra.CodegenConformPorts | None] = m.Field(
+        ports: t.Port[p.Infra.CodegenConformPorts] | None = m.Field(
             default=None,
             exclude=True,
             description="Facade-bound docs planning",
@@ -232,7 +235,7 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="First native file planning cause",
         )
-        docs_planner: t.Port[p.Infra.DocsArtifactPlanner | None] = m.Field(
+        docs_planner: t.Port[p.Infra.DocsArtifactPlanner] | None = m.Field(
             default=None,
             exclude=True,
             description="Actual planner before effects",

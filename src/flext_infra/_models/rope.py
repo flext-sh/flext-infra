@@ -49,7 +49,7 @@ class FlextInfraModelsRope:
         arguments: t.MappingKV[str, str | t.StrSequence] = m.Field(
             description="Native wildcard constraints and exact identity alternatives",
         )
-        resources: t.SequenceOf[p.Infra.RopeResource] = m.Field(
+        resources: t.SequenceOf[t.Port[p.Infra.RopeResource]] = m.Field(
             description="The complete resource inventory selected for this operation",
         )
         imports: t.StrSequence | t.MappingKV[str, str] = m.Field(
@@ -65,7 +65,7 @@ class FlextInfraModelsRope:
         """One native import declaration and its original logical source region."""
 
         import_info: Annotated[
-            p.Infra.RopeFromImport,
+            t.Port[p.Infra.RopeFromImport],
             m.Field(exclude=True, description="Native Rope from-import identity"),
         ]
         start_line: Annotated[
@@ -248,7 +248,7 @@ class FlextInfraModelsRope:
         """One captured module's request for a lexical-binding inventory."""
 
         project: Annotated[
-            t.Infra.RopeProject,
+            t.Port[t.Infra.RopeProject],
             m.Field(description="Open Rope project scoped to the analysis roots"),
         ]
         module: Annotated[
@@ -354,7 +354,7 @@ class FlextInfraModelsRope:
         """Rope identity of one namespace wrapper flattened into its family owner."""
 
         project: Annotated[
-            t.Infra.RopeProject,
+            t.Port[t.Infra.RopeProject],
             m.Field(description="Rope snapshot project resolving every consumer"),
         ]
         owner_name: Annotated[
@@ -366,7 +366,7 @@ class FlextInfraModelsRope:
             m.Field(description="Declared name of the flattened namespace wrapper"),
         ]
         wrapper: Annotated[
-            t.Infra.RopePyName,
+            t.Port[t.Infra.RopePyName],
             m.Field(description="Rope identity of the flattened namespace wrapper"),
         ]
         names: Annotated[
@@ -398,7 +398,7 @@ class FlextInfraModelsRope:
         """One scanned module whose assignments match canonical constants."""
 
         resource: Annotated[
-            t.Infra.RopeResource,
+            t.Port[t.Infra.RopeResource],
             m.Field(description="Rope resource of the scanned module"),
         ]
         source: Annotated[

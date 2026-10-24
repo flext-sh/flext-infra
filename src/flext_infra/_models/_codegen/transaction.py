@@ -70,7 +70,7 @@ class FlextInfraModelsCodegenTransactionModels:
         source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
             default=(), description="Original native source query ancestry"
         )
-        original_project: p.Infra.RopeProject | None = m.Field(
+        original_project: t.Port[p.Infra.RopeProject] | None = m.Field(
             default=None,
             description="Original Rope read owner a derived candidate view extends",
         )

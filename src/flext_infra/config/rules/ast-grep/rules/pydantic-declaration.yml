@@ -109,3 +109,27 @@ message: >-
   owns model configuration. fix: bind the models facade `m` (or, inside a
   flext-core preset owner, import pydantic's `ConfigDict`) so the rewrite to
   `ConfigDict(...)` applies, or inherit the `m.*` preset that encodes it.
+---
+# `t.Port[P]` validates the value with `isinstance` (pydantic `InstanceOf`), which
+# needs one class. An optional port keeps `None` outside the port so each union
+# member owns its own schema and no model needs `arbitrary_types_allowed`.
+id: hoist-optional-out-of-port
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  pattern: t.Port[$A | None]
+fix: t.Port[$A] | None
+message: >-
+  `t.Port[X | None]` asks `isinstance` to check a union. Write
+  `t.Port[X] | None` so the port validates one class and `None` stays a plain
+  union member.
