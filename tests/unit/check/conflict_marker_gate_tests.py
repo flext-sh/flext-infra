@@ -19,6 +19,39 @@ class TestsFlextInfraConflictMarkerGate:
     """Unpublished files, source failures and native severities remain blocking."""
 
     @staticmethod
+    @pytest.mark.parametrize("conflicted", [False, True])
+    def test_sealed_candidate_uses_its_complete_physical_inventory(
+        tmp_path: Path, *, conflicted: bool
+    ) -> None:
+        """A candidate without Git metadata still checks its actual source bytes."""
+        candidate = tmp_path / "candidate"
+        candidate.mkdir()
+        source = candidate / "source.py"
+        content = "value = 1\n"
+        if conflicted:
+            content += f"{c.Infra.MERGE_CONFLICT_CONTROLS[0][1]} candidate\n"
+        source.write_text(content, encoding="utf-8")
+        gate = tm.not_none(
+            FlextInfraGateRegistry.default().create(
+                c.Infra.CONFLICT_MARKERS, candidate
+            )
+        )
+        runtime_root = u.Infra.runtime_environment_dir(Path.cwd()).parent
+        result = gate.check(
+            candidate,
+            m.Infra.GateContext(
+                repository_root=candidate,
+                runtime_root=runtime_root,
+                reports_dir=tmp_path,
+            ),
+        )
+        tm.that(result.result.passed, eq=not conflicted)
+        if conflicted:
+            tm.that(result.issues[0].file, eq=str(source))
+            tm.that(result.issues[0].line, eq=2)
+        tm.that(source.read_text(encoding="utf-8"), eq=content)
+
+    @staticmethod
     def _root(tmp_path: Path) -> Path:
         root = tmp_path / "repository"
         root.mkdir()

@@ -215,7 +215,7 @@ class FlextInfraModelsScan:
         repositories: Annotated[
             t.MutableMappingKV[Path, str],
             m.Field(description="One ownership election per file"),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=dict[Path, str])
 
     class ModScanFindingReference(ModScanFinding):
         """Serialized occurrence referencing the report's authenticated inventory."""

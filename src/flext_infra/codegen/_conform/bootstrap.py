@@ -26,7 +26,9 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         m.Field(
             description="Mutable request-local data owned by one conform invocation.",
         ),
-    ] = m.Field(m.Infra.CodegenConformState(), validate_default=True)
+    ] = m.Field(
+        default_factory=m.Infra.CodegenConformState, validate_default=True
+    )
 
     def _record_file_failure(
         self,

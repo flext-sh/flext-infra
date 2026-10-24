@@ -1,0 +1,33 @@
+id: pydantic-field-positional-default
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  all:
+    - pattern: $CALL
+    - any:
+        - pattern: $FACADE.Field($DEFAULT, $$$REST)
+        - pattern: $FACADE.Field($DEFAULT)
+constraints:
+  FACADE:
+    regex: "^(?:m|u)$"
+  DEFAULT:
+    not:
+      kind: keyword_argument
+transform:
+  KEYWORD_DEFAULT:
+    replace:
+      source: $CALL
+      replace: '^([^(]+\(\s*(?:#[^\n]*\n\s*)*)'
+      by: '${1}default='
+  CALL_LAYOUT:
+    replace:
+      source: $KEYWORD_DEFAULT
+      replace: '^([^(]+\()([^\n]*?)(?:,\s*)?\)$'
+      by: "${1}\n    ${2},\n)"
+fix: $CALL_LAYOUT
+message: Declare Field defaults explicitly so runtime validation and synthesized constructors share the same contract.

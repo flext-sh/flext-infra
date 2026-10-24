@@ -1,0 +1,13 @@
+id: codegen-conform-state-workspace-only
+snapshots:
+  ? |
+    FlextInfraCodegenConform(initial_workspace=workspace)
+  : fixed: |
+      FlextInfraCodegenConform(
+          state=m.Infra.CodegenConformState(initial_workspace=workspace),
+      )
+    labels:
+    - source: FlextInfraCodegenConform(initial_workspace=workspace)
+      style: primary
+      start: 0
+      end: 53

@@ -1407,12 +1407,13 @@ class FlextInfraUtilitiesSemanticContracts(
 
     @staticmethod
     def _is_unknown_native_object(
-        value: p.AttributeProbe, unknown: t.Infra.RopeNativeObject,
+        value: p.AttributeProbe,
+        unknown: t.Infra.RopeNativeObject,
     ) -> bool:
         if not isinstance(value, PyObject):
             message = "native binding has no Rope object identity"
             raise TypeError(message)
-        return bool(value == unknown)
+        return (value == unknown) is True
 
     @staticmethod
     def _enqueue_deferred_alias(

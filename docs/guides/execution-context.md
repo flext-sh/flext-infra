@@ -197,6 +197,13 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Generated protocol and model namespace assignments are derived output, not new
+contract declarations. When an assignment resolves to an exact inherited class,
+projection removes that binding and inherits the canonical private owners in C3
+order, including their declared overrides. A stale renamed alias cannot publish
+itself or shadow a different inherited contract. The generated ownership marker
+and native class identity are both required; unrelated namespace members remain
+unchanged, and contradictory authored class bindings still fail before publication.
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
@@ -808,6 +815,11 @@ interpreter symlinks inside a physical environment are valid, but the candidate 
 must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
 borrowed from another checkout fails before candidate checks or publication.
 
+The conflict-marker gate scans the full physical source inventory of an authenticated
+candidate when its runtime owner is explicit. A staged source tree does not contain a
+Git index. Ordinary checkout checks retain the tracked and unpublished Git inventory;
+both routes reject an empty inventory and use the same marker scanner.
+
 ## Mise toolchain
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
@@ -1234,6 +1246,20 @@ validation; changing the SSOT alone does not update existing projections.
 Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
+
+`make check-pyright` runs the selected project's complete Pyright configuration
+through the native gate capture service and retains its raw report and exit status.
+From a workspace root, `make -f <member>/Makefile check-pyright` selects that
+member's declared configuration and the containing workspace's physical environment.
+It is a diagnosis verb; full `make check` remains the acceptance boundary.
+
+`make mod-types` applies the AST migrations declared by
+`make.type_contract_rules` to the complete selected project. The native AST engine
+verifies rule fixtures, resolves bindings, and repeats safe rewrites to its fixed
+point. Source models and protocols own the resulting contracts: consumers pass
+declared state models directly, and field defaults remain visible to both Pydantic
+and synthesized constructors. Required private attributes use their annotations;
+attributes with actual defaults or factories retain those declarations.
 
 Local runs, CI, and hooks derive their gates from the same active set: `CI=N make check`
 and `make check` without `CI` run the complete active set. `CI=Y make check` excludes
