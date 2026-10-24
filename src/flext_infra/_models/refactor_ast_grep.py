@@ -294,6 +294,19 @@ class FlextInfraModelsRefactorGrep:
             ),
         ]
 
+    class CodemodPackageExportsFacts(FlextInfraModelsBase.FrozenArbitrary):
+        """The names each package initializer of one project publishes."""
+
+        exports: Annotated[
+            t.MappingKV[str, t.StrTuple],
+            m.Field(
+                description=(
+                    "Dotted package to the exact names its initializer __all__ "
+                    "declares, read statically"
+                ),
+            ),
+        ]
+
     class CodemodProjectFacts(m.ArbitraryTypesModel):
         """Project facts one admission pass reads, built from the current tree.
 

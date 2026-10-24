@@ -15,7 +15,7 @@ import re
 from contextlib import closing
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
@@ -41,18 +41,17 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         alternatives = "|".join(re.escape(name) for name in sorted(set(names)))
         return {"regex": rf"^(?:{alternatives})$"}
 
-    @classmethod
-    def codemod_package_export_utilities(
-        cls, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    @staticmethod
+    def codemod_package_export_facts(
+        project: Path,
+    ) -> m.Infra.CodemodPackageExportsFacts:
         """Package exports: the ``__all__`` each package initializer declares.
 
-        One utility per package, ``exports--<dotted package>``, read through
-        the Griffe owner from the initializer source; a package without a
-        literal ``__all__`` exports nothing.
+        Read through the Griffe owner from every initializer source of the
+        project; a package without a literal ``__all__`` exports nothing.
 
         Returns:
-            The package export utilities of every package of the project.
+            The typed export facts the utilities and renderers consume.
 
         """
         root = project.absolute()
@@ -68,10 +67,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                 and entry.file_path.is_relative_to(root)
             }
             run = FlextInfraUtilitiesPythonModel.python_model_run(rope, packages)
-            return {
-                f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
-                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}": (
-                    cls.codemod_exact_names_rule(
+            return m.Infra.CodemodPackageExportsFacts(
+                exports={
+                    package: tuple(
                         FlextInfraUtilitiesPythonModel.python_model_exports(
                             FlextInfraUtilitiesPythonModel.python_model_module_at(
                                 run, path, package
@@ -79,9 +77,28 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                         )
                         or ()
                     )
-                )
-                for package, path in sorted(packages.items())
-            }
+                    for package, path in sorted(packages.items())
+                }
+            )
+
+    @classmethod
+    def codemod_package_export_utilities(
+        cls, project: Path
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """One ``exports--<dotted package>`` utility per package of the project.
+
+        Returns:
+            The package export utilities rendered from the export facts.
+
+        """
+        facts = cls.codemod_package_export_facts(project)
+        return {
+            f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
+            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}": (
+                cls.codemod_exact_names_rule(names)
+            )
+            for package, names in facts.exports.items()
+        }
 
     @staticmethod
     def codemod_facade_family_package_utilities(

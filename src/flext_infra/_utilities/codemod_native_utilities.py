@@ -25,7 +25,7 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
@@ -275,6 +275,44 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         )
 
     @classmethod
+    def codemod_native_render(
+        cls,
+        project: Path,
+        entry: m.Infra.CodegenAstGrepRendererSpec,
+        facts: dict[str, p.Model],
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Run one renderer, passing its facts model computed once per generation.
+
+        Returns:
+            The renderer's rule documents keyed by rule id, strictly validated.
+
+        Raises:
+            TypeError: If the renderer or its facts producer is not declared,
+                or the facts producer returns no model.
+
+        """
+        renderer = getattr(cls, entry.name, None)
+        if not callable(renderer):
+            msg = f"ast-grep rule renderer is not declared: {entry.name}"
+            raise TypeError(msg)
+        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.JsonMapping]))
+        if entry.facts is None:
+            return adapter.validate_python(renderer(project), strict=True)
+        if entry.facts not in facts:
+            producer = getattr(cls, entry.facts, None)
+            if not callable(producer):
+                msg = f"ast-grep facts producer is not declared: {entry.facts}"
+                raise TypeError(msg)
+            model = producer(project)
+            if not isinstance(model, p.Model):
+                msg = f"ast-grep facts producer returned no model: {entry.facts}"
+                raise TypeError(msg)
+            facts[entry.facts] = model
+        return adapter.validate_python(
+            renderer(project, facts[entry.facts]), strict=True
+        )
+
+    @classmethod
     def codemod_native_rules(
         cls, project: Path, spec: m.Infra.CodegenAstGrepSpec
     ) -> t.MappingKV[str, t.JsonMapping]:
@@ -284,19 +322,14 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
             Every generated native rule document keyed by its rule id.
 
         Raises:
-            TypeError: If a registered renderer is not declared.
             ValueError: If a rule id repeats, names an unregistered shape, or
                 disagrees with its document id.
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.JsonMapping]))
+        facts: dict[str, p.Model] = {}
         for entry in spec.renderers:
-            renderer = getattr(cls, entry.name, None)
-            if not callable(renderer):
-                msg = f"ast-grep rule renderer is not declared: {entry.name}"
-                raise TypeError(msg)
-            rendered = adapter.validate_python(renderer(project), strict=True)
+            rendered = cls.codemod_native_render(project, entry, facts)
             for rule_id, document in rendered.items():
                 shape = rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
                 if shape not in entry.shapes:

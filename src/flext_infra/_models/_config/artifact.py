@@ -292,6 +292,15 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 description="Rule shapes the renderer is registered to emit",
             ),
         ]
+        facts: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "u.Infra facts producer whose typed model the stage passes "
+                    "to the renderer, computed once per generation"
+                ),
+            ),
+        ] = None
 
     class CodegenAstGrepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Native ast-grep utility rules generated from project SSOT facts."""
