@@ -13,9 +13,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 from importlib import import_module
 from inspect import isroutine
+from pathlib import Path
 from typing import (
     Annotated,
     TypeAliasType,
@@ -26,6 +28,7 @@ from typing import (
 )
 
 from flext_infra import c, config, p, t
+from flext_infra._utilities import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesFacadeMembers:
@@ -165,6 +168,85 @@ class FlextInfraUtilitiesFacadeMembers:
             and not bound
             and kind is not c.Infra.FacadeMemberKind.TYPE
         )
+
+    @classmethod
+    def facade_member_constraints(
+        cls, project: Path
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Derive the native ast-grep utilities of the facade-member rules.
+
+        A member a non-owner facade letter re-exports while its owner binds
+        the identical object yields one exact ``letter.member`` reference for
+        the owner's relocation rule; the project's own duplicates also yield
+        their name for the non-owner's retirement rule. References are derived
+        over the project's package and every package its facades inherit
+        from, so a consumer relocates inherited duplicates too. Alternation is
+        per exact reference: a rule never matches a letter that does not
+        re-export the member.
+
+        Returns:
+            Utility id ``<rule id>--<metavariable>`` to its native rule object.
+
+        """
+        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
+        lineage = sorted({
+            klass.__module__.partition(".")[0]
+            for letter in letters
+            if isinstance(facade := getattr(import_module(package), letter, None), type)
+            for klass in facade.__mro__
+        })
+        references: dict[str, set[str]] = {}
+        names: dict[str, set[str]] = {}
+        for root, letter in ((root, letter) for root in lineage for letter in letters):
+            facade = getattr(import_module(root), letter, None)
+            if not isinstance(facade, type):
+                continue
+            for member in dir(facade):
+                if not cls.foreign_facade_member(
+                    root, (letter, member), c.Infra.FacadeMemberPlacement.EXPOSED
+                ):
+                    continue
+                owner = cls.facade_member_owner(getattr(facade, member))
+                references.setdefault(owner, set()).add(f"{letter}.{member}")
+                if root == package:
+                    names.setdefault(letter, set()).add(member)
+        return {
+            **{
+                cls._utility_id(
+                    c.Infra.FACADE_MEMBER_RELOCATE_RULE.format(letter=owner),
+                    c.Infra.FACADE_MEMBER_REFERENCE_VAR,
+                ): {"regex": cls._alternation(sorted(found))}
+                for owner, found in sorted(references.items())
+            },
+            **{
+                cls._utility_id(
+                    c.Infra.FACADE_MEMBER_RETIRE_RULE.format(letter=letter),
+                    c.Infra.FACADE_MEMBER_NAME_VAR,
+                ): {"regex": cls._alternation(sorted(found))}
+                for letter, found in sorted(names.items())
+            },
+        }
+
+    @staticmethod
+    def _utility_id(rule: str, variable: str) -> str:
+        """Name the generated utility constraining one rule metavariable.
+
+        Returns:
+            ``<rule id>--<metavariable>``.
+
+        """
+        return c.Infra.FACADE_MEMBER_UTILITY_ID.format(rule=rule, variable=variable)
+
+    @staticmethod
+    def _alternation(texts: t.StrSequence) -> str:
+        """Anchor an exact, sorted alternation of literal texts.
+
+        Returns:
+            A regex matching exactly one of ``texts``.
+
+        """
+        return "^(?:" + "|".join(re.escape(text) for text in texts) + ")$"
 
     @staticmethod
     def _declared_by(facade: type, member: str, package: str) -> bool:

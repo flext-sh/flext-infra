@@ -339,6 +339,19 @@ class FlextInfraConstantsRefactor:
             CodemodContextPredicate.RUNTIME_PACKAGE,
             CodemodContextPredicate.FACADE_PACKAGE,
             CodemodContextPredicate.COMPOSE_MODULE,
+    FACADE_MEMBER_RELOCATE_RULE: ClassVar[str] = "relocate-facade-member-to-{letter}"
+    "Generated native rule moving a foreign reference to the owner ``letter``."
+    FACADE_MEMBER_RETIRE_RULE: ClassVar[str] = (
+        "retire-foreign-facade-member-from-{letter}"
+    )
+    "Generated native rule deleting the duplicate a non-owner ``letter`` declares."
+    FACADE_MEMBER_REFERENCE_VAR: ClassVar[str] = "REF"
+    "Metavariable binding a ``letter.member`` reference in relocation rules."
+    FACADE_MEMBER_NAME_VAR: ClassVar[str] = "NAME"
+    "Metavariable binding a declared member name in retirement rules."
+    FACADE_MEMBER_UTILITY_ID: ClassVar[str] = "{rule}--{variable}"
+    "Generated ast-grep utility constraining one metavariable of one rule."
+
         })
     )
     "Predicates evaluated against the project's runtime dependency closure."
