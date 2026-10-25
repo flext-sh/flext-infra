@@ -1,11 +1,7 @@
 id: ban-accessor-method-name
 snapshots:
-  ? |
-    class Service:
-        @staticmethod
-        def is_ready():
-            return True
-  : labels:
+  "class Service:\n    @staticmethod\n    def is_ready():\n        return True\n":
+    labels:
     - source: |-
         def is_ready():
                 return True
@@ -16,11 +12,8 @@ snapshots:
       style: secondary
       start: 41
       end: 49
-  ? |
-    class Service:
-        def get_logger(self):
-            return self
-  : labels:
+  "class Service:\n    def get_logger(self):\n        return self\n":
+    labels:
     - source: |-
         def get_logger(self):
                 return self

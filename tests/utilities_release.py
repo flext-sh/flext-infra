@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
 from flext_infra import FlextInfraCli, config, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
@@ -192,9 +192,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         if initialize_project_git:
             for name in project_names:
                 TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(workspace / name)
-        context = flext_infra.workspace.FlextInfraWorkspaceDetector.resolution_context(
-            workspace,
-        ).unwrap()
+        context = FlextInfraWorkspaceDetector.resolution_context(workspace).unwrap()
         context.lock_path.parent.mkdir(parents=True, exist_ok=True)
         u.Cli.toml_write_mapping(
             context.lock_path,

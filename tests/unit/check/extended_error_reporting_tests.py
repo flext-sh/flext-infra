@@ -49,7 +49,7 @@ class TestsFlextInfraGateErrorReporting:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 ["p1"],
                 gates,
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
 
@@ -130,7 +130,7 @@ class TestsFlextInfraGateErrorReporting:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"],
             [c.Infra.FORMAT],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)
@@ -177,7 +177,7 @@ class TestsFlextInfraGateErrorReporting:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 [project_dir.name],
                 [c.Infra.SECURITY],
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
 
@@ -250,7 +250,7 @@ class TestsFlextInfraGateErrorReporting:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 [project_dir.name],
                 [c.Infra.SECURITY],
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
         receipt = tm.not_none(projects[0].gates[c.Infra.SECURITY].raw_receipt)
@@ -288,7 +288,7 @@ class TestsFlextInfraGateErrorReporting:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"],
             [c.Infra.MYPY],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)
@@ -337,7 +337,7 @@ class TestsFlextInfraGateErrorReporting:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"],
             [c.Infra.MARKDOWN],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)

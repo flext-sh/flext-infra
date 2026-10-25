@@ -161,6 +161,21 @@ Explicit documentation selections retain their originally requested scope. The
 default consumer-migration mode continues to require an already-declared destination;
 no compatibility method is needed during a declaration cutover.
 
+Workspace model and acceptance (operator order 2026-10-25, tracker memory
+`operator-order-2026-10-25-rope-owns-model-refactors`; ADR-028 Decision 17):
+
+- `apply-renames` runs on the run's workspace snapshot
+  (`u.Infra.workspace_snapshot`), which binds exactly one analysis engine project;
+  the campaign opens no second project.
+- The rename runs with documentation occurrences enabled (`docs=True`), so the
+  engine itself rewrites `__all__` entries and docstring and comment occurrences.
+  The rename planner no longer carries custom quoted-type or `__all__` rewrites.
+- Acceptance is a fresh campaign re-scan over an overlay of the candidate, supplied
+  as the publication's plan validator (`SemanticPublicationOptions.plan_validator`),
+  before anything is committed.
+- `--python-documentation` remains the route for text that names a symbol already
+  absent from the code, which the engine can no longer resolve.
+
 `text_globs` explicitly selects non-Python documentation and configuration text.
 `python_documentation` selects comments and actual module, class and function
 docstrings, including concatenated string tokens. Executable string payloads are

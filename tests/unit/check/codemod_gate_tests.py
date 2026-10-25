@@ -554,7 +554,7 @@ class TestsFlextInfraCodemodGate:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 [project.relative_to(tmp_path).as_posix()],
                 ["codemod"],
-                reports_dir=reports,
+                u.Tests.gate_context(tmp_path, reports),
             ),
         )
 

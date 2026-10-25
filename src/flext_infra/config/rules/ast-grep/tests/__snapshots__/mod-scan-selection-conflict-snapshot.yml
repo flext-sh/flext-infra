@@ -1,88 +1,88 @@
 id: mod-scan-selection-conflict
 snapshots:
-  Engine.scan(root, fix=False, plan=plan, selection=plan):
+  "FlextInfraModGateEngine.scan(root, fix=False, plan=plan, selection=plan)":
     labels:
-    - source: Engine.scan(root, fix=False, plan=plan, selection=plan)
+    - source: FlextInfraModGateEngine.scan(root, fix=False, plan=plan, selection=plan)
       style: primary
       start: 0
-      end: 55
+      end: 72
     - source: plan
       style: secondary
-      start: 29
-      end: 33
+      start: 46
+      end: 50
     - source: plan=plan
       style: secondary
-      start: 29
-      end: 38
+      start: 46
+      end: 55
     - source: selection
       style: secondary
-      start: 40
-      end: 49
+      start: 57
+      end: 66
     - source: selection=plan
       style: secondary
-      start: 40
-      end: 54
+      start: 57
+      end: 71
     - source: (root, fix=False, plan=plan, selection=plan)
       style: secondary
-      start: 11
-      end: 55
-  Engine.scan(root, fix=False, rule_ids=rules, plan=plan):
+      start: 28
+      end: 72
+  "FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rules, plan=plan)":
     labels:
-    - source: Engine.scan(root, fix=False, rule_ids=rules, plan=plan)
+    - source: FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rules, plan=plan)
       style: primary
       start: 0
-      end: 55
+      end: 72
     - source: rule_ids
       style: secondary
-      start: 29
-      end: 37
+      start: 46
+      end: 54
     - source: rule_ids=rules
       style: secondary
-      start: 29
-      end: 43
+      start: 46
+      end: 60
     - source: rule_ids
       style: secondary
-      start: 29
-      end: 37
+      start: 46
+      end: 54
     - source: rule_ids=rules
       style: secondary
-      start: 29
-      end: 43
+      start: 46
+      end: 60
     - source: plan
       style: secondary
-      start: 45
-      end: 49
+      start: 62
+      end: 66
     - source: plan=plan
       style: secondary
-      start: 45
-      end: 54
+      start: 62
+      end: 71
     - source: (root, fix=False, rule_ids=rules, plan=plan)
       style: secondary
-      start: 11
-      end: 55
-  Engine.scan(root, fix=False, rule_ids=rules, selection=rules):
+      start: 28
+      end: 72
+  "FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rules, selection=rules)":
     labels:
-    - source: Engine.scan(root, fix=False, rule_ids=rules, selection=rules)
+    - source: FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rules, selection=rules)
       style: primary
       start: 0
-      end: 61
+      end: 78
     - source: rule_ids
       style: secondary
-      start: 29
-      end: 37
+      start: 46
+      end: 54
     - source: rule_ids=rules
       style: secondary
-      start: 29
-      end: 43
+      start: 46
+      end: 60
     - source: selection
       style: secondary
-      start: 45
-      end: 54
+      start: 62
+      end: 71
     - source: selection=rules
       style: secondary
-      start: 45
-      end: 60
+      start: 62
+      end: 77
     - source: (root, fix=False, rule_ids=rules, selection=rules)
       style: secondary
-      start: 11
-      end: 61
+      start: 28
+      end: 78

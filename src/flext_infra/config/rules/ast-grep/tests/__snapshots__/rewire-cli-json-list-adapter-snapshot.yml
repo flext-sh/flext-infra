@@ -1,9 +1,7 @@
 id: rewire-cli-json-list-adapter
 snapshots:
-  ? |
-    from flext_cli import t, u
-    value = u.Cli.JSON_LIST_ADAPTER.validate_python(payload)
-  : fixed: |
+  "from flext_cli import t, u\nvalue = u.Cli.JSON_LIST_ADAPTER.validate_python(payload)\n":
+    fixed: |
       from flext_cli import t, u
       value = u.Cli.JSON_LIST_ADAPTER.validate_python(payload)
     labels:

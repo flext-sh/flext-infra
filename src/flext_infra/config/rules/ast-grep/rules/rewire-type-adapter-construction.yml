@@ -56,9 +56,8 @@ message: >-
   t.TypeAdapter[T] are annotation types, not constructors, and a bare pydantic
   import bypasses the facade boundary.
 metadata:
-  context:
-    NATIVE:
-      not: layer-zero-file
+  scope:
+    not-in: [layer-zero]
 ---
 # Detection-only companion: the same construction in a module that does not bind
 # `u`. A blind fix would emit an undefined name; bind the facade first.
@@ -103,6 +102,5 @@ message: >-
   Adapter construction must become u.type_adapter(...), but this module does
   not bind the utilities facade `u`. Add the facade import first.
 metadata:
-  context:
-    NATIVE:
-      not: layer-zero-file
+  scope:
+    not-in: [layer-zero]

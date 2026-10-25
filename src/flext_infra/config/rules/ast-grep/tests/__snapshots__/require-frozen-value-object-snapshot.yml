@@ -1,9 +1,7 @@
 id: require-frozen-value-object
 snapshots:
-  ? |
-    class Money(m.FrozenValueModel):
-        model_config = m.ConfigDict(frozen=False)
-  : labels:
+  "class Money(m.FrozenValueModel):\n    model_config = m.ConfigDict(frozen=False)\n":
+    labels:
     - source: frozen=False
       style: primary
       start: 65
@@ -12,7 +10,7 @@ snapshots:
       style: secondary
       start: 65
       end: 71
-    - source: 'False'
+    - source: "False"
       style: secondary
       start: 72
       end: 77
@@ -26,10 +24,8 @@ snapshots:
       style: secondary
       start: 0
       end: 78
-  ? |
-    class Money(m.ImmutableValueModel, frozen=False):
-        amount: int
-  : labels:
+  "class Money(m.ImmutableValueModel, frozen=False):\n    amount: int\n":
+    labels:
     - source: frozen=False
       style: primary
       start: 35
@@ -38,7 +34,7 @@ snapshots:
       style: secondary
       start: 35
       end: 41
-    - source: 'False'
+    - source: "False"
       style: secondary
       start: 42
       end: 47

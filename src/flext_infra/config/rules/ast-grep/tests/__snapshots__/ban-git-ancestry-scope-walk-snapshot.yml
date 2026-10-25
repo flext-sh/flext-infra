@@ -1,14 +1,7 @@
 id: ban-git-ancestry-scope-walk
 snapshots:
-  ? |
-    while True:
-        if (current / ".git").exists():
-            return current
-        parent = current.parent
-        if parent == current:
-            return None
-        current = parent
-  : labels:
+  "while True:\n    if (current / \".git\").exists():\n        return current\n    parent = current.parent\n    if parent == current:\n        return None\n    current = parent\n":
+    labels:
     - source: |-
         while True:
             if (current / ".git").exists():
@@ -28,12 +21,8 @@ snapshots:
       style: secondary
       start: 84
       end: 98
-  ? |
-    while True:
-        if (current / ".git").is_dir():
-            return current
-        current = current.parent
-  : labels:
+  "while True:\n    if (current / \".git\").is_dir():\n        return current\n    current = current.parent\n":
+    labels:
     - source: |-
         while True:
             if (current / ".git").is_dir():

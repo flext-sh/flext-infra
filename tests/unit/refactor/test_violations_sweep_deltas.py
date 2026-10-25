@@ -676,7 +676,8 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
             tm.ok(
                 u.Cli.atomic_write_text_file(root / "changed.py", "marker = dict()\n")
             )
-        plan = tm.ok(u.Infra.codemod_rule_plan(root))
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         focus = next(rule.id for rule in plan.rules if rule.id != "sweep-growth")
         result = FlextInfraRefactorViolationsSweep(
             repository_root=root,

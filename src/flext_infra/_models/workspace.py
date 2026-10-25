@@ -156,11 +156,16 @@ class FlextInfraModelsWorkspace:
             default_factory=u.empty(TypeForm(t.MutableMappingKV[str, Path])),
             description="Native module source elections observed during this capture",
         )
-        module_anchors: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
-            default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
-            ),
-            description="Strong native identities of elected module anchors",
+        module_anchors: t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]] = (
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]])
+                ),
+                description=(
+                    "Strong native identities of elected module anchors; "
+                    "live interpreter objects carried as validated ports"
+                ),
+            )
         )
         sources: t.Infra.MutableSetOf[t.Triple[str, str, str]] = m.Field(
             default_factory=u.empty(
@@ -201,16 +206,23 @@ class FlextInfraModelsWorkspace:
             ),
             description="Strongly retained generated function source receivers",
         )
-        references: t.MutableSequenceOf[t.Pair[str, t.Infra.NativeOperand]] = m.Field(
-            default_factory=u.empty(
-                TypeForm(t.MutableSequenceOf[t.Pair[str, t.Infra.NativeOperand]])
-            ),
-            description="Native operand registrations awaiting graph traversal",
+        references: t.MutableSequenceOf[t.Pair[str, t.Port[t.Infra.NativeOperand]]] = (
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf[t.Pair[str, t.Port[t.Infra.NativeOperand]]]
+                    )
+                ),
+                description=(
+                    "Native operand registrations awaiting graph traversal; "
+                    "live interpreter objects carried as validated ports"
+                ),
+            )
         )
         pending: t.MutableSequenceOf[
             t.Quint[
                 str,
-                t.Infra.NativeOperand,
+                t.Port[t.Infra.NativeOperand],
                 str,
                 str,
                 Literal["execution", "storage_type"],
@@ -221,7 +233,7 @@ class FlextInfraModelsWorkspace:
                     t.MutableSequenceOf[
                         t.Quint[
                             str,
-                            t.Infra.NativeOperand,
+                            t.Port[t.Infra.NativeOperand],
                             str,
                             str,
                             Literal["execution", "storage_type"],
@@ -229,7 +241,10 @@ class FlextInfraModelsWorkspace:
                     ]
                 )
             ),
-            description="Ordered native graph work awaiting first-identity admission",
+            description=(
+                "Ordered native graph work awaiting first-identity admission; "
+                "live interpreter objects carried as validated ports"
+            ),
         )
         expanded_classes: t.Infra.MutableSetOf[int] = m.Field(
             default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[int])),
@@ -271,11 +286,20 @@ class FlextInfraModelsWorkspace:
             default="",
             description="Physical owner source carried by the actual pending edge",
         )
-        visited: t.MutableMappingKV[int, t.Pair[t.Infra.NativeOperand, str]] = m.Field(
-            default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[int, t.Pair[t.Infra.NativeOperand, str]])
-            ),
-            description="Strong exact identities in original first-visit order",
+        visited: t.MutableMappingKV[int, t.Pair[t.Port[t.Infra.NativeOperand], str]] = (
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableMappingKV[
+                            int, t.Pair[t.Port[t.Infra.NativeOperand], str]
+                        ]
+                    )
+                ),
+                description=(
+                    "Strong exact identities in original first-visit order; "
+                    "live interpreter objects carried as validated ports"
+                ),
+            )
         )
         edges: t.MutableMappingKV[str, str] = m.Field(
             default_factory=u.empty(TypeForm(t.MutableMappingKV[str, str])),
@@ -289,11 +313,17 @@ class FlextInfraModelsWorkspace:
     class NativeFunctionObservationContext(m.ArbitraryTypesModel):
         """Source-elected function facts within one native graph observation."""
 
-        value: tuple[t.Infra.NativeFunction] = m.Field(
-            description="One exact native function retained without model binding",
+        value: tuple[t.Port[t.Infra.NativeFunction]] = m.Field(
+            description=(
+                "One exact native function: a live interpreter object carried "
+                "as a validated port"
+            ),
         )
-        code: t.Infra.NativeCode = m.Field(
-            description="Native executable code after the declared source relocation",
+        code: t.Port[t.Infra.NativeCode] = m.Field(
+            description=(
+                "Native executable code after the declared source relocation: a "
+                "live interpreter object carried as a validated port"
+            ),
         )
         supplier: str = m.Field(description="The actual defining native module")
         origin: Path = m.Field(description="The elected physical supplier source")
@@ -303,17 +333,25 @@ class FlextInfraModelsWorkspace:
         generated_operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
             description="Actual generated binding and receiver identities",
         )
-        nonlocals: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
+        nonlocals: t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]] = m.Field(
             default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
+                TypeForm(t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]])
             ),
-            description="Actual closure cell values in native free-variable order",
+            description=(
+                "Actual closure cell values in native free-variable order: live "
+                "interpreter objects carried as validated ports"
+            ),
         )
-        global_bindings: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
-            default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
-            ),
-            description="Actual globals selected by native LOAD_GLOBAL instructions",
+        global_bindings: t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]] = (
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]])
+                ),
+                description=(
+                    "Actual globals selected by native LOAD_GLOBAL instructions: "
+                    "live interpreter objects carried as validated ports"
+                ),
+            )
         )
         operational_globals: frozenset[str] = m.Field(
             default_factory=u.empty(frozenset[str]),
@@ -382,117 +420,35 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-    class LifecycleFileObservation(m.ContractModel):
-        """Bounded physical file evidence without retaining source contents."""
+    class FlextEditableRequest(WorkspaceRequest):
+        """Setup's FLEXT editable selection: a workspace root, or none to clear."""
 
-        path: Annotated[Path, m.Field(description="Observed physical leaf")]
-        sha256: Annotated[
-            str | None,
-            m.Field(description="Byte digest; absent for an absent leaf"),
-        ]
-        mode: Annotated[int | None, m.Field(description="Observed permission mode")]
-        size: Annotated[int, m.Field(ge=0, description="Observed byte count")]
-
-    class LifecycleReceipt(m.ContractModel):
-        """One public Make invocation; an absent outcome is never a green receipt."""
-
-        command: Annotated[
-            t.VariadicTuple[str], m.Field(description="Public Make argv")
-        ]
-        cwd: Annotated[Path, m.Field(description="Repository execution directory")]
-        output_file: Annotated[
-            Path,
-            m.Field(description="Durable combined stdout/stderr for reached steps"),
-        ]
-        outcome: Annotated[
-            m.Cli.ProcessOutcome | None,
+        flext_root: Annotated[
+            Path | None,
             m.Field(
                 description=(
-                    "Original reaped process outcome; absent when unreached or "
-                    "launch failed"
-                )
-            ),
-        ] = None
-        error: Annotated[
-            str | None, m.Field(description="First execution failure, if observed")
-        ] = None
-        repository_root: Annotated[
-            Path | None, m.Field(description="Repository whose public Makefile ran")
-        ] = None
-        environment_root: Annotated[
-            Path | None,
-            m.Field(description="Target environment resolved by canonical ownership"),
-        ] = None
-        before_files: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleFileObservation],
-            m.Field(description="Config-declared file observations before execution"),
-        ] = ()
-        after_files: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleFileObservation],
-            m.Field(description="Same bounded file observations after execution"),
-        ] = ()
-        elapsed_seconds: Annotated[
-            float | None, m.Field(ge=0, description="Measured invocation wall time")
-        ] = None
-        applicable: Annotated[
-            bool | None,
-            m.Field(
-                description="Observed applicability; absent for unreached commands"
-            ),
-        ] = None
-        applicability_reason: Annotated[
-            str | None,
-            m.Field(description="Observed reason a dependency stays a library"),
-        ] = None
-        execution_context: Annotated[
-            t.Infra.LifecycleContext | None,
-            m.Field(
-                description="Declared lifecycle context, absent for other receipts"
+                    "Local FLEXT workspace whose provided distributions setup "
+                    "reinstalls editable; absent restores the locked installs"
+                ),
             ),
         ] = None
 
-    class LifecycleReport(m.ContractModel):
-        """Complete declared scope and ordered reached/unreached lifecycle receipts."""
+    class FlextEditableSelection(m.ContractModel):
+        """Typed receipt of the latest local `make setup FLEXT=<path>`."""
 
-        workspace_root: Annotated[Path, m.Field(description="Invoking workspace root")]
-        scope: Annotated[t.VariadicTuple[Path], m.Field(description="Governed roots")]
-        observed_files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Root-effective declared file observation scope"),
-        ] = ()
-        receipts: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleReceipt],
-            m.Field(description="Ordered public command receipts for the entire scope"),
+        flext_root: Annotated[
+            Path, m.Field(description="Resolved FLEXT workspace root")
         ]
-
-        @m.computed_field
-        @property
-        def executed_commands(self) -> int:
-            """Count only commands with a reaped native process outcome."""
-            return sum(receipt.outcome is not None for receipt in self.receipts)
-
-        @m.computed_field
-        @property
-        def failed_commands(self) -> int:
-            """Count causal execution or precondition failures."""
-            return sum(receipt.error is not None for receipt in self.receipts)
-
-        @m.computed_field
-        @property
-        def inapplicable_commands(self) -> int:
-            """Count explicit applicability decisions, never inferred passes."""
-            return sum(receipt.applicable is False for receipt in self.receipts)
-
-        @m.computed_field
-        @property
-        def unreached_commands(self) -> int:
-            """Count required commands whose execution has not been reached."""
-            return sum(
-                receipt.outcome is None
-                and receipt.error is None
-                and receipt.applicable is not False
-                for receipt in self.receipts
-            )
+        distributions: Annotated[
+            t.MappingKV[str, Path],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Distribution name to the absolute source directory setup "
+                    "installed it editable from"
+                ),
+            ),
+        ]
 
     class WorkspaceRuntimeContext(m.ContractModel):
         """Physical runtime ownership and its selected native resolution input."""

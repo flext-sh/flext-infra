@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import importlib.machinery
 import importlib.util
 from pathlib import Path
 
@@ -212,6 +213,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
             self._active: set[str] = set()
             self._resolved_memo: t.MutableMappingKV[str, str] = {}
+            self._ordering_ready = False
             self._native_module_type = FlextInfraUtilitiesRopeRuntime.runtime_type(
                 "rope.base.builtins",
                 "BuiltinModule",
@@ -244,14 +246,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ValueError: If declared identities duplicate or C3 conflicts.
 
             """
-            self._namespaces = {
-                ".".join(parts[:index])
-                for module in self._sources
-                for parts in (module.split("."),)
-                for index in range(1, len(parts) + 1)
-            }
-            self._build_module_alias_map()
-            self._object_id = self._external_reference("builtins", ("object",))
+            self._prepare_ordering()
             identities = tuple(self._resolve(item) for item in declarations)
             if len(set(identities)) != len(identities):
                 message = "Duplicate declared facade owner"
@@ -270,6 +265,47 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             return tuple(
                 spellings[identity] for identity in lineage if identity in spellings
             )
+
+        def class_reaches(
+            self,
+            declarations: t.SequenceOf[m.Infra.SourceClassReference],
+            anchors: t.SequenceOf[m.Infra.SourceClassReference],
+        ) -> t.VariadicTuple[frozenset[str]]:
+            """Report which anchors each declaration's source C3 ancestry holds.
+
+            Returns:
+                Per declaration, the anchor spellings its linearization holds.
+
+            """
+            self._prepare_ordering()
+            anchored = {self._resolve(item): item.qualified_base for item in anchors}
+            return tuple(
+                frozenset(
+                    anchored[identity]
+                    for identity in self._linearize(self._resolve(item))
+                    if identity in anchored
+                )
+                for item in declarations
+            )
+
+        def _prepare_ordering(self) -> None:
+            """Build the namespace and alias maps once per resolver.
+
+            The captured sources are immutable for the resolver's lifetime,
+            so every memoized resolution and linearization serves the
+            following questions.
+            """
+            if self._ordering_ready:
+                return
+            self._namespaces = {
+                ".".join(parts[:index])
+                for module in self._sources
+                for parts in (module.split("."),)
+                for index in range(1, len(parts) + 1)
+            }
+            self._build_module_alias_map()
+            self._object_id = self._external_reference("builtins", ("object",))
+            self._ordering_ready = True
 
         def _index_modules(self) -> None:
             """Index captured modules without changing interpreter resource policy."""
@@ -925,14 +961,24 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """Resolve one external qualified target through Rope.
 
             The injected project retains its original native-module election.
+            A compiled extension has no source for Rope to parse; its import
+            spec, resolved on demand, admits it as Rope's native module.
             Resolution and attribute errors propagate unchanged.
 
             Returns:
                 The resolved declaration identity.
 
             """
-            module = self._project.get_module(target)
             resource = self._project.find_module(target)
+            spec = None if resource is not None else importlib.util.find_spec(target)
+            module = (
+                FlextInfraUtilitiesRopeRuntime.runtime_callable(
+                    "rope.base.builtins", "BuiltinModule"
+                )(target, self._project.get_pycore())
+                if spec is not None
+                and isinstance(spec.loader, importlib.machinery.ExtensionFileLoader)
+                else self._project.get_module(target)
+            )
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,
@@ -1319,8 +1365,47 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             The declaration spellings in consistent precedence order.
 
         """
-        return cls._RuntimeBaseResolver(project, sources, (), None).class_order(
-            declarations
+        return cls.source_class_orders(project, sources, (declarations,))[0]
+
+    @classmethod
+    def source_class_orders(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        groups: t.SequenceOf[t.SequenceOf[m.Infra.SourceClassReference]],
+    ) -> t.VariadicTuple[t.StrTuple]:
+        """Order several declaration groups through one source resolver.
+
+        Every group shares the resolver's memoized resolutions and
+        linearizations, so a pass asking many questions over the same
+        captured sources resolves each ancestor once.
+
+        Returns:
+            Each group's declaration spellings in consistent precedence order.
+
+        """
+        resolver = cls._RuntimeBaseResolver(project, sources, (), None)
+        return tuple(resolver.class_order(group) for group in groups)
+
+    @classmethod
+    def source_class_reaches(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        anchors: t.SequenceOf[m.Infra.SourceClassReference],
+    ) -> t.VariadicTuple[frozenset[str]]:
+        """Answer which anchors every declaration inherits, in one resolver.
+
+        Each ancestor is resolved and linearized once from the captured
+        sources, so a pass asking about many classes shares one ancestry.
+
+        Returns:
+            Per declaration, the anchor spellings its source C3 order holds.
+
+        """
+        return cls._RuntimeBaseResolver(project, sources, (), None).class_reaches(
+            declarations, anchors
         )
 
     @classmethod

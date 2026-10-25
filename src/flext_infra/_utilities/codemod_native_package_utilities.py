@@ -2,8 +2,10 @@
 
 The names a package publishes and the facade-family packages a project owns
 are read statically: package initializers through the Griffe owner, family
-directories from the facade-family declarations. Nothing is imported, so a
-tests-tier package is as valid a scope as the public package.
+directories from the facade-family declarations. No project module is
+imported, so a tests-tier package is as valid a scope as the public package;
+only a library the protocols family names is imported, to read whether the
+named object is a protocol.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,28 +13,35 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import re
-from contextlib import closing
+from importlib import import_module
+from importlib.util import find_spec
 from pathlib import Path, PurePosixPath
+from typing import is_protocol
 
 from flext_cli import u
 
-from flext_infra import FlextInfraConfig, c, m, t
-from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
-from flext_infra._utilities.rope_analysis_workspace import (
+from flext_infra import FlextInfraConfig, c, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodRules,
+    FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPythonModel,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope_analysis.sourcescan import (
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
+)
 
 
 class FlextInfraUtilitiesCodemodNativePackageUtilities:
     """Derive package export and facade-family package utility rules."""
 
     @staticmethod
-    def codemod_exact_names_rule(names: t.StrSequence) -> t.JsonMapping:
+    def codemod_exact_names_rule(names: t.StrSequence) -> t.JsonDict:
         """Match a captured identifier that is exactly one of ``names``.
 
         Returns:
@@ -46,65 +55,65 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @staticmethod
     def codemod_package_export_facts(
+        snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
     ) -> m.Infra.CodemodPackageExportsFacts:
         """Package facts: exports, directory and direct children of each package.
 
         Exports are the ``__all__`` each initializer declares, read through the
-        Griffe owner (a package without a literal ``__all__`` exports nothing);
-        the directory and the child modules and packages come from the same
-        source index.
+        injected snapshot's source engine (a package without a literal
+        ``__all__`` exports nothing); the directory and the child modules and
+        packages come from the same source index.
 
         Returns:
             The typed package facts the utilities and renderers consume.
 
         """
-        root = project.absolute()
-        with closing(FlextInfraUtilitiesRopeCore.init_rope_workspace(root)) as rope:
-            index = FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
-                rope, root
-            )
-            owned = tuple(
-                entry
-                for entry in index.modules_by_path.values()
-                if entry.module_name and entry.file_path.is_relative_to(root)
-            )
-            packages = {
-                entry.module_name: entry.file_path
-                for entry in owned
-                if entry.file_path.name == c.Infra.INIT_PY
-            }
-            children: dict[str, set[str]] = {package: set() for package in packages}
-            for entry in owned:
-                parent, separator, leaf = entry.module_name.rpartition(".")
-                if separator and parent in children:
-                    children[parent].add(leaf)
-            run = FlextInfraUtilitiesPythonModel.python_model_run(rope, packages)
-            return m.Infra.CodemodPackageExportsFacts(
-                exports={
-                    package: tuple(
-                        FlextInfraUtilitiesPythonModel.python_model_exports(
-                            FlextInfraUtilitiesPythonModel.python_model_module_at(
-                                run, path, package
-                            )
+        root = project.resolve()
+        index = FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
+            snapshot, root
+        )
+        owned = tuple(
+            entry
+            for entry in index.modules_by_path.values()
+            if entry.module_name and entry.file_path.is_relative_to(root)
+        )
+        packages = {
+            entry.module_name: entry.file_path
+            for entry in owned
+            if entry.file_path.name == c.Infra.INIT_PY
+        }
+        children: dict[str, set[str]] = {package: set() for package in packages}
+        for entry in owned:
+            parent, separator, leaf = entry.module_name.rpartition(".")
+            if separator and parent in children:
+                children[parent].add(leaf)
+        run = FlextInfraUtilitiesPythonModel.python_model_run(snapshot.engine, packages)
+        return m.Infra.CodemodPackageExportsFacts(
+            exports={
+                package: tuple(
+                    FlextInfraUtilitiesPythonModel.python_model_exports(
+                        FlextInfraUtilitiesPythonModel.python_model_module_at(
+                            run, path, package
                         )
-                        or ()
                     )
-                    for package, path in sorted(packages.items())
-                },
-                directories={
-                    package: path.parent.relative_to(root).as_posix()
-                    for package, path in sorted(packages.items())
-                },
-                modules={
-                    package: tuple(sorted(names))
-                    for package, names in sorted(children.items())
-                },
-            )
+                    or ()
+                )
+                for package, path in sorted(packages.items())
+            },
+            directories={
+                package: path.parent.relative_to(root).as_posix()
+                for package, path in sorted(packages.items())
+            },
+            modules={
+                package: tuple(sorted(names))
+                for package, names in sorted(children.items())
+            },
+        )
 
     @classmethod
     def codemod_package_export_utilities(
-        cls, project: Path
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> t.MappingKV[str, t.JsonMapping]:
         """One ``exports--<dotted package>`` utility per package of the project.
 
@@ -112,7 +121,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The package export utilities rendered from the export facts.
 
         """
-        facts = cls.codemod_package_export_facts(project)
+        facts = cls.codemod_package_export_facts(snapshot, project)
         return {
             f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}": (
@@ -123,6 +132,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @staticmethod
     def codemod_facade_family_package_utilities(
+        snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
     ) -> t.MappingKV[str, t.JsonMapping]:
         """Facade-family packages: ``<own root>._<family>`` of every family.
@@ -134,6 +144,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The ``facade-family-package`` utility rule of the project.
 
         """
+        del snapshot
         roots = sorted({
             FlextInfraUtilitiesPyproject.project_package_name(project.absolute()),
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
@@ -151,7 +162,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         }
 
     @staticmethod
-    def _codemod_name_utils() -> t.JsonMapping:
+    def _codemod_name_utils() -> t.JsonDict:
         """Local utilities of the generated shapes: a binding and a free use.
 
         The binding rule is the universal catalog's ``name-binding`` utility,
@@ -165,16 +176,14 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH,
             c.Infra.CODEMOD_NAME_BINDING_UTILITY,
         )
+        outside_imports: list[t.JsonValue] = [
+            {"not": {"inside": {"kind": kind, "stopBy": "end"}}}
+            for kind in ("import_from_statement", "import_statement")
+        ]
         return {
             "binding": dict(binding),
             "local-binding": {
-                "all": [
-                    {"matches": "binding"},
-                    *(
-                        {"not": {"inside": {"kind": kind, "stopBy": "end"}}}
-                        for kind in ("import_from_statement", "import_statement")
-                    ),
-                ],
+                "all": [{"matches": "binding"}, *outside_imports],
             },
             "use": {
                 "all": [
@@ -238,7 +247,10 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @classmethod
     def codemod_import_header_rules(
-        cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+        facts: m.Infra.CodemodPackageExportsFacts,
     ) -> t.MappingKV[str, t.JsonMapping]:
         """Insert the nearest declaring package's import for unbound names.
 
@@ -255,6 +267,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The generated ``import-header`` rule documents keyed by id.
 
         """
+        del snapshot
         del project
         directories = facts.directories
         groups: dict[tuple[str, str | None, t.StrTuple], set[str]] = {}
@@ -317,7 +330,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         return documents
 
     @classmethod
-    def _codemod_header_rule(cls, names: t.StrSequence) -> t.JsonMapping:
+    def _codemod_header_rule(cls, names: t.StrSequence) -> t.JsonDict:
         """Anchor on the first future or plain import of a module using ``names``.
 
         Returns:
@@ -354,9 +367,12 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                 "kind": "module",
                 "has": {
                     "stopBy": "end",
+                    # The kind and the exact-name test are cheap and narrow the
+                    # module walk before the scope-sensitive use and binding tests.
                     "all": [
-                        {"matches": "use"},
+                        {"kind": "identifier"},
                         cls.codemod_exact_names_rule(names),
+                        {"matches": "use"},
                         {"pattern": "$USED"},
                         {
                             "not": {
@@ -380,7 +396,10 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @classmethod
     def codemod_module_member_rules(
-        cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+        facts: m.Infra.CodemodPackageExportsFacts,
     ) -> t.MappingKV[str, t.JsonMapping]:
         """Reach a member through its package import, never a module object.
 
@@ -395,12 +414,13 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The generated ``module-member`` rule documents keyed by id.
 
         """
+        del snapshot
         del project
         resolvable = cls.codemod_header_resolvable_names(facts)
         utils = cls._codemod_name_utils()
         documents: dict[str, t.JsonMapping] = {}
         for package, children in sorted(facts.modules.items()):
-            branches = [
+            branches: list[t.JsonDict] = [
                 {
                     "all": [
                         {
@@ -451,18 +471,32 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @classmethod
     def _codemod_member_rule(
-        cls, package: str, branches: t.SequenceOf[t.JsonMapping]
-    ) -> t.JsonMapping:
+        cls, package: str, branches: t.SequenceOf[t.JsonDict]
+    ) -> t.JsonDict:
         """Match ``<child>.<Name>`` bound by a module-object import of ``package``.
 
         Returns:
             The native rule of one ``module-member`` document.
 
         """
+        unbound: list[t.JsonValue] = [
+            {
+                "not": {
+                    "has": {
+                        "stopBy": "end",
+                        "all": [
+                            {"pattern": variable},
+                            {"matches": "local-binding"},
+                        ],
+                    }
+                }
+            }
+            for variable in ("$NAME", "$PKG")
+        ]
         return {
             "all": [
                 {"kind": "attribute"},
-                {"any": list(branches)},
+                {"any": list[t.JsonValue](branches)},
                 {
                     "inside": {
                         "stopBy": "end",
@@ -496,20 +530,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                                     ],
                                 }
                             },
-                            *(
-                                {
-                                    "not": {
-                                        "has": {
-                                            "stopBy": "end",
-                                            "all": [
-                                                {"pattern": variable},
-                                                {"matches": "local-binding"},
-                                            ],
-                                        }
-                                    }
-                                }
-                                for variable in ("$NAME", "$PKG")
-                            ),
+                            *unbound,
                         ],
                     }
                 },
@@ -550,7 +571,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
         """
         del project
-        branches: dict[str, list[t.JsonMapping]] = {}
+        branches: dict[str, list[t.JsonValue]] = {}
         for package, children in sorted(facts.modules.items()):
             for leaf in children:
                 module = f"{package}.{leaf}"
@@ -597,7 +618,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     @classmethod
     def _codemod_deep_import_branch(
         cls, module: str, names: t.StrSequence
-    ) -> t.JsonMapping:
+    ) -> t.JsonDict:
         """Match an import of one of ``names`` from exactly ``module``.
 
         Returns:
@@ -621,6 +642,451 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                     }
                 },
             ]
+        }
+
+    @staticmethod
+    def codemod_role_files(
+        snapshot: p.Infra.WorkspaceSnapshot, project: Path, roles: t.StrSequence
+    ) -> t.StrTuple:
+        """Project-relative paths of every module the import law gives a role.
+
+        The same classifier the import law applies (namespace location, then
+        module role) decides membership, so the generated rules and the law
+        agree on every file.
+
+        Returns:
+            The sorted POSIX paths, relative to the project root.
+
+        """
+        root = project.resolve()
+        law = FlextInfraUtilitiesImportLaw
+        return tuple(
+            sorted(
+                path.relative_to(root).as_posix()
+                for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+                    snapshot, root
+                )
+                if (located := law.import_namespace(root, path)) is not None
+                and law.import_module_role(located[1]) in roles
+            )
+        )
+
+    @classmethod
+    def codemod_layer_zero_files(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.StrTuple:
+        """Project-relative paths of every module the import law ranks layer zero.
+
+        Returns:
+            The sorted POSIX paths, relative to the project root.
+
+        """
+        return cls.codemod_role_files(
+            snapshot, project, (c.Infra.IMPORT_LAW_LAYER_ZERO_ROLE,)
+        )
+
+    @classmethod
+    def codemod_imported_top_modules(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.StrTuple:
+        """Top-level packages the project's modules import absolutely.
+
+        Returns:
+            The sorted distinct top-level module names.
+
+        """
+        snapshots = FlextInfraUtilitiesWorkspaceSnapshot
+        roots = FlextInfraUtilitiesRopeAnalysisSourceScan.absolute_import_roots
+        return tuple(
+            sorted({
+                name
+                for path in snapshots.workspace_python_files(snapshot, project)
+                for name in roots(snapshots.workspace_source(snapshot, path).text)
+            })
+        )
+
+    @classmethod
+    def codemod_library_protocol_names(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.StrTuple:
+        """Library attributes the protocols family names that are protocols.
+
+        Each ``<module>.<Name>`` a protocols-family file reads through an
+        ``import`` binding is resolved on its library module; a name whose
+        object is a ``typing.Protocol`` is a protocol the family may re-expose
+        (ADR-028). Every other library type stays a typings alias.
+
+        Returns:
+            The sorted protocol attribute names.
+
+        """
+        root = project.resolve()
+        snapshots = FlextInfraUtilitiesWorkspaceSnapshot
+        families = tuple(
+            PurePosixPath(glob.removeprefix("**/").removesuffix("/**"))
+            for glob in c.Infra.CODEMOD_PROTOCOLS_FAMILY_GLOBS
+        )
+        names: set[str] = set()
+        for path in snapshots.workspace_python_files(snapshot, root):
+            relative = PurePosixPath(path.relative_to(root).as_posix())
+            if not any(
+                family.name in relative.parts or relative.name == family.name
+                for family in families
+            ):
+                continue
+            tree = snapshots.workspace_module_tree(snapshot, path)
+            bound = {
+                alias.asname or alias.name: alias.name
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Import)
+                for alias in node.names
+            }
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Attribute)
+                    and isinstance(node.value, ast.Name)
+                    and node.value.id in bound
+                    and is_protocol(
+                        getattr(import_module(bound[node.value.id]), node.attr)
+                    )
+                ):
+                    names.add(node.attr)
+        return tuple(sorted(names))
+
+    @classmethod
+    def codemod_facade_packages(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.StrTuple:
+        """The own package and every imported package publishing facade aliases.
+
+        A package whose generated lazy exports publish runtime aliases is a
+        FLEXT facade package wherever it is installed, the same verdict the
+        import law reaches; any other imported package is a library.
+
+        Returns:
+            The sorted facade package names the project reaches.
+
+        """
+        own = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        return tuple(
+            sorted({
+                own,
+                *(
+                    module
+                    for module in cls.codemod_imported_top_modules(snapshot, project)
+                    if module != own
+                    and find_spec(module) is not None
+                    and u.runtime_alias_names(module)
+                ),
+            })
+        )
+
+    @classmethod
+    def codemod_external_import_rules(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Ban a library import outside the facade families (ADR-028).
+
+        The module of a live import must be the standard library, the own
+        package or a FLEXT facade package; family and layer-zero modules are
+        rendered as ``ignores``. Every operand is derived from the project, so
+        the native scan and ``make mod`` agree without per-finding admission.
+
+        Returns:
+            The external-import rule document keyed by id.
+
+        """
+        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        catalog = (
+            FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH
+        )
+        library = c.Infra.CODEMOD_LIBRARY_IMPORT_NAME_UTILITY
+        facade = c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY
+        shape = c.Infra.CODEMOD_EXTERNAL_IMPORT_SHAPE
+        rule_id = f"{shape}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
+        roles = (c.Infra.IMPORT_LAW_LAYER_ZERO_ROLE, c.Infra.IMPORT_LAW_FAMILY_ROLE)
+        document: dict[str, t.JsonValue] = {
+            "id": rule_id,
+            "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+            "severity": "error",
+            "files": ["**/*.py"],
+            "utils": {
+                **{
+                    name: dict(
+                        FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
+                            catalog, name
+                        )
+                    )
+                    for name in (library, c.Infra.CODEMOD_TYPE_CHECKING_GUARD_UTILITY)
+                },
+            },
+            "rule": {"all": [{"pattern": "$MODULE"}, {"matches": library}]},
+            "constraints": {
+                "MODULE": {
+                    "not": {
+                        "any": [
+                            {"matches": (c.Infra.CODEMOD_STDLIB_MODULE_UTILITY)},
+                            {"matches": (c.Infra.CODEMOD_OWN_PACKAGE_UTILITY)},
+                            {"matches": facade},
+                        ]
+                    }
+                }
+            },
+            "message": (
+                "`$MODULE` is a third-party library imported outside the "
+                "c/t/p/m/u facade families."
+            ),
+        }
+        ignores: list[t.JsonValue] = [
+            f"**/{path}" for path in cls.codemod_role_files(snapshot, project, roles)
+        ]
+        if ignores:
+            document["ignores"] = ignores
+        return {rule_id: document}
+
+    @classmethod
+    def codemod_library_type_rules(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Ban a library type named inline outside the typings family (ADR-028).
+
+        An attribute of a module the file binds by ``import`` and that is a
+        library (not stdlib, own or FLEXT facade package), written as a type in
+        an annotation or as an ``isinstance``/``issubclass`` operand, is a
+        hidden second typings owner. The typings family and layer-zero modules
+        are rendered as ``ignores``; every operand is derived from the project.
+
+        Returns:
+            The library-type rule document keyed by id.
+
+        """
+        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        facade = c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY
+        stdlib = c.Infra.CODEMOD_STDLIB_MODULE_UTILITY
+        own = c.Infra.CODEMOD_OWN_PACKAGE_UTILITY
+        shape = c.Infra.CODEMOD_LIBRARY_TYPE_SHAPE
+        rule_id = f"{shape}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
+        check: t.JsonDict = {
+            "inside": {"kind": "argument_list", "inside": {"matches": "check"}}
+        }
+        layer_zero = [
+            f"**/{path}" for path in cls.codemod_layer_zero_files(snapshot, project)
+        ]
+        library: t.JsonDict = {
+            "not": {"any": [{"matches": stdlib}, {"matches": own}, {"matches": facade}]}
+        }
+        document: dict[str, t.JsonValue] = {
+            "id": rule_id,
+            "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+            "severity": "error",
+            "files": ["**/*.py"],
+            "ignores": [
+                *c.Infra.CODEMOD_TYPINGS_FAMILY_GLOBS,
+                *c.Infra.CODEMOD_PROTOCOLS_FAMILY_GLOBS,
+                *layer_zero,
+            ],
+            "utils": {
+                "check": {
+                    "kind": "call",
+                    "has": {
+                        "field": "function",
+                        "regex": r"^(?:isinstance|issubclass)$",
+                    },
+                },
+                "library-attribute": {
+                    "kind": "attribute",
+                    "all": [
+                        {
+                            "has": {
+                                "field": "object",
+                                "kind": "identifier",
+                                "pattern": "$LIB",
+                            }
+                        },
+                        {"has": {"field": "attribute", "pattern": "$ATTR"}},
+                    ],
+                    "inside": {
+                        "kind": "module",
+                        "stopBy": "end",
+                        "has": {
+                            "stopBy": "end",
+                            "kind": "import_statement",
+                            "any": [
+                                {
+                                    "has": {
+                                        "kind": "dotted_name",
+                                        "all": [
+                                            {"pattern": "$LIB"},
+                                            {"pattern": "$MODULE"},
+                                        ],
+                                    }
+                                },
+                                {
+                                    "has": {
+                                        "kind": "aliased_import",
+                                        "all": [
+                                            {
+                                                "has": {
+                                                    "field": "name",
+                                                    "pattern": "$MODULE",
+                                                }
+                                            },
+                                            {
+                                                "has": {
+                                                    "field": "alias",
+                                                    "pattern": "$LIB",
+                                                }
+                                            },
+                                        ],
+                                    }
+                                },
+                            ],
+                        },
+                    },
+                },
+            },
+            "rule": {
+                "matches": "library-attribute",
+                "any": [
+                    {"inside": {"kind": "type", "stopBy": "end"}},
+                    {"all": [{"nthChild": 2}, check]},
+                    {
+                        "inside": {
+                            "stopBy": "end",
+                            "any": [
+                                {"kind": "binary_operator"},
+                                {"kind": "tuple"},
+                                {"kind": "parenthesized_expression"},
+                            ],
+                            "nthChild": 2,
+                            **check,
+                        }
+                    },
+                ],
+            },
+            "constraints": {"MODULE": library},
+            "message": (
+                "`$MODULE` library type named inline: alias it once in the typings "
+                "family and reference it as `t.<Domain>.<Name>`."
+            ),
+        }
+        # The protocols family may re-expose a library protocol; any other
+        # library type it names inline still belongs to the typings family.
+        protocol_id = f"{rule_id}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}protocols"
+        protocols = cls.codemod_library_protocol_names(snapshot, project)
+        constraints: t.JsonDict = {"MODULE": library}
+        if protocols:
+            constraints["ATTR"] = {
+                "not": {"regex": f"^(?:{'|'.join(map(re.escape, protocols))})$"}
+            }
+        return {
+            rule_id: document,
+            protocol_id: {
+                **document,
+                "id": protocol_id,
+                "files": list(c.Infra.CODEMOD_PROTOCOLS_FAMILY_GLOBS),
+                "ignores": layer_zero,
+                "constraints": constraints,
+            },
+        }
+
+    @classmethod
+    def codemod_layer_zero_rules(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Ban own-namespace imports from the project's layer-zero modules.
+
+        A settings/config (or lazy-loader) module owns its declarations before
+        any facade family exists, so it imports neither its own root facade
+        nor any module of its own namespace, TYPE_CHECKING included. The
+        layer-zero files are rendered as exact ``files`` globs and the own
+        package is the native ``own-package`` utility, so the native scan and
+        ``make mod`` reach the same verdict without per-finding admission.
+
+        Returns:
+            The two layer-zero rule documents keyed by id, or nothing when the
+            project has no layer-zero module.
+
+        """
+        files: list[t.JsonValue] = [
+            f"**/{relative}"
+            for relative in cls.codemod_layer_zero_files(snapshot, project)
+        ]
+        if not files:
+            return {}
+        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        root_name = c.Infra.CODEMOD_ROOT_IMPORTED_NAME_UTILITY
+        root_rule = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
+            FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH,
+            root_name,
+        )
+        own: t.JsonDict = {"MODULE": {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY}}
+        facade_shape = c.Infra.CODEMOD_LAYER_ZERO_FACADE_IMPORT_SHAPE
+        module_shape = c.Infra.CODEMOD_LAYER_ZERO_MODULE_IMPORT_SHAPE
+        facade_id = f"{facade_shape}{separator}{package}"
+        module_id = f"{module_shape}{separator}{package}"
+        return {
+            facade_id: {
+                "id": facade_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "severity": "error",
+                "files": files,
+                "utils": {root_name: dict(root_rule)},
+                "rule": {
+                    "matches": root_name,
+                    "inside": {
+                        "stopBy": "end",
+                        "kind": "import_from_statement",
+                        "has": {"field": "module_name", "pattern": "$MODULE"},
+                    },
+                },
+                "constraints": own,
+                "message": (
+                    "Layer-zero settings/config imports from its own root "
+                    "`$MODULE`, including TYPE_CHECKING: use native or valid "
+                    "upstream contracts, never its own namespace."
+                ),
+            },
+            module_id: {
+                "id": module_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "severity": "error",
+                "files": files,
+                "rule": {
+                    "any": [
+                        {
+                            "kind": "import_from_statement",
+                            "has": {
+                                "field": "module_name",
+                                "kind": "dotted_name",
+                                "pattern": "$MODULE",
+                                "regex": r"\.",
+                            },
+                        },
+                        {
+                            "kind": "dotted_name",
+                            "pattern": "$MODULE",
+                            "any": [
+                                {"inside": {"kind": "import_statement"}},
+                                {
+                                    "inside": {
+                                        "kind": "aliased_import",
+                                        "field": "name",
+                                        "inside": {"kind": "import_statement"},
+                                    }
+                                },
+                            ],
+                        },
+                    ]
+                },
+                "constraints": own,
+                "message": (
+                    "Layer-zero settings/config imports its own namespace "
+                    "`$MODULE`, including TYPE_CHECKING: use native or valid "
+                    "upstream contracts."
+                ),
+            },
         }
 
 

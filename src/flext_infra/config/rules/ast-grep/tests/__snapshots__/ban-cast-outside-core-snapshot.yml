@@ -1,6 +1,6 @@
 id: ban-cast-outside-core
 snapshots:
-  value = cast(int, raw):
+  "value = cast(int, raw)":
     labels:
     - source: cast(int, raw)
       style: primary
@@ -10,7 +10,7 @@ snapshots:
       style: secondary
       start: 8
       end: 12
-  value = typing.cast('str', raw):
+  "value = typing.cast('str', raw)":
     labels:
     - source: typing.cast('str', raw)
       style: primary

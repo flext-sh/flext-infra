@@ -1,19 +1,15 @@
 id: ban-pass-through-wrapper
 snapshots:
-  ? |
-    async def delegated(value: str) -> str:
-        return await owner(value)
-  : labels:
+  "async def delegated(value: str) -> str:\n    return await owner(value)\n":
+    labels:
     - source: |-
         async def delegated(value: str) -> str:
             return await owner(value)
       style: primary
       start: 0
       end: 69
-  ? |
-    def delegated(value: str) -> str:
-        return owner(value)
-  : labels:
+  "def delegated(value: str) -> str:\n    return owner(value)\n":
+    labels:
     - source: |-
         def delegated(value: str) -> str:
             return owner(value)

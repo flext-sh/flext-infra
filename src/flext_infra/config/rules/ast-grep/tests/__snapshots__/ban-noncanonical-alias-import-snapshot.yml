@@ -14,12 +14,12 @@ snapshots:
       style: secondary
       start: 0
       end: 33
-  from flext_cli.models import Other, m:
+  "from flext_cli.models import Other, m":
     labels:
-    - source: Other
+    - source: m
       style: primary
-      start: 29
-      end: 34
+      start: 36
+      end: 37
     - source: flext_cli.models
       style: secondary
       start: 5

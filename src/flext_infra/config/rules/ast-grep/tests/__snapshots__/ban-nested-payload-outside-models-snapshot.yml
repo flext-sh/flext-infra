@@ -1,10 +1,7 @@
 id: ban-nested-payload-outside-models
 snapshots:
-  ? |
-    class Utilities:
-        class Payload(AliasedPreset[str]):
-            value: str = Field(default="payload")
-  : labels:
+  "class Utilities:\n    class Payload(AliasedPreset[str]):\n        value: str = Field(default=\"payload\")\n":
+    labels:
     - source: |-
         class Payload(AliasedPreset[str]):
                 value: str = Field(default="payload")
@@ -19,15 +16,15 @@ snapshots:
       style: secondary
       start: 71
       end: 74
-    - source: 'value: str = Field(default="payload")'
+    - source: "value: str = Field(default=\"payload\")"
       style: secondary
       start: 64
       end: 101
-    - source: 'value: str = Field(default="payload")'
+    - source: "value: str = Field(default=\"payload\")"
       style: secondary
       start: 64
       end: 101
-    - source: 'value: str = Field(default="payload")'
+    - source: "value: str = Field(default=\"payload\")"
       style: secondary
       start: 64
       end: 101
@@ -44,11 +41,8 @@ snapshots:
       style: secondary
       start: 21
       end: 101
-  ? |
-    class Utilities:
-        class Payload(BaseModel):
-            value: str
-  : labels:
+  "class Utilities:\n    class Payload(BaseModel):\n        value: str\n":
+    labels:
     - source: |-
         class Payload(BaseModel):
                 value: str
@@ -63,15 +57,15 @@ snapshots:
       style: secondary
       start: 62
       end: 65
-    - source: 'value: str'
+    - source: "value: str"
       style: secondary
       start: 55
       end: 65
-    - source: 'value: str'
+    - source: "value: str"
       style: secondary
       start: 55
       end: 65
-    - source: 'value: str'
+    - source: "value: str"
       style: secondary
       start: 55
       end: 65

@@ -333,7 +333,7 @@ class FlextInfraModelsDeps(
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict[str, t.JsonValue])
         document: Annotated[
-            t.Cli.TomlDocument | None,
+            t.Port[t.Cli.TomlDocument] | None,
             m.Field(
                 default=None,
                 exclude=True,

@@ -1,6 +1,6 @@
 id: docs-strict-text-decoding
 snapshots:
-  path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE):
+  "path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE)":
     fixed: path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
     labels:
     - source: path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE)

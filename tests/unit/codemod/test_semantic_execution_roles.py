@@ -27,6 +27,10 @@ class TestsSemanticExecutionRoles:
     ) -> None:
         """Real reads/imports block while homonyms and ordinary strings stay intact."""
         namespace = u.Infra.project_package_name(mod_workspace)
+        environ = (
+            f"{c.Infra.CODEMOD_AMBIENT_ENVIRON_SHAPE}"
+            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{namespace}"
+        )
         package = (
             mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
             if surface == c.Infra.DEFAULT_SRC_DIR
@@ -66,10 +70,7 @@ class TestsSemanticExecutionRoles:
             FlextInfraModGateEngine.scan(
                 mod_workspace,
                 fix=False,
-                selection=(
-                    "ban-ambient-environ-read",
-                    "ban-subprocess-outside-run-owner",
-                ),
+                selection=(environ, "ban-subprocess-outside-run-owner"),
                 source_files=tuple(package / name for name in contents),
             ),
         )
@@ -82,7 +83,7 @@ class TestsSemanticExecutionRoles:
                 for entry in report.entries
             },
             eq={
-                ((package / name).resolve(), "ban-ambient-environ-read")
+                ((package / name).resolve(), environ)
                 for name in ("application.py", "hook_client.py", "bootstrap.py")
             }
             | {

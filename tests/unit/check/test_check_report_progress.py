@@ -165,7 +165,9 @@ class TestsFlextInfraCheckReportProgress:
             "        projects=tuple(m.Infra.CheckProjectTarget("
             "name=path.name, path=path) for path in (first, second)),\n"
             "        gates=(c.Infra.SECURITY,),\n"
-            "        reports_dir=reports,\n"
+            "        ctx=m.Infra.GateContext(\n"
+            "            repository_root=root, reports_dir=reports\n"
+            "        ),\n"
             "    ).unwrap()\n"
             "else:\n"
             "    infra.check_report(m.Infra.RunCommand(\n"
@@ -228,7 +230,7 @@ class TestsFlextInfraCheckReportProgress:
                     for project in projects
                 ),
                 gates=(c.Infra.SECURITY,),
-                reports_dir=reports,
+                ctx=u.Tests.gate_context(root, reports),
             ),
         )
 

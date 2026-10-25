@@ -10,9 +10,12 @@ ignores:
   - "**/__init__.py"
   - "**/tests/**"
 metadata:
-  context:
-    NAME:
-      is: payload-declaration
+  # The family modules whose nested class is a payload declaration.
+  scope:
+    partition:
+      variable: NAME
+      holds: true
+      selectors: payload-class-
 rule:
   kind: class_definition
   all:

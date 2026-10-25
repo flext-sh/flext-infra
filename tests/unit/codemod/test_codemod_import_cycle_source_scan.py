@@ -1,4 +1,4 @@
-"""Import-cycle admission and scan targets honor the source scan's ignored trees.
+"""The import graph and scan targets honor the source scan's ignored trees.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -22,30 +22,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     """A source-scan-ignored tree is not a missing production module."""
 
     @staticmethod
-    def _cycle_rule() -> m.Infra.CodemodRule:
-        """Return a probe rule whose only predicate is the import cycle.
-
-        Returns:
-            A probe rule whose only predicate is the import cycle.
-
-        """
-        return m.Infra.CodemodRule(
-            id="import-cycle-probe",
-            digest="probe",
-            provider="probe",
-            resource=Path("probe.yml"),
-            fixable=False,
-            context=(
-                m.Infra.CodemodContextCondition(
-                    variable="MODULE",
-                    predicate=c.Infra.CodemodContextPredicate.IMPORT_CYCLE,
-                    holds=True,
-                    of="NAME",
-                ),
-            ),
-        )
-
-    def test_import_graph_uses_governed_workspace_sources(self, tmp_path: Path) -> None:
+    def test_import_graph_uses_governed_workspace_sources(tmp_path: Path) -> None:
         """Keep live roots and member cycles, never historical or foreign trees."""
         root, member, package = u.Tests.namespace_workspace(
             tmp_path,
@@ -76,16 +53,14 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             path.write_text("import entry\n", encoding="utf-8")
         u.Tests.initialize_git_repo(member)
 
-        facts = u.Infra.codemod_project_facts(root, (self._cycle_rule(),))
+        graph, modules = u.Infra.project_import_graph(root)
+        cycles = u.Infra.project_import_cycles(graph)
 
-        tm.ok(expected <= facts.import_modules.keys())
-        tm.that(
-            set(outsiders).isdisjoint(facts.import_modules),
-            eq=True,
-        )
-        tm.that(facts.import_modules[live.resolve()], eq="fleet_member.live")
-        tm.that(facts.import_graph["entry"], has="fleet_member.live")
-        tm.that(facts.import_cycles["entry"], has="fleet_member.live")
+        tm.ok(expected <= modules.keys())
+        tm.that(set(outsiders).isdisjoint(modules), eq=True)
+        tm.that(modules[live.resolve()], eq="fleet_member.live")
+        tm.that(graph["entry"], has="fleet_member.live")
+        tm.that(cycles["entry"], has="fleet_member.live")
 
     @staticmethod
     def test_snapshot_graph_keeps_its_proposed_source_inventory(tmp_path: Path) -> None:
@@ -115,11 +90,9 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         tm.that(tuple(modules), has=dependency.resolve())
         tm.that(graph[modules[entry.resolve()]], has=modules[dependency.resolve()])
 
-    def test_legado_is_outside_the_scanned_import_graph(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """A source-scan-ignored legado module is not a missing graph node."""
+    @staticmethod
+    def test_legado_is_outside_the_scanned_import_graph(tmp_path: Path) -> None:
+        """A source-scan-ignored legado module never becomes a graph node."""
         project = u.Tests.mk_project(
             tmp_path,
             "demo",
@@ -131,37 +104,12 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         legado.write_text("from demo.live import value\n", encoding="utf-8")
         live = project / "src" / "demo" / "live.py"
         live.write_text("value = 1\n", encoding="utf-8")
-        rule = self._cycle_rule()
-        facts = u.Infra.codemod_project_facts(project, (rule,))
 
-        verdict = u.Infra.codemod_context_admits(
-            m.Infra.CodemodAdmission(
-                root=project,
-                rule=rule,
-                file_path=legado,
-                captures={
-                    "MODULE": {"text": "demo.live"},
-                    "NAME": {"text": "value"},
-                },
-                facts=facts,
-            ),
-        )
-        tm.fail(verdict)
-        late = live.with_name("late.py")
-        late.write_text("from demo.live import value\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="absent from the project import graph"):
-            u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=project,
-                    rule=rule,
-                    file_path=late,
-                    captures={
-                        "MODULE": {"text": "demo.live"},
-                        "NAME": {"text": "value"},
-                    },
-                    facts=facts,
-                ),
-            )
+        graph, modules = u.Infra.project_import_graph(project)
+
+        tm.that(modules, lacks=legado.resolve())
+        tm.that(modules[live.resolve()], eq="demo.live")
+        tm.that(graph, has="demo.live")
 
     @staticmethod
     @pytest.mark.parametrize("reuse_config", [False, True])
@@ -466,3 +414,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                 ),
                 eq=True,
             )
+
+
+__all__: list[str] = ["TestsFlextInfraCodemodImportCycleSourceScan"]

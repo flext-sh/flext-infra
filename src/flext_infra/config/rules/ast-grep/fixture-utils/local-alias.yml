@@ -1,0 +1,6 @@
+# Fixture value of the generated `local-alias` utility: the runtime aliases
+# the fixture project publishes.
+id: local-alias
+language: Python
+rule:
+  regex: "^(?:c|m|p|s|t|u)$"

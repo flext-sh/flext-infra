@@ -315,6 +315,34 @@ class FlextInfraUtilitiesDeclarationPayload:
             The bound model declaration, or ``None`` for a different contract.
 
         """
+        binding = cls.payload_body(project, path, qualified_name)
+        if binding is None:
+            return None
+        ancestry = cls.class_ancestry(binding.get_object())
+        base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
+        settings = cls.identity_name(
+            project, c.Infra.PYDANTIC_SETTINGS_IDENTITY
+        ).get_object()
+        if base not in ancestry or settings in ancestry:
+            return None
+        return binding
+
+    @classmethod
+    def payload_body(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        qualified_name: str,
+    ) -> p.Infra.RopePyName | None:
+        """Admit a class whose body declares only data, ancestry aside.
+
+        Settings, class decorators and behavioral methods reject it;
+        validators, serializers and computed fields keep their identity.
+
+        Returns:
+            The class binding, or ``None`` when its body holds behavior.
+
+        """
         resolved = cls._class_binding(project, path, qualified_name)
         if resolved is None:
             return None
@@ -322,13 +350,6 @@ class FlextInfraUtilitiesDeclarationPayload:
         value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), qualified_name
         )
-        ancestry = cls.class_ancestry(value)
-        base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
-        settings = cls.identity_name(
-            project, c.Infra.PYDANTIC_SETTINGS_IDENTITY
-        ).get_object()
-        if base not in ancestry or settings in ancestry:
-            return None
         scope = value.get_scope()
         statements = cls._admitted_payload_statements(module, value, scope)
         if statements is None:
@@ -408,13 +429,17 @@ class FlextInfraUtilitiesDeclarationPayload:
             path,
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        *enclosing, name = qualified_name.split(".")
         owner = module.get_attributes()
-        binding: p.Infra.RopePyName | None = None
-        for name in qualified_name.split("."):
-            binding = owner.get(name)
-            if binding is None:
+        # Only an enclosing class's members are read: concluding the inherited
+        # attributes of the resolved class itself is the costliest Rope step
+        # and nothing below needs it.
+        for segment in enclosing:
+            enclosing_binding = owner.get(segment)
+            if enclosing_binding is None:
                 return None
-            owner = binding.get_object().get_attributes()
+            owner = enclosing_binding.get_object().get_attributes()
+        binding = owner.get(name)
         if binding is None:
             return None
         value = binding.get_object()

@@ -1,0 +1,53 @@
+# A settings Protocol declares each namespace branch as a read-only property:
+# `@property def Ldif(self) -> FlextLdifProtocolsBase.LdifSettings: ...`.
+#
+# A bare `Ldif: LdifSettings` member is a read-write Protocol attribute, so it
+# is invariant: no concrete settings class whose field narrows or replaces the
+# branch type satisfies it (pyright reports every consumer). A read-only
+# property is covariant and keeps the same access path `settings.Ldif`.
+#
+# Operator decision 2026-10-25, "property + exceção N802": the PascalCase
+# getter name is the namespace path, so its N802 finding is exempt only per
+# authenticated identity by the readonly-namespace owner (a @property getter of
+# a typing.Protocol taking only self, declaration-only, returning a class by
+# native Rope identity), never by name or file.
+#
+# Idempotent: a property getter never re-matches the annotation-only pattern.
+id: settings-protocol-branch-property
+language: python
+severity: error
+files:
+  - "**/_protocols/**/*.py"
+  - "**/protocols.py"
+rule:
+  all:
+    - pattern: "$NS: $BRANCH"
+    - regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*:\\s*[A-Za-z_][A-Za-z0-9_.]*$"
+    - inside:
+        kind: expression_statement
+        inside:
+          kind: block
+          inside:
+            kind: class_definition
+            all:
+              - has:
+                  field: name
+                  regex: "Settings$"
+              - has:
+                  field: superclasses
+                  has:
+                    kind: identifier
+                    regex: "^Protocol$"
+constraints:
+  NS:
+    kind: identifier
+    regex: "^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$"
+  BRANCH:
+    regex: "^[A-Za-z_][A-Za-z0-9_.]*$"
+fix: |-
+  @property
+  def $NS(self) -> $BRANCH: ...
+message: >-
+  Settings-protocol namespace branch `$NS` must be a read-only `@property`; a
+  bare Protocol attribute is invariant and no concrete settings class satisfies
+  it.

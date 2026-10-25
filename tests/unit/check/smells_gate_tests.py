@@ -340,7 +340,7 @@ class TestsFlextInfraSmellsGate:
             }).run_projects(
                 [smells_project.name],
                 [c.Infra.SMELLS],
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
         execution = projects[0].gates[c.Infra.SMELLS]

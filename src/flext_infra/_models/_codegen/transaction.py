@@ -11,7 +11,7 @@ from types import MappingProxyType
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsRope
 from flext_infra._models._config import FlextInfraConfigModels
 
@@ -49,6 +49,13 @@ class FlextInfraModelsCodegenTransactionModels:
         inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             description="Original source observations whose layouts join the closure",
+        )
+        snapshot: t.Port[p.Infra.WorkspaceSnapshot] | None = m.Field(
+            default=None,
+            description=(
+                "Run snapshot whose authenticated reads and import edges elect "
+                "the closure instead of a second read and parse"
+            ),
         )
 
     class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):

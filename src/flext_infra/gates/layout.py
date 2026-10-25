@@ -52,14 +52,15 @@ class FlextInfraLayoutGate(FlextInfraGate):
             for finding in report_findings
         )
         passed = not issues
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=passed,
-            issues=issues,
-            evidence=self._publish_raw_receipt(
-                ctx, "\n".join(issue.formatted for issue in issues)
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=passed,
+                issues=tuple(issues),
+                raw_output="\n".join(issue.formatted for issue in issues),
+                started=started,
             ),
-            started=started,
+            ctx,
         )
 
 

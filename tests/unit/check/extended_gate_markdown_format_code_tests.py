@@ -175,18 +175,19 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             issues_len=0,
         )
 
-    def test_code_gate_notest_only_blocks_do_not_select_the_gate(
+    def test_code_gate_notest_only_blocks_are_examined_clean(
         self,
         tmp_path: Path,
     ) -> None:
         """A ``notest`` fence is not embedded code to check (#1223 selection)."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-notest")
         (project_dir / "README.md").write_text(self.NOTEST_PSEUDO, encoding="utf-8")
+        gate = FlextInfraMarkdownCodeGate(tmp_path)
 
-        tm.that(
-            FlextInfraMarkdownCodeGate(tmp_path).selected_for(project_dir),
-            eq=False,
-        )
+        tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
+        result = gate.check(project_dir, u.Tests.gate_context(tmp_path))
+        tm.ok(result.result.passed)
+        tm.that(result.issues, empty=True)
 
     def test_code_gate_fix_splices_formatted_block_back(self, tmp_path: Path) -> None:
         """`make fix` formats fenced blocks whose round-trip recompiles cleanly."""
@@ -346,7 +347,9 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             '    """Function.\n\n    >>> second = 2\n\n    """\n',
             encoding="utf-8",
         )
-        sources = FlextInfraMarkdownCodeSources.docstring_sources(project_dir)
+        sources = tuple(
+            FlextInfraMarkdownCodeSources.docstring_sources(project_dir, None)
+        )
         tm.that(len(sources), eq=2)
         tm.that(len({name for name, _, _ in sources}), eq=2)
 
@@ -360,23 +363,26 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(result.issues[0].file, eq="src/widget.py")
 
     @staticmethod
-    def test_code_gate_is_not_selected_without_embedded_code(
+    def test_code_gate_reports_prose_only_documentation_clean(
         tmp_path: Path,
     ) -> None:
-        """Prose-only documentation never selects the embedded-code gate."""
+        """Prose-only documentation is an examined input without embedded code."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-empty")
         (project_dir / "README.md").write_text("# Prose only\n", encoding="utf-8")
         gate = FlextInfraMarkdownCodeGate(tmp_path)
 
-        tm.fail(gate.selected_for(project_dir))
-        tm.that(
-            gate.check(project_dir, u.Tests.gate_context(tmp_path)).result.passed,
-            eq=False,
-        )
+        tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
+        result = gate.check(project_dir, u.Tests.gate_context(tmp_path))
+        tm.ok(result.result.passed)
+        tm.that(result.issues, empty=True)
 
     def test_code_gate_is_selected_with_embedded_code(self, tmp_path: Path) -> None:
         """A parseable fenced Python block selects the embedded-code gate."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-present")
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
 
-        tm.ok(FlextInfraMarkdownCodeGate(tmp_path).selected_for(project_dir))
+        tm.ok(
+            FlextInfraMarkdownCodeGate(tmp_path).selected_for(
+                project_dir, u.Tests.gate_context(project_dir)
+            )
+        )

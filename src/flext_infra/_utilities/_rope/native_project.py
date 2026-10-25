@@ -33,6 +33,7 @@ class FlextInfraRopeNativeProject(Project):
 
     fscommands: p.Infra.RopeProjectFiles
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
+    _frozen_modules: dict[t.Pair[str, str | None], File | Folder | None] | None = None
     _snapshot_python_path_folders: list[File | Folder] | None = None
     _custom_source_folders: list[File | Folder]
 
@@ -124,11 +125,19 @@ class FlextInfraRopeNativeProject(Project):
             TypeError: The elected resource is not a native file or folder.
 
         """
+        # The folder layout is fixed for a read-only pass, so each lookup's
+        # election is fixed too: answer it once instead of rescanning folders.
+        memo = self._frozen_modules
+        key = (modname, None if folder is None else folder.path)
+        if memo is not None and key in memo:
+            return memo[key]
         native = cast("p.Infra.RopeProject", super())
         found = native.find_module(modname, self._native_folder(folder))
         if found is not None and not isinstance(found, File | Folder):
             message = "Rope module finder did not elect a native resource"
             raise TypeError(message)
+        if memo is not None:
+            memo[key] = found
         return found
 
     @override
@@ -241,6 +250,9 @@ class FlextInfraRopeNativeProject(Project):
     def frozen_layout(self) -> Generator[Self]:
         """Freeze the native source and Python path folders for one read-only pass.
 
+        Module lookups made during the pass are answered once each, since the
+        layout they search cannot change while it is frozen.
+
         Yields:
             This project, its folder layout computed once for the pass.
 
@@ -248,10 +260,12 @@ class FlextInfraRopeNativeProject(Project):
         source_folders = self.get_source_folders()
         python_path_folders = self.get_python_path_folders()
         self._frozen_folders = (source_folders, python_path_folders)
+        self._frozen_modules = {}
         try:
             yield self
         finally:
             self._frozen_folders = None
+            self._frozen_modules = None
 
     @override
     def get_source_folders(self) -> list[File | Folder]:

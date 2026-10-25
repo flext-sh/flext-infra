@@ -104,8 +104,14 @@ for that task. Align documentation before worker coding, prove real runtime befo
 test changes, and leave Make integration until last. Implementation is approved;
 the documentation-only slice executes neither surface and proves no runtime result.
 
-The approved target uses one native root uv workspace and lock in local execution
-and root CI; CI checks out declared submodules and installs noneditable. Independent
+The approved target uses one native root uv workspace in local execution and root
+CI; CI checks out declared submodules and installs noneditable. Locks follow
+[ADR-030](../docs/architecture/adr/030-member-locks-composition-upg-guard.md)
+(tracker memory `operator-ruling-2026-10-25-member-locks-uv-mise-upg-guard`,
+superseding the earlier root-only lock decision): member `uv.lock` and `mise.lock`
+are kept and formed by each member, the workspace lock is their composition, only
+`make upg` writes locks behind its guard (implementation pending), and exact SHAs
+pin the dependency hierarchy. Independent
 checkouts retain their native contracts. External suppliers use native pyproject
 sources, not environment variables, persisted selection or synthetic resolvers.
 Official Mise acquisition and native locked tool provisioning precede

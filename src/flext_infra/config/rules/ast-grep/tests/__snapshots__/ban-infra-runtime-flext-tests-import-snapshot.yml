@@ -60,7 +60,7 @@ snapshots:
       style: secondary
       start: 9
       end: 19
-    - source: '"flext_tests"'
+    - source: "\"flext_tests\""
       style: secondary
       start: 20
       end: 33
@@ -74,7 +74,7 @@ snapshots:
       style: secondary
       start: 9
       end: 32
-    - source: '"flext_tests.validator"'
+    - source: "\"flext_tests.validator\""
       style: secondary
       start: 33
       end: 56

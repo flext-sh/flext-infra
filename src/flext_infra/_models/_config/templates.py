@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import cached_property
 from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, Literal, Self
@@ -397,11 +398,11 @@ class FlextInfraConfigModelsTemplates:
             ),
         ]
 
-        @property
+        @cached_property
         def entries(
             self,
         ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.TemplateEntrySpec]:
-            """Expose the existing typed consumer view without a second wire field."""
+            """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
                 FlextInfraConfigModelsTemplates.TemplateEntrySpec.model_validate({
                     **dict(declaration),

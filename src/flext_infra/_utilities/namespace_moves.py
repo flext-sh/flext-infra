@@ -21,6 +21,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSource,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
@@ -319,12 +320,78 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return source
 
     @staticmethod
+    def _class_alias_names(
+        project_root: Path,
+        source_file: Path,
+        source: str,
+        alias_names: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
+        """Name the module-level PEP 613 aliases whose value is a class.
+
+        ``Name: TypeAlias = Owner`` binds the class itself; its PEP 695 rewrite
+        binds a ``TypeAliasType`` instead, so every runtime use of ``Name`` as
+        the class breaks. A move keeps these in the PEP 613 form (operator
+        decision 2026-10-25, "Exceção UP040 por identidade"); only real aliases
+        become ``type`` statements. The class is proved by native Rope
+        identity, never by spelling.
+
+        Returns:
+            The moved names whose ``TypeAlias`` value resolves to a class.
+
+        Raises:
+            RuntimeError: If the source is not a resource of the Rope project.
+
+        """
+        candidates = [
+            (node.target.id, node.value)
+            for node in ast.parse(source).body
+            if isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id in alias_names
+            and isinstance(node.annotation, ast.Name | ast.Attribute)
+            and (
+                node.annotation.id
+                if isinstance(node.annotation, ast.Name)
+                else node.annotation.attr
+            )
+            == "TypeAlias"
+            and isinstance(node.value, ast.Name | ast.Attribute)
+        ]
+        if not candidates:
+            return set()
+        with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
+            resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
+                rope_project, source_file
+            )
+            if resource is None:
+                msg = f"typing alias source is not a Rope resource: {source_file}"
+                raise RuntimeError(msg)
+            scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
+                rope_project, source, resource=resource
+            ).get_scope()
+            return {
+                name
+                for name, value in candidates
+                if (
+                    resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                        scope, value
+                    )
+                )
+                is not None
+                and FlextInfraUtilitiesRopeRuntime.abstract_class(resolved.get_object())
+            }
+
+    @staticmethod
     def _moved_alias_line(
         stripped: str,
         line: str,
         public_alias_names: t.Infra.StrSet,
+        class_alias_names: t.Infra.StrSet,
     ) -> str | None:
         """Return the moved statement text for one alias line, else ``None``.
+
+        A PEP 613 alias of a class keeps its form; any other legacy
+        ``TypeAlias`` becomes a PEP 695 ``type`` statement.
 
         Returns:
             The resulting ``str | None``.
@@ -343,6 +410,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return (
             f"type {legacy_alias_match.group(1)} = {legacy_alias_match.group(2)}"
             if legacy_alias_match is not None
+            and legacy_alias_match.group(1) not in class_alias_names
             else line
         )
 
@@ -351,6 +419,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         cls,
         lines: t.SequenceOf[str],
         public_alias_names: t.Infra.StrSet,
+        class_alias_names: t.Infra.StrSet,
     ) -> t.Triple[list[str], list[str], int]:
         """Partition source lines into moved alias statements and kept lines.
 
@@ -372,7 +441,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 if isinstance(node, ast.TypeAlias)
                 and node.name.id in public_alias_names
                 else cls._moved_alias_line(
-                    first_line.strip(), first_line, public_alias_names
+                    first_line.strip(),
+                    first_line,
+                    public_alias_names,
+                    class_alias_names,
                 )
             )
             if moved is None:
@@ -640,6 +712,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         moved_lines, kept_lines, _first_moved_line = cls._split_alias_lines(
             source.splitlines(),
             alias_names,
+            cls._class_alias_names(project_root, source_file, source, alias_names),
         )
         if not moved_lines:
             return None

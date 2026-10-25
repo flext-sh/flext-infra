@@ -1,6 +1,6 @@
 id: ban-pydantic-v1-api
 snapshots:
-  from pydantic import BaseModel, root_validator:
+  "from pydantic import BaseModel, root_validator":
     labels:
     - source: from pydantic import BaseModel, root_validator
       style: primary

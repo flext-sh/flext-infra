@@ -1,0 +1,6 @@
+# Fixture value of the requested `library-member-owner-pytest-u`
+# utility: pytest members whose kind the `u` facade owns.
+id: library-member-owner-pytest-u
+language: Python
+rule:
+  regex: "^(?:approx|fixture|importorskip|param|raises|warns)$"

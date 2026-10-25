@@ -1,17 +1,14 @@
 id: add-facade-module-typings-alias
 snapshots:
-  ? |
-    class FlextDemoTypes:
-        pass
-    __all__: list[str] = ["FlextDemoTypes"]
-  : fixed: |
+  "class FlextDemoTypes:\n    pass\n__all__: list[str] = [\"FlextDemoTypes\"]\n":
+    fixed: |
       class FlextDemoTypes:
           pass
       t = FlextDemoTypes
-
+      
       __all__: list[str] = ["FlextDemoTypes", "t"]
     labels:
-    - source: '__all__: list[str] = ["FlextDemoTypes"]'
+    - source: "__all__: list[str] = [\"FlextDemoTypes\"]"
       style: primary
       start: 31
       end: 70

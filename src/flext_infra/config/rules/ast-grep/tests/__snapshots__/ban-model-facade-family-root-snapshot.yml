@@ -1,9 +1,7 @@
 id: ban-model-facade-family-root
 snapshots:
-  ? |
-    class FlextFooModels(FlextCliModels):
-        pass
-  : labels:
+  "class FlextFooModels(FlextCliModels):\n    pass\n":
+    labels:
     - source: |-
         class FlextFooModels(FlextCliModels):
             pass
@@ -24,11 +22,8 @@ snapshots:
       style: secondary
       start: 0
       end: 47
-  ? |
-    class FlextFooModels(StateModel, FlextCliModels):
-        class State(m.BaseModel):
-            name: str
-  : labels:
+  "class FlextFooModels(StateModel, FlextCliModels):\n    class State(m.BaseModel):\n        name: str\n":
+    labels:
     - source: |-
         class FlextFooModels(StateModel, FlextCliModels):
             class State(m.BaseModel):

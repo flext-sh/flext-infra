@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import cached_property
 from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -287,11 +288,17 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         ]
         shapes: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Rule shapes the renderer is registered to emit"),
+        ] = ()
+        shapes_from: Annotated[
+            t.NonEmptyStr | None,
             m.Field(
-                min_length=1,
-                description="Rule shapes the renderer is registered to emit",
+                description=(
+                    "u.Infra producer deriving the renderer's shapes from their "
+                    "source of truth, instead of a declared list"
+                ),
             ),
-        ]
+        ] = None
         facts: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -301,6 +308,25 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_one_shape_source(self) -> Self:
+            """Require exactly one shape source: a declared list or its producer.
+
+            Returns:
+                The validated renderer declaration.
+
+            Raises:
+                ValueError: If both or neither shape sources are declared.
+
+            """
+            if bool(self.shapes) == (self.shapes_from is not None):
+                msg = (
+                    f"ast-grep renderer {self.name} declares exactly one of "
+                    "shapes or shapes_from"
+                )
+                raise ValueError(msg)
+            return self
 
     class CodegenAstGrepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Native ast-grep utilities and rules rendered in memory from SSOT facts."""
@@ -320,6 +346,16 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 description=(
                     "Renderers emitting generated native rule documents, run "
                     "after the utility producers"
+                ),
+            ),
+        ]
+        scopes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "u.Infra file-scope producer names; each maps a project root "
+                    "to project-relative file sets keyed by the selector a "
+                    "catalog rule names under metadata.scope"
                 ),
             ),
         ]
@@ -461,16 +497,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ge=1,
                 le=16,
                 description="Concurrent protected-edit lint snapshot threads",
-            ),
-        ]
-        fleet_worker_memory_gb: Annotated[
-            int,
-            m.Field(
-                ge=1,
-                description=(
-                    "Physical memory one fleet worker process needs, in GiB; the "
-                    "worker count derives from CPU and memory capacity"
-                ),
             ),
         ]
         loc_cap: Annotated[
@@ -1004,11 +1030,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             )
 
         @m.computed_field
-        @property
+        @cached_property
         def managed_file_specs(
             self,
         ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
-            """Derive managed views from the single artifact declaration catalog.
+            """Derive managed views once per catalog from its single declaration.
 
             Returns:
                 The owned artifacts, excluding authored scaffold seeds.

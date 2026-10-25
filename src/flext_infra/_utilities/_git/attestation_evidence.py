@@ -6,15 +6,121 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesBase
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
-class FlextInfraUtilitiesGitAttestationEvidenceMixin:
+class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo):
     """Admit original receipts and producer reports before a gate is attested."""
+
+    @classmethod
+    def git_require_green_check_receipt(
+        cls,
+        repo_root: Path,
+        make: m.Infra.MakeSpec,
+    ) -> p.Result[Path]:
+        """Prove the newest same-scope check receipt approves this candidate.
+
+        Tests run only on a green check (the workflow's ``tests`` row requires
+        ``check``). The scope is this repository and the check partition the
+        current context token selects; the newest receipt of that scope must
+        be clean, bound to the current HEAD, and newer than every changed
+        path of the working tree.
+
+        Returns:
+            The approving receipt, or the first reason tests must refuse.
+
+        """
+        refuse = "tests run only on a green check: "
+        gates = FlextInfraUtilitiesBase.selected_check_gates(
+            make, c.Infra.CheckGateSet.CHECK
+        )
+        directory = repo_root / make.gate_receipts_directory
+        runs = sorted(directory.iterdir(), reverse=True) if directory.is_dir() else []
+        for run in runs:
+            start = run / c.Infra.GATE_CAPTURE_START_FILENAME
+            if not start.is_file():
+                continue
+            started = m.Infra.GateCaptureStart.model_validate_json(start.read_bytes())
+            if started.gate != c.Infra.VERB_CHECK or tuple(
+                started.intent.requested_gates
+            ) != tuple(gates):
+                continue
+            result = run / c.Infra.GATE_CAPTURE_RESULT_FILENAME
+            if not result.is_file():
+                return r[Path].fail(
+                    f"{refuse}the newest check {run.name} never completed",
+                )
+            capture = m.Infra.GateCaptureReport.model_validate_json(
+                result.read_bytes(),
+            )
+            if capture.receipt is None:
+                return r[Path].fail(
+                    f"{refuse}the newest check {run.name} has no receipt: "
+                    + "; ".join(issue.message for issue in capture.issues),
+                )
+            receipt = run / c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME
+            evidence = m.Infra.GateCommandEvidence.model_validate_json(
+                receipt.read_bytes(),
+            )
+            return cls._green_receipt_admission(repo_root, receipt, evidence, capture)
+        return r[Path].fail(
+            f"{refuse}no check receipt of gates {','.join(gates)} under "
+            f"{directory}; run make check first",
+        )
+
+    @classmethod
+    def _green_receipt_admission(
+        cls,
+        repo_root: Path,
+        receipt: Path,
+        evidence: m.Infra.GateCommandEvidence,
+        capture: m.Infra.GateCaptureReport,
+    ) -> p.Result[Path]:
+        refuse = f"tests run only on a green check: {receipt.parent.name} "
+        if (
+            capture.issues
+            or capture.process.raw_return_code != 0
+            or evidence.native_outcome is not c.Infra.ToolOutcome.CLEAN
+        ):
+            return r[Path].fail(
+                f"{refuse}is red (exit {capture.process.raw_return_code}, "
+                f"outcome {evidence.native_outcome}); fix it and rerun make check",
+            )
+        opened = cls._open_repo(repo_root)
+        if opened.failure:
+            return r[Path].from_failure(opened)
+        repo = opened.value
+        head = repo.head.commit.hexsha
+        if evidence.after_commit_sha != head:
+            return r[Path].fail(
+                f"{refuse}approved {evidence.after_commit_sha}, HEAD is {head}; "
+                "rerun make check",
+            )
+        changed: set[str] = {
+            path
+            for diff in (repo.index.diff(None), repo.index.diff(head))
+            for item in diff
+            for path in (item.a_path, item.b_path)
+            if path is not None
+        }
+        changed.update(repo.untracked_files)
+        completed = datetime.fromisoformat(evidence.completed_at)
+        for relative in sorted(changed):
+            path = repo_root / relative
+            if path.is_file() and (
+                datetime.fromtimestamp(path.stat().st_mtime, tz=UTC) > completed
+            ):
+                return r[Path].fail(
+                    f"{refuse}predates the change to {relative}; rerun make check",
+                )
+        return r[Path].ok(receipt)
 
     @classmethod
     def _original_gate_evidence(

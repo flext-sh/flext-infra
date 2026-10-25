@@ -15,6 +15,7 @@ from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsCommandContractMixin,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 
@@ -156,7 +157,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
     def _rendered_guide_artifacts(
         cls,
         scope: m.Infra.DocScope,
-        repository_root: Path,
+        workspace_root: Path,
         sources: t.MappingKV[Path, str],
         destinations: t.MappingKV[Path, str],
         owned: set[Path],
@@ -171,7 +172,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
 
         """
         loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-            repository_root,
+            workspace_root,
         )
         if loaded.failure:
             return r[list[t.Infra.DocsRenderedArtifactTuple]].from_failure(loaded)
@@ -192,7 +193,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                     f"canonical guide collides with protected custom guide: "
                     f"{destination}",
                 )
-            relative_path = source_path.relative_to(repository_root).as_posix()
+            relative_path = source_path.relative_to(workspace_root).as_posix()
             contract_mixin = FlextInfraUtilitiesDocsCommandContractMixin
             issues = contract_mixin.docs_command_contract_content_issues(
                 source,
@@ -230,27 +231,41 @@ class FlextInfraUtilitiesDocsGuidesMixin:
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
         """Plan root-owned guide projections from the canonical guides.
 
+        The canonical guides belong to the containing workspace elected by the
+        runtime owner: an attached member resolves them from its declaring
+        workspace, so a member-scoped generation refreshes its projections
+        exactly as a root generation does. A standalone checkout and the
+        workspace itself own their guides, which are never their own
+        projections.
+
         Returns:
             The resulting
                 ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
 
         """
-        source_root = repository_root / c.Infra.DIR_DOCS / "guides"
-        destination_root = scope.path / c.Infra.DIR_DOCS / "guides"
-        if source_root == destination_root:
-            # Same-root inputs are authoritative, never their own projections.
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(())
         if not scope.path.is_relative_to(repository_root):
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].fail(
                 f"docs guide scope escapes repository {repository_root}: {scope.path}",
             )
+        workspace = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(
+            repository_root,
+        )
+        if workspace.failure:
+            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+                workspace,
+            )
+        source_root = workspace.value / c.Infra.DIR_DOCS / "guides"
+        destination_root = scope.path / c.Infra.DIR_DOCS / "guides"
+        if source_root == destination_root.resolve():
+            # Same-root inputs are authoritative, never their own projections.
+            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(())
         sources, destinations = cls._classified_guide_sources(
             source_root, destination_root
         )
         owned = cls._owned_destinations(scope, destinations)
         artifacts = cls._rendered_guide_artifacts(
             scope,
-            repository_root,
+            workspace.value,
             sources,
             destinations,
             owned,

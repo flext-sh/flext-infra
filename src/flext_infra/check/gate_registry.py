@@ -96,7 +96,10 @@ class FlextInfraGateRegistry:
         return tuple(self._gates)
 
     def applicable_gate_ids(
-        self, gate_ids: t.StrSequence, project_dir: Path
+        self,
+        gate_ids: t.StrSequence,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
     ) -> t.StrTuple:
         """Elect applicability through each registered gate's existing owner.
 
@@ -107,7 +110,7 @@ class FlextInfraGateRegistry:
         return tuple(
             gate_id
             for gate_id in gate_ids
-            if self._gates[gate_id](project_dir).selected_for(project_dir)
+            if self._gates[gate_id](project_dir).selected_for(project_dir, ctx)
         )
 
     @staticmethod
@@ -169,22 +172,29 @@ class FlextInfraGateRegistry:
 
         """
         for rule, owner in owners.items():
-            gate = self.get(owner)
-            native_owner = (
-                owner != c.Infra.LINT
-                and owner in c.Infra.ALLOWED_GATES
-                and owner in c.Infra.CANONICAL_FILE_GATE_IDS
-                and gate is not None
-                and gate.can_fix
-            )
             elected = owner in check_gates and owner in repair_gates
-            if not (native_owner and elected):
+            if not (self._native_repair_owner(owner) and elected):
                 msg = (
                     f"Ruff rule {rule} requires an elected native check/repair "
                     f"owner: {owner}"
                 )
                 raise ValueError(msg)
         return tuple(sorted(owners))
+
+    def _native_repair_owner(self, owner: str) -> bool:
+        """Whether one gate natively checks and repairs individual files.
+
+        Returns:
+            Whether ``owner`` is a declared file gate with a repair contract
+            other than the Ruff lint gate itself.
+
+        """
+        gate = self.get(owner)
+        declared_file_gate = (
+            owner in c.Infra.ALLOWED_GATES and owner in c.Infra.CANONICAL_FILE_GATE_IDS
+        )
+        repairable = gate is not None and gate.can_fix
+        return owner != c.Infra.LINT and declared_file_gate and repairable
 
     def runtime_identity(
         self,

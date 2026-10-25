@@ -1,24 +1,24 @@
 id: ban-inline-type-set-outside-constants
 snapshots:
-  isinstance(node, (ast.Import, ast.ImportFrom)):
+  "isinstance(node, (ast.Import, ast.ImportFrom))":
     labels:
     - source: isinstance(node, (ast.Import, ast.ImportFrom))
       style: primary
       start: 0
       end: 46
-  isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet):
+  "isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)":
     labels:
     - source: isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)
       style: primary
       start: 0
       end: 70
-  issubclass(kind, (int, str)):
+  "issubclass(kind, (int, str))":
     labels:
     - source: issubclass(kind, (int, str))
       style: primary
       start: 0
       end: 28
-  issubclass(kind, int | str):
+  "issubclass(kind, int | str)":
     labels:
     - source: issubclass(kind, int | str)
       style: primary

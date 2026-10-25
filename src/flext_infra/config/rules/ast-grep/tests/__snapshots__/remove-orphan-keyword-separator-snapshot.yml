@@ -1,19 +1,14 @@
 id: remove-orphan-keyword-separator
 snapshots:
-  ? |
-    def f(
-        self,
-        root,
-        *,
-    ) -> None: ...
-  : fixed: |
+  "def f(\n    self,\n    root,\n    *,\n) -> None: ...\n":
+    fixed: |
       def f(
           self,
           root,
           ,
       ) -> None: ...
     labels:
-    - source: '*'
+    - source: "*"
       style: primary
       start: 31
       end: 32
@@ -26,12 +21,11 @@ snapshots:
       style: secondary
       start: 5
       end: 35
-  ? |
-    def f(a, *,): ...
-  : fixed: |
+  "def f(a, *,): ...\n":
+    fixed: |
       def f(a, ,): ...
     labels:
-    - source: '*'
+    - source: "*"
       style: primary
       start: 9
       end: 10

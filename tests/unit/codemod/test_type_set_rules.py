@@ -24,7 +24,9 @@ class TestsFlextInfraCodemodTypeSetRules:
             )
         )
         (catalog / "utils").mkdir(parents=True, exist_ok=True)
-        for identity, document in u.Infra.codemod_type_set_rules(project).items():
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            documents = u.Infra.codemod_type_set_rules(snapshot, project)
+        for identity, document in documents.items():
             tm.ok(u.Cli.yaml_dump(catalog / "rules" / f"{identity}.yml", document))
         for _pass in range(2):
             tm.ok(

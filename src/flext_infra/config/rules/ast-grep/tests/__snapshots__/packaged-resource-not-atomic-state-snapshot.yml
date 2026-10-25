@@ -1,6 +1,6 @@
 id: packaged-resource-not-atomic-state
 snapshots:
-  state = u.Cli.atomic_read_binary_file_state(Path(__file__).parent / name, required=True):
+  "state = u.Cli.atomic_read_binary_file_state(Path(__file__).parent / name, required=True)":
     labels:
     - source: u.Cli.atomic_read_binary_file_state(Path(__file__).parent / name, required=True)
       style: primary

@@ -1,17 +1,14 @@
 id: add-facade-module-models-alias
 snapshots:
-  ? |
-    class FlextDemoModels:
-        pass
-    __all__: list[str] = ["FlextDemoModels"]
-  : fixed: |
+  "class FlextDemoModels:\n    pass\n__all__: list[str] = [\"FlextDemoModels\"]\n":
+    fixed: |
       class FlextDemoModels:
           pass
       m = FlextDemoModels
-
+      
       __all__: list[str] = ["FlextDemoModels", "m"]
     labels:
-    - source: '__all__: list[str] = ["FlextDemoModels"]'
+    - source: "__all__: list[str] = [\"FlextDemoModels\"]"
       style: primary
       start: 32
       end: 72

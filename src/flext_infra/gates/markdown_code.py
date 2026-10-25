@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import fnmatch
 import tempfile
 import time
 from collections.abc import Mapping
@@ -38,39 +37,6 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.MARKDOWN_CODE
     gate_name: ClassVar[str] = "Markdown Code"
     can_fix: ClassVar[bool] = True
-
-    @staticmethod
-    def _ignore_filtered(
-        project_dir: Path,
-        markdown_files: t.SequenceOf[Path],
-    ) -> t.SequenceOf[Path]:
-        """Drop files the generated ignore projection excludes, like the rumdl gate.
-
-        The rumdl gate forwards ``.markdownlintignore`` patterns via ``--exclude``
-        because explicit files bypass directory-scan ignores; this gate feeds
-        extracted sources instead, so the same projection is applied to the
-        collected list here — all markdown gates share one ignore SSOT.
-
-        Returns:
-            The resulting ``t.SequenceOf[Path]``.
-
-        """
-        patterns = FlextInfraMarkdownGateBase.read_ignore_patterns(
-            project_dir,
-            c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
-        )
-        if not patterns:
-            return markdown_files
-
-        def _excluded(path: Path) -> bool:
-            relative = path.relative_to(project_dir).as_posix()
-            return any(
-                fnmatch.fnmatch(relative, pattern)
-                or relative.startswith(pattern.rstrip("/*") + "/")
-                for pattern in patterns
-            )
-
-        return tuple(path for path in markdown_files if not _excluded(path))
 
     def _format_command(
         self,
@@ -103,14 +69,11 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             str(sources_dir),
         )
 
-    @staticmethod
     def _origin_issue(
+        self,
         origin: Mapping[str, t.Pair[str, int]],
-        source: str,
-        *,
-        code: str,
+        location: t.Pair[str, int],
         message: str,
-        line: int = 1,
     ) -> m.Infra.Issue | None:
         """Map one extracted-source finding back to its documentation location.
 
@@ -118,13 +81,14 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             The resulting ``m.Infra.Issue | None``.
 
         """
-        if (location := origin.get(Path(source).name)) is None:
+        source, line = location
+        if (documented := origin.get(Path(source).name)) is None:
             return None
         return m.Infra.Issue(
-            file=location[0],
-            line=location[1] + line - 1,
+            file=documented[0],
+            line=documented[1] + line - 1,
             column=1,
-            code=code,
+            code=self.gate_id,
             message=message,
         )
 
@@ -153,10 +117,8 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             issue = (
                 self._origin_issue(
                     origin,
-                    match.group("file"),
-                    code=self.gate_id,
-                    message=f"{default_message}: {line.strip()}",
-                    line=int(match.group("line") or 1),
+                    (match.group("file"), int(match.group("line") or 1)),
+                    f"{default_message}: {line.strip()}",
                 )
                 if match
                 else None
@@ -165,19 +127,14 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 issues.append(issue)
         if not u.Cli.process_succeeded(result.outcome) and not issues:
             issues.append(
-                self._command_error_issue(
-                    result,
-                    tool=c.Infra.RUFF,
-                    file=str(project_dir),
-                    line=1,
-                    column=1,
-                ),
+                self._command_error_issue(result, c.Infra.RUFF, str(project_dir)),
             )
         return issues
 
+    @staticmethod
     def _embedded_sources(
-        self,
         project_dir: Path,
+        scope_facts: p.Infra.GitScopeFacts | None,
     ) -> t.MappingKV[str, t.Pair[str, t.Pair[str, int]]]:
         """Name every embedded source with its text and documentation origin.
 
@@ -185,9 +142,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             The resulting ``t.MappingKV[str, t.Pair[str, t.Pair[str, int]]]``.
 
         """
-        markdown_files = self._ignore_filtered(
+        markdown_files = FlextInfraMarkdownGateBase.ignore_filtered(
             project_dir,
-            FlextInfraMarkdownGateBase.collect_markdown_files(project_dir),
+            FlextInfraMarkdownGateBase.collect_markdown_files(project_dir, scope_facts),
         )
         return {
             name: (text, origin)
@@ -196,23 +153,37 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                     project_dir,
                     markdown_files,
                 ),
-                *FlextInfraMarkdownCodeSources.docstring_sources(project_dir),
+                *FlextInfraMarkdownCodeSources.docstring_sources(
+                    project_dir,
+                    scope_facts,
+                ),
             )
         }
 
     @override
-    def selected_for(self, project_dir: Path) -> bool:
-        """Only a project carrying embedded documentation code selects the gate.
+    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+        """A project with either input kind of embedded code selects the gate.
+
+        Applicability is the cheap derivation of the declared input kinds:
+        governed Markdown or first-party Python. Extraction belongs to the
+        gate's execution, which examines those inputs once and reports a
+        project without embedded code as clean.
 
         Returns:
             The resulting ``bool``.
 
         """
-        return bool(self._embedded_sources(project_dir))
+        return bool(
+            FlextInfraMarkdownGateBase.collect_markdown_files(
+                project_dir,
+                ctx.scope_facts,
+            )
+        ) or bool(self._python_targets(project_dir))
 
     def _run_extracted(
         self,
         project_dir: Path,
+        ctx: m.Infra.GateContext,
         *,
         fix: bool,
     ) -> t.Triple[bool, bool, t.SequenceOf[m.Infra.Issue]]:
@@ -229,7 +200,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
         """
         findings: t.MutableSequenceOf[m.Infra.Issue] = []
-        embedded = self._embedded_sources(project_dir)
+        embedded = self._embedded_sources(project_dir, ctx.scope_facts)
         if not embedded:
             return False, False, ()
         with tempfile.TemporaryDirectory(prefix="flext-markdown-code-") as tmp:
@@ -242,6 +213,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             formatted = self._run(
                 self._format_command(project_dir, sources_dir, write=fix),
                 project_dir,
+                ctx,
             )
             format_ok = u.Cli.process_succeeded(formatted.outcome)
             if fix:
@@ -256,7 +228,11 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                     ),
                 )
                 if format_ok:
-                    self._splice_formatted_blocks(project_dir, sources_dir)
+                    self._splice_formatted_blocks(
+                        project_dir,
+                        sources_dir,
+                        ctx.scope_facts,
+                    )
                     # Docstrings are not written back: staged formatting is
                     # native success, but their unchanged sources still block.
                     findings.extend(
@@ -292,6 +268,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         self,
         project_dir: Path,
         sources_dir: Path,
+        scope_facts: p.Infra.GitScopeFacts | None,
     ) -> t.SequenceOf[Path]:
         """Write formatted blocks back into docs whose round-trip recompiles cleanly.
 
@@ -304,9 +281,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
         """
         rewritten: t.MutableSequenceOf[Path] = []
-        for md_path in self._ignore_filtered(
+        for md_path in FlextInfraMarkdownGateBase.ignore_filtered(
             project_dir,
-            FlextInfraMarkdownGateBase.collect_markdown_files(project_dir),
+            FlextInfraMarkdownGateBase.collect_markdown_files(project_dir, scope_facts),
         ):
             spliced = self._splice_document(md_path, project_dir, sources_dir)
             if spliced is not None:
@@ -379,6 +356,30 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             blocks.append(formatted)
         return (list(blocks), True)
 
+    def _clean_without_embedded_code(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        started: float,
+    ) -> m.Infra.GateExecution:
+        """Report examined inputs that carry no embedded code as clean.
+
+        Returns:
+            A passing execution whose receipt records the examined absence.
+
+        """
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=True,
+                issues=(),
+                raw_output=f"{self.gate_id}: no embedded documentation code in the "
+                "governed Markdown and first-party Python inputs",
+                started=started,
+            ),
+            ctx,
+        )
+
     @override
     def check(
         self,
@@ -392,17 +393,18 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
         """
         started = time.monotonic()
-        ran, passed, issues = self._run_extracted(project_dir, fix=False)
+        ran, passed, issues = self._run_extracted(project_dir, ctx, fix=False)
         if not ran:
-            return self._skip_result(project_dir, ctx, started)
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=passed,
-            issues=issues,
-            evidence=self._publish_raw_receipt(
-                ctx, "\n".join(issue.formatted for issue in issues)
+            return self._clean_without_embedded_code(project_dir, ctx, started)
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=passed,
+                issues=tuple(issues),
+                raw_output="\n".join(issue.formatted for issue in issues),
+                started=started,
             ),
-            started=started,
+            ctx,
         )
 
     @override
@@ -421,9 +423,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             raise ValueError(msg)
         started = time.monotonic()
         with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
-            ran, passed, issues = self._run_extracted(project_dir, fix=True)
+            ran, passed, issues = self._run_extracted(project_dir, ctx, fix=True)
         if not ran:
-            return self._skip_result(project_dir, ctx, started)
+            return self._clean_without_embedded_code(project_dir, ctx, started)
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,

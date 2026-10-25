@@ -1,9 +1,7 @@
 id: runtime-abc-needs-runtime-import
 snapshots:
-  ? |
-    def check(value: object) -> bool:
-        return isinstance(value, Sequence)
-  : labels:
+  "def check(value: object) -> bool:\n    return isinstance(value, Sequence)\n":
+    labels:
     - source: isinstance(value, Sequence)
       style: primary
       start: 45

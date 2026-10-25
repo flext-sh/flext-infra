@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import time
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
@@ -29,304 +28,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     # can_fix=False made workspace_check_gates skip it, so `make fix`
     # never applied a single lint fix and the command below was dead code.
     can_fix: ClassVar[bool] = True
-
-    def source_manifest(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        *,
-        targets: t.StrSequence | None = None,
-    ) -> tuple[Path, ...]:
-        """Ask the native lint owner which files its actual invocation reads.
-
-        This does not reuse codemod's transformation inventory: Ruff owns
-        include/exclude, explicit targets, stubs, notebooks, and ignore files.
-        An admission caller must reject unsupported formats rather than remove
-        them from this manifest.
-
-        Returns:
-            Existing project-owned source paths selected by native Ruff.
-
-        Raises:
-            ValueError: If native discovery is incomplete or escapes the project.
-
-        """
-        selected = (
-            self._get_check_dirs(project_dir, ctx) if targets is None else targets
-        )
-        result = self._run(
-            self._lint_command(ctx, selected, ("--show-files", "--no-fix")),
-            project_dir,
-            timeout=self._check_timeout(project_dir, ctx),
-            env=self._check_env(project_dir, ctx),
-            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
-        )
-        if not u.Cli.process_succeeded(result.outcome) or result.stderr.strip():
-            msg = (
-                "Ruff source manifest is unavailable: "
-                f"exit={result.outcome.raw_return_code}; {result.stderr.strip()}"
-            )
-            raise ValueError(msg)
-        root = project_dir.resolve()
-        paths: set[Path] = set()
-        for line in result.stdout.splitlines():
-            candidate = Path(line)
-            path = (
-                candidate if candidate.is_absolute() else root / candidate
-            ).resolve()
-            if not path.is_relative_to(root) or not path.is_file():
-                msg = f"Ruff source manifest has an invalid project source: {line!r}"
-                raise ValueError(msg)
-            paths.add(path)
-        if not paths:
-            msg = (
-                "Ruff source manifest is empty; naming coverage cannot be authenticated"
-            )
-            raise ValueError(msg)
-        return tuple(sorted(paths))
-
-    def readonly_namespace_sources(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        *,
-        targets: t.StrSequence | None = None,
-    ) -> tuple[Path, ...]:
-        """Require complete Python coverage before a per-name naming adaptation.
-
-        Returns:
-            The unchanged native manifest, including stub and generated inputs.
-
-        Raises:
-            ValueError: If any native input has no Python namespace authenticator.
-
-        """
-        manifest = self.source_manifest(project_dir, ctx, targets=targets)
-        unsupported = tuple(
-            path
-            for path in manifest
-            if path.suffix not in {".py", ".pyi"}
-            and path.name not in {c.PYPROJECT_FILENAME, "ruff.toml", ".ruff.toml"}
-        )
-        if unsupported:
-            msg = "Readonly namespace naming coverage is unavailable for: " + ", ".join(
-                str(path.relative_to(project_dir.resolve())) for path in unsupported
-            )
-            raise ValueError(msg)
-        return manifest
-
-    def check_readonly_namespaces(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        occurrences: tuple[m.Infra.RuffReadonlyNamespaceOccurrence, ...],
-        *,
-        targets: t.StrSequence | None = None,
-    ) -> m.Infra.GateExecution:
-        """Run an auxiliary strict naming probe, never the primary lint verdict.
-
-        Every registered getter must be present in the native scope. The source
-        authenticator elects exactly one N802 per occurrence. All other native
-        naming findings remain blocking, including argument, local, exception,
-        stub, and future pep8-naming rules supported by the installed Ruff.
-        Effective ignore patterns are read per file from native Ruff metadata;
-        only the exact registered names are removed. A surviving wildcard that
-        conceals a getter therefore fails the expected-diagnostic accounting.
-
-        Returns:
-            Complement findings with separate, explicitly named probe receipts.
-
-        Raises:
-            ValueError: If declarations, native metadata, or accounting fail closed.
-
-        """
-        started = time.monotonic()
-        if not occurrences:
-            msg = "Readonly namespace probe requires explicit occurrence identities"
-            raise ValueError(msg)
-        occurrences = tuple(
-            m.Infra.RuffReadonlyNamespaceOccurrence.model_validate(
-                occurrence.model_dump(by_alias=True)
-            )
-            for occurrence in occurrences
-        )
-        manifest = self.readonly_namespace_sources(project_dir, ctx, targets=targets)
-        authenticator = FlextInfraReadonlyNamespace(manifest)
-        expected = {
-            authenticator.authenticate(project_dir, occurrence)
-            for occurrence in occurrences
-        }
-        if len(expected) != len(occurrences):
-            msg = "Readonly namespace registry contains duplicate occurrence identities"
-            raise ValueError(msg)
-        names = frozenset(item.qualname.rsplit(".", 1)[1] for item in occurrences)
-        probe_ctx = ctx.model_copy(
-            update={
-                "reports_dir": ctx.reports_dir / "readonly-namespace-probe",
-            }
-        )
-        issues: list[m.Infra.Issue] = []
-        raw: list[str] = []
-        for path in manifest:
-            if path.suffix not in {".py", ".pyi"}:
-                continue
-            file_ctx = probe_ctx.model_copy(
-                update={
-                    "reports_dir": probe_ctx.reports_dir
-                    / path.relative_to(project_dir.resolve()),
-                }
-            )
-            output, findings = self._readonly_namespace_diagnostics(
-                project_dir, file_ctx, path, names
-            )
-            raw.append(output)
-            for issue in findings:
-                identity = (issue.file, issue.line, issue.column)
-                if issue.code == "N802" and identity in expected:
-                    expected.remove(identity)
-                elif issue.code.startswith("N"):
-                    issues.append(issue)
-        if expected:
-            msg = (
-                "Readonly namespace baseline did not report every "
-                "authenticated getter: "
-                f"{sorted(expected)}"
-            )
-            raise ValueError(msg)
-        authenticator.require_unchanged_sources()
-        if manifest != self.readonly_namespace_sources(
-            project_dir, ctx, targets=targets
-        ):
-            msg = "Readonly namespace native scope changed during authentication"
-            raise ValueError(msg)
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=not issues,
-            issues=issues,
-            evidence=self._publish_raw_receipt(probe_ctx, "\n".join(raw)),
-            started=started,
-        )
-
-    def _readonly_namespace_diagnostics(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        path: Path,
-        names: frozenset[str],
-    ) -> tuple[str, tuple[m.Infra.Issue, ...]]:
-        """Preserve exact probe output separately from the primary lint report.
-
-        Returns:
-            Raw native output and its unnormalized diagnostic codes.
-
-        Raises:
-            ValueError: If the diagnostic subprocess fails.
-            TypeError: If native diagnostics have an unavailable schema.
-
-        """
-        ignores = self._readonly_namespace_ignore_names(project_dir, ctx, path)
-        result = self._run(
-            self._lint_command(
-                ctx,
-                (str(path),),
-                (
-                    "--no-fix",
-                    "--config",
-                    "lint.pep8-naming.ignore-names="
-                    + u.Cli.json_dumps([
-                        name for name in ignores if name not in names
-                    ]).unwrap(),
-                    "--config",
-                    "lint.pep8-naming.extend-ignore-names=[]",
-                ),
-            ),
-            project_dir,
-            timeout=self._check_timeout(project_dir, ctx),
-            env=self._check_env(project_dir, ctx),
-            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
-        )
-        evidence = self._publish_raw_receipt(ctx, self._raw_output(result))
-        if (
-            result.outcome.raw_return_code not in {0, *self._findings_exit_codes()}
-            or result.stderr.strip()
-        ):
-            msg = (
-                f"Readonly namespace baseline is unavailable; receipt: {evidence.path}"
-            )
-            raise ValueError(msg)
-        report = u.Cli.json_parse(result.stdout).unwrap()
-        if not isinstance(report, list):
-            msg = "Readonly namespace baseline is not a native diagnostic list"
-            raise TypeError(msg)
-        issues: list[m.Infra.Issue] = []
-        for entry in report:
-            if not isinstance(entry, Mapping):
-                msg = "Readonly namespace baseline contains malformed diagnostics"
-                raise TypeError(msg)
-            issues.append(
-                m.Infra.Issue(
-                    file=u.Cli.json_pick_str(entry, "filename"),
-                    line=u.Cli.json_nested_int(entry, "location", "row"),
-                    column=u.Cli.json_nested_int(entry, "location", "column"),
-                    code=u.Cli.json_pick_str(entry, "code"),
-                    message=u.Cli.json_pick_str(entry, "message"),
-                    severity=c.Infra.GateSeverity.ERROR.value,
-                )
-            )
-        return evidence.raw_output, tuple(issues)
-
-    def _readonly_namespace_ignore_names(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        path: Path,
-    ) -> tuple[str, ...]:
-        """Read merged native ignore-name metadata without guessing defaults.
-
-        Returns:
-            Every effective native ignore pattern, including extended defaults.
-
-        Raises:
-            ValueError: If native metadata is missing, ambiguous, or unsupported.
-
-        """
-        result = self._run(
-            self._lint_command(ctx, (str(path),), ("--show-settings", "--no-fix")),
-            project_dir,
-            timeout=self._check_timeout(project_dir, ctx),
-            env=self._check_env(project_dir, ctx),
-            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
-        )
-        metadata_ctx = ctx.model_copy(
-            update={"reports_dir": ctx.reports_dir / "settings"}
-        )
-        receipt = self._publish_raw_receipt(metadata_ctx, self._raw_output(result))
-        marker = "linter.pep8_naming.ignore_names = ["
-        if (
-            not u.Cli.process_succeeded(result.outcome)
-            or result.stderr.strip()
-            or result.stdout.count(marker) != 1
-        ):
-            msg = (
-                f"Readonly naming metadata is unavailable or ambiguous: {receipt.path}"
-            )
-            raise ValueError(msg)
-        _, _, tail = result.stdout.partition(marker)
-        lines = tail.splitlines()
-        if not lines or lines[0].strip() or "]" not in lines:
-            msg = f"Unsupported native readonly naming metadata: {receipt.path}"
-            raise ValueError(msg)
-        values: list[str] = []
-        for line in lines[1:]:
-            if line == "]":
-                return tuple(values)
-            value = line.strip()
-            if not value.endswith(",") or not value.removesuffix(","):
-                msg = f"Malformed native readonly naming metadata: {receipt.path}"
-                raise ValueError(msg)
-            values.append(value.removesuffix(","))
-        msg = f"Incomplete native readonly naming metadata: {receipt.path}"
-        raise ValueError(msg)
 
     @override
     def _check_env(
@@ -729,8 +430,46 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             c.Infra.RUFF,
         )
         # Ruff's findings exit is a valid scanner result, but every reported
-        # finding still blocks the lint gate under the current quality baseline.
-        return passed and not parsed, parsed
+        # finding still blocks the lint gate under the current quality baseline,
+        # except exactly the authenticated identities the exemption owner names.
+        explained = passed or (
+            bool(issues)
+            and result.outcome.raw_return_code in self._findings_exit_codes()
+        )
+        remaining = self._without_exempt_identities(project_dir, parsed)
+        return explained and not remaining, remaining
+
+    @staticmethod
+    def _without_exempt_identities(
+        project_dir: Path,
+        issues: t.SequenceOf[m.Infra.Issue],
+    ) -> t.SequenceOf[m.Infra.Issue]:
+        """Remove exactly the findings an authenticated identity exempts.
+
+        The readonly-namespace owner authenticates each operator-decided
+        exemption (2026-10-25: "Exceção UP040 por identidade" and "property +
+        exceção N802") at the reported file, row, column and rule. UP040 is
+        also unfixable at the tooling SSOT, because its fix would replace a
+        published class with a ``TypeAliasType``. Every other finding, every
+        other rule and every unauthenticated row remains blocking; nothing is
+        exempt by name or by file.
+
+        Returns:
+            The findings that still block the verdict.
+
+        """
+        exempt = FlextInfraReadonlyNamespace.exempt_identities(project_dir, issues)
+        if not exempt:
+            return issues
+        return [
+            issue
+            for issue in issues
+            if (
+                (Path(issue.file).resolve(), issue.line, issue.column),
+                issue.code,
+            )
+            not in exempt
+        ]
 
     @staticmethod
     @override

@@ -85,6 +85,15 @@ class FlextInfraConfigModelsMake(
         integrity: Annotated[
             bool, m.Field(description="Include this check in quick runtime integrity")
         ] = False
+        stage: Annotated[
+            FlextInfraConstantsConfig.GateStage,
+            m.Field(
+                description=(
+                    "Earliest approval stage the check's cost admits; a "
+                    "repository-owned validator runs locally and at pre-push"
+                ),
+            ),
+        ] = FlextInfraConstantsConfig.GateStage.PUSH
         timeout_seconds: Annotated[
             int, m.Field(gt=0, description="Native module check wall-time limit")
         ] = c.Infra.TIMEOUT_DEFAULT
@@ -119,33 +128,34 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ] = "N"
-        local_check_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+        pre_commit_value: Annotated[
+            t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Local-only gates excluded from CI. Local check and "
-                    "pre-push retain the complete active gate set."
+                    "Token the generated commit hook passes to its check row: "
+                    "check then runs only the commit-stage gates "
+                    "(MakeSpec.pre_commit_check_gates) and no other validator."
                 ),
             ),
         ]
 
         @m.model_validator(mode="after")
-        def _validate_local_check_gates(self) -> Self:
-            """Every locally owned gate must be in the allowed check vocabulary.
+        def _validate_distinct_tokens(self) -> Self:
+            """Each declared context token selects exactly one check partition.
 
             Returns:
                 The resulting ``Self``.
 
             Raises:
-                ValueError: If make.ci.local_check_gates contains unknown gates.
+                ValueError: If two context tokens share one value.
 
             """
-            allowed = set(c.Infra.CANONICAL_GATE_IDS)
-            unknown = sorted(set(self.local_check_gates) - allowed)
-            if unknown:
+            tokens = (self.value, self.local_value, self.pre_commit_value)
+            if len(set(tokens)) != len(tokens):
                 msg = (
-                    "make.ci.local_check_gates contains unknown gates: "
-                    f"{', '.join(unknown)}"
+                    f"make.ci tokens must be distinct: value={self.value}, "
+                    f"local_value={self.local_value}, "
+                    f"pre_commit_value={self.pre_commit_value}"
                 )
                 raise ValueError(msg)
             return self
@@ -186,10 +196,6 @@ class FlextInfraConfigModelsMake(
         """One public command in the declared runtime acceptance sequence."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public Make verb")]
-        scope: Annotated[
-            Literal["root", "each"],
-            m.Field(description="Run once at the root or in every eligible repository"),
-        ]
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci"]],
             m.Field(
@@ -648,27 +654,6 @@ class FlextInfraConfigModelsMake(
                         raise ValueError(msg)
                 return self
 
-        class MemberLockSpec(FlextInfraConfigModelsContract.ConfigContract):
-            """Short-lived member worktrees owning standalone lock resolution.
-
-            The worktree of an attached member is materialized below the
-            ``pytest_scratch`` runtime-state root, at the member's absolute
-            checkout path followed by ``namespace``: outside the superproject,
-            so native uv elects the member itself rather than the workspace.
-            """
-
-            namespace: Annotated[
-                t.NonEmptyStr,
-                m.Field(
-                    pattern=r"^[A-Za-z0-9_-]+$",
-                    description="Worktree namespace below the member checkout path",
-                ),
-            ]
-            commit_subject: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Subject of the path-limited lock commit"),
-            ]
-
         class CodemodRulesCacheSpec(
             FlextInfraExternalCacheDirectorySpec.Directory,
             FlextInfraConfigModelsContract.ConfigContract,
@@ -720,21 +705,16 @@ class FlextInfraConfigModelsMake(
             Literal[True],
             m.Field(
                 default=True,
-                description="Mandatory projected approval hook; host owns installation",
+                description=(
+                    "Mandatory projected commit hook; local make setup installs it"
+                ),
             ),
         ] = True
-        pre_commit_check_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description="Canonical check gates required by the commit hook",
-            ),
-        ] = ()
         pre_push: Annotated[
             bool,
             m.Field(
                 default=False,
-                description="Generate and install the pre-push git-hook stage",
+                description="Generate the pre-push stage; local make setup installs it",
             ),
         ] = False
         workflow: Annotated[
@@ -747,12 +727,6 @@ class FlextInfraConfigModelsMake(
                 min_length=1, description="Ordered public runtime acceptance steps"
             ),
         ]
-        lifecycle_observed_files: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1, description="Relative files observed around each step"
-            ),
-        ]
         ci: Annotated[
             FlextInfraConfigModelsMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
@@ -761,6 +735,17 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description="Inherited selectors excluded from native project execution"
+            ),
+        ]
+        github_credential_command: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Declared local GitHub credential command: selected once, "
+                    "outside CI, when the caller exports no GitHub token and "
+                    "its executable is installed; its failure stops the verb"
+                ),
             ),
         ]
         setup_timeout_seconds: Annotated[
@@ -777,10 +762,6 @@ class FlextInfraConfigModelsMake(
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
         ]
-        member_lock: Annotated[
-            MemberLockSpec,
-            m.Field(description="Attached-member standalone lock worktrees"),
-        ]
         gate_acceptance_policy: Annotated[
             FlextInfraConstantsConfig.GateAcceptancePolicy,
             m.Field(description="Policy recorded by original gate execution receipts"),
@@ -796,6 +777,15 @@ class FlextInfraConfigModelsMake(
         modification_profile_path: Annotated[
             Path,
             m.Field(description="Repository-relative canonical modification profile"),
+        ]
+        check_profile_path: Annotated[
+            Path,
+            m.Field(
+                description=(
+                    "Repository-relative profile of the check route; the "
+                    "captured checker profiles beside its gate receipts"
+                )
+            ),
         ]
         check_report_output_environment_variable: Annotated[
             str,
@@ -999,10 +989,6 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(sorted(unknown_lifecycle))}"
                 )
                 raise ValueError(msg)
-            for path in self.lifecycle_observed_files:
-                if Path(path).is_absolute() or ".." in Path(path).parts:
-                    msg = f"make lifecycle observed file escapes its repository: {path}"
-                    raise ValueError(msg)
             # Optional data inputs do not narrow a common handler's operation.
             partial_workflow = sorted(
                 f"{verb.name}(profiles="
@@ -1094,6 +1080,7 @@ class FlextInfraConfigModelsMake(
                 ("docs.reports_dir", self.docs.reports_dir),
                 ("generation_profile_path", self.generation_profile_path),
                 ("modification_profile_path", self.modification_profile_path),
+                ("check_profile_path", self.check_profile_path),
             ):
                 if path.is_absolute() or ".." in path.parts or not path.parts:
                     msg = f"make {name} must be nonempty and repository-relative"
@@ -1155,15 +1142,54 @@ class FlextInfraConfigModelsMake(
 
         @m.computed_field
         @property
-        def check_gates_ci(self) -> t.VariadicTuple[str]:
-            """Preserve the CI partition within the same active default universe.
+        def check_gate_stages(
+            self,
+        ) -> Mapping[str, FlextInfraConstantsConfig.GateStage]:
+            """Earliest approval stage of every active gate.
+
+            Built-in stages come from their registry rows; a repository-owned
+            gate carries its own declared stage.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The stage of each gate in ``check_gates_default``.
 
             """
-            local = frozenset(self.ci.local_check_gates)
-            return tuple(gate for gate in self.check_gates_default if gate not in local)
+            return {
+                **c.Infra.GATE_STAGES,
+                **{gate.name: gate.stage for gate in self.project_check_gates},
+            }
+
+        @m.computed_field
+        @property
+        def check_gates_ci(self) -> t.VariadicTuple[str]:
+            """CI runs the commit-stage and CI-stage gates (gate-budget law).
+
+            Returns:
+                The active gates, in default order, CI admits.
+
+            """
+            stages = self.check_gate_stages
+            return tuple(
+                gate
+                for gate in self.check_gates_default
+                if stages[gate] != FlextInfraConstantsConfig.GateStage.PUSH
+            )
+
+        @m.computed_field
+        @property
+        def pre_commit_check_gates(self) -> t.VariadicTuple[str]:
+            """The commit hook runs only the fast commit-stage gates.
+
+            Returns:
+                The active gates, in default order, the commit hook admits.
+
+            """
+            stages = self.check_gate_stages
+            return tuple(
+                gate
+                for gate in self.check_gates_default
+                if stages[gate] == FlextInfraConstantsConfig.GateStage.COMMIT
+            )
 
         @m.computed_field
         @property

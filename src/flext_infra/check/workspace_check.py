@@ -17,6 +17,7 @@ from flext_infra.check import (
     FlextInfraWorkspaceCheckGatesMixin,
     FlextInfraWorkspaceCheckReportsMixin,
 )
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.workspace.runtime_dependencies import (
     FlextInfraRuntimeDependencyCollector,
 )
@@ -173,20 +174,18 @@ class FlextInfraWorkspaceChecker(
             )
         )
         destination = params.report_output
-        before = None
-        if destination is not None:
-            if not destination.is_absolute() or not destination.parent.is_dir():
-                return r[m.Infra.CheckReportSummary].fail(
-                    "check report output requires an absolute path "
-                    "in an existing directory"
-                )
-            before = u.Cli.atomic_read_binary_file_state(
+        before = (
+            None
+            if destination is None
+            else u.Cli.atomic_read_binary_file_state(
                 destination, required=False
             ).unwrap()
-            if before.content is not None:
-                return r[m.Infra.CheckReportSummary].fail(
-                    f"check report output already exists: {destination}"
-                )
+            if destination.is_absolute() and destination.parent.is_dir()
+            else None
+        )
+        refusal = self._report_output_refusal(destination, before)
+        if refusal is not None:
+            return r[m.Infra.CheckReportSummary].fail(refusal)
         if selected_files:
             u.Cli.info(
                 f"file-gate: source={selected_files[0]} gates={gates} "
@@ -205,17 +204,38 @@ class FlextInfraWorkspaceChecker(
                 python=Path(sys.executable),
                 development_only=(),
             ),
+            # Applicability and every gate of this invocation share each
+            # repository's Git scope facts instead of re-reading Git.
+            scope_facts=u.Infra.ScopeFacts(),
         )
-        run_result = self.run_projects_report(
-            projects=project_targets,
-            gates=gates,
-            reports_dir=params.reports_dir_path,
-            ctx=gate_ctx,
+        return self.run_projects_report(
+            project_targets,
+            gates,
+            gate_ctx,
             report_output_state=before,
         )
-        if run_result.failure:
-            return r[m.Infra.CheckReportSummary].from_failure(run_result)
-        return run_result
+
+    @staticmethod
+    def _report_output_refusal(
+        destination: Path | None,
+        before: m.Cli.AtomicFileState | None,
+    ) -> str | None:
+        """Refuse a report destination this invocation cannot exclusively own.
+
+        Returns:
+            Why the destination is refused, or ``None`` for an absent or
+            exclusively ownable destination.
+
+        """
+        if destination is None:
+            return None
+        if before is None:
+            return (
+                "check report output requires an absolute path in an existing directory"
+            )
+        if before.content is not None:
+            return f"check report output already exists: {destination}"
+        return None
 
     @classmethod
     def _resolve_selected_files(
@@ -323,9 +343,11 @@ class FlextInfraWorkspaceChecker(
     ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
         """Resolve the selected projects from the declared workspace topology.
 
-        An omitted selection covers the root and its first-party members.
-        Standalone repositories resolve their own root through the same owner.
-        A literal file selects only its deepest declared project owner.
+        An omitted selection covers only the invoked repository under scope
+        ``self``. Scope ``all`` adds every governed member the workspace
+        declares in ``.gitmodules``, resolved by the workspace detector, so a
+        workspace verb processes all members in one pass. A literal file
+        selects only its deepest declared project owner.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]``.
@@ -361,12 +383,46 @@ class FlextInfraWorkspaceChecker(
                     for project_name in requested
                 ),
             )
-        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
-            m.Infra.CheckProjectTarget(
-                name=params.repository_root.name,
-                path=params.repository_root,
+        return FlextInfraWorkspaceChecker._scoped_targets(params)
+
+    @staticmethod
+    def _scoped_targets(
+        params: m.Infra.RunCommand,
+    ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
+        """Resolve an omitted project selection from the requested scope.
+
+        Returns:
+            The invoked repository under ``self``; it and every governed
+            member under ``all``.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.CheckProjectTarget]]
+        root_target = m.Infra.CheckProjectTarget(
+            name=params.repository_root.name,
+            path=params.repository_root,
+        )
+        # The contract stores enum values; StrEnum members compare equal.
+        scope = c.Infra.CodegenConformScope(params.scope)
+        if scope is c.Infra.CodegenConformScope.SELF:
+            return result_type.ok((root_target,))
+        if scope is not c.Infra.CodegenConformScope.ALL:
+            return result_type.fail(
+                f"check run accepts scope self or all, not {scope.value}",
+            )
+        return FlextInfraWorkspaceDetector.load_workspace_spec(
+            params.repository_root,
+        ).map(
+            lambda workspace: (
+                root_target,
+                *(
+                    m.Infra.CheckProjectTarget(
+                        name=member.name,
+                        path=params.repository_root / member.path,
+                    )
+                    for member in u.Infra.mutable_flext_members(workspace)
+                ),
             ),
-        ))
+        )
 
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project.
@@ -407,9 +463,6 @@ class FlextInfraWorkspaceChecker(
         self,
         projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
         gates: t.StrSequence,
-        *,
-        reports_dir: Path | None = None,
-        fail_fast: bool = c.Infra.CHECK_FAIL_FAST_DEFAULT,
         ctx: m.Infra.GateContext | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Expose project results from the same invocation-owned report.
@@ -418,32 +471,21 @@ class FlextInfraWorkspaceChecker(
             The project results of the invocation report.
 
         """
-        if ctx is not None and ctx.fail_fast != fail_fast:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                "gate context fail_fast disagrees with the requested project policy",
-            )
-        return self.run_projects_report(
-            projects,
-            gates,
-            reports_dir=reports_dir,
-            ctx=ctx
-            or m.Infra.GateContext(
-                repository_root=self._repository_root,
-                reports_dir=reports_dir or self._default_reports_dir,
-                fail_fast=fail_fast,
-            ),
-        ).map(lambda summary: summary.results)
+        return self.run_projects_report(projects, gates, ctx).map(
+            lambda summary: summary.results
+        )
 
     def run_projects_report(
         self,
         projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
         gates: t.StrSequence,
-        *,
-        reports_dir: Path | None = None,
         ctx: m.Infra.GateContext | None = None,
         report_output_state: m.Cli.AtomicFileState | None = None,
     ) -> p.Result[m.Infra.CheckReportSummary]:
         """Run selected gates in one exclusively owned invocation report directory.
+
+        The context carries the report base, the fail-fast policy and the
+        invocation's shared facts; without one the checker's defaults apply.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectResult]]``.
@@ -470,20 +512,20 @@ class FlextInfraWorkspaceChecker(
                 "quality check selected projects without a pyproject: "
                 + ", ".join(unrunnable),
             )
-        reports_root = reports_dir or self._default_reports_dir
-        dir_ensure = u.Cli.ensure_dir(reports_root)
+        base_ctx = ctx or m.Infra.GateContext(
+            repository_root=self._repository_root,
+            reports_dir=self._default_reports_dir,
+            fail_fast=c.Infra.CHECK_FAIL_FAST_DEFAULT,
+            scope_facts=u.Infra.ScopeFacts(),
+        )
+        dir_ensure = u.Cli.ensure_dir(base_ctx.reports_dir)
         if dir_ensure.failure:
             return r[m.Infra.CheckReportSummary].from_failure(dir_ensure)
         # One invocation owns one report leaf: concurrent checks never
         # overwrite each other's receipt.
-        report_base = reports_root / u.generate_id()
+        report_base = base_ctx.reports_dir / u.generate_id()
         report_base.mkdir(exist_ok=False)
-        effective_ctx = ctx or m.Infra.GateContext(
-            repository_root=self._repository_root,
-            reports_dir=report_base,
-            fail_fast=c.Infra.CHECK_FAIL_FAST_DEFAULT,
-        )
-        effective_ctx = effective_ctx.model_copy(update={"reports_dir": report_base})
+        effective_ctx = base_ctx.model_copy(update={"reports_dir": report_base})
         requested_gates = tuple(resolved_gates)
         report_targets = tuple(
             m.Infra.CheckProjectTarget(
@@ -493,7 +535,7 @@ class FlextInfraWorkspaceChecker(
                     requested_gates
                     if effective_ctx.selected_files
                     else self._registry.applicable_gate_ids(
-                        requested_gates, target.path
+                        requested_gates, target.path, effective_ctx
                     )
                 ),
             )
@@ -540,8 +582,10 @@ class FlextInfraWorkspaceChecker(
         effective_ctx = effective_ctx.model_copy(
             update={"check_progress": publish_progress}
         )
+        # The loop consumes the applicability elected above: one owner
+        # computation per invocation, never a second content scan.
         outcome = self._run_project_loop(
-            targets,
+            report_targets,
             resolved_gates,
             effective_ctx,
             fail_fast=effective_ctx.fail_fast,

@@ -1,11 +1,7 @@
 id: cli-result-finalize
 snapshots:
-  ? |
-    from flext_sample import c, cli, r
-    def main() -> int:
-        result = SampleCli().run([])
-        return 0 if result.success else 1
-  : fixed: |
+  "from flext_sample import c, cli, r\ndef main() -> int:\n    result = SampleCli().run([])\n    return 0 if result.success else 1\n":
+    fixed: |
       from flext_sample import c, cli, r
       def main() -> int:
           result = SampleCli().run([])

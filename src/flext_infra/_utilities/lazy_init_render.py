@@ -130,27 +130,37 @@ class FlextInfraUtilitiesLazyInitRender:
             The docstring literal carrying the repository copyright notice.
 
         """
-        view = model.source_project
-        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
-        declaration = artifacts.load_repository_declaration_inputs(
-            project_root, source_project=view
-        ).unwrap()
-        language = (
-            declaration.spec.project.documentation_language
-            if declaration.spec.project is not None
-            else FlextInfraUtilitiesDocsScopeStateMixin.docs_documentation_language({
-                "documentation_language": m.Infra.ProjectSpec.model_fields[
-                    "documentation_language"
-                ].get_default(),
-            })
-        )
+        # Language and notice depend only on the owning project; every package
+        # of that project in this run shares one read of its declaration.
+        known = model.project_notices.get(project_root)
+        if known is None:
+            view = model.source_project
+            artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+            scope_state = FlextInfraUtilitiesDocsScopeStateMixin
+            declaration = artifacts.load_repository_declaration_inputs(
+                project_root, source_project=view
+            ).unwrap()
+            language = (
+                declaration.spec.project.documentation_language
+                if declaration.spec.project is not None
+                else scope_state.docs_documentation_language({
+                    "documentation_language": m.Infra.ProjectSpec.model_fields[
+                        "documentation_language"
+                    ].get_default(),
+                })
+            )
+            known = (
+                language,
+                FlextInfraUtilitiesLintRecipes.copyright_notice(
+                    project_root, source_project=view
+                ),
+            )
+            model.project_notices[project_root] = known
+        language, notice = known
         label = plan.context.current_pkg.replace("_", " ").replace("-", " ").strip()
         summary = c.Infra.DocumentationText.PACKAGE_DOCSTRING.localized(
             language
         ).format(package_name=" ".join(word.capitalize() for word in label.split()))
-        notice = FlextInfraUtilitiesLintRecipes.copyright_notice(
-            plan.context.pkg_dir, source_project=view
-        )
         return f'"""{summary}\n\n{notice}\n"""'
 
     @staticmethod

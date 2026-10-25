@@ -613,12 +613,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 implementation_owners[identity] = (
                     FlextInfraUtilitiesCodemodProject.implementation_owner_modules(
                         project,
-                        m.Infra.CodemodContextCondition(
-                            variable="OWNER",
-                            predicate=c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
-                            holds=False,
-                            arg=identity,
-                        ),
+                        m.Infra.CodemodPrimitiveOwner(arg=identity),
                         sources,
                     )
                 )

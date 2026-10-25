@@ -31,14 +31,26 @@ class TestsFlextInfraUtilitiesGatesMixin:
         tm.that(result.error, has="explicit project path is not accessible")
 
     @staticmethod
-    def gate_context(root: Path) -> m.Infra.GateContext:
+    def gate_context(
+        root: Path,
+        reports_dir: Path | None = None,
+        *,
+        fail_fast: bool = c.Infra.CHECK_FAIL_FAST_DEFAULT,
+    ) -> m.Infra.GateContext:
         """Build the standard check-mode gate context for one root.
+
+        ``reports_dir`` defaults to the root; a checker run publishes its
+        invocation report leaf under it.
 
         Returns:
             The resulting ``m.Infra.GateContext``.
 
         """
-        return m.Infra.GateContext(repository_root=root, reports_dir=root)
+        return m.Infra.GateContext(
+            repository_root=root,
+            reports_dir=root if reports_dir is None else reports_dir,
+            fail_fast=fail_fast,
+        )
 
     @staticmethod
     def check_gate_asserting(

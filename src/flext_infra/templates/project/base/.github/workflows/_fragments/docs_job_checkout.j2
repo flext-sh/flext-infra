@@ -1,13 +1,23 @@
+{% from "_fragments/superproject_checkout.j2" import superproject_checkout with context %}
 {% macro docs_job_checkout() %}
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
       GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+{%- if superproject %}
+    defaults:
+      run:
+        working-directory: {{ superproject.path }}
+{%- endif %}
     steps:
+{%- if superproject %}
+{{- superproject_checkout("github.sha") }}
+{%- else %}
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ "false" if private_submodules or private_dependency_auth else checkout_submodules }}
           fetch-depth: 0
+{%- endif %}
 {%- include "_fragments/private_submodules_init.j2" %}
 {%- include "_fragments/private_dependency_auth.j2" %}
 {%- endmacro %}

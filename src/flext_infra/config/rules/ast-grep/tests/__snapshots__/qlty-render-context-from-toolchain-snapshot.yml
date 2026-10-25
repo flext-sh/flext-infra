@@ -1,11 +1,17 @@
 id: qlty-render-context-from-toolchain
 snapshots:
-  ? |
-    def context(destination: str, codegen: Codegen) -> p.Result[p.Model]:
-        if destination in {".envrc", ".mise.toml", ".python-version"}:
-            return r[p.Model].ok(codegen.toolchain)
-        return r[p.Model].ok(codegen)
-  : fixed: "def context(destination: str, codegen: Codegen) -> p.Result[p.Model]:\n    if destination in {\n        \".envrc\",\n        \".mise.toml\",\n        \".python-version\",\n        c.Infra.QLTY_CONFIG_PATH,\n    }:\n        return r[p.Model].ok(codegen.toolchain)\n    \n    return r[p.Model].ok(codegen)\n"
+  "def context(destination: str, codegen: Codegen) -> p.Result[p.Model]:\n    if destination in {\".envrc\", \".mise.toml\", \".python-version\"}:\n        return r[p.Model].ok(codegen.toolchain)\n    return r[p.Model].ok(codegen)\n":
+    fixed: |
+      def context(destination: str, codegen: Codegen) -> p.Result[p.Model]:
+          if destination in {
+              ".envrc",
+              ".mise.toml",
+              ".python-version",
+              c.Infra.QLTY_CONFIG_PATH,
+          }:
+              return r[p.Model].ok(codegen.toolchain)
+          
+          return r[p.Model].ok(codegen)
     labels:
     - source: |-
         if destination in {".envrc", ".mise.toml", ".python-version"}:

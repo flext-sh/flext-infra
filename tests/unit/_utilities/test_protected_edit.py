@@ -425,7 +425,6 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tmp_path,
             {py_file.resolve(): updated},
             consume_candidate,
-            options=m.Infra.CodegenSourcePreviewOptions(runtime_root=tmp_path),
         )
         if observed.failure:
             state = tmp_path / c.Infra.TRANSACTION_STATE_DIRNAME
@@ -462,7 +461,6 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                 tmp_path,
                 {py_file.resolve(): invalid},
                 parse_candidate,
-                options=m.Infra.CodegenSourcePreviewOptions(runtime_root=tmp_path),
             )
         # The staged parse failure is identified by the candidate path it
         # names: this interpreter sources SyntaxError.text from the on-disk
@@ -474,7 +472,6 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tmp_path,
             {py_file.resolve(): "VALUE = 2\n"},
             parse_candidate,
-            options=m.Infra.CodegenSourcePreviewOptions(runtime_root=tmp_path),
         )
         tm.ok(fresh, eq="VALUE = 2\n")
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)

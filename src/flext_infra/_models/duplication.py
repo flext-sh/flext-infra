@@ -82,6 +82,10 @@ class FlextInfraModelsDuplication:
             description="Extensions by parser format",
         )
         ignore: Annotated[t.StrSequence, m.Field(description="Ignored path patterns")]
+        ignore_pattern: t.StrSequence = m.Field(
+            alias="ignorePattern",
+            description="Code-level regexes whose tokens jscpd skips",
+        )
         min_lines: t.PositiveInt = m.Field(
             alias="minLines",
             description="Minimum duplicated line count",

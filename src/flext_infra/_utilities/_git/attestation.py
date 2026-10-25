@@ -219,14 +219,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         command = (
             sys.executable,
             "-m",
-            *(
-                (
-                    "flext_infra._profile_entry",
-                    str(report_root / c.Infra.CHECK_PROFILE_FILENAME),
-                )
-                if settings.Infra.profile
-                else ("flext_infra",)
-            ),
+            "flext_infra",
             "check",
             "run",
             "--repository-root",
@@ -264,7 +257,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
             command,
             report_root / "execution.log",
             cwd=root,
-            options=m.Cli.ProcessOptions(live=True),
+            # A profiled capture profiles the captured check command itself.
+            options=m.Cli.ProcessOptions(
+                live=True,
+                env=(
+                    {
+                        "FLEXT_INFRA_PROFILE_OUTPUT": str(
+                            report_root / c.Infra.CHECK_PROFILE_FILENAME
+                        )
+                    }
+                    if settings.Infra.profile
+                    else None
+                ),
+            ),
         )
         if native.failure:
             return r[m.Infra.GateCaptureReport].from_failure(native)

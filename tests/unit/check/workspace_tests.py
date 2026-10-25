@@ -178,7 +178,9 @@ class TestsFlextInfraWorkspaceChecker:
         )
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         reports_dir = tmp_path / "reports"
-        result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
+        result = checker.run_projects(
+            ["p1"], ["lint"], u.Tests.gate_context(tmp_path, reports_dir)
+        )
         tm.ok(result)
         tm.ok(reports_dir.exists())
 

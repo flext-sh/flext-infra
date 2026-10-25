@@ -13,12 +13,15 @@ severity: error
 files:
   - "**/*.py"
 metadata:
-  context:
-    MODULE:
-      - not: stdlib-module
-      - not: own-package
-      - not: facade-package
-      - not: layer-zero-file
+  scope:
+    not-in: [layer-zero]
+constraints:
+  MODULE:
+    not:
+      any:
+        - matches: stdlib-module
+        - matches: own-package
+        - matches: facade-package
 utils:
   library-bound-module:
     kind: module

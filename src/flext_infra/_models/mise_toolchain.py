@@ -426,6 +426,30 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Selectors already proven before this entry."),
         ]
 
+    class MiseLockChange(m.FrozenModel):
+        """One locked-version change native ``mise lock --dry-run --json`` reports."""
+
+        name: Annotated[
+            str,
+            m.Field(description="Tool identity mise accepts as a lock argument."),
+        ]
+        backend: Annotated[
+            str,
+            m.Field(description="Backend that resolves the tool."),
+        ]
+        lockfile: Annotated[
+            str,
+            m.Field(description="Lockfile the change would be written to."),
+        ]
+        old_versions: Annotated[
+            t.StrSequence,
+            m.Field(description="Versions currently locked."),
+        ]
+        new_versions: Annotated[
+            t.StrSequence,
+            m.Field(description="Versions the re-resolved selector would lock."),
+        ]
+
     class ToolchainSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Language-runtime and native-tool versions shared by generated projects.
 
@@ -708,21 +732,6 @@ class FlextInfraModelsMiseToolchain:
                 self.mise_selector,
                 *(entry.selector or entry.name for entry in self.tools),
             )
-
-        @m.computed_field
-        @property
-        def tool_version_prefixes(self) -> t.MappingKV[str, str]:
-            """Declared release tag prefix of every prefix-bearing fleet tool.
-
-            Returns:
-                The resulting ``t.MappingKV[str, str]``.
-
-            """
-            return {
-                entry.name: entry.version_prefix
-                for entry in self.tools
-                if entry.version_prefix is not None
-            }
 
         @m.model_validator(mode="after")
         def _validate_version_selectors(self) -> Self:

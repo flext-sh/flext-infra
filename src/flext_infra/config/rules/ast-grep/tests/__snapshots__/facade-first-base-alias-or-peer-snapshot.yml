@@ -1,9 +1,7 @@
 id: facade-first-base-alias-or-peer
 snapshots:
-  ? |
-    class FlextMeltanoModels(FlextCliModels):
-        pass
-  : labels:
+  "class FlextMeltanoModels(FlextCliModels):\n    pass\n__all__ = [\"FlextMeltanoModels\"]\n":
+    labels:
     - source: |-
         class FlextMeltanoModels(FlextCliModels):
             pass
@@ -14,6 +12,33 @@ snapshots:
       style: secondary
       start: 6
       end: 24
+    - source: __all__
+      style: secondary
+      start: 51
+      end: 58
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 63
+      end: 81
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 63
+      end: 81
+    - source: __all__ = ["FlextMeltanoModels"]
+      style: secondary
+      start: 51
+      end: 83
+    - source: __all__ = ["FlextMeltanoModels"]
+      style: secondary
+      start: 51
+      end: 83
+    - source: |
+        class FlextMeltanoModels(FlextCliModels):
+            pass
+        __all__ = ["FlextMeltanoModels"]
+      style: secondary
+      start: 0
+      end: 84
     - source: FlextCliModels
       style: secondary
       start: 25
@@ -22,10 +47,8 @@ snapshots:
       style: secondary
       start: 25
       end: 39
-  ? |
-    class FlextMeltanoModels(FlextResult):
-        pass
-  : labels:
+  "class FlextMeltanoModels(FlextResult):\n    pass\n__all__ = [\"FlextMeltanoModels\"]\n":
+    labels:
     - source: |-
         class FlextMeltanoModels(FlextResult):
             pass
@@ -36,6 +59,33 @@ snapshots:
       style: secondary
       start: 6
       end: 24
+    - source: __all__
+      style: secondary
+      start: 48
+      end: 55
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 60
+      end: 78
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 60
+      end: 78
+    - source: __all__ = ["FlextMeltanoModels"]
+      style: secondary
+      start: 48
+      end: 80
+    - source: __all__ = ["FlextMeltanoModels"]
+      style: secondary
+      start: 48
+      end: 80
+    - source: |
+        class FlextMeltanoModels(FlextResult):
+            pass
+        __all__ = ["FlextMeltanoModels"]
+      style: secondary
+      start: 0
+      end: 81
     - source: FlextResult
       style: secondary
       start: 25

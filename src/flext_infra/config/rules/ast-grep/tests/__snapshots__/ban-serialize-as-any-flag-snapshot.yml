@@ -1,6 +1,6 @@
 id: ban-serialize-as-any-flag
 snapshots:
-  dumped = adapter.dump_python(value, serialize_as_any=True):
+  "dumped = adapter.dump_python(value, serialize_as_any=True)":
     labels:
     - source: serialize_as_any=True
       style: primary
@@ -14,7 +14,7 @@ snapshots:
       style: secondary
       start: 28
       end: 58
-  payload = outer.model_dump(exclude_none=True, serialize_as_any=True):
+  "payload = outer.model_dump(exclude_none=True, serialize_as_any=True)":
     labels:
     - source: serialize_as_any=True
       style: primary
@@ -42,7 +42,7 @@ snapshots:
       style: secondary
       start: 26
       end: 49
-  raw = adapter.dump_json(value, serialize_as_any=True):
+  "raw = adapter.dump_json(value, serialize_as_any=True)":
     labels:
     - source: serialize_as_any=True
       style: primary

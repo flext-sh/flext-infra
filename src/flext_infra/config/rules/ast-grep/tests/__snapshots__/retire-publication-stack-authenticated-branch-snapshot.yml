@@ -1,11 +1,7 @@
 id: retire-publication-stack-authenticated-branch
 snapshots:
-  ? |
-    if project.authenticated_sources:
-        read()
-    else:
-        fallback()
-  : fixed: |
+  "if project.authenticated_sources:\n    read()\nelse:\n    fallback()\n":
+    fixed: |
       read()
     labels:
     - source: |-
@@ -16,10 +12,8 @@ snapshots:
       style: primary
       start: 0
       end: 65
-  ? |
-    if rope.rope_project.authenticated_sources:
-        inputs.update(read())
-  : fixed: |
+  "if rope.rope_project.authenticated_sources:\n    inputs.update(read())\n":
+    fixed: |
       inputs.update(read())
     labels:
     - source: |-

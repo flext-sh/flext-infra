@@ -742,12 +742,18 @@ class FlextInfraPytestRunnerExecution(
         return self._execute_testmon(complete=False)
 
     def execute_full(self) -> p.Result[int]:
-        """Run the complete suite once using the persistent testmon database.
+        """Run the complete suite once, only on a green same-scope check.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         """
+        approved = u.Infra.git_require_green_check_receipt(
+            self.repository_root,
+            u.Infra.load_codegen_inputs(self.repository_root).unwrap().spec.make,
+        )
+        if approved.failure:
+            return r[int].from_failure(approved)
         return self._execute_testmon(complete=True)
 
     def execute_file(self) -> p.Result[int]:

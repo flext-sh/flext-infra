@@ -149,6 +149,44 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         tm.that(typings_text, has="from flext_core import t")
         tm.that(self._non_module_files(package_root), eq=())
 
+    def test_typing_alias_move_keeps_class_publications_pep613(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A moved alias of a class keeps binding the class; aliases become PEP 695."""
+        project_root, package_root = self._build_project(tmp_path)
+        typings_file = package_root / "typings.py"
+        source_file = package_root / "service.py"
+        self._write_file(
+            typings_file,
+            "from __future__ import annotations\n\nTYPE_READY = True\n",
+        )
+        self._write_file(
+            package_root / "owner.py",
+            "from __future__ import annotations\n\n\nclass Owner:\n    value = 7\n",
+        )
+        self._write_file(
+            source_file,
+            (
+                "from __future__ import annotations\n\n"
+                "from typing import TypeAlias\n\n"
+                "from demo_pkg.owner import Owner\n\n"
+                "Published: TypeAlias = Owner\n"
+                "Payload: TypeAlias = dict[str, int]\n"
+                "value = 1\n"
+            ),
+        )
+
+        u.Infra.rewrite_manual_typing_alias_violations(
+            project_root=project_root,
+            names_by_file={source_file: {"Published", "Payload"}},
+        )
+
+        typings_text = typings_file.read_text(encoding="utf-8")
+        tm.that(typings_text, has="Published: TypeAlias = Owner")
+        tm.that(typings_text, lacks="type Published")
+        tm.that(typings_text, has="type Payload = dict[str, int]")
+
     @pytest.mark.parametrize(
         "declaration",
         [

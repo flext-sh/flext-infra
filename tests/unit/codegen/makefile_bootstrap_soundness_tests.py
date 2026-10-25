@@ -70,12 +70,17 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             )[1].split("\n\n", 1)[0]
             tm.that(body, lacks="--gates")
             tm.that(body, has=f"--gate-set {verb} --apply")
-            capture = body.index('capture-gate --repository-root "$(PROJECT_ROOT)"')
-            conform = body.index(
-                'codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check'
-            )
-            tm.ok(body.index("--apply") < capture < conform)
-            tm.that(body[capture:], lacks="--apply")
+        check_body = rendered.split(
+            "_builtin_check_all: _builtin_require_environment\n", 1
+        )[1].split("\n\n", 1)[0]
+        tm.that(
+            check_body,
+            has=(
+                f"{c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} "
+                '--repository-root "$(PROJECT_ROOT)"'
+            ),
+        )
+        tm.that(check_body, lacks="--apply")
 
     @staticmethod
     def _reader_workspace_checkout(

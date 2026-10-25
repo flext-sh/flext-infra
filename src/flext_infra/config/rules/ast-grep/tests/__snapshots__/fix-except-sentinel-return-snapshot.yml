@@ -1,12 +1,7 @@
 id: fix-except-sentinel-return
 snapshots:
-  ? |
-    def load() -> r[list[str]]:
-        try:
-            return read()
-        except (OSError, KeyError) as error:
-            return []
-  : fixed: |
+  "def load() -> r[list[str]]:\n    try:\n        return read()\n    except (OSError, KeyError) as error:\n        return []\n":
+    fixed: |
       def load() -> r[list[str]]:
           try:
               return read()
@@ -39,7 +34,7 @@ snapshots:
       style: secondary
       start: 16
       end: 25
-    - source: '[list[str]]'
+    - source: "[list[str]]"
       style: secondary
       start: 15
       end: 26
@@ -60,13 +55,8 @@ snapshots:
       style: secondary
       start: 0
       end: 117
-  ? |
-    def run_except() -> p.Result[bool]:
-        try:
-            raise ValueError('boom')
-        except ValueError as exc:
-            return None
-  : fixed: |
+  "def run_except() -> p.Result[bool]:\n    try:\n        raise ValueError('boom')\n    except ValueError as exc:\n        return None\n":
+    fixed: |
       def run_except() -> p.Result[bool]:
           try:
               raise ValueError('boom')

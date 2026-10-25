@@ -1,10 +1,8 @@
 id: require-field-description
 snapshots:
-  ? |
-    class Order(m.FrozenModel):
-        label: Annotated[str, m.Field(min_length=1)] = "x"
-  : labels:
-    - source: 'label: Annotated[str, m.Field(min_length=1)] = "x"'
+  "class Order(m.FrozenModel):\n    label: Annotated[str, m.Field(min_length=1)] = \"x\"\n":
+    labels:
+    - source: "label: Annotated[str, m.Field(min_length=1)] = \"x\""
       style: primary
       start: 32
       end: 82
@@ -12,11 +10,9 @@ snapshots:
       style: secondary
       start: 32
       end: 37
-  ? |
-    class Order(m.FrozenModel):
-        total: int
-  : labels:
-    - source: 'total: int'
+  "class Order(m.FrozenModel):\n    total: int\n":
+    labels:
+    - source: "total: int"
       style: primary
       start: 32
       end: 42

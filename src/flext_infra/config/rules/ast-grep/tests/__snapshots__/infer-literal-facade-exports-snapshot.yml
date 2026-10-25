@@ -1,12 +1,7 @@
 id: infer-literal-facade-exports
 snapshots:
-  ? |
-    __all__: t.VariadicTuple[str] = (
-        "second",
-        # Retain comments and the supplied export order.
-        "first",
-    )
-  : fixed: |
+  "__all__: t.VariadicTuple[str] = (\n    \"second\",\n    # Retain comments and the supplied export order.\n    \"first\",\n)\n":
+    fixed: |
       __all__ = (
           "second",
           # Retain comments and the supplied export order.
@@ -22,88 +17,84 @@ snapshots:
       style: primary
       start: 0
       end: 115
-  '__all__: t.VariadicTuple[str] = ("Sample", "sample")':
+  "__all__: t.VariadicTuple[str] = (\"Sample\", \"sample\")":
     fixed: __all__ = ("Sample", "sample")
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", "sample")'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", \"sample\")"
       style: primary
       start: 0
       end: 52
-  '__all__: t.VariadicTuple[str] = ("Sample", *names)':
+  "__all__: t.VariadicTuple[str] = (\"Sample\", *names)":
     fixed: __all__ = ("Sample", *names)
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", *names)'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", *names)"
       style: primary
       start: 0
       end: 50
-  '__all__: t.VariadicTuple[str] = ("Sample", 1)':
+  "__all__: t.VariadicTuple[str] = (\"Sample\", 1)":
     fixed: __all__ = ("Sample", 1)
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", 1)'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", 1)"
       style: primary
       start: 0
       end: 45
-  '__all__: t.VariadicTuple[str] = ("Sample", b"sample")':
+  "__all__: t.VariadicTuple[str] = (\"Sample\", b\"sample\")":
     fixed: __all__ = ("Sample", b"sample")
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", b"sample")'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", b\"sample\")"
       style: primary
       start: 0
       end: 53
-  '__all__: t.VariadicTuple[str] = ("Sample", f"{name}")':
+  "__all__: t.VariadicTuple[str] = (\"Sample\", f\"{name}\")":
     fixed: __all__ = ("Sample", f"{name}")
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", f"{name}")'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", f\"{name}\")"
       style: primary
       start: 0
       end: 53
-  '__all__: t.VariadicTuple[str] = ("Sample", name)':
+  "__all__: t.VariadicTuple[str] = (\"Sample\", name)":
     fixed: __all__ = ("Sample", name)
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", name)'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", name)"
       style: primary
       start: 0
       end: 48
-  '__all__: t.VariadicTuple[str] = (''sample'',)':
+  "__all__: t.VariadicTuple[str] = ('sample',)":
     fixed: __all__ = ('sample',)
     labels:
-    - source: '__all__: t.VariadicTuple[str] = (''sample'',)'
+    - source: "__all__: t.VariadicTuple[str] = ('sample',)"
       style: primary
       start: 0
       end: 43
-  '__all__: t.VariadicTuple[str] = ["Sample", "sample"]':
+  "__all__: t.VariadicTuple[str] = [\"Sample\", \"sample\"]":
     fixed: __all__ = ["Sample", "sample"]
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ["Sample", "sample"]'
+    - source: "__all__: t.VariadicTuple[str] = [\"Sample\", \"sample\"]"
       style: primary
       start: 0
       end: 52
-  '__all__: t.VariadicTuple[str] = exports()':
+  "__all__: t.VariadicTuple[str] = exports()":
     fixed: __all__ = exports()
     labels:
-    - source: '__all__: t.VariadicTuple[str] = exports()'
+    - source: "__all__: t.VariadicTuple[str] = exports()"
       style: primary
       start: 0
       end: 41
-  ? |
-    class Sample:
-        __all__: t.VariadicTuple[str] = ("Sample", "sample")
-  : fixed: |
+  "class Sample:\n    __all__: t.VariadicTuple[str] = (\"Sample\", \"sample\")\n":
+    fixed: |
       class Sample:
           __all__ = ("Sample", "sample")
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", "sample")'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", \"sample\")"
       style: primary
       start: 18
       end: 70
-  ? |
-    if enabled:
-        __all__: t.VariadicTuple[str] = ("Sample", "sample")
-  : fixed: |
+  "if enabled:\n    __all__: t.VariadicTuple[str] = (\"Sample\", \"sample\")\n":
+    fixed: |
       if enabled:
           __all__ = ("Sample", "sample")
     labels:
-    - source: '__all__: t.VariadicTuple[str] = ("Sample", "sample")'
+    - source: "__all__: t.VariadicTuple[str] = (\"Sample\", \"sample\")"
       style: primary
       start: 16
       end: 68

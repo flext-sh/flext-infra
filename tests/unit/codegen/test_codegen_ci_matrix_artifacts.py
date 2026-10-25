@@ -45,7 +45,10 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         none of them, while the same project still renders them in memory.
         """
         root = rendered_project.absolute()
-        rendered = u.Infra.codemod_native_generated(root, config.Infra.codegen.ast_grep)
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            rendered = u.Infra.codemod_native_generated(
+                snapshot, root, config.Infra.codegen.ast_grep
+            )
         tm.that(len(rendered.utilities), gt=0)
         for retired in config.Infra.codegen.retired_projections:
             if isinstance(retired, str) and retired.startswith("config/rules/ast-grep"):
@@ -451,28 +454,32 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
             tm.that(job, lacks="MISE_GITHUB_TOKEN")
 
     @staticmethod
-    def test_ci_matrix_checks_each_distro_and_tests_ubuntu(
+    def test_ci_matrix_runs_the_declared_lifecycle_on_every_distro(
         rendered_project: Path,
     ) -> None:
-        """Each distro's smoke is help+check; Ubuntu also runs the full lifecycle."""
+        """Every distro runs the ordered ci lifecycle steps, never a hand list."""
         root = rendered_project
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8",
         )
-        ci = config.Infra.codegen.make.ci
-        smoke = matrix.split("Bootstrap + verb smoke", maxsplit=1)[1].split(
+        make = config.Infra.codegen.make
+        ci = make.ci
+        smoke = matrix.split("Lifecycle acceptance (", maxsplit=1)[1].split(
             "# End SECTION: distro-matrix",
             maxsplit=1,
         )[0]
         tm.that(smoke, has=f"-e {ci.variable}={ci.value}")
         tm.that(smoke, has="-e GITHUB_TOKEN")
         tm.that(smoke, lacks="-e GITHUB_TOKEN=")
-        tm.that(smoke, has="make help")
-        tm.that(smoke, has="make check")
-        tm.that(smoke, lacks="} make test")
-        tm.that(smoke, has="make setup && make gen && make gen")
+        tm.that(
+            smoke,
+            has=" && ".join(
+                f"make {step.verb}"
+                for step in make.lifecycle_steps
+                if "ci" in step.contexts
+            ),
+        )
         tm.that(smoke, lacks="make upg")
-        tm.that(smoke, has="make check && make test && make build")
         dockerfiles = list(
             (root / "tests" / "fixtures" / "ci" / "docker").glob("*.Dockerfile"),
         )

@@ -1,23 +1,16 @@
 id: pydantic-mappingproxy-default-factory
 snapshots:
-  ? |
-    class Spec:
-        overrides: Annotated[t.StrMapping, m.Field(description="d")] = MappingProxyType({"k": "v"})
-  : fixed: |
+  "class Spec:\n    overrides: Annotated[t.StrMapping, m.Field(description=\"d\")] = MappingProxyType({\"k\": \"v\"})\n":
+    fixed: |
       class Spec:
           overrides: Annotated[t.StrMapping, m.Field(description="d")] = m.Field(default_factory=lambda: MappingProxyType({"k": "v"}))
     labels:
-    - source: 'overrides: Annotated[t.StrMapping, m.Field(description="d")] = MappingProxyType({"k": "v"})'
+    - source: "overrides: Annotated[t.StrMapping, m.Field(description=\"d\")] = MappingProxyType({\"k\": \"v\"})"
       style: primary
       start: 16
       end: 107
-  ? |
-    class Spec:
-        standalone_check_gates: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(description="Public Make verb to checker gate mapping"),
-        ] = MappingProxyType({})
-  : fixed: |
+  "class Spec:\n    standalone_check_gates: Annotated[\n        Mapping[t.NonEmptyStr, t.NonEmptyStr],\n        m.Field(description=\"Public Make verb to checker gate mapping\"),\n    ] = MappingProxyType({})\n":
+    fixed: |
       class Spec:
           standalone_check_gates: Annotated[
               Mapping[t.NonEmptyStr, t.NonEmptyStr],

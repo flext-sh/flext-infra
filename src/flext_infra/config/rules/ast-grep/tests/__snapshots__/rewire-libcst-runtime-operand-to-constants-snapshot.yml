@@ -1,9 +1,7 @@
 id: rewire-libcst-runtime-operand-to-constants
 snapshots:
-  ? |
-    import libcst as cst
-    ok = isinstance(node, cst.List | cst.Tuple)
-  : fixed: |
+  "import libcst as cst\nok = isinstance(node, cst.List | cst.Tuple)\n":
+    fixed: |
       import libcst as cst
       ok = isinstance(node, c.Infra.Cst.List | cst.Tuple)
     labels:
@@ -49,10 +47,8 @@ snapshots:
       style: secondary
       start: 0
       end: 65
-  ? |
-    import libcst as cst
-    ok = isinstance(node, cst.Name)
-  : fixed: |
+  "import libcst as cst\nok = isinstance(node, cst.Name)\n":
+    fixed: |
       import libcst as cst
       ok = isinstance(node, c.Infra.Cst.Name)
     labels:

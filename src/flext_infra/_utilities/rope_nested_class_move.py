@@ -58,10 +58,10 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         qualified = ".".join(path)
         inner = path[-1]
         module = cst.parse_module(source)
-        parent = cls._top_level_class(module, path[0])
+        parent = cls._child_class(module, path[0], qualified)
         for name in path[1:-1]:
-            parent = cls._nested_class(parent, name, qualified)
-        member = cls._nested_class(parent, inner, qualified)
+            parent = cls._child_class(parent, name, qualified)
+        member = cls._child_class(parent, inner, qualified)
         remaining = tuple(
             statement for statement in parent.body.body if statement is not member
         )
@@ -130,20 +130,49 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         )
 
     @staticmethod
-    def _top_level_class(module: t.Infra.Cst.Module, name: str) -> t.Infra.Cst.ClassDef:
-        owner = next(
+    def _child_class(
+        owner: t.Infra.Cst.Module | t.Infra.Cst.ClassDef,
+        name: str,
+        qualified: str,
+    ) -> t.Infra.Cst.ClassDef:
+        """Return the class ``name`` declared directly in ``owner``'s body.
+
+        Returns:
+            The class statement, declared with a block body.
+
+        Raises:
+            ValueError: When ``owner`` declares no block-bodied class ``name``.
+
+        """
+        statements = (
+            owner.body if isinstance(owner, c.Infra.Cst.Module) else owner.body.body
+        )
+        found = next(
             (
                 statement
-                for statement in module.body
+                for statement in statements
                 if isinstance(statement, c.Infra.Cst.ClassDef)
                 and statement.name.value == name
             ),
             None,
         )
-        if owner is None or not isinstance(owner.body, c.Infra.Cst.IndentedBlock):
-            msg = f"top-level class {name} is not declared with a block body"
+        if found is None or not isinstance(found.body, c.Infra.Cst.IndentedBlock):
+            msg = f"class {name} on {qualified} is not declared with a block body"
             raise ValueError(msg)
-        return owner
+        return found
+
+    @staticmethod
+    def _qualified_matcher(path: t.StrSequence) -> t.Infra.Cst.AttributeMatcher:
+        """Match the dotted reference ``path[0].path[1]...path[-1]``.
+
+        Returns:
+            The attribute-chain matcher for the fully qualified member.
+
+        """
+        matcher = cstm.Attribute(value=cstm.Name(path[0]), attr=cstm.Name(path[1]))
+        for name in path[2:]:
+            matcher = cstm.Attribute(value=matcher, attr=cstm.Name(name))
+        return matcher
 
     @staticmethod
     def _is_docstring(

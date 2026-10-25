@@ -165,6 +165,17 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = ""
+        custom_post_steps: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Verbatim project-owned workflow steps injected after the "
+                    "approval verbs (failure diagnostics), read from the "
+                    "project's own custom-post-steps file; empty when absent"
+                ),
+            ),
+        ] = ""
         private_submodules: Annotated[
             FlextInfraConfigModelsProvider.CiPrivateSubmodulesSpec | None,
             m.Field(
@@ -206,6 +217,17 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = False
+        superproject: Annotated[
+            FlextInfraConfigModelsProvider.CiSuperprojectCheckoutSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Containing workspace an attached member's CI checks out to "
+                    "install the frozen root lock; None for a workspace root or "
+                    "a standalone repository, whose CI checks out itself"
+                ),
+            ),
+        ] = None
 
         @m.model_validator(mode="after")
         def require_elected_release_commands(self) -> Self:
@@ -235,6 +257,14 @@ class FlextInfraModelsCodegenRender:
         make: Annotated[
             FlextInfraConfigModelsMake.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
+        ]
+
+    class GitHookRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input consumed by the generated Git hook validator."""
+
+        preservation_ref_namespaces: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Remote ref prefixes exempt from the pre-push matrix"),
         ]
 
     class DistroDockerRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -369,12 +399,12 @@ class FlextInfraModelsCodegenRender:
             strict=True,
         )
 
-        generated_source_globs: Annotated[
+        generated_projection_patterns: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
-                    "Tracked generated-source trees excluded from the smells "
-                    "scan, derived from the codegen artifact key."
+                    "Generated projection surface excluded from the smells "
+                    "scan, from the one generated-projection owner."
                 ),
             ),
         ] = ()

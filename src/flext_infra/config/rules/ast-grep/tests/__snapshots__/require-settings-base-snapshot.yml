@@ -1,9 +1,7 @@
 id: require-settings-base
 snapshots:
-  ? |
-    class DemoSettings(pydantic.BaseModel):
-        timeout: int = 30
-  : labels:
+  "class DemoSettings(pydantic.BaseModel):\n    timeout: int = 30\n":
+    labels:
     - source: |-
         class DemoSettings(pydantic.BaseModel):
             timeout: int = 30
@@ -32,10 +30,8 @@ snapshots:
       style: secondary
       start: 6
       end: 18
-  ? |
-    class FlextDemoSettings(BaseSettings):
-        timeout: int = 30
-  : labels:
+  "class FlextDemoSettings(BaseSettings):\n    timeout: int = 30\n":
+    labels:
     - source: |-
         class FlextDemoSettings(BaseSettings):
             timeout: int = 30

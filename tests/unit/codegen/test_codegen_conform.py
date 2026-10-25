@@ -55,6 +55,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecut
     def plan_repository_task(
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
+        snapshot: p.Infra.WorkspaceSnapshot,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Exercise a native cause with no preconstructed diagnostic fields.
 
@@ -67,7 +68,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecut
                 repository=task.repository.name,
                 exception=_LIFECYCLE_EXCEPTION,
             )
-        return super().plan_repository_task(task)
+        return super().plan_repository_task(task, snapshot)
 
     @override
     def plan(

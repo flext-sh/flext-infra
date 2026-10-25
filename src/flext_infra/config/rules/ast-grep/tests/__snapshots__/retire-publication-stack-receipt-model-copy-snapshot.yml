@@ -1,27 +1,19 @@
 id: retire-publication-stack-receipt-model-copy
 snapshots:
-  ? |
-    files = tuple(plan.model_copy(update={"source_states": receipt.inputs}) for plan in planned)
-  : fixed: |
+  "files = tuple(plan.model_copy(update={\"source_states\": receipt.inputs}) for plan in planned)\n":
+    fixed: |
       files = tuple(plan for plan in planned)
     labels:
-    - source: 'plan.model_copy(update={"source_states": receipt.inputs})'
+    - source: "plan.model_copy(update={\"source_states\": receipt.inputs})"
       style: primary
       start: 14
       end: 71
-    - source: '"source_states": receipt.inputs'
+    - source: "\"source_states\": receipt.inputs"
       style: secondary
       start: 38
       end: 69
-  ? |
-    plan = plan.model_copy(
-        update={
-            "source_states": inputs,
-            "source_directories": directories,
-            "source_query_topology": topology,
-        }
-    )
-  : fixed: |
+  "plan = plan.model_copy(\n    update={\n        \"source_states\": inputs,\n        \"source_directories\": directories,\n        \"source_query_topology\": topology,\n    }\n)\n":
+    fixed: |
       plan = plan
     labels:
     - source: |-
@@ -35,7 +27,7 @@ snapshots:
       style: primary
       start: 7
       end: 163
-    - source: '"source_states": inputs'
+    - source: "\"source_states\": inputs"
       style: secondary
       start: 45
       end: 68

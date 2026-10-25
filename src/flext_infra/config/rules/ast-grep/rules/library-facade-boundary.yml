@@ -17,9 +17,8 @@ files:
 metadata:
   enforce: [ENFORCE-045]
   owner: flext-core
-  context:
-    MODULE:
-      not: layer-zero-file
+  scope:
+    not-in: [layer-zero]
 rule:
   all:
   - pattern: $MODULE
@@ -35,10 +34,8 @@ files:
 - "**/*.py"
 metadata:
   enforce: [ENFORCE-094]
-  context:
-    MODULE:
-      not: implementation-owner
-      arg: flext_core u.fetch_logger
+  scope:
+    not-in: ["implementation-owner-flext_core u.fetch_logger"]
 rule:
   all:
   - pattern: $MODULE
@@ -55,9 +52,8 @@ files:
 metadata:
   enforce: [ENFORCE-070]
   owner: flext-core
-  context:
-    MODULE:
-      not: layer-zero-file
+  scope:
+    not-in: [layer-zero]
 rule:
   all:
   - pattern: $MODULE
@@ -74,9 +70,8 @@ files:
 metadata:
   enforce: [ENFORCE-042]
   owner: flext-core
-  context:
-    MODULE:
-      not: layer-zero-file
+  scope:
+    not-in: [layer-zero]
 rule:
   all:
   - pattern: $MODULE

@@ -1,15 +1,12 @@
 id: pydantic-unset-private-attribute
 snapshots:
-  ? |
-    class State(m.BaseModel):
-        _root: Path = m.PrivateAttr()
-        _port: p.Port = u.PrivateAttr()
-  : fixed: |
+  "class State(m.BaseModel):\n    _root: Path = m.PrivateAttr()\n    _port: p.Port = u.PrivateAttr()\n":
+    fixed: |
       class State(m.BaseModel):
           _root: Path
           _port: p.Port = u.PrivateAttr()
     labels:
-    - source: '_root: Path = m.PrivateAttr()'
+    - source: "_root: Path = m.PrivateAttr()"
       style: primary
       start: 30
       end: 59

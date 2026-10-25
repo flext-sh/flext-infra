@@ -32,10 +32,11 @@ class FlextInfraCodemodSnapshotRefresh(FlextInfraServiceBase[t.Cli.ResultValue])
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        planned = u.Infra.codemod_rule_plan(self.repository_root)
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            planned = u.Infra.codemod_rule_plan(snapshot)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
-        rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
+        rules = u.Infra.codemod_fixture_resources(planned.value)
         refreshed = FlextInfraModGateEngine.refresh_rule_snapshots(
             self.repository_root,
             rules,

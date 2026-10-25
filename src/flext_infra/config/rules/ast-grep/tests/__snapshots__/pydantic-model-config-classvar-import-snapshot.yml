@@ -1,13 +1,9 @@
 id: pydantic-model-config-classvar-import
 snapshots:
-  ? |
-    from typing import Literal
-
-    class Model:
-        model_config = m.ConfigDict(frozen=True)
-  : fixed: |
+  "from typing import Literal\n\nclass Model:\n    model_config = m.ConfigDict(frozen=True)\n":
+    fixed: |
       from typing import ClassVar, Literal
-
+      
       class Model:
           model_config = m.ConfigDict(frozen=True)
     labels:
@@ -21,7 +17,7 @@ snapshots:
       end: 85
     - source: |
         from typing import Literal
-
+        
         class Model:
             model_config = m.ConfigDict(frozen=True)
       style: secondary

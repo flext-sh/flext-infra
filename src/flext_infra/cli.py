@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra import c, t
+from flext_infra import FlextInfraPytestClock, c, settings, t
 from flext_infra.services import FlextInfraCliDispatchService
 
 
@@ -33,9 +33,21 @@ class FlextInfraCli(FlextInfraCliDispatchService):
         Returns:
             The resulting ``int``.
 
+        Raises:
+            ValueError: If FLEXT_INFRA_PROFILE requires FLEXT_INFRA_PROFILE_OUTPUT.
+
         """
         cli_args = list(args) if args is not None else sys.argv[1:]
-        return FlextInfraCli().main(cli_args)
+        if not settings.Infra.profile:
+            return FlextInfraCli().main(cli_args)
+        output = settings.Infra.profile_output
+        if output is None:
+            msg = "FLEXT_INFRA_PROFILE requires FLEXT_INFRA_PROFILE_OUTPUT"
+            raise ValueError(msg)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        return FlextInfraPytestClock.profile_command(
+            lambda: FlextInfraCli().main(cli_args), output
+        )
 
 
 __all__: list[str] = ["FlextInfraCli"]

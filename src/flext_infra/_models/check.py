@@ -75,6 +75,16 @@ class FlextInfraModelsCheck:
                 ),
             ),
         ] = c.Infra.CheckGateSet.CHECK
+        scope: Annotated[
+            c.Infra.CodegenConformScope,
+            m.Field(
+                description=(
+                    "Omitted-project selection: self checks the invoked "
+                    "repository; all adds every governed workspace member, "
+                    "and multi-root tools run once over their union"
+                ),
+            ),
+        ] = c.Infra.CodegenConformScope.SELF
         reports_dir: Annotated[
             str,
             m.Field(
@@ -362,7 +372,10 @@ class FlextInfraModelsCheck:
 
         project_dir: Path = m.Field(description="Project whose gate was executed")
         verdict: bool = m.Field(description="Acceptance decided by the caller")
-        outcome: c.Infra.ToolOutcome = m.Field(description="Native tool outcome")
+        outcome: c.Infra.ToolOutcome | None = m.Field(
+            default=None,
+            description="Declared native tool outcome; absent derives it from findings",
+        )
         issues: t.VariadicTuple[Issue] = m.Field(
             description="Complete native diagnostics",
         )

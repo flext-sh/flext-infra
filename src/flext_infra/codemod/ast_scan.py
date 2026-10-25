@@ -58,13 +58,14 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             if self.rules is not None
             else None
         )
-        planned = u.Infra.codemod_rule_plan(self.repository_root, rule_ids=rule_ids)
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            planned = u.Infra.codemod_rule_plan(snapshot, rule_ids=rule_ids)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
         if not self.effective_dry_run:
             return self._execute_apply(
                 self.repository_root,
-                tuple(dict.fromkeys(rule.resource for rule in planned.value.rules)),
+                u.Infra.codemod_fixture_resources(planned.value),
                 rule_ids=rule_ids,
             )
         ast_report = FlextInfraModGateEngine.scan(
@@ -176,7 +177,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         before = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        catalog_before = u.Infra.codemod_rule_plan(root).unwrap()
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            catalog_before = u.Infra.codemod_rule_plan(snapshot).unwrap()
         destination = c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
         invocation = destination.parent / destination.stem / uuid4().hex
         if rule_ids is not None:
@@ -209,7 +211,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             f"ast: whole-catalog after evidence={receipt.path} sha256={receipt.sha256}",
         )
         try:
-            catalog_after = u.Infra.codemod_rule_plan(root)
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                catalog_after = u.Infra.codemod_rule_plan(snapshot)
             cls._require_whole_catalog_correspondence(catalog_before, catalog_after)
             deltas = u.Infra.rule_deltas(before, after)
         except ValueError as exc:

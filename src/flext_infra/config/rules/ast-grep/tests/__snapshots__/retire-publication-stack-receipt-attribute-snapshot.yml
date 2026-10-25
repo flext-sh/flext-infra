@@ -1,17 +1,17 @@
 id: retire-publication-stack-receipt-attribute
 snapshots:
-  ? |
-    class Planner:
-        if TYPE_CHECKING:
-            _cache: MutableMapping[str, frozenset[str]]
-            _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
-  : fixed: "class Planner:\n    if TYPE_CHECKING:\n        _cache: MutableMapping[str, frozenset[str]]\n        \n"
+  "class Planner:\n    if TYPE_CHECKING:\n        _cache: MutableMapping[str, frozenset[str]]\n        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]\n":
+    fixed: |
+      class Planner:
+          if TYPE_CHECKING:
+              _cache: MutableMapping[str, frozenset[str]]
+              
     labels:
-    - source: '_query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]'
+    - source: "_query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]"
       style: primary
       start: 97
       end: 163
-    - source: '_query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]'
+    - source: "_query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]"
       style: secondary
       start: 97
       end: 163

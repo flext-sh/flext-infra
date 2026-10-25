@@ -67,8 +67,12 @@ class FlextInfraCodegenLazyInit(
         self,
         *,
         source_project: p.Infra.RopeProject | None = None,
+        snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Return the immutable initializer plans; publication belongs to conform.
+
+        The index of every selected root is a view over the run snapshot's
+        listing; a caller without a run snapshot gets one scoped to this plan.
 
         Returns:
             The initializer file plans sorted by path, or the first failure.
@@ -89,7 +93,10 @@ class FlextInfraCodegenLazyInit(
             return result_type.fail(
                 message.WORKSPACE_NOT_DIR.format(workspace=workspace)
             )
-        with self._source_view(workspace, source_project, roots) as view:
+        with (
+            self._source_view(workspace, source_project, roots) as view,
+            self._run_snapshot(workspace, roots, snapshot) as shared,
+        ):
             invalid = next(
                 (
                     root
@@ -103,14 +110,19 @@ class FlextInfraCodegenLazyInit(
                 return result_type.fail(
                     message.SCOPE_OUTSIDE.format(workspace=workspace, root=invalid)
                 )
-            indexes = {root: u.Infra.index_rope_workspace(view, root) for root in roots}
+            indexes = {
+                root: u.Infra.index_rope_workspace(
+                    shared, root, project=None if view is shared.engine else view
+                )
+                for root in roots
+            }
             targets = self._targets(indexes, scoped=scoped)
             if targets.failure:
                 return result_type.from_failure(targets)
             by_path: dict[Path, m.Infra.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
-                    view, indexes[root], root, target, scoped=scoped
+                    view, indexes[root], root, target, scoped=scoped, snapshot=shared
                 )
                 if planned.failure:
                     return planned
@@ -166,6 +178,7 @@ class FlextInfraCodegenLazyInit(
         target: Path | None,
         *,
         scoped: bool,
+        snapshot: p.Infra.WorkspaceSnapshot,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan and render one repository bottom-up from its source inventory.
 
@@ -173,7 +186,9 @@ class FlextInfraCodegenLazyInit(
             The repository's initializer file plans, or the first failure.
 
         """
-        run = u.Infra.lazy_init_run(view, index, root=root, scoped=scoped)
+        run = u.Infra.lazy_init_run(
+            view, index, root=root, scoped=scoped, snapshot=snapshot
+        )
         plans = u.Infra.lazy_init_plan_root(run, target)
         if plans.failure:
             return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(plans)
@@ -193,6 +208,27 @@ class FlextInfraCodegenLazyInit(
                 for owner in owners
             },
         )
+
+    @staticmethod
+    @contextmanager
+    def _run_snapshot(
+        workspace: Path,
+        roots: t.VariadicTuple[Path],
+        snapshot: p.Infra.WorkspaceSnapshot | None,
+    ) -> Generator[p.Infra.WorkspaceSnapshot]:
+        """Bind the run's snapshot without replacing an injected one.
+
+        Yields:
+            The injected snapshot, or one scoped to this plan.
+
+        """
+        if snapshot is not None:
+            yield snapshot
+            return
+        with u.Infra.workspace_snapshot(
+            workspace, tuple(dict.fromkeys((workspace, *roots)))
+        ) as scoped:
+            yield scoped
 
     @staticmethod
     @contextmanager

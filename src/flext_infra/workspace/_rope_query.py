@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import MutableMapping
+from contextlib import ExitStack
 from operator import attrgetter
 from pathlib import Path
 from time import perf_counter
@@ -25,6 +26,13 @@ class FlextInfraRopeQueryMixin(s[m.Infra.RopeWorkspaceSession]):
         default_factory=lambda: None,
     )
     _owns_rope_project: bool = m.PrivateAttr(default=True)
+    _snapshot: p.Infra.WorkspaceSnapshot | None = m.PrivateAttr(
+        default_factory=lambda: None,
+    )
+    _snapshot_scope: ExitStack | None = m.PrivateAttr(default_factory=lambda: None)
+    _view_project: t.Infra.RopeProject | None = m.PrivateAttr(
+        default_factory=lambda: None,
+    )
     _workspace_index: m.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
@@ -51,15 +59,41 @@ class FlextInfraRopeQueryMixin(s[m.Infra.RopeWorkspaceSession]):
         return self._rope_repository_root
 
     @property
+    def snapshot(self) -> p.Infra.WorkspaceSnapshot:
+        """The run snapshot: the injected one, or one this session opens once."""
+        snapshot = self._snapshot
+        if snapshot is None:
+            root = self._rope_repository_root.resolve()
+            scope = ExitStack()
+            snapshot = scope.enter_context(
+                u.Infra.workspace_snapshot(
+                    root,
+                    tuple(
+                        dict.fromkeys((
+                            root,
+                            *(
+                                member
+                                for member in u.Infra.discover_rope_project_roots(root)
+                                if member.resolve().is_relative_to(root)
+                            ),
+                        ))
+                    ),
+                )
+            )
+            self._snapshot_scope = scope
+            self._snapshot = snapshot
+        return snapshot
+
+    @property
     def rope_project(self) -> t.Infra.RopeProject:
-        """Shared Rope project, opening it lazily once."""
+        """Shared Rope project: the snapshot's one engine, unless a view is bound."""
         rope_project = self._rope_project
         if rope_project is None:
             started_at = perf_counter()
             u.Cli.info(f"rope: opening workspace at {self._rope_repository_root}")
-            # The session indexes this repository, not its declared submodules.
-            rope_project = u.Infra.init_rope_workspace(self._rope_repository_root)
+            rope_project = self.snapshot.engine
             self._rope_project = rope_project
+            self._owns_rope_project = False
             u.Cli.info(f"rope: workspace ready in {perf_counter() - started_at:.2f}s")
         return rope_project
 
@@ -73,8 +107,9 @@ class FlextInfraRopeQueryMixin(s[m.Infra.RopeWorkspaceSession]):
                 f"rope: indexing python workspace at {self._rope_repository_root}",
             )
             workspace_index = u.Infra.index_rope_workspace(
-                self.rope_project,
+                self.snapshot,
                 self.repository_root,
+                project=self._view_project,
             )
             self._workspace_index = workspace_index
             u.Cli.info(

@@ -384,6 +384,19 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             raise TypeError(msg)
         return changes
 
+    @staticmethod
+    def _identifier_at(source: str, offset: int) -> str:
+        """Return the identifier that starts at a source offset.
+
+        Returns:
+            The maximal identifier text beginning at ``offset``.
+
+        """
+        end = offset
+        while end < len(source) and (source[end].isalnum() or source[end] == "_"):
+            end += 1
+        return source[offset:end]
+
     @classmethod
     def rename_all_changes(
         cls,
@@ -408,6 +421,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             raise ValueError(msg)
         producer = cls.require_semantic_module(projects[0].get_pymodule(resource))
         module_name = producer.get_name()
+        # Occurrences live only in files whose text carries the renamed
+        # identifier, so the token pre-scan bounds the resources Rope searches.
+        retired = (
+            module_name.rpartition(".")[2]
+            if offset is None
+            else cls._identifier_at(sources[Path(resource.real_path)], offset)
+        )
         changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
         for project in projects:
             # Foreign declarations must use the same authenticated resource owner
@@ -428,8 +448,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                             candidate
                             for candidate in project.get_python_files()
                             if Path(candidate.real_path) in sources
+                            and (
+                                candidate.real_path == resource.real_path
+                                or retired in sources[Path(candidate.real_path)]
+                            )
                         ),
                         in_hierarchy=True,
+                        docs=True,
                     ),
                 ),
             ))

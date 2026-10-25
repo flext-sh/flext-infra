@@ -6,9 +6,16 @@ files:
   - "tests/**/*.py"
   - "examples/**/*.py"
   - "scripts/**/*.py"
+# The called attribute is narrowed before the module-wide import anchor, so
+# only adapter-factory calls pay for it.
 rule:
   all:
     - pattern: $TYPES.$FACTORY($$$ARGS)
+    - has:
+        field: function
+        has:
+          field: attribute
+          regex: "^[a-z][a-z0-9_]*_adapter$"
     - inside:
         kind: module
         stopBy: end

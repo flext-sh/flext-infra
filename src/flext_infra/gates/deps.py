@@ -33,13 +33,14 @@ class FlextInfraDepsGate(FlextInfraGate):
     can_fix: ClassVar[bool] = True
 
     @override
-    def selected_for(self, project_dir: Path) -> bool:
+    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
         """Select projects that declare dependencies (a pyproject exists).
 
         Returns:
             The resulting ``bool``.
 
         """
+        del ctx
         return (project_dir / c.PYPROJECT_FILENAME).is_file()
 
     @override

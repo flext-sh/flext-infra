@@ -3,7 +3,7 @@
         name: make {{ step.verb }}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset MAKEFLAGS; {% if context == "pre_commit" %}{{ make.ci.variable }}={{ make.ci.value }} {% elif step.verb == "check" %}unset {{ make.ci.variable }}; {% else %}{{ make.ci.variable }}={{ make.ci.local_value }} {% endif %}make {{ step.verb }}'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset MAKEFLAGS; {% if context == "pre_commit" %}{{ make.ci.variable }}={{ make.ci.pre_commit_value }} {% elif step.verb == "check" %}unset {{ make.ci.variable }}; {% else %}{{ make.ci.variable }}={{ make.ci.local_value }} {% endif %}make {{ step.verb }}'
         pass_filenames: false
         always_run: true
         stages: [{{ context | replace("_", "-") }}]
@@ -12,7 +12,9 @@
 repos:
   - repo: local
     hooks:
-    # Each hook invokes its declared public operation once.
+    # Each hook invokes its declared public operation once. The commit row
+    # passes make.ci.pre_commit_value, so check runs only the fast
+    # commit-stage gates; pre-push rows run their complete declared verbs.
 {% for context, enabled in (("pre_commit", make.pre_commit), ("pre_push", make.pre_push)) if enabled %}
 {% for step in make.workflow if context in step.contexts %}
 {{ workflow_hook(step, context) }}

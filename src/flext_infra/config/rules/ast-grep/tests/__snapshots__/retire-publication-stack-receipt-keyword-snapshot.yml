@@ -1,15 +1,14 @@
 id: retire-publication-stack-receipt-keyword
 snapshots:
-  ? |
-    def file_plan(root, rendered, *, source_states: tuple[int, ...] = ()): ...
-  : fixed: |
+  "def file_plan(root, rendered, *, source_states: tuple[int, ...] = ()): ...\n":
+    fixed: |
       def file_plan(root, rendered, *, ): ...
     labels:
-    - source: 'source_states: tuple[int, ...] = ()'
+    - source: "source_states: tuple[int, ...] = ()"
       style: primary
       start: 33
       end: 68
-    - source: '(root, rendered, *, source_states: tuple[int, ...] = ())'
+    - source: "(root, rendered, *, source_states: tuple[int, ...] = ())"
       style: secondary
       start: 13
       end: 69
@@ -17,9 +16,8 @@ snapshots:
       style: secondary
       start: 33
       end: 46
-  ? |
-    plan = file_plan(root, "a.py", rendered, source_states=states)
-  : fixed: |
+  "plan = file_plan(root, \"a.py\", rendered, source_states=states)\n":
+    fixed: |
       plan = file_plan(root, "a.py", rendered, )
     labels:
     - source: source_states=states
@@ -34,9 +32,8 @@ snapshots:
       style: secondary
       start: 41
       end: 54
-  ? |
-    plan = file_plan(root, "a.py", rendered, source_states=states, mode=0o644)
-  : fixed: |
+  "plan = file_plan(root, \"a.py\", rendered, source_states=states, mode=0o644)\n":
+    fixed: |
       plan = file_plan(root, "a.py", rendered, , mode=0o644)
     labels:
     - source: source_states=states
@@ -51,9 +48,8 @@ snapshots:
       style: secondary
       start: 41
       end: 54
-  ? |
-    plan = m.Infra.CodegenFilePlan(project=root, path=path, dependency_group=group)
-  : fixed: |
+  "plan = m.Infra.CodegenFilePlan(project=root, path=path, dependency_group=group)\n":
+    fixed: |
       plan = m.Infra.CodegenFilePlan(project=root, path=path, )
     labels:
     - source: dependency_group=group
@@ -76,9 +72,8 @@ snapshots:
       style: secondary
       start: 30
       end: 79
-  ? |
-    plan = m.Infra.CodegenFilePlan(project=root, validation_context=context, path=path)
-  : fixed: |
+  "plan = m.Infra.CodegenFilePlan(project=root, validation_context=context, path=path)\n":
+    fixed: |
       plan = m.Infra.CodegenFilePlan(project=root, , path=path)
     labels:
     - source: validation_context=context
@@ -101,9 +96,8 @@ snapshots:
       style: secondary
       start: 30
       end: 83
-  ? |
-    publish(plans, publication_receipts=receipts)
-  : fixed: |
+  "publish(plans, publication_receipts=receipts)\n":
+    fixed: |
       publish(plans, )
     labels:
     - source: publication_receipts=receipts

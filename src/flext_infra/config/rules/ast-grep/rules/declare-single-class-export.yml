@@ -1,5 +1,5 @@
 # A class-only source module declares its own publication before lazy-init
-# propagates it. The existing project context proves the canonical class stem.
+# propagates it. The class-stem- file groups prove the canonical class stem.
 # Multi-class modules, explicit exports, loose behavior and module bindings
 # require their existing semantic ownership phase; this rule never elects them.
 #
@@ -12,9 +12,12 @@ language: python
 severity: error
 metadata:
   enforce: [ENFORCE-050]
-  context:
-    NAME:
-      is: class-stem
+  scope:
+    partition:
+      variable: NAME
+      holds: true
+      selectors: class-stem-
+      pattern: "^(?:{alternatives})"
 utils:
   import:
     any:

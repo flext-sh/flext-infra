@@ -4,9 +4,9 @@
 # pytest member in the family its object kind owns (tooling
 # `facade-members.owners`): functions under `u.Tests`, types under `t.Tests`,
 # constants/enums/exceptions under `c.Tests` (constant names upper-cased by the
-# constants naming law). The owner is decided by the engine's
-# `library-member-owner` predicate from pytest's own object, never from a list
-# or a naming guess. `conftest.py` and `tests/fixtures/**` keep the tests-tier
+# constants naming law). The owner is decided from pytest's own object by the
+# generated `library-member-owner-pytest-<letter>` utilities, never from a
+# list or a naming guess. `conftest.py` and `tests/fixtures/**` keep the tests-tier
 # delta and import pytest directly.
 #
 # Activation: the documents stay `severity: off` until the flext-tests facade
@@ -26,12 +26,6 @@ files:
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
-metadata:
-  context:
-    NAME:
-      is: library-member-owner
-      of: LIB
-      arg: u
 rule:
   kind: attribute
   all:
@@ -43,6 +37,9 @@ rule:
     - has:
         field: attribute
         pattern: $NAME
+constraints:
+  NAME:
+    matches: library-member-owner-pytest-u
 fix: u.Tests.$NAME
 message: >-
   `pytest.$NAME` in a test module: call it through the flext-tests facade
@@ -56,12 +53,6 @@ files:
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
-metadata:
-  context:
-    NAME:
-      is: library-member-owner
-      of: LIB
-      arg: t
 rule:
   kind: attribute
   all:
@@ -73,6 +64,9 @@ rule:
     - has:
         field: attribute
         pattern: $NAME
+constraints:
+  NAME:
+    matches: library-member-owner-pytest-t
 fix: t.Tests.$NAME
 message: >-
   `pytest.$NAME` in a test module: read the type through the flext-tests
@@ -86,12 +80,6 @@ files:
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
-metadata:
-  context:
-    NAME:
-      is: library-member-owner
-      of: LIB
-      arg: c
 rule:
   kind: attribute
   all:
@@ -106,6 +94,7 @@ rule:
 constraints:
   NAME:
     regex: "^[a-z_][a-z0-9_]*$"
+    matches: library-member-owner-pytest-c
 transform:
   CONSTANT:
     convert:
@@ -124,12 +113,6 @@ files:
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
-metadata:
-  context:
-    NAME:
-      is: library-member-owner
-      of: LIB
-      arg: c
 rule:
   kind: attribute
   all:
@@ -144,6 +127,7 @@ rule:
 constraints:
   NAME:
     regex: "^[A-Z][A-Za-z0-9]*$"
+    matches: library-member-owner-pytest-c
 fix: c.Tests.$NAME
 message: >-
   `pytest.$NAME` in a test module: read the enum or exception through the

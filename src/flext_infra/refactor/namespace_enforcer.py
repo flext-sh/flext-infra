@@ -87,7 +87,8 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         scoped = frozenset(
             path for paths in files_by_project.values() for path in paths
         )
-        before_plan = u.Infra.codemod_rule_plan(self._repository_root).unwrap()
+        with u.Infra.codemod_workspace_snapshot(self._repository_root) as snapshot:
+            before_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         source_files = tuple(sorted(scoped)) if module is not None else None
         before = FlextInfraModGateEngine.scan(
             self._repository_root,
@@ -145,11 +146,10 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
                 ),
             }
         )
-        after_plan = (
-            u.Infra.codemod_rule_plan(self._repository_root).unwrap()
-            if apply
-            else before_plan
-        )
+        after_plan = before_plan
+        if apply:
+            with u.Infra.codemod_workspace_snapshot(self._repository_root) as snapshot:
+                after_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         rule_ids = tuple(
             sorted({
                 rule.id for plan in (before_plan, after_plan) for rule in plan.rules

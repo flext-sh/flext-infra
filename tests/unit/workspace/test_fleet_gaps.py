@@ -269,8 +269,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
             FlextInfraWorkspaceChecker(repository_root=member).run_projects(
                 (m.Infra.CheckProjectTarget(name=member.name, path=member),),
                 gates,
-                reports_dir=reports,
-                fail_fast=False,
+                u.Tests.gate_context(member, reports, fail_fast=False),
             )
         )
         (project,) = results
@@ -382,8 +381,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
             FlextInfraWorkspaceChecker(repository_root=member).run_projects(
                 (m.Infra.CheckProjectTarget(name=member.name, path=member),),
                 (c.Infra.LINT, c.Infra.PYREFLY),
-                reports_dir=reports,
-                fail_fast=True,
+                u.Tests.gate_context(member, reports, fail_fast=True),
             )
         )
         (project,) = results

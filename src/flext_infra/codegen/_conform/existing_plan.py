@@ -403,33 +403,115 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return self._projected_exports(root, cohort).map(
                 lambda exported: ((*cohort, *exported), (), tuple(exported))
             )
-        with self._source_view(root, declared_files=cohort) as binding:
-            custom_result = self._plan_existing_custom(
-                root,
-                codegen,
-                profile=target.make_profile.value,
-                binding=binding,
-                declared_files=cohort,
-            )
-        if custom_result.failure:
-            return result_type.from_failure(custom_result)
-        projected_files = {plan.path: plan for plan in (*cohort, *custom_result.value)}
-        exported = self._projected_exports(root, tuple(projected_files.values()))
-        if exported.failure:
-            return result_type.from_failure(exported)
-        projected_files.update((plan.path, plan) for plan in exported.value)
-        initializers = tuple(
-            {
-                plan.path: plan
-                for plan in (*lazy_result.value, *exported.value)
-                if plan.project == root
-            }.values()
+        return self._converged_custom_sources(
+            root, codegen, profile=target.make_profile.value, cohort=cohort
         )
-        return result_type.ok((
-            tuple(projected_files.values()),
-            custom_result.value,
-            initializers,
-        ))
+
+    def _converged_custom_sources(
+        self,
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        profile: str,
+        cohort: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[
+        t.Triple[
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+        ]
+    ]:
+        """Render custom facades and initializers until they agree.
+
+        Facades resolve their owners through the initializers they see, and
+        the initializers re-planned over the projected facades may differ from
+        those. Facades are rendered again over the re-planned initializers
+        until both agree, so one generation publishes a fixed point. The
+        rounds are bounded by the facade family count plus one; a projection
+        still moving after that fails with its diverging initializers.
+
+        Returns:
+            Projected files, custom files and initializers, or the first failure.
+
+        """
+        result_type = r[
+            t.Triple[
+                t.VariadicTuple[m.Infra.CodegenFilePlan],
+                t.SequenceOf[m.Infra.CodegenFilePlan],
+                t.VariadicTuple[m.Infra.CodegenFilePlan],
+            ]
+        ]
+        initializers = tuple(plan for plan in cohort if plan.project == root)
+        previous: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        for _ in range(len(u.Infra.facade_families()) + 1):
+            sources = tuple(
+                {plan.path: plan for plan in (*cohort, *initializers)}.values()
+            )
+            with self._source_view(root, declared_files=sources) as binding:
+                custom_result = self._plan_existing_custom(
+                    root,
+                    codegen,
+                    profile=profile,
+                    binding=binding,
+                    declared_files=sources,
+                )
+            if custom_result.failure:
+                return result_type.from_failure(custom_result)
+            projected_files = {
+                plan.path: plan for plan in (*sources, *custom_result.value)
+            }
+            if self.state.provider_plans is not None and all(
+                plan.desired_content == plan.before.content
+                for plan in projected_files.values()
+            ):
+                # The projection keeps every current byte, including the
+                # initializers this run's lazy surface planned over the same
+                # tree and scope, so re-planning them reads unchanged inputs.
+                return result_type.ok((
+                    tuple(projected_files.values()),
+                    custom_result.value,
+                    initializers,
+                ))
+            exported = self._projected_exports(root, tuple(projected_files.values()))
+            if exported.failure:
+                return result_type.from_failure(exported)
+            projected_files.update((plan.path, plan) for plan in exported.value)
+            if self._initializers_seen(exported.value, initializers):
+                return result_type.ok((
+                    tuple(projected_files.values()),
+                    custom_result.value,
+                    tuple(plan for plan in exported.value if plan.project == root),
+                ))
+            previous, initializers = initializers, exported.value
+        diverging = sorted(
+            str(plan.path)
+            for plan in initializers
+            if not self._initializers_seen((plan,), previous)
+        )
+        return result_type.fail(
+            f"custom facades and initializers do not converge for {root}: "
+            + ", ".join(diverging)
+        )
+
+    @staticmethod
+    def _initializers_seen(
+        exported: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        initializers: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> bool:
+        """Report whether re-planned initializers equal those the facades saw.
+
+        A destination without an overlaid initializer showed its current bytes.
+
+        Returns:
+            True when every re-planned initializer carries the bytes the facade
+            render read for that destination.
+
+        """
+        seen = {plan.path: plan.desired_content for plan in initializers}
+        return all(
+            plan.desired_content == seen.get(plan.path, plan.before.content)
+            for plan in exported
+        )
 
     def _projected_exports(
         self,
@@ -561,8 +643,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         return result_type.ok(tuple(by_path.values()))
 
-    @staticmethod
     def _planned_lazy_init_files(
+        self,
         root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan the lazy-init projection the declarations determine, read-only.
@@ -577,14 +659,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         Complete generation stages every initializer before its project-wide
         admission; narrower surfaces retain their declared publication scope.
 
+        Planning reads the run snapshot's one Rope project, so every
+        repository and stage shares its parsed modules and inference.
+
         Returns:
             The repository's planned lazy-init file plans, or the planning failure.
 
+        Raises:
+            RuntimeError: If lazy-init planning requires the run's workspace snapshot.
+
         """
+        snapshot = self.state.snapshot
+        if snapshot is None:
+            msg = "lazy-init planning requires the run's workspace snapshot"
+            raise RuntimeError(msg)
         return FlextInfraCodegenLazyInit(
             repository_root=root,
             project_scope_roots=(root,),
-        ).plan_files()
+        ).plan_files(source_project=snapshot.engine, snapshot=snapshot)
 
     @staticmethod
     def _existing_tooling_context(
@@ -851,6 +943,23 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((plan.value,))
 
     def _plan_existing_templates(
+        self,
+        *,
+        render_inputs: m.Infra.CodegenRenderInputs,
+        contract: m.Infra.CodegenConformSurfaceContract,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Render the managed-file templates of one pass from one project context.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
+
+        """
+        with self.project_render_scope():
+            return self._planned_existing_templates(
+                render_inputs=render_inputs, contract=contract
+            )
+
+    def _planned_existing_templates(
         self,
         *,
         render_inputs: m.Infra.CodegenRenderInputs,

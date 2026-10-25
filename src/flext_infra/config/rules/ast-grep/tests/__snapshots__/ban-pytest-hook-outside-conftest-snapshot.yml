@@ -1,10 +1,7 @@
 id: ban-pytest-hook-outside-conftest
 snapshots:
-  ? |
-    @fixture
-    def workspace(tmp_path: Path) -> Path:
-        return tmp_path
-  : labels:
+  "@fixture\ndef workspace(tmp_path: Path) -> Path:\n    return tmp_path\n":
+    labels:
     - source: |-
         def workspace(tmp_path: Path) -> Path:
             return tmp_path
@@ -25,7 +22,7 @@ snapshots:
       style: secondary
       start: 0
       end: 67
-    - source: '@fixture'
+    - source: "@fixture"
       style: secondary
       start: 0
       end: 8
@@ -36,11 +33,8 @@ snapshots:
       style: secondary
       start: 0
       end: 67
-  ? |
-    @pytest.fixture
-    def workspace(tmp_path: Path) -> Path:
-        return tmp_path
-  : labels:
+  "@pytest.fixture\ndef workspace(tmp_path: Path) -> Path:\n    return tmp_path\n":
+    labels:
     - source: |-
         def workspace(tmp_path: Path) -> Path:
             return tmp_path
@@ -61,7 +55,7 @@ snapshots:
       style: secondary
       start: 0
       end: 74
-    - source: '@pytest.fixture'
+    - source: "@pytest.fixture"
       style: secondary
       start: 0
       end: 15
@@ -72,11 +66,8 @@ snapshots:
       style: secondary
       start: 0
       end: 74
-  ? |
-    @pytest.fixture(scope="module")
-    def matrix() -> list[str]:
-        return []
-  : labels:
+  "@pytest.fixture(scope=\"module\")\ndef matrix() -> list[str]:\n    return []\n":
+    labels:
     - source: |-
         def matrix() -> list[str]:
             return []
@@ -97,7 +88,7 @@ snapshots:
       style: secondary
       start: 0
       end: 72
-    - source: '@pytest.fixture(scope="module")'
+    - source: "@pytest.fixture(scope=\"module\")"
       style: secondary
       start: 0
       end: 31
@@ -108,10 +99,8 @@ snapshots:
       style: secondary
       start: 0
       end: 72
-  ? |
-    def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-        return None
-  : labels:
+  "def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:\n    return None\n":
+    labels:
     - source: |-
         def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             return None
@@ -128,9 +117,8 @@ snapshots:
       style: secondary
       start: 4
       end: 33
-  ? |
-    pytest_plugins = ["tests.fixtures.git"]
-  : labels:
+  "pytest_plugins = [\"tests.fixtures.git\"]\n":
+    labels:
     - source: pytest_plugins = ["tests.fixtures.git"]
       style: primary
       start: 0

@@ -1,10 +1,8 @@
 id: ban-str-none-empty-default
 snapshots:
-  ? |
-    class Order(m.FrozenModel):
-        label: Annotated[str | None, m.Field(description="x")] = ''
-  : labels:
-    - source: 'label: Annotated[str | None, m.Field(description="x")] = '''''
+  "class Order(m.FrozenModel):\n    label: Annotated[str | None, m.Field(description=\"x\")] = ''\n":
+    labels:
+    - source: "label: Annotated[str | None, m.Field(description=\"x\")] = ''"
       style: primary
       start: 32
       end: 91
@@ -16,15 +14,13 @@ snapshots:
       style: secondary
       start: 39
       end: 86
-    - source: ''''''
+    - source: "''"
       style: secondary
       start: 89
       end: 91
-  ? |
-    class Order(m.FrozenModel):
-        label: str | None = ""
-  : labels:
-    - source: 'label: str | None = ""'
+  "class Order(m.FrozenModel):\n    label: str | None = \"\"\n":
+    labels:
+    - source: "label: str | None = \"\""
       style: primary
       start: 32
       end: 54
@@ -36,15 +32,13 @@ snapshots:
       style: secondary
       start: 39
       end: 49
-    - source: '""'
+    - source: "\"\""
       style: secondary
       start: 52
       end: 54
-  ? |
-    class Order(m.FrozenModel):
-        label: str | None = m.Field(default="", description="x")
-  : labels:
-    - source: 'label: str | None = m.Field(default="", description="x")'
+  "class Order(m.FrozenModel):\n    label: str | None = m.Field(default=\"\", description=\"x\")\n":
+    labels:
+    - source: "label: str | None = m.Field(default=\"\", description=\"x\")"
       style: primary
       start: 32
       end: 88

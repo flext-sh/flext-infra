@@ -23,29 +23,42 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
 
-    def _elected_rule(self, tmp_path: Path, name: str) -> m.Infra.CodemodRule:
-        """Use the provider's declared rule identity in the fixture's elected plan.
+    def _elected_rule(self, tmp_path: Path, name: str) -> t.Pair[str, frozenset[str]]:
+        """Read the catalog rule a fixture file declares and its elected identities.
+
+        A partitioned catalog rule is elected through the partitions the
+        project's generated provider renders; selecting its catalog id
+        selects every one of them.
 
         Args:
             tmp_path: Provisioned workspace root consuming the provider.
             name: Rule fixture file name inside the source catalog.
 
         Returns:
-            The plan entry electing the copied rule resource.
+            The catalog rule id and the plan identities that report it.
 
         """
         owner = Path(__file__).resolve().parents[3]
-        source = self._source_catalog(owner) / "rules" / name
+        catalog = self._source_catalog(owner)
+        source = catalog / "rules" / name
         declared = next(
             item
-            for item in tm.ok(u.Infra.codemod_rule_plan(owner)).rules
-            if item.resource == source
+            for item in tm.ok(
+                u.Infra.codemod_catalog_rules(
+                    "fixture-owner", catalog / c.Infra.CODEMOD_CONFIG_FILENAME
+                )
+            )
+            if item.resource.resolve() == source.resolve()
         )
-        return next(
-            item
-            for item in tm.ok(u.Infra.codemod_rule_plan(tmp_path)).rules
-            if item.id == declared.id
+        with u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
+        elected = frozenset(
+            item.id
+            for item in plan.rules
+            if declared.id in {item.id, item.partition_of}
         )
+        tm.that(elected, empty=False)
+        return declared.id, elected
 
     @pytest.mark.slow
     def test_protocol_candidates_require_native_semantic_admission(
@@ -54,7 +67,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         """Raw superclass candidates retain only actual protocol declarations."""
         u.Tests.WorktreeFixture.write_python_project(tmp_path, "protocol-fixture")
         _ = self._owner(tmp_path)
-        elected = self._elected_rule(
+        rule_id, elected = self._elected_rule(
             tmp_path,
             "ban-manual-protocol-outside-protocols.yml",
         )
@@ -109,23 +122,23 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             source = imports + declarations
             tm.ok(u.Cli.atomic_write_text_file(sample, source))
             report = tm.ok(
-                FlextInfraModGateEngine.scan(
-                    tmp_path, fix=False, selection=(elected.id,)
-                )
+                FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=(rule_id,))
             )
             names: list[str] = []
             with u.Infra.mod_native_readers(report.native_artifacts) as readers:
                 for finding in report.entries:
-                    tm.that(finding.rule_id, eq=elected.id)
+                    tm.that(elected, has=finding.rule_id)
                     tm.that(finding.file, eq=sample.relative_to(tmp_path))
                     mapping = u.type_adapter(TypeForm(t.JsonMapping))
                     native = u.Infra.mod_native_payload(finding, readers)
                     captures = mapping.validate_python(native["metaVariables"])
                     single = mapping.validate_python(captures["single"])
-                    capture = mapping.validate_python(
-                        single[elected.context[0].variable]
+                    # The rule captures the declared class as $NAME.
+                    names.append(
+                        u.type_adapter(str).validate_python(
+                            mapping.validate_python(single["NAME"])["text"]
+                        )
                     )
-                    names.append(u.type_adapter(str).validate_python(capture["text"]))
             tm.that(sorted(names), eq=sorted(expected))
             tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
@@ -146,7 +159,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         root = tmp_path / "project"
         u.Tests.WorktreeFixture.write_python_project(root, "model-root-fixture")
         _ = self._owner(root)
-        elected = self._elected_rule(root, "ban-model-facade-family-root.yml")
+        rule_id, elected = self._elected_rule(root, "ban-model-facade-family-root.yml")
         u.Tests.provision_checkout(root)
         sample = (
             root
@@ -159,18 +172,19 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
         report = tm.ok(
-            FlextInfraModGateEngine.scan(root, fix=False, selection=(elected.id,))
+            FlextInfraModGateEngine.scan(root, fix=False, selection=(rule_id,))
         )
         names: list[str] = []
         with u.Infra.mod_native_readers(report.native_artifacts) as readers:
             for finding in report.entries:
-                tm.that(finding.rule_id, eq=elected.id)
+                tm.that(elected, has=finding.rule_id)
                 tm.that(finding.file, eq=sample.relative_to(root))
                 mapping = u.type_adapter(TypeForm(t.JsonMapping))
                 native = u.Infra.mod_native_payload(finding, readers)
                 captures = mapping.validate_python(native["metaVariables"])
                 single = mapping.validate_python(captures["single"])
-                capture = mapping.validate_python(single[elected.context[0].variable])
+                # The rule captures the facade family class as $NAME.
+                capture = mapping.validate_python(single["NAME"])
                 names.append(u.type_adapter(str).validate_python(capture["text"]))
         tm.that(names, eq=expected)
         tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
@@ -366,15 +380,19 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
         selected = ("demo", rule_id)
-        elected = tm.ok(u.Infra.codemod_rule_plan(tmp_path, rule_ids=selected))
+        with u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot:
+            elected = tm.ok(u.Infra.codemod_rule_plan(snapshot, rule_ids=selected))
         tm.that(
             next(rule.resource for rule in elected.rules if rule.id == "demo"),
             eq=demo,
         )
-        tm.fail(
-            u.Infra.codemod_rule_plan(tmp_path, rule_ids=("undeclared-fixture-rule",)),
-            has="unknown codemod rule IDs",
-        )
+        with u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot:
+            tm.fail(
+                u.Infra.codemod_rule_plan(
+                    snapshot, rule_ids=("undeclared-fixture-rule",)
+                ),
+                has="unknown codemod rule IDs",
+            )
         before = tm.ok(
             FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=selected)
         )
@@ -729,7 +747,8 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             The path to the live provider catalog.
 
         """
-        plan = tm.ok(u.Infra.codemod_rule_plan(root))
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         catalogs = tuple(
             ruleset.config.parent
             for ruleset in plan.rulesets

@@ -103,7 +103,8 @@ class TestsFlextInfraModCliRoute:
     ) -> None:
         """Shared scans exempt the declared library owner, never its consumers."""
         rule_id = "ban-direct-pydantic-import"
-        plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=(rule_id,)))
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot, rule_ids=(rule_id,)))
         owner_name = tm.not_none(plan.rules[0].owner)
         owner = u.Tests.mk_project(
             mod_workspace,
@@ -129,7 +130,8 @@ class TestsFlextInfraModCliRoute:
             mod_workspace,
             (owner.name, consumer.name),
         )
-        planned = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=(rule_id,)))
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            planned = tm.ok(u.Infra.codemod_rule_plan(snapshot, rule_ids=(rule_id,)))
         tm.fail(rule_id in planned.project_rule_ids[owner.resolve()])
         tm.ok(rule_id in planned.project_rule_ids[consumer.resolve()])
         for root in (mod_workspace, consumer):
@@ -268,7 +270,8 @@ class TestsFlextInfraModCliRoute:
             second_evidence.totals_by_repository,
             eq={mod_workspace.name: 0},
         )
-        elected = tm.ok(u.Infra.codemod_rule_plan(mod_workspace))
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            elected = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         tm.that(
             second_evidence.totals_by_rule,
             eq={rule.id: 0 for rule in elected.rules},

@@ -27,6 +27,7 @@ from flext_infra._constants import (
     FlextInfraConstantsNamespace,
     FlextInfraConstantsPromoted,
     FlextInfraConstantsPromotedMessages,
+    FlextInfraConstantsPytest,
     FlextInfraConstantsRefactor,
     FlextInfraConstantsRelease,
     FlextInfraConstantsRope,
@@ -59,6 +60,7 @@ class FlextInfraConstants(FlextCliConstants):
         FlextInfraConstantsNamespace,
         FlextInfraConstantsPromoted,
         FlextInfraConstantsPromotedMessages,
+        FlextInfraConstantsPytest,
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRelease,
         FlextInfraConstantsRope,
@@ -68,5 +70,4 @@ class FlextInfraConstants(FlextCliConstants):
 
 
 c = FlextInfraConstants
-
-__all__: tuple[str, ...] = ("FlextInfraConstants", "c")
+__all__: list[str] = ["FlextInfraConstants", "c"]

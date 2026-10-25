@@ -18,7 +18,11 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
+from flext_infra.workspace import (
+    FlextInfraBindingService,
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceFlextEditable,
+)
 from flext_infra.workspace._environment_provenance_editable import (
     FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
 )
@@ -850,6 +854,20 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 distribution,
                 observation=observation,
                 repository=repository,
+            )
+        # A local `make setup FLEXT=<path>` receipt names the only editable
+        # FLEXT installs this environment admits; CI never honours it.
+        admitted = FlextInfraWorkspaceFlextEditable.admitted_sources(
+            context.runtime_root,
+        )
+        if admitted.failure:
+            return r[bool].from_failure(admitted)
+        if item.name in admitted.value:
+            return cls._workspace_origin_verdict(
+                item.name,
+                distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
+                admitted.value[item.name],
+                editable=True,
             )
         origin = cls.locked_origin_verdict(
             item.name,

@@ -1,9 +1,7 @@
 id: specialize-settings-class-algebra
 snapshots:
-  ? |
-    from flext_core import p, t
-    value: t.SettingsClass | None
-  : fixed: |
+  "from flext_core import p, t\nvalue: t.SettingsClass | None\n":
+    fixed: |
       from flext_core import p, t
       value: t.SettingsClass[p.SettingsType] | None
     labels:

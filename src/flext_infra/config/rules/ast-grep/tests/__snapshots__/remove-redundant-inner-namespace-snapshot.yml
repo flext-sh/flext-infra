@@ -1,13 +1,12 @@
 id: remove-redundant-inner-namespace
 snapshots:
-  ? |
-    class Alpha(Base):
-        class Cli(Alpha):
-            pass
-
-        def run(self) -> int:
-            return 0
-  : fixed: "class Alpha(Base):\n    \n\n    def run(self) -> int:\n        return 0\n"
+  "class Alpha(Base):\n    class Cli(Alpha):\n        pass\n\n    def run(self) -> int:\n        return 0\n":
+    fixed: |
+      class Alpha(Base):
+          
+      
+          def run(self) -> int:
+              return 0
     labels:
     - source: |-
         class Cli(Alpha):
@@ -36,7 +35,7 @@ snapshots:
     - source: |-
         class Cli(Alpha):
                 pass
-
+        
             def run(self) -> int:
                 return 0
       style: secondary
@@ -50,7 +49,7 @@ snapshots:
         class Alpha(Base):
             class Cli(Alpha):
                 pass
-
+        
             def run(self) -> int:
                 return 0
       style: secondary
@@ -59,20 +58,19 @@ snapshots:
     - source: |-
         class Cli(Alpha):
                 pass
-
+        
             def run(self) -> int:
                 return 0
       style: secondary
       start: 23
       end: 97
-  ? |
-    class Beta(Base):
-        class Cli(Beta):
-            ...
-
-        class Real(Base):
-            VALUE = 1
-  : fixed: "class Beta(Base):\n    \n\n    class Real(Base):\n        VALUE = 1\n"
+  "class Beta(Base):\n    class Cli(Beta):\n        ...\n\n    class Real(Base):\n        VALUE = 1\n":
+    fixed: |
+      class Beta(Base):
+          
+      
+          class Real(Base):
+              VALUE = 1
     labels:
     - source: |-
         class Cli(Beta):
@@ -101,7 +99,7 @@ snapshots:
     - source: |-
         class Cli(Beta):
                 ...
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -115,7 +113,7 @@ snapshots:
         class Beta(Base):
             class Cli(Beta):
                 ...
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -124,20 +122,19 @@ snapshots:
     - source: |-
         class Cli(Beta):
                 ...
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
       start: 22
       end: 91
-  ? |
-    class Zeta(Base):
-        class Cli(Zeta):
-            """Namespace."""
-
-        class Real(Base):
-            VALUE = 1
-  : fixed: "class Zeta(Base):\n    \n\n    class Real(Base):\n        VALUE = 1\n"
+  "class Zeta(Base):\n    class Cli(Zeta):\n        \"\"\"Namespace.\"\"\"\n\n    class Real(Base):\n        VALUE = 1\n":
+    fixed: |
+      class Zeta(Base):
+          
+      
+          class Real(Base):
+              VALUE = 1
     labels:
     - source: |-
         class Cli(Zeta):
@@ -166,7 +163,7 @@ snapshots:
     - source: |-
         class Cli(Zeta):
                 """Namespace."""
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -180,7 +177,7 @@ snapshots:
         class Zeta(Base):
             class Cli(Zeta):
                 """Namespace."""
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -189,7 +186,7 @@ snapshots:
     - source: |-
         class Cli(Zeta):
                 """Namespace."""
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary

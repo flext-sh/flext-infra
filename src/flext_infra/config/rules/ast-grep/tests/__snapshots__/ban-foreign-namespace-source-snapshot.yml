@@ -1,11 +1,11 @@
 id: ban-foreign-namespace-source
 snapshots:
-  from flext_cli import FlextCli, m:
+  "from flext_cli import FlextCli, m":
     labels:
-    - source: FlextCli
+    - source: m
       style: primary
-      start: 22
-      end: 30
+      start: 32
+      end: 33
     - source: from flext_cli import FlextCli, m
       style: secondary
       start: 0

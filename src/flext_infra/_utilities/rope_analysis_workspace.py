@@ -14,11 +14,11 @@ from pathlib import Path
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
@@ -237,37 +237,69 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             c.Infra.AUTOGEN_HEADER,
         )
 
-    @staticmethod
-    def python_and_stub_file_paths(
-        rope_project: t.Infra.RopeProject,
+    @classmethod
+    def _module_entry(
+        cls,
+        file_path: Path,
         resolved_root: Path,
-    ) -> t.VariadicTuple[Path]:
-        """Return this repository's sources without electing members as targets.
+        rope_project: t.Infra.RopeProject,
+        directory_facts: MutableMapping[Path, t.Pair[Path | None, str]],
+    ) -> m.Infra.RopeModuleIndexEntry | None:
+        """Index one source, or ``None`` for a generated stub or an ignored path.
+
+        The owning project and the declared package depend on the directory
+        only, so every module of a directory shares one lookup.
 
         Returns:
-            Local Python and stub sources, preserving dependency import resolution.
-
-        Raises:
-            ValueError: The repository's Git member declarations are invalid.
+            The module's index entry, or ``None`` when it is not a project module.
 
         """
-        rope_root = Path(rope_project.root.real_path).resolve()
-        source_project = rope_project
-        declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
-            resolved_root, source_project=source_project
-        )
-        if declarations.failure:
-            raise ValueError(declarations.error or "invalid .gitmodules")
-        return tuple(
-            path
-            for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
-                resolved_root,
-                workspace_excluded_top_dirs=frozenset(
-                    item.path.as_posix() for item in declarations.value
-                ),
-                source_project=source_project,
+        resolved_file_path = file_path.resolve()
+        if cls._is_generated_init_stub(
+            resolved_file_path, source_project=rope_project
+        ) or not resolved_file_path.is_relative_to(resolved_root):
+            return None
+        if FlextInfraUtilitiesProjectDiscovery.excluded_parts().intersection(
+            resolved_file_path.relative_to(resolved_root).parts[:-1],
+        ):
+            # The scan-ignore SSOT owns source visibility everywhere: a
+            # tool hook under an ignored resource (e.g. .claude, .agents)
+            # is not a project module, and indexing it feeds the mod
+            # planners a file they then crash on while moving helpers.
+            return None
+        package_dir = resolved_file_path.parent
+        is_package_init = resolved_file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}
+        owner = directory_facts.get(package_dir)
+        if owner is None:
+            directory_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                Path(rope_project.root.real_path),
+                resolved_file_path,
+                source_project=rope_project,
             )
-            if path.is_relative_to(rope_root)
+            owner = (
+                directory_root,
+                FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                    package_dir, project_root=directory_root
+                )
+                if directory_root is not None
+                else "",
+            )
+            directory_facts[package_dir] = owner
+        project_root, package_name = owner
+        return m.Infra.RopeModuleIndexEntry(
+            file_path=resolved_file_path,
+            resource_path=resolved_file_path.relative_to(resolved_root).as_posix(),
+            module_name=(
+                package_name
+                if is_package_init
+                else f"{package_name}.{resolved_file_path.stem}"
+                if package_name
+                else ""
+            ),
+            package_name=package_name,
+            package_dir=package_dir,
+            project_root=project_root,
+            is_package_init=is_package_init,
         )
 
     @classmethod
@@ -275,6 +307,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         cls,
         rope_project: t.Infra.RopeProject,
         resolved_root: Path,
+        files: t.VariadicTuple[Path],
+        directory_facts: MutableMapping[Path, t.Pair[Path | None, str]],
     ) -> tuple[
         MutableMapping[str, m.Infra.RopeModuleIndexEntry],
         MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]],
@@ -298,62 +332,16 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # Hermetic index: iterate the discovery output in sorted path order so
         # every derived structure (index, lazy maps, generated facades) is
         # byte-identical across environments regardless of fs enumeration.
-        for file_path in sorted(
-            cls.python_and_stub_file_paths(rope_project, resolved_root),
-            key=str,
-        ):
-            resolved_file_path = file_path.resolve()
-            if cls._is_generated_init_stub(
-                resolved_file_path,
-                source_project=rope_project,
-            ):
+        for file_path in sorted(files, key=str):
+            entry = cls._module_entry(
+                file_path, resolved_root, rope_project, directory_facts
+            )
+            if entry is None:
                 continue
-            if not resolved_file_path.is_relative_to(resolved_root):
-                continue
-            if FlextInfraUtilitiesProjectDiscovery.excluded_parts().intersection(
-                resolved_file_path.relative_to(resolved_root).parts[:-1],
-            ):
-                # The scan-ignore SSOT owns source visibility everywhere: a
-                # tool hook under an ignored resource (e.g. .claude, .agents)
-                # is not a project module, and indexing it feeds the mod
-                # planners a file they then crash on while moving helpers.
-                continue
-            resource_path = resolved_file_path.relative_to(resolved_root).as_posix()
-            package_dir = resolved_file_path.parent
-            is_package_init = resolved_file_path.name in {
-                c.Infra.INIT_PY,
-                c.Infra.INIT_PYI,
-            }
-            project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                Path(rope_project.root.real_path),
-                resolved_file_path,
-                source_project=rope_project,
-            )
-            module_name = (
-                cls.module_name_for_file(resolved_file_path, project_root=project_root)
-                if project_root is not None
-                else ""
-            )
-            package_name = (
-                FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
-                    package_dir, project_root=project_root
-                )
-                if project_root is not None
-                else module_name
-                if is_package_init
-                else module_name.rsplit(".", maxsplit=1)[0]
-                if "." in module_name
-                else ""
-            )
-            entry = m.Infra.RopeModuleIndexEntry(
-                file_path=resolved_file_path,
-                resource_path=resource_path,
-                module_name=module_name,
-                package_name=package_name,
-                package_dir=package_dir,
-                project_root=project_root,
-                is_package_init=is_package_init,
-            )
+            resolved_file_path = entry.file_path
+            package_dir = entry.package_dir
+            package_name = entry.package_name
+            project_root = entry.project_root
             modules_by_path[str(resolved_file_path)] = entry
             modules_by_dir.setdefault(package_dir, []).append(entry)
             package_dirs.add(package_dir)
@@ -475,23 +463,48 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     @classmethod
     def index_rope_workspace(
         cls,
-        rope_project: t.Infra.RopeProject,
+        snapshot: p.Infra.WorkspaceSnapshot,
         repository_root: Path,
+        *,
+        project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.RopeWorkspaceIndex:
-        """Build a generic Rope workspace index for package-oriented planning.
+        """Build a Rope workspace index as a view over the run snapshot's listing.
+
+        The root and every member the snapshot holds below it are elected
+        sources; ``project`` lists through a planned view instead of the
+        snapshot engine.
 
         Returns:
             The resulting ``m.Infra.RopeWorkspaceIndex``.
 
         """
         resolved_root = repository_root.resolve()
+        listing = tuple(
+            path
+            for member in (
+                resolved_root,
+                *(
+                    other
+                    for other in snapshot.members
+                    if other != resolved_root and other.is_relative_to(resolved_root)
+                ),
+            )
+            for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+                snapshot, member, project=project
+            )
+        )
         (
             modules_by_path,
             modules_by_dir,
             package_dir_by_name,
             project_package_by_root,
             package_dirs,
-        ) = cls._collect_modules(rope_project, resolved_root)
+        ) = cls._collect_modules(
+            snapshot.engine if project is None else project,
+            resolved_root,
+            listing,
+            snapshot.directory_facts if project is None else {},
+        )
         sorted_package_dirs = tuple(sorted(package_dirs))
         direct_children_by_dir, descendants_by_dir = cls._package_family_maps(
             sorted_package_dirs,

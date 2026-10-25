@@ -1,6 +1,6 @@
 id: ban-direct-gitpython
 snapshots:
-  from git import Repo, GitCommandError:
+  "from git import Repo, GitCommandError":
     labels:
     - source: from git import Repo, GitCommandError
       style: primary

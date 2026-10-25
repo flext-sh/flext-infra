@@ -1,9 +1,7 @@
 id: rewire-libcst-annotation-to-typings
 snapshots:
-  ? |
-    import libcst as cst
-    def leaf(node: cst.CSTNode) -> str: ...
-  : fixed: |
+  "import libcst as cst\ndef leaf(node: cst.CSTNode) -> str: ...\n":
+    fixed: |
       import libcst as cst
       def leaf(node: t.Infra.Cst.CSTNode) -> str: ...
     labels:
@@ -37,10 +35,8 @@ snapshots:
       style: secondary
       start: 0
       end: 61
-  ? |
-    import libcst as cst
-    def leaf(node: cst.Name | None) -> cst.BaseExpression: ...
-  : fixed: |
+  "import libcst as cst\ndef leaf(node: cst.Name | None) -> cst.BaseExpression: ...\n":
+    fixed: |
       import libcst as cst
       def leaf(node: t.Infra.Cst.Name | None) -> cst.BaseExpression: ...
     labels:

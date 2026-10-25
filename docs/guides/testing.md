@@ -8,6 +8,7 @@
 <!-- TOC START -->
 
 - [Test design](#test-design)
+- [Pydantic and mypy](#pydantic-and-mypy)
 - [Canonical execution](#canonical-execution)
 - [Generated documentation](#generated-documentation)
 - [Related guides](#related-guides)
@@ -17,10 +18,26 @@
 FLEXT tests prove observable runtime behavior through public package facades. The
 workspace root `AGENTS.md` and the nearest package scope remain authoritative.
 
+Where Gas City and Beads are selected, resolve their effective state and canonical
+store through `~/agents/rules/coordination/gascity.md`. The active Bead owns the
+declared scope and evidence. A running supervisor or session is not project runtime
+or test acceptance, and orchestration is not a workaround for a missing native
+environment. Do not assume another city's activation or connection settings.
+
 ## Test design
 
 - Exercise only public `api.py` surfaces and canonical `c`, `t`, `p`, `m`, and `u`
   facades.
+- Follow the current source-owned signatures and return contracts. A sequence return
+  does not promise a mutable list, and a structural port exposes only its declared
+  properties. Update stale callers instead of widening production parameters.
+- Construct canonical models directly with their declared fields and collection
+  types. Keep serialization round-trips for serialization tests; do not use them,
+  unchecked copies, casts, or local conversion helpers to adapt an outdated fixture.
+- Exercise malformed external data through the public validation boundary. Keep valid
+  service calls typed, and retain their failure scenarios through real providers.
+- Project-owned helpers, including decorators, belong to the single `u` surface;
+  do not introduce a competing `d`/`de` helper facade or compatibility shim.
 - Put shared setup in the unified `conftest.py` and typed fixtures under
   `tests/fixtures/`.
 - Use `tm` matchers and shared `flext-tests` builders for assertions and test data.
@@ -28,199 +45,112 @@ workspace root `AGENTS.md` and the nearest package scope remain authoritative.
   in tests, examples, or golden files.
 - Use real, bounded dependencies. Mocks, fakes, stubs, patching, monkeypatch mutation,
   and assertions about private construction are prohibited.
-- Treat warnings, skips, empty collection, and suppressed failures as red.
+- Treat warnings, unexpected skips, empty collection, and suppressed failures as red.
+  Connectivity prerequisite skips follow root `AGENTS.md`, section "Production
+  Readiness And Connectivity Tests"; they never prove the omitted service works.
+
+Private attribute usage is enforced by Pyright's resolved owner and export semantics in
+source, tests, examples, and scripts according to the typed path policy. The
+`ban-test-private-access` ast-grep rule retains only dynamic private-module imports; it
+does not duplicate semantic attribute detection or require deleting test scenarios.
+
+## Pydantic and mypy
+
+Pydantic 2 is mandatory for owned model contracts. Consume it through the canonical
+FLEXT facades and model presets; do not introduce `pydantic.v1`, raw consumer bases, or
+compatibility models. The [Pydantic mypy plugin](https://docs.pydantic.dev/latest/integrations/mypy/)
+adds model-aware static analysis; it does not replace runtime validation.
+
+Upstream Pydantic declaration primitives retain their library/model owner. Moving
+project helpers does not authorize importing `u` backward into `m`, `config`, or
+`settings`, or changing validation behavior merely to relocate a decorator.
+
+`flext-infra/config/tooling.yaml` owns the mypy policy. Its generated configurations,
+runtime profiles, project overlays, and checker arguments must retain `pydantic.mypy`
+and the operator-mandated suspension of `prop-decorator` and `call-arg`. Change and
+regenerate the producer, never hand-edit a consumer projection. Correct YAML alone
+does not prove that the installed checker consumed the policy.
+
+These two suspensions apply to mypy only. They do not authorize disabling unrelated
+diagnostics, removing the plugin, weakening another analyzer, or excluding source,
+tests, examples, or scripts from their native gates.
+
+Treat code changed to accommodate these two diagnostics as a regression. Use
+the original commit, diagnostic, canonical owner, and public behavior to establish
+causality; restore only the affected hunks and preserve unrelated changes. Revalidate
+the lawful Pydantic 2 declaration through the public consumer before encoding its
+behavior in tests. Do not replace a validator or computed field with a shim, unchecked
+mapping, cast, or alternate model to satisfy the checker.
 
 ## Canonical execution
 
 Run tests only through the dispatcher at the workspace root:
 
 ```bash
-make test
+make tests
 ```
 
-`make test` owns incremental impact selection and the project's persistent Testmon
-database, whose location the flext-infra generated configuration owns. Its collection
-inventory uses the same marker scope as execution. The runner accounts for every
-selected and deselected test; it never infers selection from console output. Never clear
-or bypass the database, or invoke the underlying runner directly.
-Concurrent worktrees serialize on the database lease within the same declared suite
-deadline. If the lease cannot be acquired before that deadline's cleanup reserve,
-the invocation fails without reading or writing another run's database state.
+`make tests` executes the complete applicable suite once and retains the project's
+persistent Testmon database. It does not run an incremental suite first. The generated
+Make boundary fixes the target to the typed configuration's complete test directory;
+caller variables cannot replace it with a file or narrower directory. The runner
+accounts for collection, execution and declared exclusions through its existing typed
+receipts. Never clear or bypass the database, or invoke the underlying runner directly.
 
-The supported Testmon environment combines installed toolchain provenance, the current
-`config/*.yaml` content, and the marker scope of the phase. A config edit selects a fresh
-environment while preserving the same external database, so tests that depend on the
-changed configuration execute again instead of reporting a cache hit.
+The supported Testmon environment combines installed toolchain provenance with current
+`config/*.yaml` content. Declare additional template and resource directories in the
+workspace manifest's `test_inputs.templates` and `test_inputs.resources`. Declare
+behavior-affecting environment variable names in `test_inputs.environment`; only their
+digests enter the environment identifier, never their values. Missing and empty values
+remain distinct. Directory creation, removal, and content changes invalidate the
+selection conservatively while preserving the same external database. Each downstream
+workspace owns its own declarations; the infrastructure template catalog does not stand
+in for downstream inputs. Declared directories use the existing authenticated physical
+inventory contract: symbolic links and multiply linked files fail explicitly. This is
+not an unrestricted filesystem dependency scanner; declare physical source inputs and
+repair the inventory owner if a legitimate native consumer requires another shape.
 
-Run the complete suite through its declared verb:
+The approved Make consolidation contract supersedes the older incremental/full verb
+split. CI and pre-push also call `make tests`; pre-commit runs no tests. No compatibility
+aliases or file selectors belong to the common Make interface.
 
-```bash
-make test-full
-```
-
-For an unbounded diagnostic of one declared file, the same verb accepts the
-validated repository-relative input:
-
-```bash
-make test-full FILE=tests/unit/codemod/test_symbolic_text_cutover.py
-```
-
-Both phases use the same persistent database. This scoped receipt proves only
-the requested file; production acceptance still requires the complete suite.
-
-Use `make profile-test` before optimizing a slow suite, then `make profile-test-report`
-to render the parent and aggregated child profiles. Profiling uses the same Make runner,
-persistent Testmon database, selection, and deadline as `make test`. Each collection
-process writes its own cProfile artifact under that run's report directory.
-The instrumented suite and its Python worker descendants capture fixture setup,
-test calls, and teardown. Parent, suite, collection, and descendant profiles are
-bound to the same run by their receipts and digests. A failing or interrupted
-profiled run remains RED with its original process outcome. The profile is
-diagnostic evidence, not a substitute for a complete test result.
-
-For a focused diagnostic, run the same verb from the workspace root:
-
-```bash
-make profile-test FILE=flext-tests/tests/unit/test_capability_collection.py
-make profile-test-report
-```
-
-`FILE` uses the same repository-relative validation as `test-file`. Both scoped
-verbs run one operation over the complete declared file with the same persistent
-Testmon database and deadline. The entry activates cProfile before
-importing the runner. The canonical child launcher installs run-owned stdlib startup
-instrumentation for Python descendants, including pytester subprocesses, preserving
-the inherited plugin set, Python path, and existing site customization. Completed
-descendants publish PID-separated profiles bound by digest to the same run receipt;
-the report renders them separately alongside the suite and collection profiles.
-Abruptly terminated processes may leave no profile and are never reported as completed.
-Focused `FILE` runs collect a complete inventory rather than an incremental selection;
-the report authenticates that inventory profile from the run's selection plan without
-requiring a selection profile that the run did not produce.
-
-Use `make profile-mod` and `make profile-mod-report` to measure the canonical
-mutating codemod lifecycle. The profile is written to the generated Make
-`PROFILE_REPORTS_DIR`. The same CLI profiling entry serves `profile-gen` and
-`profile-census`, preserves the CLI exit status, and flushes its profile when
-the CLI raises. A failed profiling invocation remains RED; its statistics
-identify the expensive owner and do not replace the required quality gates.
-
-`make profile-environment` measures the environment provenance guard itself.
-Its prerequisite checks only the interpreter, so the guard is measured once.
-`make profile-environment-report` reads the retained profile through the same
-report owner.
-
-Generated Python wheels include the producer's complete `pyproject.toml` inside
-their package namespace. Root dependency composition reads live declarations
-only from authenticated editable installations. Installed Git dependencies
-provide their wheel declaration instead: its distribution, immutable lock
-origin, RECORD digest and size, and producer packaging destination must agree.
-Missing resources require publishing the producer's generated artifact first;
-installed METADATA cannot reconstruct development groups or extras.
-
-Root member requests retain each explicit requirement's Git URL, ref and
-marker while adding the member's declared extras. The governed workspace
-integration line supplies a member request only when no explicit source
-request exists. This does not rewrite a member's independent lock or its
-transitive source declarations.
-
-Config lifecycle tests use the shared physical session consumer and its native
-Make upgrade, setup and build sequence. Artifact cases restore the installed
-environment after each case. They import installed packages through that
-environment's interpreter and reject modified declaration resources. These
-cases require producer artifacts containing the declaration contract, built and
-published through the native lifecycle.
-
-Use `make profile-mod-rules` followed by `make profile-mod-rules-report` to
-measure the complete read-only rule diagnostic. It runs the same `refactor ast`
-consumer as `make mod-rules`, including semantic admission and evidence
-publication. The profile checkpoint on SIGTERM retains measured progress while
-the interrupted command remains a failure.
-
-Mod evidence publishes authenticated input bodies and binding graphs once.
-Each occurrence references its source and a graph index. Graphs retain path order
-and multiplicity; JSON hydration resolves each graph once and shares its immutable
-inputs across occurrences. Missing sources or graph references fail validation.
-Admission constructs one authenticated source epoch for the whole selected
-project set. Its decoded text mapping is immutable and reused by each project;
-Rope projects retain their own mutable scopes and identity graphs. A subsequent
-capture constructs a new epoch. No decoded source survives through an ambient
-process cache.
-This removes repeated graph serialization; native JSONL ingestion and semantic
-admission still require their own measured performance evidence.
-
-The native scanner writes stdout and stderr to separate files through the CLI
-runner. JSONL admission consumes authenticated byte blocks and retains record
-boundaries across blocks, including Unicode and a final unterminated record.
-Schema 4 retains original native streams once in digest-addressed artifacts.
-Each native occurrence records its byte offset, length, and record digest; the
-report stores the artifact receipt once. Explicit hydration uses an operation's
-scoped CLI readers and checks both the record digest and operational fields.
-Unknown native fields remain available in the original record. Candidate scans
-publish these artifacts outside their disposable source view before admission.
-Failures retain complete stdout and stderr bytes and report the raw process status
-with their authenticated paths, lengths, and digests. They do not decode entire
-streams into a failure message. Expected finding stderr is compared against the
-native receipt bytes using its derived exact length.
-Semantic planning consumes the shared operational occurrence model; it does not
-fabricate native artifact receipts.
-Every selected provider is projected into one native ruleset before the scan.
-Only elected rule documents are mounted. Provider global utilities receive
-content-derived identities and references; native rule-local shadows retain
-their meaning. Conflicting native configuration fields and ambiguous original
-utility declarations fail before launch. The same projection owner serves
-ordinary and immutable candidate scans.
-Immutable overlays use the same ruleset reader as the ordinary scan. Native
-finding exits require the complete parsed error count and exact stderr receipt;
-timeouts, forwarded signals and unrelated stderr remain failures.
-
-Codemod admission resolves the declared package namespace once in the typed facts
-of each pass. Findings consume that snapshot; a later pass reads the current
-manifest again. No process-global namespace cache carries identity across passes.
-Behavior relocation builds CST metadata only for files whose attribute names occur
-in the declared utility inventory. Import visitors run only after an actual
-relocation; consumers without one retain their source.
-
-The suite deadline is declared once as `Infra.tooling.tools.pytest.run-timeout-seconds`
-in `config/tooling.yaml`. The typed runner and generated Make process bound
-derive from that policy. Use the profile and complete run receipts to repair
-a slow owner; an interrupted selection or suite remains a failed invocation.
-
-The same typed policy owns `parallel-distribution` and `loadscope-reorder`.
-`load` keeps native chunk scheduling; `loadscope` uses the native scope-ordering
-option. `PytestConfig.parallel_arguments` projects those fields once for the
-runner. A consumer declares its policy in its own `config/tooling.yaml` override;
-its conftest does not import a scheduler implementation or overwrite xdist options.
-The worker setting remains a ceiling bounded by the existing CPU and memory policy.
-
-Generated Make checker inputs consume the resolved
-`ToolingRuntimeContext.pyright_include` roots. They therefore share the analyzer's
-declared source scope instead of maintaining another directory list in Make.
-
-The runner first completes the incremental operation, then executes the full suite using
-the same database without process, suite, or item time limits. The first failure stops
-the sequence. The
-full phase includes both configured `external-gate-markers` and `ci-excluded-markers` in
-every context. External tests retain their declared services, network access, and
-authentication requirements.
-
-Incremental execution excludes `tooling.tools.pytest.external-gate-markers`. CI and
-generated pre-commit hooks use the configured `make.ci.value` token and also exclude
-`ci-excluded-markers`, consistently in collection, execution, and coverage. The runner
-records these as `not_executed_external_gates` and `not_executed_ci_markers`; exclusions
-are not passed tests. Both fields are empty for the full phase. Marker policy belongs to
-the typed tooling configuration, not a separate command-line expression.
+The complete suite retains its declared services, network access and authentication
+requirements. Connectivity prerequisite skips follow root `AGENTS.md`; they never
+prove the omitted service works. Marker applicability belongs to typed configuration,
+and the runner records every excluded item. An exclusion is never a passed test. A
+runner that violates this contract is repaired at its owner and rerun through Make.
 
 Each phase retains its mode, database, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.
 Warning totals include selection, inventory, and suite occurrences, with blocking and
 explicitly suspended warnings reported separately. The existing non-strict MRO
-enforcement suspension remains visible in those receipts; skips still block acceptance.
+enforcement suspension remains visible in those receipts. Unexpected skips block
+acceptance; connectivity prerequisite skips retain their explicit unavailable reason
+and never establish production readiness.
 
-Zero execution is accepted only as a typed incremental `cache_hit`: the database must
-pass integrity checks, a complete nonempty inventory must be entirely deselected, and
-there must be no failures, blocking warnings, or skips. A cache hit is never reported as
-tests passed. Empty collection or zero execution in the full phase fails.
+The persistent database remains available for impact analysis and later runs. A cache
+hit cannot replace the complete execution required by `make tests`. Empty collection
+or zero execution fails this verb.
+
+A receipt used for acceptance must identify the exact source candidate, local changes,
+installed dependencies and checker policy, command, working directory, declared scope,
+raw exit, and decisive output. A root gitlink, an installed editable provider, and a
+remote integration tip are different identities until their relationship is proven.
+Record not-executed cases explicitly; never transfer an older passing count to new
+source or newly added tests.
+
+For executable Markdown, use the actual collector's eligibility and item identities.
+Reconcile eligible fences with collection and successful setup, call, and teardown;
+an enabled Markdown option or accepted file path is not execution evidence. Invalid
+eligible Python fails visibly, and skipped, deselected, retried, or missing items are
+not passed fences. Do not substitute the formatter's parseable-block inventory or a
+second parser for the runtime collector.
+
+Reports have invocation scope. A formatter-only or spelling-only `PASS` is not a full
+lint/type/test receipt, and a mutable latest-report path does not preserve the result
+of an earlier command. Use the existing typed receipt owner to retain each phase's
+identity and outcome. Administrative PR integration does not replace native runtime,
+lint, type, coverage, or post-merge proof.
 
 Run the complete verification gate through the same dispatcher:
 
@@ -239,9 +169,9 @@ scan to include submodules. A module target must resolve in exactly one selected
 Missing or ambiguous targets fail before publication, and repeated generation verifies
 the complete selected set.
 
-Selectors such as project names, file names, patterns, or changed-only flags are not
-part of this command surface. If a required workflow is missing, repair the root Make
-owner and rerun its declared verb.
+Run the declared operation without selectors. If a required workflow is missing,
+repair its existing owner and rerun the standard verb; do not introduce a parallel
+diagnostic command or revive retired aliases.
 
 ## Generated documentation
 
@@ -259,26 +189,3 @@ Do not edit a member projection by hand.
 - Development
 - Troubleshooting
 - Testing standards
-
-Private attribute usage is enforced by Pyright's resolved owner and export semantics in
-source, tests, examples, and scripts according to the typed path policy. The
-`ban-test-private-access` ast-grep rule retains only dynamic private-module imports; it
-does not duplicate semantic attribute detection or require deleting test scenarios.
-
-Import normalization preserves the declared provider of a generic parameter bound.
-Its regression test imports the rewritten consumer in a fresh interpreter and checks
-the resolved bound against that provider's public type. Rebinding a bound to an
-unrelated local facade changes the consumer contract and can create a checker cycle.
-
-Scaffold fixtures materialize each declared member's manifest before planning a
-workspace. Existing member manifests remain the fixture's inputs; newly seeded
-members read their version from the current repository. Tests that exercise only
-root policy declare no unmaterialized members.
-
-Pytest diagnostics require `junit`, `log_path`, and `report_log` at their public
-request boundary. The runner constructs that same request, and extraction preserves
-the original file, parser, and event-validation failures.
-
-Conform projects declared utility, protocol, and model facades across the canonical
-Python inventory, including auxiliary packages. Facade tests generate the package
-initializers before exercising the composed public surface in a fresh interpreter.

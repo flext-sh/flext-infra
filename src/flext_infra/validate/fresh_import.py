@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Annotated, ForwardRef, get_args, override
+from typing import Annotated, get_type_hints, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 
@@ -326,23 +326,19 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
     @staticmethod
     def require_complete_models(module: t.RegistryModule) -> None:
-        """Fail when a pydantic class reachable from the exports is incomplete.
+        """Fail when a pydantic class reachable from the exports cannot build.
 
         The walk starts at the module's declared exports (the facades and the
         settings, config and service classes it publishes) and follows the
         classes nested in each FLEXT class through its MRO, so the scope is
-        derived from the public surface, never from a list. A class whose
-        ``__pydantic_complete__`` is false after import left an annotation
-        unresolved (a ``TYPE_CHECKING``-only type, a later sibling) and needs
-        the banned ``model_rebuild`` or fails at first use. Only classes the
-        probed package defines are reported; inherited ones belong to their
-        own package's probe. Each finding names its cause: a field whose
-        annotation stayed an unresolved forward reference is a root cause,
-        and a field naming another incomplete class is its dependent, so the
-        report separates the classes to fix from the ones that follow.
-
-        Raises:
-            TypeError: Naming every incomplete class of the probed package.
+        derived from the public surface, never from a list. The ``m.*``
+        presets defer model builds to first use, so a class still pending
+        after import is expected; each one the probed package defines is
+        built here through the canonical type adapter, exactly as its first
+        use would. An annotation that stays unresolved (a ``TYPE_CHECKING``-
+        only type, a misspelled name) still fails that build, and pydantic's
+        own error escapes unchanged naming the unresolved name. Inherited
+        classes belong to their own package's probe.
 
         """
         package = module.__name__.partition(".")[0]
@@ -374,17 +370,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             ),
             key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
         )
-        if owned:
-            causes = FlextInfraValidateFreshImport._incomplete_causes
-            findings = "; ".join(
-                f"{klass.__module__}.{klass.__qualname__} [{causes(klass, incomplete)}]"
-                for klass in owned
-            )
-            msg = (
-                f"{package}: {len(owned)} incomplete pydantic class(es) "
-                f"after import: {findings}"
-            )
-            raise TypeError(msg)
+        for klass in owned:
+            u.type_adapter(klass)
         FlextInfraValidateFreshImport._require_schema_fields(package, seen)
 
     @staticmethod
@@ -413,11 +400,17 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         )
         for klass in models:
             fields: t.MappingKV[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
+            # A deferred model keeps its field annotations as forward
+            # references; the stdlib evaluator resolves them in the model's
+            # own module and class namespace, as pydantic does on build, and
+            # pydantic's own field split drops the field-level metadata.
+            hints = get_type_hints(klass, include_extras=True)
             for name, info in fields.items():
                 if info.annotation is None:
                     continue
+                field_type = m.FieldInfo.from_annotation(hints[name]).annotation
                 try:
-                    u.type_adapter(info.annotation)
+                    u.type_adapter(field_type)
                 except c.PydanticSchemaGenerationError as exc:
                     exc.add_note(
                         f"{klass.__module__}.{klass.__qualname__}.{name} needs "
@@ -425,38 +418,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                         "or a validated t alias"
                     )
                     raise
-
-    @staticmethod
-    def _incomplete_causes(
-        klass: type,
-        incomplete: t.SequenceOf[type],
-    ) -> str:
-        """Name why one class is incomplete, field by field.
-
-        Returns:
-            ``unresolved <field>: <reference>`` for each forward reference
-            pydantic could not resolve and ``depends <field>: <class>`` for
-            each field naming another incomplete class.
-
-        """
-        causes: t.MutableSequenceOf[str] = []
-        fields: t.MappingKV[str, t.FieldInfo] = vars(klass).get(
-            "__pydantic_fields__", {}
-        )
-        for name, info in fields.items():
-            if info.annotation is None:
-                continue
-            pending: t.MutableSequenceOf[t.TypeFormSpecifier] = [info.annotation]
-            while pending:
-                hint = pending.pop()
-                if isinstance(hint, ForwardRef):
-                    causes.append(f"unresolved {name}: {hint.__forward_arg__}")
-                elif isinstance(hint, type) and hint in incomplete:
-                    causes.append(
-                        f"depends {name}: {hint.__module__}.{hint.__qualname__}"
-                    )
-                pending.extend(get_args(hint))
-        return ", ".join(causes) or "no field names the cause"
 
     def execute_probe(
         self,

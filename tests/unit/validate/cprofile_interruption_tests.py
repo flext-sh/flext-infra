@@ -134,8 +134,9 @@ class TestsFlextInfraCProfileInterruption:
             "    ):\n"
             "        os.kill(os.getpid(), signal.SIGTERM)\n"
             "sys.addaudithook(terminate_import)\n"
-            "sys.argv = ['flext_infra._profile_entry', sys.argv[1], '--help']\n"
-            "runpy.run_module('flext_infra._profile_entry', run_name='__main__')\n"
+            "os.environ['FLEXT_INFRA_PROFILE_OUTPUT'] = sys.argv[1]\n"
+            "sys.argv = ['flext_infra', '--help']\n"
+            "runpy.run_module('flext_infra', run_name='__main__')\n"
         )
         terminated = tm.ok(
             u.Cli.run_raw((sys.executable, "-c", consumer, str(output)), cwd=tmp_path)

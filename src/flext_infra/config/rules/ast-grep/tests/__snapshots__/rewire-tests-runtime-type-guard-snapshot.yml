@@ -1,13 +1,13 @@
 id: rewire-tests-runtime-type-guard
 snapshots:
-  tm.matches_runtime_type(result.exception, ValueError):
+  "tm.matches_runtime_type(result.exception, ValueError)":
     fixed: tm.that(result.exception, is_=ValueError)
     labels:
     - source: tm.matches_runtime_type(result.exception, ValueError)
       style: primary
       start: 0
       end: 53
-  tm.matches_runtime_type(result.exception, m.ValidationError):
+  "tm.matches_runtime_type(result.exception, m.ValidationError)":
     fixed: tm.that(result.exception, is_=m.ValidationError)
     labels:
     - source: tm.matches_runtime_type(result.exception, m.ValidationError)

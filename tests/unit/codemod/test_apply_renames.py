@@ -503,7 +503,10 @@ class TestsFlextInfraApplyRenames:
             eq=[ast.dump(node) for node in original_method.body],
         )
         for plan in plans:
-            plan.file_path.write_text(plan.original_source, encoding="utf-8")
+            if plan.original_source is None:
+                plan.file_path.unlink()
+            else:
+                plan.file_path.write_text(plan.original_source, encoding="utf-8")
         tm.that(definer.read_text(), eq=source)
 
     @staticmethod

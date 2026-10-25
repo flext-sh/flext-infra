@@ -14,9 +14,6 @@ import time
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing
 from pathlib import Path
-from time import monotonic
-
-import flext_cli
 
 from flext_infra import c, m, p, r, settings, t, u
 from flext_infra.codemod import (
@@ -27,21 +24,6 @@ from flext_infra.codemod import (
 
 class FlextInfraModGateEngine:
     """Execute ast-grep rewrites and measure the catalog findings they leave."""
-
-    @staticmethod
-    def _progress(message: str, due: float = 0) -> float:
-        """Emit a causal progress row at the configured heartbeat interval.
-
-        Returns:
-            The next monotonic deadline for an interval progress row.
-
-        """
-        now = monotonic()
-        if now < due:
-            return due
-        sys.stderr.write(f"mod: {message}\n")
-        sys.stderr.flush()
-        return now + flext_cli.settings.cli_process_heartbeat_seconds
 
     @classmethod
     def validate_rule_fixtures(
@@ -83,7 +65,7 @@ class FlextInfraModGateEngine:
                     config_root=config_root,
                     temp_root=temp_root,
                 )
-                cls._materialize_split_rule_files(
+                cls._materialize_native_rule_files(
                     config_root=config_root,
                     temp_root=temp_root,
                     owner_rules=owner_rules,
@@ -138,7 +120,7 @@ class FlextInfraModGateEngine:
                     temp_root=temp_root,
                     regenerate_snapshots=True,
                 )
-                cls._materialize_split_rule_files(
+                cls._materialize_native_rule_files(
                     config_root=config_root,
                     temp_root=temp_root,
                     owner_rules=owner_rules,
@@ -198,20 +180,18 @@ class FlextInfraModGateEngine:
             The resulting ``t.SequenceOf[t.Triple[Path, t.SequenceOf[Path], bool]]``.
 
         Raises:
-            ValueError: If discovered ast-grep rules have no fixture owner; or if rule
-                fixture scratch must be outside its source root.
+            ValueError: If rule fixture scratch lies inside its source root.
 
         """
         governed_roots = tuple(
             project.resolve() for project in u.Infra.governed_project_roots(root)
         )
+        # Only authored catalogs own fixtures: a selection of generated rules
+        # elects no owner, and their renderer tests own their proof.
         rules_by_owner: MutableMapping[Path, list[Path]] = {}
         for rule in rules:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
             rules_by_owner.setdefault(owner, []).append(rule)
-        if not rules_by_owner:
-            msg = "discovered ast-grep rules have no fixture owner"
-            raise ValueError(msg)
         scratch = settings.work_dir
         owners: list[t.Triple[Path, t.SequenceOf[Path], bool]] = []
         for config_root, owner_rules in sorted(rules_by_owner.items()):
@@ -240,6 +220,7 @@ class FlextInfraModGateEngine:
 
         Raises:
             ValueError: If ast-grep fixture must be a regular file or directory.
+            TypeError: If ast-grep utilDirs must be a list.
 
         """
         directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
@@ -249,11 +230,16 @@ class FlextInfraModGateEngine:
             directory / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
             for directory in directories.test_dirs
         }
+        # A catalog rule referencing a stable generated utility resolves it in
+        # fixtures from the catalog's fixture values; the native stage never
+        # reads them, so a project's own generated utility always wins there.
+        fixture_utils = config_root / c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME
         pending = [config_root / c.Infra.CODEMOD_CONFIG_FILENAME]
         pending.extend((
             *directories.rule_dirs,
             *directories.util_dirs,
             *directories.test_dirs,
+            *((fixture_utils,) if fixture_utils.is_dir() else ()),
         ))
         files: set[Path] = set()
         folders: set[Path] = set()
@@ -290,34 +276,57 @@ class FlextInfraModGateEngine:
                 temp_root / source.relative_to(config_root),
                 follow_symlinks=False,
             )
+        if fixture_utils.is_dir():
+            staged_config = temp_root / c.Infra.CODEMOD_CONFIG_FILENAME
+            payload = dict(u.Cli.yaml_safe_load(staged_config).unwrap())
+            declared = payload.get(c.Infra.CODEMOD_UTIL_DIRS_KEY, [])
+            if not isinstance(declared, list):
+                msg = f"ast-grep utilDirs must be a list: {staged_config}"
+                raise TypeError(msg)
+            payload[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [
+                *declared,
+                c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME,
+            ]
+            u.Cli.yaml_dump(staged_config, payload).unwrap()
 
     @classmethod
-    def _materialize_split_rule_files(
+    def _materialize_native_rule_files(
         cls,
         *,
         config_root: Path,
         temp_root: Path,
         owner_rules: t.SequenceOf[Path],
     ) -> None:
-        """Replace multi-document rule files with single-document temp copies.
+        """Stage every rule document as the scan stage does, one per file.
+
+        Multi-document rule files become single-document copies, and every
+        binding-sensitive utility a document references (catalog or fixture
+        value) is embedded as its local, so a fixture binds metavariables
+        exactly like the native scan.
 
         Raises:
-            RuntimeError: If ``parsed.failure``; or if ast-grep rule document missing
-                required id.
+            RuntimeError: If an ast-grep rule document has no id.
 
         """
-        source_rules = set(owner_rules)
         directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
             config_root,
         )
-        for directory in (*directories.rule_dirs, *directories.util_dirs):
+        source_rules = set(owner_rules)
+        for directory in directories.rule_dirs:
             source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
+        cls._split_utility_files(config_root, temp_root, directories.util_dirs)
+        bodies = cls._staged_utility_bodies((
+            *(
+                temp_root / item.relative_to(config_root)
+                for item in directories.util_dirs
+            ),
+            temp_root / c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME,
+        ))
+        sensitive = u.Infra.codemod_binding_sensitive(bodies)
         for rule in sorted(source_rules):
             documents = u.Cli.yaml_parse_documents(
                 u.Cli.files_read_text(rule).unwrap()
             ).unwrap()
-            if len(documents) <= 1:
-                continue
             temp_rule = temp_root / rule.relative_to(config_root)
             temp_rule.unlink()
             for document in documents:
@@ -327,8 +336,53 @@ class FlextInfraModGateEngine:
                     raise RuntimeError(msg)
                 u.Cli.yaml_dump(
                     temp_rule.with_name(f"{rule_id}{c.Infra.CODEMOD_RULE_SUFFIX}"),
-                    document,
+                    u.Infra.codemod_bound_document(document, bodies, sensitive),
                 ).unwrap()
+
+    @staticmethod
+    def _split_utility_files(
+        config_root: Path, temp_root: Path, util_dirs: t.SequenceOf[Path]
+    ) -> None:
+        """Replace each staged multi-document utility file with one file per id."""
+        for directory in util_dirs:
+            for utility in sorted(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")):
+                documents = u.Cli.yaml_parse_documents(
+                    u.Cli.files_read_text(utility).unwrap()
+                ).unwrap()
+                if len(documents) <= 1:
+                    continue
+                temp_utility = temp_root / utility.relative_to(config_root)
+                temp_utility.unlink()
+                for document in documents:
+                    u.Cli.yaml_dump(
+                        temp_utility.with_name(
+                            f"{document['id']}{c.Infra.CODEMOD_RULE_SUFFIX}"
+                        ),
+                        document,
+                    ).unwrap()
+
+    @staticmethod
+    def _staged_utility_bodies(
+        directories: t.SequenceOf[Path],
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Read the rule body of every staged utility by its identity.
+
+        Returns:
+            Each utility's rule body keyed by its id.
+
+        """
+        bodies: t.MutableMappingKV[str, t.JsonMapping] = {}
+        for directory in directories:
+            if not directory.is_dir():
+                continue
+            for utility in sorted(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")):
+                for document in u.Cli.yaml_parse_documents(
+                    u.Cli.files_read_text(utility).unwrap()
+                ).unwrap():
+                    body = document.get("rule")
+                    if isinstance(body, Mapping):
+                        bodies[str(document["id"])] = body
+        return bodies
 
     @staticmethod
     def _publish_regenerated_snapshots(
@@ -527,17 +581,19 @@ class FlextInfraModGateEngine:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _admitted(
+    def _elected(
         root: Path,
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         project_rule_ids: t.MappingKV[Path, t.StrSequence],
-        candidate_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> m.Infra.ModScanReport:
-        """Evaluate each source against its nearest governed project's plan.
+        """Keep each source's findings of its nearest governed project's plan.
+
+        Every native match is a finding; the only selection is the rule
+        election of the project that owns the source.
 
         Returns:
-            Findings admitted by their own project's rules and semantic context.
+            The elected findings, grouped by owning project, recounted.
 
         """
         elected = {
@@ -547,6 +603,7 @@ class FlextInfraModGateEngine:
         projects = sorted(
             elected, key=FlextInfraModGateEngine._path_depth, reverse=True
         )
+        physical_root = root.resolve()
         grouped: t.MutableMappingKV[Path, list[m.Infra.ModScanFinding]] = {}
         owners: t.MutableMappingKV[Path, t.Pair[Path, Path]] = {}
         for entry in report.entries:
@@ -569,178 +626,14 @@ class FlextInfraModGateEngine:
                 grouped.setdefault(owner, []).append(
                     entry.model_copy(
                         update={
-                            "file": source,
+                            "file": source.relative_to(physical_root),
                             "catalog_digest": rules_by_id[entry.rule_id].digest,
                             "module_absence": rules_by_id[entry.rule_id].module_absence,
                         }
                     )
                 )
-        facts: t.MutableMappingKV[Path, m.Infra.CodemodProjectFacts] = {}
-        inputs: list[m.Cli.AtomicFileState] = []
-        selections: list[m.Infra.CodemodBindingProject] = []
-        for project, entries in grouped.items():
-            facts[project] = u.Infra.codemod_project_facts(
-                project,
-                tuple(
-                    rules_by_id[rule_id]
-                    for rule_id in dict.fromkeys(entry.rule_id for entry in entries)
-                ),
-            )
-            selected = m.Infra.CodemodBindingSnapshot(
-                states=tuple(
-                    entry.source_state
-                    for entry in entries
-                    if entry.rule_id in facts[project].binding_rule_ids
-                    and entry.source_state is not None
-                )
-            )
-            inputs.extend(selected.states)
-            if selected.states:
-                selections.append(
-                    m.Infra.CodemodBindingProject(
-                        root=project,
-                        source_paths=tuple(state.path for state in selected.states),
-                        modules=facts[project].binding_modules,
-                    )
-                )
-        sys.stderr.write(
-            f"mod: capture bindings projects={len(selections)} sources={len(inputs)}\n"
-        )
-        sys.stderr.flush()
-        for selection in selections:
-            sys.stderr.write(
-                f"mod: capture project={selection.root.name} "
-                f"owners={','.join(selection.modules)}\n"
-            )
-        sys.stderr.flush()
-        snapshot = u.Infra.codemod_binding_snapshot(
-            root,
-            candidate_states or tuple(inputs),
-            projects=tuple(selections),
-        )
-        sys.stderr.write(
-            f"mod: capture bindings completed inputs={len(snapshot.states)}\n"
-        )
-        sys.stderr.flush()
-        admitted: list[m.Infra.ModScanFinding] = []
-        epoch = u.Infra.codemod_source_epoch(snapshot)
-        with u.Infra.mod_native_readers(report.native_artifacts) as readers:
-            for project, entries in grouped.items():
-                selected = FlextInfraModGateEngine._admitted_project(
-                    project,
-                    FlextInfraModGateEngine.recounted(tuple(entries)),
-                    rules_by_id,
-                    (facts[project], epoch),
-                    readers,
-                )
-                admitted.extend(
-                    entry.model_copy(
-                        update={"file": entry.file.relative_to(root.resolve())}
-                    )
-                    for entry in selected.entries
-                )
         return FlextInfraModGateEngine.recounted(
-            tuple(admitted),
-            native_artifacts=report.native_artifacts,
-        )
-
-    @staticmethod
-    def _admitted_project(
-        root: Path,
-        report: m.Infra.ModScanReport,
-        rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
-        context: t.Pair[m.Infra.CodemodProjectFacts, m.Infra.CodemodSourceEpoch],
-        readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
-    ) -> m.Infra.ModScanReport:
-        """Keep the findings whose rule's project context holds, recounted.
-
-        A rule's ``metadata.context`` binds captured metavariables to project
-        predicates ast-grep cannot see (standard library, own package, runtime
-        closure, the file's declared facade family); the syntactic match is a
-        finding only when every condition holds.
-
-        Returns:
-            The resulting ``m.Infra.ModScanReport``.
-
-        """
-        facts, epoch = context
-        sys.stderr.write(
-            f"mod: admit repository={root.name} findings={report.findings}\n"
-        )
-        sys.stderr.flush()
-        snapshot = epoch.snapshot
-        with u.Infra.codemod_binding_project(root, epoch) as (project, sources):
-            bindings: t.MutableMappingKV[str, tuple[m.Cli.AtomicFileState, ...]] = {}
-            accepted: list[m.Infra.ModScanFinding] = []
-            due = 0.0
-            for index, entry in enumerate(report.entries, start=1):
-                due = FlextInfraModGateEngine._progress(
-                    f"admission {index}/{len(report.entries)} "
-                    f"rule={entry.rule_id} file={entry.file}",
-                    due,
-                )
-                # A drifted source carries no authenticated state: it stays
-                # deferred evidence and is never graded against the epoch. A
-                # fully native rule needs no admission: its match is the finding.
-                rule = rules_by_id[entry.rule_id]
-                admitted = (
-                    entry.source_state is None
-                    or not u.Infra.codemod_requires_admission(rule)
-                    or u.Infra.codemod_context_admits(
-                        m.Infra.CodemodAdmission(
-                            root=root,
-                            rule=rule,
-                            file_path=entry.file,
-                            captures=FlextInfraModGateEngine._captures(
-                                u.Infra.mod_native_payload(entry, readers)
-                            ),
-                            facts=facts,
-                            snapshot=snapshot,
-                        ),
-                        project=project,
-                        sources=sources,
-                    )
-                )
-                if admitted:
-                    if (
-                        entry.source_state is not None
-                        and entry.rule_id in facts.binding_rule_ids
-                        and entry.rule_id not in bindings
-                    ):
-                        _rule_ids, modules = u.Infra.codemod_binding_requirements((
-                            rules_by_id[entry.rule_id],
-                        ))
-                        paths = dict.fromkeys(
-                            row.file
-                            for row in report.entries
-                            if row.rule_id == entry.rule_id
-                            and row.source_state is not None
-                        )
-                        bindings[entry.rule_id] = u.Infra.codemod_rule_binding_states(
-                            project,
-                            snapshot,
-                            m.Infra.CodemodBindingProject(
-                                root=root,
-                                source_paths=tuple(paths),
-                                modules=modules,
-                            ),
-                        )
-                    accepted.append(
-                        entry.model_copy(
-                            update={"binding_states": bindings[entry.rule_id]}
-                        )
-                        if entry.rule_id in bindings
-                        else entry
-                    )
-            entries = tuple(accepted)
-        FlextInfraModGateEngine._progress(
-            f"admission finish accepted={len(entries)}/{len(report.entries)}",
-        )
-        admitted = tuple(entries)
-        if admitted == report.entries:
-            return report
-        return FlextInfraModGateEngine.recounted(
-            entries,
+            tuple(entry for entries in grouped.values() for entry in entries),
             native_artifacts=report.native_artifacts,
         )
 
@@ -794,23 +687,6 @@ class FlextInfraModGateEngine:
                 "files": frozenset(entry.file for entry in entries),
             }
         )
-
-    @staticmethod
-    def _captures(payload: t.JsonMapping) -> t.JsonMapping:
-        """Return one finding's single and transformed metavariables.
-
-        Returns:
-            One finding's single and transformed metavariables.
-
-        """
-        meta = payload.get("metaVariables")
-        captures: t.MutableMappingKV[str, t.JsonValue] = {}
-        if isinstance(meta, Mapping):
-            for group in ("single", "transformed"):
-                values = meta.get(group)
-                if isinstance(values, Mapping):
-                    captures.update(values)
-        return captures
 
     @staticmethod
     def _validate_expected_receipts(
@@ -1257,14 +1133,12 @@ class FlextInfraModGateEngine:
             return r[bool].fail(
                 "publication requires an authenticated native scan report"
             )
-        # A stale report never publishes: every captured finding and binding
-        # snapshot must still match its file before any effect.
+        # A stale report never publishes: every captured finding source must
+        # still match its file before any effect.
         captured = tuple(
-            state
+            entry.source_state
             for entry in report.entries
-            if entry.actionable
-            for state in (entry.source_state, *entry.binding_states)
-            if state is not None
+            if entry.actionable and entry.source_state is not None
         )
         verified = u.Cli.atomic_verify_binary_file_states(
             captured,
@@ -1310,29 +1184,34 @@ class FlextInfraModGateEngine:
         with tempfile.TemporaryDirectory(
             prefix="mod-native-catalog-", dir=settings.work_dir
         ) as directory:
-            ruleset = u.Infra.codemod_stage_scan_ruleset(plan, Path(directory))
-            sys.stderr.write(
-                f"mod: ast-grep provider={ruleset.provider} "
-                f"rules={len(ruleset.rule_ids)}\n",
-            )
-            sys.stderr.flush()
-            scanned = (
-                cls._ruleset_report(
+            entries: list[m.Infra.ModScanFinding] = []
+            artifacts: list[m.Cli.AtomicFileReceipt] = []
+            for project, project_targets in u.Infra.codemod_project_targets(
+                plan, native_targets
+            ):
+                stage = Path(directory) / str(len(artifacts))
+                ruleset = u.Infra.codemod_stage_scan_ruleset(
+                    u.Infra.codemod_project_plan(plan, project), stage
+                )
+                sys.stderr.write(
+                    f"mod: ast-grep project={project.name} "
+                    f"provider={ruleset.provider} rules={len(ruleset.rule_ids)}\n",
+                )
+                sys.stderr.flush()
+                projected = cls._ruleset_report(
                     root,
                     ruleset,
                     rules_by_id,
-                    (native_targets, context),
+                    (project_targets, context),
                     artifact_root=artifact_root,
                 )
-                if native_targets
-                else r[m.Infra.ModScanReport].ok(
-                    cls.recounted(
-                        (),
-                    )
-                )
+                if projected.failure:
+                    return r[m.Infra.ModScanReport].from_failure(projected)
+                entries.extend(projected.value.entries)
+                artifacts.extend(projected.value.native_artifacts)
+            scanned = r[m.Infra.ModScanReport].ok(
+                cls.recounted(tuple(entries), native_artifacts=tuple(artifacts))
             )
-            if scanned.failure:
-                return r[m.Infra.ModScanReport].from_failure(scanned)
             path_findings = u.Infra.codemod_path_findings(
                 root, tuple(context.inventory), plan.rules
             )
@@ -1425,7 +1304,8 @@ class FlextInfraModGateEngine:
                     "selection"
                 )
         else:
-            planned = u.Infra.codemod_rule_plan(root, rule_ids=selection)
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                planned = u.Infra.codemod_rule_plan(snapshot, rule_ids=selection)
             if planned.failure:
                 return r[m.Infra.ModScanReport].from_failure(planned)
             plan = planned.value
@@ -1448,7 +1328,7 @@ class FlextInfraModGateEngine:
         scanned = cls._native_scan_report(root, plan, targets, context)
         if scanned.failure:
             return r[m.Infra.ModScanReport].from_failure(scanned)
-        complete_report = cls._admitted(
+        complete_report = cls._elected(
             root,
             scanned.value,
             rules_by_id,
@@ -1559,7 +1439,8 @@ class FlextInfraModGateEngine:
         if captured.failure:
             return r[m.Infra.ModScanReport].from_failure(captured)
         view_root /= root.relative_to(candidate.workspace)
-        plan = u.Infra.codemod_rule_plan(root).unwrap()
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         states = captured.value
         owned_sources = u.Infra.facade_original_sources(root, states)
         context = m.Infra.ModScanSourceContext(
@@ -1585,7 +1466,7 @@ class FlextInfraModGateEngine:
         )
         if scanned.failure:
             return r[m.Infra.ModScanReport].from_failure(scanned)
-        report = cls._admitted(
+        report = cls._elected(
             view_root,
             scanned.value,
             {rule.id: rule for rule in plan.rules},
@@ -1593,7 +1474,6 @@ class FlextInfraModGateEngine:
                 view_root / project.relative_to(root): rule_ids
                 for project, rule_ids in plan.project_rule_ids.items()
             },
-            tuple(context.inventory.values()),
         )
         for entry in report.entries:
             relative = (
@@ -1606,16 +1486,6 @@ class FlextInfraModGateEngine:
                     update={
                         "file": relative,
                         "source_state": logical[(root / relative).resolve()],
-                        "binding_states": tuple(
-                            state.model_copy(
-                                update={
-                                    "path": root / state.path.relative_to(view_root)
-                                }
-                            )
-                            if state.path.is_relative_to(view_root)
-                            else state
-                            for state in entry.binding_states
-                        ),
                     }
                 )
             )

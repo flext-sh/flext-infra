@@ -1,7 +1,7 @@
 id: rewire-cli-encoding-to-core
 snapshots:
-  'encoding: str = c.Cli.ENCODING_DEFAULT':
-    fixed: 'encoding: str = c.DEFAULT_ENCODING'
+  "encoding: str = c.Cli.ENCODING_DEFAULT":
+    fixed: "encoding: str = c.DEFAULT_ENCODING"
     labels:
     - source: c.Cli.ENCODING_DEFAULT
       style: primary

@@ -653,11 +653,11 @@ class FlextInfraModelsRope:
         """Validated payload for building one rope inventory census object."""
 
         rope_project: Annotated[
-            t.Infra.RopeProject,
+            t.Port[t.Infra.RopeProject],
             m.Field(description="Rope project used for reference discovery"),
         ]
         resource: Annotated[
-            t.Infra.RopeResource,
+            t.Port[t.Infra.RopeResource],
             m.Field(description="Rope resource containing the symbol definition"),
         ]
         source: Annotated[
@@ -676,7 +676,7 @@ class FlextInfraModelsRope:
         ] = frozenset()
         name: Annotated[str, m.Field(description="Resolved symbol name being recorded")]
         pyname: Annotated[
-            t.Infra.RopePyName,
+            t.Port[t.Infra.RopePyName],
             m.Field(description="Rope pyname node for the symbol"),
         ]
         module_name: Annotated[

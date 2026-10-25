@@ -1,0 +1,7 @@
+# Fixture value of the generated `own-package` utility: rule tests scan as the
+# `ai_hub` project with its internal tiers. A native stage always stages the
+# scanned project's own generated value instead.
+id: own-package
+language: Python
+rule:
+  regex: "^(?:ai_hub|examples|scripts|tests)(?:[.\\s]|$)"

@@ -1,10 +1,7 @@
 id: rewire-type-adapter-construction-missing-u-import
 snapshots:
-  ? |
-    from flext_core import m
-
-    ADAPTER = m.TypeAdapter(int)
-  : labels:
+  "from flext_core import m\n\nADAPTER = m.TypeAdapter(int)\n":
+    labels:
     - source: m.TypeAdapter(int)
       style: primary
       start: 36
@@ -19,16 +16,13 @@ snapshots:
       end: 37
     - source: |
         from flext_core import m
-
+        
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
       end: 55
-  ? |
-    from pydantic import TypeAdapter
-
-    ADAPTER = TypeAdapter(int)
-  : labels:
+  "from pydantic import TypeAdapter\n\nADAPTER = TypeAdapter(int)\n":
+    labels:
     - source: TypeAdapter(int)
       style: primary
       start: 44
@@ -43,14 +37,14 @@ snapshots:
       end: 32
     - source: |
         from pydantic import TypeAdapter
-
+        
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0
       end: 61
     - source: |
         from pydantic import TypeAdapter
-
+        
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0

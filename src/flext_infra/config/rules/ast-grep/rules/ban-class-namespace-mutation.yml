@@ -1,0 +1,80 @@
+# A class or module namespace is declared once, in its own body: an assignment
+# through a module-level binding (`Cls.attr = ...`, `module.attr = ...`) from
+# outside that class's body mutates another owner's namespace at import or
+# call time. That is the monkeypatch shape the one-nested-class / no-loose-code
+# law forbids (ADR-028 Decision 6, operator law "every module is one nested
+# class"): the declaration belongs inside the owner, and a test changes state
+# only through scoped fixtures.
+#
+# The receiver is captured as $OBJ and must be bound at module level by a class
+# definition or an import; `self.x = ...` and `cls.x = ...` inside methods are
+# instance/class state, never matched. An assignment inside the body of the
+# class $OBJ names is its own declaration and stays legal.
+#
+# Detection-only: the repair moves the declaration into its owner.
+id: ban-class-namespace-mutation
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+constraints:
+  OBJ:
+    not:
+      regex: "^(?:self|cls)$"
+# `all` orders the checks: $OBJ is captured from the assignment target before
+# the binding and enclosing-class checks compare against it.
+rule:
+  all:
+    - any:
+        - kind: assignment
+        - kind: augmented_assignment
+    - has:
+        field: left
+        kind: attribute
+        has:
+          field: object
+          kind: identifier
+          pattern: $OBJ
+    - not:
+        inside:
+          stopBy: end
+          kind: class_definition
+          has:
+            field: name
+            pattern: $OBJ
+    - inside:
+        stopBy: end
+        kind: module
+        has:
+          any:
+            - kind: class_definition
+              has:
+                field: name
+                pattern: $OBJ
+            - kind: import_statement
+              has:
+                stopBy: end
+                kind: dotted_name
+                pattern: $OBJ
+            - kind: import_from_statement
+              has:
+                stopBy: end
+                kind: dotted_name
+                pattern: $OBJ
+                not:
+                  inside:
+                    kind: import_from_statement
+                    field: module_name
+            - kind: import_from_statement
+              has:
+                stopBy: end
+                kind: aliased_import
+                has:
+                  field: alias
+                  pattern: $OBJ
+message: >-
+  `$OBJ` is a module-level class or module binding mutated from outside its
+  own body: declare the attribute inside its owner (or change state through a
+  scoped fixture in tests).

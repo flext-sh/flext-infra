@@ -10,11 +10,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import tempfile
 import time
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, settings, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -53,7 +55,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
             ctx,
             targets,
             time.monotonic(),
-            nonparticipants=u.Infra.repository_nonparticipant_paths(project_dir),
         )
 
     @override
@@ -91,10 +92,11 @@ class FlextInfraCodemodGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
         started: float,
-        *,
-        nonparticipants: frozenset[str] = frozenset(),
     ) -> m.Infra.GateExecution:
         """Keep whole-project and file-scoped scans on the same native contract.
+
+        A whole-project scan excludes the repository's nonparticipant paths; a
+        literal file selection scans exactly the selected files.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -103,7 +105,13 @@ class FlextInfraCodemodGate(FlextInfraGate):
             RuntimeError: If codemod rule planning failed without a diagnostic.
 
         """
-        planned = u.Infra.codemod_rule_plan(project_dir)
+        nonparticipants = (
+            frozenset()
+            if ctx.selected_files
+            else u.Infra.repository_nonparticipant_paths(project_dir)
+        )
+        with u.Infra.codemod_workspace_snapshot(project_dir) as snapshot:
+            planned = u.Infra.codemod_rule_plan(snapshot)
         if planned.failure:
             failure = planned.error
             if not failure:
@@ -111,7 +119,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, ctx, failure, started)
 
-        rules_by_id = {rule.id: rule for rule in planned.value.rules}
         native_targets = tuple(
             target for target in targets if Path(target).suffix != ".pyi"
         )
@@ -132,58 +139,36 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 planned.value.rules,
             )
         ]
-        for ruleset in planned.value.rulesets if native_targets else ():
-            scan = self._run(
-                self._scan_command(
-                    ruleset, native_targets, binary.value, nonparticipants
-                ),
-                project_dir,
-                timeout=self._check_timeout(project_dir, ctx),
-            )
-            outcome = scan.outcome
-            raw_output.extend((
-                (
-                    f"{ruleset.provider}: exit={outcome.raw_return_code}, "
-                    f"timed_out={outcome.timed_out}, signal={outcome.forwarded_signal}"
-                ),
-                self._raw_output(scan),
-            ))
-            if (
-                outcome.timed_out
-                or outcome.forwarded_signal is not None
-                or outcome.raw_return_code not in {0, 1}
-                or (outcome.raw_return_code == 0 and bool(scan.stderr.strip()))
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        with tempfile.TemporaryDirectory(
+            prefix="check-codemod-", dir=settings.work_dir
+        ) as directory:
+            for index, (project, project_targets) in enumerate(
+                u.Infra.codemod_project_targets(planned.value, native_targets)
             ):
-                failures.append(
-                    self._command_error_issue(
-                        scan,
-                        tool=c.Infra.SG,
-                        file=str(ruleset.config),
-                        line=1,
-                        column=1,
-                    ),
+                ruleset = u.Infra.codemod_stage_scan_ruleset(
+                    u.Infra.codemod_project_plan(planned.value, project),
+                    Path(directory) / str(index),
                 )
-                break
-            # DiagnosticError (exit 1) requires a valid RuleMatch array,
-            # matching error count and the exact terminal diagnostic below.
-            # Additional native diagnostics make that scan incomplete.
-            report, expected_stderr = self._validated_scan_report(scan, ruleset)
-            if scan.stderr.strip() != expected_stderr:
-                # ast-grep can continue after a traversal error and still return
-                # DiagnosticError because another file has an error match.
-                # Only the complete terminal diagnostic proves a clean walk.
-                failures.append(
-                    self._command_error_issue(
-                        scan,
-                        tool=c.Infra.SG,
-                        file=str(ruleset.config),
-                        line=1,
-                        column=1,
-                    ),
-                )
-                break
-            found.extend(report.root)
-        findings = self._admitted_findings(project_dir, found, rules_by_id)
+                if not self._scan_ruleset(
+                    (project_dir, ctx, binary.value, nonparticipants),
+                    ruleset,
+                    project_targets,
+                    (found, failures, raw_output),
+                ):
+                    break
+        findings = (
+            *self._policy_issues(found),
+            *u.Infra.codemod_import_cycle_issues(project_dir),
+        )
+
+        # Each finding counts under its declared catalog rule: a partitioned
+        # rule's documents fold into the rule they were partitioned from.
+        origins = {
+            c.Infra.CODEMOD_IMPORT_CYCLE_CODE: c.Infra.CODEMOD_IMPORT_CYCLE_CODE,
+            **{rule.id: rule.partition_of or rule.id for rule in planned.value.rules},
+        }
+        counts = Counter(origins[issue.code] for issue in findings)
 
         # A completed scan still blocks when elected policy rules find code.
         # Native scanner failures retain their distinct failure diagnostics.
@@ -203,11 +188,69 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 ),
                 raw_output="\n".join((
                     f"{len(findings)} policy findings; {len(failures)} native failures",
+                    *(
+                        f"  {rule_id}: {count}"
+                        for rule_id, count in sorted(
+                            counts.items(), key=lambda item: (-item[1], item[0])
+                        )
+                    ),
                     *raw_output,
                 )),
             ),
             ctx=ctx,
         )
+
+    def _scan_ruleset(
+        self,
+        scope: t.Quad[Path, m.Infra.GateContext, Path, frozenset[str]],
+        ruleset: m.Infra.CodemodRuleset,
+        targets: t.StrSequence,
+        sinks: t.Triple[
+            list[m.Infra.AstGrepDiagnostic], list[m.Infra.Issue], list[str]
+        ],
+    ) -> bool:
+        """Scan one project's staged ruleset and collect its native report.
+
+        Returns:
+            Whether the scan completed; a native failure stops the gate.
+
+        """
+        project_dir, ctx, binary, nonparticipants = scope
+        found, failures, raw_output = sinks
+        scan = self._run(
+            self._scan_command(ruleset, targets, binary, nonparticipants),
+            project_dir,
+            ctx,
+        )
+        outcome = scan.outcome
+        raw_output.extend((
+            (
+                f"{ruleset.provider}: exit={outcome.raw_return_code}, "
+                f"timed_out={outcome.timed_out}, signal={outcome.forwarded_signal}"
+            ),
+            self._raw_output(scan),
+        ))
+        failure = self._command_error_issue(scan, c.Infra.SG, str(ruleset.config))
+        if (
+            outcome.timed_out
+            or outcome.forwarded_signal is not None
+            or outcome.raw_return_code not in {0, 1}
+            or (outcome.raw_return_code == 0 and bool(scan.stderr.strip()))
+        ):
+            failures.append(failure)
+            return False
+        # DiagnosticError (exit 1) requires a valid RuleMatch array,
+        # matching error count and the exact terminal diagnostic below.
+        # Additional native diagnostics make that scan incomplete.
+        report, expected_stderr = self._validated_scan_report(scan, ruleset)
+        if scan.stderr.strip() != expected_stderr:
+            # ast-grep can continue after a traversal error and still return
+            # DiagnosticError because another file has an error match.
+            # Only the complete terminal diagnostic proves a clean walk.
+            failures.append(failure)
+            return False
+        found.extend(report.root)
+        return True
 
     def _failure_gate_execution(
         self,
@@ -222,21 +265,24 @@ class FlextInfraCodemodGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=False,
-            issues=(
-                m.Infra.Issue(
-                    file=c.PYPROJECT_FILENAME,
-                    line=1,
-                    column=0,
-                    code=self.gate_id,
-                    message=failure,
-                    severity=str(c.Infra.GateSeverity.ERROR.value),
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=False,
+                issues=(
+                    m.Infra.Issue(
+                        file=c.PYPROJECT_FILENAME,
+                        line=1,
+                        column=0,
+                        code=self.gate_id,
+                        message=failure,
+                        severity=str(c.Infra.GateSeverity.ERROR.value),
+                    ),
                 ),
+                raw_output=failure,
+                started=started,
             ),
-            evidence=self._publish_raw_receipt(ctx, failure),
-            started=started,
+            ctx,
         )
 
     @staticmethod
@@ -322,69 +368,26 @@ class FlextInfraCodemodGate(FlextInfraGate):
         return tuple(cmd)
 
     @staticmethod
-    def _admitted_findings(
-        project_dir: Path,
+    def _policy_issues(
         found: t.SequenceOf[m.Infra.AstGrepDiagnostic],
-        rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
     ) -> t.SequenceOf[m.Infra.Issue]:
-        """Keep the findings that the bound project context admits.
+        """Report every native finding: ast-grep alone decides the match.
 
         Returns:
-            The policy issues admitted by the codemod context.
+            One policy issue per native finding, one-based coordinates.
 
         """
-        # Every ruleset's findings share one fact pass and one captured epoch,
-        # as the mod engine admits its composed plan.
-        facts = u.Infra.codemod_project_facts(
-            project_dir,
-            tuple(
-                rules_by_id[rule_id]
-                for rule_id in dict.fromkeys(finding.rule_id for finding in found)
-            ),
-        )
-        snapshot = (
-            u.Infra.codemod_binding_snapshot(
-                project_dir,
-                tuple(
-                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                    for path in dict.fromkeys(
-                        u.Infra.codemod_source_path(project_dir, Path(finding.file))
-                        for finding in found
-                        if finding.rule_id in facts.binding_rule_ids
-                    )
-                ),
-                facts.binding_modules,
+        return [
+            m.Infra.Issue(
+                file=finding.file,
+                line=finding.line + 1,
+                column=finding.column + 1,
+                code=finding.rule_id,
+                message=finding.message,
+                severity=finding.severity,
             )
-            if facts.binding_rule_ids
-            else m.Infra.CodemodBindingSnapshot(states=())
-        )
-        with u.Infra.codemod_binding_project(
-            project_dir, u.Infra.codemod_source_epoch(snapshot)
-        ) as (project, sources):
-            return [
-                m.Infra.Issue(
-                    file=finding.file,
-                    line=finding.line + 1,
-                    column=finding.column + 1,
-                    code=finding.rule_id,
-                    message=finding.message,
-                    severity=finding.severity,
-                )
-                for finding in found
-                if not u.Infra.codemod_requires_admission(rules_by_id[finding.rule_id])
-                or u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=project_dir,
-                        rule=rules_by_id[finding.rule_id],
-                        file_path=Path(finding.file),
-                        captures={**finding.captures, **finding.transformed},
-                        facts=facts,
-                        snapshot=snapshot,
-                    ),
-                    project=project,
-                    sources=sources,
-                )
-            ]
+            for finding in found
+        ]
 
 
 __all__: list[str] = ["FlextInfraCodemodGate"]

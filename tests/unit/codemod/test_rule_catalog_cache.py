@@ -86,9 +86,11 @@ class TestsFlextInfraRuleCatalogCache:
         project, _ = self._project(tmp_path, "first")
         before = self._entries()
 
-        first = tm.ok(u.Infra.codemod_rule_plan(project))
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            first = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         published = self._catalog_entries(project, self._entries() - before)
-        again = tm.ok(u.Infra.codemod_rule_plan(project))
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            again = tm.ok(u.Infra.codemod_rule_plan(snapshot))
 
         tm.that(published, empty=False)
         tm.that(
@@ -106,14 +108,16 @@ class TestsFlextInfraRuleCatalogCache:
     ) -> None:
         """Changing a rule's text re-parses it under a new content key."""
         project, rule = self._project(tmp_path, "before")
-        first = tm.ok(u.Infra.codemod_rule_plan(project))
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            first = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         after_first = self._entries()
 
         rule.write_text(
             rule.read_text(encoding="utf-8").replace("before", "after"),
             encoding="utf-8",
         )
-        second = tm.ok(u.Infra.codemod_rule_plan(project))
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            second = tm.ok(u.Infra.codemod_rule_plan(snapshot))
 
         tm.that(
             self._catalog_entries(project, self._entries() - after_first),
@@ -130,11 +134,9 @@ class TestsFlextInfraRuleCatalogCache:
     ) -> None:
         """Persistent JSON retains the exact public plan across native processes."""
         project, rule_path = self._project(tmp_path, "native")
-        expected = next(
-            rule
-            for rule in tm.ok(u.Infra.codemod_rule_plan(project)).rules
-            if rule.resource == rule_path
-        )
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
+        expected = next(rule for rule in plan.rules if rule.resource == rule_path)
         expected_path = tmp_path / "expected-plan.json"
         tm.ok(
             u.Cli.atomic_write_text_file(expected_path, expected.model_dump_json()),
@@ -146,8 +148,10 @@ from flext_infra import m, u
 expected = m.Infra.CodemodRule.model_validate_json(
     Path(sys.argv[2]).read_text(encoding="utf-8")
 )
+with u.Infra.codemod_workspace_snapshot(Path(sys.argv[1])) as snapshot:
+    plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
 observed = next(
-    rule for rule in u.Infra.codemod_rule_plan(Path(sys.argv[1])).unwrap().rules
+    rule for rule in plan.rules
     if rule.resource == expected.resource
 )
 observed_payload = observed.model_dump(mode="json")

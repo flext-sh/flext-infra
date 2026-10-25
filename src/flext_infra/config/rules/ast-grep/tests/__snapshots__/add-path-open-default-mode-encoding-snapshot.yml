@@ -7,7 +7,7 @@ snapshots:
       style: primary
       start: 9
       end: 26
-  handle = pathlib.Path(root, name).open():
+  "handle = pathlib.Path(root, name).open()":
     fixed: handle = pathlib.Path(root, name).open(encoding="utf-8")
     labels:
     - source: pathlib.Path(root, name).open()

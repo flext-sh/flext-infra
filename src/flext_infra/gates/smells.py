@@ -28,6 +28,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.SMELLS
     gate_name: ClassVar[str] = "Code Smells"
     scanner_binary: ClassVar[str] = c.Infra.QLTY_BINARY
+    check_timeout: ClassVar[int] = c.Infra.TIMEOUT_LONG
 
     def _scanned_issues(
         self,
@@ -73,7 +74,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
         """
         started = time.monotonic()
-        scan = self._scan(project_dir)
+        scan = self._scan(project_dir, ctx)
         issues = self._scanned_issues(scan, project_dir)
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
@@ -167,7 +168,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
             ),
         )
 
-    def _scan(self, project_dir: Path) -> p.Cli.CommandOutput:
+    def _scan(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> p.Cli.CommandOutput:
         """Run one qlty scan, or synthesize the blocking reason it cannot run.
 
         Codegen renders the qlty config from its template; this gate used to
@@ -200,7 +205,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return self._run(
             self._scan_command(binary, project_dir),
             self._repository_root,
-            timeout=c.Infra.TIMEOUT_LONG,
+            ctx,
         )
 
     @staticmethod

@@ -311,7 +311,11 @@ class FlextInfraUtilitiesRopeClassMove:
             )
 
             for path, text in tuple(candidate.items()):
-                if path == source:
+                # A quoted prefix resolves to the moved module object only through
+                # a binding that names it (an import, a package attribute or an
+                # export), and every such binding spells the module's stem; a
+                # source without the stem holds no reference to rewrite or check.
+                if path == source or source.stem not in text:
                     continue
                 # Module and PyObject protocols expose the same native identities.
                 rewritten, required = cls._module_quoted_consumer(

@@ -1,65 +1,65 @@
 id: ban-consumer-submodule-import
 snapshots:
-  from flext_cli.models import FlextCliModels:
+  from flext_cli.services.app import FlextCliApp:
     labels:
-    - source: FlextCliModels
+    - source: FlextCliApp
       style: primary
-      start: 29
-      end: 43
-    - source: flext_cli.models
+      start: 35
+      end: 46
+    - source: flext_cli.services.app
       style: secondary
       start: 5
-      end: 21
-    - source: from flext_cli.models import FlextCliModels
+      end: 27
+    - source: from flext_cli.services.app import FlextCliApp
       style: secondary
       start: 0
-      end: 43
-  from flext_cli.models import FlextCliModels as Models:
+      end: 46
+  from flext_cli.services.app import FlextCliApp as App:
     labels:
-    - source: FlextCliModels
+    - source: FlextCliApp
       style: primary
-      start: 29
-      end: 43
-    - source: flext_cli.models
+      start: 35
+      end: 46
+    - source: flext_cli.services.app
       style: secondary
       start: 5
-      end: 21
-    - source: from flext_cli.models import FlextCliModels as Models
+      end: 27
+    - source: from flext_cli.services.app import FlextCliApp as App
       style: secondary
       start: 0
       end: 53
-    - source: FlextCliModels as Models
+    - source: FlextCliApp as App
       style: secondary
-      start: 29
+      start: 35
       end: 53
-  import flext_cli.models:
+  import flext_cli.services.app:
     labels:
-    - source: flext_cli.models
+    - source: flext_cli.services.app
       style: primary
       start: 7
-      end: 23
-    - source: import flext_cli.models
+      end: 29
+    - source: import flext_cli.services.app
       style: secondary
       start: 0
-      end: 23
+      end: 29
     - source: flext_cli
       style: secondary
       start: 7
       end: 16
-  import flext_cli.models as models:
+  import flext_cli.services.app as app:
     labels:
-    - source: flext_cli.models
+    - source: flext_cli.services.app
       style: primary
       start: 7
-      end: 23
-    - source: import flext_cli.models as models
+      end: 29
+    - source: import flext_cli.services.app as app
       style: secondary
       start: 0
-      end: 33
-    - source: flext_cli.models as models
+      end: 36
+    - source: flext_cli.services.app as app
       style: secondary
       start: 7
-      end: 33
+      end: 36
     - source: flext_cli
       style: secondary
       start: 7

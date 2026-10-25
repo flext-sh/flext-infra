@@ -34,6 +34,26 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
     can_fix: ClassVar[bool] = True
 
     @override
+    def check_union(
+        self,
+        project_dirs: t.SequenceOf[Path],
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Keep the generated-configuration gap loud for its own project.
+
+        A project without the generated configuration forms its own union
+        group, so the single-project check reports that gap with its path.
+
+        Returns:
+            The union execution, or the project's configuration-gap result.
+
+        """
+        owner = project_dirs[0]
+        if not (owner / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).is_file():
+            return self.check(owner, ctx)
+        return super().check_union(project_dirs, ctx)
+
+    @override
     def check(
         self,
         project_dir: Path,
@@ -52,13 +72,12 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
             # never a silent fall back to the tool's built-in defaults.
             return self._build_single_issue_result(
                 project_dir,
-                Path(c.PYPROJECT_FILENAME),
                 (
                     f"generated {c.Infra.MARKDOWNLINT_CONFIG_FILENAME} is absent: "
                     f"{config_path}; run make gen"
                 ),
-                ctx=ctx,
-                started=time.monotonic(),
+                ctx,
+                time.monotonic(),
             )
         return super().check(project_dir, ctx)
 

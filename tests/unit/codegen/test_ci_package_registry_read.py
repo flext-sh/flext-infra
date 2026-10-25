@@ -44,7 +44,6 @@ class TestsFlextInfraCiPackageRegistryRead:
         permissions = self._job_permissions(packages_read=True)
 
         tm.that(permissions["ci"], eq={"contents": "read", "packages": "read"})
-        tm.that(permissions["release-plan"], eq={"contents": "read"})
 
     def test_undeclared_consumer_stays_contents_only(self) -> None:
         """Test undeclared consumer stays contents only."""

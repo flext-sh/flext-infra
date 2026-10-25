@@ -1,13 +1,30 @@
 id: rewire-test-assert-guard
+# Every rewrite requires the `tm` binding to the flext-tests matchers.
 valid:
-  - assert value == expected
-  - assert value is not None
-  - assert value is not None, "A value is required"
-  - assert isinstance(value, Entry)
-  - assert isinstance(self.value, Entry)
   - |
+    from flext_tests import tm
+    assert value == expected
+  - |
+    from flext_tests import tm
+    assert value is not None
+  - |
+    from flext_tests import tm
+    assert value is not None, "A value is required"
+  - |
+    from flext_tests import tm
+    assert isinstance(value, Entry)
+  - |
+    from flext_tests import tm
+    assert isinstance(self.value, Entry)
+  - |
+    from flext_tests import tm
     if value is None:
         raise AssertionError
-invalid:
   - assert self.value is not None
-  - assert value is None
+invalid:
+  - |
+    from flext_tests import tm
+    assert self.value is not None
+  - |
+    from tests import tm
+    assert value is None

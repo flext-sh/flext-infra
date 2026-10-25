@@ -1,10 +1,7 @@
 id: ban-manual-ast-walk-beside-library
 snapshots:
-  ? |
-    import ast
-    from libcst import parse_module
-    nodes = list(ast.walk(tree))
-  : labels:
+  "import ast\nfrom libcst import parse_module\nnodes = list(ast.walk(tree))\n":
+    labels:
     - source: ast.walk(tree)
       style: primary
       start: 56
@@ -24,11 +21,8 @@ snapshots:
       style: secondary
       start: 0
       end: 72
-  ? |
-    import ast
-    import griffe
-    literals = tuple(ast.literal_eval(element) for element in elements)
-  : labels:
+  "import ast\nimport griffe\nliterals = tuple(ast.literal_eval(element) for element in elements)\n":
+    labels:
     - source: ast.literal_eval(element)
       style: primary
       start: 42
@@ -48,12 +42,8 @@ snapshots:
       style: secondary
       start: 0
       end: 93
-  ? |
-    import ast
-    import rope
-    class Collector(ast.NodeVisitor):
-        pass
-  : labels:
+  "import ast\nimport rope\nclass Collector(ast.NodeVisitor):\n    pass\n":
+    labels:
     - source: (ast.NodeVisitor)
       style: primary
       start: 38

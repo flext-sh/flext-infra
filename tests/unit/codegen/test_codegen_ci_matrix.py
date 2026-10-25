@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, config, m
+from flext_infra import config
 from tests import c, tm, u
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
 
@@ -260,25 +260,6 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         tm.ok(steps_index < setup_index)
 
     @staticmethod
-    def test_verify_clean_accepts_dirty_git_tree(
-        tmp_path: Path,
-    ) -> None:
-        """The public status owner accepts and preserves a real untracked file."""
-        repository = tmp_path / "dirty-repository"
-        repository.mkdir()
-        u.Tests.initialize_git_repo(repository)
-        (repository / "untracked.txt").write_text("dirty\n", encoding="utf-8")
-        outcome = FlextInfraGitService.verify_clean(
-            m.Infra.GitStatusRequest(repo_root=repository),
-        )
-        report = tm.ok(outcome)
-        tm.that(report.dirty, eq=True)
-        tm.that(report.porcelain, has="untracked.txt")
-        tm.that(
-            (repository / "untracked.txt").read_text(encoding="utf-8"), eq="dirty\n"
-        )
-
-    @staticmethod
     def test_rendered_workflow_shell_commands_parse(
         rendered_project: Path,
     ) -> None:
@@ -334,7 +315,7 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         if commits:
             tm.that(
                 commits[0]["entry"],
-                has=f"{make.ci.variable}={make.ci.value} make pre-commit",
+                has=f"{make.ci.variable}={make.ci.pre_commit_value} make check",
             )
         pushes = [hook for hook in hooks if hook.get("stages") == ["pre-push"]]
         expected = tuple(

@@ -1,4 +1,9 @@
-"""Run the canonical infrastructure CLI with admitted opt-in profiling.
+"""compat: flext_infra._profile_entry -> the canonical flext-infra CLI.
+
+fix: regenerate the consumer Makefile with ``make gen``; its gen and mod recipes
+then call ``python -m flext_infra`` with ``FLEXT_INFRA_PROFILE_OUTPUT``. This
+pass-through exists only while generated Makefiles still invoke it, and is
+deleted when none does.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,36 +11,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import sys
-from pathlib import Path
-
-import flext_infra
-from flext_infra import settings
-from flext_infra._pytest_clock import FlextInfraPytestClock
-
-
-class FlextInfraProfileEntry:
-    """Apply the shared runtime setting around the existing CLI composition root."""
-
-    @staticmethod
-    def run() -> int:
-        """Preserve the CLI outcome and any explicitly requested profile.
-
-        Settings admission precedes capture. Enabled signal checkpoints retain
-        interrupted evidence without certifying successful execution.
-
-        Returns:
-            The canonical CLI exit status.
-
-        """
-        if not settings.Infra.profile:
-            return flext_infra.FlextInfraCli.infra_main(sys.argv[2:])
-        output = Path(sys.argv[1])
-        output.parent.mkdir(parents=True, exist_ok=True)
-        return FlextInfraPytestClock.profile_command(
-            lambda: flext_infra.FlextInfraCli.infra_main(sys.argv[2:]), output
-        )
-
+import warnings
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraProfileEntry.run())
+    warnings.warn(
+        "compat: flext_infra._profile_entry -> python -m flext_infra with "
+        "FLEXT_INFRA_PROFILE_OUTPUT; fix: run make gen to regenerate the Makefile",
+        DeprecationWarning,
+        stacklevel=1,
+    )
+    # The profile destination is settings data, read once by the CLI entry.
+    os.environ["FLEXT_INFRA_PROFILE_OUTPUT"] = sys.argv[1]
+    from flext_infra import FlextInfraCli
+
+    raise SystemExit(FlextInfraCli.infra_main(sys.argv[2:]))

@@ -200,6 +200,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codemod_binding_chain import (
         FlextInfraUtilitiesCodemodBindingChain,
     )
+    from flext_infra._utilities.codemod_import_law_rules import (
+        FlextInfraUtilitiesCodemodImportLawRules,
+    )
     from flext_infra._utilities.codemod_native_cascade import (
         FlextInfraUtilitiesCodemodNativeCascade,
     )
@@ -210,7 +213,11 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesCodemodNativeUtilities,
     )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
+    from flext_infra._utilities.codemod_project_facts import (
+        FlextInfraUtilitiesCodemodProjectFacts,
+    )
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
+    from flext_infra._utilities.codemod_scopes import FlextInfraUtilitiesCodemodScopes
     from flext_infra._utilities.codemod_type_set_rules import (
         FlextInfraUtilitiesCodemodTypeSetRules,
     )
@@ -241,6 +248,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
     from flext_infra._utilities.enforcement_catalog import (
         FlextInfraUtilitiesEnforcementCatalog,
+    )
+    from flext_infra._utilities.facade_components import (
+        FlextInfraUtilitiesFacadeComponents,
     )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
@@ -322,6 +332,10 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectConform,
     )
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
+    from flext_infra._utilities.pytest_collection import (
+        FlextInfraUtilitiesPytestCollection,
+    )
+    from flext_infra._utilities.pytest_surface import FlextInfraUtilitiesPytest
     from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
     from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
     from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
@@ -377,14 +391,14 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesTransformerHeaderParser,
     )
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-    from flext_infra._utilities.workspace_fingerprint import (
-        FlextInfraUtilitiesWorkspaceFingerprint,
-    )
     from flext_infra._utilities.workspace_inventory import (
         FlextInfraUtilitiesWorkspaceInventory,
     )
     from flext_infra._utilities.workspace_manifest import (
         FlextInfraUtilitiesWorkspaceManifest,
+    )
+    from flext_infra._utilities.workspace_snapshot import (
+        FlextInfraUtilitiesWorkspaceSnapshot,
     )
     from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
     from flext_infra._utilities.worktree_provisioning import (
@@ -403,12 +417,15 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodemodBindingChain",
+    "FlextInfraUtilitiesCodemodImportLawRules",
     "FlextInfraUtilitiesCodemodNativeCascade",
     "FlextInfraUtilitiesCodemodNativePackageUtilities",
     "FlextInfraUtilitiesCodemodNativeUtilities",
     "FlextInfraUtilitiesCodemodProject",
+    "FlextInfraUtilitiesCodemodProjectFacts",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCodemodRulesDistributionsMixin",
+    "FlextInfraUtilitiesCodemodScopes",
     "FlextInfraUtilitiesCodemodTypeSetRules",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
     "FlextInfraUtilitiesDeclarationPayload",
@@ -444,6 +461,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesEnforcementCatalog",
+    "FlextInfraUtilitiesFacadeComponents",
     "FlextInfraUtilitiesFacadeMembers",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationEvidenceMixin",
@@ -524,6 +542,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPyprojectTomlPhases",
     "FlextInfraUtilitiesPyprojectUvSources",
     "FlextInfraUtilitiesPyrefly",
+    "FlextInfraUtilitiesPytest",
+    "FlextInfraUtilitiesPytestCollection",
     "FlextInfraUtilitiesPythonModel",
     "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
@@ -603,9 +623,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesTransformerHeader",
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
-    "FlextInfraUtilitiesWorkspaceFingerprint",
     "FlextInfraUtilitiesWorkspaceInventory",
     "FlextInfraUtilitiesWorkspaceManifest",
+    "FlextInfraUtilitiesWorkspaceSnapshot",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
 )
@@ -624,16 +644,19 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
+        "FlextInfraUtilitiesCodemodImportLawRules": ".codemod_import_law_rules",
         "FlextInfraUtilitiesCodemodNativeCascade": ".codemod_native_cascade",
         "FlextInfraUtilitiesCodemodNativePackageUtilities": (
             ".codemod_native_package_utilities"
         ),
         "FlextInfraUtilitiesCodemodNativeUtilities": ".codemod_native_utilities",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
+        "FlextInfraUtilitiesCodemodProjectFacts": ".codemod_project_facts",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCodemodRulesDistributionsMixin": (
             "._codemod_rules_distributions"
         ),
+        "FlextInfraUtilitiesCodemodScopes": ".codemod_scopes",
         "FlextInfraUtilitiesCodemodTypeSetRules": ".codemod_type_set_rules",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
             ".compatibility_alias_validation"
@@ -675,6 +698,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsScopeStateMixin": "._docs_scope_state",
         "FlextInfraUtilitiesDocsValidate": ".docs_validate",
         "FlextInfraUtilitiesEnforcementCatalog": ".enforcement_catalog",
+        "FlextInfraUtilitiesFacadeComponents": ".facade_components",
         "FlextInfraUtilitiesFacadeMembers": ".facade_members",
         "FlextInfraUtilitiesGit": ".git",
         "FlextInfraUtilitiesGitAttestationEvidenceMixin": "._git.attestation_evidence",
@@ -759,6 +783,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyprojectTomlPhases": "._pyproject.toml_phases",
         "FlextInfraUtilitiesPyprojectUvSources": "._pyproject.uv_sources",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
+        "FlextInfraUtilitiesPytest": ".pytest_surface",
+        "FlextInfraUtilitiesPytestCollection": ".pytest_collection",
         "FlextInfraUtilitiesPythonModel": ".python_model",
         "FlextInfraUtilitiesQualifiedNames": ".qualified_names",
         "FlextInfraUtilitiesRefactor": ".refactor",
@@ -884,9 +910,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesTransformerHeader": ".transformer_header",
         "FlextInfraUtilitiesTransformerHeaderParser": ".transformer_header_parser",
         "FlextInfraUtilitiesVersioning": ".versioning",
-        "FlextInfraUtilitiesWorkspaceFingerprint": ".workspace_fingerprint",
         "FlextInfraUtilitiesWorkspaceInventory": ".workspace_inventory",
         "FlextInfraUtilitiesWorkspaceManifest": ".workspace_manifest",
+        "FlextInfraUtilitiesWorkspaceSnapshot": ".workspace_snapshot",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",
     }),

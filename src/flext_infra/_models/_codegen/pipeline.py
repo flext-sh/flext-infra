@@ -69,7 +69,7 @@ class FlextInfraModelsCodegenPipelineModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
         )
-        exception: BaseException | None = m.Field(
+        exception: t.Port[BaseException] | None = m.Field(
             default=None,
             exclude=True,
             description="First native target planning cause",
@@ -125,13 +125,13 @@ class FlextInfraModelsCodegenPipelineModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
         )
-        exception: BaseException | None = m.Field(
+        exception: t.Port[BaseException] | None = m.Field(
             default=None,
             exclude=True,
             description="First native target failure carried into publication",
         )
         request: Annotated[
-            p.Infra.CodegenGenerateRequest,
+            t.Port[p.Infra.CodegenGenerateRequest],
             m.Field(description="Validated public request"),
         ]
         repositories: Annotated[
@@ -230,7 +230,7 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Native file planning failures retained by this invocation",
         )
-        planning_exception: BaseException | None = m.Field(
+        planning_exception: t.Port[BaseException] | None = m.Field(
             default=None,
             exclude=True,
             description="First native file planning cause",
@@ -239,6 +239,13 @@ class FlextInfraModelsCodegenPipelineModels:
             default=None,
             exclude=True,
             description="Actual planner before effects",
+        )
+        snapshot: t.Port[p.Infra.WorkspaceSnapshot] | None = m.Field(
+            default=None,
+            exclude=True,
+            description=(
+                "The run's one workspace snapshot; present while repositories plan"
+            ),
         )
         _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
             m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])

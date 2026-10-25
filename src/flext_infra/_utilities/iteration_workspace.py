@@ -6,17 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import shlex
 import time
 from collections.abc import Callable
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesIterationDirectory
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
@@ -255,44 +253,6 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             msg = f"physical memory cannot hold one {worker_memory_gb} GiB worker"
             raise ValueError(msg)
         return min(cpu_count, memory_workers)
-
-    @staticmethod
-    def fleet_map[TPayload, TResult](
-        task: Callable[[TPayload], TResult],
-        payloads: t.SequenceOf[TPayload],
-    ) -> tuple[TResult, ...]:
-        """Run one read-only task per payload across the configured workers.
-
-        ``task`` must be importable by qualified name and every payload and
-        result picklable: workers start from a clean interpreter (forkserver),
-        so no parent lock, thread, or lease crosses the process boundary. The
-        results keep the payload order, and the first worker exception escapes
-        unchanged. One configured worker or one payload runs in this process.
-
-        Returns:
-            The task results in payload order.
-
-        """
-        workers = min(
-            FlextInfraUtilitiesIterationWorkspace.machine_worker_capacity(
-                config.Infra.codegen.fleet_worker_memory_gb
-            ),
-            len(payloads),
-        )
-        if workers <= 1:
-            return tuple(task(payload) for payload in payloads)
-        context = multiprocessing.get_context("forkserver")
-        started = time.monotonic()
-        with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
-            results = tuple(pool.map(task, payloads))
-            mapped = time.monotonic()
-        finished = time.monotonic()
-        u.Cli.info(
-            f"stage=fleet-map payloads={len(payloads)} workers={workers} "
-            f"map_elapsed={mapped - started:.3f}s "
-            f"shutdown_elapsed={finished - mapped:.3f}s",
-        )
-        return results
 
     @classmethod
     def iter_python_files(

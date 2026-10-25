@@ -10,7 +10,7 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
@@ -82,10 +82,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return r[t.Cli.ResultValue].fail(
                 "consumer roots must be existing absolute checkout roots"
             )
-        planned = u.Infra.codemod_rule_plan(self.repository_root)
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            planned = u.Infra.codemod_rule_plan(snapshot)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
-        rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
+        rules = u.Infra.codemod_fixture_resources(planned.value)
         if self.effective_dry_run:
             return self._execute_dry_run(rules)
         return self._execute_apply(rules)
@@ -122,6 +123,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             validate_receipts=True,
         ).unwrap()
         pending_count += text_pending.findings
+        cycles = u.Infra.codemod_import_cycle_issues(self.repository_root)
+        pending_count += len(cycles)
         renames_pending = self._pending_renames()
         if renames_pending.failure:
             return r[t.Cli.ResultValue].from_failure(renames_pending)
@@ -132,7 +135,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"{pending.detection_only} detection-only and "
                 f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
                 f"{text_pending.findings} pending sed-by-list finding(s) "
-                f"({text_pending.actionable} actionable) and "
+                f"({text_pending.actionable} actionable), "
+                f"{len(cycles)} module(s) in runtime import cycles and "
                 f"{renames_pending.value} pending CSV-rename occurrence(s), "
                 f"across {len(rules)} rule file(s)",
             )
@@ -209,7 +213,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         plans: dict[Path, m.Infra.SemanticFilePlan] = {}
         inputs = {state.path: state for state in seed.inputs}
         self._capture_ast_inputs(root, inputs)
-        rule_plan = u.Infra.codemod_rule_plan(root).unwrap()
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            rule_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         native_ids = frozenset(
             rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
         )
@@ -303,8 +308,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> t.MappingKV[Path, bytes]:
         """Run each governed project's native cascade over the seeded sources.
 
-        Each source belongs to its deepest governed project; the project's
-        generated utilities and rules are rendered in memory first.
+        Each source belongs to its deepest governed project; the plan carries
+        that project's generated provider beside its catalogs.
 
         Returns:
             Absolute path to new bytes for every source a cascade changed.
@@ -334,18 +339,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             if owner is not None:
                 owned[owner][path] = content
         changed: dict[Path, bytes] = {}
-        spec = config.Infra.codegen.ast_grep
         for project, sources in owned.items():
             if not sources:
                 continue
-            changed.update(
-                u.Infra.codemod_native_cascade(
-                    project,
-                    rule_plan,
-                    sources,
-                    u.Infra.codemod_native_generated(project, spec),
-                )
-            )
+            changed.update(u.Infra.codemod_native_cascade(project, rule_plan, sources))
         return changed
 
     @staticmethod
@@ -747,7 +744,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     def _verdict_message(
         self,
         root: Path,
-        baseline_cycles: t.SequenceOf[frozenset[str]],
         states: t.Pair[
             t.VariadicTuple[t.Pair[str, str]],
             t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]],
@@ -759,15 +755,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         Returns:
             The fixed-point failure message, or ``None`` when the joint AST,
             semantic, and text fixed point is verified with zero remaining
-            findings and no new runtime import cycles.
+            findings and no runtime import cycle.
 
         """
         before, phase_states = states
         current, current_text = reports
-        # Cyclic-import regression gate: a refactor phase that closed a
-        # new runtime import cycle fails the fixed point loud — zero new
-        # cycles is an acceptance condition, and cycles the tree already
-        # had stay check's existing verdict.
         if any(state != before for state in phase_states):
             return "mod cross-phase cycle returned to its starting source state"
         if current.actionable or current_text.actionable:
@@ -777,14 +769,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 "actionable findings"
             )
         self._emit_residuals(current, current_text)
-        converged_cycles = self._import_cycles(root)
-        new_cycles = [
-            cycle for cycle in converged_cycles if cycle not in baseline_cycles
-        ]
-        if new_cycles:
-            return "mod introduced new runtime import cycle(s): " + "; ".join(
-                " -> ".join(sorted(cycle)) for cycle in new_cycles
-            )
+        # ENFORCE-006: the runtime import graph, not a syntax rule, decides a
+        # cycle; any cycle at the fixed point blocks, like check's verdict.
+        cycles = u.Infra.codemod_import_cycle_issues(root)
+        for issue in cycles:
+            self.progress.emit(f"mod: {issue.file}: {issue.message}")
+        if cycles:
+            return f"mod: {len(cycles)} module(s) remain in runtime import cycles"
         if current.findings or current_text.findings:
             return (
                 f"mod: fixed point retains {current.findings} AST finding(s) "
@@ -827,7 +818,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         """
         rope_workspace = self.rope
-        baseline_cycles = self._import_cycles(root)
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
         seen: MutableMapping[t.VariadicTuple[t.Pair[str, str]], int] = {}
         iteration = 0
@@ -862,7 +852,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 continue
             message = self._verdict_message(
                 root,
-                baseline_cycles,
                 (before, phase_states),
                 (current, current_text),
             ) or self._relocation_verdict(root, rope_workspace, current)
@@ -907,33 +896,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             f"mod: {len(findings)} declaration-relocation finding(s) remain for "
             "owner repair"
         )
-
-    @staticmethod
-    def _import_cycles(root: Path) -> t.SequenceOf[frozenset[str]]:
-        """Collect every runtime import cycle over the governed projects.
-
-        The graph comes from the codemod project's Rope module-level import
-        table — only imports that run at module load can form a cycle, so a
-        lazy (function-local) import never registers as one.
-
-        Returns:
-            The resulting ``t.FrozenSet[t.FrozenSet[str]]``.
-
-        """
-        cycles: set[frozenset[str]] = set()
-        for project_root in u.Infra.governed_project_roots(root):
-            if not u.Infra.namespace_enabled(project_root):
-                continue
-            graph, _modules = u.Infra.project_import_graph(
-                project_root,
-            )
-            cycles.update(
-                frozenset(members)
-                for members in u.Infra.project_import_cycles(
-                    graph,
-                ).values()
-            )
-        return tuple(sorted(cycles, key=sorted))
 
     def _plan_phase_callbacks(
         self,

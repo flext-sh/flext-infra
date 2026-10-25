@@ -56,6 +56,7 @@ from flext_infra._models import (
     FlextInfraModelsTestmon,
     FlextInfraModelsTransformers,
     FlextInfraModelsWorkspace,
+    FlextInfraModelsWorkspaceSnapshot,
     FlextInfraModelsWorktree,
     FlextInfraSettingsModels,
 )
@@ -106,6 +107,7 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsTransformers,
         FlextInfraModelsCore,
         FlextInfraModelsWorkspace,
+        FlextInfraModelsWorkspaceSnapshot,
         FlextInfraModelsWorktree,
         FlextInfraConfigModels,
         FlextInfraModelsMiseToolchain,
@@ -117,5 +119,4 @@ class FlextInfraModels(FlextCliModels):
 
 
 m = FlextInfraModels
-
 __all__: list[str] = ["FlextInfraModels", "m"]

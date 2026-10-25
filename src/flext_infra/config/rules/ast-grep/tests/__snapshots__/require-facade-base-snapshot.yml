@@ -1,9 +1,7 @@
 id: require-facade-base
 snapshots:
-  ? |
-    class FlextFooModels:
-        pass
-  : labels:
+  "class FlextFooModels:\n    pass\n":
+    labels:
     - source: |-
         class FlextFooModels:
             pass

@@ -111,6 +111,7 @@ if TYPE_CHECKING:
     from flext_infra._models.transformers import FlextInfraModelsTransformers
     from flext_infra._models.validate import FlextInfraModelsCore
     from flext_infra._models.workspace import FlextInfraModelsWorkspace
+    from flext_infra._models.workspace_snapshot import FlextInfraModelsWorkspaceSnapshot
     from flext_infra._models.worktree import FlextInfraModelsWorktree
 
 
@@ -186,6 +187,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsTestmon",
     "FlextInfraModelsTransformers",
     "FlextInfraModelsWorkspace",
+    "FlextInfraModelsWorkspaceSnapshot",
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
 )
@@ -269,6 +271,7 @@ install_lazy_exports(
         "FlextInfraModelsTestmon": ".testmon",
         "FlextInfraModelsTransformers": ".transformers",
         "FlextInfraModelsWorkspace": ".workspace",
+        "FlextInfraModelsWorkspaceSnapshot": ".workspace_snapshot",
         "FlextInfraModelsWorktree": ".worktree",
         "FlextInfraSettingsModels": ".settings",
     }),

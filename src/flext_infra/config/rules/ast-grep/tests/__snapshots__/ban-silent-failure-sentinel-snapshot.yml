@@ -1,11 +1,7 @@
 id: ban-silent-failure-sentinel
 snapshots:
-  ? |
-    def iterate(result):
-        if result.failure:
-            r[int].from_failure(result)
-            return
-  : labels:
+  "def iterate(result):\n    if result.failure:\n        r[int].from_failure(result)\n        return\n":
+    labels:
     - source: return
       style: primary
       start: 88
@@ -27,12 +23,8 @@ snapshots:
       style: secondary
       start: 52
       end: 94
-  ? |
-    def iterate(result):
-        if result.failure:
-            yield None
-            return
-  : labels:
+  "def iterate(result):\n    if result.failure:\n        yield None\n        return\n":
+    labels:
     - source: return
       style: primary
       start: 71
@@ -54,13 +46,8 @@ snapshots:
       style: secondary
       start: 52
       end: 77
-  ? |
-    def iterate(result):
-        if result.failure:
-            yield r[int].from_failure(result)
-            record()
-            return
-  : labels:
+  "def iterate(result):\n    if result.failure:\n        yield r[int].from_failure(result)\n        record()\n        return\n":
+    labels:
     - source: return
       style: primary
       start: 111
@@ -84,12 +71,8 @@ snapshots:
       style: secondary
       start: 52
       end: 117
-  ? |
-    def iterate(result):
-        if result.failure:
-            yield r[int].from_failure(result)
-            return False
-  : labels:
+  "def iterate(result):\n    if result.failure:\n        yield r[int].from_failure(result)\n        return False\n":
+    labels:
     - source: return False
       style: primary
       start: 94
@@ -111,12 +94,8 @@ snapshots:
       style: secondary
       start: 52
       end: 106
-  ? |
-    def iterate(result, other):
-        if result.failure:
-            yield r[int].from_failure(other)
-            return
-  : labels:
+  "def iterate(result, other):\n    if result.failure:\n        yield r[int].from_failure(other)\n        return\n":
+    labels:
     - source: return
       style: primary
       start: 100
@@ -138,13 +117,8 @@ snapshots:
       style: secondary
       start: 59
       end: 106
-  ? |
-    def run() -> bool:
-        try:
-            return parse()
-        except KeyError as exc:
-            return False
-  : labels:
+  "def run() -> bool:\n    try:\n        return parse()\n    except KeyError as exc:\n        return False\n":
+    labels:
     - source: return False
       style: primary
       start: 87
@@ -159,13 +133,8 @@ snapshots:
       style: secondary
       start: 55
       end: 99
-  ? |
-    def run():
-        try:
-            return parse()
-        except KeyError:
-            return None
-  : labels:
+  "def run():\n    try:\n        return parse()\n    except KeyError:\n        return None\n":
+    labels:
     - source: return None
       style: primary
       start: 72
@@ -180,12 +149,8 @@ snapshots:
       style: secondary
       start: 47
       end: 83
-  ? |
-    def run(res) -> r[bool]:
-        if res.success:
-            return None
-        return res
-  : labels:
+  "def run(res) -> r[bool]:\n    if res.success:\n        return None\n    return res\n":
+    labels:
     - source: return None
       style: primary
       start: 53
@@ -204,11 +169,8 @@ snapshots:
       style: secondary
       start: 53
       end: 64
-  ? |
-    def run(res):
-        if not res.success:
-            return True
-  : labels:
+  "def run(res):\n    if not res.success:\n        return True\n":
+    labels:
     - source: return True
       style: primary
       start: 46
@@ -227,12 +189,8 @@ snapshots:
       style: secondary
       start: 46
       end: 57
-  ? |
-    def run_guard(validation_result):
-        if validation_result.failure:
-            return False
-        return True
-  : labels:
+  "def run_guard(validation_result):\n    if validation_result.failure:\n        return False\n    return True\n":
+    labels:
     - source: return False
       style: primary
       start: 76
@@ -251,7 +209,7 @@ snapshots:
       style: secondary
       start: 76
       end: 88
-  items = result.unwrap_or([]):
+  "items = result.unwrap_or([])":
     labels:
     - source: result.unwrap_or([])
       style: primary
@@ -265,7 +223,7 @@ snapshots:
       style: secondary
       start: 8
       end: 24
-    - source: '[]'
+    - source: "[]"
       style: secondary
       start: 25
       end: 27
@@ -295,36 +253,40 @@ snapshots:
       style: secondary
       start: 24
       end: 37
-  ? |
-    try:
-        run()
-    except (ValueError, Exception):
-        return None
-  : labels:
+  "try:\n    run()\nexcept (ValueError, Exception):\n    return None\n":
+    labels:
     - source: |-
         except (ValueError, Exception):
             return None
       style: primary
       start: 15
       end: 62
-  ? |
-    try:
-        run()
-    except Exception as exc:
-        log(exc)
-  : labels:
+    - source: Exception
+      style: secondary
+      start: 35
+      end: 44
+    - source: (ValueError, Exception)
+      style: secondary
+      start: 22
+      end: 45
+  "try:\n    run()\nexcept Exception as exc:\n    log(exc)\n":
+    labels:
     - source: |-
         except Exception as exc:
             log(exc)
       style: primary
       start: 15
       end: 52
-  ? |
-    try:
-        run()
-    except:
-        cleanup()
-  : labels:
+    - source: Exception
+      style: secondary
+      start: 22
+      end: 31
+    - source: Exception as exc
+      style: secondary
+      start: 22
+      end: 38
+  "try:\n    run()\nexcept:\n    cleanup()\n":
+    labels:
     - source: |-
         except:
             cleanup()
@@ -345,7 +307,7 @@ snapshots:
       style: secondary
       start: 8
       end: 24
-    - source: 'False'
+    - source: "False"
       style: secondary
       start: 25
       end: 30

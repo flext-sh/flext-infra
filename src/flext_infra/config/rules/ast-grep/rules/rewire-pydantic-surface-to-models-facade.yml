@@ -1,0 +1,26 @@
+id: rewire-pydantic-surface-to-models-facade
+language: python
+severity: error
+files:
+- "src/**/*.py"
+- "tests/**/*.py"
+- "examples/**/*.py"
+- "scripts/**/*.py"
+# The Pydantic declaration surface (field and model decorators, validator and
+# serializer annotations, ``Field``) is owned by the models facade; the
+# utilities facade keeps only behaviour. A model or consumer reaching the
+# surface through ``u`` reads it from the family that does not own it.
+rule:
+  all:
+  - pattern: u.$NAME
+  - inside:
+      kind: module
+      stopBy: end
+      has:
+        stopBy: end
+        matches: m-imported-from-flext
+constraints:
+  NAME:
+    regex: "^(Field|SkipValidation|AfterValidator|PlainValidator|WrapValidator|PlainSerializer|WrapSerializer|computed_field|field_serializer|model_serializer)$"
+fix: m.$NAME
+message: Read the Pydantic declaration surface from the models facade ``m``.

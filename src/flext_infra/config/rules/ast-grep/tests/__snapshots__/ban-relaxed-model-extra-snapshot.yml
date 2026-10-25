@@ -1,9 +1,7 @@
 id: ban-relaxed-model-extra
 snapshots:
-  ? |
-    class Order(BaseModel, extra="ignore"):
-        total: int
-  : labels:
+  "class Order(BaseModel, extra=\"ignore\"):\n    total: int\n":
+    labels:
     - source: extra="ignore"
       style: primary
       start: 23
@@ -12,7 +10,7 @@ snapshots:
       style: secondary
       start: 23
       end: 28
-    - source: '"ignore"'
+    - source: "\"ignore\""
       style: secondary
       start: 29
       end: 37
@@ -26,10 +24,8 @@ snapshots:
       style: secondary
       start: 11
       end: 38
-  ? |
-    class Order(m.FrozenModel):
-        model_config = m.ConfigDict(extra="allow")
-  : labels:
+  "class Order(m.FrozenModel):\n    model_config = m.ConfigDict(extra=\"allow\")\n":
+    labels:
     - source: extra="allow"
       style: primary
       start: 60
@@ -38,7 +34,7 @@ snapshots:
       style: secondary
       start: 60
       end: 65
-    - source: '"allow"'
+    - source: "\"allow\""
       style: secondary
       start: 66
       end: 73

@@ -1,9 +1,7 @@
 id: bind-registration-specialization
 snapshots:
-  ? |
-    from flext_core import t
-    value: t.RegisterableService
-  : fixed: |
+  "from flext_core import t\nvalue: t.RegisterableService\n":
+    fixed: |
       from flext_core import p, t
       value: t.RegisterableService
     labels:

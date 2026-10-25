@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import p
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import m, t
 
 
@@ -77,6 +79,15 @@ class FlextInfraProtocolsCheck(Protocol):
         def related_locations(
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsCheck.SarifLocation]: ...
+
+    @runtime_checkable
+    class GitScopeFacts(Protocol):
+        """Share one invocation's tracked Git scope inventory across consumers."""
+
+        def tracked_scope_relative_paths(
+            self,
+            scope_root: Path,
+        ) -> t.StrSequence | None: ...
 
     @runtime_checkable
     class NativeStorageSlot[ValueT](Protocol):

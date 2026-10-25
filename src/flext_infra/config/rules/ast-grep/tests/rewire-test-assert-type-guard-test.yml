@@ -1,16 +1,29 @@
 id: rewire-test-assert-type-guard
+# Every rewrite requires the `tm` binding to the flext-tests matchers.
 valid:
-  - assert value is None
-  - assert isinstance(value, Entry)
   - |
+    from flext_tests import tm
+    assert value is None
+  - |
+    from flext_tests import tm
+    assert isinstance(value, Entry)
+  - |
+    from flext_tests import tm
     if not (isinstance(value, Entry)):
         raise AssertionError
-invalid:
   - assert isinstance(self.value, Entry)
-  - assert isinstance(value, (Entry, Schema))
+invalid:
   - |
+    from flext_tests import tm
+    assert isinstance(self.value, Entry)
+  - |
+    from flext_tests import tm
+    assert isinstance(value, (Entry, Schema))
+  - |
+    from tests import tm
     if not (isinstance(self.value, Entry)):
         raise AssertionError
   - |
+    from tests import tm
     if not (isinstance(value, (Entry, Schema))):
         raise AssertionError

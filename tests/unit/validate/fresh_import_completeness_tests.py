@@ -1,4 +1,4 @@
-"""Fresh-import completeness: every exported pydantic class builds at import.
+"""Fresh-import completeness: every exported pydantic class builds.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING
 
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import tm
+from tests import tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -17,83 +18,90 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraFreshImportCompleteness:
-    """The export probe fails on incomplete models and passes complete ones."""
+    """The export probe fails on unbuildable models and passes buildable ones."""
 
     @staticmethod
-    def test_incomplete_family_model_fails(
+    def _completeness_report(
+        tmp_path: Path,
+        scenario: Path,
+        runtime_root: Path,
+    ) -> str | None:
+        """Build a real project from ``scenario`` and probe its exports.
+
+        The scenario's model module is placed in a generation-eligible
+        workspace and its package initializer is produced by the lazy-init
+        generator, exactly as ``make gen`` would.
+
+        Returns:
+            The first violation, or ``None`` when the probe passes.
+
+        """
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        shutil.copy2(scenario / "models.py", package_root / "models.py")
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        report = tm.ok(
+            FlextInfraValidateFreshImport(
+                repository_root=repository_root,
+                runtime_root=runtime_root,
+            ).build_report(repository_roots=(repository_root,)),
+        )
+        return None if report.passed else report.violations[0]
+
+    @staticmethod
+    def test_unbuildable_model_fails(
+        tmp_path: Path,
         fixture_tree: Callable[[str], Path],
         suite_runtime_root: Path,
     ) -> None:
-        """A field naming a sibling through its unbound family stays incomplete."""
-        scenarios = fixture_tree("pydantic-completeness")
-        report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=scenarios / "red",
-                runtime_root=suite_runtime_root,
-            ).build_report(packages=("flext_completeness_fixture",)),
+        """A field type imported only for type checking fails the forced build."""
+        violation = TestsFlextInfraFreshImportCompleteness._completeness_report(
+            tmp_path,
+            fixture_tree("pydantic-completeness") / "red",
+            suite_runtime_root,
         )
-        tm.fail(report.passed)
-        violation = report.violations[0]
-        tm.that(violation, has="3 incomplete pydantic class(es)")
-        tm.that(violation, has="FixtureModels.Entry [unresolved child: ")
-        tm.that(violation, has="FixtureLedger [unresolved amount: ")
-        tm.that(
-            violation,
-            has=(
-                "FixtureHolder [depends ledger: "
-                "flext_completeness_fixture.FixtureLedger]"
-            ),
-        )
-        tm.that(violation, lacks="FixtureModels.Child [")
+        tm.that(violation, has="PydanticUndefinedAnnotation")
+        tm.that(violation, has="Decimal")
 
     @staticmethod
-    def test_complete_family_model_passes(
+    def test_deferred_family_models_build(
+        tmp_path: Path,
         fixture_tree: Callable[[str], Path],
         suite_runtime_root: Path,
     ) -> None:
-        """A sibling declared first and named bare completes at import."""
-        scenarios = fixture_tree("pydantic-completeness")
-        report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=scenarios / "green",
-                runtime_root=suite_runtime_root,
-            ).build_report(packages=("flext_completeness_fixture",)),
+        """Deferred models, a sibling named through its family included, build."""
+        violation = TestsFlextInfraFreshImportCompleteness._completeness_report(
+            tmp_path,
+            fixture_tree("pydantic-completeness") / "green",
+            suite_runtime_root,
         )
-        tm.that(report.passed, eq=True, msg=str(report.violations))
+        tm.that(violation, eq=None)
 
     @staticmethod
     def test_field_needing_arbitrary_types_fails(
+        tmp_path: Path,
         fixture_tree: Callable[[str], Path],
         suite_runtime_root: Path,
     ) -> None:
         """A field type without a schema fails, naming the model and field."""
-        scenarios = fixture_tree("pydantic-arbitrary")
-        report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=scenarios / "red",
-                runtime_root=suite_runtime_root,
-            ).build_report(packages=("flext_arbitrary_fixture",)),
+        violation = TestsFlextInfraFreshImportCompleteness._completeness_report(
+            tmp_path,
+            fixture_tree("pydantic-arbitrary") / "red",
+            suite_runtime_root,
         )
-        tm.fail(report.passed)
-        violation = report.violations[0]
         tm.that(violation, has="PydanticSchemaGenerationError")
         tm.that(violation, has="threading.Thread")
-        tm.that(
-            violation,
-            has="flext_arbitrary_fixture.FixtureArbitrary.worker needs",
-        )
+        tm.that(violation, has="FixtureArbitrary.worker needs")
 
     @staticmethod
     def test_field_declared_through_port_passes(
+        tmp_path: Path,
         fixture_tree: Callable[[str], Path],
         suite_runtime_root: Path,
     ) -> None:
         """The same field declared through ``t.Port`` builds without the flag."""
-        scenarios = fixture_tree("pydantic-arbitrary")
-        report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=scenarios / "green",
-                runtime_root=suite_runtime_root,
-            ).build_report(packages=("flext_arbitrary_fixture",)),
+        violation = TestsFlextInfraFreshImportCompleteness._completeness_report(
+            tmp_path,
+            fixture_tree("pydantic-arbitrary") / "green",
+            suite_runtime_root,
         )
-        tm.that(report.passed, eq=True, msg=str(report.violations))
+        tm.that(violation, eq=None)

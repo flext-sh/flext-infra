@@ -1,0 +1,67 @@
+# A function declared by `abc.abstractmethod`, `typing.overload` or
+# `typing_extensions.overload`: the decorator is the qualified attribute, or a
+# bare name the module imports from that owner under the original name or an
+# alias.
+id: declaration-decorated
+language: python
+rule:
+  kind: function_definition
+  inside:
+    kind: decorated_definition
+    has:
+      kind: decorator
+      any:
+        - regex: "^@(?:abc\\.abstractmethod|typing(?:_extensions)?\\.overload)\\s*$"
+        - all:
+            - has:
+                kind: identifier
+                pattern: $DECLARATION_DECORATOR
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  kind: import_from_statement
+                  any:
+                    - all:
+                        - has:
+                            field: module_name
+                            regex: "^abc$"
+                        - has:
+                            stopBy: end
+                            any:
+                              - kind: dotted_name
+                                regex: "^abstractmethod$"
+                                pattern: $DECLARATION_DECORATOR
+                                not:
+                                  inside:
+                                    kind: aliased_import
+                              - kind: aliased_import
+                                all:
+                                  - has:
+                                      field: name
+                                      regex: "^abstractmethod$"
+                                  - has:
+                                      field: alias
+                                      pattern: $DECLARATION_DECORATOR
+                    - all:
+                        - has:
+                            field: module_name
+                            regex: "^typing(?:_extensions)?$"
+                        - has:
+                            stopBy: end
+                            any:
+                              - kind: dotted_name
+                                regex: "^overload$"
+                                pattern: $DECLARATION_DECORATOR
+                                not:
+                                  inside:
+                                    kind: aliased_import
+                              - kind: aliased_import
+                                all:
+                                  - has:
+                                      field: name
+                                      regex: "^overload$"
+                                  - has:
+                                      field: alias
+                                      pattern: $DECLARATION_DECORATOR

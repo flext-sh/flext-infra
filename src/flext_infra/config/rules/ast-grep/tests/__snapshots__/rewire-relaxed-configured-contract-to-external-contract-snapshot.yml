@@ -1,16 +1,7 @@
 id: rewire-relaxed-configured-contract-to-external-contract
 snapshots:
-  ? |
-    class Setting(m.ContractModel):
-        """One setting in a values response."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="ignore",
-            frozen=True,
-            populate_by_name=True,
-        )
-        key: str
-  : fixed: |
+  "class Setting(m.ContractModel):\n    \"\"\"One setting in a values response.\"\"\"\n\n    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(\n        extra=\"ignore\",\n        frozen=True,\n        populate_by_name=True,\n    )\n    key: str\n":
+    fixed: |
       class Setting(m.ExternalContractModel):
           """One setting in a values response."""
           model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True, )
@@ -19,7 +10,7 @@ snapshots:
     - source: |-
         class Setting(m.ContractModel):
             """One setting in a values response."""
-
+        
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
                 extra="ignore",
                 frozen=True,

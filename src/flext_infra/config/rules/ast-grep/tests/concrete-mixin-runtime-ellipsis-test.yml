@@ -1,8 +1,32 @@
 id: concrete-mixin-runtime-ellipsis
-# These cases test AST preselection. Native binding admission in
-# test_rule_binding_inputs.py excludes actual Protocol/abstractmethod/overload
-# declarations and non-typing guards, not same-spelling local substitutes.
+# Protocol classes (typing-base-class) and abstractmethod/overload
+# declarations (declaration-decorated) keep their declarations, aliases
+# included; the guard is the typing.TYPE_CHECKING flag (type-checking-flag).
 valid:
+  - |
+    from typing import Protocol as Contract
+    class ReaderMixin(Contract):
+        def read(self) -> str: ...
+  - |
+    from abc import ABC, abstractmethod as required
+    class ReaderMixin(ABC):
+        @required
+        def read(self) -> str: ...
+  - |
+    from typing import overload as signature
+    class Runtime:
+        if TYPE_CHECKING:
+            @signature
+            def select(self, value: int) -> int: ...
+            @signature
+            def select(self, value: str) -> str: ...
+        def select(self, value: int | str) -> int | str:
+            return value
+  - |
+    class Runtime:
+        if DEBUG:
+            def process(self, value: str) -> str:
+                del value
   - |
     class RuntimeMixin:
         def run(self) -> int:
@@ -95,22 +119,3 @@ invalid:
             def process(self, value: str) -> str:
                 """A copied signature is still a shell."""
                 del value
-  - |
-    from typing import Protocol as Contract
-    class ReaderMixin(Contract):
-        def read(self) -> str: ...
-  - |
-    from abc import ABC, abstractmethod as required
-    class ReaderMixin(ABC):
-        @required
-        def read(self) -> str: ...
-  - |
-    from typing import overload as signature
-    class Runtime:
-        if TYPE_CHECKING:
-            @signature
-            def select(self, value: int) -> int: ...
-            @signature
-            def select(self, value: str) -> str: ...
-        def select(self, value: int | str) -> int | str:
-            return value

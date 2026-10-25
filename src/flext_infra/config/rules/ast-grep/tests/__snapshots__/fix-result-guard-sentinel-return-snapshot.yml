@@ -1,11 +1,7 @@
 id: fix-result-guard-sentinel-return
 snapshots:
-  ? |
-    def run(res) -> r[str]:
-        if not res.success:
-            return None
-        return res
-  : fixed: |
+  "def run(res) -> r[str]:\n    if not res.success:\n        return None\n    return res\n":
+    fixed: |
       def run(res) -> r[str]:
           if not res.success:
               return r[str].from_failure(res)
@@ -37,7 +33,7 @@ snapshots:
       style: secondary
       start: 18
       end: 21
-    - source: '[str]'
+    - source: "[str]"
       style: secondary
       start: 17
       end: 22
@@ -57,12 +53,8 @@ snapshots:
       style: secondary
       start: 0
       end: 82
-  ? |
-    def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:
-        if validation_result.failure:
-            return False
-        return r[bool].ok(value=True)
-  : fixed: |
+  "def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:\n    if validation_result.failure:\n        return False\n    return r[bool].ok(value=True)\n":
+    fixed: |
       def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:
           if validation_result.failure:
               return r[bool].from_failure(validation_result)

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
@@ -20,7 +20,7 @@ from flext_infra._models import (
     FlextInfraModelsDeps,
     FlextInfraModelsDuplication,
 )
-from flext_infra._protocols import FlextInfraProtocolsDeps
+from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsDeps
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
@@ -192,8 +192,28 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ] = None
         runtime_dependency_collector: Annotated[
-            FlextInfraProtocolsDeps.RuntimeDependencyCollector | None,
+            t.Port[FlextInfraProtocolsDeps.RuntimeDependencyCollector] | None,
             m.Field(description="Explicit composition-owned target supplier collector"),
+        ] = None
+        scope_facts: Annotated[
+            t.Port[FlextInfraProtocolsCheck.GitScopeFacts] | None,
+            m.Field(
+                description=(
+                    "Invocation-owned Git scope facts shared by applicability "
+                    "and every gate; absent means each query reads Git"
+                ),
+                exclude=True,
+            ),
+        ] = None
+        signal_wave: Annotated[
+            t.Port[p.Cli.SignalWave] | None,
+            m.Field(
+                description=(
+                    "Signal wave of the concurrent stage running this gate; "
+                    "absent on the main thread"
+                ),
+                exclude=True,
+            ),
         ] = None
         ruff_args: Annotated[
             t.StrSequence,

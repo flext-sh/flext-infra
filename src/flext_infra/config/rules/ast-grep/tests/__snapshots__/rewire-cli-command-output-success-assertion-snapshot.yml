@@ -1,12 +1,7 @@
 id: rewire-cli-command-output-success-assertion
 snapshots:
-  ? |
-    if condition:
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
-        tm.that(output.outcome.raw_return_code, eq=0)
-    else:
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
-  : fixed: |
+  "if condition:\n    tm.that(u.Cli.process_succeeded(output.outcome), eq=True)\n    tm.that(output.outcome.raw_return_code, eq=0)\nelse:\n    tm.that(u.Cli.process_succeeded(output.outcome), eq=True)\n":
+    fixed: |
       if condition:
           tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
           tm.that(output.outcome.raw_return_code, eq=0)
@@ -21,12 +16,8 @@ snapshots:
       style: secondary
       start: 80
       end: 125
-  ? |
-    if condition:
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
-    else:
-        tm.that(output.outcome.raw_return_code, eq=0)
-  : fixed: |
+  "if condition:\n    tm.that(u.Cli.process_succeeded(output.outcome), eq=True)\nelse:\n    tm.that(output.outcome.raw_return_code, eq=0)\n":
+    fixed: |
       if condition:
           tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
       else:
@@ -36,10 +27,8 @@ snapshots:
       style: primary
       start: 86
       end: 131
-  ? |
-    tm.that(first.outcome.raw_return_code, eq=0)
-    tm.that(u.Cli.process_succeeded(second.outcome), eq=True)
-  : fixed: |
+  "tm.that(first.outcome.raw_return_code, eq=0)\ntm.that(u.Cli.process_succeeded(second.outcome), eq=True)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(first.outcome), eq=True)
       tm.that(u.Cli.process_succeeded(second.outcome), eq=True)
     labels:
@@ -47,24 +36,22 @@ snapshots:
       style: primary
       start: 0
       end: 44
-  tm.that(ok_output.outcome.raw_return_code, eq=0):
+  "tm.that(ok_output.outcome.raw_return_code, eq=0)":
     fixed: tm.that(u.Cli.process_succeeded(ok_output.outcome), eq=True)
     labels:
     - source: tm.that(ok_output.outcome.raw_return_code, eq=0)
       style: primary
       start: 0
       end: 48
-  tm.that(output.outcome.raw_return_code, eq=0):
+  "tm.that(output.outcome.raw_return_code, eq=0)":
     fixed: tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
     labels:
     - source: tm.that(output.outcome.raw_return_code, eq=0)
       style: primary
       start: 0
       end: 45
-  ? |
-    tm.that(output.outcome.raw_return_code, eq=0)
-    tm.that(output.outcome.raw_return_code, eq=0)
-  : fixed: |
+  "tm.that(output.outcome.raw_return_code, eq=0)\ntm.that(output.outcome.raw_return_code, eq=0)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
       tm.that(output.outcome.raw_return_code, eq=0)
     labels:
@@ -72,10 +59,8 @@ snapshots:
       style: primary
       start: 0
       end: 45
-  ? |
-    tm.that(output.outcome.raw_return_code, eq=0)
-    tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg="diagnostic")
-  : fixed: |
+  "tm.that(output.outcome.raw_return_code, eq=0)\ntm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=\"diagnostic\")\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
       tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg="diagnostic")
     labels:
@@ -83,17 +68,15 @@ snapshots:
       style: primary
       start: 0
       end: 45
-  tm.that(result.value.outcome.raw_return_code, eq=0):
+  "tm.that(result.value.outcome.raw_return_code, eq=0)":
     fixed: tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
     labels:
     - source: tm.that(result.value.outcome.raw_return_code, eq=0)
       style: primary
       start: 0
       end: 51
-  ? |
-    tm.that(result.value.outcome.raw_return_code, eq=0)
-    tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
-  : fixed: |
+  "tm.that(result.value.outcome.raw_return_code, eq=0)\ntm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
       tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
     labels:
@@ -101,10 +84,8 @@ snapshots:
       style: primary
       start: 0
       end: 51
-  ? |
-    tm.that(u.Cli.process_succeeded(first.outcome), eq=True)
-    tm.that(second.outcome.raw_return_code, eq=0)
-  : fixed: |
+  "tm.that(u.Cli.process_succeeded(first.outcome), eq=True)\ntm.that(second.outcome.raw_return_code, eq=0)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(first.outcome), eq=True)
       tm.that(u.Cli.process_succeeded(second.outcome), eq=True)
     labels:
@@ -112,11 +93,8 @@ snapshots:
       style: primary
       start: 57
       end: 102
-  ? |
-    tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
-    tm.that(output.outcome.raw_return_code, eq=0)
-    tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
-  : fixed: |
+  "tm.that(u.Cli.process_succeeded(output.outcome), eq=True)\ntm.that(output.outcome.raw_return_code, eq=0)\ntm.that(u.Cli.process_succeeded(output.outcome), eq=True)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
       tm.that(output.outcome.raw_return_code, eq=0)
       tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
@@ -129,10 +107,8 @@ snapshots:
       style: secondary
       start: 58
       end: 103
-  ? |
-    tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg="diagnostic")
-    tm.that(output.outcome.raw_return_code, eq=0)
-  : fixed: |
+  "tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=\"diagnostic\")\ntm.that(output.outcome.raw_return_code, eq=0)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg="diagnostic")
       tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
     labels:
@@ -140,10 +116,8 @@ snapshots:
       style: primary
       start: 76
       end: 121
-  ? |
-    tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
-    tm.that(result.value.outcome.raw_return_code, eq=0)
-  : fixed: |
+  "tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)\ntm.that(result.value.outcome.raw_return_code, eq=0)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
       tm.that(result.value.outcome.raw_return_code, eq=0)
     labels:
@@ -155,10 +129,8 @@ snapshots:
       style: secondary
       start: 64
       end: 115
-  ? |
-    tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
-    tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
-  : fixed: |
+  "tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)\ntm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)\n":
+    fixed: |
       tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
       tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
     labels:

@@ -1,9 +1,7 @@
 id: ban-deferred-self-reference
 snapshots:
-  ? |
-    class Node(m.ContractModel):
-        child: object = m.Field(default_factory=lambda: Node())
-  : labels:
+  "class Node(m.ContractModel):\n    child: object = m.Field(default_factory=lambda: Node())\n":
+    labels:
     - source: Node
       style: primary
       start: 81
@@ -12,11 +10,11 @@ snapshots:
       style: secondary
       start: 57
       end: 72
-    - source: 'default_factory=lambda: Node()'
+    - source: "default_factory=lambda: Node()"
       style: secondary
       start: 57
       end: 87
-    - source: 'lambda: Node()'
+    - source: "lambda: Node()"
       style: secondary
       start: 73
       end: 87
@@ -30,13 +28,8 @@ snapshots:
       style: secondary
       start: 0
       end: 88
-  ? |
-    class Outer:
-        class Sibling(m.ContractModel):
-            pass
-        class Item(m.ContractModel):
-            sibling: object = m.Field(default_factory=lambda: Outer.Sibling())
-  : labels:
+  "class Outer:\n    class Sibling(m.ContractModel):\n        pass\n    class Item(m.ContractModel):\n        sibling: object = m.Field(default_factory=lambda: Outer.Sibling())\n":
+    labels:
     - source: Outer
       style: primary
       start: 153
@@ -45,11 +38,11 @@ snapshots:
       style: secondary
       start: 129
       end: 144
-    - source: 'default_factory=lambda: Outer.Sibling()'
+    - source: "default_factory=lambda: Outer.Sibling()"
       style: secondary
       start: 129
       end: 168
-    - source: 'lambda: Outer.Sibling()'
+    - source: "lambda: Outer.Sibling()"
       style: secondary
       start: 145
       end: 168

@@ -56,12 +56,15 @@ class FlextInfraEnforcementCatalogGate(FlextInfraGate):
             if loaded.success
             else "\n".join(issue.formatted for issue in issues)
         )
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=loaded.success,
-            issues=issues,
-            evidence=self._publish_raw_receipt(ctx, raw),
-            started=started,
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=loaded.success,
+                issues=tuple(issues),
+                raw_output=raw,
+                started=started,
+            ),
+            ctx,
         )
 
 

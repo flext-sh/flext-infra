@@ -1,11 +1,7 @@
 id: caught-exception-string-failure
 snapshots:
-  ? |
-    try:
-        connect()
-    except ConnectionError as error:
-        return r.fail(str(error))
-  : fixed: |
+  "try:\n    connect()\nexcept ConnectionError as error:\n    return r.fail(str(error))\n":
+    fixed: |
       try:
           connect()
       except ConnectionError as error:
@@ -33,12 +29,8 @@ snapshots:
       style: secondary
       start: 19
       end: 81
-  ? |
-    try:
-        read()
-    except OSError as exc:
-        return r[str].fail(str(exc))
-  : fixed: |
+  "try:\n    read()\nexcept OSError as exc:\n    return r[str].fail(str(exc))\n":
+    fixed: |
       try:
           read()
       except OSError as exc:

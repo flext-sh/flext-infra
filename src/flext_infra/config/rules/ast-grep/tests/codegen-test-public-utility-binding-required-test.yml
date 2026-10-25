@@ -2,5 +2,11 @@ id: codegen-test-public-utility-binding-required
 valid:
   - u.CodegenTestSupport.Ci
   - 'payload = "utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci"'
+  # With u bound, the namespace rule migrates the reference.
+  - |
+    from tests import u, utilities
+    utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
 invalid:
-  - utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
+  - |
+    from tests import utilities
+    utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci

@@ -1,7 +1,11 @@
-# Shape only: the engine admits a finding when $MODULE is another facade
-# package and $NAME an alias the own package binds outside its own family.
+# $MODULE is another facade package (fixture-utils/facade-package.yml) and
+# $NAME an alias the own package `ai_hub` binds (fixture-utils/local-alias.yml);
+# the family and layer-zero file scopes are resolved only in a native stage.
 id: ban-foreign-namespace-source
 valid:
+  - from ai_hub import c
+  - from rich import c
+  - from flext_cli import x
   - from flext_cli.constants import c
   - |
     def run():

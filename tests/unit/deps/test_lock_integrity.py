@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
 from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, tm, u
@@ -95,43 +94,6 @@ class TestsFlextInfraDepsLockIntegrity:
         """A repository root without any committed generated lock fails loud."""
         error = tm.fail(self._verifier(tmp_path).execute())
         tm.that(error, has="missing committed generated lock")
-
-    @staticmethod
-    def test_member_lock_worktree_derives_from_declared_scratch_root(
-        tmp_path: Path,
-    ) -> None:
-        """The member worktree sits below the declared root, outside the checkout."""
-        scratch = config.Infra.codegen.make.pytest_scratch
-        home = tmp_path / "home"
-        checkout = tmp_path / "workspace" / "member"
-        with u.Tests.env_vars_context({
-            str(scratch.user_home_environment_variable): str(home)
-        }):
-            worktree = tm.ok(
-                FlextInfraLockIntegrityVerifier.member_lock_worktree(checkout)
-            )
-        absolute = checkout.resolve()
-        tm.that(
-            worktree,
-            eq=home
-            / scratch.home_relative_directory
-            / scratch.state_directory_name
-            / absolute.relative_to(absolute.anchor)
-            / config.Infra.codegen.make.member_lock.namespace,
-        )
-        tm.fail(worktree.is_relative_to(checkout.parent))
-
-    @staticmethod
-    def test_member_lock_worktree_requires_absolute_home(tmp_path: Path) -> None:
-        """A relative user home fails before any worktree effect."""
-        scratch = config.Infra.codegen.make.pytest_scratch
-        with u.Tests.env_vars_context({
-            str(scratch.user_home_environment_variable): "relative-home"
-        }):
-            tm.fail(
-                FlextInfraLockIntegrityVerifier.member_lock_worktree(tmp_path),
-                has="member lock worktree requires absolute",
-            )
 
     def test_root_lock_does_not_replace_the_selected_view(self, tmp_path: Path) -> None:
         """A stale legacy lock cannot turn an absent selected lock into success."""

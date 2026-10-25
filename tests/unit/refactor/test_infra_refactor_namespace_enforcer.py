@@ -530,7 +530,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         (pkg / "service.py").write_text(source, encoding="utf-8")
         u.Tests.provision_checkout(workspace)
         expected = tm.ok(FlextInfraModGateEngine.scan(project, fix=False))
-        plan = tm.ok(u.Infra.codemod_rule_plan(project))
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
 
         result = FlextInfraNamespaceEnforcer.execute_command(
             m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),

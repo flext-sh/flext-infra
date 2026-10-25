@@ -1,0 +1,1 @@
+from griffe import Module

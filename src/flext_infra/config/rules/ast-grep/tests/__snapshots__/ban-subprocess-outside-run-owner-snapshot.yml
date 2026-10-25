@@ -1,6 +1,6 @@
 id: ban-subprocess-outside-run-owner
 snapshots:
-  from subprocess import PIPE, Popen:
+  "from subprocess import PIPE, Popen":
     labels:
     - source: from subprocess import PIPE, Popen
       style: primary
@@ -20,7 +20,7 @@ snapshots:
       style: secondary
       start: 5
       end: 15
-  import os, subprocess:
+  "import os, subprocess":
     labels:
     - source: import os, subprocess
       style: primary
@@ -60,7 +60,7 @@ snapshots:
       style: secondary
       start: 9
       end: 19
-    - source: '"subprocess"'
+    - source: "\"subprocess\""
       style: secondary
       start: 20
       end: 32
@@ -74,7 +74,7 @@ snapshots:
       style: secondary
       start: 9
       end: 32
-    - source: '"subprocess"'
+    - source: "\"subprocess\""
       style: secondary
       start: 33
       end: 45

@@ -138,8 +138,8 @@ Infra:
       - [testpaths, [tests]]
       - [minversion, "8.0"]
       - [python_classes, ["Test*"]]
-      - [filterwarnings, [error, "module::flext_core._constants.enforcement.FlextMroViolation", "once::pytest.PytestAssertRewriteWarning"]]
-      - [addopts, [--benchmark-disable, --strict-markers, --markdown-docs, --durations=10, --flext-enforce-strict]]
+      - [filterwarnings, [error, "once::pytest.PytestAssertRewriteWarning"]]
+      - [addopts, [--benchmark-disable, --strict-markers, --markdown-docs, --durations=10]]
       pyright:
       - [ pythonPlatform, Linux ]
       - [ reportCallIssue, error ]
@@ -183,7 +183,15 @@ Infra:
       ruff.lint:
       - [ select, [ ALL ] ]
       - [ ignore, [] ]
-      - [ unfixable, [ multi-value-repeated-key-literal, multi-value-repeated-key-variable, p-print, print, pytest-duplicate-parametrize-test-cases ] ]
+      # non-pep695-type-alias (UP040) stays detected but is never autofixed:
+      # its fix turns a facade class publication `Name: TypeAlias = Owner`
+      # into a PEP 695 `type` statement, replacing the class with a
+      # TypeAliasType (2026-10-25: `type Cli = FlextCliUtilitiesCli` killed the
+      # flext-infra CLI fleet-wide). Operator decision 2026-10-25, "Exceção
+      # UP040 por identidade": the lint verdict exempts exactly the
+      # authenticated publication identities (file, row, column, rule); every
+      # other UP040 finding blocks and is rewritten by its declared owner.
+      - [ unfixable, [ multi-value-repeated-key-literal, multi-value-repeated-key-variable, non-pep695-type-alias, p-print, print, pytest-duplicate-parametrize-test-cases ] ]
       - [ extend-safe-fixes, [ relative-imports, typing-only-first-party-import, camelcase-imported-as-lowercase ] ]
       - [ extend-select, [ missing-blank-line-after-last-section ] ]
       ruff.lint.flake8-tidy-imports:
@@ -533,14 +541,19 @@ Infra:
         # items have no per-item deadline; the runner owns the invocation wall.
         # Slow marks are a narrow integration-harness budget, not permission
         # for an unbounded test. Cases that exceed it require owner repair.
-        slow-timeout-seconds: 30
+        # Operator order operator-order-2026-10-25-make-timeout-60s-cprofile:
+        # every make verb finishes within 60s; slower runs are profiled with
+        # cProfile and cured at their owner. The slow-phase stop reserve is
+        # xdist items per worker x slow-timeout + grace = 2 x 25 + 2 = 52 s,
+        # which must stay below run-timeout-seconds.
+        slow-timeout-seconds: 25
         # Marker selection never removes the aggregate operation deadline.
         # Slow items also retain their declared per-item integration budget.
         slow-marker: slow
         # A local suite that cannot finish within run-timeout-seconds is a
         # performance defect. Collection, lease waits and every suite child
         # share the entrypoint clock, with termination grace inside this wall.
-        run-timeout-seconds: 120
+        run-timeout-seconds: 60
         termination-grace-seconds: 2
         # One failure stops the invocation. The next run starts from the
         # corrected owner instead of accumulating a backlog of unrelated
@@ -605,13 +618,10 @@ Infra:
         # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
         # "error" to survive re-conform. Only module::/once:: sort after 'error'
         # ('m'/'o' > 'e'); default::/always::/ignore:: get reordered before it and
-        # lose. The entry names FlextMroViolation because FlextSmellViolation is
-        # its SUBCLASS: a filter on the child leaves the parent fatal, which is
-        # how MRO violations become errors when a regeneration drops the
-        # entry. One entry on the parent keeps
-        # both VISIBLE-but-non-fatal, matching the non-strict enforcement policy
-        # (flext-tests registers default::{category}); all other warnings stay
-        # fatal. See flext-core test_enforcement_warning_visibility.
+        # lose. flext-core's static-time enforcement is switched off (operator
+        # order 2026-10-25; it migrates to flext-infra's declarative rules), so
+        # no core enforcement warning category is filtered here; every other
+        # warning stays fatal.
         standard-markers:
         - "smoke: public-interface smoke tests"
         - "unit: unit tests"
@@ -658,6 +668,15 @@ Infra:
           provider: http
           url: http://localhost:11434/v1
           model: unclemusclez/jina-embeddings-v2-base-code
+        # Operator authorization 2026-10-25 (in-session answer "Autorizar
+        # exclusão no jscpd"): the mandated module license header repeats in
+        # every module by contract, so it is no clone to repair. jscpd matches
+        # each pattern against one token, and a docstring line is one token,
+        # so each header line has its own pattern (any year); the docstring
+        # summary and the import block that follows stay scanned.
+        ignore-patterns:
+          - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
+          - "SPDX-License-Identifier: MIT"
 
     lazy-init:
       # Canonical import layer order of the FLEXT import law
@@ -760,7 +779,8 @@ Infra:
       phases:
         # Component toggles for make mod (rule: toggles are data, not flags).
         import-alignment: true
-        # Native cascade: every fixable rule without metadata.context applies
+        # Native cascade: every fixable rule that is neither an owned-path rule
+        # nor a Rope relocation applies
         # through ast-grep's own `scan --update-all` over the project's staged
         # sgconfig (.reports/codemod/native/<stage>/sgconfig.yml), stage by
         # stage in this order; the sequence repeats in one staged preview

@@ -6,9 +6,10 @@
 # module, ...) bypasses the facade alphabet (ENFORCE-046, enforced by
 # flext-core only at runtime until now).
 #
-# Nothing is listed: `facade-module` selects the module, `runtime-package`
-# keeps the import a FLEXT runtime package, and `family-peer` derives the
-# admitted peer from the module's own family.
+# Nothing is listed: the facade-module file scope selects the module, the
+# generated facade-package utility keeps the import a FLEXT facade package,
+# and the family-peer- groups derive the admitted peer from each module's own
+# family.
 id: ban-concrete-family-class-import
 language: python
 severity: error
@@ -18,12 +19,14 @@ ignores:
   - "**/__init__.py"
 metadata:
   enforce: [ENFORCE-046]
-  context:
-    MODULE:
-      - is: facade-module
-      - is: facade-package
-    NAME:
-      not: family-peer
+  scope:
+    in: [facade-module]
+    partition:
+      variable: NAME
+      holds: true
+      matching: false
+      selectors: family-peer-
+      pattern: "{raw}"
 rule:
   matches: root-imported-name
   pattern: $NAME
@@ -36,6 +39,8 @@ rule:
 constraints:
   NAME:
     regex: "^(?:Tests)?Flext[A-Z][A-Za-z0-9]*$"
+  MODULE:
+    matches: facade-package
 message: >-
   Facade module imports the concrete class `$NAME` from `$MODULE`: read it
   through that package's facade letter.

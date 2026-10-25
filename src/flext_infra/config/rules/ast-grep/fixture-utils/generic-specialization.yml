@@ -1,0 +1,6 @@
+# Fixture value of the requested `generic-specialization` utility: the
+# registration aliases the fixture `p` facade specializes.
+id: generic-specialization
+language: Python
+rule:
+  regex: "^(?:FactoryCallable|FactoryMap|GuardInput|RegisterableService|ResourceCallable|ResourceMap|ServiceMap|ServiceValue)$"

@@ -1,9 +1,7 @@
 id: require-model-extra-forbid
 snapshots:
-  ? |
-    class Order(BaseModel):
-        total: int
-  : labels:
+  "class Order(BaseModel):\n    total: int\n":
+    labels:
     - source: |-
         class Order(BaseModel):
             total: int
@@ -22,10 +20,8 @@ snapshots:
       style: secondary
       start: 6
       end: 11
-  ? |
-    class Order(pydantic.BaseModel):
-        model_config = ConfigDict(frozen=True)
-  : labels:
+  "class Order(pydantic.BaseModel):\n    model_config = ConfigDict(frozen=True)\n":
+    labels:
     - source: |-
         class Order(pydantic.BaseModel):
             model_config = ConfigDict(frozen=True)

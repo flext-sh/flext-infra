@@ -19,10 +19,11 @@ class TestsFlextInfraCodemodGeneratedModuleUtility:
         tmp_path: Path,
     ) -> None:
         """Native ast-grep matches the header-first module, not an authored one."""
-        predicate = c.Infra.CodemodContextPredicate.GENERATED_MODULE.value
-        documents = u.Infra.codemod_native_utilities(
-            tmp_path, ("codemod_generated_module_utilities",)
-        )
+        predicate = c.Infra.CODEMOD_GENERATED_MODULE_UTILITY
+        with u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot:
+            documents = u.Infra.codemod_native_utilities(
+                snapshot, tmp_path, ("codemod_generated_module_utilities",)
+            )
         catalog = tmp_path / "catalog"
         tm.ok(
             u.Cli.yaml_dump(

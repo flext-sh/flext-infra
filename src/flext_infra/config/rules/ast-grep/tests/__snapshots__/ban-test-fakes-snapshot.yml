@@ -1,9 +1,7 @@
 id: ban-test-fakes
 snapshots:
-  ? |
-    class DummyService(Service):
-        pass
-  : labels:
+  "class DummyService(Service):\n    pass\n":
+    labels:
     - source: |-
         class DummyService(Service):
             pass
@@ -14,10 +12,8 @@ snapshots:
       style: secondary
       start: 6
       end: 18
-  ? |
-    class FakeRunner:
-        pass
-  : labels:
+  "class FakeRunner:\n    pass\n":
+    labels:
     - source: |-
         class FakeRunner:
             pass
@@ -28,10 +24,8 @@ snapshots:
       style: secondary
       start: 6
       end: 16
-  ? |
-    class GatewayFake(Gateway):
-        pass
-  : labels:
+  "class GatewayFake(Gateway):\n    pass\n":
+    labels:
     - source: |-
         class GatewayFake(Gateway):
             pass
@@ -42,10 +36,8 @@ snapshots:
       style: secondary
       start: 6
       end: 17
-  ? |
-    class Mock:
-        pass
-  : labels:
+  "class Mock:\n    pass\n":
+    labels:
     - source: |-
         class Mock:
             pass
@@ -56,10 +48,8 @@ snapshots:
       style: secondary
       start: 6
       end: 10
-  ? |
-    class Recorder(p.Cli.Runner):
-        pass
-  : labels:
+  "class Recorder(p.Cli.Runner):\n    pass\n":
+    labels:
     - source: |-
         class Recorder(p.Cli.Runner):
             pass
@@ -74,10 +64,8 @@ snapshots:
       style: secondary
       start: 15
       end: 27
-  ? |
-    class RunnerSpy:
-        pass
-  : labels:
+  "class RunnerSpy:\n    pass\n":
+    labels:
     - source: |-
         class RunnerSpy:
             pass
@@ -88,11 +76,8 @@ snapshots:
       style: secondary
       start: 6
       end: 15
-  ? |
-    class TestsFlextInfraUtilitiesTomlMixin:
-        class TomlReaderSequence(p.Infra.TomlReader):
-            pass
-  : labels:
+  "class TestsFlextInfraUtilitiesTomlMixin:\n    class TomlReaderSequence(p.Infra.TomlReader):\n        pass\n":
+    labels:
     - source: |-
         class TomlReaderSequence(p.Infra.TomlReader):
                 pass
@@ -107,10 +92,8 @@ snapshots:
       style: secondary
       start: 70
       end: 88
-  ? |
-    class _StubClient:
-        pass
-  : labels:
+  "class _StubClient:\n    pass\n":
+    labels:
     - source: |-
         class _StubClient:
             pass
@@ -121,10 +104,8 @@ snapshots:
       style: secondary
       start: 6
       end: 17
-  ? |
-    def _stub_fetch(url: str) -> str:
-        return ""
-  : labels:
+  "def _stub_fetch(url: str) -> str:\n    return \"\"\n":
+    labels:
     - source: |-
         def _stub_fetch(url: str) -> str:
             return ""
@@ -135,10 +116,8 @@ snapshots:
       style: secondary
       start: 4
       end: 15
-  ? |
-    def fake_run(*args) -> int:
-        return 0
-  : labels:
+  "def fake_run(*args) -> int:\n    return 0\n":
+    labels:
     - source: |-
         def fake_run(*args) -> int:
             return 0

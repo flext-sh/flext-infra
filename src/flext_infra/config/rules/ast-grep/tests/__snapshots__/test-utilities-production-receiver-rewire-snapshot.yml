@@ -1,14 +1,10 @@
 id: test-utilities-production-receiver-rewire
 snapshots:
-  ? |
-    from flext_infra import u
-    from tests import u as test_u
-
-    value = u.Tests.codegen_file_text(plan)
-  : fixed: |
+  "from flext_infra import u\nfrom tests import u as test_u\n\nvalue = u.Tests.codegen_file_text(plan)\n":
+    fixed: |
       from flext_infra import u
       from tests import u as test_u
-
+      
       value = test_u.Tests.codegen_file_text(plan)
     labels:
     - source: u.Tests.codegen_file_text(plan)
@@ -22,7 +18,7 @@ snapshots:
     - source: |
         from flext_infra import u
         from tests import u as test_u
-
+        
         value = u.Tests.codegen_file_text(plan)
       style: secondary
       start: 0
@@ -34,7 +30,7 @@ snapshots:
     - source: |
         from flext_infra import u
         from tests import u as test_u
-
+        
         value = u.Tests.codegen_file_text(plan)
       style: secondary
       start: 0

@@ -1,16 +1,24 @@
 id: target-ldap-test-public-sink-constructor
 snapshots:
-  Sinks.FlextTargetLdapModels.BaseSink(target=target, stream_name=name, schema=schema, key_properties=keys):
-    fixed: m.TargetLdap.BaseSink(target=target, stream_name=name, schema=schema, key_properties=keys)
+  "Sinks.FlextTargetLdapModels.BaseSink(target=target, stream_name=name, schema=schema, key_properties=keys)":
+    fixed: >-
+      m.TargetLdap.BaseSink(target=target, stream_name=name, schema=schema,
+      key_properties=keys)
     labels:
-    - source: Sinks.FlextTargetLdapModels.BaseSink(target=target, stream_name=name, schema=schema, key_properties=keys)
+    - source: >-
+        Sinks.FlextTargetLdapModels.BaseSink(target=target, stream_name=name,
+        schema=schema, key_properties=keys)
       style: primary
       start: 0
       end: 105
-  Sinks.FlextTargetLdapModels.UsersSink(target=target, stream_name=name, schema=schema, key_properties=keys):
-    fixed: m.TargetLdap.UsersSink(target=target, stream_name=name, schema=schema, key_properties=keys)
+  "Sinks.FlextTargetLdapModels.UsersSink(target=target, stream_name=name, schema=schema, key_properties=keys)":
+    fixed: >-
+      m.TargetLdap.UsersSink(target=target, stream_name=name, schema=schema,
+      key_properties=keys)
     labels:
-    - source: Sinks.FlextTargetLdapModels.UsersSink(target=target, stream_name=name, schema=schema, key_properties=keys)
+    - source: >-
+        Sinks.FlextTargetLdapModels.UsersSink(target=target, stream_name=name,
+        schema=schema, key_properties=keys)
       style: primary
       start: 0
       end: 106

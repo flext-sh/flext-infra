@@ -496,9 +496,13 @@ class TestsFlextInfraTypeGates:
         gate_class: type[gates.FlextInfraGate],
     ) -> None:
         """Detected Python content, not a pass receipt, selects the type gates."""
-        tm.fail(gate_class(tmp_path).selected_for(tmp_path))
+        tm.fail(
+            gate_class(tmp_path).selected_for(tmp_path, u.Tests.gate_context(tmp_path))
+        )
         tm.that(
-            gate_class(real_python_package).selected_for(real_python_package),
+            gate_class(real_python_package).selected_for(
+                real_python_package, u.Tests.gate_context(real_python_package)
+            ),
             eq=True,
         )
 
@@ -578,7 +582,7 @@ class TestsFlextInfraTypeGates:
                     gates.FlextInfraPyrightGate.gate_id,
                     gates.FlextInfraPyreflyGate.gate_id,
                 ],
-                reports_dir=reports,
+                u.Tests.gate_context(real_python_package.parent, reports),
             ),
         )
 

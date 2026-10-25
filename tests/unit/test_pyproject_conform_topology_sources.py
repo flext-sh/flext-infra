@@ -349,8 +349,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
         candidates = sorted(
             name
             for entry in overrides
-            if (name := u.Infra.dep_name(entry))
-            in {cli.distribution, infra.distribution}
+            if (name := u.Infra.dep_name(entry)) is not None
+            and name in {cli.distribution, infra.distribution}
         )
         tm.that(candidates, empty=False)
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
@@ -405,12 +405,13 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
         )
         declared = {
-            u.Infra.dep_name(entry): entry
+            name: entry
             for entry in (
                 *u.Tests.toml_strings_at(rendered, "project", "dependencies"),
                 *u.Tests.toml_strings_at(rendered, "dependency-groups", "dev"),
             )
-            if u.Infra.dep_name(entry) in {cli.distribution, infra.distribution}
+            if (name := u.Infra.dep_name(entry)) is not None
+            and name in {cli.distribution, infra.distribution}
         }
         tm.that(sorted(declared), eq=sorted((cli.distribution, infra.distribution)))
         overrides = u.Tests.toml_strings_at(

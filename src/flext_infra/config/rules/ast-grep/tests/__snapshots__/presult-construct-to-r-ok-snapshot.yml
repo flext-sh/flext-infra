@@ -1,9 +1,7 @@
 id: presult-construct-to-r-ok
 snapshots:
-  ? |
-    from flext_sample import p, r
-    return p.Result[Path].ok(request.output)
-  : fixed: |
+  "from flext_sample import p, r\nreturn p.Result[Path].ok(request.output)\n":
+    fixed: |
       from flext_sample import p, r
       return r[Path].ok(request.output)
     labels:
@@ -21,10 +19,8 @@ snapshots:
       style: secondary
       start: 0
       end: 71
-  ? |
-    from flext_sample import p, r
-    return p.Result[p.Sample.CheckResult].ok(value)
-  : fixed: |
+  "from flext_sample import p, r\nreturn p.Result[p.Sample.CheckResult].ok(value)\n":
+    fixed: |
       from flext_sample import p, r
       return r[p.Sample.CheckResult].ok(value)
     labels:

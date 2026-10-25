@@ -207,29 +207,18 @@ print(json.dumps({
     FLEET_GAPS_ROUTE_NAME: ClassVar[str] = "fleet-gaps"
     "Canonical workspace CLI verb that reports per-repository fleet gaps."
 
-    @unique
-    class FleetVerb(StrEnum):
-        """Mutating verbs a local workspace run carries to every governed member."""
-
-        MOD = "mod"
-        FIX = "fix"
-        FMT = "fmt"
-
-    FLEET_ROUTE_NAME: ClassVar[str] = "fleet"
-    "Canonical workspace CLI verb that runs one verb in every governed member."
-    FLEET_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "fleet-verb.json"
-    )
-    "Typed receipts of the latest fleet verb run, one per governed member."
-    LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "validate-lifecycle.json"
-    )
     WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
     )
     WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         WORKSPACE_OPERATION_REPORT_DIRECTORY / "tool-bootstrap.json"
     )
+    FLEXT_EDITABLE_SELECTION_RELATIVE_PATH: ClassVar[Path] = (
+        WORKSPACE_OPERATION_REPORT_DIRECTORY / "flext-editable-selection.json"
+    )
+    "Runtime-owned receipt of `make setup FLEXT=<path>`; plain setup removes it."
+    FLEXT_EDITABLE_ROUTE_NAME: ClassVar[str] = "flext-editable"
+    "Workspace CLI verb setup runs to elect, install and record FLEXT editables."
     CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
     )

@@ -101,6 +101,8 @@ class FlextInfraConstantsSourceCode:
     # computed projections) composed with the artifact analysis_exclude flags
     # and the VCS-derived names; the former COMMON_EXCLUDED_DIRS family and
     # its parallel copies were removed with that registry.
+    GITHUB_DIRNAME: ClassVar[str] = ".github"
+    "Repository directory holding the forge workflows and agent projections."
     GITHUB_AGENT_PROJECTION_DIRS: ClassVar[frozenset[str]] = frozenset({
         "agents",
         "hooks",

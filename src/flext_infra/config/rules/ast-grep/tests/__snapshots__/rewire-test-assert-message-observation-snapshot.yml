@@ -1,9 +1,7 @@
 id: rewire-test-assert-message-observation
 snapshots:
-  ? |
-    from tests import tm
-    assert result.success, result.error
-  : fixed: |
+  "from tests import tm\nassert result.success, result.error\n":
+    fixed: |
       from tests import tm
       if result.success:
           pass
@@ -24,11 +22,8 @@ snapshots:
       style: secondary
       start: 0
       end: 57
-  ? |
-    from tests import tm
-    if not (started.success):
-        raise AssertionError(started.error)
-  : fixed: |
+  "from tests import tm\nif not (started.success):\n    raise AssertionError(started.error)\n":
+    fixed: |
       from tests import tm
       if started.success:
           pass

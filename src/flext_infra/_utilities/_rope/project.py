@@ -48,6 +48,16 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self._directories = frozenset(
                 parent for path in self._files for parent in path.parents
             )
+            # Every planned path's ancestors are planned directories, so the
+            # first component below any directory is one of its direct planned
+            # children: index them once instead of scanning per listing.
+            children: dict[Path, set[str]] = {}
+            for planned in (*self._files, *self._directories):
+                if planned.parent != planned:
+                    children.setdefault(planned.parent, set()).add(planned.name)
+            self._planned_children: Mapping[Path, frozenset[str]] = {
+                parent: frozenset(names) for parent, names in children.items()
+            }
 
         def realpath(self, path: str) -> str:
             """Return the physical absolute identity of a path.
@@ -115,11 +125,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 for child in (resolved.iterdir() if resolved.is_dir() else ())
                 if child not in self._hidden
             }
-            names.update(
-                planned.relative_to(resolved).parts[0]
-                for planned in (*self._files, *self._directories)
-                if planned != resolved and planned.is_relative_to(resolved)
-            )
+            names.update(self._planned_children.get(resolved, ()))
             return sorted(names)
 
         def read(self, path: str) -> bytes:

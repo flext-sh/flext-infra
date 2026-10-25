@@ -38,7 +38,12 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
     @staticmethod
     def _apply(repository: Path, sources: Path) -> None:
         """Stage the project's generated rules natively and apply them twice."""
-        facts = u.Infra.codemod_package_export_facts(repository)
+        with u.Infra.codemod_workspace_snapshot(repository) as snapshot:
+            facts = u.Infra.codemod_package_export_facts(snapshot, repository)
+            documents = {
+                **u.Infra.codemod_module_member_rules(snapshot, repository, facts),
+                **u.Infra.codemod_import_header_rules(snapshot, repository, facts),
+            }
         catalog = repository.parent / "catalog"
         tm.ok(
             u.Cli.yaml_dump(
@@ -47,10 +52,6 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
             )
         )
         (catalog / "utils").mkdir(parents=True, exist_ok=True)
-        documents = {
-            **u.Infra.codemod_module_member_rules(repository, facts),
-            **u.Infra.codemod_import_header_rules(repository, facts),
-        }
         for identity, document in documents.items():
             tm.ok(u.Cli.yaml_dump(catalog / "rules" / f"{identity}.yml", document))
         for _pass in range(2):

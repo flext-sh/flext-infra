@@ -9,11 +9,15 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 
 from flext_infra import c, m, t
 from flext_infra._settings import FlextInfraSettings
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 if os.name != "nt":
     import pwd
@@ -65,8 +69,9 @@ class FlextInfraUtilitiesBase:
         """Resolve one gate inventory from the typed Make spec at runtime.
 
         The CI token selects the check partition: its declared CI value runs
-        the CI partition, its declared local value the strict local
-        complement, and any other value the complete default set.
+        the CI partition, its declared pre-commit value the commit-stage
+        gates, its declared local value the local partition, and any other
+        value the complete default set.
 
         Returns:
             The registered gate ids of the requested inventory.
@@ -78,12 +83,15 @@ class FlextInfraUtilitiesBase:
             case c.Infra.CheckGateSet.FMT:
                 return make.fmt_gates
             case c.Infra.CheckGateSet.CHECK:
-                token = FlextInfraUtilitiesBase.env_value(make.ci.variable)
-                if token == make.ci.value:
-                    return make.check_gates_ci
-                if token == make.ci.local_value:
-                    return make.check_gates_local
-                return make.check_gates_default
+                partitions = {
+                    make.ci.value: make.check_gates_ci,
+                    make.ci.pre_commit_value: make.pre_commit_check_gates,
+                    make.ci.local_value: make.check_gates_local,
+                }
+                return partitions.get(
+                    FlextInfraUtilitiesBase.env_value(make.ci.variable),
+                    make.check_gates_default,
+                )
 
     @staticmethod
     def resolve_repository_root_or_cwd(
@@ -376,6 +384,38 @@ class FlextInfraUtilitiesBase:
         if exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
             return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
         return "failure"
+
+    @staticmethod
+    def result_routes(
+        rows: t.SequenceOf[
+            tuple[
+                str,
+                str,
+                t.ModelClass[t.Cli.ModelLike],
+                p.Cli.ResultRouteHandler,
+                str | None,
+            ]
+        ],
+    ) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+        """Build a declarative CLI route table from its data rows.
+
+        Each row is ``(name, help_text, model_cls, handler, success_message)``;
+        a ``None`` success message leaves the handler's result as the output.
+
+        Returns:
+            The routes in row order.
+
+        """
+        return tuple(
+            m.Cli.ResultCommandRoute(
+                name=name,
+                help_text=help_text,
+                model_cls=model_cls,
+                handler=handler,
+                success_message=success_message,
+            )
+            for name, help_text, model_cls, handler, success_message in rows
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesBase"]

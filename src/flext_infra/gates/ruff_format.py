@@ -23,6 +23,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.FORMAT
     gate_name: ClassVar[str] = "Ruff Format"
     can_fix: ClassVar[bool] = True
+    union_capable: ClassVar[bool] = True
 
     @override
     def _check_env(

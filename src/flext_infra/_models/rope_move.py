@@ -25,7 +25,7 @@ class FlextInfraModelsRopeMove:
         """One exact, prevalidated Rope class-move request."""
 
         rope_project: Annotated[
-            t.Infra.RopeProject,
+            t.Port[t.Infra.RopeProject],
             m.Field(description="Active Rope project that owns both files"),
         ]
         source_file: Annotated[

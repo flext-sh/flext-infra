@@ -1,15 +1,17 @@
 id: rewire-mod-scan-selection
 valid:
-  - Engine.scan(root, fix=False, selection=rules)
-  - Engine.scan(root, fix=False, rule_ids=rules, selection=rules)
-  - Engine.scan(root, fix=False, plan=plan, rule_ids=rules)
-  - Engine.scan(root, fix=False, selection=other(argument=rules))
+  # Another engine's scan is not the mod engine's.
+  - OtherEngine.scan(root, fix=False, rule_ids=rules, plan=plan)
+  - FlextInfraModGateEngine.scan(root, fix=False, selection=rules)
+  - FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rules, selection=rules)
+  - FlextInfraModGateEngine.scan(root, fix=False, plan=plan, rule_ids=rules)
+  - FlextInfraModGateEngine.scan(root, fix=False, selection=other(argument=rules))
 invalid:
-  - Engine.scan(root, fix=False, rule_ids=rules)
-  - Engine.scan(root, fix=False, plan=plan)
+  - FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rules)
+  - FlextInfraModGateEngine.scan(root, fix=False, plan=plan)
   - |
-    Engine.scan(
+    FlextInfraModGateEngine.scan(
         root, fix=False,
         rule_ids=rules,  # Keep the argument comment.
     )
-  - Engine.scan(root, fix=False, rule_ids=choose(plan=plan))
+  - FlextInfraModGateEngine.scan(root, fix=False, rule_ids=choose(plan=plan))

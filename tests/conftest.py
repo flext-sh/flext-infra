@@ -99,13 +99,16 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """
     for item in items:
         item.add_marker(pytest.mark.usefixtures("runner_ci_context_cleared"))
-    policy = config.Infra.codegen.make.ci
+    make = config.Infra.codegen.make
+    policy = make.ci
     if u.Infra.env_value(policy.variable).strip() != policy.value:
         return
     excluded_fixtures = frozenset(
         config.Infra.tooling.tools.pytest.ci_excluded_fixtures,
     )
-    excluded_engines = frozenset(policy.local_check_gates)
+    excluded_engines = frozenset(make.check_gates_default) - frozenset(
+        make.check_gates_ci,
+    )
     selected: list[pytest.Item] = []
     deselected: list[pytest.Item] = []
     for item in items:

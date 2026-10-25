@@ -920,6 +920,24 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         return (source, binding)
 
     @classmethod
+    def file_resource_at(
+        cls, rope_project: t.Infra.RopeProject, path: Path
+    ) -> t.Infra.RopeFile:
+        """Return the engine's file resource for one absolute source path.
+
+        A path inside the project root is a project resource and follows its
+        overlay; a path outside it is an external file the engine reads as is.
+
+        Returns:
+            The file resource of ``path``.
+
+        """
+        loader = cls.runtime_callable("rope.base.libutils", "path_to_resource")
+        return FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            loader(rope_project, str(path), type="file"), path
+        )
+
+    @classmethod
     def build_string_module(
         cls,
         rope_project: t.Infra.RopeProject | None,

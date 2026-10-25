@@ -1,0 +1,6 @@
+# Fixture value of the requested `library-member-owner-pytest-t`
+# utility: pytest members whose kind the `t` facade owns.
+id: library-member-owner-pytest-t
+language: Python
+rule:
+  regex: "^(?:Config|FixtureRequest|LogCaptureFixture|MonkeyPatch|Pytester)$"

@@ -1,0 +1,7 @@
+{%- if custom_post_steps %}
+
+      # Project-owned steps after the approval verbs, injected verbatim from the
+      # project's own custom-post-steps file: failure diagnostics belong here,
+      # where `if: failure()` can observe the verb they diagnose.
+{{ custom_post_steps }}
+{%- endif -%}

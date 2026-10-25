@@ -1,26 +1,47 @@
 id: dict-annotation-missing-t-import
 snapshots:
-  ? |
-    class Payload:
-        values: dict[str, int]
-  : labels:
+  "class Payload:\n    values: dict[str, int]\n":
+    labels:
     - source: dict[str, int]
       style: primary
       start: 27
       end: 41
+    - source: "values: dict[str, int]"
+      style: secondary
+      start: 19
+      end: 41
+    - source: dict[str, int]
+      style: secondary
+      start: 27
+      end: 41
+    - source: dict
+      style: secondary
+      start: 27
+      end: 31
     - source: |
         class Payload:
             values: dict[str, int]
       style: secondary
       start: 0
       end: 42
-  ? |
-    def f(x: dict[str, int]) -> None: ...
-  : labels:
+  "def f(x: dict[str, int]) -> None: ...\n":
+    labels:
     - source: dict[str, int]
       style: primary
       start: 9
       end: 23
+    - source: "x: dict[str, int]"
+      style: secondary
+      start: 6
+      end: 23
+    - source: dict[str, int]
+      style: secondary
+      start: 9
+      end: 23
+    - source: dict
+      style: secondary
+      start: 9
+      end: 13
     - source: |
         def f(x: dict[str, int]) -> None: ...
       style: secondary

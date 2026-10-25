@@ -35,6 +35,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         *,
         root: Path,
         scoped: bool,
+        snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> m.Infra.LazyInitRun:
         """Open one repository run over its source inventory.
 
@@ -54,6 +55,11 @@ class FlextInfraUtilitiesLazyInitPlan:
                     if entry.module_name
                     and entry.file_path.suffix == c.Infra.EXT_PYTHON
                 },
+                module_facts=(
+                    snapshot.python_module_facts
+                    if snapshot is not None and source_project is snapshot.engine
+                    else None
+                ),
             ),
             plans={},
             contexts={},
@@ -740,7 +746,7 @@ class FlextInfraUtilitiesLazyInitPlan:
     def _lazy_init_route_identity(
         run: m.Infra.LazyInitRun,
         path: Path,
-        module: t.Infra.PythonModule,
+        module: m.Infra.PythonModuleFacts,
         exports: t.StrSequence,
     ) -> t.Pair[str | None, str | None]:
         """Return a route module's facade alias and family suffix.

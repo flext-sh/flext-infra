@@ -1,8 +1,11 @@
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml): a literal
+# dynamic import of it is the escape; another package's module is not.
 id: ban-import-module-cycle-escape
 valid:
   - module = import_module(module_name)
   - module = importlib.import_module(self._module)
   - value = load("flext_core.dispatcher")
-invalid:
   - module = import_module("flext_core.dispatcher")
-  - module = importlib.import_module("flext_core._utilities.beartype_conf")
+invalid:
+  - module = import_module("ai_hub.dispatcher")
+  - module = importlib.import_module("ai_hub._utilities.beartype_conf")

@@ -1,10 +1,7 @@
 id: ban-flext-core-library-import
 snapshots:
-  ? |
-    def load():
-        import yaml
-        return yaml
-  : labels:
+  "def load():\n    import yaml\n    return yaml\n":
+    labels:
     - source: yaml
       style: primary
       start: 23

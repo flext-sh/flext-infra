@@ -1,6 +1,6 @@
 id: ban-arbitrary-types-allowed
 snapshots:
-  model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True):
+  "model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)":
     labels:
     - source: arbitrary_types_allowed=True
       style: primary
@@ -10,11 +10,11 @@ snapshots:
       style: secondary
       start: 39
       end: 62
-    - source: 'True'
+    - source: "True"
       style: secondary
       start: 63
       end: 67
-  model_config = SettingsConfigDict(arbitrary_types_allowed=True, extra="forbid"):
+  "model_config = SettingsConfigDict(arbitrary_types_allowed=True, extra=\"forbid\")":
     labels:
     - source: arbitrary_types_allowed=True
       style: primary
@@ -24,7 +24,7 @@ snapshots:
       style: secondary
       start: 34
       end: 57
-    - source: 'True'
+    - source: "True"
       style: secondary
       start: 58
       end: 62
@@ -38,21 +38,21 @@ snapshots:
       style: secondary
       start: 28
       end: 51
-    - source: 'True'
+    - source: "True"
       style: secondary
       start: 52
       end: 56
-  'model_config = {"arbitrary_types_allowed": True}':
+  "model_config = {\"arbitrary_types_allowed\": True}":
     labels:
-    - source: '"arbitrary_types_allowed": True'
+    - source: "\"arbitrary_types_allowed\": True"
       style: primary
       start: 16
       end: 47
-    - source: '"arbitrary_types_allowed"'
+    - source: "\"arbitrary_types_allowed\""
       style: secondary
       start: 16
       end: 41
-    - source: 'True'
+    - source: "True"
       style: secondary
       start: 43
       end: 47

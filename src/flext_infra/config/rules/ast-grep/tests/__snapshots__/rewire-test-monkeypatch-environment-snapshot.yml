@@ -1,20 +1,9 @@
 id: rewire-test-monkeypatch-environment
 snapshots:
-  ? |
-    from tests import u
-
-    def test_settings_environment(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        expiry_minutes = c.DEFAULT_EXPIRY_MINUTES + 1
-        algorithm = c.Algorithms.RS256.value
-        monkeypatch.setenv(expiry_key, expiry_minutes)
-        monkeypatch.setenv(algorithm_key, algorithm)
-        settings = Settings()
-        tm.that(settings.expiry_minutes, eq=expiry_minutes)
-  : fixed: |+
+  "from tests import u\n\ndef test_settings_environment(\n    self, monkeypatch: pytest.MonkeyPatch\n) -> None:\n    expiry_minutes = c.DEFAULT_EXPIRY_MINUTES + 1\n    algorithm = c.Algorithms.RS256.value\n    monkeypatch.setenv(expiry_key, expiry_minutes)\n    monkeypatch.setenv(algorithm_key, algorithm)\n    settings = Settings()\n    tm.that(settings.expiry_minutes, eq=expiry_minutes)\n":
+    fixed: |+
       from tests import u
-
+      
       def test_settings_environment(self) -> None:
           expiry_minutes = c.DEFAULT_EXPIRY_MINUTES + 1
           algorithm = c.Algorithms.RS256.value
@@ -24,7 +13,7 @@ snapshots:
           }):
               settings = Settings()
               tm.that(settings.expiry_minutes, eq=expiry_minutes)
-
+      
     labels:
     - source: |-
         def test_settings_environment(
@@ -53,7 +42,7 @@ snapshots:
       end: 19
     - source: |
         from tests import u
-
+        
         def test_settings_environment(
             self, monkeypatch: pytest.MonkeyPatch
         ) -> None:

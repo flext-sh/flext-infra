@@ -597,6 +597,16 @@ class FlextInfraModelsDepsToolConfig(
             FlextInfraModelsDuplication.JscpdSemantic,
             m.Field(description="Embedding pass host (--semantic)."),
         ]
+        ignore_patterns: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="ignore-patterns",
+                description=(
+                    "Operator-authorized code-level regexes jscpd skips "
+                    "(--ignore-pattern)."
+                ),
+            ),
+        ]
 
     class MarkdownConfig(m.ArbitraryTypesModel):
         """Markdown lint rules and excluded non-documentation surfaces."""

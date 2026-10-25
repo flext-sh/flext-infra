@@ -75,8 +75,8 @@ files that appeared after its ownership snapshot.
 `u.Infra.git_verify_lane` preflight used by branch creation, worktree creation,
 branch publication, automated lane publication, branch retirement, and worktree removal.
 It does not fetch, write refs,
-refresh the index, create a lane, or retire one. `verify-clean` retains its separate
-cleanliness contract.
+refresh the index, create a lane, or retire one. No verb requires a clean or
+unchanged tree.
 
 The preflight rejects any stash entries or retained `refs/stash`, requires the
 integration branch that the composing superproject's `.gitmodules` declares for the

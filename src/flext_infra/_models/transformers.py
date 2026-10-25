@@ -28,6 +28,15 @@ class FlextInfraModelsTransformers:
             default=None,
             description="Consumer acceptance gate over the previewed view root",
         )
+        plan_validator: (
+            Callable[[t.VariadicTuple[m.Cli.FileChange]], p.Result[bool]] | None
+        ) = m.Field(
+            default=None,
+            description=(
+                "Consumer acceptance gate over the normalized candidate changes, "
+                "for a consumer that reads its own snapshot instead of a view root"
+            ),
+        )
         projection_roots: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Generated projection roots composed into the publication",
@@ -342,7 +351,7 @@ class FlextInfraModelsTransformers:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project: Annotated[
-            t.Infra.RopeProject,
+            t.Port[t.Infra.RopeProject],
             m.Field(description="Rope project snapshot holding the editable sources"),
         ]
         root: Annotated[Path, m.Field(description="Physical project root")]

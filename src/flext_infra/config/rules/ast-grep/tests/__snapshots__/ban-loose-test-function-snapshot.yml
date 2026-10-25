@@ -1,10 +1,7 @@
 id: ban-loose-test-function
 snapshots:
-  ? |
-    @pytest.mark.parametrize("value", [1])
-    def test_param(value: int) -> None:
-        assert value
-  : labels:
+  "@pytest.mark.parametrize(\"value\", [1])\ndef test_param(value: int) -> None:\n    assert value\n":
+    labels:
     - source: |-
         def test_param(value: int) -> None:
             assert value
@@ -29,10 +26,8 @@ snapshots:
       style: secondary
       start: 43
       end: 53
-  ? |
-    async def test_async() -> None:
-        assert True
-  : labels:
+  "async def test_async() -> None:\n    assert True\n":
+    labels:
     - source: |-
         async def test_async() -> None:
             assert True
@@ -49,10 +44,8 @@ snapshots:
       style: secondary
       start: 10
       end: 20
-  ? |
-    def test_value() -> None:
-        assert True
-  : labels:
+  "def test_value() -> None:\n    assert True\n":
+    labels:
     - source: |-
         def test_value() -> None:
             assert True

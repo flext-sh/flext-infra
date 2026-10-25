@@ -1,0 +1,6 @@
+# Fixture value of the requested `library-member-owner-pytest-c`
+# utility: pytest members whose kind the `c` facade owns.
+id: library-member-owner-pytest-c
+language: Python
+rule:
+  regex: "^(?:UsageError|exit|fail|skip|xfail)$"

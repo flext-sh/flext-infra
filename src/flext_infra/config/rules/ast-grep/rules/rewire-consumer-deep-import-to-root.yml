@@ -1,8 +1,9 @@
 # Law: a consumer imports a name its facade package root publishes from that
 # root, never from a module path below it — public or private. The root's own
 # `__all__` (the generated lazy-export surface) is the single source of truth
-# for what is public; this rule derives the root from the imported module
-# path and admits a finding only when that root declares the imported name.
+# for what is public; the generated `package-export` utility pairs each
+# imported name with the root its import statement names, so the rule matches
+# only when that root declares the imported name.
 #
 # `ban-consumer-submodule-import` detects public submodule paths and carries
 # no fix. This rule repairs every single-name import below a facade root,
@@ -19,14 +20,6 @@ ignores:
   - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-015, ENFORCE-099]
-  context:
-    MODULE:
-      - not: own-package
-      - is: facade-package
-      - not: compose-module
-    NAME:
-      is: package-export
-      of: ROOT
 rule:
   kind: import_from_statement
   # Exactly one imported name: a partial pattern match of a multi-name import
@@ -45,9 +38,15 @@ constraints:
       - regex: "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z0-9_.]+$"
       - not:
           regex: "^flext_core\\.lazy$"
+      - not:
+          matches: own-package
+      - matches: facade-package
+      - not:
+          matches: compose-module
   NAME:
     kind: dotted_name
     regex: "^[A-Za-z_][A-Za-z0-9_]*$"
+    matches: package-export
 transform:
   ROOT:
     replace:

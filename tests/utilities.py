@@ -63,6 +63,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 system_packages: t.VariadicTuple[t.NonEmptyStr] = ()
                 packages_read: bool = False
                 custom_steps: str = ""
+                custom_post_steps: str = ""
                 has_devcontainer: bool = False
                 workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef] = ()
                 cooldown_excluded_dependencies: t.VariadicTuple[t.NonEmptyStr] = ()
@@ -147,6 +148,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     workspace_repositories=overrides.workspace_repositories,
                     checkout_submodules=codegen.checkout_submodules,
                     custom_steps=overrides.custom_steps,
+                    custom_post_steps=overrides.custom_post_steps,
                     has_devcontainer=overrides.has_devcontainer,
                     dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
                     cooldown_excluded_dependencies=(

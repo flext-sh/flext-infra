@@ -3,8 +3,9 @@
 Fenced ``python``` blocks on the governed markdown surface and doctest
 examples inside tracked docstrings are collected once as named sources, each
 mapped back to its documentation origin. The gate writes them into one
-temporary tree so ruff validates and formats them in single invocations, and
-selects itself only for a project whose content yields at least one source.
+temporary tree so ruff validates and formats them in single invocations. The
+gate is selected by its input kinds; a project whose inputs yield no source is
+reported clean.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,14 +14,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 from doctest import DocTestParser
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, u
+from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import m, p, t
 
 
 class FlextInfraMarkdownCodeSources:
@@ -54,11 +57,15 @@ class FlextInfraMarkdownCodeSources:
         )
 
     @staticmethod
+    @cache
     def formattable_fences(
         content: str,
         origin: Path,
     ) -> t.VariadicTuple[t.Pair[int, m.Cli.MarkdownFence]]:
         """Index governed ``python`` fences and keep those that compile.
+
+        A pure function of the document text: extraction and write-back of
+        one run share a single parse of each unchanged document.
 
         Returns:
             The ``(index, fence)`` pairs; the index counts every governed fence.
@@ -76,90 +83,95 @@ class FlextInfraMarkdownCodeSources:
     def fenced_block_sources(
         project_dir: Path,
         markdown_files: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[t.Triple[str, str, t.Pair[str, int]]]:
-        """Collect one named source per parseable fenced ``python`` block.
+    ) -> Iterator[t.Triple[str, str, t.Pair[str, int]]]:
+        """Yield one named source per parseable fenced ``python`` block.
 
         Blocks carrying the ``notest`` fence marker and unparseable fragments
         are excluded. The Markdown validator owns syntax errors; this gate owns
-        only formatting of Python blocks that compile.
+        only formatting of Python blocks that compile. Sources are produced
+        lazily, so a presence query stops at the first one.
 
-        Returns:
-            The resulting ``t.VariadicTuple[t.Triple[str, str, t.Pair[str, int]]]``.
+        Yields:
+            ``(source name, code, (relative path, opening line))`` triples.
 
         """
-        collected: list[t.Triple[str, str, t.Pair[str, int]]] = []
         for md_path in markdown_files:
             relative_posix = md_path.relative_to(project_dir).as_posix()
             content = md_path.read_text(c.DEFAULT_ENCODING)
-            collected.extend(
-                (
+            for index, fence in FlextInfraMarkdownCodeSources.formattable_fences(
+                content,
+                md_path,
+            ):
+                yield (
                     FlextInfraMarkdownCodeSources.source_name(relative_posix, index),
                     fence.code,
                     (relative_posix, fence.opening_line),
                 )
-                for index, fence in FlextInfraMarkdownCodeSources.formattable_fences(
-                    content,
-                    md_path,
-                )
-            )
-        return tuple(collected)
 
     @staticmethod
     def docstring_sources(
         project_dir: Path,
-    ) -> t.VariadicTuple[t.Triple[str, str, t.Pair[str, int]]]:
-        """Collect one named source per doctest example in tracked docstrings.
+        scope_facts: p.Infra.GitScopeFacts | None,
+    ) -> Iterator[t.Triple[str, str, t.Pair[str, int]]]:
+        """Yield one named source per doctest example in tracked docstrings.
 
         Docstring write-back stays outside the fix contract on purpose: a
         formatter rewrite inside prose is a semantics risk, so docstring
         findings remain manual repairs. Example line numbers are approximate
         within the docstring (stdlib ``doctest`` reports positions relative to
-        its input).
+        its input). A doctest example requires its interactive prompt, so a
+        module whose text carries no prompt holds no example and is not
+        parsed.
 
-        Returns:
-            The resulting ``t.VariadicTuple[t.Triple[str, str, t.Pair[str, int]]]``.
+        Yields:
+            ``(source name, code, (relative path, docstring line))`` triples.
 
         """
-        collected: list[t.Triple[str, str, t.Pair[str, int]]] = []
         parser = DocTestParser()
-        for py_path in u.Infra.iter_matching_files(project_dir, includes=["*.py"]):
-            relative_parts = py_path.relative_to(project_dir).parts
-            if any(
-                part in config.Infra.codegen.check_excluded_dirs
-                for part in relative_parts
-            ):
+        for py_path in u.Infra.governed_scope_files(project_dir, ["*.py"], scope_facts):
+            text = py_path.read_text(c.DEFAULT_ENCODING)
+            if c.Infra.MARKDOWN_CODE_DOCTEST_PROMPT in text:
+                yield from FlextInfraMarkdownCodeSources._module_doctest_sources(
+                    parser,
+                    py_path,
+                    py_path.relative_to(project_dir).as_posix(),
+                    text,
+                )
+
+    @staticmethod
+    def _module_doctest_sources(
+        parser: DocTestParser,
+        py_path: Path,
+        relative_posix: str,
+        text: str,
+    ) -> Iterator[t.Triple[str, str, t.Pair[str, int]]]:
+        """Yield one named source per doctest example of one module.
+
+        Yields:
+            ``(source name, code, (relative path, docstring line))`` triples.
+
+        """
+        example_index = 0
+        for node in ast.walk(ast.parse(text)):
+            # Only these carry docstrings; ast.walk also yields expression
+            # nodes and ast.get_docstring raises TypeError on those.
+            if not isinstance(node, c.Infra.AST_SCOPE_OWNER_TYPES) or not node.body:
                 continue
-            if ".github" in relative_parts and any(
-                part in c.Infra.GITHUB_AGENT_PROJECTION_DIRS for part in relative_parts
-            ):
-                # Agent-toolhome projections under .github are regenerated
-                # distributions, never governed source.
+            docstring = ast.get_docstring(node, clean=False)
+            if docstring is None:
                 continue
-            tree = ast.parse(py_path.read_text(c.DEFAULT_ENCODING))
-            example_index = 0
-            for node in ast.walk(tree):
-                # Only these carry docstrings; ast.walk also yields expression
-                # nodes and ast.get_docstring raises TypeError on those.
-                if not isinstance(node, c.Infra.AST_SCOPE_OWNER_TYPES):
-                    continue
-                docstring = ast.get_docstring(node, clean=False)
-                if docstring is None or not node.body:
-                    continue
-                body_start = node.body[0].lineno
-                relative_posix = py_path.relative_to(project_dir).as_posix()
-                for example in parser.get_examples(docstring):
-                    source_text = example.source
-                    compile(source_text, str(py_path), "exec")
-                    collected.append((
-                        FlextInfraMarkdownCodeSources.source_name(
-                            relative_posix,
-                            example_index,
-                        ),
-                        source_text,
-                        (relative_posix, body_start + example.lineno),
-                    ))
-                    example_index += 1
-        return tuple(collected)
+            body_start = node.body[0].lineno
+            for example in parser.get_examples(docstring):
+                compile(example.source, str(py_path), "exec")
+                yield (
+                    FlextInfraMarkdownCodeSources.source_name(
+                        relative_posix,
+                        example_index,
+                    ),
+                    example.source,
+                    (relative_posix, body_start + example.lineno),
+                )
+                example_index += 1
 
 
 __all__: list[str] = ["FlextInfraMarkdownCodeSources"]

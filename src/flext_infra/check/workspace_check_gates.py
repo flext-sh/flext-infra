@@ -6,54 +6,30 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import MutableMapping
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra.check import FlextInfraWorkspaceCheckUnionMixin
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
     from flext_infra.gates import FlextInfraGate
 
 
-class FlextInfraWorkspaceCheckGatesMixin:
+class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
     """Gate execution, project loop, and individual gate runner methods."""
 
     _repository_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
     _gate_logger: ClassVar[p.Logger] = u.fetch_logger(__name__)
-
-    @staticmethod
-    def _isolate_context(
-        ctx: m.Infra.GateContext,
-        target: m.Infra.CheckProjectTarget,
-    ) -> m.Infra.GateContext:
-        """Create a fresh GateContext scoped to a physical project path.
-
-        Returns:
-            The resulting ``m.Infra.GateContext``.
-
-        Raises:
-            ValueError: If the context carries runtime dependency inputs
-                that belong to a different project target, or the project
-                is outside the invoked repository.
-
-        """
-        if (
-            ctx.runtime_dependency_inputs is not None
-            and ctx.runtime_dependency_inputs.target_root != target.path
-        ):
-            msg = "dependency provenance belongs to another project"
-            raise ValueError(msg)
-        root = ctx.repository_root.resolve()
-        relative = target.path.resolve().relative_to(root)
-        receipt_path = Path(root.name) / relative
-        return ctx.model_copy(update={"reports_dir": ctx.reports_dir / receipt_path})
 
     def _run_single_project(
         self,
@@ -106,9 +82,32 @@ class FlextInfraWorkspaceCheckGatesMixin:
         total = len(projects)
         failed = 0
         loop_start = time.monotonic()
+        union_gates = self._union_gate_ids(projects, resolved_gates, ctx)
+        union_executions = self._run_union_gates(projects, union_gates, ctx)
+        project_gates = tuple(
+            gate_id for gate_id in resolved_gates if gate_id not in union_gates
+        )
         for index, target in enumerate(projects, 1):
             u.Cli.progress(index, total, target.name, c.Infra.VERB_CHECK)
-            project_result = self._run_single_project(target, resolved_gates, ctx)
+            project_result = self._run_single_project(
+                target,
+                tuple(
+                    gate_id
+                    for gate_id in project_gates
+                    if ctx.selected_files or gate_id in target.applicable_gates
+                ),
+                ctx,
+            )
+            if union_gates:
+                project_result = self._merged_union_result(
+                    project_result,
+                    resolved_gates,
+                    {
+                        gate_id: executions[target.path]
+                        for gate_id, executions in union_executions.items()
+                        if target.path in executions
+                    },
+                )
             results.append(project_result)
             if not project_result.gates and ctx.check_progress is not None:
                 ctx.check_progress(target.path, project_result)
@@ -124,6 +123,22 @@ class FlextInfraWorkspaceCheckGatesMixin:
             failed=failed,
             total_elapsed=time.monotonic() - loop_start,
         )
+
+    @staticmethod
+    def _gate_parallelism(stage_count: int) -> int:
+        """Bound concurrent read-only gates by the typed Mypy memory reservation.
+
+        Each concurrent gate may host one whole-program checker, so the host's
+        physical memory divided by the memory the tooling policy reserves for
+        one Mypy run caps the concurrency.
+
+        Returns:
+            The number of gates that may run at once, at least one.
+
+        """
+        physical_bytes = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+        reserved_bytes = u.Infra.mypy_resource_limit().memory_limit_bytes
+        return max(1, min(stage_count, physical_bytes // reserved_bytes))
 
     def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
         """Gate ctx.
@@ -182,79 +197,160 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.ProjectResult:
         """Run gates for one project and retain every executed gate in order.
 
-        Every gate runs serially through the public CLI pipeline. Whole-program
-        checkers must not compete for memory, and fixers share mutable files.
-        Every independent operation retains its verdict. Native interruption
-        stops after its progress and status are published; ordinary project
-        findings retain the explicit fail-fast policy.
+        Read-only gates share no mutable state, so they run concurrently
+        through the public CLI pipeline inside one process signal wave,
+        bounded by the memory the typed Mypy policy reserves per
+        whole-program checker. Repairs share mutable files and keep their
+        declared serial order and locks; an explicit fail-fast run stays
+        serial so it can stop at the first failure. Every operation retains
+        its verdict and receipt, reported in declared order.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.
+
+        """
+        result = m.Infra.ProjectResult(project=project_dir.name)
+        mutating = ctx.apply_fixes and not ctx.check_only
+        executions: MutableMapping[str, m.Infra.GateExecution] = {}
+        instances = self._gate_instances(gates, mutating=mutating)
+        concurrent = (
+            self._run_concurrent_stages(instances, project_dir, ctx, executions)
+            if not mutating and not ctx.fail_fast and len(instances) > 1
+            else {}
+        )
+        for gate_instance in instances:
+            gate_id = gate_instance.gate_id
+            pipeline_result = (
+                concurrent[gate_id]
+                if gate_id in concurrent
+                else self._run_gate_stage(
+                    gate_instance, project_dir, ctx, executions, ctx.signal_wave
+                )
+            )
+            execution = executions[gate_id]
+            if execution.result.passed:
+                pipeline_result.unwrap()
+            result.gates[gate_id] = execution
+            if ctx.check_progress is not None:
+                ctx.check_progress(project_dir, result)
+            self._report_gate_execution(gate_id, execution)
+            # A concurrent wave already ran every gate: each one is reported.
+            if not concurrent and (
+                execution.interrupted or (not execution.result.passed and ctx.fail_fast)
+            ):
+                break
+        return result
+
+    def _gate_instances(
+        self,
+        gates: t.StrSequence,
+        *,
+        mutating: bool,
+    ) -> t.SequenceOf[FlextInfraGate]:
+        """Create every requested gate before any of them runs.
+
+        Returns:
+            The gate instances, in requested order.
 
         Raises:
             ValueError: If a gate is unregistered or a selected repair is unsupported.
 
         """
-        project_name = project_dir.name
-        result = m.Infra.ProjectResult(project=project_name)
-        mutating = ctx.apply_fixes and not ctx.check_only
-        executions: MutableMapping[str, m.Infra.GateExecution] = {}
-
-        stages: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
+        instances: t.MutableSequenceOf[FlextInfraGate] = []
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._repository_root)
             if gate_instance is None:
                 msg = f"{gate_id} gate not registered"
                 raise ValueError(msg)
-            if not ctx.selected_files and not gate_instance.selected_for(project_dir):
-                continue
             if mutating and not gate_instance.can_fix:
                 msg = f"Gate {gate_id} does not support repair"
                 raise ValueError(msg)
-            stages.append(
-                m.Cli.PipelineStageSpec(
-                    stage_id=gate_id,
-                    handler=self._make_gate_handler(
-                        gate_instance,
-                        project_dir,
-                        ctx,
-                        executions,
-                    ),
-                ),
-            )
+            instances.append(gate_instance)
+        return instances
 
-        for stage in stages:
-            pipeline_result = cli.pipeline(
-                (stage,),
-                context=m.Cli.PipelineStageContext(repository_root=project_dir),
-                logger=self._gate_logger,
-            )
-            execution = executions[stage.stage_id]
-            if execution.result.passed:
-                pipeline_result.unwrap()
-            result.gates[stage.stage_id] = execution
-            if ctx.check_progress is not None:
-                ctx.check_progress(project_dir, result)
-            u.Cli.gate_result(
-                stage.stage_id,
-                execution.finding_count,
-                passed=execution.result.passed,
-                elapsed=execution.result.duration,
-            )
-            if (
-                execution.issues or not execution.result.passed
-            ) and execution.raw_receipt is not None:
-                u.Cli.info(
-                    f"{stage.stage_id}: {execution.outcome.value}; "
-                    f"Native output receipt: {execution.raw_receipt}",
+    def _run_concurrent_stages(
+        self,
+        instances: t.SequenceOf[FlextInfraGate],
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        executions: MutableMapping[str, m.Infra.GateExecution],
+    ) -> t.MappingKV[str, p.Result[m.Cli.PipelineResult]]:
+        """Run read-only gate stages concurrently in one signal wave.
+
+        The main thread owns operator-signal forwarding; each stage receives
+        the wave, so its child process groups subscribe to it. The first
+        stage exception escapes in declared order.
+
+        Returns:
+            Every stage's pipeline result by gate id.
+
+        """
+        waved = u.Cli.run_in_signal_wave(
+            tuple(
+                partial(
+                    self._run_gate_stage, gate_instance, project_dir, ctx, executions
                 )
-            if execution.interrupted or (not execution.result.passed and ctx.fail_fast):
-                break
-        return result
+                for gate_instance in instances
+            ),
+            max_workers=self._gate_parallelism(len(instances)),
+        )
+        return {
+            gate_instance.gate_id: stage_result
+            for gate_instance, stage_result in zip(instances, waved, strict=True)
+        }
+
+    @staticmethod
+    def _report_gate_execution(gate_id: str, execution: m.Infra.GateExecution) -> None:
+        """Report one gate's verdict and, when it is not clean, its receipt."""
+        u.Cli.gate_result(
+            gate_id,
+            execution.finding_count,
+            passed=execution.result.passed,
+            elapsed=execution.result.duration,
+        )
+        if (
+            execution.issues or not execution.result.passed
+        ) and execution.raw_receipt is not None:
+            u.Cli.info(
+                f"{gate_id}: {execution.outcome.value}; "
+                f"Native output receipt: {execution.raw_receipt}",
+            )
 
     # ------------------------------------------------------------------
     # Pipeline stage helpers
     # ------------------------------------------------------------------
+
+    def _run_gate_stage(
+        self,
+        gate_instance: FlextInfraGate,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        executions: MutableMapping[str, m.Infra.GateExecution],
+        signal_wave: p.Cli.SignalWave | None,
+    ) -> p.Result[m.Cli.PipelineResult]:
+        """Run one gate stage through the public CLI pipeline.
+
+        A stage run inside a concurrent wave receives that wave, so its child
+        process groups subscribe to the main thread's signal forwarding.
+
+        Returns:
+            The stage's pipeline result.
+
+        """
+        stage = m.Cli.PipelineStageSpec(
+            stage_id=gate_instance.gate_id,
+            handler=self._make_gate_handler(
+                gate_instance,
+                project_dir,
+                ctx.model_copy(update={"signal_wave": signal_wave}),
+                executions,
+            ),
+        )
+        return cli.pipeline(
+            (stage,),
+            context=m.Cli.PipelineStageContext(repository_root=project_dir),
+            logger=self._gate_logger,
+        )
 
     def _make_gate_handler(
         self,

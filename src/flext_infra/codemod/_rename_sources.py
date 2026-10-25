@@ -191,76 +191,146 @@ class FlextInfraRenameSources:
     def inventory(
         roots: t.SequenceOf[Path],
         params: m.Infra.ApplyRenamesInput,
-    ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
+        *,
+        needles: frozenset[str] | None = None,
+        python_sources: bool = True,
+    ) -> t.Pair[t.MappingKV[Path, m.Cli.AtomicFileState], int]:
         """Index scanned files minus ignored, generated, and driver paths.
 
-        Returns:
-            The authenticated file states of every electable rename source.
+        ``needles`` bounds the authenticated reads of an identifier campaign to
+        the Python files whose bytes contain one of the retired identifiers: an
+        identifier match in the syntax tree requires that substring, so every
+        other file is neither read authenticated nor planned. Without
+        ``python_sources`` only the declared text surfaces are indexed; the
+        workspace snapshot owns the Python sources.
 
-        Raises:
-            ValueError: If a rename source disappeared or escapes the scan roots.
+        Returns:
+            The authenticated file states of every electable rename source and
+            the number of electable files scanned.
 
         """
         files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        scanned = 0
+        raw_needles = tuple(
+            needle.encode(c.DEFAULT_ENCODING) for needle in needles or ()
+        )
+        exclusions = FlextInfraRenameSources.exclusions(params)
+        for root in roots:
+            paths = u.Infra.git_source_scope_paths(root)
+            for path in sorted(root.rglob("*") if paths is None else paths):
+                if not python_sources and path.suffix == c.Infra.EXT_PYTHON:
+                    continue
+                if not FlextInfraRenameSources._electable(
+                    path, root, roots, params, exclusions
+                ):
+                    continue
+                scanned += 1
+                if needles is not None and not any(
+                    needle in path.read_bytes() for needle in raw_needles
+                ):
+                    continue
+                state = FlextInfraRenameSources._source_state(path, exclusions[2])
+                if state is not None:
+                    files[path.absolute()] = state
+        return files, scanned
+
+    @staticmethod
+    def exclusions(
+        params: m.Infra.ApplyRenamesInput,
+    ) -> t.Triple[t.Pair[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]]:
+        """Resolve the declared exclusions every inventory pass shares.
+
+        Returns:
+            The ignored names with generated paths, the campaign drivers and
+            the manifest-declared template sources.
+
+        """
         configuration_root = params.repository_root
         codegen = u.Infra.load_codegen_inputs(configuration_root).unwrap().spec
-        ignored = codegen.source_scan_ignored
-        generated = {item.path for item in codegen.managed_file_specs}
-        templates = u.Infra.codegen_template_sources(codegen)
-        drivers = {
+        drivers = frozenset({
             Path(params.csv).resolve(),
             *(
                 (configuration_root / c.CONFIG_DIR_NAME / campaign.csv).resolve()
                 for campaign in u.Infra
-                .load_refactor_csv_campaigns(
-                    configuration_root,
-                )
+                .load_refactor_csv_campaigns(configuration_root)
                 .unwrap()
                 .campaigns
             ),
-        }
-        for root in roots:
-            paths = u.Infra.git_source_scope_paths(root)
-            candidates = root.rglob("*") if paths is None else paths
-            for path in sorted(candidates):
-                relative = path.relative_to(root)
-                if (
-                    not path.is_file()
-                    or path.resolve() in drivers
-                    or relative in generated
-                    or any(part in ignored for part in relative.parts)
-                    or any(
-                        relative.full_match(pattern) for pattern in params.exclude_globs
-                    )
-                ):
-                    continue
-                python = path.suffix == c.Infra.EXT_PYTHON
-                text = any(
-                    relative.full_match(pattern) for pattern in params.text_globs
-                )
-                if not python and not text:
-                    continue
-                if FlextInfraRenameSources._rooted_symlink(path, roots):
-                    continue
-                state = u.Cli.atomic_read_binary_file_state(
-                    path,
-                    required=True,
-                ).unwrap()
-                if state.content is None:
-                    msg = f"rename source disappeared: {path}"
-                    raise ValueError(msg)
-                source = state.content.decode(c.DEFAULT_ENCODING)
-                if (
-                    source.startswith(c.Infra.AUTOGEN_HEADER)
-                    and path.resolve() not in templates
-                ):
-                    continue
-                if path.suffix.lower() == ".csv" and u.Cli.csv_loads(source).unwrap()[
-                    :1
-                ] == [["old", "new"]]:
-                    continue
-                files[path.absolute()] = state
-        return files
+        })
+        return (
+            (
+                frozenset(codegen.source_scan_ignored),
+                {item.path for item in codegen.managed_file_specs},
+            ),
+            drivers,
+            frozenset(u.Infra.codegen_template_sources(codegen)),
+        )
+
+    @staticmethod
+    def _electable(
+        path: Path,
+        root: Path,
+        roots: t.SequenceOf[Path],
+        params: m.Infra.ApplyRenamesInput,
+        exclusions: t.Triple[
+            t.Pair[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
+        ],
+    ) -> bool:
+        """Whether one scoped path is a rename source under the declared surfaces.
+
+        Returns:
+            True when the path is neither excluded nor outside the surfaces.
+
+        """
+        (ignored, generated), drivers, _templates = exclusions
+        python = path.suffix == c.Infra.EXT_PYTHON
+        if not python and not params.text_globs:
+            return False
+        relative = path.relative_to(root)
+        if not python and not any(
+            relative.full_match(pattern) for pattern in params.text_globs
+        ):
+            return False
+        if (
+            not path.is_file()
+            or path.resolve() in drivers
+            or relative in generated
+            or any(part in ignored for part in relative.parts)
+            or any(relative.full_match(pattern) for pattern in params.exclude_globs)
+        ):
+            return False
+        return not FlextInfraRenameSources._rooted_symlink(path, roots)
+
+    @staticmethod
+    def _source_state(
+        path: Path,
+        templates: frozenset[Path],
+    ) -> m.Cli.AtomicFileState | None:
+        """Authenticate one rename source, skipping generated and driver data.
+
+        Returns:
+            The authenticated state, or ``None`` for a generated projection or a
+            rename-list driver.
+
+        Raises:
+            ValueError: If the rename source disappeared.
+
+        """
+        state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        if state.content is None:
+            msg = f"rename source disappeared: {path}"
+            raise ValueError(msg)
+        source = state.content.decode(c.DEFAULT_ENCODING)
+        if (
+            source.startswith(c.Infra.AUTOGEN_HEADER)
+            and path.resolve() not in templates
+        ):
+            return None
+        if path.suffix.lower() == ".csv" and u.Cli.csv_loads(source).unwrap()[:1] == [
+            ["old", "new"]
+        ]:
+            return None
+        return state
 
     @staticmethod
     def text_edits(

@@ -1,10 +1,7 @@
 id: ban-test-http-doubles
 snapshots:
-  ? |
-    @responses.activate
-    def test_call(self) -> None:
-        responses.add(responses.GET, url, json={})
-  : labels:
+  "@responses.activate\ndef test_call(self) -> None:\n    responses.add(responses.GET, url, json={})\n":
+    labels:
     - source: responses.add(responses.GET, url, json={})
       style: primary
       start: 53
@@ -25,10 +22,8 @@ snapshots:
       style: primary
       start: 0
       end: 33
-  ? |
-    from httpx import MockTransport
-    transport = MockTransport(handler)
-  : labels:
+  "from httpx import MockTransport\ntransport = MockTransport(handler)\n":
+    labels:
     - source: from httpx import MockTransport
       style: primary
       start: 0

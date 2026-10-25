@@ -1,9 +1,7 @@
 id: rewire-test-assert-instance
 snapshots:
-  ? |
-    from tests import tm
-    assert isinstance(value, Entry)
-  : fixed: |
+  "from tests import tm\nassert isinstance(value, Entry)\n":
+    fixed: |
       from tests import tm
       if isinstance(value, Entry):
           pass
@@ -24,11 +22,8 @@ snapshots:
       style: secondary
       start: 0
       end: 53
-  ? |
-    from tests import tm
-    if not (isinstance(cfg, m.AiHub.McpConfig)):
-        raise AssertionError
-  : fixed: |
+  "from tests import tm\nif not (isinstance(cfg, m.AiHub.McpConfig)):\n    raise AssertionError\n":
+    fixed: |
       from tests import tm
       if isinstance(cfg, m.AiHub.McpConfig):
           pass

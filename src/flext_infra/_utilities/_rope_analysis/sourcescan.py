@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Generator, MutableMapping
 from functools import cache
 from typing import ClassVar
 
@@ -25,6 +25,204 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     """
 
     _INSTALL_LAZY_IMPORTS_ARG_INDEX: ClassVar[int] = 2
+
+    @staticmethod
+    @cache
+    def parsed_module(source: str) -> ast.Module:
+        """Parse one module source once per exact content.
+
+        Every reader only inspects the tree, so one parse serves each repeated
+        query over the same source; a source that does not parse raises its
+        ``SyntaxError`` on every call.
+
+        Returns:
+            The parsed module.
+
+        """
+        return ast.parse(source)
+
+    @staticmethod
+    @cache
+    def class_base_names(
+        source: str,
+    ) -> t.VariadicTuple[t.Pair[str, frozenset[str]]]:
+        """Name every class one module source declares with its base spellings.
+
+        Classes are statements, so only statement bodies are traversed;
+        nested class, function, conditional and handler bodies included. A
+        base is spelled by its last name (``m.Base[T]`` spells ``Base``).
+
+        Returns:
+            Each declared class name with the names its bases spell.
+
+        """
+        found: list[t.Pair[str, frozenset[str]]] = []
+        pending: list[ast.AST] = [
+            FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+        ]
+        while pending:
+            node = pending.pop()
+            for field in ("body", "orelse", "finalbody", "handlers", "cases"):
+                for child in getattr(node, field, ()):
+                    if isinstance(child, ast.ClassDef):
+                        found.append((
+                            child.name,
+                            frozenset(
+                                base.id if isinstance(base, ast.Name) else base.attr
+                                for expression in child.bases
+                                for base in (
+                                    expression.value
+                                    if isinstance(expression, ast.Subscript)
+                                    else expression,
+                                )
+                                if isinstance(base, ast.Name | ast.Attribute)
+                            ),
+                        ))
+                    if isinstance(child, ast.stmt | ast.excepthandler | ast.match_case):
+                        pending.append(child)
+        return tuple(found)
+
+    @staticmethod
+    @cache
+    def absolute_import_roots(source: str) -> frozenset[str]:
+        """Name the top-level packages one module source imports absolutely.
+
+        Imports are statements, so only statement bodies are traversed:
+        nested function, class, conditional and handler bodies included,
+        expressions never. One traversal serves each exact content.
+
+        Returns:
+            The distinct top-level module names, without relative imports.
+
+        """
+        found: set[str] = set()
+        pending: list[ast.AST] = [
+            FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+        ]
+        while pending:
+            node = pending.pop()
+            for field in ("body", "orelse", "finalbody", "handlers", "cases"):
+                for child in getattr(node, field, ()):
+                    if isinstance(child, ast.Import):
+                        found.update(
+                            alias.name.partition(".")[0] for alias in child.names
+                        )
+                    elif isinstance(child, ast.ImportFrom):
+                        if child.level == 0 and child.module:
+                            found.add(child.module.partition(".")[0])
+                    elif isinstance(
+                        child, ast.stmt | ast.excepthandler | ast.match_case
+                    ):
+                        pending.append(child)
+        return frozenset(found)
+
+    @classmethod
+    def single_module_import_binding(cls, tree: ast.Module, name: str) -> bool:
+        """Report whether one module-level import is the name's only binding.
+
+        Python then resolves every load of the name to that import, in any
+        nested scope.
+
+        Returns:
+            True when exactly one import outside every function and class binds
+            the name and no star import, assignment, parameter, definition,
+            pattern capture, exception alias or scope declaration binds it.
+
+        """
+        module_level = sum(
+            cls._import_binding_count(statement, name)
+            for statement in cls._module_level_statements(tree.body)
+        )
+        bindings = 0
+        for node in ast.walk(tree):
+            match node:
+                case ast.ImportFrom(names=names) if any(
+                    alias.name == "*" for alias in names
+                ):
+                    return False
+                case ast.Global(names=names) | ast.Nonlocal(names=names) if (
+                    name in names
+                ):
+                    return False
+                case ast.Import() | ast.ImportFrom():
+                    bindings += cls._import_binding_count(node, name)
+                case (
+                    ast.Name(id=bound, ctx=ast.Store() | ast.Del())
+                    | ast.arg(arg=bound)
+                    | ast.FunctionDef(name=bound)
+                    | ast.AsyncFunctionDef(name=bound)
+                    | ast.ClassDef(name=bound)
+                    | ast.MatchAs(name=bound)
+                    | ast.MatchStar(name=bound)
+                    | ast.MatchMapping(rest=bound)
+                    | ast.ExceptHandler(name=bound)
+                    | ast.TypeVar(name=bound)
+                    | ast.ParamSpec(name=bound)
+                    | ast.TypeVarTuple(name=bound)
+                ) if bound == name:
+                    bindings += 1
+                case _:
+                    pass
+        return module_level == 1 and bindings == 1
+
+    @staticmethod
+    def _import_binding_count(statement: ast.stmt, name: str) -> int:
+        """Count the aliases one import statement binds to ``name``.
+
+        Returns:
+            The number of aliases binding the name, zero for other statements.
+
+        """
+        if not isinstance(statement, ast.Import | ast.ImportFrom):
+            return 0
+        return sum(
+            1
+            for alias in statement.names
+            if (alias.asname or alias.name.partition(".")[0]) == name
+        )
+
+    @classmethod
+    def _module_level_statements(
+        cls, body: t.SequenceOf[ast.stmt]
+    ) -> Generator[ast.stmt]:
+        """Yield statements executed in the module scope, including guarded blocks.
+
+        Yields:
+            Each statement outside every function and class body.
+
+        """
+        for statement in body:
+            yield statement
+            match statement:
+                case (
+                    ast.If(body=inner, orelse=other)
+                    | ast.While(body=inner, orelse=other)
+                    | ast.For(body=inner, orelse=other)
+                    | ast.AsyncFor(body=inner, orelse=other)
+                ):
+                    yield from cls._module_level_statements((*inner, *other))
+                case ast.With(body=inner) | ast.AsyncWith(body=inner):
+                    yield from cls._module_level_statements(inner)
+                case (
+                    ast.Try(
+                        body=inner, handlers=handlers, orelse=other, finalbody=final
+                    )
+                    | ast.TryStar(
+                        body=inner, handlers=handlers, orelse=other, finalbody=final
+                    )
+                ):
+                    yield from cls._module_level_statements((
+                        *inner,
+                        *(item for handler in handlers for item in handler.body),
+                        *other,
+                        *final,
+                    ))
+                case ast.Match(cases=cases):
+                    yield from cls._module_level_statements(
+                        tuple(item for case in cases for item in case.body)
+                    )
+                case _:
+                    pass
 
     @staticmethod
     def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> t.StrSequence:
@@ -96,7 +294,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             The value node assigned in the owning declaration scope.
 
         """
-        module = ast.parse(source)
+        module = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
         body = (
             FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(module)
             if name == "__all__"
@@ -311,7 +509,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         imports = sorted(
             (
                 node
-                for node in ast.walk(ast.parse(source))
+                for node in ast.walk(
+                    FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+                )
                 if isinstance(node, ast.ImportFrom)
             ),
             key=lambda node: (node.lineno, node.col_offset),
@@ -338,7 +538,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             The top-level class statement named ``class_name``.
 
         """
-        for node in ast.parse(source).body:
+        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(
+            source
+        ).body:
             if isinstance(node, ast.ClassDef) and node.name == class_name:
                 return node
         return None
@@ -396,7 +598,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
         """
         try:
-            tree = ast.parse(source)
+            tree = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
         except SyntaxError:
             return None
         for node in tree.body:
@@ -501,7 +703,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         calls = sorted(
             (
                 node
-                for node in ast.walk(ast.parse(source))
+                for node in ast.walk(
+                    FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+                )
                 if isinstance(node, ast.Call)
                 and FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(node.func)
                 == function_name

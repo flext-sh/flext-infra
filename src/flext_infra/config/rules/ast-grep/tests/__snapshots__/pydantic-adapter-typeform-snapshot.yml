@@ -23,7 +23,7 @@ snapshots:
       style: secondary
       start: 21
       end: 51
-  adapter = TypeAdapter(FlextTypingBase.Scalar, config=cfg):
+  "adapter = TypeAdapter(FlextTypingBase.Scalar, config=cfg)":
     fixed: adapter = TypeAdapter(TypeForm(FlextTypingBase.Scalar), config=cfg)
     labels:
     - source: FlextTypingBase.Scalar
@@ -46,7 +46,7 @@ snapshots:
       style: secondary
       start: 21
       end: 57
-  adapter = m.type_adapter(t.SequenceOf[str]):
+  "adapter = m.type_adapter(t.SequenceOf[str])":
     fixed: adapter = m.type_adapter(TypeForm(t.SequenceOf[str]))
     labels:
     - source: t.SequenceOf[str]

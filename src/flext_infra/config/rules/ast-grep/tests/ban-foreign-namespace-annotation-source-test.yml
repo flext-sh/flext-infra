@@ -1,0 +1,34 @@
+# $MODULE is another facade package (fixture-utils/facade-package.yml) and
+# $NAME an alias the own package `ai_hub` binds (fixture-utils/local-alias.yml).
+# The per-letter family partition (a family's own letter stays on the parent
+# package) and the layer-zero exclusion are resolved only in a native stage.
+id: ban-foreign-namespace-annotation-source
+valid:
+  - |
+    if TYPE_CHECKING:
+        from ai_hub import m, u
+  # Runtime imports belong to ENFORCE-003 and its family documents.
+  - from flext_cli import m
+  - |
+    if TYPE_CHECKING:
+        from rich import c
+  - |
+    if TYPE_CHECKING:
+        from flext_cli.models import m
+  - |
+    if TYPE_CHECKING:
+        from flext_cli import FlextCliModels
+  - |
+    if TYPE_CHECKING:
+        from flext_cli import x
+invalid:
+  - |
+    if TYPE_CHECKING:
+        from flext_cli import m
+  - |
+    if typing.TYPE_CHECKING:
+        from flext_core import p, u
+  - |
+    def annotate():
+        if TYPE_CHECKING:
+            from flext_cli import t

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import tm
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,7 +32,9 @@ class TestsFlextInfraExtendedProjectRunners:
         result = checker.run_projects(
             [real_python_package.name],
             ["lint", "pyrefly"],
-            reports_dir=real_python_package.parent / "reports",
+            u.Tests.gate_context(
+                real_python_package.parent, real_python_package.parent / "reports"
+            ),
         )
 
         tm.ok(result)

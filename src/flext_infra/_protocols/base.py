@@ -519,8 +519,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def outcome(self) -> c.Infra.ToolOutcome:
-            """Native tool outcome, independent of acceptance."""
+        def outcome(self) -> c.Infra.ToolOutcome | None:
+            """Declared native tool outcome; absent derives it from findings."""
             ...
 
         @property
@@ -821,11 +821,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def tool_selectors(self) -> t.MappingKV[str, str]:
             """Declared Mise selector of every selector-bearing fleet tool."""
-            ...
-
-        @property
-        def tool_version_prefixes(self) -> t.MappingKV[str, str]:
-            """Declared release tag prefix of every prefix-bearing tool."""
             ...
 
     @runtime_checkable

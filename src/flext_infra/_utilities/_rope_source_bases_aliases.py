@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 from flext_core import build_lazy_import_map
@@ -57,6 +58,9 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         return backing
 
     _stdlib_backing_cache: t.StrDict | None = None
+    _export_bindings_memo: ClassVar[
+        dict[tuple[str, str, str], t.MappingKV[str, m.Infra.SourceClassReference]]
+    ] = {}
 
     @classmethod
     def lazy_module_aliases(
@@ -118,20 +122,14 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         # bodies are not inputs to this package-alias reader.
         if path.name != c.Infra.INIT_PY:
             return {}
-        # A required initializer that does not parse remains a real input error.
-        parsed = (
-            pymodule.get_module()
-            if pymodule is not None
-            else FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-                project, source
-            )
-        )
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(parsed):
-            message = "Lazy aliases require a native Rope source module"
-            raise TypeError(message)
-        if parsed.source_code != source:
-            message = "Lazy aliases differ from their native Rope snapshot"
-            raise ValueError(message)
+        # The bindings are a pure function of the initializer text, so one
+        # read per distinct text serves every facade render of the process.
+        key = (module, str(path), source)
+        if pymodule is None and key in cls._export_bindings_memo:
+            return dict(cls._export_bindings_memo[key])
+        parsed = cls._parsed_initializer(project, source, pymodule)
+        if key in cls._export_bindings_memo:
+            return dict(cls._export_bindings_memo[key])
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
             parsed.pycore.project, "install_lazy_exports"
         )
@@ -146,17 +144,51 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             mapping = cls._call_alias_source(source, words, occurrence.offset, parsed)
             if mapping is None:
                 continue
-            for key, (provider, attribute) in cls._literal_exports(mapping).items():
+            for name, (provider, attribute) in cls._literal_exports(mapping).items():
                 resolved = cls._absolute_alias(module, provider)
                 if resolved is None:
-                    message = f"Lazy provider escapes its package: {module}.{key}"
+                    message = f"Lazy provider escapes its package: {module}.{name}"
                     raise ValueError(message)
-                aliases[key] = m.Infra.SourceClassReference(
+                aliases[name] = m.Infra.SourceClassReference(
                     target=resolved,
                     attributes=(attribute,) if attribute else (),
-                    qualified_base=f"{module}.{key}",
+                    qualified_base=f"{module}.{name}",
                 )
-        return aliases
+        cls._export_bindings_memo[key] = aliases
+        return dict(aliases)
+
+    @staticmethod
+    def _parsed_initializer(
+        project: p.Infra.RopeProject,
+        source: str,
+        pymodule: p.Infra.RopeSemanticModule | None,
+    ) -> p.Infra.RopeSourceModule:
+        """Return the native Rope module of one initializer text.
+
+        A required initializer that does not parse remains a real input error.
+
+        Returns:
+            The supplied module, or the one Rope builds from ``source``.
+
+        Raises:
+            TypeError: The parsed module is not a native Rope source module.
+            ValueError: The parsed module differs from its native Rope snapshot.
+
+        """
+        parsed = (
+            pymodule.get_module()
+            if pymodule is not None
+            else FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project, source
+            )
+        )
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(parsed):
+            message = "Lazy aliases require a native Rope source module"
+            raise TypeError(message)
+        if parsed.source_code != source:
+            message = "Lazy aliases differ from their native Rope snapshot"
+            raise ValueError(message)
+        return parsed
 
     @classmethod
     def _call_alias_source(

@@ -1,11 +1,7 @@
 id: retire-publication-stack-import
 snapshots:
-  ? |
-    from flext_infra.codegen import (
-        FlextInfraCodegenLazyInit,
-        FlextInfraMiseArtifactsVerification,
-    )
-  : fixed: |
+  "from flext_infra.codegen import (\n    FlextInfraCodegenLazyInit,\n    FlextInfraMiseArtifactsVerification,\n)\n":
+    fixed: |
       from flext_infra.codegen import (
           FlextInfraCodegenLazyInit,
           ,
@@ -27,9 +23,9 @@ snapshots:
       style: secondary
       start: 0
       end: 107
-  ? |
-    from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenFileLeases
-  : fixed: "from flext_infra.codegen import FlextInfraCodegenLazyInit, \n"
+  "from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenFileLeases\n":
+    fixed: |
+      from flext_infra.codegen import FlextInfraCodegenLazyInit, 
     labels:
     - source: FlextInfraCodegenFileLeases
       style: primary
@@ -39,14 +35,15 @@ snapshots:
       style: secondary
       start: 32
       end: 57
-    - source: from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenFileLeases
+    - source: >-
+        from flext_infra.codegen import FlextInfraCodegenLazyInit,
+        FlextInfraCodegenFileLeases
       style: secondary
       start: 0
       end: 86
-  ? |
-    from flext_infra.codegen import FlextInfraCodegenTransaction
-  : fixed: |2+
-
+  "from flext_infra.codegen import FlextInfraCodegenTransaction\n":
+    fixed: |+
+      
     labels:
     - source: from flext_infra.codegen import FlextInfraCodegenTransaction
       style: primary
@@ -56,10 +53,10 @@ snapshots:
       style: secondary
       start: 32
       end: 60
-  ? |
-    if TYPE_CHECKING:
-        from flext_infra.codegen import FlextInfraCodegenStaging
-  : fixed: "if TYPE_CHECKING:\n    \n"
+  "if TYPE_CHECKING:\n    from flext_infra.codegen import FlextInfraCodegenStaging\n":
+    fixed: |
+      if TYPE_CHECKING:
+          
     labels:
     - source: from flext_infra.codegen import FlextInfraCodegenStaging
       style: primary

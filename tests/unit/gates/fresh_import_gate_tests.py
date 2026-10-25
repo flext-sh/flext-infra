@@ -53,7 +53,7 @@ class TestsFlextInfraFreshImportGate:
         project = self._project(tmp_path)
         gate = FlextInfraFreshImportGate(repository_root=project)
 
-        tm.ok(gate.selected_for(project))
+        tm.ok(gate.selected_for(project, u.Tests.gate_context(project)))
         result = self._execution(project).result
 
         tm.fail(result.passed)
@@ -114,6 +114,8 @@ class TestsFlextInfraFreshImportGate:
         )
 
         tm.that(
-            FlextInfraFreshImportGate(repository_root=project).selected_for(project),
+            FlextInfraFreshImportGate(repository_root=project).selected_for(
+                project, u.Tests.gate_context(project)
+            ),
             eq=False,
         )

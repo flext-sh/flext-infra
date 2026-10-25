@@ -178,11 +178,13 @@ class TestsFlextInfraCodegenMakeVerbs:
         # No projection enumerates a gate id: check asks the checker, which
         # resolves the gate inventory from the typed Make spec at runtime.
         tm.that(makefile, lacks="--gates")
-        capture_invocations = tuple(
-            line for line in makefile.splitlines() if "capture-gate" in line
+        check_invocations = tuple(
+            line
+            for line in makefile.splitlines()
+            if f"{c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} " in line
         )
-        tm.that(capture_invocations, empty=False)
-        for invocation in capture_invocations:
+        tm.that(check_invocations, length=1)
+        for invocation in check_invocations:
             tm.that(invocation, lacks="--apply")
         for gate_set in (c.Infra.CheckGateSet.FIX, c.Infra.CheckGateSet.FMT):
             tm.that(makefile, has=f"--gate-set {gate_set.value} --apply")
@@ -223,7 +225,10 @@ class TestsFlextInfraCodegenMakeVerbs:
             msg=process.stdout + process.stderr,
         )
         invocation = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocation, has="-m flext_infra workspace capture-gate")
+        tm.that(
+            invocation,
+            has=f"-m flext_infra {c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} ",
+        )
         tm.that(invocation, lacks="--gates")
         tm.that(invocation, lacks="--apply")
 

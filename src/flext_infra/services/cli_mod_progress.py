@@ -6,18 +6,33 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import time
+
 from flext_cli import cli
 
 from flext_infra import m
 
 
 class FlextInfraCliModProgress:
-    """Render mod progress at the CLI transport boundary."""
+    """Render mod progress at the CLI transport boundary, timed per phase."""
 
-    @staticmethod
-    def emit(message: str) -> None:
-        """Show the current canonical mod phase."""
-        cli.display_text(message)
+    def __init__(self) -> None:
+        """Start the run clock at the composition root."""
+        self._started = time.monotonic()
+        self._phase = self._started
+
+    def emit(self, message: str) -> None:
+        """Show the current mod phase with the closing phase's duration.
+
+        Each phase lasts from its message to the next one, so every line
+        reports how long the previous phase took and the run's total.
+        """
+        now = time.monotonic()
+        cli.display_text(
+            f"{message} [previous phase {now - self._phase:.1f}s, "
+            f"total {now - self._started:.1f}s]"
+        )
+        self._phase = now
 
     @staticmethod
     def emit_rename(report: m.Infra.ApplyRenamesReport) -> None:

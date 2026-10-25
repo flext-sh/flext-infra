@@ -1,9 +1,7 @@
 id: rewire-typing-adapter-factories
 snapshots:
-  ? |
-    from flext_core import t, u
-    value = t.json_mapping_adapter().validate_python(payload)
-  : fixed: |
+  "from flext_core import t, u\nvalue = t.json_mapping_adapter().validate_python(payload)\n":
+    fixed: |
       from flext_core import t, u
       value = u.json_mapping_adapter().validate_python(payload)
     labels:
@@ -11,6 +9,14 @@ snapshots:
       style: primary
       start: 36
       end: 60
+    - source: json_mapping_adapter
+      style: secondary
+      start: 38
+      end: 58
+    - source: json_mapping_adapter
+      style: secondary
+      start: 38
+      end: 58
     - source: from flext_core import t, u
       style: secondary
       start: 0
@@ -21,10 +27,8 @@ snapshots:
       style: secondary
       start: 0
       end: 86
-  ? |
-    from flext_core import t, u
-    value = t.str_adapter().validate_json(payload)
-  : fixed: |
+  "from flext_core import t, u\nvalue = t.str_adapter().validate_json(payload)\n":
+    fixed: |
       from flext_core import t, u
       value = u.str_adapter().validate_json(payload)
     labels:
@@ -32,6 +36,14 @@ snapshots:
       style: primary
       start: 36
       end: 51
+    - source: str_adapter
+      style: secondary
+      start: 38
+      end: 49
+    - source: str_adapter
+      style: secondary
+      start: 38
+      end: 49
     - source: from flext_core import t, u
       style: secondary
       start: 0

@@ -1,0 +1,20 @@
+# A module that binds the public test utilities facade `u` under its own
+# name from the generated `tests` facade.
+id: tests-u-bound
+language: python
+rule:
+  kind: module
+  has:
+    stopBy: end
+    kind: import_from_statement
+    all:
+      - has:
+          field: module_name
+          regex: "^tests$"
+      - has:
+          kind: dotted_name
+          regex: "^u$"
+          not:
+            inside:
+              kind: import_from_statement
+              field: module_name

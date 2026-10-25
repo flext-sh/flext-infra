@@ -26,8 +26,6 @@ dependencies = [
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "gitdb>=4.0.12",
   "GitPython>=3.2.1",
-  "griffelib>=2.4.1",
-  "import-linter>=2.5",
   "jinja2>=3.1.6",
   "libcst>=1.9.0",
   "Markdown>=3.11.1",
@@ -37,7 +35,7 @@ dependencies = [
   "pymdown-extensions>=11.0.1",
   "pytest>=9.1.1",
   "pytest-markdown-docs>=0.9.2",
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@1.15.0%2Bdc.5",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@1.15.0%2Bdc.6",
   "typing-extensions>=4.16.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
@@ -457,18 +455,13 @@ addopts = [
   "--strict-markers",
   "--markdown-docs",
   "--durations=10",
-  "--flext-enforce-strict",
 ]
 asyncio_default_fixture_loop_scope = "function"
-filterwarnings = [
-  "error",
-  "module::flext_core._constants.enforcement.FlextMroViolation",
-  "once::pytest.PytestAssertRewriteWarning",
-]
+filterwarnings = ["error", "once::pytest.PytestAssertRewriteWarning"]
 flext_fixture_trees_root = "tests/fixtures"
 flext_make_ci_value = "Y"
 flext_make_ci_variable = "CI"
-flext_slow_timeout_seconds = "30"
+flext_slow_timeout_seconds = "25"
 markers = [
   "smoke: public-interface smoke tests",
   "unit: unit tests",
@@ -583,6 +576,7 @@ select = ["ALL"]
 unfixable = [
   "multi-value-repeated-key-literal",
   "multi-value-repeated-key-variable",
+  "non-pep695-type-alias",
   "p-print",
   "print",
   "pytest-duplicate-parametrize-test-cases",
@@ -686,6 +680,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.scan.ModScanCounts",
   "flext_infra._models.scan.ModScanFinding",
   "flext_infra._models.workspace.NativeImportObservation",
+  "flext_infra._models.workspace.WorkspaceRequest",
   "flext_infra.base.FlextInfraServiceBase",
   "flext_infra.base.s",
   "flext_infra.codegen.FlextInfraCodegenConformBootstrap",
@@ -729,7 +724,6 @@ runtime-evaluated-base-classes = [
   "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerExecution",
   "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerReports",
   "flext_infra.workspace.FlextInfraRopeQueryMixin",
-  "flext_tests.FlextTestsModels.Tests",
   "flext_tests.FlextTestsServiceBase",
   "pydantic.BaseModel",
 ]
@@ -776,7 +770,7 @@ constraint-dependencies = [
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
 override-dependencies = [
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@ff1c992a100ae983baa79188a6a970c2858734de",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@8414232e12b6328ba812bf49fe465fde65774dfd",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",

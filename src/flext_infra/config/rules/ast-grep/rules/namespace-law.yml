@@ -2,10 +2,10 @@
 # -003, -007, -011, -014, -080, -099).
 #
 # Each document matches one file's syntax; what the project means by a name
-# is read from its own sources of truth through metadata.context, evaluated
-# by the engine (see the context predicates in the rule plan): the own
-# package (pyproject), the runtime closure (installed distributions), the
-# runtime aliases a package publishes (its generated lazy exports), the
+# is read from its own sources of truth through the project's stable
+# generated utilities (matches:) and published file scopes (metadata.scope):
+# the own package (pyproject), the runtime closure (installed distributions),
+# the runtime aliases a package publishes (its generated lazy exports), the
 # aliases the own package binds (its modules' __all__), a module's own
 # __all__, and the facade family a module belongs to (__all__ of the module
 # or of its family package's facade, over the tooling import-layer order).
@@ -285,21 +285,34 @@ ignores:
 metadata:
   enforce: [ENFORCE-002]
   relocation: package-root-import
-  context:
-    MODULE:
-      is: facade-package
-    NAME:
-      - is: runtime-alias
-        of: MODULE
-      - not: canonical-static-publication
-        of: MODULE
+constraints:
+  MODULE:
+    matches: facade-package
+  NAME:
+    matches: runtime-alias
 rule:
   kind: dotted_name
   pattern: $NAME
   not:
-    inside:
-      kind: import_from_statement
-      field: module_name
+    any:
+      - inside:
+          kind: import_from_statement
+          field: module_name
+      # The canonical static publication: a generated initializer's
+      # TYPE_CHECKING import of an alias from a module directly below the own
+      # package root, mirroring its lazy export for the type checkers.
+      - all:
+          - matches: inside-type-checking-guard
+          - inside:
+              kind: module
+              stopBy: end
+              matches: generated-module
+          - inside:
+              kind: import_from_statement
+              has:
+                field: module_name
+                regex: "^[^.]+\\.[^.]+$"
+                matches: own-package
   inside:
     kind: import_from_statement
     has:
@@ -347,14 +360,20 @@ ignores:
 metadata:
   enforce: [ENFORCE-003]
   relocation: own-package-import
-  context:
-    MODULE:
-      - not: own-package
-      - is: facade-package
-    NAME:
-      - is: local-alias
-      - not: file-family
-      - not: layer-zero-file
+  # A layer-zero module binds no own-namespace object, and a facade module
+  # composes the upstream letters by design (operator ruling 2026-10-25,
+  # tracker key operator-ruling-2026-10-25-upstream-letter-canonical): one
+  # native document, its scopes rendered as native ignores.
+  scope:
+    not-in: [layer-zero, facade-module]
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+  NAME:
+    matches: local-alias
 rule:
   kind: dotted_name
   pattern: $NAME
@@ -406,14 +425,20 @@ ignores:
 metadata:
   enforce: [ENFORCE-080]
   relocation: own-package-import
-  context:
-    MODULE:
-      - not: own-package
-      - is: facade-package
-    NAME:
-      - is: local-alias
-      - not: file-family
-      - not: layer-zero-file
+  # A layer-zero module binds no own-namespace object, and a facade module
+  # composes the upstream letters by design (operator ruling 2026-10-25,
+  # tracker key operator-ruling-2026-10-25-upstream-letter-canonical): one
+  # native document, its scopes rendered as native ignores.
+  scope:
+    not-in: [layer-zero, facade-module]
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+  NAME:
+    matches: local-alias
 rule:
   kind: dotted_name
   pattern: $NAME
@@ -439,10 +464,83 @@ message: >-
   Alias `$NAME` imported from `$MODULE` inside a body: the own package
   re-exports `$NAME`; import it from there.
 ---
+# ENFORCE-003 for annotation-only imports: an `if TYPE_CHECKING:` import of
+# an alias the own package publishes, bound from another facade package.
+# Annotations never run, so the own package's letter is cycle-free in every
+# consumer module and every layer. ENFORCE-003 and ENFORCE-080 both skip
+# guarded imports, which left this shape unowned; the file scope is
+# ENFORCE-003's, unchanged.
+#
+# The facade families' declaration modules (c, t, p, m, u and their family
+# packages, base and settings composition) are out of scope by design: while
+# the own facades are being composed, binding the UPSTREAM packages' letters
+# (`from flext_cli import c, t, p, m, u`) for hierarchical composition is the
+# canonical form (operator ruling 2026-10-25 for epic flext-1engx, tracker
+# memory key operator-ruling-2026-10-25-upstream-letter-canonical), and the
+# own letter there is ENFORCE-051's cycle.
+id: ban-foreign-namespace-annotation-source
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  # Generator-contract bootstrap modules, as in ENFORCE-003
+  # (operator-ruling-2026-10-05-bootstrap-model-imports).
+  - "**/_config_models.py"
+  - "**/_settings_models.py"
+  - "**/utilities.py"
+  - "**/__init__.py"
+  - "**/_constants/**"
+  - "**/_models/**"
+  - "**/_protocols/**"
+  - "**/_typings/**"
+  - "**/_utilities/**"
+  - "**/base.py"
+  - "**/_base.py"
+  - "**/settings.py"
+  - "**/_settings.py"
+  - "**/tests/**"
+  - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-003]
+  relocation: own-package-import
+  # A layer-zero module binds no own-namespace object at all, and a facade
+  # module composes the upstream letters: one native document, its scopes
+  # rendered as native ignores.
+  scope:
+    not-in: [layer-zero, facade-module]
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+  NAME:
+    matches: local-alias
+rule:
+  kind: dotted_name
+  pattern: $NAME
+  not:
+    inside:
+      kind: import_from_statement
+      field: module_name
+  matches: inside-type-checking-guard
+  inside:
+    kind: import_from_statement
+    has:
+      field: module_name
+      kind: dotted_name
+      pattern: $MODULE
+      not:
+        regex: "\\."
+message: >-
+  Annotation import binds `$NAME` from `$MODULE`, a package that does not own
+  this project's `$NAME`: import it from the own package.
+---
 # ENFORCE-099: a consumer imports another facade package through its public
 # root or its public family compose modules: a module path below the root is
-# the owner's layout, with the family-shape exemption the compose-module
-# predicate proves — the canonical public compose leaf
+# the owner's layout, with the family-shape exemption the generated
+# compose-module utility proves — the canonical public compose leaf
 # (constants/models/protocols/typings/utilities, bead flext-6e72w) is the
 # sanctioned static surface every consumer imports the composed classes from.
 # Runtime aliases are ENFORCE-002's and private paths ban-private-import's; a
@@ -474,14 +572,17 @@ ignores:
   - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-015]
-  context:
-    MODULE:
-      - not: own-package
-      - is: facade-package
-      - not: compose-module
-    NAME:
-      not: runtime-alias
-      of: MODULE
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+      - not:
+          matches: compose-module
+  NAME:
+    not:
+      matches: runtime-alias
 rule:
   any:
     - kind: dotted_name
@@ -541,7 +642,7 @@ message: >-
 ---
 # ENFORCE-007: a runtime alias is bound only by the module that declares it
 # in __all__, exactly once, to the facade class that module defines. Each
-# branch captures its own variable, so each carries its own context. A name
+# branch captures its own variable, each constrained natively. A name
 # declared in __all__ and never bound is the type checkers'
 # unsupported-dunder-all finding. An import of the alias is a binding too:
 # mypy keeps the imported type and rejects the later assignment.
@@ -554,21 +655,11 @@ ignores:
   - "**/__init__.py"
 metadata:
   enforce: [ENFORCE-007]
-  context:
-    UNDECLARED:
-      - is: runtime-alias
-      - not: module-export
-    REBOUND:
-      is: runtime-alias
-    SHADOWED:
-      is: runtime-alias
-    ALIAS:
-      is: runtime-alias
 rule:
   any:
-    # Bound after a module-level import of the same name. Listed first: the
-    # engine reads the captures of the first matching branch only, and the
-    # undeclared branch matches every module-level binding.
+    # Bound after a module-level import of the same name. Listed first: a
+    # match keeps the first matching branch, and the undeclared branch
+    # matches every module-level binding.
     - all:
         - kind: expression_statement
         - inside:
@@ -640,7 +731,9 @@ rule:
             has:
               field: left
               kind: identifier
-              pattern: $UNDECLARED
+              pattern: $NAME
+        - not:
+            matches: declared-in-module-all
     # Bound twice.
     - all:
         - kind: expression_statement
@@ -694,16 +787,17 @@ rule:
                   has:
                     field: name
                     pattern: $TARGET
-# A runtime alias is a public identifier; dunders are module protocol.
+# Each branch binds one of the own package's runtime aliases (the generated
+# local-alias utility); dunders are module protocol.
 constraints:
-  UNDECLARED:
-    regex: "^[^_]"
+  NAME:
+    matches: local-alias
   REBOUND:
-    regex: "^[^_]"
+    matches: local-alias
   SHADOWED:
-    regex: "^[^_]"
+    matches: local-alias
   ALIAS:
-    regex: "^[^_]"
+    matches: local-alias
 message: >-
   Runtime alias bound outside its owner: the module that declares it in
   __all__ binds it once, to the facade class it defines.
@@ -728,9 +822,17 @@ ignores:
 metadata:
   enforce: [ENFORCE-011, ENFORCE-022]
   relocation: facade-class
-  context:
-    FAMILY:
-      not: file-family
+  # One native document per family the declaration's kind selects, scoped
+  # outside that family's modules (the facade letter's own family files).
+  scope:
+    partition:
+      variable: KIND
+      holds: false
+      selectors: facade-family-
+      keys:
+        c: "^(?:Str|Int)?Enum$"
+        m: "^m\\.\\w+$"
+        u: "Utilities$"
 rule:
   kind: class_definition
   has:

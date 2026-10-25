@@ -11,6 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import libcst
+import libcst.matchers
 from flext_core import t
 from libcst import (
     Arg,
@@ -39,6 +40,7 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
         type Assign = libcst.Assign
         type AssignTarget = libcst.AssignTarget
         type Attribute = libcst.Attribute
+        type AttributeMatcher = libcst.matchers.Attribute
         type AugAssign = libcst.AugAssign
         type BaseAssignTargetExpression = libcst.BaseAssignTargetExpression
         type BaseCompoundStatement = libcst.BaseCompoundStatement

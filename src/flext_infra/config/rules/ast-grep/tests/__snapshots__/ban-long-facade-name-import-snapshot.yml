@@ -1,6 +1,6 @@
 id: ban-long-facade-name-import
 snapshots:
-  from flext_cli.utilities import FlextCliUtilities, u:
+  "from flext_cli.utilities import FlextCliUtilities, u":
     labels:
     - source: FlextCliUtilities
       style: primary

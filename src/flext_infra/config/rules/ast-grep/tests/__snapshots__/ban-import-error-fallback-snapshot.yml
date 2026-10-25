@@ -1,11 +1,7 @@
 id: ban-import-error-fallback
 snapshots:
-  ? |
-    try:
-        import tomllib
-    except (ModuleNotFoundError, OSError):
-        tomllib = None
-  : labels:
+  "try:\n    import tomllib\nexcept (ModuleNotFoundError, OSError):\n    tomllib = None\n":
+    labels:
     - source: ModuleNotFoundError
       style: primary
       start: 32
@@ -32,12 +28,8 @@ snapshots:
       style: secondary
       start: 24
       end: 81
-  ? |
-    try:
-        import yaml
-    except ImportError:
-        yaml = None
-  : labels:
+  "try:\n    import yaml\nexcept ImportError:\n    yaml = None\n":
+    labels:
     - source: ImportError
       style: primary
       start: 28

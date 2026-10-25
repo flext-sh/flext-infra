@@ -1,9 +1,7 @@
 id: ban-typings-own-letter-import
 snapshots:
-  ? |
-    def load() -> None:
-        from ai_hub import t
-  : labels:
+  "def load() -> None:\n    from ai_hub import t\n":
+    labels:
     - source: t
       style: primary
       start: 43
@@ -16,9 +14,8 @@ snapshots:
       style: secondary
       start: 24
       end: 44
-  ? |
-    from ai_hub import t
-  : labels:
+  "from ai_hub import t\n":
+    labels:
     - source: t
       style: primary
       start: 19
@@ -31,9 +28,8 @@ snapshots:
       style: secondary
       start: 0
       end: 20
-  ? |
-    from ai_hub import t as aliased
-  : labels:
+  "from ai_hub import t as aliased\n":
+    labels:
     - source: t
       style: primary
       start: 19
@@ -46,9 +42,8 @@ snapshots:
       style: secondary
       start: 0
       end: 31
-  ? |
-    from ai_hub import t, m
-  : labels:
+  "from ai_hub import t, m\n":
+    labels:
     - source: t
       style: primary
       start: 19
@@ -61,11 +56,8 @@ snapshots:
       style: secondary
       start: 0
       end: 23
-  ? |
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from ai_hub import t
-  : labels:
+  "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from ai_hub import t\n":
+    labels:
     - source: t
       style: primary
       start: 74
@@ -78,9 +70,8 @@ snapshots:
       style: secondary
       start: 55
       end: 75
-  ? |
-    import ai_hub.t
-  : labels:
+  "import ai_hub.t\n":
+    labels:
     - source: ai_hub.t
       style: primary
       start: 7
@@ -89,9 +80,8 @@ snapshots:
       style: secondary
       start: 0
       end: 15
-  ? |
-    import ai_hub.typings
-  : labels:
+  "import ai_hub.typings\n":
+    labels:
     - source: ai_hub.typings
       style: primary
       start: 7

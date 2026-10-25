@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from contextlib import closing
 from difflib import unified_diff
 from os.path import commonpath
 from pathlib import Path
@@ -78,30 +77,6 @@ class FlextInfraApplyRenames:
             if state.content is not None
         }
 
-    @staticmethod
-    def _elected_python_paths(
-        python: t.MappingKV[Path, str],
-        consumer: Path,
-        roots: t.SequenceOf[Path],
-    ) -> set[Path]:
-        """Elect the python files one consumer root owns most directly.
-
-        Returns:
-            The consumer's python paths not shadowed by a narrower root.
-
-        """
-        return {
-            path
-            for path in python
-            if path.is_relative_to(consumer)
-            and not any(
-                other != consumer
-                and other.is_relative_to(consumer)
-                and path.is_relative_to(other)
-                for other in roots
-            )
-        }
-
     @classmethod
     def _definition_resource_paths(
         cls,
@@ -138,19 +113,145 @@ class FlextInfraApplyRenames:
         return selected
 
     @classmethod
+    def _symbol_edits(
+        cls,
+        params: m.Infra.ApplyRenamesInput,
+        pairs: t.SequenceOf[t.Pair[str, str]],
+        project: p.Infra.RopeProject,
+        sources: t.Pair[t.MappingKV[Path, str], frozenset[Path]],
+    ) -> t.MappingKV[Path, t.SequenceOf[p.Infra.SourceRewrite]]:
+        """Plan the symbol edits of the elected closure on the one Rope project.
+
+        Returns:
+            The Rope edits keyed by source path.
+
+        """
+        python, candidates = sources
+        if not params.bindings or not candidates:
+            return {}
+        selected = set(candidates) | cls._definition_resource_paths(
+            params, pairs, project
+        )
+        return FlextInfraRenameSymbols.plan(
+            project,
+            python,
+            (pairs, params.bindings),
+            rename_definitions=params.rename_definitions,
+            resource_paths=tuple(sorted(selected)),
+        )
+
+    @staticmethod
+    def _excluded(
+        path: Path,
+        source: m.Infra.WorkspaceSnapshotSource,
+        params: m.Infra.ApplyRenamesInput,
+        exclusions: t.Triple[
+            t.Pair[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
+        ],
+    ) -> bool:
+        """Whether a snapshot source is a declared exclusion of the campaign.
+
+        Returns:
+            True for a managed projection, an ignored directory or an excluded glob.
+
+        """
+        (ignored, generated), _drivers, _templates = exclusions
+        relative = path.relative_to(source.member)
+        return (
+            relative in generated
+            or any(part in ignored for part in relative.parts)
+            or any(relative.full_match(pattern) for pattern in params.exclude_globs)
+        )
+
+    @staticmethod
+    def _generated_text(
+        path: Path,
+        text: str,
+        exclusions: t.Triple[
+            t.Pair[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
+        ],
+    ) -> bool:
+        """Whether the text is a generated projection outside the template inputs.
+
+        Returns:
+            True when the generated header marks a file no template declares.
+
+        """
+        return (
+            text.startswith(c.Infra.AUTOGEN_HEADER)
+            and path.resolve() not in exclusions[2]
+        )
+
+    @classmethod
+    def _inventory(
+        cls,
+        params: m.Infra.ApplyRenamesInput,
+        pairs: t.SequenceOf[t.Pair[str, str]],
+        snapshot: m.Infra.WorkspaceSnapshot,
+        overrides: t.MappingKV[Path, bytes],
+    ) -> t.Pair[t.MappingKV[Path, m.Cli.AtomicFileState], int]:
+        """Elect the rename sources from the snapshot and the declared text surfaces.
+
+        Python sources come from the snapshot's one authenticated read; only the
+        declared non-Python surfaces are read here. ``overrides`` replaces the
+        content of files a candidate publication changes.
+
+        Returns:
+            The authenticated states keyed by path and the scanned-file count.
+
+        """
+        exclusions = FlextInfraRenameSources.exclusions(params)
+        needles = (
+            tuple(old for old, _new in pairs)
+            if cls._identifier_campaign(params, pairs)
+            else None
+        )
+        states: dict[Path, m.Cli.AtomicFileState] = {}
+        scanned = 0
+        for path, source in u.Infra.workspace_sources(snapshot).items():
+            if path.suffix != c.Infra.EXT_PYTHON or cls._excluded(
+                path, source, params, exclusions
+            ):
+                continue
+            scanned += 1
+            content = overrides.get(path)
+            text = (
+                source.text if content is None else content.decode(c.DEFAULT_ENCODING)
+            )
+            if cls._generated_text(path, text, exclusions) or (
+                needles is not None and not any(needle in text for needle in needles)
+            ):
+                continue
+            states[path] = (
+                source.state
+                if content is None
+                else source.state.model_copy(update={"content": content})
+            )
+        if params.text_globs:
+            text_states, text_scanned = FlextInfraRenameSources.inventory(
+                snapshot.members, params, python_sources=False
+            )
+            states.update(text_states)
+            scanned += text_scanned
+        return states, scanned
+
+    @classmethod
     def _plan(
         cls,
         params: m.Infra.ApplyRenamesInput,
-        roots: t.SequenceOf[Path],
         pairs: t.SequenceOf[t.Pair[str, str]],
-    ) -> t.Pair[t.VariadicTuple[m.Infra.SemanticFilePlan], int]:
-        """Plan one campaign pass against the current inventory.
+        view: t.Pair[m.Infra.WorkspaceSnapshot, p.Infra.RopeProject],
+        overrides: t.MappingKV[Path, bytes],
+    ) -> t.Triple[t.VariadicTuple[m.Infra.SemanticFilePlan], int, int]:
+        """Plan one campaign pass against the snapshot and its Rope project.
 
         Returns:
-            The file plans and the pending-edit count.
+            The file plans, the pending-edit count and the scanned-file count.
 
         """
-        inventory = FlextInfraRenameSources.inventory(roots, params)
+        snapshot, project = view
+        roots = snapshot.members
+        inventory, scanned = cls._inventory(params, pairs, snapshot, overrides)
         sources = cls._decoded_sources(inventory)
         python = {
             path: source
@@ -164,49 +265,46 @@ class FlextInfraApplyRenames:
             if cls._identifier_campaign(params, pairs)
             else frozenset(python)
         )
-        root = Path(commonpath(roots))
-        plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] = []
-        occurrences = 0
-        symbols: t.MutableMappingKV[
-            Path, t.MutableSequenceOf[p.Infra.SourceRewrite]
-        ] = {}
-        for consumer in roots if params.bindings else ():
-            selected = cls._elected_python_paths(
-                {path: python[path] for path in candidates}, consumer, roots
-            )
-            if not selected:
-                continue
-            with (
-                u.Infra.open_project(
-                    root, project_roots=roots, consumer_root=consumer
-                ) as live,
-                closing(
-                    u.Infra.planned_project(
-                        live, election=u.Infra.native_election(live)
-                    )
-                ) as project,
-            ):
-                selected |= cls._definition_resource_paths(params, pairs, project)
-                changes = FlextInfraRenameSymbols.plan(
-                    project,
-                    python,
-                    (pairs, params.bindings),
-                    rename_definitions=params.rename_definitions,
-                    resource_paths=tuple(sorted(selected)),
-                )
-            for path, edits in changes.items():
-                merged = symbols.setdefault(path, [])
-                merged.extend(edit for edit in edits if edit not in merged)
-        scope = (params, pairs, root, roots)
-        context = (frozenset(python), inventory)
-        with u.Infra.open_project(root, project_roots=roots) as project:
-            for path, source in sources.items():
-                plan, edits = cls._file_plan(
-                    scope, context, project, symbols, (path, source)
-                )
-                plans.append(plan)
-                occurrences += edits
-        return tuple(plans), occurrences
+        symbols = cls._symbol_edits(params, pairs, project, (python, candidates))
+        plans, occurrences = cls._file_plans(
+            (params, pairs, Path(commonpath(roots)), roots),
+            (frozenset(python), inventory),
+            project,
+            (symbols, sources),
+        )
+        return plans, occurrences, scanned
+
+    @classmethod
+    def _file_plans(
+        cls,
+        scope: t.Quad[
+            m.Infra.ApplyRenamesInput,
+            t.SequenceOf[t.Pair[str, str]],
+            Path,
+            t.SequenceOf[Path],
+        ],
+        context: t.Pair[frozenset[Path], t.MappingKV[Path, m.Cli.AtomicFileState]],
+        project: p.Infra.RopeProject,
+        edits: t.Pair[
+            t.MappingKV[Path, t.SequenceOf[p.Infra.SourceRewrite]],
+            t.MappingKV[Path, str],
+        ],
+    ) -> t.Pair[t.VariadicTuple[m.Infra.SemanticFilePlan], int]:
+        """Plan every inventoried file against its authenticated bytes.
+
+        Returns:
+            The file plans and the pending-edit count.
+
+        """
+        symbols, sources = edits
+        planned = [
+            cls._file_plan(scope, context, project, symbols, (path, source))
+            for path, source in sources.items()
+        ]
+        return (
+            tuple(plan for plan, _count in planned),
+            sum(count for _plan, count in planned),
+        )
 
     @classmethod
     def _file_plan(
@@ -283,7 +381,7 @@ class FlextInfraApplyRenames:
     def _publish(
         cls,
         params: m.Infra.ApplyRenamesInput,
-        roots: t.SequenceOf[Path],
+        snapshot: m.Infra.WorkspaceSnapshot,
         state: t.Pair[
             t.Pair[Path, m.Cli.AtomicFileState], t.SequenceOf[t.Pair[str, str]]
         ],
@@ -291,15 +389,19 @@ class FlextInfraApplyRenames:
     ) -> p.Result[t.Pair[t.SequenceOf[Path], int]]:
         """Accept the previewed campaign by a clean re-scan, then publish it.
 
+        The re-scan reads the same snapshot with the candidate changes overlaid
+        on its Rope project, so acceptance materializes no second tree.
+
         Returns:
             The changed paths and the residual pending-edit count.
 
         """
         (csv_path, driver), pairs = state
         plans, pending = planned
+        roots = snapshot.members
         publication_root = Path(commonpath(roots))
 
-        def verify(candidate_root: Path) -> p.Result[bool]:
+        def verify(changes: t.VariadicTuple[m.Cli.FileChange]) -> p.Result[bool]:
             nonlocal pending
             current = u.Cli.atomic_read_binary_file_state(csv_path, required=True)
             if current.failure:
@@ -308,14 +410,33 @@ class FlextInfraApplyRenames:
                 return r[bool].fail(
                     f"rename campaign driver changed during publish: {csv_path}",
                 )
-            _fresh, pending = cls._plan(
-                params,
-                tuple(
-                    candidate_root / path.relative_to(publication_root)
-                    for path in roots
-                ),
-                pairs,
+            proved = u.Infra.workspace_snapshot_verify(
+                snapshot,
+                [change.path for change in changes if change.path in snapshot.sources],
             )
+            if proved.failure:
+                return proved
+            declared = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=u.Infra.project_root(change.path) or publication_root,
+                    path=change.path,
+                    before=change.before,
+                    desired_content=change.desired_content,
+                    desired_mode=change.desired_mode,
+                    owner="semantic",
+                )
+                for change in changes
+                if change.desired_content is not None
+            )
+            with u.Infra.workspace_overlay_project(
+                publication_root, roots, declared_files=declared
+            ) as overlay:
+                _fresh, pending, _scanned = cls._plan(
+                    params,
+                    pairs,
+                    (snapshot, overlay),
+                    {plan.path: plan.desired_content for plan in declared},
+                )
             if pending:
                 return r[bool].fail(
                     f"CSV campaign candidate scan found {pending} pending edits",
@@ -326,11 +447,17 @@ class FlextInfraApplyRenames:
             plans,
             repository_root=publication_root,
             options=m.Infra.SemanticPublicationOptions(
-                validator=verify,
+                plan_validator=verify,
                 projection_roots=tuple(
                     path
                     for path in roots
-                    if params.bindings and u.Infra.layout(path) is not None
+                    if params.bindings
+                    and u.Infra.layout(path) is not None
+                    and any(
+                        plan.desired_content is not None
+                        and plan.path.is_relative_to(path)
+                        for plan in plans
+                    )
                 ),
             ),
         )
@@ -362,15 +489,18 @@ class FlextInfraApplyRenames:
         pairs = FlextInfraRenameSources.pairs(
             driver.content.decode(c.DEFAULT_ENCODING),
         )
-        plans, pending = cls._plan(params, roots, pairs)
         changed: t.SequenceOf[Path] = ()
-        if params.apply:
-            publication = cls._publish(
-                params, roots, ((csv_path, driver), pairs), (plans, pending)
+        with u.Infra.workspace_snapshot(Path(commonpath(roots)), roots) as snapshot:
+            plans, pending, scanned = cls._plan(
+                params, pairs, (snapshot, snapshot.engine), {}
             )
-            if publication.failure:
-                return r[m.Infra.ApplyRenamesReport].from_failure(publication)
-            changed, pending = publication.value
+            if params.apply:
+                publication = cls._publish(
+                    params, snapshot, ((csv_path, driver), pairs), (plans, pending)
+                )
+                if publication.failure:
+                    return r[m.Infra.ApplyRenamesReport].from_failure(publication)
+                changed, pending = publication.value
         report = m.Infra.ApplyRenamesReport(
             preview_diff="".join(
                 "".join(
@@ -392,7 +522,7 @@ class FlextInfraApplyRenames:
                 and plan.before.content != plan.desired_content
             ),
             label=csv_path.stem,
-            files_scanned=len(plans),
+            files_scanned=scanned,
             occurrences=pending,
             files_changed=len(changed),
             applied=params.apply,

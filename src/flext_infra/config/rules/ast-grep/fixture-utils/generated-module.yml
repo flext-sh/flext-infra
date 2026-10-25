@@ -1,0 +1,10 @@
+# Fixture value of the generated `generated-module` utility: a module whose
+# first line is the generator header.
+id: generated-module
+language: Python
+rule:
+  kind: module
+  has:
+    kind: comment
+    nthChild: 1
+    regex: "^\\#\\ AUTO\\-GENERATED\\ FILE\\ —\\ Regenerate\\ with:\\ make\\ gen$"

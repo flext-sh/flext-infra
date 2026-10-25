@@ -1,8 +1,8 @@
 id: ban-manual-typing-alias-outside-typings
 snapshots:
-  'Alias: TypeAlias = int':
+  "Alias: TypeAlias = int":
     labels:
-    - source: 'Alias: TypeAlias = int'
+    - source: "Alias: TypeAlias = int"
       style: primary
       start: 0
       end: 22
@@ -14,17 +14,17 @@ snapshots:
       style: secondary
       start: 7
       end: 16
-    - source: 'Alias: TypeAlias = int'
+    - source: "Alias: TypeAlias = int"
       style: secondary
       start: 0
       end: 22
-    - source: 'Alias: TypeAlias = int'
+    - source: "Alias: TypeAlias = int"
       style: secondary
       start: 0
       end: 22
-  'Alias: typing.TypeAlias = int':
+  "Alias: typing.TypeAlias = int":
     labels:
-    - source: 'Alias: typing.TypeAlias = int'
+    - source: "Alias: typing.TypeAlias = int"
       style: primary
       start: 0
       end: 29
@@ -36,11 +36,11 @@ snapshots:
       style: secondary
       start: 7
       end: 23
-    - source: 'Alias: typing.TypeAlias = int'
+    - source: "Alias: typing.TypeAlias = int"
       style: secondary
       start: 0
       end: 29
-    - source: 'Alias: typing.TypeAlias = int'
+    - source: "Alias: typing.TypeAlias = int"
       style: secondary
       start: 0
       end: 29
@@ -96,7 +96,7 @@ snapshots:
       style: secondary
       start: 0
       end: 16
-  UserId = NewType("UserId", int):
+  "UserId = NewType(\"UserId\", int)":
     labels:
     - source: UserId = NewType("UserId", int)
       style: primary
@@ -122,7 +122,7 @@ snapshots:
       style: secondary
       start: 0
       end: 31
-  type Box[T] = list[T]:
+  "type Box[T] = list[T]":
     labels:
     - source: type Box[T] = list[T]
       style: primary
@@ -140,7 +140,7 @@ snapshots:
       style: secondary
       start: 0
       end: 21
-  type Payload = dict[str, int]:
+  "type Payload = dict[str, int]":
     labels:
     - source: type Payload = dict[str, int]
       style: primary

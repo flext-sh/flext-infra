@@ -1,10 +1,7 @@
 id: require-facade-mro-completeness
 snapshots:
-  ? |
-    class FlextFooModels(FlextCliModels):
-        class Foo(FlextFooModelsBase):
-            pass
-  : labels:
+  "class FlextFooModels(FlextCliModels):\n    class Foo(FlextFooModelsBase):\n        pass\n":
+    labels:
     - source: |-
         class Foo(FlextFooModelsBase):
                 pass

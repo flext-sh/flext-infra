@@ -1,9 +1,7 @@
 id: ban-init-name-assignment
 snapshots:
-  ? |
-    from flext_demo import part as _owner_0
-    Part = _owner_0.Part
-  : labels:
+  "from flext_demo import part as _owner_0\nPart = _owner_0.Part\n":
+    labels:
     - source: Part = _owner_0.Part
       style: primary
       start: 40
@@ -12,12 +10,8 @@ snapshots:
       style: secondary
       start: 40
       end: 44
-  ? |
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from flext_demo.constants import FlextDemoConstants
-        c = FlextDemoConstants
-  : labels:
+  "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from flext_demo.constants import FlextDemoConstants\n    c = FlextDemoConstants\n":
+    labels:
     - source: c = FlextDemoConstants
       style: primary
       start: 111
@@ -26,9 +20,8 @@ snapshots:
       style: secondary
       start: 111
       end: 112
-  ? |
-    m = FlextDemoModels
-  : labels:
+  "m = FlextDemoModels\n":
+    labels:
     - source: m = FlextDemoModels
       style: primary
       start: 0

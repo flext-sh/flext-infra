@@ -1,0 +1,36 @@
+{#- An attached workspace member tracks no lock of its own (operator decision
+    2026-10-25, "only the root lock"): its CI checks out the containing
+    workspace at its integration branch with every submodule, pins the member
+    at the tested commit and runs the member verbs from inside that workspace,
+    so setup installs the frozen root lock and CI never relocks.
+    ``push`` authorizes a releasing job's pushes to the member repository
+    with the job token, as a persisted checkout credential would. -#}
+{% macro superproject_checkout(sha_expression, push=false) %}
+      - name: Checkout workspace {{ superproject.repository }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
+        with:
+          repository: {{ superproject.repository }}
+          ref: {{ superproject.ref }}
+          submodules: recursive
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Pin {{ dist }} at the tested commit
+        working-directory: .
+        run: |
+          set -eu
+          git -C "{{ superproject.path }}" fetch --no-tags origin "{% raw %}${{ {% endraw %}{{ sha_expression }}{% raw %} }}{% endraw %}"
+          git -C "{{ superproject.path }}" checkout --detach FETCH_HEAD
+{%- if push %}
+      - name: Authorize release pushes to {{ dist }}
+        working-directory: .
+        env:
+          PUSH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+        run: |
+          set -eu
+          header="$(printf 'x-access-token:%s' "${PUSH_TOKEN}" | base64 -w0)"
+          printf '::add-mask::%s\n' "${header}"
+          git -C "{{ superproject.path }}" config --local \
+            "http.https://github.com/${GITHUB_REPOSITORY}/.extraheader" \
+            "AUTHORIZATION: basic ${header}"
+{%- endif %}
+{%- endmacro %}

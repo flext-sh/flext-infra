@@ -1,17 +1,14 @@
 id: require-module-class
 snapshots:
-  ? |
-    import os
-  : labels:
+  "import os\n":
+    labels:
     - source: |
         import os
       style: primary
       start: 0
       end: 10
-  ? |
-    import os
-    VALUE = os.sep
-  : labels:
+  "import os\nVALUE = os.sep\n":
+    labels:
     - source: |
         import os
         VALUE = os.sep

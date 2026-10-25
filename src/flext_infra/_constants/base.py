@@ -98,6 +98,10 @@ class FlextInfraConstantsBase(
     "Ruff tool section key."
     RUFF_INVALID_SYNTAX: ClassVar[str] = "invalid-syntax"
     "Rule name Ruff gives a module it cannot parse."
+    RUFF_NON_PEP695_TYPE_ALIAS: ClassVar[str] = "non-pep695-type-alias"
+    "Ruff UP040; exempt only per authenticated facade class publication."
+    RUFF_INVALID_FUNCTION_NAME: ClassVar[str] = "invalid-function-name"
+    "Ruff N802; exempt only per authenticated settings-protocol branch getter."
     DEPTRY: ClassVar[str] = "deptry"
     "Deptry tool section key."
     ISORT: ClassVar[str] = "isort"
@@ -235,6 +239,8 @@ class FlextInfraConstantsBase(
     "Exclusive lock serializing every writer of one mutation scope."
     RELEASE_GITLEAKS_CONFIG_PATH: ClassVar[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."
+    GIT_HOOK_VALIDATOR_RELPATH: ClassVar[str] = ".github/scripts/validate-git-hook.sh"
+    "Workspace-relative generated Git hook validator."
     PYPI_SIMPLE_INDEX_URL: ClassVar[str] = "https://pypi.org/simple"
     "Canonical public package index used by isolated release builds."
     RELEASE_UV_BUILD_ARGS: ClassVar[t.StrSequence] = (
@@ -398,6 +404,9 @@ class FlextInfraConstantsBase(
         P = "p"
         M = "m"
         U = "u"
+
+    MODEL_CONFIG_ATTRIBUTE: ClassVar[str] = "model_config"
+    "Attribute every model class carries; a model namespace holder never has it."
 
     ENV_VAR_FORCE_COLOR: ClassVar[str] = "FORCE_COLOR"
     "Color-forcing variable: its mere presence makes ruff emit ANSI sequences."

@@ -43,7 +43,8 @@ class TestsFlextInfraDistributionIdentity:
         site = tmp_path / "site"
         self.distribution(site)
         with tm.scope(python_paths=(str(site), str(site))):
-            planned = u.Infra.codemod_rule_plan(tmp_path)
+            with u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot:
+                planned = u.Infra.codemod_rule_plan(snapshot)
         tm.that(planned.success, truth=True, msg=planned.error)
 
     def test_distinct_duplicate_installations_are_rejected(
@@ -61,7 +62,8 @@ class TestsFlextInfraDistributionIdentity:
             tm.scope(python_paths=sites),
             pytest.raises(ValueError, match="duplicate installed distribution"),
         ):
-            u.Infra.codemod_rule_plan(tmp_path)
+            with u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot:
+                u.Infra.codemod_rule_plan(snapshot)
 
     def test_selected_provider_cycle_escapes_without_normalization(
         self,
@@ -96,5 +98,6 @@ class TestsFlextInfraDistributionIdentity:
                     r"catalog-cycle-second -> catalog-cycle-first$"
                 ),
             ),
+            u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot,
         ):
-            u.Infra.codemod_rule_plan(tmp_path)
+            u.Infra.codemod_rule_plan(snapshot)

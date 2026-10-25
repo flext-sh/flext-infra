@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from flext_infra._constants.promoted_messages import (
         FlextInfraConstantsPromotedMessages,
     )
+    from flext_infra._constants.pytest_surface import FlextInfraConstantsPytest
     from flext_infra._constants.refactor import FlextInfraConstantsRefactor
     from flext_infra._constants.release import FlextInfraConstantsRelease
     from flext_infra._constants.rope import FlextInfraConstantsRope
@@ -62,6 +63,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConstantsNamespace",
     "FlextInfraConstantsPromoted",
     "FlextInfraConstantsPromotedMessages",
+    "FlextInfraConstantsPytest",
     "FlextInfraConstantsRefactor",
     "FlextInfraConstantsRelease",
     "FlextInfraConstantsRope",
@@ -91,6 +93,7 @@ install_lazy_exports(
         "FlextInfraConstantsNamespace": ".namespace",
         "FlextInfraConstantsPromoted": ".promoted",
         "FlextInfraConstantsPromotedMessages": ".promoted_messages",
+        "FlextInfraConstantsPytest": ".pytest_surface",
         "FlextInfraConstantsRefactor": ".refactor",
         "FlextInfraConstantsRelease": ".release",
         "FlextInfraConstantsRope": ".rope",

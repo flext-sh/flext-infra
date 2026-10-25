@@ -98,7 +98,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         gate = FlextInfraBanditGate(tmp_path)
-        tm.ok(gate.selected_for(project_dir))
+        tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         context = u.Tests.create_gate_context(tmp_path)
         result = (
             gate.check_files((module,), project_dir, context)
@@ -184,7 +184,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         """
         project_dir = u.Tests.mk_project(tmp_path, "p1")
 
-        tm.fail(FlextInfraBanditGate(tmp_path).selected_for(project_dir))
+        tm.fail(
+            FlextInfraBanditGate(tmp_path).selected_for(
+                project_dir, u.Tests.gate_context(project_dir)
+            )
+        )
         result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
         tm.fail(result.result.passed)
@@ -278,7 +282,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-empty")
         gate = FlextInfraMarkdownGate(tmp_path)
 
-        tm.fail(gate.selected_for(project_dir))
+        tm.fail(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         tm.that(
             gate.check(project_dir, u.Tests.gate_context(tmp_path)).result.passed,
             eq=False,
@@ -290,8 +294,16 @@ class TestsFlextInfraBanditAndMarkdownGates:
         bare = u.Tests.mk_project(tmp_path, "bandit-bare")
         packaged = u.Tests.mk_project(tmp_path, "bandit-packaged", with_src=True)
 
-        tm.fail(FlextInfraBanditGate(tmp_path).selected_for(bare))
-        tm.ok(FlextInfraBanditGate(tmp_path).selected_for(packaged))
+        tm.fail(
+            FlextInfraBanditGate(tmp_path).selected_for(
+                bare, u.Tests.gate_context(bare)
+            )
+        )
+        tm.ok(
+            FlextInfraBanditGate(tmp_path).selected_for(
+                packaged, u.Tests.gate_context(packaged)
+            )
+        )
 
     def test_markdown_applies_only_the_local_config(self, tmp_path: Path) -> None:
         """A standalone project's gate never crosses its repository boundary."""

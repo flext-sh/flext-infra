@@ -1,6 +1,6 @@
 id: rewire-cli-command-output-expected-exit-assertion
 snapshots:
-  tm.that(output.exit_code, eq=case.exit_code):
+  "tm.that(output.exit_code, eq=case.exit_code)":
     fixed: |
       tm.that(
           (
@@ -14,7 +14,7 @@ snapshots:
       style: primary
       start: 0
       end: 44
-  tm.that(output.outcome.raw_return_code, eq=case.exit_code):
+  "tm.that(output.outcome.raw_return_code, eq=case.exit_code)":
     fixed: |
       tm.that(
           (

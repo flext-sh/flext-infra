@@ -1,11 +1,8 @@
 id: rewire-raw-model-config-dict-missing-m-import
 snapshots:
-  ? |
-    from pydantic import BaseModel
-    class Spec(BaseModel):
-        model_config = {"arbitrary_types_allowed": True, "extra": "forbid"}
-  : labels:
-    - source: 'model_config = {"arbitrary_types_allowed": True, "extra": "forbid"}'
+  "from pydantic import BaseModel\nclass Spec(BaseModel):\n    model_config = {\"arbitrary_types_allowed\": True, \"extra\": \"forbid\"}\n":
+    labels:
+    - source: "model_config = {\"arbitrary_types_allowed\": True, \"extra\": \"forbid\"}"
       style: primary
       start: 58
       end: 125
@@ -13,7 +10,7 @@ snapshots:
       style: secondary
       start: 58
       end: 70
-    - source: '{"arbitrary_types_allowed": True, "extra": "forbid"}'
+    - source: "{\"arbitrary_types_allowed\": True, \"extra\": \"forbid\"}"
       style: secondary
       start: 73
       end: 125

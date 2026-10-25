@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate
     from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
+    from flext_infra.gates.duplication_report import FlextInfraDuplicationReportMixin
     from flext_infra.gates.enforcement_catalog import FlextInfraEnforcementCatalogGate
     from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
     from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
@@ -51,6 +52,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDirenvGate",
     "FlextInfraDuplicationEvidence",
     "FlextInfraDuplicationGate",
+    "FlextInfraDuplicationReportMixin",
     "FlextInfraEnforcementCatalogGate",
     "FlextInfraFreshImportGate",
     "FlextInfraGate",
@@ -85,6 +87,7 @@ install_lazy_exports(
         "FlextInfraDirenvGate": ".direnv",
         "FlextInfraDuplicationEvidence": ".duplication_evidence",
         "FlextInfraDuplicationGate": ".duplication",
+        "FlextInfraDuplicationReportMixin": ".duplication_report",
         "FlextInfraEnforcementCatalogGate": ".enforcement_catalog",
         "FlextInfraFreshImportGate": ".fresh_import",
         "FlextInfraGate": ".base_gate",

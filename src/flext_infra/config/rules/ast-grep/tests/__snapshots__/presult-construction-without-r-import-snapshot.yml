@@ -1,25 +1,19 @@
 id: presult-construction-without-r-import
 snapshots:
-  ? |
-    from flext_sample import p
-    return p.Result[Path].fail(err)
-  : labels:
+  "from flext_sample import p\nreturn p.Result[Path].fail(err)\n":
+    labels:
     - source: p.Result[Path].fail(err)
       style: primary
       start: 34
       end: 58
-  ? |
-    from flext_sample import p
-    return p.Result[Path].ok(value)
-  : labels:
+  "from flext_sample import p\nreturn p.Result[Path].ok(value)\n":
+    labels:
     - source: p.Result[Path].ok(value)
       style: primary
       start: 34
       end: 58
-  ? |
-    from flext_sample import p, r as result
-    return p.Result[Path].ok(value)
-  : labels:
+  "from flext_sample import p, r as result\nreturn p.Result[Path].ok(value)\n":
+    labels:
     - source: p.Result[Path].ok(value)
       style: primary
       start: 47

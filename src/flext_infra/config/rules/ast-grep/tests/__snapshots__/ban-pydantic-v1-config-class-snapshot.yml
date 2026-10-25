@@ -1,10 +1,7 @@
 id: ban-pydantic-v1-config-class
 snapshots:
-  ? |
-    class Model(BaseModel):
-        class Config:
-            frozen = True
-  : labels:
+  "class Model(BaseModel):\n    class Config:\n        frozen = True\n":
+    labels:
     - source: |-
         class Config:
                 frozen = True
@@ -30,11 +27,8 @@ snapshots:
       style: secondary
       start: 34
       end: 40
-  ? |
-    class Model(BaseSettings):
-        class Config:
-            env_prefix = "APP_"
-  : labels:
+  "class Model(BaseSettings):\n    class Config:\n        env_prefix = \"APP_\"\n":
+    labels:
     - source: |-
         class Config:
                 env_prefix = "APP_"
@@ -60,11 +54,8 @@ snapshots:
       style: secondary
       start: 37
       end: 43
-  ? |
-    class Model(RootModel[int]):
-        class Config:
-            frozen = True
-  : labels:
+  "class Model(RootModel[int]):\n    class Config:\n        frozen = True\n":
+    labels:
     - source: |-
         class Config:
                 frozen = True

@@ -1,10 +1,7 @@
 id: ban-loose-module-object
 snapshots:
-  ? |
-    @cache
-    def helper() -> int:
-        return 1
-  : labels:
+  "@cache\ndef helper() -> int:\n    return 1\n":
+    labels:
     - source: |-
         def helper() -> int:
             return 1
@@ -29,11 +26,8 @@ snapshots:
       style: secondary
       start: 0
       end: 40
-  ? |
-    @cache
-    def workspace_fixture() -> Path:
-        return Path()
-  : labels:
+  "@cache\ndef workspace_fixture() -> Path:\n    return Path()\n":
+    labels:
     - source: |-
         def workspace_fixture() -> Path:
             return Path()
@@ -58,10 +52,9 @@ snapshots:
       style: secondary
       start: 0
       end: 57
-  ? |
-    Alias: TypeAlias = int
-  : labels:
-    - source: 'Alias: TypeAlias = int'
+  "Alias: TypeAlias = int\n":
+    labels:
+    - source: "Alias: TypeAlias = int"
       style: primary
       start: 0
       end: 22
@@ -78,13 +71,12 @@ snapshots:
       style: secondary
       start: 7
       end: 16
-    - source: 'Alias: TypeAlias = int'
+    - source: "Alias: TypeAlias = int"
       style: secondary
       start: 0
       end: 22
-  ? |
-    LIMIT = 3
-  : labels:
+  "LIMIT = 3\n":
+    labels:
     - source: LIMIT = 3
       style: primary
       start: 0
@@ -98,7 +90,7 @@ snapshots:
       style: secondary
       start: 0
       end: 5
-    - source: '3'
+    - source: "3"
       style: secondary
       start: 8
       end: 9
@@ -106,10 +98,9 @@ snapshots:
       style: secondary
       start: 0
       end: 9
-  ? |
-    NAMES: frozenset[str] = frozenset({"a"})
-  : labels:
-    - source: 'NAMES: frozenset[str] = frozenset({"a"})'
+  "NAMES: frozenset[str] = frozenset({\"a\"})\n":
+    labels:
+    - source: "NAMES: frozenset[str] = frozenset({\"a\"})"
       style: primary
       start: 0
       end: 40
@@ -126,13 +117,12 @@ snapshots:
       style: secondary
       start: 24
       end: 40
-    - source: 'NAMES: frozenset[str] = frozenset({"a"})'
+    - source: "NAMES: frozenset[str] = frozenset({\"a\"})"
       style: secondary
       start: 0
       end: 40
-  ? |
-    T = TypeVar("T")
-  : labels:
+  "T = TypeVar(\"T\")\n":
+    labels:
     - source: T = TypeVar("T")
       style: primary
       start: 0
@@ -154,9 +144,8 @@ snapshots:
       style: secondary
       start: 0
       end: 16
-  ? |
-    _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
-  : labels:
+  "_SESSION_ISOLATION = pytest.StashKey[ExitStack]()\n":
+    labels:
     - source: _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
       style: primary
       start: 0
@@ -178,12 +167,8 @@ snapshots:
       style: secondary
       start: 0
       end: 49
-  ? |
-    class First:
-        pass
-    class Second:
-        pass
-  : labels:
+  "class First:\n    pass\nclass Second:\n    pass\n":
+    labels:
     - source: |-
         class Second:
             pass
@@ -208,11 +193,8 @@ snapshots:
       style: secondary
       start: 0
       end: 21
-  ? |
-    class FlextFooApi:
-        pass
-    api = FlextFooApi.fetch_global()
-  : labels:
+  "class FlextFooApi:\n    pass\napi = FlextFooApi.fetch_global()\n":
+    labels:
     - source: api = FlextFooApi.fetch_global()
       style: primary
       start: 28
@@ -236,11 +218,8 @@ snapshots:
       style: secondary
       start: 28
       end: 60
-  ? |
-    class FlextFooApi:
-        pass
-    api = FlextFooApi.model_validate({})
-  : labels:
+  "class FlextFooApi:\n    pass\napi = FlextFooApi.model_validate({})\n":
+    labels:
     - source: api = FlextFooApi.model_validate({})
       style: primary
       start: 28
@@ -264,12 +243,9 @@ snapshots:
       style: secondary
       start: 28
       end: 64
-  ? |
-    class FlextFooApi:
-        pass
-    api: FlextFooApi = FlextFooApi.fetch_logger()
-  : labels:
-    - source: 'api: FlextFooApi = FlextFooApi.fetch_logger()'
+  "class FlextFooApi:\n    pass\napi: FlextFooApi = FlextFooApi.fetch_logger()\n":
+    labels:
+    - source: "api: FlextFooApi = FlextFooApi.fetch_logger()"
       style: primary
       start: 28
       end: 73
@@ -288,16 +264,13 @@ snapshots:
       style: secondary
       start: 47
       end: 73
-    - source: 'api: FlextFooApi = FlextFooApi.fetch_logger()'
+    - source: "api: FlextFooApi = FlextFooApi.fetch_logger()"
       style: secondary
       start: 28
       end: 73
-  ? |
-    class FlextFooApi:
-        pass
-    api: FlextFooApi = FlextFooOther.fetch_global()
-  : labels:
-    - source: 'api: FlextFooApi = FlextFooOther.fetch_global()'
+  "class FlextFooApi:\n    pass\napi: FlextFooApi = FlextFooOther.fetch_global()\n":
+    labels:
+    - source: "api: FlextFooApi = FlextFooOther.fetch_global()"
       style: primary
       start: 28
       end: 75
@@ -316,16 +289,13 @@ snapshots:
       style: secondary
       start: 47
       end: 75
-    - source: 'api: FlextFooApi = FlextFooOther.fetch_global()'
+    - source: "api: FlextFooApi = FlextFooOther.fetch_global()"
       style: secondary
       start: 28
       end: 75
-  ? |
-    class FlextFooApi:
-        pass
-    api: FlextFooApi = FlextFooOther.model_validate({})
-  : labels:
-    - source: 'api: FlextFooApi = FlextFooOther.model_validate({})'
+  "class FlextFooApi:\n    pass\napi: FlextFooApi = FlextFooOther.model_validate({})\n":
+    labels:
+    - source: "api: FlextFooApi = FlextFooOther.model_validate({})"
       style: primary
       start: 28
       end: 79
@@ -344,16 +314,13 @@ snapshots:
       style: secondary
       start: 47
       end: 79
-    - source: 'api: FlextFooApi = FlextFooOther.model_validate({})'
+    - source: "api: FlextFooApi = FlextFooOther.model_validate({})"
       style: secondary
       start: 28
       end: 79
-  ? |
-    class FlextFooApi:
-        pass
-    api: FlextFooOther = FlextFooApi.fetch_global()
-  : labels:
-    - source: 'api: FlextFooOther = FlextFooApi.fetch_global()'
+  "class FlextFooApi:\n    pass\napi: FlextFooOther = FlextFooApi.fetch_global()\n":
+    labels:
+    - source: "api: FlextFooOther = FlextFooApi.fetch_global()"
       style: primary
       start: 28
       end: 75
@@ -372,16 +339,13 @@ snapshots:
       style: secondary
       start: 49
       end: 75
-    - source: 'api: FlextFooOther = FlextFooApi.fetch_global()'
+    - source: "api: FlextFooOther = FlextFooApi.fetch_global()"
       style: secondary
       start: 28
       end: 75
-  ? |
-    class FlextFooApi:
-        pass
-    api: FlextFooOther = FlextFooApi.model_validate({})
-  : labels:
-    - source: 'api: FlextFooOther = FlextFooApi.model_validate({})'
+  "class FlextFooApi:\n    pass\napi: FlextFooOther = FlextFooApi.model_validate({})\n":
+    labels:
+    - source: "api: FlextFooOther = FlextFooApi.model_validate({})"
       style: primary
       start: 28
       end: 79
@@ -400,14 +364,12 @@ snapshots:
       style: secondary
       start: 49
       end: 79
-    - source: 'api: FlextFooOther = FlextFooApi.model_validate({})'
+    - source: "api: FlextFooOther = FlextFooApi.model_validate({})"
       style: secondary
       start: 28
       end: 79
-  ? |
-    def _read_fixture(*parts: str) -> str:
-        return ""
-  : labels:
+  "def _read_fixture(*parts: str) -> str:\n    return \"\"\n":
+    labels:
     - source: |-
         def _read_fixture(*parts: str) -> str:
             return ""
@@ -424,10 +386,8 @@ snapshots:
       style: secondary
       start: 0
       end: 53
-  ? |
-    def helper() -> int:
-        return 1
-  : labels:
+  "def helper() -> int:\n    return 1\n":
+    labels:
     - source: |-
         def helper() -> int:
             return 1
@@ -444,10 +404,8 @@ snapshots:
       style: secondary
       start: 0
       end: 34
-  ? |
-    def main() -> None:
-        return None
-  : labels:
+  "def main() -> None:\n    return None\n":
+    labels:
     - source: |-
         def main() -> None:
             return None
@@ -464,12 +422,8 @@ snapshots:
       style: secondary
       start: 0
       end: 36
-  ? |
-    def main() -> None:
-        return None
-    if __name__ != "__main__":
-        main()
-  : labels:
+  "def main() -> None:\n    return None\nif __name__ != \"__main__\":\n    main()\n":
+    labels:
     - source: |-
         def main() -> None:
             return None
@@ -488,9 +442,8 @@ snapshots:
       style: secondary
       start: 0
       end: 74
-  ? |
-    logger = u.fetch_logger(__name__)
-  : labels:
+  "logger = u.fetch_logger(__name__)\n":
+    labels:
     - source: logger = u.fetch_logger(__name__)
       style: primary
       start: 0
@@ -512,9 +465,8 @@ snapshots:
       style: secondary
       start: 0
       end: 33
-  ? |
-    type Alias = int
-  : labels:
+  "type Alias = int\n":
+    labels:
     - source: type Alias = int
       style: primary
       start: 0
@@ -532,9 +484,8 @@ snapshots:
       style: secondary
       start: 5
       end: 10
-  ? |
-    type _PrivateAlias = str
-  : labels:
+  "type _PrivateAlias = str\n":
+    labels:
     - source: type _PrivateAlias = str
       style: primary
       start: 0

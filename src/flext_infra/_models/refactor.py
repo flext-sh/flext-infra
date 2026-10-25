@@ -149,7 +149,7 @@ class FlextInfraModelsRefactor(
         """Declared search scope and hierarchy policy for one semantic rename."""
 
         resources: Annotated[
-            t.SequenceOf[t.Infra.RopeResource],
+            t.SequenceOf[t.Port[t.Infra.RopeResource]],
             m.Field(description="Resources included in the semantic rename scope"),
         ]
         in_hierarchy: Annotated[
@@ -778,23 +778,6 @@ class FlextInfraModelsRefactor(
             MutableSet[str],
             m.Field(description="Imported symbol names"),
         ] = m.Field(default_factory=set[str])
-
-    class MethodInfo(m.ArbitraryTypesModel):
-        """Metadata about a method used for ordering inside classes."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Method name")]
-        category: Annotated[str, m.Field(description="Method category classification")]
-        node: Annotated[
-            t.Infra.RopePyObject | None,
-            m.Field(
-                description="Node representation from Rope or PyObject",
-                exclude=True,
-            ),
-        ]
-        decorators: Annotated[
-            t.StrSequence,
-            m.Field(description="Decorator names applied to this method"),
-        ] = m.Field(default_factory=tuple)
 
     class ProjectClassification(FlextInfraModelsBase.FrozenArbitrary):
         """Result of classifying a project by kind and family chains."""

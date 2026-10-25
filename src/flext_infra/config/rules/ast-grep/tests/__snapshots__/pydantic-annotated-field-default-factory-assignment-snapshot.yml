@@ -1,12 +1,7 @@
 id: pydantic-annotated-field-default-factory-assignment
 snapshots:
-  ? |
-    class Spec:
-        bindings: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(default_factory=lambda: MappingProxyType({}), description="d"),
-        ]
-  : fixed: |
+  "class Spec:\n    bindings: Annotated[\n        t.MappingKV[str, t.StrSequence],\n        m.Field(default_factory=lambda: MappingProxyType({}), description=\"d\"),\n    ]\n":
+    fixed: |
       class Spec:
           bindings: Annotated[t.MappingKV[str, t.StrSequence], m.Field(description="d")] = m.Field(default_factory=lambda: MappingProxyType({}))
     labels:
@@ -18,16 +13,8 @@ snapshots:
       style: primary
       start: 16
       end: 163
-  ? |
-    class Spec:
-        docs_audit: Annotated[
-            Audit,
-            m.Field(
-                default_factory=Audit,
-                description="Repository-owned documentation audit declarations",
-            ),
-        ]
-  : fixed: |
+  "class Spec:\n    docs_audit: Annotated[\n        Audit,\n        m.Field(\n            default_factory=Audit,\n            description=\"Repository-owned documentation audit declarations\",\n        ),\n    ]\n":
+    fixed: |
       class Spec:
           docs_audit: Annotated[Audit, m.Field(description="Repository-owned documentation audit declarations",)] = m.Field(default_factory=Audit)
     labels:

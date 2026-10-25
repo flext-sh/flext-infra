@@ -5,12 +5,12 @@
 # and every facade composing it, into a model. A model is declared only as a
 # nested member of the models namespace.
 #
-# Both operands are derived: `family-file` is the import-law role classifier
-# over the facade families the generator declares, and `model-ancestry` reads
-# Rope's native class ancestry against the declared model identity. The
-# operational families (r/x/h/s) are outside `family-file` by that same
-# derivation, so their designed inheritance of flext-core's operational bases
-# is never matched here.
+# Both operands are derived by the model-class- file scope: the family
+# modules are the import-law role classifier over the facade families the
+# generator declares, and their model classes come from Rope's native class
+# ancestry against the declared model identity. The operational families
+# (r/x/h/s) are outside the family role by that same derivation, so their
+# designed inheritance of flext-core's operational bases is never matched here.
 #
 # Detection only: the repair moves the model to a nested member of m and
 # passes it to its consumer, a per-class decision.
@@ -20,10 +20,12 @@ severity: error
 files:
   - "**/*.py"
 metadata:
-  context:
-    NAME:
-      - is: model-ancestry
-      - is: family-file
+  # The family modules whose top-level class reaches the model base.
+  scope:
+    partition:
+      variable: NAME
+      holds: true
+      selectors: model-class-
 rule:
   all:
     - kind: class_definition

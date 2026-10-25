@@ -1,9 +1,16 @@
 id: facade-alias-first-base
+# The facade class is the one its module declares in __all__; the
+# facade-module and family- file scopes narrow findings only in a native stage.
 valid:
   - |
     class FlextMeltanoModels(m):
+        pass
+    __all__ = ["FlextMeltanoModels"]
+  - |
+    class FlextMeltanoModels(FlextCliModels, m):
         pass
 invalid:
   - |
     class FlextMeltanoModels(FlextCliModels, m):
         pass
+    __all__ = ["FlextMeltanoModels"]

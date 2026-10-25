@@ -1,10 +1,7 @@
 id: retire-publication-stack-consumption-scope
 snapshots:
-  ? |
-    def run(project):
-        with binding[0].source_consumption():
-            return build()
-  : fixed: |
+  "def run(project):\n    with binding[0].source_consumption():\n        return build()\n":
+    fixed: |
       def run(project):
           return build()
     labels:
@@ -14,10 +11,8 @@ snapshots:
       style: primary
       start: 22
       end: 82
-  ? |
-    with project.source_consumption() as consumption:
-        planned = build(files)
-  : fixed: |
+  "with project.source_consumption() as consumption:\n    planned = build(files)\n":
+    fixed: |
       planned = build(files)
     labels:
     - source: |-

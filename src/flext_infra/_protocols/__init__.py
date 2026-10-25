@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from flext_infra._protocols.promoted import FlextInfraProtocolsPromoted
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
+    from flext_infra._protocols.workspace_snapshot import (
+        FlextInfraProtocolsWorkspaceSnapshot,
+    )
 
 
 __all__: tuple[str, ...] = (
@@ -30,6 +33,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsPromoted",
     "FlextInfraProtocolsRope",
     "FlextInfraProtocolsRopeRuntime",
+    "FlextInfraProtocolsWorkspaceSnapshot",
 )
 
 install_lazy_exports(
@@ -43,6 +47,7 @@ install_lazy_exports(
         "FlextInfraProtocolsPromoted": ".promoted",
         "FlextInfraProtocolsRope": ".rope",
         "FlextInfraProtocolsRopeRuntime": ".rope_runtime",
+        "FlextInfraProtocolsWorkspaceSnapshot": ".workspace_snapshot",
     }),
     public_exports=__all__,
 )

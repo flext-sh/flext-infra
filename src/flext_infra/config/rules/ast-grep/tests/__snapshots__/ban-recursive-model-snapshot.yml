@@ -1,14 +1,12 @@
 id: ban-recursive-model
 snapshots:
-  ? |
-    class Node(m.ContractModel):
-        children: list[Node]
-  : labels:
+  "class Node(m.ContractModel):\n    children: list[Node]\n":
+    labels:
     - source: Node
       style: primary
       start: 48
       end: 52
-    - source: 'children: list[Node]'
+    - source: "children: list[Node]"
       style: secondary
       start: 33
       end: 53
@@ -26,15 +24,13 @@ snapshots:
       style: secondary
       start: 0
       end: 53
-  ? |
-    class Node(m.ContractModel):
-        parent: Node | None = None
-  : labels:
+  "class Node(m.ContractModel):\n    parent: Node | None = None\n":
+    labels:
     - source: Node
       style: primary
       start: 41
       end: 45
-    - source: 'parent: Node | None = None'
+    - source: "parent: Node | None = None"
       style: secondary
       start: 33
       end: 59
@@ -52,17 +48,13 @@ snapshots:
       style: secondary
       start: 0
       end: 59
-  ? |
-    class Outer:
-        class Node(m.ContractModel):
-            if True:
-                peer: Node | None = None
-  : labels:
+  "class Outer:\n    class Node(m.ContractModel):\n        if True:\n            peer: Node | None = None\n":
+    labels:
     - source: Node
       style: primary
       start: 81
       end: 85
-    - source: 'peer: Node | None = None'
+    - source: "peer: Node | None = None"
       style: secondary
       start: 75
       end: 99

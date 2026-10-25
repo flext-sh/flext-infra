@@ -1,6 +1,6 @@
 id: remove-test-own-literal-tautology
 snapshots:
-  assert (result.success or result.failure) and check(), explain():
+  "assert (result.success or result.failure) and check(), explain()":
     labels:
     - source: result.success or result.failure
       style: primary
@@ -20,7 +20,7 @@ snapshots:
       style: secondary
       start: 0
       end: 53
-  assert produce().success or produce().failure, explain():
+  "assert produce().success or produce().failure, explain()":
     labels:
     - source: produce().success or produce().failure
       style: primary
@@ -40,7 +40,7 @@ snapshots:
       style: secondary
       start: 0
       end: 39
-  assert result.success or result.failure, explain():
+  "assert result.success or result.failure, explain()":
     labels:
     - source: result.success or result.failure
       style: primary
@@ -60,10 +60,8 @@ snapshots:
       style: secondary
       start: 0
       end: 39
-  ? |
-    def test_contract():
-        assert result.success or result.failure
-  : labels:
+  "def test_contract():\n    assert result.success or result.failure\n":
+    labels:
     - source: result.success or result.failure
       style: primary
       start: 32
@@ -72,10 +70,8 @@ snapshots:
       style: secondary
       start: 25
       end: 64
-  ? |
-    from flext_core import c
-    assert c.Core.TIMEOUT != 30
-  : labels:
+  "from flext_core import c\nassert c.Core.TIMEOUT != 30\n":
+    labels:
     - source: assert c.Core.TIMEOUT != 30
       style: primary
       start: 25
@@ -94,7 +90,7 @@ snapshots:
       style: secondary
       start: 32
       end: 46
-    - source: '30'
+    - source: "30"
       style: secondary
       start: 50
       end: 52
@@ -102,10 +98,8 @@ snapshots:
       style: secondary
       start: 32
       end: 52
-  ? |
-    from flext_core import c
-    assert c.Core.TIMEOUT < 30
-  : labels:
+  "from flext_core import c\nassert c.Core.TIMEOUT < 30\n":
+    labels:
     - source: assert c.Core.TIMEOUT < 30
       style: primary
       start: 25
@@ -124,7 +118,7 @@ snapshots:
       style: secondary
       start: 32
       end: 46
-    - source: '30'
+    - source: "30"
       style: secondary
       start: 49
       end: 51
@@ -132,10 +126,8 @@ snapshots:
       style: secondary
       start: 32
       end: 51
-  ? |
-    from flext_core import c
-    assert c.Core.TIMEOUT == 30
-  : labels:
+  "from flext_core import c\nassert c.Core.TIMEOUT == 30\n":
+    labels:
     - source: assert c.Core.TIMEOUT == 30
       style: primary
       start: 25
@@ -154,7 +146,7 @@ snapshots:
       style: secondary
       start: 32
       end: 46
-    - source: '30'
+    - source: "30"
       style: secondary
       start: 50
       end: 52
@@ -162,10 +154,8 @@ snapshots:
       style: secondary
       start: 32
       end: 52
-  ? |
-    from flext_core import c
-    assert c.Core.TIMEOUT == 30, explain()
-  : labels:
+  "from flext_core import c\nassert c.Core.TIMEOUT == 30, explain()\n":
+    labels:
     - source: assert c.Core.TIMEOUT == 30, explain()
       style: primary
       start: 25
@@ -184,7 +174,7 @@ snapshots:
       style: secondary
       start: 32
       end: 46
-    - source: '30'
+    - source: "30"
       style: secondary
       start: 50
       end: 52
@@ -192,10 +182,8 @@ snapshots:
       style: secondary
       start: 32
       end: 52
-  ? |
-    from flext_core import c
-    assert c.Core.TIMEOUT == 30; observe()
-  : labels:
+  "from flext_core import c\nassert c.Core.TIMEOUT == 30; observe()\n":
+    labels:
     - source: assert c.Core.TIMEOUT == 30
       style: primary
       start: 25
@@ -214,7 +202,7 @@ snapshots:
       style: secondary
       start: 32
       end: 46
-    - source: '30'
+    - source: "30"
       style: secondary
       start: 50
       end: 52
@@ -222,10 +210,8 @@ snapshots:
       style: secondary
       start: 32
       end: 52
-  ? |
-    from flext_core import config
-    assert config.Api.base_url == "https://example"
-  : labels:
+  "from flext_core import config\nassert config.Api.base_url == \"https://example\"\n":
+    labels:
     - source: assert config.Api.base_url == "https://example"
       style: primary
       start: 30
@@ -244,7 +230,7 @@ snapshots:
       style: secondary
       start: 37
       end: 56
-    - source: '"https://example"'
+    - source: "\"https://example\""
       style: secondary
       start: 60
       end: 77
@@ -252,11 +238,8 @@ snapshots:
       style: secondary
       start: 37
       end: 77
-  ? |
-    from flext_core import config
-    def test_contract():
-        assert config.Api.base_url == "https://example"
-  : labels:
+  "from flext_core import config\ndef test_contract():\n    assert config.Api.base_url == \"https://example\"\n":
+    labels:
     - source: assert config.Api.base_url == "https://example"
       style: primary
       start: 55
@@ -276,7 +259,7 @@ snapshots:
       style: secondary
       start: 62
       end: 81
-    - source: '"https://example"'
+    - source: "\"https://example\""
       style: secondary
       start: 85
       end: 102
@@ -284,11 +267,8 @@ snapshots:
       style: secondary
       start: 62
       end: 102
-  ? |
-    from flext_core import r
-    result = r.Ok(1)
-    assert result.failure or result.success
-  : labels:
+  "from flext_core import r\nresult = r.Ok(1)\nassert result.failure or result.success\n":
+    labels:
     - source: result.failure or result.success
       style: primary
       start: 49
@@ -297,11 +277,8 @@ snapshots:
       style: secondary
       start: 42
       end: 81
-  ? |
-    from tests import settings, tm
-    def test_contract():
-        tm.that(settings.Tests.workers, eq=4)
-  : labels:
+  "from tests import settings, tm\ndef test_contract():\n    tm.that(settings.Tests.workers, eq=4)\n":
+    labels:
     - source: tm.that(settings.Tests.workers, eq=4)
       style: primary
       start: 56
@@ -325,7 +302,7 @@ snapshots:
       style: secondary
       start: 88
       end: 90
-    - source: '4'
+    - source: "4"
       style: secondary
       start: 91
       end: 92
@@ -337,10 +314,8 @@ snapshots:
       style: secondary
       start: 63
       end: 93
-  ? |
-    from tests import settings, tm
-    tm.that(settings.Tests.workers, eq=4)
-  : labels:
+  "from tests import settings, tm\ntm.that(settings.Tests.workers, eq=4)\n":
+    labels:
     - source: tm.that(settings.Tests.workers, eq=4)
       style: primary
       start: 31
@@ -363,7 +338,7 @@ snapshots:
       style: secondary
       start: 63
       end: 65
-    - source: '4'
+    - source: "4"
       style: secondary
       start: 66
       end: 67

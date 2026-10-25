@@ -687,7 +687,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 eq=1,
             )
 
-    def test_locked_provenance_keeps_independent_changes_for_verify_clean(
+    def test_locked_provenance_keeps_independent_git_changes(
         self,
         tmp_path: Path,
     ) -> None:
@@ -698,11 +698,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tm.ok(u.Cli.atomic_write_text_file(unrelated, "independent change\n"))
         manifest = tm.ok(u.Infra.load_workspace_manifest(workspace))[0]
         tm.ok(self._locked_verdict(workspace), eq=len(manifest.members))
-        report = tm.ok(
-            FlextInfraGitService.verify_clean(
-                m.Infra.GitStatusRequest(repo_root=member),
-            ),
-        )
+        report = tm.ok(FlextInfraGitService(repository_root=member).execute())
         tm.that(report.dirty, eq=True)
         tm.that(report.porcelain, has=unrelated.name)
         tm.that(unrelated.read_text(encoding="utf-8"), eq="independent change\n")

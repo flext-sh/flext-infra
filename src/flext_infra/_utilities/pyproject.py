@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from functools import cache, lru_cache
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
@@ -23,6 +24,8 @@ from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    _live_text_memo: ClassVar[dict[str, p.Result[str]]] = {}
 
     @classmethod
     def declared_dependency_payload(
@@ -172,17 +175,26 @@ class FlextInfraUtilitiesPyproject:
         conflict outside those sections fails loud through that utility's
         own contract. Read-only: no file is written here.
 
+        The recovery is a pure function of the text and the frozen managed
+        file declaration, so one recovery per distinct text serves every
+        reader of the process.
+
         Returns:
             Live pyproject text with merge-control lines resolved.
 
         """
+        recovered = FlextInfraUtilitiesPyproject._live_text_memo.get(raw)
+        if recovered is not None:
+            return recovered
         spec_result = FlextInfraUtilitiesManagedConflicts.pyproject_managed_file()
         if spec_result.failure:
             return r[str].from_failure(spec_result)
-        return FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
+        recovered = FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
             raw,
             conflict_sections=spec_result.value.conflict_sections,
         )
+        FlextInfraUtilitiesPyproject._live_text_memo[raw] = recovered
+        return recovered
 
     @staticmethod
     def live_pyproject_text(

@@ -1,10 +1,7 @@
 id: private-infra-utility-import-to-facade
 snapshots:
-  ? |
-    from flext_infra._utilities._worktree.guard import (
-        FlextInfraWorktreeGuard,
-    )
-  : fixed: |
+  "from flext_infra._utilities._worktree.guard import (\n    FlextInfraWorktreeGuard,\n)\n":
+    fixed: |
       from flext_infra import u
     labels:
     - source: |-

@@ -1,6 +1,6 @@
 id: rewire-cli-local-process-timing-unpack
 snapshots:
-  absolute_deadline, grace_seconds, timeout_exit_code = timing_result.unwrap():
+  "absolute_deadline, grace_seconds, timeout_exit_code = timing_result.unwrap()":
     fixed: absolute_deadline, grace_seconds = timing_result.unwrap()
     labels:
     - source: absolute_deadline, grace_seconds, timeout_exit_code = timing_result.unwrap()

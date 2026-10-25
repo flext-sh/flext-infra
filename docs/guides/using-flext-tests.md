@@ -11,6 +11,7 @@
 - [Essential fixtures](#essential-fixtures)
 - [Resetting singletons manually](#resetting-singletons-manually)
 - [Testing result flows](#testing-result-flows)
+- [Workspace Assertion Standard](#workspace-assertion-standard)
 - [Good practices](#good-practices)
 - [Make/codegen boundary](#makecodegen-boundary)
 - [Bad practices](#bad-practices)
@@ -90,6 +91,27 @@ FlextContainer.reset_for_testing()
 
 ## Testing result flows
 
+`tm.ok(True)` validates a boolean predicate; `tm.false(False)` and
+`tm.fail(False)` validate a negative boolean predicate. Boolean forms return the
+unchanged boolean and accept `msg` for assertion diagnostics. Result-specific
+criteria such as `path`, `has`, or `code` require a result, not a boolean.
+
+For results, `tm.ok(result)` checks success and returns the original payload;
+`tm.fail(result)` checks failure and returns the error string. Successful payloads
+such as `False`, `0`, and empty collections remain successful. `r.ok(None)` is
+rejected by the result constructor, not by the matcher. Neither
+helper infers result state from payload truthiness. Use `tm.that(value, truth=True)`
+or `truth=False` when testing general Python truthiness instead of boolean values.
+`tm.that(condition)` with a boolean and no criteria requires `True`; explicit
+criteria such as `tm.that(False, eq=False)` retain their declared semantics.
+
+Assert a runtime type with `tm.that(value, is_=ExpectedType)`; it raises on a
+mismatch. A boolean type probe whose result is discarded asserts nothing.
+
+Inspect a container through `FlextTestsDocker.fetch_container_info(name)`; it is the
+single owner of container status and fails `NOT_PROVISIONED` for an absent
+container.
+
 Use the `r` alias instead of importing from `returns` directly:
 
 ```python
@@ -117,12 +139,62 @@ def test_safe_divide() -> None:
     tm.fail(safe_divide(10, 0))
 ```
 
+## Workspace Assertion Standard
+
+This contract applies to first-party workspace roots, attached members, and
+standalone packages. `flext-tests` owns matcher behavior; the universal
+`rewire-test-assert-*` catalog in `flext-infra` owns automated migration. Project
+facades may reexport the canonical `tm`, but never implement a competing matcher
+or a project-specific assertion rewrite.
+
+| Intent | Public pattern | Required invariant |
+| --- | --- | --- |
+| Successful or failed Result | `tm.ok(result)` / `tm.fail(result)` | State is independent of payload truthiness; success returns the original payload. |
+| Native equality or inequality | `tm.that(value, eq=expected)` / `ne=expected` | Operators are independent; operands stay native and successful checks do not render them. |
+| General truth | `tm.that(value, truth=True)` / `truth=False` | The supplied subject is observed without payload normalization. |
+| Typed local value | `value = tm.not_none(value)` / `tm.instance(value, Expected)` | Return the same object; rebind only when that local binding is intended. |
+| Guard, short-circuit condition, or lazy message | Native conditional branch with `tm.reject()` / `tm.reject(message)` | Preserve conditional evaluation, narrowing, name scope, exception arguments, and message timing. |
+| Structured input | Validate once with the canonical Pydantic model, then assert its public behavior | Do not scatter casts, dictionary narrowing, or schema copies through consumers. |
+| Configured expectations | Read the same typed config/settings owner as production | A valid configuration change must not invalidate a hardcoded expectation. |
+
+The automation retains native control flow when a matcher call alone cannot prove
+the original semantics. It does not rebind globals, reinterpret a callable message
+as a factory, or replace assertion failures with a different exception category.
+Handwritten matcher criteria remain available when their declared behavior is the
+intended contract.
+
+Apply the same catalog per discovered repository, not a copied repository list.
+Admit the actual `tm` binding, publish authenticated file plans, and rescan the
+affected scope to a fixed point. Preserve valid independently published effects;
+refresh changed inputs without discarding shared work or weakening admission.
+Generated test skeletons and project guidance come from the `flext-infra`
+templates, not handwritten projections in each member.
+
+Each repository needs its own runtime, test, lint, and type evidence using its
+unchanged `pyproject.toml`. A green matcher package or one migrated member is not
+workspace completion. Unexecuted external capabilities remain unexecuted, and
+unresolved or unadmitted findings remain open rather than being classified green.
+
 ## Good practices
 
 - Rely on `reset_settings` and `test_runtime` for isolation.
 - Assert public API behavior, not private internals.
+- `tm.that(value, eq=expected)` and `ne=expected` use Python's equality and
+  inequality operators independently. Passing checks do not render the subject;
+  comparison and predicate exceptions escape before diagnostic formatting.
+- Use `tm.not_none(value)` or `tm.instance(value, Expected)` when the returned
+  value must retain narrowing. For compound guards, call `tm.reject()` only in
+  the failing branch; it returns `Never` and raises native `AssertionError`.
+  Pass a message inside that branch to preserve lazy evaluation and its original
+  object identity instead of eagerly formatting it.
+- Matcher arguments are ordinary Python arguments: a matcher cannot recover
+  short-circuit evaluation or narrowing already lost before its call. Automated
+  conversion therefore retains complex conditions in native control flow and
+  uses `tm.reject()` for the failing branch. It must not introduce assignments
+  that change the election of global, nonlocal, or local names.
 - Use `settings_factory` when a project-specific settings subclass is required.
-- Assert result state via `.success`, `.failure`, and `.unwrap()` on `r[T]` instances.
+- Use `tm.ok(result)` and `tm.fail(result)` for result assertions; inspect state
+  properties directly only when that state query is the behavior under test.
 
 ## Make/codegen boundary
 
@@ -150,7 +222,8 @@ mutation, including assertion failure:
 
 ```python
 from flext_core import FlextSettings
-from tests import tm
+
+from flext_tests import tm
 
 
 def test_settings_override() -> None:

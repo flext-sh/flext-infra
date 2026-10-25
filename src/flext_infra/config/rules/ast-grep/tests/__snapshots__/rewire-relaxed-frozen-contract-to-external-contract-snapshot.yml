@@ -1,12 +1,7 @@
 id: rewire-relaxed-frozen-contract-to-external-contract
 snapshots:
-  ? |
-    class Issue(m.ContractModel):
-        """One issue in a search response."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
-        key: str
-  : fixed: |
+  "class Issue(m.ContractModel):\n    \"\"\"One issue in a search response.\"\"\"\n\n    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra=\"ignore\", frozen=True)\n    key: str\n":
+    fixed: |
       class Issue(m.ExternalContractModel):
           """One issue in a search response."""
           key: str
@@ -14,7 +9,7 @@ snapshots:
     - source: |-
         class Issue(m.ContractModel):
             """One issue in a search response."""
-
+        
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
             key: str
       style: primary

@@ -1,11 +1,7 @@
 id: require-runtime-checkable-protocol
 snapshots:
-  ? |
-    from typing import Protocol, runtime_checkable
-    class FlextDemoProtocols:
-        class Reader(Protocol):
-            def read(self) -> str: ...
-  : fixed: |
+  "from typing import Protocol, runtime_checkable\nclass FlextDemoProtocols:\n    class Reader(Protocol):\n        def read(self) -> str: ...\n":
+    fixed: |
       from typing import Protocol, runtime_checkable
       class FlextDemoProtocols:
           @runtime_checkable
@@ -46,11 +42,8 @@ snapshots:
       style: secondary
       start: 0
       end: 136
-  ? |
-    from typing import runtime_checkable
-    class Writer(typing.Protocol[T]):
-        def write(self, value: T) -> None: ...
-  : fixed: |
+  "from typing import runtime_checkable\nclass Writer(typing.Protocol[T]):\n    def write(self, value: T) -> None: ...\n":
+    fixed: |
       from typing import runtime_checkable
       @runtime_checkable
       class Writer(typing.Protocol[T]):

@@ -405,21 +405,23 @@ class TestsFlextInfraGeneratedRuntime:
                 root, inputs=inputs
             )
         )
-        outcome = codegen.FlextInfraCodegenConformExecute.plan_repository_task(
-            m.Infra.CodegenRepositoryPlanTask(
-                root=root,
-                workspace=spec,
-                current_target=tm.ok(
-                    workspace.FlextInfraWorkspaceDetector.conform_target(
-                        root, spec, inputs=inputs
-                    )
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            outcome = codegen.FlextInfraCodegenConformExecute.plan_repository_task(
+                m.Infra.CodegenRepositoryPlanTask(
+                    root=root,
+                    workspace=spec,
+                    current_target=tm.ok(
+                        workspace.FlextInfraWorkspaceDetector.conform_target(
+                            root, spec, inputs=inputs
+                        )
+                    ),
+                    repository=spec.repository,
+                    surface=c.Infra.CodegenConformSurface.ALL,
+                    selected_inputs=inputs,
+                    provider_plans=incoming,
                 ),
-                repository=spec.repository,
-                surface=c.Infra.CodegenConformSurface.ALL,
-                selected_inputs=inputs,
-                provider_plans=incoming,
+                snapshot,
             )
-        )
         tm.that(outcome.failed, eq=True)
         tm.that(outcome.error, has="settings")
         tm.that(isinstance(outcome.exception, m.ValidationError), eq=True)

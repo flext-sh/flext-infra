@@ -1,26 +1,7 @@
 id: rewire-cli-decoded-command-outcome-model
 snapshots:
-  ? |
-    def decode_output(
-        output: p.Cli.CommandBytesOutput,
-    ) -> p.Result[p.Cli.CommandOutput]:
-        try:
-            stdout = output.stdout.decode("utf-8")
-            stderr = output.stderr.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            return r[p.Cli.CommandOutput].fail(
-                f"non-UTF-8 output from {shlex.join(list(cmd))}: {exc}",
-                exception=exc,
-            )
-        return r[p.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(
-                stdout=stdout,
-                stderr=stderr,
-                outcome=output.outcome,
-                duration=output.duration,
-            )
-        )
-  : fixed: |+
+  "def decode_output(\n    output: p.Cli.CommandBytesOutput,\n) -> p.Result[p.Cli.CommandOutput]:\n    try:\n        stdout = output.stdout.decode(\"utf-8\")\n        stderr = output.stderr.decode(\"utf-8\")\n    except UnicodeDecodeError as exc:\n        return r[p.Cli.CommandOutput].fail(\n            f\"non-UTF-8 output from {shlex.join(list(cmd))}: {exc}\",\n            exception=exc,\n        )\n    return r[p.Cli.CommandOutput].ok(\n        m.Cli.CommandOutput(\n            stdout=stdout,\n            stderr=stderr,\n            outcome=output.outcome,\n            duration=output.duration,\n        )\n    )\n":
+    fixed: |+
       def decode_output(
           output: p.Cli.CommandBytesOutput,
       ) -> p.Result[p.Cli.CommandOutput]:
@@ -42,7 +23,7 @@ snapshots:
                   duration=output.duration,
               )
           )
-
+      
     labels:
     - source: |-
         def decode_output(

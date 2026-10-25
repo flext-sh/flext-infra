@@ -30,9 +30,11 @@ import re
 import sys
 import warnings
 from importlib import import_module
+from importlib.util import find_spec
 from pathlib import Path
+from typing import TypeGuard, TypeIs
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodNativePackageUtilities,
     FlextInfraUtilitiesPyproject,
@@ -43,7 +45,9 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
     """Render the inline-type-set rewire rule of the constants facade."""
 
     @classmethod
-    def codemod_type_set_rules(cls, project: Path) -> t.MappingKV[str, t.JsonMapping]:
+    def codemod_type_set_rules(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.MappingKV[str, t.JsonMapping]:
         """Render the type-set rule of the project's constants facade.
 
         Returns:
@@ -54,14 +58,19 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             ValueError: If two unmarked constants hold the same type set.
 
         """
+        del snapshot
         package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        # A package that is not installed has no runtime facade (typed
+        # absence); an installed package that fails to import raises.
+        if find_spec(package) is None:
+            return {}
         facade = getattr(import_module(package), c.Infra.FacadeFamily.C, None)
         if not inspect.isclass(facade):
             return {}
         root = (c.Infra.FacadeFamily.C,)
         aliases = cls._facade_aliases(facade, root)
         owners: dict[frozenset[type], str] = {}
-        sets: list[tuple[str, t.JsonMapping]] = []
+        sets: list[tuple[str, t.JsonDict]] = []
         for path, classes in cls._type_set_constants(facade, root):
             reference = ".".join(path)
             members = frozenset(classes)
@@ -74,13 +83,16 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
                 sets.append((reference, cls._type_set_rule(spellings)))
         if not sets:
             return {}
-        rule_id = c.Infra.CODEMOD_TYPE_SET_SHAPE
+        rule_id = (
+            f"{c.Infra.CODEMOD_TYPE_SET_SHAPE}"
+            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
+        )
         return {rule_id: cls._type_set_document(rule_id, sets)}
 
     @staticmethod
     def _type_set_document(
-        rule_id: str, sets: t.SequenceOf[tuple[str, t.JsonMapping]]
-    ) -> t.JsonMapping:
+        rule_id: str, sets: t.SequenceOf[tuple[str, t.JsonDict]]
+    ) -> t.JsonDict:
         """Build the one rule whose rewriters replace each declared set.
 
         Returns:
@@ -116,38 +128,43 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         }
 
     @staticmethod
-    def _type_set_rule(spellings: t.SequenceOf[t.StrSequence]) -> t.JsonMapping:
+    def _type_set_rule(spellings: t.SequenceOf[t.StrSequence]) -> t.JsonDict:
         """Match one exact type set as a tuple or a ``|`` union, any order.
 
         Returns:
             The native rule of one set.
 
         """
-        members = [
+        members: list[t.JsonDict] = [
             {"any": [{"pattern": spelling} for spelling in options]}
             for options in spellings
         ]
-        operand = {"any": [{"kind": "attribute"}, {"kind": "identifier"}]}
+        alternatives = list[t.JsonValue](members)
+        tuple_members: list[t.JsonValue] = [{"has": member} for member in members]
+        union_members: list[t.JsonValue] = [
+            {"has": {"stopBy": "end", **member}} for member in members
+        ]
+        operand: t.JsonDict = {"any": [{"kind": "attribute"}, {"kind": "identifier"}]}
         return {
             "any": [
                 {
                     "all": [
                         {"kind": "tuple"},
-                        *({"has": member} for member in members),
-                        {"not": {"has": {**operand, "not": {"any": members}}}},
+                        *tuple_members,
+                        {"not": {"has": {**operand, "not": {"any": alternatives}}}},
                     ]
                 },
                 {
                     "all": [
                         {"kind": "binary_operator"},
-                        *({"has": {"stopBy": "end", **member}} for member in members),
+                        *union_members,
                         {
                             "not": {
                                 "has": {
                                     "stopBy": "end",
                                     **operand,
                                     "inside": {"kind": "binary_operator"},
-                                    "not": {"any": members},
+                                    "not": {"any": alternatives},
                                 }
                             }
                         },
@@ -172,20 +189,42 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
                 if name.startswith("_"):
                     continue
                 key = (*path, name)
-                if (
-                    isinstance(value, tuple)
-                    and len(value) > 1
-                    and all(inspect.isclass(item) for item in value)
-                ):
+                classes = cls._class_set(value)
+                if classes is not None:
                     if cls.codemod_compat_marker(klass, name) is None:
-                        found.setdefault(key, value)
+                        found.setdefault(key, classes)
                 elif cls._namespace_of(klass, value):
-                    for nested, classes in cls._type_set_constants(value, key):
-                        found.setdefault(tuple(nested), tuple(classes))
+                    for nested, nested_classes in cls._type_set_constants(value, key):
+                        found.setdefault(tuple(nested), tuple(nested_classes))
         return tuple(found.items())
 
     @classmethod
-    def codemod_compat_rules(cls, project: Path) -> t.MappingKV[str, t.JsonMapping]:
+    def _class_set(cls, value: p.AttributeProbe) -> tuple[type, ...] | None:
+        """Read ``value`` as a type set: a tuple of more than one class.
+
+        Returns:
+            The classes of the tuple, or ``None`` when ``value`` is no type set.
+
+        """
+        if not cls._is_tuple(value):
+            return None
+        classes = tuple(item for item in value if inspect.isclass(item))
+        return classes if len(value) > 1 and len(classes) == len(value) else None
+
+    @staticmethod
+    def _is_tuple(value: p.AttributeProbe) -> TypeIs[tuple[p.AttributeProbe, ...]]:
+        """Tell whether ``value`` is a tuple of runtime objects.
+
+        Returns:
+            ``True`` for any tuple instance.
+
+        """
+        return isinstance(value, tuple)
+
+    @classmethod
+    def codemod_compat_rules(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.MappingKV[str, t.JsonMapping]:
         """Render the rule that fails and rewires reads of compat-marked constants.
 
         Every attribute of the constants facade whose annotation carries the
@@ -202,7 +241,12 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
                 an old path other than the attribute's own facade path.
 
         """
+        del snapshot
         package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        # A package that is not installed has no runtime facade (typed
+        # absence); an installed package that fails to import raises.
+        if find_spec(package) is None:
+            return {}
         facade = getattr(import_module(package), c.Infra.FacadeFamily.C, None)
         if not inspect.isclass(facade):
             return {}
@@ -217,7 +261,10 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             moves[old] = parsed["new"]
         if not moves:
             return {}
-        rule_id = c.Infra.CODEMOD_COMPAT_READ_SHAPE
+        rule_id = (
+            f"{c.Infra.CODEMOD_COMPAT_READ_SHAPE}"
+            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
+        )
         names = {old: f"to-{index}" for index, old in enumerate(sorted(moves))}
         exact = (
             FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_exact_names_rule
@@ -233,9 +280,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
                     "pattern": "$OLD",
                     "not": {"inside": {"kind": "attribute", "field": "object"}},
                 },
-                "constraints": {
-                    "OLD": exact(tuple(moves))
-                },
+                "constraints": {"OLD": exact(tuple(moves))},
                 "rewriters": [
                     {
                         "id": names[old],
@@ -345,7 +390,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         return {item: tuple(paths) for item, paths in found.items()}
 
     @staticmethod
-    def _namespace_of(klass: type, value: object) -> bool:
+    def _namespace_of(klass: type, value: p.AttributeProbe) -> TypeGuard[type]:
         """Tell whether ``value`` is a namespace class nested in ``klass``.
 
         Returns:

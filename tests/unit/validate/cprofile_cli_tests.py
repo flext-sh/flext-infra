@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import t, tm, u
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraCProfileCli:
@@ -28,14 +28,11 @@ class TestsFlextInfraCProfileCli:
         for _ in range(2):
             tm.ok(
                 u.Cli.run_checked(
-                    (
-                        sys.executable,
-                        "-m",
-                        "flext_infra._profile_entry",
-                        str(output),
-                        "--help",
-                    ),
+                    (sys.executable, "-m", "flext_infra", "--help"),
                     cwd=tmp_path,
+                    options=m.Cli.ProcessOptions(
+                        env={"FLEXT_INFRA_PROFILE_OUTPUT": str(output)}
+                    ),
                 )
             )
             profiles = sorted(tmp_path.glob("profile-*.pstats"))
@@ -81,14 +78,9 @@ class TestsFlextInfraCProfileCli:
         )
         profiled = tm.ok(
             u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-m",
-                    "flext_infra._profile_entry",
-                    str(occupied),
-                    *arguments,
-                ),
+                (sys.executable, "-m", "flext_infra", *arguments),
                 cwd=tmp_path,
+                env={"FLEXT_INFRA_PROFILE_OUTPUT": str(occupied)},
             )
         )
         tm.that(profiled.stdout, eq=reference.stdout)
@@ -125,15 +117,9 @@ class TestsFlextInfraCProfileCli:
         )
         profiled = tm.ok(
             u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    consumer,
-                    "flext_infra._profile_entry",
-                    str(occupied),
-                    "--help",
-                ),
+                (sys.executable, "-c", consumer, "flext_infra", "--help"),
                 cwd=tmp_path,
+                env={"FLEXT_INFRA_PROFILE_OUTPUT": str(occupied)},
             )
         )
         tm.fail(u.Cli.process_succeeded(reference.outcome))

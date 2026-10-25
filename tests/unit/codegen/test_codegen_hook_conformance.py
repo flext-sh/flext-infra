@@ -227,6 +227,54 @@ class TestsFlextInfraCodegenHookConformance:
             tm.that((hooks_dir / stage).read_text(encoding="utf-8"), eq=foreign)
 
     @staticmethod
+    def test_commit_hook_check_selects_only_the_commit_stage_gates() -> None:
+        """The commit row passes its declared token; that token runs commit gates.
+
+        The token reaches the same runtime selector the check verb uses, so the
+        commit hook never runs a CI-stage or push-stage gate.
+        """
+        make = config.Infra.codegen.make.model_copy(
+            update={"pre_commit": True, "pre_push": True},
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                _HOOK_TEMPLATE,
+                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+            ),
+        )
+        commit_rows = [
+            line
+            for line in rendered.splitlines()
+            if "make check" in line and f"{make.ci.variable}=" in line
+        ]
+        tm.ok(
+            any(
+                f"{make.ci.variable}={make.ci.pre_commit_value} make check" in line
+                for line in commit_rows
+            ),
+        )
+        tm.fail(
+            any(
+                f"{make.ci.variable}={make.ci.value} make check" in line
+                for line in commit_rows
+            ),
+        )
+        with u.Tests.env_vars_context(
+            env_vars={make.ci.variable: make.ci.pre_commit_value},
+        ):
+            selected = u.Infra.selected_check_gates(
+                make,
+                c.Infra.CheckGateSet.CHECK,
+            )
+        tm.that(selected, eq=make.pre_commit_check_gates)
+        tm.ok(
+            all(
+                make.check_gate_stages[gate] is c.Infra.GateStage.COMMIT
+                for gate in selected
+            ),
+        )
+
+    @staticmethod
     def test_hook_stages_follow_configuration() -> None:
         """The projection follows the current typed configuration."""
         make = config.Infra.codegen.make

@@ -7,9 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from functools import lru_cache
+from functools import cache
 
 from flext_infra import c, t
+from flext_infra._utilities._rope_analysis import (
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
+)
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -43,12 +46,10 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @classmethod
-    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    @cache
     def facade_letter_names_source(
         cls,
         source: str,
-        *,
-        filename: str,
     ) -> frozenset[str]:
         """Return the exported lower-case names bound directly to a class.
 
@@ -63,7 +64,8 @@ class FlextInfraUtilitiesRopeModulePatch:
             The exported lower-case names bound directly to a class.
 
         """
-        tree = ast.parse(source, filename=filename)
+        # The one parse per exact content, shared with every source reader.
+        tree = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
         class_names = {
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
         } | {

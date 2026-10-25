@@ -1,12 +1,7 @@
 id: pydantic-annotated-field-sole-default-assignment
 snapshots:
-  ? |
-    class Spec:
-        flags: Annotated[
-            t.StrSequence,
-            m.Field(default=()),
-        ]
-  : fixed: |
+  "class Spec:\n    flags: Annotated[\n        t.StrSequence,\n        m.Field(default=()),\n    ]\n":
+    fixed: |
       class Spec:
           flags: t.StrSequence = ()
     labels:
@@ -18,14 +13,12 @@ snapshots:
       style: primary
       start: 16
       end: 91
-  ? |
-    class Spec:
-        project_id: Annotated[t.NonEmptyStr | None, m.Field(default=None)]
-  : fixed: |
+  "class Spec:\n    project_id: Annotated[t.NonEmptyStr | None, m.Field(default=None)]\n":
+    fixed: |
       class Spec:
           project_id: t.NonEmptyStr | None = None
     labels:
-    - source: 'project_id: Annotated[t.NonEmptyStr | None, m.Field(default=None)]'
+    - source: "project_id: Annotated[t.NonEmptyStr | None, m.Field(default=None)]"
       style: primary
       start: 16
       end: 82

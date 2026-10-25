@@ -1,12 +1,6 @@
 id: specialize-registration-algebra
 language: python
 severity: error
-metadata:
-  context:
-    OWNER:
-      is: generic-specialization
-      of: ALIAS
-      arg: p
 files:
   - "**/*.py"
 rule:
@@ -30,6 +24,8 @@ constraints:
     regex: "^(?:t|FlextTypesServices)$"
   ALIAS:
     regex: "^(?:ServiceValue|RegisterableService|FactoryCallable|ResourceCallable|ServiceMap|FactoryMap|ResourceMap|GuardInput)$"
+    # The p facade declares it as a specialization of the same t generic.
+    matches: generic-specialization
 fix: p.$ALIAS
 message: >-
   Registration and guard algebra requires the canonical structural specialization
@@ -61,12 +57,6 @@ message: Settings class algebra must bind its structural class capability downst
 id: bind-registration-specialization
 language: python
 severity: error
-metadata:
-  context:
-    OWNER:
-      is: generic-specialization
-      of: ALIAS
-      arg: p PACKAGE
 files:
   - "**/*.py"
 rule:
@@ -93,18 +83,14 @@ constraints:
     regex: "^t$"
   ALIAS:
     regex: "^(?:ServiceValue|RegisterableService|FactoryCallable|ResourceCallable|ServiceMap|FactoryMap|ResourceMap|GuardInput)$"
+    # The p facade declares it as a specialization of the same t generic.
+    matches: generic-specialization
 fix: "from $PACKAGE import p, $$$NAMES"
 message: Bind the structural specialization from the same public facade as its algebra.
 ---
 id: bind-direct-registration-specialization
 language: python
 severity: error
-metadata:
-  context:
-    OWNER:
-      is: generic-specialization
-      of: ALIAS
-      arg: p PACKAGE
 files:
   - "**/*.py"
 rule:
@@ -136,6 +122,8 @@ constraints:
     regex: "^FlextTypesServices$"
   ALIAS:
     regex: "^(?:ServiceValue|RegisterableService|FactoryCallable|ResourceCallable|ServiceMap|FactoryMap|ResourceMap|GuardInput)$"
+    # The p facade declares it as a specialization of the same t generic.
+    matches: generic-specialization
 fix: |-
   from $PACKAGE import p
   from $PACKAGE._typings import $$$NAMES
