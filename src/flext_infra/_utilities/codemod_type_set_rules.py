@@ -219,6 +219,9 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             return {}
         rule_id = c.Infra.CODEMOD_COMPAT_READ_SHAPE
         names = {old: f"to-{index}" for index, old in enumerate(sorted(moves))}
+        exact = (
+            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_exact_names_rule
+        )
         return {
             rule_id: {
                 "id": rule_id,
@@ -231,16 +234,12 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
                     "not": {"inside": {"kind": "attribute", "field": "object"}},
                 },
                 "constraints": {
-                    "OLD": FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_exact_names_rule(
-                        tuple(moves)
-                    )
+                    "OLD": exact(tuple(moves))
                 },
                 "rewriters": [
                     {
                         "id": names[old],
-                        "rule": FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_exact_names_rule(
-                            (old,)
-                        ),
+                        "rule": exact((old,)),
                         "fix": new,
                     }
                     for old, new in sorted(moves.items())
