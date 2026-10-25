@@ -554,6 +554,48 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         with pytest.raises(ValueError, match="ambiguous protocol class attribute"):
             u.Infra.render_utility_facade(package, family="p")
 
+    def test_generated_empty_subclass_yields_to_declared_model_owner(
+        self,
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A retired generated base cannot hide the canonical inherited model."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
+        facade = package / c.Infra.MODELS_PY
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / directory / "owners.py",
+            "class ModelOwner:\n"
+            "    class Payload:\n"
+            "        pass\n"
+            "__all__ = ['ModelOwner']\n",
+        )
+        self._write(
+            facade,
+            c.Infra.AUTOGEN_HEADER
+            + "\n"
+            + f"from {package.name}.{directory}.owners import ModelOwner\n"
+            "class Facade(ModelOwner):\n"
+            "    class Payload(RetiredGeneratedModel):\n"
+            '        """Obsolete generated publication."""\n'
+            "m = Facade\n__all__ = ['Facade', 'm']\n",
+        )
+        service = u.Tests.create_lazy_init_service(root)
+        service.module = f"{package.name}.{directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package, family="m"), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import m as public\n"
+            f"from {package.name}.{directory} import ModelOwner\n"
+            "assert public.Payload is ModelOwner.Payload\n",
+            cwd=root,
+        )
+
     @pytest.mark.parametrize("family", ["p", "m"])
     @pytest.mark.parametrize("annotation", ["none", "matching", "unresolved"])
     def test_generated_contract_aliases_use_canonical_inherited_declarations(

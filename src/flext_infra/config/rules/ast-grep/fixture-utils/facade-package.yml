@@ -1,6 +1,6 @@
-# Fixture value of the generated `facade-package` utility: the fixture project
-# and the FLEXT packages the rule tests import.
+# Fixture value of the generated `facade-package` utility: the fixture project,
+# its tests facade and the FLEXT packages the rule tests import.
 id: facade-package
 language: Python
 rule:
-  regex: "^(?:ai_hub|flext_cli|flext_core|flext_meltano|flext_tests)(?:[.\\s]|$)"
+  regex: "^(?:ai_hub|flext_cli|flext_core|flext_meltano|flext_tests|tests)(?:[.\\s]|$)"

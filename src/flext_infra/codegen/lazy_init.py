@@ -122,7 +122,14 @@ class FlextInfraCodegenLazyInit(
             by_path: dict[Path, m.Infra.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
-                    view, indexes[root], root, target, scoped=scoped, snapshot=shared
+                    u.Infra.lazy_init_run(
+                        view,
+                        indexes[root],
+                        root=root,
+                        scoped=scoped,
+                        snapshot=shared,
+                    ),
+                    target,
                 )
                 if planned.failure:
                     return planned
@@ -172,13 +179,8 @@ class FlextInfraCodegenLazyInit(
 
     @staticmethod
     def _plan_root(
-        view: p.Infra.RopeProject,
-        index: m.Infra.RopeWorkspaceIndex,
-        root: Path,
+        run: m.Infra.LazyInitRun,
         target: Path | None,
-        *,
-        scoped: bool,
-        snapshot: p.Infra.WorkspaceSnapshot,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan and render one repository bottom-up from its source inventory.
 
@@ -186,9 +188,6 @@ class FlextInfraCodegenLazyInit(
             The repository's initializer file plans, or the first failure.
 
         """
-        run = u.Infra.lazy_init_run(
-            view, index, root=root, scoped=scoped, snapshot=snapshot
-        )
         plans = u.Infra.lazy_init_plan_root(run, target)
         if plans.failure:
             return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(plans)
@@ -202,7 +201,7 @@ class FlextInfraCodegenLazyInit(
             first_party={
                 owner: frozenset(
                     FlextInfraToolTablesPhase.first_party_namespaces(
-                        path=owner, source_project=view
+                        path=owner, source_project=run.model.source_project
                     )
                 )
                 for owner in owners

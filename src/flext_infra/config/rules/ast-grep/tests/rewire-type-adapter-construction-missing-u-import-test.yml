@@ -8,7 +8,27 @@ valid:
     from project.adapters import TypeAdapter
 
     ADAPTER = TypeAdapter(int)
+  - |
+    from ai_hub import m, u
+
+    ADAPTER = m.TypeAdapter(int)
+  - |
+    from tests import m, u
+
+    ADAPTER = m.TypeAdapter(int)
+  - |
+    from . import m, u
+
+    ADAPTER = m.TypeAdapter(int)
 invalid:
+  - |
+    from ai_hub import m
+
+    ADAPTER = m.TypeAdapter(int)
+  - |
+    from ai_hub import m, u as utilities
+
+    ADAPTER = m.TypeAdapter(int)
   - |
     from flext_core import m
 

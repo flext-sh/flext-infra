@@ -456,7 +456,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             ),
         )
         names = sorted({
-            name for init in inits for name in cls._source_exports(snapshot, files, init)
+            name
+            for init in inits
+            for name in cls._source_exports(snapshot, files, init)
         })
         branches = (
             *((f"(?:{'|'.join(map(re.escape, words))})$",) if words else ()),
@@ -697,15 +699,11 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         if not owned:
             return scopes
         for selector in owned:
-            module, _separator, primitive = selector.removeprefix(prefix).partition(
-                " "
-            )
-            closure = (
-                FlextInfraUtilitiesCodemodProject.implementation_owner_modules(
-                    snapshot.engine,
-                    m.Infra.CodemodPrimitiveOwner(arg=(module, primitive)),
-                    {},
-                )
+            module, _separator, primitive = selector.removeprefix(prefix).partition(" ")
+            closure = FlextInfraUtilitiesCodemodProject.implementation_owner_modules(
+                snapshot.engine,
+                m.Infra.CodemodPrimitiveOwner(arg=(module, primitive)),
+                {},
             )
             scopes[selector] = tuple(
                 sorted(

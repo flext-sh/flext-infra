@@ -523,6 +523,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The failed outcome carrying the original cause.
 
         """
+        traceback.print_exception(exception)
         return m.Infra.CodegenRepositoryPlanOutcome(
             repository=repository,
             error=str(exception),

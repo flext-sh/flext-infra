@@ -615,6 +615,10 @@ order, including their declared overrides. A stale renamed alias cannot publish
 itself or shadow a different inherited contract. The generated ownership marker
 and native class identity are both required; unrelated namespace members remain
 unchanged, and contradictory authored class bindings still fail before publication.
+This also applies to a generated, declaration-only subclass alias whose name is
+already supplied by a canonical inherited class. The inherited declaring owner
+wins even when the old alias names a retired top-level model; the generator
+removes the obsolete alias instead of turning the facade into another model.
 An alias in a generated namespace is also obsolete when its receiver is an exact
 inherited owner and that owner no longer provides the referenced attribute. Remove
 that proven-invalid projection instead of retaining it or adding a compatibility
@@ -622,6 +626,8 @@ declaration; an unrelated unresolved receiver is not evidence for deletion.
 For mixed constants namespaces, publishing an owner as a named child does not
 replace composition of its members alongside other namespace providers. Preserve
 both access paths; enum declarations remain whole-class publications, not bases.
+Whole-class publications also retain the upstream namespace inherited by their
+facade; publishing local owners must not shadow its existing methods or domains.
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
@@ -1130,8 +1136,9 @@ election rather than selecting standalone execution from a hosted-provider flag.
 The approved native flow uses one root uv workspace in local execution and root
 CI; lock ownership follows ADR-030 (below). CI checks out declared submodules
 and installs noneditably; it does not select a checkout-free standalone
-resolver. Independent repositories keep their own native contracts. Retire synthetic `make.uv_resolution` views and their
-hosted-selection consumers rather than maintaining both routes. Native uv owns
+resolver. Independent repositories keep their own native contracts. Retire synthetic
+`make.uv_resolution` views and their hosted-selection consumers rather than
+maintaining both routes. Native uv owns
 workspace election; the existing installed detector exposes the resulting typed
 context without duplicating uv's resolver. Each runtime root owns its physical
 `.venv`; no second installer or post-install editable overlay is introduced.
@@ -2882,17 +2889,29 @@ snapshot's source inventory only. Configuration, local workspace metadata and
 the conformance target are resolved by the managed pass that consumes them;
 initializer planning does not repeat that resolution for every member. Both
 passes retain the same source authentication and publication boundaries.
+Repository planning emits an exception's original traceback when capturing its
+failed outcome. The final report retains that same cause; interruption before
+the cohort finishes cannot hide the first failure behind a timeout.
 Each repository keeps its own module index and name bindings, including internal
 packages whose names may also occur in another member. The original source
 engine shares directory facts keyed by physical path and module facts keyed by
 native parsed-module identity. Resource invalidation cannot reuse facts from
 the replaced parse. An explicit planned source view derives its own facts and
 cannot populate the original snapshot's facts.
+Tooling derived from planned Python sources uses that same injected view for
+first-party namespace discovery as well as runtime bases. It must not reopen
+physical workspace metadata while deriving the planned artifact.
 
 Current state (2026-10-25): module-level identities resolve; nested class
 qualnames, the publication refresh query and the migration of the remaining
 source-bases consumers onto `workspace_resolve` / `workspace_class_ancestors`
-are being implemented under epic `flext-1engx`.
+are being implemented under epic `flext-1engx`. The managed conformance rounds
+currently retain a source engine per distinct planned view within a repository;
+the lazy-provider pass shares the workspace engine. Eliminating that remaining
+split requires proving provider invalidation and member-scoped bindings for
+homonymous internal packages.
+The single-engine workspace contract above remains the target, not a completed
+performance or convergence result.
 
 ### Profiling a root verb
 

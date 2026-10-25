@@ -163,6 +163,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             FlextInfraToolTablesPhase.first_party_namespaces(
                 path=root,
                 planned_sources=tuple(sources),
+                source_project=source_project,
             ),
         )
         isort = u.Cli.toml_mapping_ensure_path(
