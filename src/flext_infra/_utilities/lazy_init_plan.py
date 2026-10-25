@@ -740,7 +740,7 @@ class FlextInfraUtilitiesLazyInitPlan:
     def _lazy_init_route_identity(
         run: m.Infra.LazyInitRun,
         path: Path,
-        module: t.Infra.PythonModule,
+        module: m.Infra.PythonModuleFacts,
         exports: t.StrSequence,
     ) -> t.Pair[str | None, str | None]:
         """Return a route module's facade alias and family suffix.
