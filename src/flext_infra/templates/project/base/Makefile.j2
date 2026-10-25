@@ -393,8 +393,11 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 # sync, every FLEXT distribution this environment installed from its lock and
 # that the FLEXT workspace at <path> provides (the root and each .gitmodules
 # member, by directory = distribution name) is reinstalled editable from <path>
-# into this repository's own physical environment. A plain `make setup`
-# restores the locked installs. CI installs only homologated frozen locks.
+# into this repository's own physical environment, together with any
+# dependency the local tree adds. `--no-config` keeps the consumer's own
+# override-dependencies (its pinned Git sources) from replacing the editable
+# requirements. A plain `make setup` restores the locked installs. CI installs
+# only homologated frozen locks.
 FLEXT_EDITABLE_RECIPE = \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		printf 'ERROR[setup] FLEXT=%s is a local development input; CI installs frozen locks only\n' "$(FLEXT)" >&2; exit 2; \
@@ -411,7 +414,7 @@ FLEXT_EDITABLE_RECIPE = \
 	if [ -z "$$*" ]; then \
 		printf 'ERROR[setup] FLEXT=%s provides no distribution installed in %s\n' "$(FLEXT)" "$(RUNTIME_VENV)" >&2; exit 2; \
 	fi; \
-	$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps "$$@"
+	$(UV) pip install --no-config --python "$(RUNTIME_PYTHON)" "$$@"
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
