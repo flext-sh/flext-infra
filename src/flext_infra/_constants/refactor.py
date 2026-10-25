@@ -484,6 +484,14 @@ class FlextInfraConstantsRefactor:
     # Generated rule shape that rewires an inline type set to the constant
     # declaring it: 'type-set--<constant path>'.
     CODEMOD_TYPE_SET_SHAPE: ClassVar[str] = "type-set"
+    # Generated rule shape that fails and rewires every read of a constant
+    # whose annotation carries the stdlib compat marker: 'compat-read'.
+    CODEMOD_COMPAT_READ_SHAPE: ClassVar[str] = "compat-read"
+    # Message grammar of the compat marker (operator-ruling-2026-10-24-
+    # deprecated-signature-window): "compat: <old> -> <new>; fix: <rewire>".
+    CODEMOD_COMPAT_MESSAGE_PATTERN: ClassVar[str] = (
+        r"^compat: (?P<old>[A-Za-z_][\w.]*) -> (?P<new>[A-Za-z_][\w.]*); fix: .+$"
+    )
     # Generated rule shape that inserts the canonical package import of names
     # a module uses bare without binding them: 'import-header--<package>'.
     CODEMOD_IMPORT_HEADER_SHAPE: ClassVar[str] = "import-header"

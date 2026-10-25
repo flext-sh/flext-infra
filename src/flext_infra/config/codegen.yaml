@@ -129,10 +129,14 @@ Infra:
         - name: codemod_module_member_rules
           facts: codemod_package_export_facts
           shapes: [module-member]
-        # One rule per tuple-of-classes constant of the constants facade:
-        # an inline isinstance set equal to it is rewired to the constant.
+        # One rule for the constants facade: an inline isinstance set equal to
+        # a tuple-of-classes constant is rewired to it (one rewriter each).
         - name: codemod_type_set_rules
           shapes: [type-set]
+        # One rule failing and rewiring every read of a compat-marked constant
+        # to the new owner its warnings.deprecated marker names.
+        - name: codemod_compat_rules
+          shapes: [compat-read]
 
     # SINGLE SSOT for every filesystem mode the codegen pipeline emits. Call
     # sites read these rows through config.Infra.codegen.modes; octal mode
