@@ -304,6 +304,17 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 )
             if replacement == name:
                 continue
+            # A public name of the parent package (the `config`/`settings`
+            # singletons) cannot also be a submodule: importing the submodule
+            # rebinds the parent attribute and shadows the lazy export.
+            parent_init = path.parent / c.Infra.INIT_PY
+            parent_source = sources.get(parent_init)
+            if parent_source is None and parent_init.is_file():
+                parent_source = parent_init.read_text(encoding=c.DEFAULT_ENCODING)
+            if parent_source is not None and replacement in (
+                u.Infra.public_export_names_source(parent_source)
+            ):
+                continue
             if not replacement.isidentifier() or keyword.iskeyword(replacement):
                 msg = (
                     f"module naming has no valid public identifier: {path}; "

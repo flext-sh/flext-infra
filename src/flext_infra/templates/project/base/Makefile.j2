@@ -408,7 +408,7 @@ FLEXT_EDITABLE_RECIPE = \
 		source_dir="$$(cd "$$flext_root/$$member" && pwd -P)"; \
 		if $(UV) pip show --python "$(RUNTIME_PYTHON)" --quiet "$$(basename "$$source_dir")" 2>/dev/null; then set -- "$$@" --editable "$$source_dir"; fi; \
 	done; \
-	if [ "$$#" -eq 0 ]; then \
+	if [ -z "$$*" ]; then \
 		printf 'ERROR[setup] FLEXT=%s provides no distribution installed in %s\n' "$(FLEXT)" "$(RUNTIME_VENV)" >&2; exit 2; \
 	fi; \
 	$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps "$$@"
