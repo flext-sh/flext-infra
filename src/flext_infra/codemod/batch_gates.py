@@ -680,20 +680,26 @@ class FlextInfraModGateEngine:
                     due,
                 )
                 # A drifted source carries no authenticated state: it stays
-                # deferred evidence and is never graded against the epoch.
-                admitted = entry.source_state is None or u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=root,
-                        rule=rules_by_id[entry.rule_id],
-                        file_path=entry.file,
-                        captures=FlextInfraModGateEngine._captures(
-                            u.Infra.mod_native_payload(entry, readers)
+                # deferred evidence and is never graded against the epoch. A
+                # fully native rule needs no admission: its match is the finding.
+                rule = rules_by_id[entry.rule_id]
+                admitted = (
+                    entry.source_state is None
+                    or not u.Infra.codemod_requires_admission(rule)
+                    or u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=root,
+                            rule=rule,
+                            file_path=entry.file,
+                            captures=FlextInfraModGateEngine._captures(
+                                u.Infra.mod_native_payload(entry, readers)
+                            ),
+                            facts=facts,
+                            snapshot=snapshot,
                         ),
-                        facts=facts,
-                        snapshot=snapshot,
-                    ),
-                    project=project,
-                    sources=sources,
+                        project=project,
+                        sources=sources,
+                    )
                 )
                 if admitted:
                     if (

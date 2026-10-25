@@ -567,7 +567,33 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
 		exit 2; \
 	fi; \
-	UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $(SETUP_SYNC_ARGS)
+	UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $(SETUP_SYNC_ARGS); \
+	if [ -n "$(strip $(FLEXT))" ]; then $(FLEXT_EDITABLE_RECIPE); fi
+
+# `make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
+# operator-ruling-2026-10-24-setup-flext-editable-param): after the frozen
+# sync, every FLEXT distribution this environment installed from its lock and
+# that the FLEXT workspace at <path> provides (the root and each .gitmodules
+# member, by directory = distribution name) is reinstalled editable from <path>
+# into this repository's own physical environment. A plain `make setup`
+# restores the locked installs. CI installs only homologated frozen locks.
+FLEXT_EDITABLE_RECIPE = \
+	if [ "$(strip $(CI))" = "Y" ]; then \
+		printf 'ERROR[setup] FLEXT=%s is a local development input; CI installs frozen locks only\n' "$(FLEXT)" >&2; exit 2; \
+	fi; \
+	flext_root="$$(cd "$(FLEXT)" && pwd -P)"; \
+	if [ ! -f "$$flext_root/.gitmodules" ]; then \
+		printf 'ERROR[setup] FLEXT=%s is not a FLEXT workspace: no .gitmodules\n' "$(FLEXT)" >&2; exit 2; \
+	fi; \
+	set --; \
+	for member in . $$(git -C "$$flext_root" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' | cut -d' ' -f2); do \
+		source_dir="$$(cd "$$flext_root/$$member" && pwd -P)"; \
+		if $(UV) pip show --python "$(RUNTIME_PYTHON)" --quiet "$$(basename "$$source_dir")" 2>/dev/null; then set -- "$$@" --editable "$$source_dir"; fi; \
+	done; \
+	if [ "$$#" -eq 0 ]; then \
+		printf 'ERROR[setup] FLEXT=%s provides no distribution installed in %s\n' "$(FLEXT)" "$(RUNTIME_VENV)" >&2; exit 2; \
+	fi; \
+	$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps "$$@"
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
@@ -634,8 +660,8 @@ endef
 .PHONY: _builtin_gen_all
 
 
-VERB_DESCRIPTION_setup := Install the declared frozen locks, synchronize the physical environment and configure local integrations.
-VERB_ARGUMENTS_setup :=
+VERB_DESCRIPTION_setup := Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).
+VERB_ARGUMENTS_setup := FLEXT
 
 VERB_DESCRIPTION_upg := Resolve declared dependency and tool updates and publish their resolution metadata and locks.
 VERB_ARGUMENTS_upg :=

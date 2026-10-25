@@ -371,7 +371,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     severity=finding.severity,
                 )
                 for finding in found
-                if u.Infra.codemod_context_admits(
+                if not u.Infra.codemod_requires_admission(rules_by_id[finding.rule_id])
+                or u.Infra.codemod_context_admits(
                     m.Infra.CodemodAdmission(
                         root=project_dir,
                         rule=rules_by_id[finding.rule_id],

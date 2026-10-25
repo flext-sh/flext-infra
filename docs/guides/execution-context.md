@@ -135,10 +135,16 @@ through their owner rather than hand-editing a generated initializer.
 The root has one native uv workspace and lock. Root CI checks out its declared
 submodules and installs that same workspace noneditable; `--no-editable` changes
 installation mode, not dependency origins. Independent checkouts retain their own
-native project contracts. External suppliers are explicit native pyproject sources,
-not `FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT`, persisted supplier selection or a synthetic
-local/standalone/editable resolver. Those superseded producers and consumers are
-retired together, without a compatibility route or guessed host paths.
+native project contracts. Their locks pin the FLEXT distributions they consume.
+To develop against a FLEXT checkout, a standalone member or external consumer runs
+`make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
+`operator-ruling-2026-10-24-setup-flext-editable-param`). After the frozen sync,
+setup reinstalls as editable, into that repository's own physical environment,
+every FLEXT distribution it installed from its lock and that the workspace at
+`<path>` provides (its root and each `.gitmodules` member). A plain `make setup`
+restores the locked installs, and CI rejects the input. This replaces
+`FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT`, persisted supplier selection and the synthetic
+local/standalone/editable resolver, which are retired without a compatibility route.
 
 Native source declarations and locked consistency are the approved provisioning
 trust boundary. The stronger independently selected-supplier pre-install admission

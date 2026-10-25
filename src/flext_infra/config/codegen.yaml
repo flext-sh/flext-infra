@@ -761,7 +761,8 @@ Infra:
       # lookup appends local entries and resolves first match.
       verbs:
       - name: setup
-        description: Install the declared frozen locks, synchronize the physical environment and configure local integrations.
+        description: Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).
+        arguments: [ FLEXT ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen

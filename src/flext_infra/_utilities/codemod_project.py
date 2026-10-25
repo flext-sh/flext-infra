@@ -579,6 +579,20 @@ class FlextInfraUtilitiesCodemodProject(
             and path.suffix == rule.owned_path_suffix
         )
 
+    @staticmethod
+    def codemod_requires_admission(rule: m.Infra.CodemodRule) -> bool:
+        """Return whether a rule's findings depend on a project predicate.
+
+        A rule without ``metadata.context`` and without an owned path suffix
+        is fully native: every ast-grep match is a finding, so admission reads
+        no payload for it.
+
+        Returns:
+            Whether the rule's findings must pass project admission.
+
+        """
+        return bool(rule.context) or rule.owned_path_suffix is not None
+
     @classmethod
     def codemod_context_admits(
         cls,
