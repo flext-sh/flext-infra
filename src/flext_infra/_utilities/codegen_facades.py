@@ -2695,8 +2695,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         Model publications never compose the namespace. Mixed constants retain
         plain owners as both named publications and namespace providers, but never
-        inherit enum declarations. Native static or class methods admit utility
-        composition, not proof of statelessness or retirement of class publications.
+        inherit enum declarations. Direct native static or class methods admit
+        utility composition only without effective instance methods; they do not
+        prove statelessness or retirement of class publications.
         A native ``typing.ClassVar`` binding declares class metadata rather than
         an instance descriptor; resolve that identity at the annotation's owner.
 
@@ -2760,12 +2761,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if family is c.Infra.FacadeFamily.U:
                 methods = {
                     value.get_kind()
-                    for attribute in owner.get_attributes().values()
+                    for member in owner.get_scope().get_scopes()
                     if FlextInfraUtilitiesRopeRuntime.py_function(
-                        value := attribute.get_object()
+                        value := member.pyobject
                     )
                 }
                 if not methods or not methods <= {"classmethod", "staticmethod"}:
+                    continue
+                if any(
+                    FlextInfraUtilitiesRopeRuntime.py_function(
+                        value := attribute.get_object()
+                    )
+                    and value.get_kind() not in {"classmethod", "staticmethod"}
+                    for attribute in owner.get_attributes().values()
+                ):
                     continue
                 node = owner.get_ast()
                 if not isinstance(node, ast.ClassDef):
@@ -3235,9 +3244,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ) -> p.Infra.RopePyName:
         """Resolve the declaration-time binding through its public source origin.
 
-        Nested class headers use Rope's recorded expression environment, which
-        retains enclosing class locals. Module headers retain the captured
-        declaration-order inventory so later rebinding cannot replace a base.
+        Earlier enclosing-class declarations use Rope's recorded expression
+        environment. Module-origin names retain the captured declaration-order
+        inventory even inside nested headers, so later module rebinding cannot
+        replace a base.
 
         Returns:
             The original native binding, including its declared attribute chain.
@@ -3250,26 +3260,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         ((module_name, source),) = (
             (name, text) for name, (path, text) in sources.items() if path == facade[0]
         )
-        environment = (
-            pymodule
-            .get_source_binding_index()
-            .context_at(
-                FlextInfraUtilitiesRopeRuntime.source_offset(source, reference[0])
-            )
-            .environment
+        binding = FlextInfraUtilitiesCodegenFacades._enclosing_facade_base_binding(
+            pymodule, facade, reference
         )
-        if environment.get_kind() != c.Infra.RopeScopeKind.MODULE:
-            binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                environment, reference[1]
-            )
-            if binding is None:
-                message = (
-                    f"Unresolved facade base origin: {facade[0]}:"
-                    f"{ast.unparse(reference[0])}"
-                )
-                raise ValueError(message)
-            for attribute in reference[2]:
-                binding = binding.get_object().get_attribute(attribute)
+        if binding is not None:
             return binding
         definitions: dict[str, m.Infra.SourceClassDefinition] = {}
         visible = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
@@ -3317,6 +3311,57 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             message = f"Ambiguous facade declaration: {origin.target}"
             raise ValueError(message)
         for attribute in (*origin.attributes, *reference[2]):
+            binding = binding.get_object().get_attribute(attribute)
+        return binding
+
+    @staticmethod
+    def _enclosing_facade_base_binding(
+        pymodule: p.Infra.RopePyModule,
+        facade: t.Pair[Path, ast.ClassDef],
+        reference: t.Triple[ast.expr, ast.expr, t.SequenceOf[str]],
+    ) -> p.Infra.RopePyName | None:
+        """Prove the raw local binding precedes the header before resolving aliases.
+
+        Returns:
+            The original enclosing-class binding, or no enclosing-class owner.
+
+        Raises:
+            ValueError: If the local origin is unresolved or not proven to precede
+                the header in this source module.
+
+        """
+        offset = FlextInfraUtilitiesRopeRuntime.source_offset(
+            pymodule.source_code, reference[0]
+        )
+        scope = FlextInfraUtilitiesRopeRuntime.scope_at(
+            pymodule, offset, declaration_line=facade[1].lineno
+        )
+        if (
+            scope.get_kind() != c.Infra.RopeScopeKind.CLASS
+            or not isinstance(reference[1], ast.Name)
+            or reference[1].id not in scope.get_defined_names()
+        ):
+            return None
+        declaring, line = scope.get_defined_names()[
+            reference[1].id
+        ].get_definition_location()
+        if declaring is not pymodule or line is None or line >= facade[1].lineno:
+            message = (
+                f"Unproven preceding facade base: {facade[0]}:"
+                f"{ast.unparse(reference[0])}"
+            )
+            raise ValueError(message)
+        binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+            pymodule.get_source_binding_index().context_at(offset).environment,
+            reference[1],
+        )
+        if binding is None:
+            message = (
+                f"Unresolved facade base origin: {facade[0]}:"
+                f"{ast.unparse(reference[0])}"
+            )
+            raise ValueError(message)
+        for attribute in reference[2]:
             binding = binding.get_object().get_attribute(attribute)
         return binding
 

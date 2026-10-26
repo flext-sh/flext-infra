@@ -10,12 +10,12 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, p, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeTypes
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
-)
-from flext_infra._utilities.rope_runtime_module_queries import (
-    FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
 
 
@@ -122,11 +122,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     @classmethod
     def annotation_assignment_outer_type(
         cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
-    ) -> p.Infra.RopePyName | None:
-        """Resolve a source-assigned generic's outer type through native bindings.
+    ) -> t.Pair[p.Infra.RopePyName, bool] | None:
+        """Resolve a generic's native identity and whether it is the value.
 
         Returns:
-            The lexical type identity, or None without an assigned subscript.
+            The lexical outer identity and RHS provenance, or None when the
+            assignment has no resolved generic expression.
 
         """
         supplier = cls._source_import_binding(binding)
@@ -136,14 +137,23 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             or len(supplier.assignments) != 1
         ):
             return None
-        assigned = supplier.assignments[0].ast_node
+        assignment = supplier.assignments[0]
+        assigned = assignment.ast_node
+        annotation = assignment.type_hint
         module, _line = cls.definition_location(supplier)
-        if not isinstance(
-            assigned, ast.Subscript
-        ) or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
-        scope = cls.scope_at(module, cls.source_offset(module.source_code, assigned))
-        return cls.annotation_origin(project, assigned, scope)
+        if isinstance(annotation, ast.Subscript):
+            expression = annotation
+            from_value = False
+        elif isinstance(assigned, ast.Subscript):
+            expression = assigned
+            from_value = True
+        else:
+            return None
+        scope = cls.scope_at(module, cls.source_offset(module.source_code, expression))
+        origin = cls.annotation_origin(project, expression, scope)
+        return (origin, from_value) if origin is not None else None
 
     @classmethod
     def annotation_origin(

@@ -59,7 +59,8 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
             f"{path}: artifact trees cannot contain package or pytest wiring"
             for artifact_root in config.Infra.codegen.exclusions.scenario_data_roots
             for path in (project_root / artifact_root).rglob("*")
-            if path.name in {c.Infra.INIT_PY, "conftest.py"} and path.is_file()
+            if path.name in {c.Infra.INIT_PY, "conftest.py"}
+            and (path.is_file() or path.is_symlink())
         ]
         with u.Infra.open_project(project_root) as project:
             for resource in u.Infra.python_resources(project):

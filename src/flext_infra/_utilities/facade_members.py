@@ -52,18 +52,9 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        alias = runtime.annotation_alias_definition(value)
-        if (
-            alias is not None
-            and isinstance(alias[0].value, ast.BinOp)
-            and isinstance(alias[0].value.op, ast.BitOr)
-        ):
-            return c.Infra.FacadeMemberKind.TYPE
-        assigned = runtime.annotation_assignment_outer_type(source_project, value)
-        if assigned is not None and runtime.same_name(
-            runtime.qualified_name(source_project, "typing.Literal"), assigned
-        ):
-            return c.Infra.FacadeMemberKind.TYPE
+        annotation_kind = cls._annotation_kind(value, source_project=source_project)
+        if annotation_kind is not None:
+            return annotation_kind
         binding = FlextInfraUtilitiesFacadeMembers._typing_origin(
             value, source_project=source_project
         )
@@ -94,6 +85,35 @@ class FlextInfraUtilitiesFacadeMembers:
             and origin_type.get_name() in c.Infra.FACADE_MEMBER_TYPING_MODULES
             else kind.CONSTANT
         )
+
+    @staticmethod
+    def _annotation_kind(
+        value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+    ) -> c.Infra.FacadeMemberKind | None:
+        """Identify explicit annotation declarations before resolving their value.
+
+        Returns:
+            The declared annotation kind, or no applicable annotation declaration.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        alias = runtime.annotation_alias_definition(value)
+        if (
+            alias is not None
+            and isinstance(alias[0].value, ast.BinOp)
+            and isinstance(alias[0].value.op, ast.BitOr)
+        ):
+            return c.Infra.FacadeMemberKind.TYPE
+        assigned = runtime.annotation_assignment_outer_type(source_project, value)
+        if assigned is not None:
+            origin, from_value = assigned
+            if not from_value:
+                return c.Infra.FacadeMemberKind.CONSTANT
+            if runtime.same_name(
+                runtime.qualified_name(source_project, "typing.Literal"), origin
+            ):
+                return c.Infra.FacadeMemberKind.TYPE
+        return None
 
     @staticmethod
     def _class_kind(
@@ -473,9 +493,7 @@ class FlextInfraUtilitiesFacadeMembers:
         )
         return (
             c.Infra.FacadeMemberPlacement.MISSING
-            if declared_owner != letter
-            and not bound
-            and kind is not c.Infra.FacadeMemberKind.TYPE
+            if declared_owner != letter and not bound
             else None
         )
 

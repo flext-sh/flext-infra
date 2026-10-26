@@ -108,7 +108,6 @@ class FlextInfraConstantsSharedInfra:
     FOLLOW_SUPERPROJECT_BRANCH: ClassVar[str] = "."
     GITIGNORE: ClassVar[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: ClassVar[str] = ".pre-commit-config.yaml"
-    MARKDOWNLINT_CONFIG_FILENAME: ClassVar[str] = ".markdownlint.json"
     MARKDOWN_CONFIG_FILENAME: ClassVar[str] = ".rumdl.toml"
     MARKDOWNLINT_IGNORE_FILENAME: ClassVar[str] = ".markdownlintignore"
     "Generated markdown lint/format projections (SSOT: tooling.tools.markdown)."

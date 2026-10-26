@@ -133,14 +133,15 @@ class FlextInfraPytestRunnerBase(s[int]):
         scratch_base = (
             home / scratch.home_relative_directory / scratch.state_directory_name
         )
-        scratch_root = Path(f"{scratch_base}{root}") / scratch.namespace
+        scratch_root = (
+            Path(f"{scratch_base}{root}") / scratch.namespace / u.generate_id()
+        )
         if scratch_root.resolve().is_relative_to(
             context.runtime.runtime_root.resolve()
         ):
             msg = f"pytest scratch must be outside the runtime checkout: {scratch_root}"
             raise ValueError(msg)
-        scratch_root.mkdir(parents=True, exist_ok=True)
-        return cls(
+        runner = cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
             target=cache.target_directory,
@@ -153,7 +154,10 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
             scratch_root=scratch_root,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
+            profile_enabled=settings.Infra.profile,
         )
+        scratch_root.mkdir(parents=True, exist_ok=False)
+        return runner
 
     @classmethod
     def from_environment(

@@ -277,6 +277,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         )
         pytest_arguments = (
             *self._node_targets(),
+            *self._scratch_arguments(report_log),
             *testmon,
             "--collect-only",
             f"{c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION}={manifest_path}",
@@ -459,6 +460,20 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
         )
 
+    def _scratch_arguments(self, owner: Path) -> t.StrTuple:
+        """Elect a pytest-owned child of this operation's scratch directory.
+
+        Returns:
+            Native arguments isolated by their evidence owner, when provided.
+
+        """
+        if self.scratch_root is None:
+            return ()
+        return (
+            c.Infra.PYTEST_BASETEMP_ARGUMENT,
+            str(self.scratch_root / owner.stem),
+        )
+
     def _suite_argv(
         self,
         report_dir: Path,
@@ -489,6 +504,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 else ("-m", "pytest")
             ),
             *targets,
+            *self._scratch_arguments(report_dir),
             *pytest.progress_args,
             *pytest.report_args,
             *limits,

@@ -103,7 +103,17 @@ force a full replay or add a second execution pass. The generated
 Make boundary fixes the target to the typed configuration's complete test directory;
 caller variables cannot replace it with a file or narrower directory. The runner
 accounts for collection, execution and declared exclusions through its existing typed
-receipts. Never clear or bypass the database, or invoke the underlying runner directly.
+receipts. Before collection, the original receipt owner requires a current complete,
+unfiltered green check for the native runtime's governed workspace; passing only Ruff
+and Pyrefly does not admit tests. Public global runner operations retain this same
+guard. Every member consumes the workspace test operation's original clock rather
+than receiving a fresh budget. The runner validates its project paths before creating
+its exclusive scratch directory, and its context execution cycle removes that exact
+directory on success or failure through the existing file owner. A cleanup failure
+escapes when no primary failure exists; otherwise its traceback is attached to the
+unchanged primary exception. Caller-owned scratch and the persistent Testmon database
+remain outside that cleanup scope. Never clear or bypass the database, or invoke the
+underlying runner directly.
 
 The supported Testmon environment combines installed toolchain provenance with current
 `config/*.yaml` content. Declare additional template and resource directories in the

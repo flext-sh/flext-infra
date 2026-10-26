@@ -438,29 +438,28 @@ class FlextInfra(
 
     @staticmethod
     def workspace_tests(request: m.Infra.WorkspaceTestsRequest) -> p.Result[int]:
-        """Admit global source quality once, then run each native test engine.
+        """Require the original global green check before native test engines.
 
         Ordinary test failures retain their original first status while every
         selected repository is reached. Configuration failures escape unchanged.
+        Admission, discovery and member execution share this operation's clock.
 
         Returns:
             The first failing native test status, or zero after every success.
 
         """
+        started_at_monotonic = monotonic()
         context = FlextInfra.project_context(request.repository_root).unwrap()
         if context.identity is None or context.runtime is None:
             return r[int].fail(f"tests require a project context: {context.cwd}")
         root = context.identity.repo_root
         workspace_root = context.runtime.runtime_root
-        inputs = u.Infra.load_codegen_inputs(workspace_root).unwrap()
-        admitted = FlextInfraWorkspaceChecker(
-            repository_root=workspace_root,
-        ).execute_payload(
-            m.Infra.RunCommand(
+        admitted = u.Infra.git_require_green_check_receipt(
+            workspace_root,
+            u.Infra.load_codegen_inputs(workspace_root).unwrap().spec.make,
+            plan_global_targets=FlextInfraWorkspaceChecker(
                 repository_root=workspace_root,
-                scope=c.Infra.CodegenConformScope.ALL,
-                gates=inputs.spec.make.check_prerequisite_gates,
-            ),
+            ).plan_global_targets,
         )
         if admitted.failure:
             return r[int].from_failure(admitted)
@@ -493,14 +492,9 @@ class FlextInfra(
                 if selected == root
                 else FlextInfra.project_context(selected).unwrap()
             )
-            outcome = (
-                FlextInfraPytestRunner
-                .from_project_context(
-                    project,
-                    started_at_monotonic=monotonic(),
-                )
-                .execute()
-                .unwrap()
+            outcome = FlextInfraPytestRunner.execute_project_context(
+                project,
+                started_at_monotonic=started_at_monotonic,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")
             if not status and outcome:

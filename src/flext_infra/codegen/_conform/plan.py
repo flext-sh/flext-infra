@@ -111,7 +111,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         request: p.Infra.CodegenGenerateRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[m.Infra.CodegenPlan]:
-        """Plan one declared facade through its canonical family renderer.
+        """Admit a destination and plan it through its canonical family renderer.
 
         Args:
             request: The conform request containing the root and destination module.
@@ -127,10 +127,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if topology.failure:
             return result_type.from_failure(topology)
         workspace, _target, repository = topology.value
-        destination = self._facade_destination(root, request.module)
-        if destination.failure:
-            return result_type.from_failure(destination)
-        file = self._facade_file_plan(root, destination.value)
+        file = self._facade_file_plan(root, request.module)
         if file.failure:
             return result_type.from_failure(file)
         return result_type.ok(
@@ -145,53 +142,25 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
         )
 
-    @staticmethod
-    def _facade_destination(root: Path, module: str | None) -> p.Result[Path]:
-        """Validate a direct module destination in the existing package.
-
-        Returns:
-            The destination path or the original destination diagnostic.
-
-        """
-        layout = u.Infra.layout(root)
-        if layout is None or module is None:
-            return r[Path].fail(
-                "facades requires an existing package and destination",
-            )
-        package_name, separator, module_name = module.partition(".")
-        if (
-            not separator
-            or package_name != layout.package_dir.name
-            or not package_name.isidentifier()
-            or not module_name.isidentifier()
-        ):
-            return r[Path].fail(
-                "facades --module must name a direct package module",
-            )
-        return r[Path].ok(layout.package_dir / f"{module_name}{c.Infra.EXT_PYTHON}")
-
     def _facade_file_plan(
         self,
         root: Path,
-        destination: Path,
+        module: str | None,
     ) -> p.Result[m.Infra.CodegenFilePlan]:
-        """Render exactly one facade into its file plan.
+        """Render an admitted module inside the repository into its file plan.
 
         Returns:
             The facade file plan or its first planning failure.
 
         """
         result_type = r[m.Infra.CodegenFilePlan]
-        if not destination.resolve().is_relative_to(root):
-            return result_type.fail(f"facade input escapes repository: {destination}")
-        selected = u.Cli.atomic_read_binary_file_state(destination, required=True)
-        if selected.failure:
-            return result_type.from_failure(selected)
-        if selected.value.content is None or selected.value.mode is None:
-            return result_type.fail(f"facade input is absent: {destination}")
         with u.Infra.facade_source_project(
             root, declared_files=self.state.provider_plans or ()
         ) as (project, sources):
+            selected = self._facade_source_selection(root, module, project, sources)
+            if selected.failure:
+                return result_type.from_failure(selected)
+            destination, mode = selected.value
             family = self._facade_family(
                 u.Infra.facade_letter_names_at(project, destination)
             )
@@ -218,8 +187,49 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             root,
             destination.relative_to(root).as_posix(),
             rendered.value,
-            mode=selected.value.mode,
+            mode=mode,
         )
+
+    @staticmethod
+    def _facade_source_selection(
+        root: Path,
+        module: str | None,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Result[tuple[Path, int]]:
+        """Select the declared facade input and its original mode.
+
+        Returns:
+            The declared destination and mode, or its first failure.
+
+        """
+        result_type = r[tuple[Path, int]]
+        if module is None:
+            return result_type.fail(
+                "facades requires an existing package and destination"
+            )
+        destination = next(
+            (
+                path
+                for path in sources
+                if path.name not in {c.Infra.INIT_PY, c.Infra.INIT_PYI}
+                and u.Infra.module_name_for_file(
+                    path, project_root=root, source_project=project
+                )
+                == module
+            ),
+            None,
+        )
+        if destination is None:
+            return result_type.fail(f"facade input is absent: {module}")
+        if not destination.resolve().is_relative_to(root):
+            return result_type.fail(f"facade input escapes repository: {destination}")
+        selected = u.Cli.atomic_read_binary_file_state(destination, required=True)
+        if selected.failure:
+            return result_type.from_failure(selected)
+        if selected.value.content is None or selected.value.mode is None:
+            return result_type.fail(f"facade input is absent: {destination}")
+        return result_type.ok((destination, selected.value.mode))
 
     @staticmethod
     def _facade_family(

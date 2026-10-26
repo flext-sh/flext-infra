@@ -49,38 +49,31 @@ class TestsFlextInfraGovernanceAuthority:
             ),
         )
 
-    def test_markdownlint_does_not_suppress_strict_rules(self) -> None:
-        """Test markdownlint does not suppress strict rules."""
-        markdown_config = u.Tests.json_payload(
-            (self.ROOT / ".markdownlint.json").read_text(encoding="utf-8"),
+    def test_markdown_does_not_suppress_strict_rules(self) -> None:
+        """The native projection keeps the declared strict rules active."""
+        markdown_config = u.Tests.toml_payload(
+            (self.ROOT / c.Infra.MARKDOWN_CONFIG_FILENAME).read_text(encoding="utf-8"),
         )
-        tm.ok(markdown_config.get("MD012") is not False)
-        tm.ok(markdown_config.get("MD050") is not False)
-        tm.ok(markdown_config.get("MD064") is not False)
-        tm.ok(markdown_config.get("MD075") is not False)
+        disabled = u.Tests.toml_strings(
+            u.Tests.toml_mapping(markdown_config["global"])["disable"]
+        )
+        for rule in ("MD012", "MD050", "MD064", "MD075"):
+            tm.that(rule in disabled, eq=False)
         line_length = u.Tests.toml_mapping(markdown_config["MD013"])["line_length"]
         tm.that(line_length, eq=u.Infra.docs_markdown_line_length(config.Infra.tooling))
 
-    def test_markdown_projections_follow_the_same_typed_policy(self) -> None:
-        """Generated JSON stays common while native tables preserve every override."""
+    def test_markdown_projection_follows_the_typed_policy(self) -> None:
+        """The single native projection preserves common rules and overrides."""
         policy = u.Infra.load_tooling_inputs(self.ROOT).unwrap().document.tools.markdown
         common = u.Infra.configuration_pairs(policy.rules)
         overrides = u.Infra.configuration_pairs(policy.native_rules)
-        compatible = u.Tests.json_payload(
-            (self.ROOT / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).read_text(
-                encoding="utf-8"
-            )
-        )
         native = u.Tests.toml_payload(
             (self.ROOT / c.Infra.MARKDOWN_CONFIG_FILENAME).read_text(encoding="utf-8")
         )
-        tm.that(compatible, eq=common)
         global_options = u.Tests.toml_mapping(native["global"])
         disabled = u.Tests.toml_strings(global_options["disable"])
         codegen = u.Infra.load_codegen_inputs(self.ROOT).unwrap().spec
         tm.that(global_options["exclude"], eq=list(codegen.markdown_exclude_globs))
-        for name in overrides.keys() - common.keys():
-            tm.that(name not in compatible, eq=True)
         elected = {**common, **overrides}
         for name, value in elected.items():
             if name == "default":

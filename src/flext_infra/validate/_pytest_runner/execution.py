@@ -10,6 +10,7 @@ import os
 import shlex
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -97,6 +98,13 @@ class FlextInfraPytestRunnerExecution(
             )
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
+        if self.scratch_root is not None:
+            overrides.update(
+                dict.fromkeys(
+                    c.Infra.PYTEST_TEMP_ENVIRONMENT_VARIABLES,
+                    str(self.scratch_root),
+                )
+            )
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 config.Infra.tooling.tools.pytest.profile_process_directory
@@ -734,13 +742,61 @@ class FlextInfraPytestRunnerExecution(
 
     @override
     def execute(self) -> p.Result[int]:
-        """Execute the incremental testmon operation.
+        """Admit the global check before applicable Testmon impact selection.
+
+        Direct public callers retain the same original receipt guard as the
+        workspace composition. Slow items remain eligible without replaying
+        unchanged cases.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         """
-        return self._execute_testmon(complete=False)
+        return self.execute_global()
+
+    @classmethod
+    def execute_project_context(
+        cls,
+        context: m.Infra.WorkspaceProjectContext,
+        *,
+        started_at_monotonic: float,
+    ) -> int:
+        """Execute with the exclusive scratch created by the context factory.
+
+        Caller-provided scratch and persistent Testmon storage are not owned
+        by this lifecycle. A cleanup failure retains the primary exception.
+
+        Returns:
+            The unchanged native status after releasing the owned scratch.
+
+        Raises:
+            ValueError: If the context factory returned no owned scratch.
+
+        """
+        runner = cls.from_project_context(
+            context,
+            started_at_monotonic=started_at_monotonic,
+        )
+        scratch = runner.scratch_root
+        if scratch is None:
+            msg = "project context runner requires its exclusive scratch directory"
+            raise ValueError(msg)
+        try:
+            return runner.execute().unwrap()
+        finally:
+            primary = sys.exception()
+            try:
+                u.Cli.files_remove_directory(scratch).unwrap()
+            except BaseException as cleanup_failure:
+                if primary is None or (
+                    isinstance(primary, SystemExit)
+                    and (primary.code is None or primary.code == 0)
+                ):
+                    raise
+                primary.add_note(
+                    "pytest scratch cleanup failed:\n"
+                    + "".join(traceback.format_exception(cleanup_failure, chain=False))
+                )
 
     def execute_full(self) -> p.Result[int]:
         """Run the complete suite once, only on a green same-scope check.
@@ -773,11 +829,12 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
+        root = u.Infra.runtime_owner_root(self.repository_root).unwrap()
         approved = u.Infra.git_require_green_check_receipt(
-            self.repository_root,
-            u.Infra.load_codegen_inputs(self.repository_root).unwrap().spec.make,
+            root,
+            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
             plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
-                repository_root=self.repository_root,
+                repository_root=root,
             ).plan_global_targets(gates),
         )
         if approved.failure:

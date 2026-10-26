@@ -818,26 +818,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
             if name not in module.get_attributes():
-                aliases = self._provider_lazy_bindings(module)
-                provider = aliases.get(name)
-                if provider is not None:
-                    return self._resolve(
-                        m.Infra.SourceClassReference(
-                            target=provider.target,
-                            attributes=(*provider.attributes, *remaining),
-                            qualified_base=target,
-                        ),
-                        visiting | {target},
-                        depth + 1,
-                    )
-                reexporter = self._star_reexporter(module, name)
-                if reexporter is not None:
-                    return self._provider_reference(
-                        reexporter,
-                        attributes,
-                        visiting | {target},
-                        depth + 1,
-                    )
+                reexported = self._missing_provider_reference(
+                    module, attributes, visiting, depth
+                )
+                if reexported is not None:
+                    return reexported
             try:
                 binding = module.get_attribute(name)
             except (
@@ -850,7 +835,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 raise
             if isinstance(binding, p.Infra.RopeImportedName):
-                override = self._captured_import_override(module, binding, attributes)
+                override = self._source_import_override(module, binding, attributes)
                 if override is not None:
                     return self._resolve(override, visiting | {target}, depth + 1)
                 return self._provider_imported_name_reference(
@@ -872,16 +857,49 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 binding, tuple(remaining), visiting, depth
             )
 
-        def _captured_import_override(
+        def _missing_provider_reference(
+            self,
+            module: t.Infra.RopeSemanticModule,
+            attributes: t.StrTuple,
+            visiting: frozenset[str],
+            depth: int,
+        ) -> str | None:
+            """Resolve a lazy or star reexport before native attribute lookup.
+
+            Returns:
+                The declared class identity, or None for a native attribute.
+
+            """
+            name, *remaining = attributes
+            target = f"{module.get_name()}.{name}"
+            provider = self._provider_lazy_bindings(module).get(name)
+            if provider is not None:
+                return self._resolve(
+                    m.Infra.SourceClassReference(
+                        target=provider.target,
+                        attributes=(*provider.attributes, *remaining),
+                        qualified_base=target,
+                    ),
+                    visiting | {target},
+                    depth + 1,
+                )
+            reexporter = self._star_reexporter(module, name)
+            if reexporter is not None:
+                return self._provider_reference(
+                    reexporter, attributes, visiting | {target}, depth + 1
+                )
+            return None
+
+        def _source_import_override(
             self,
             module: t.Infra.RopeSemanticModule,
             binding: p.Infra.RopeImportedName,
             attributes: t.StrTuple,
         ) -> m.Infra.SourceClassReference | None:
-            """Prefer captured owned-source bindings over stale native imports.
+            """Resolve captured project bindings before forwarding native imports.
 
             Returns:
-                The owned source override; external providers keep native imports.
+                The final source override, when it differs from native provenance.
 
             Raises:
                 ValueError: If the source binding has no declared provider.
@@ -895,7 +913,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return None
             resource = declaring.get_resource()
             if resource is None:
-                return None
+                message = f"source-backed provider has no resource: {module_name}"
+                raise ValueError(message)
             name, *remaining = attributes
             captured = self._sources[module_name]
             bindings = self._inventory(

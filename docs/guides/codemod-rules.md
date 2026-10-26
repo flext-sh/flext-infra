@@ -290,13 +290,19 @@ shells. Generated headers do not exempt candidates.
 
 The single-nested-class family (`ban-loose-module-object`, `require-module-class`,
 `declare-single-class-export`, `ban-pytest-hook-outside-conftest`) binds every
-Python file of the repository: src, tests, scripts, examples and docs code. A
+admitted Python source: src, tests, scripts, examples and docs code. A
 module holds one top-level class, its canonical published bindings, `__all__` and
 imports. The exception data is closed and each entry has a fixture: an
 executable module's guarded `main()` entry point and generator-emitted dunders
 (generator law p.11), plus the tests-tier delta of ADR-028 p.6 — pytest
-fixtures, `pytest_*` hooks and `pytest_plugins` at module level, admitted only in
-`conftest.py` and `tests/fixtures/**`. Ordinary test modules are not exempt.
+fixtures, `pytest_*` hooks and `pytest_plugins` at module level in `conftest.py`.
+Shared executable declarations belong to `c/t/p/m/u.Tests.*` and test modules
+remain governed. The complete `tests/fixtures/` tree is artifact data, excluded
+from source admission, lint, generation and refactoring. Python filenames remain
+valid engine inputs there; their bytes are never interpreted as suite support.
+The test-import DAG rejects package/pytest wiring and static imports from those
+roots. `ban-artifact-execution` rejects literal executable loader and pytest plugin
+references using the native fact derived from `exclusions.scenario_data_roots`.
 Test-suite modules follow the same publication law as `src`: one `Tests<Stem>`
 class plus its `__all__`, enforced by `declare-single-class-export` with no path
 exemption. Any further exception needs the operator.

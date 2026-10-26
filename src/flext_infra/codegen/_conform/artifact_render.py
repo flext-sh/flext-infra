@@ -724,7 +724,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME:
             spec = m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
         elif destination in {
-            c.Infra.MARKDOWNLINT_CONFIG_FILENAME,
             c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
             c.Infra.MARKDOWN_CONFIG_FILENAME,
         }:
