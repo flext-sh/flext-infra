@@ -297,20 +297,24 @@ class FlextInfraModGateEngine:
         temp_root: Path,
         owner_rules: t.SequenceOf[Path],
     ) -> None:
-        """Stage every rule document as the scan stage does, one per file.
+        """Stage every rule document in one native multi-document file.
 
-        Multi-document rule files become single-document copies, and every
-        binding-sensitive utility a document references (catalog or fixture
-        value) is embedded as its local, so a fixture binds metavariables
-        exactly like the native scan.
+        Every binding-sensitive utility a document references (catalog or
+        fixture value) is embedded as its local, so a fixture binds
+        metavariables exactly like the native scan. Global utility files
+        retain their native single-document contract.
 
         Raises:
             RuntimeError: If an ast-grep rule document has no id.
+            ValueError: If the fixture owner declares no rule directory.
 
         """
         directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
             config_root,
         )
+        if not directories.rule_dirs:
+            msg = f"fixture owner declares no native rule directory: {config_root}"
+            raise ValueError(msg)
         source_rules = set(owner_rules)
         for directory in directories.rule_dirs:
             source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
@@ -323,6 +327,7 @@ class FlextInfraModGateEngine:
             temp_root / c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME,
         ))
         sensitive = u.Infra.codemod_binding_sensitive(bodies)
+        rendered: list[t.JsonMapping] = []
         for rule in sorted(source_rules):
             documents = u.Cli.yaml_parse_documents(
                 u.Cli.files_read_text(rule).unwrap()
@@ -334,10 +339,16 @@ class FlextInfraModGateEngine:
                 if not isinstance(rule_id, str) or not rule_id:
                     msg = f"ast-grep rule document missing required id: {rule}"
                     raise RuntimeError(msg)
-                u.Infra.codemod_write_native_documents(
-                    temp_rule.with_name(f"{rule_id}{c.Infra.CODEMOD_RULE_SUFFIX}"),
-                    (u.Infra.codemod_bound_document(document, bodies, sensitive),),
+                rendered.append(
+                    u.Infra.codemod_bound_document(document, bodies, sensitive)
                 )
+        if rendered:
+            u.Infra.codemod_write_native_documents(
+                temp_root
+                / directories.rule_dirs[0].relative_to(config_root)
+                / c.Infra.CODEMOD_NATIVE_RULE_BUNDLE_FILENAME,
+                tuple(rendered),
+            )
 
     @staticmethod
     def _split_utility_files(
@@ -1099,7 +1110,7 @@ class FlextInfraModGateEngine:
         """Enumerate the native selection through its canonical Python file owner.
 
         Args:
-            root: The root directory of the project being scanned.
+            root: The root directory of the selected workspace scan.
             targets: The sequence of target paths to enumerate.
 
         Returns:
@@ -1170,14 +1181,15 @@ class FlextInfraModGateEngine:
             plan: The codemod rule plan containing rules and rulesets.
             targets: The sequence of target paths to scan.
             context: The source context for the scan.
-            artifact_root: Native scan artifact owner, defaulting to the project root.
+            artifact_root: Base owner for project-scoped native scan artifacts.
 
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
 
         """
         rules_by_id = {rule.id: rule for rule in plan.rules}
-        artifact_root = root if artifact_root is None else artifact_root
+        root = root.resolve()
+        artifact_root = root if artifact_root is None else artifact_root.resolve()
         native_targets = tuple(
             target for target in targets if Path(target).suffix != ".pyi"
         )
@@ -1190,6 +1202,12 @@ class FlextInfraModGateEngine:
             for project, project_targets in u.Infra.codemod_project_targets(
                 plan, native_targets
             ):
+                resolved_project = project.resolve()
+                if not resolved_project.is_relative_to(root):
+                    return r[m.Infra.ModScanReport].fail(
+                        f"native scan project escapes workspace root: "
+                        f"{resolved_project}"
+                    )
                 stage = Path(directory) / str(len(artifacts))
                 ruleset = u.Infra.codemod_stage_scan_ruleset(
                     u.Infra.codemod_project_plan(plan, project), stage
@@ -1204,7 +1222,7 @@ class FlextInfraModGateEngine:
                     ruleset,
                     rules_by_id,
                     (project_targets, context),
-                    artifact_root=artifact_root,
+                    artifact_root=artifact_root / resolved_project.relative_to(root),
                 )
                 if projected.failure:
                     return r[m.Infra.ModScanReport].from_failure(projected)

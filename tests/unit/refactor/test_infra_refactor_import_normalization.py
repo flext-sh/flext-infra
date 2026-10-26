@@ -459,7 +459,7 @@ class TestsFlextInfraRefactorImportNormalization(
         module = family / "provider_boundary.py"
         source = (
             "from flext_cli import m, u\n\n"
-            "ADAPTER: m.TypeAdapter[str] = u.type_adapter(str)\n"
+            "ADAPTER: u.type_adapter[str] = u.type_adapter(str)\n"
         )
         normalized = refactor.FlextInfraImportNormalization.normalize_source(
             project_root=project,

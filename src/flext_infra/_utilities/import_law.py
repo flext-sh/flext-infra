@@ -752,6 +752,26 @@ class FlextInfraUtilitiesImportLaw:
         return True
 
     @classmethod
+    def snapshot_import_namespace(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project_root: Path,
+        file_path: Path,
+    ) -> t.Pair[Path, str] | None:
+        """Reuse the import-law election within one captured source epoch.
+
+        Returns:
+            The namespace location for this consumer and source, or ``None``.
+
+        """
+        key = (project_root, file_path)
+        if key not in snapshot.import_namespaces:
+            snapshot.import_namespaces[key] = cls.import_namespace(
+                project_root, file_path
+            )
+        return snapshot.import_namespaces[key]
+
+    @classmethod
     def import_namespace(
         cls,
         project_root: Path,

@@ -1,64 +1,64 @@
 id: rewire-type-adapter-construction
 valid:
-  - |
-    from flext_core import m, u
+- |
+  from flext_core import m, u
 
-    ADAPTER: m.TypeAdapter[int] = u.type_adapter(int)
-  - |
-    from flext_core import m
+  ADAPTER: m.TypeAdapter[int] = u.type_adapter(int)
+- |
+  from flext_core import m
 
-    ADAPTER = m.TypeAdapter(int)
-  - |
-    """Docstring naming m.TypeAdapter(int) as prose."""
+  ADAPTER = m.TypeAdapter(int)
+- |
+  """Docstring naming m.TypeAdapter(int) as prose."""
 
-    from flext_core import u
+  from flext_core import u
 
-    TABLE = (("m.TypeAdapter(int)", "u.type_adapter(int)"),)
-  - |
-    from flext_core import u
-    from project.adapters import TypeAdapter
+  TABLE = (("m.TypeAdapter(int)", "u.type_adapter(int)"),)
+- |
+  from flext_core import u
+  from project.adapters import TypeAdapter
 
-    ADAPTER = TypeAdapter(int)
-  - |
-    from pydantic import TypeAdapter as PydanticAdapter
+  ADAPTER = TypeAdapter(int)
+- |
+  from pydantic import TypeAdapter as PydanticAdapter
 
-    from flext_core import u
+  from flext_core import u
 
-    ADAPTER = PydanticAdapter(int)
-  - |
-    from ai_hub import m, u as utilities
+  ADAPTER = PydanticAdapter(int)
+- |
+  from ai_hub import m, u as utilities
 
-    ADAPTER = m.TypeAdapter(int)
-  - |
-    from project.adapters import u
-    from flext_core import m
+  ADAPTER = m.TypeAdapter(int)
+- |
+  from project.adapters import u
+  from flext_core import m
 
-    ADAPTER = m.TypeAdapter(int)
+  ADAPTER = m.TypeAdapter(int)
 invalid:
-  - |
-    from ai_hub import m, u
+- |
+  from ai_hub import m, u
 
-    ADAPTER = m.TypeAdapter(int)
-  - |
-    from tests import m, u
+  ADAPTER = m.TypeAdapter(int)
+- |
+  from tests import m, u
 
-    ADAPTER = m.TypeAdapter(int)
-  - |
-    from . import m, u
+  ADAPTER = m.TypeAdapter(int)
+- |
+  from . import m, u
 
-    ADAPTER = m.TypeAdapter(int)
-  - |
-    from flext_core import m, u
+  ADAPTER = m.TypeAdapter(int)
+- |
+  from flext_core import m, u
 
-    ADAPTER = m.TypeAdapter(int)
-  - |
-    from flext_cli import t
-    from flext_core import u
+  ADAPTER = m.TypeAdapter(int)
+- |
+  from flext_cli import t
+  from flext_core import u
 
-    ADAPTER = t.TypeAdapter(t.StrMapping)
-  - |
-    from pydantic import TypeAdapter
+  ADAPTER = t.TypeAdapter(t.StrMapping)
+- |
+  from pydantic import TypeAdapter
 
-    from flext_core import u
+  from flext_core import u
 
-    ADAPTER = TypeAdapter(int)
+  ADAPTER = TypeAdapter(int)

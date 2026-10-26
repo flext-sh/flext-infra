@@ -346,7 +346,11 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         located = {
             path: found
             for path in sources
-            if (found := FlextInfraUtilitiesImportLaw.import_namespace(root, path))
+            if (
+                found := FlextInfraUtilitiesImportLaw.snapshot_import_namespace(
+                    snapshot, root, path
+                )
+            )
             is not None
         }
         ranks = {
@@ -471,7 +475,10 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         )
         if not roots or not declared:
             return frozenset()
-        with FlextInfraUtilitiesRopeCore.open_project(root) as project:
+        with (
+            FlextInfraUtilitiesRopeCore.open_project(root) as project,
+            project.frozen_layout(),
+        ):
             reached = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_reaches(
                 project,
                 modules,

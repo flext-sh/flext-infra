@@ -22,6 +22,29 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     """A source-scan-ignored tree is not a missing production module."""
 
     @staticmethod
+    def test_managed_child_has_its_own_scan_targets(tmp_path: Path) -> None:
+        """A declared child is governed but never scanned under its parent's rules."""
+        root, member, package = u.Tests.namespace_workspace(
+            tmp_path,
+            project_name="managed-child",
+            package_name="managed_child",
+        )
+        parent_source = root / "parent.py"
+        child_source = package / "child.py"
+        for source in (parent_source, child_source):
+            source.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
+        u.Tests.initialize_git_repo(member)
+
+        governed = u.Infra.governed_project_roots(root)
+        parent_targets = u.Infra.ast_grep_scan_targets(root)
+        child_targets = u.Infra.ast_grep_scan_targets(member)
+
+        tm.that(governed, has=member.resolve())
+        tm.that(parent_targets, has=parent_source.relative_to(root).as_posix())
+        tm.that(parent_targets, lacks=child_source.relative_to(root).as_posix())
+        tm.that(child_targets, has=child_source.relative_to(member).as_posix())
+
+    @staticmethod
     def test_import_graph_uses_governed_workspace_sources(tmp_path: Path) -> None:
         """Keep live roots and member cycles, never historical or foreign trees."""
         root, member, package = u.Tests.namespace_workspace(

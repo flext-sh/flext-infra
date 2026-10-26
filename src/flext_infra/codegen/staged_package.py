@@ -976,7 +976,7 @@ class FlextInfraStagedPackage:
                 states[path] = state
             content = state.content
             rewritten = updates is not None and path in updates
-            if rewritten:
+            if updates is not None and path in updates:
                 desired = updates[path]
                 content = (
                     None if desired is None else desired.encode(c.DEFAULT_ENCODING)

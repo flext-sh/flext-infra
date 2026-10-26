@@ -302,11 +302,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         refactor_config: m.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
-        """Return governed Python sources and owned stub-policy paths.
+        """Return one repository's Python sources and owned stub-policy paths.
 
         Configured roots cannot hide active Python sources. Enumerating files
         instead of passing ``.`` keeps foreign repositories, hidden histories,
-        and artifact outputs outside the rewrite inventory. Generated or retired
+        and artifact outputs outside the rewrite inventory. The workspace
+        coordinator visits declared members separately. Generated or retired
         owned typing paths remain detection inputs, never rewrite candidates.
 
         Returns:
@@ -323,11 +324,8 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         eligible = {
             path.relative_to(resolved_root).as_posix()
-            for project in cls.governed_project_roots(
-                resolved_root, source_project=source_project
-            )
             for path in cls.discover_python_files(
-                project,
+                resolved_root,
                 workspace_excluded_top_dirs=frozenset(),
                 source_project=source_project,
                 owned_path_admission=True,

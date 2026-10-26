@@ -72,15 +72,13 @@ class TestsFlextInfraSelfFacadeCutover:
             },
             eager_dunders={},
         )
-        with u.Infra.facade_source_project(root, project_roots=(root,)) as (
-            project,
-            _,
-        ):
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            project = snapshot.engine
             sources[context / c.Infra.INIT_PY] = u.Infra.lazy_init_render(
                 plan,
                 model=u.Infra.lazy_init_run(
                     project,
-                    u.Infra.index_rope_workspace(project, root),
+                    u.Infra.index_rope_workspace(snapshot, root),
                     root=root,
                     scoped=True,
                 ).model,

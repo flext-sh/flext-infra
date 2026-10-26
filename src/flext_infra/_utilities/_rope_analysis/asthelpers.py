@@ -355,6 +355,18 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         tree = pymodule.get_ast()
         if not isinstance(tree, ast.Module):
             return ()
+        return FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_module(tree)
+
+    @staticmethod
+    def class_info_from_module(
+        tree: t.Infra.AstModule,
+    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+        """Read top-level class facts from an existing native module tree.
+
+        Returns:
+            The same class facts as the source-text reader, without another parse.
+
+        """
         return tuple(
             class_info
             for node in tree.body

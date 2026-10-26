@@ -31,15 +31,14 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesCodemodNativeUtilities:
@@ -405,19 +404,20 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     def codemod_workspace_snapshot(
         root: Path,
     ) -> Generator[p.Infra.WorkspaceSnapshot]:
-        """Open the snapshot of one source epoch over a root's governed members.
+        """Open one repository-scoped snapshot for this invocation.
 
-        Composition roots open it once per source epoch and inject it into
-        every plan, render and scan of that epoch.
+        The workspace organizer owns the repository loop. Each invocation
+        therefore captures only its selected repository and injects that
+        snapshot into every plan, render and scan of the source epoch.
 
         Yields:
-            The snapshot of the root and its governed projects.
+            The snapshot of this repository only.
 
         """
         resolved = root.resolve()
         with FlextInfraUtilitiesWorkspaceSnapshot.workspace_snapshot(
             resolved,
-            FlextInfraUtilitiesProjectDiscovery.governed_project_roots(resolved),
+            (resolved,),
         ) as snapshot:
             yield snapshot
 
@@ -430,24 +430,23 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Build the sole executable rule plan for check and mutation.
 
-        Each snapshot member contributes its catalogs and, when its producers
-        and renderers yield any rule, its materialized generated provider, so
-        scan, check and the native cascade consume rendered rules through the
-        same plan as authored ones. The caller's composition root injects the
-        snapshot of the current source epoch.
+        The caller injects its single repository snapshot. The public workspace
+        composition invokes each repository separately, so generated identities
+        and scopes never merge with a sibling's project plan.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodemodRulePlan]``.
 
         """
         spec = config.Infra.codegen.ast_grep
-        generated: dict[Path, t.Pair[str, Path]] = {}
-        for project in snapshot.members:
-            provider = cls.codemod_generated_provider(snapshot, project, spec)
-            if provider is not None:
-                generated[project] = provider
+        root = snapshot.workspace_root.resolve()
+        if snapshot.members != (root,):
+            return r[m.Infra.CodemodRulePlan].fail(
+                "codemod rule planning requires one repository-owned snapshot"
+            )
+        provider = cls.codemod_generated_provider(snapshot, root, spec)
         return FlextInfraUtilitiesCodemodRules.codemod_compose_rule_plan(
-            snapshot.workspace_root, generated, rule_ids=rule_ids
+            root, {root: provider}, rule_ids=rule_ids
         )
 
     @staticmethod
@@ -544,6 +543,8 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         reports: identical renderings share one immutable directory, so a
         native ``ast-grep scan -c <root>/sgconfig.yml`` reproduces exactly the
         rules the plan elected, and concurrent plans never rewrite each other.
+        Rule identities remain owned by their renderers. Repository isolation
+        belongs to the plan/provider composition, never an extra ID namespace.
 
         Returns:
             The generated provider name and its sgconfig path, or ``None``
@@ -577,12 +578,14 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
                 for identity, document in rendered.rules.items()
             },
         }
+        rules = FlextInfraUtilitiesCodemodRules
+        texts = {
+            path: rules.codemod_native_documents_text((document,))
+            for path, document in files.items()
+        }
         digest = u.Cli.sha256_content(
             u.Cli.json_dumps(
-                [
-                    [str(path), dict(document)]
-                    for path, document in sorted(files.items())
-                ],
+                [[str(path), content] for path, content in sorted(texts.items())],
                 sort_keys=True,
             ).unwrap()
         )
@@ -601,11 +604,9 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
                     c.Infra.CODEMOD_UTIL_DIRS_KEY,
                 ):
                     u.Cli.ensure_dir(staging / declared).unwrap()
-                for relative, document in files.items():
+                for relative, content in texts.items():
                     u.Cli.ensure_dir((staging / relative).parent).unwrap()
-                    FlextInfraUtilitiesCodemodRules.codemod_write_native_documents(
-                        staging / relative, (document,)
-                    )
+                    u.Cli.atomic_write_text_file(staging / relative, content).unwrap()
             except BaseException:
                 # Rollback removes only this invocation's own staging tree;
                 # the original failure is re-raised unchanged.
@@ -618,10 +619,52 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
                 shutil.rmtree(staging)
                 if not final.is_dir():
                     raise
+        cls._verify_generated_provider(final, texts)
         return (
             c.Infra.CODEMOD_GENERATED_PROVIDER,
             final / c.Infra.CODEMOD_CONFIG_FILENAME,
         )
+
+    @staticmethod
+    def _verify_generated_provider(
+        root: Path,
+        texts: t.MappingKV[Path, str],
+    ) -> None:
+        """Authenticate an immutable provider's complete inventory and contents.
+
+        Raises:
+            ValueError: If materialized entries differ from their content identity.
+
+        """
+        expected = {
+            **{
+                Path(declared): ("directory", None)
+                for declared in (
+                    c.Infra.CODEMOD_RULE_DIRS_KEY,
+                    c.Infra.CODEMOD_UTIL_DIRS_KEY,
+                    *{
+                        parent.as_posix()
+                        for relative in texts
+                        for parent in relative.parents
+                        if parent != Path()
+                    },
+                )
+            },
+            **{
+                relative: ("file", u.Cli.sha256_content(content))
+                for relative, content in texts.items()
+            },
+        }
+        manifest = u.Cli.atomic_inventory_physical_tree(root).unwrap()
+        observed = {
+            entry.path.relative_to(root): (entry.kind, entry.sha256)
+            for entry in manifest.entries
+        }
+        if observed != expected:
+            msg = (
+                f"generated codemod provider differs from its content identity: {root}"
+            )
+            raise ValueError(msg)
 
     @classmethod
     def codemod_native_render(

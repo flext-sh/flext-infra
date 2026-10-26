@@ -15,17 +15,17 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-045]
+  enforce: [ ENFORCE-045 ]
   owner: flext-core
   scope:
-    not-in: [layer-zero]
+    not-in: [ layer-zero ]
 rule:
   all:
   - pattern: $MODULE
   - matches: library-import-name
   - regex: "^(?:pydantic|pydantic_core)(?:\\.|$)"
 message: >-
-  pydantic is owned by flext-core: use m.BaseModel, m.ConfigDict, m.TypeAdapter, m.Field and the other m/t/u facade members, and close a missing member at flext-core.
+  pydantic is owned by flext-core: use m.BaseModel, m.ConfigDict, u.type_adapter, m.Field and the other m/t/u facade members, and close a missing member at flext-core.
 ---
 id: ban-direct-structlog-import
 language: python
@@ -33,9 +33,9 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-094]
+  enforce: [ ENFORCE-094 ]
   scope:
-    not-in: ["implementation-owner-flext_core u.fetch_logger"]
+    not-in: [ "implementation-owner-flext_core u.fetch_logger" ]
 rule:
   all:
   - pattern: $MODULE
@@ -50,10 +50,10 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-core
   scope:
-    not-in: [layer-zero]
+    not-in: [ layer-zero ]
 rule:
   all:
   - pattern: $MODULE
@@ -68,10 +68,10 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-042]
+  enforce: [ ENFORCE-042 ]
   owner: flext-core
   scope:
-    not-in: [layer-zero]
+    not-in: [ layer-zero ]
 rule:
   all:
   - pattern: $MODULE
@@ -86,7 +86,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-cli
 rule:
   all:
@@ -101,15 +101,14 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-infra
 rule:
   all:
   - matches: library-import-name
   - regex: "^(?:rope|libcst|griffe)(?:\\.|$)"
 message: >-
-  rope, libcst and griffe are owned by flext-infra: use its refactor, codemod
-  and codegen facades.
+  rope, libcst and griffe are owned by flext-infra: use its refactor, codemod and codegen facades.
 ---
 id: ban-direct-ldap3-import
 language: python
@@ -117,7 +116,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-096]
+  enforce: [ ENFORCE-096 ]
   owner: flext-ldap
 rule:
   all:
@@ -132,7 +131,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-meltano
 rule:
   all:
@@ -147,7 +146,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-095]
+  enforce: [ ENFORCE-095 ]
   owner: flext-db-oracle
 rule:
   all:
@@ -162,7 +161,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-db-oracle
 rule:
   all:
@@ -177,7 +176,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-grpc
 rule:
   all:
@@ -192,7 +191,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-web
 rule:
   all:
@@ -207,7 +206,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ENFORCE-070]
+  enforce: [ ENFORCE-070 ]
   owner: flext-api
 rule:
   all:

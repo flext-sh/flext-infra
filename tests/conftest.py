@@ -38,7 +38,7 @@ _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Isolate the suite's FLEXT caches and snapshot the tracked codegen config.
 
-    Gates resolve their persistent caches (codemod rule catalogs, Mypy) below
+    Gates resolve their native persistent caches (including Mypy) below
     ``XDG_CACHE_HOME``; a unit test writes only inside session-owned storage,
     so the session scopes that home to one temporary directory per worker and
     restores the environment on exit. The native UV source cache selected
@@ -56,7 +56,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     ``pytest_sessionfinish`` prove the real file stays untouched by the whole
     suite, current and future.
     """
-    spec = config.Infra.codegen.make.codemod_rules_cache
+    spec = config.Infra.codegen.make.mypy_cache
     uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
     isolation = ExitStack()
     cache_home = isolation.enter_context(

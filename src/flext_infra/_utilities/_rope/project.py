@@ -21,6 +21,7 @@ from rope.base.resources import File, Folder
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities._rope import FlextInfraRopeNativeProject
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraRopeProject(FlextInfraRopeNativeProject):
@@ -446,7 +447,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         """Initialize the native core and its overlaid resource observations."""
         super()._init_other_parts()
         if isinstance(self.fscommands, self.OverlayFiles):
-            core = cast("p.Infra.RopeProject", self).get_pycore()
+            core = FlextInfraUtilitiesRopeRuntime.project_core(self)
             core.observer.timekeeper = self.OverlayChangeIndicator(self.fscommands)
 
 

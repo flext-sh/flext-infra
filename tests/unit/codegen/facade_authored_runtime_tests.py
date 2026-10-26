@@ -111,11 +111,11 @@ class TestsFlextInfraGeneratedRuntime:
         width: int = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
-        with u.Infra.facade_source_project(root, project_roots=(root,)) as binding:
-            project = binding[0]
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            project = snapshot.engine
             model = u.Infra.lazy_init_run(
                 project,
-                u.Infra.index_rope_workspace(project, root),
+                u.Infra.index_rope_workspace(snapshot, root),
                 root=root,
                 scoped=True,
             ).model

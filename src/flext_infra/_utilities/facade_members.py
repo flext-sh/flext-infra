@@ -346,14 +346,18 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         module = import_module(root)
+        facades = {
+            letter: (facade, frozenset(dir(facade)))
+            for letter in letters
+            if isinstance(facade := getattr(module, letter, None), type)
+        }
         return tuple(
             (owner, f"{letter}.{member}")
             for owner, value, member in cls._owned_members(root, letters)
-            for letter in letters
+            for letter, (facade, members) in facades.items()
             if letter != owner
-            and isinstance(facade := getattr(module, letter, None), type)
             and (
-                member not in dir(facade)
+                member not in members
                 or cls._same_binding(getattr(facade, member), value)
             )
         )

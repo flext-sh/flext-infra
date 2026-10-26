@@ -18,18 +18,16 @@ severity: error
 metadata:
   enforcement: ENFORCE-041
 rule:
-  all:
-    - kind: attribute
-    - not:
-        inside:
-          kind: attribute
-    - has:
-        field: object
-        any:
-          - kind: identifier
-            pattern: $OUTER
+  kind: attribute
+  matches:
+    captured-rule:
+      BODY:
+        all:
           - kind: attribute
-            has:
+          - not:
+              inside:
+                kind: attribute
+          - has:
               field: object
               any:
                 - kind: identifier
@@ -37,25 +35,31 @@ rule:
                 - kind: attribute
                   has:
                     field: object
-                    kind: identifier
-                    pattern: $OUTER
-    - inside:
-        kind: type
-        stopBy: end
-        inside:
-          kind: assignment
-          inside:
-            kind: expression_statement
-            inside:
-              kind: block
+                    any:
+                      - kind: identifier
+                        pattern: $OUTER
+                      - kind: attribute
+                        has:
+                          field: object
+                          kind: identifier
+                          pattern: $OUTER
+          - inside:
+              kind: type
+              stopBy: end
               inside:
-                kind: class_definition
+                kind: assignment
                 inside:
-                  kind: class_definition
-                  stopBy: end
-                  has:
-                    field: name
-                    pattern: $OUTER
+                  kind: expression_statement
+                  inside:
+                    kind: block
+                    inside:
+                      kind: class_definition
+                      inside:
+                        kind: class_definition
+                        stopBy: end
+                        has:
+                          field: name
+                          pattern: $OUTER
 message: >-
   Field annotation names a sibling through its own enclosing family `$OUTER`,
   so the model is incomplete at import.

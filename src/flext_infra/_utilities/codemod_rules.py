@@ -8,17 +8,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, MutableMapping, Sequence
-from functools import cache, lru_cache
+from functools import cache
 from pathlib import Path
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesResourceLimits,
-)
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities._codemod_rules_distributions import (
     FlextInfraUtilitiesCodemodRulesDistributionsMixin,
 )
@@ -46,7 +42,20 @@ class FlextInfraUtilitiesCodemodRules(
         if state.content is None:
             msg = f"codemod provider config is absent: {config_path}"
             raise ValueError(msg)
-        return u.Cli.yaml_parse(state.content.decode(c.DEFAULT_ENCODING)).unwrap()
+        return FlextInfraUtilitiesCodemodRules._provider_document(
+            state.content.decode(c.DEFAULT_ENCODING)
+        ).unwrap()
+
+    @staticmethod
+    @cache
+    def _provider_document(text: str) -> p.Result[t.JsonMapping]:
+        """Parse a single provider mapping once per exact current content.
+
+        Returns:
+            The native single-document parser's result, including its failure.
+
+        """
+        return u.Cli.yaml_parse(text)
 
     @staticmethod
     def _merge_native_config(
@@ -346,10 +355,13 @@ class FlextInfraUtilitiesCodemodRules(
         }
 
     @staticmethod
-    def codemod_write_native_documents(
-        path: Path, documents: t.SequenceOf[t.JsonMapping]
-    ) -> None:
-        """Write typed mappings as a native JSON-form YAML document stream.
+    def codemod_native_documents_text(
+        documents: t.SequenceOf[t.JsonMapping],
+    ) -> str:
+        """Serialize typed mappings as a native JSON-form YAML document stream.
+
+        Returns:
+            The exact native document stream.
 
         Raises:
             ValueError: If no native document was supplied.
@@ -358,12 +370,21 @@ class FlextInfraUtilitiesCodemodRules(
         if not documents:
             msg = "native rule document stream must not be empty"
             raise ValueError(msg)
-        u.Cli.atomic_write_text_file(
-            path,
+        return (
             c.Infra.CODEMOD_NATIVE_DOCUMENT_SEPARATOR.join(
                 u.Cli.json_dumps(dict(document)).unwrap() for document in documents
             )
-            + "\n",
+            + "\n"
+        )
+
+    @staticmethod
+    def codemod_write_native_documents(
+        path: Path, documents: t.SequenceOf[t.JsonMapping]
+    ) -> None:
+        """Publish the exact native document stream through the atomic owner."""
+        owner = FlextInfraUtilitiesCodemodRules
+        u.Cli.atomic_write_text_file(
+            path, owner.codemod_native_documents_text(documents)
         ).unwrap()
 
     @classmethod
@@ -428,6 +449,7 @@ class FlextInfraUtilitiesCodemodRules(
         bodies: t.MappingKV[str, t.JsonMapping] = {
             str(document["id"]): rule_body
             for document in utilities.values()
+            if not document.get("arguments")
             if isinstance(rule_body := document.get("rule"), Mapping)
         }
         sensitive = FlextInfraUtilitiesCodemodScopes.codemod_binding_sensitive(bodies)
@@ -533,6 +555,30 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @classmethod
+    def _qualified_utility_call(
+        cls,
+        value: t.JsonValue | t.JsonMapping,
+        aliases: t.StrMapping,
+        shadows: frozenset[str],
+    ) -> t.JsonValue:
+        """Qualify native callees while retaining their argument bindings.
+
+        Returns:
+            The same native call with provider-global identities qualified.
+
+        """
+        if isinstance(value, str):
+            return aliases.get(value, value) if value not in shadows else value
+        if isinstance(value, Mapping):
+            return {
+                (aliases.get(callee, callee) if callee not in shadows else callee): (
+                    cls._qualified_global_matches(arguments, aliases, shadows)
+                )
+                for callee, arguments in value.items()
+            }
+        return value
+
+    @classmethod
     def _qualified_global_matches(
         cls,
         value: t.JsonMapping | t.JsonValue,
@@ -551,10 +597,17 @@ class FlextInfraUtilitiesCodemodRules(
         """
         if isinstance(value, Mapping):
             local = value.get("utils")
+            arguments = value.get("arguments")
             shadows = (
-                local_names | frozenset(local)
-                if isinstance(local, Mapping)
+                local_names
+                | frozenset(
+                    argument for argument in arguments if isinstance(argument, str)
+                )
+                if isinstance(arguments, list)
                 else local_names
+            )
+            shadows = (
+                shadows | frozenset(local) if isinstance(local, Mapping) else shadows
             )
             if isinstance(local, Mapping) and set(aliases.values()).intersection(local):
                 msg = "qualified global utility conflicts with a native local utility"
@@ -563,11 +616,8 @@ class FlextInfraUtilitiesCodemodRules(
                 key: (
                     item
                     if key == c.Infra.CODEMOD_RULE_METADATA_KEY
-                    else aliases[item]
+                    else cls._qualified_utility_call(item, aliases, shadows)
                     if key == "matches"
-                    and isinstance(item, str)
-                    and item in aliases
-                    and item not in shadows
                     else cls._qualified_global_matches(item, aliases, shadows)
                 )
                 for key, item in value.items()
@@ -579,37 +629,11 @@ class FlextInfraUtilitiesCodemodRules(
             ]
         return value
 
-    @classmethod
-    def codemod_compose_rule_plan(
-        cls,
-        root: Path,
-        generated: t.MappingKV[Path, t.Pair[str, Path]],
-        *,
-        rule_ids: t.StrSequence | None = None,
+    @staticmethod
+    def _select_rule_ids(
+        plan: m.Infra.CodemodRulePlan,
+        rule_ids: t.StrSequence,
     ) -> p.Result[m.Infra.CodemodRulePlan]:
-        """Compose the executable rule plan from the catalogs and generated providers.
-
-        Every call reads the current rule files; parsing is reused only for
-        byte-identical catalogs (``_cached_rules``), so an edited rule is never
-        served stale, within one process or across processes. ``generated``
-        maps each governed project root to its materialized generated provider,
-        elected after the catalogs exactly like any other provider.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodemodRulePlan]``.
-
-        """
-        plans: list[m.Infra.CodemodRulePlan] = []
-        for project_root in FlextInfraUtilitiesProjectDiscovery.governed_project_roots(
-            root
-        ):
-            planned = cls._project_rule_plan(project_root, generated.get(project_root))
-            if planned.failure:
-                return r[m.Infra.CodemodRulePlan].from_failure(planned)
-            plans.append(planned.value)
-        composed = cls._union_plans(tuple(plans))
-        if composed.failure or rule_ids is None:
-            return composed
         if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
             return r[m.Infra.CodemodRulePlan].fail(
                 "codemod rule selection requires non-empty exact rule IDs",
@@ -619,7 +643,6 @@ class FlextInfraUtilitiesCodemodRules(
             return r[m.Infra.CodemodRulePlan].fail(
                 "duplicate codemod rule IDs in selection",
             )
-        plan = composed.value
         unknown = selected.difference(rule.id for rule in plan.rules).difference(
             rule.partition_of for rule in plan.rules
         )
@@ -627,7 +650,6 @@ class FlextInfraUtilitiesCodemodRules(
             return r[m.Infra.CodemodRulePlan].fail(
                 "unknown codemod rule IDs: " + ", ".join(sorted(unknown)),
             )
-        # A partitioned catalog id selects every partition rendered from it.
         selected = selected.union(
             rule.id for rule in plan.rules if rule.partition_of in selected
         )
@@ -643,8 +665,6 @@ class FlextInfraUtilitiesCodemodRules(
                 }
             )
             for ruleset in plan.rulesets
-            # A generated provider stays: its stable utilities back the
-            # selected catalog rules that reference them.
             if selected.intersection(ruleset.rule_ids)
             or ruleset.provider == c.Infra.CODEMOD_GENERATED_PROVIDER
         )
@@ -663,13 +683,44 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @classmethod
+    def codemod_compose_rule_plan(
+        cls,
+        root: Path,
+        generated: t.MappingKV[Path, t.Pair[str, Path] | None],
+        *,
+        rule_ids: t.StrSequence | None = None,
+    ) -> p.Result[m.Infra.CodemodRulePlan]:
+        """Compose one repository's catalogs and generated provider.
+
+        Every call reads the current rule files; parsing is reused only for
+        byte-identical catalogs (``_cached_rules``), so an edited rule is never
+        served stale, within one process or across processes. ``generated``
+        contains only the selected repository and its materialized provider,
+        elected after the catalogs. Workspace orchestration visits each
+        repository separately as required by ADR-028 Decision 17.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodemodRulePlan]``.
+
+        """
+        resolved_root = root.resolve()
+        if set(generated) != {resolved_root}:
+            return r[m.Infra.CodemodRulePlan].fail(
+                "rule plan requires exactly the selected repository root"
+            )
+        composed = cls._project_rule_plan(resolved_root, generated[resolved_root])
+        if composed.failure or rule_ids is None:
+            return composed
+        return cls._select_rule_ids(composed.value, rule_ids)
+
+    @classmethod
     def _project_rule_plan(
         cls, root: Path, generated: t.Pair[str, Path] | None
     ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Elect providers against one project's declared runtime dependencies.
 
-        The project's generated provider, when it renders any rule, is elected
-        last: its rules derive from the project's own sources of truth.
+        The generated provider is elected last, including utility-only
+        providers: its declarations derive from the project's sources of truth.
 
         Returns:
             The project's applicable rule plan.
@@ -724,75 +775,6 @@ class FlextInfraUtilitiesCodemodRules(
         if generated is not None:
             providers.append(generated)
         return cls._compose(tuple(providers), root_name, runtime_closure, root)
-
-    @staticmethod
-    def _union_plans(
-        plans: t.SequenceOf[m.Infra.CodemodRulePlan],
-    ) -> p.Result[m.Infra.CodemodRulePlan]:
-        """Scan shared catalogs once while retaining each project's election.
-
-        Returns:
-            The conflict-free union with project-specific applicability.
-
-        """
-        rules: t.MutableMappingKV[str, m.Infra.CodemodRule] = {}
-        rulesets: t.MutableMappingKV[Path, m.Infra.CodemodRuleset] = {}
-        projects: t.MutableMappingKV[Path, t.StrSequence] = {}
-        for plan in plans:
-            projects.update(plan.project_rule_ids)
-            for rule in plan.rules:
-                previous = rules.get(rule.id)
-                if previous is not None and previous.digest != rule.digest:
-                    return r[m.Infra.CodemodRulePlan].fail(
-                        f"conflicting governed codemod rule {rule.id}: "
-                        f"{previous.resource} != {rule.resource}",
-                    )
-                rules.setdefault(rule.id, rule)
-            for ruleset in plan.rulesets:
-                elected = tuple(
-                    rule_id
-                    for rule_id in ruleset.rule_ids
-                    if rules[rule_id].provider == ruleset.provider
-                )
-                if not elected:
-                    continue
-                elected_ruleset = ruleset.model_copy(
-                    update={
-                        "rule_ids": elected,
-                        "fixable_rule_ids": tuple(
-                            rule_id
-                            for rule_id in ruleset.fixable_rule_ids
-                            if rule_id in elected
-                        ),
-                    }
-                )
-                key = elected_ruleset.config.resolve()
-                previous = rulesets.get(key)
-                rulesets[key] = (
-                    elected_ruleset
-                    if previous is None
-                    else previous.model_copy(
-                        update={
-                            field: tuple(
-                                dict.fromkeys(
-                                    (
-                                        *getattr(previous, field),
-                                        *getattr(elected_ruleset, field),
-                                    ),
-                                )
-                            )
-                            for field in ("rule_ids", "fixable_rule_ids")
-                        }
-                    )
-                )
-        return r[m.Infra.CodemodRulePlan].ok(
-            m.Infra.CodemodRulePlan(
-                provider_order=tuple(ruleset.provider for ruleset in rulesets.values()),
-                rules=tuple(rules.values()),
-                rulesets=tuple(rulesets.values()),
-                project_rule_ids=projects,
-            ),
-        )
 
     @staticmethod
     def codemod_rule_filter(rule_ids: t.StrSequence) -> str:
@@ -896,7 +878,7 @@ class FlextInfraUtilitiesCodemodRules(
             elected.append(rule.id)
             if rule.fixable:
                 fixable.append(rule.id)
-        if not elected:
+        if not elected and provider != c.Infra.CODEMOD_GENERATED_PROVIDER:
             return r[t.SequenceOf[m.Infra.CodemodRuleset]].ok(())
         return r[t.SequenceOf[m.Infra.CodemodRuleset]].ok(
             (
@@ -967,7 +949,7 @@ class FlextInfraUtilitiesCodemodRules(
             The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]]``.
 
         """
-        parsed_config = u.Cli.yaml_parse(
+        parsed_config = FlextInfraUtilitiesCodemodRules._provider_document(
             config.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if parsed_config.failure:
@@ -1030,35 +1012,8 @@ class FlextInfraUtilitiesCodemodRules(
             sources.append((resource, observed.content.decode(c.DEFAULT_ENCODING)))
         return sources
 
-    @staticmethod
-    def _write_rule_cache(
-        cache_file: Path,
-        parsed: p.Result[t.SequenceOf[m.Infra.CodemodRule]],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
-        """Persist parsed rules to the cache and return the parse result.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]]``.
-
-        """
-        if parsed.failure:
-            return parsed
-        payload = u.type_adapter(tuple[m.Infra.CodemodRule, ...]).dump_json(
-            tuple(parsed.value),
-        )
-        directory = u.Cli.ensure_dir(cache_file.parent)
-        if directory.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(directory)
-        written = u.Cli.atomic_write_text_file(
-            cache_file,
-            payload.decode(c.DEFAULT_ENCODING),
-        )
-        if written.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(written)
-        return parsed
-
     @classmethod
-    @lru_cache(maxsize=16)
+    @cache
     def _cached_rules(
         cls,
         provider: str,
@@ -1069,14 +1024,11 @@ class FlextInfraUtilitiesCodemodRules(
             t.MappingKV[Path, t.SequenceOf[t.JsonMapping]],
         ]
     ]:
-        """Serve a provider's rules from the content-keyed persistent cache.
-
-        The key is the sha256 of the provider, every rule file's path and
-        text, and this parser's own source: a catalog is parsed once for all
-        processes, and any edit to a rule or to the parser is a new key.
+        """Reuse a provider's rules in memory by exact resource content.
 
         The same content-keyed entry retains the parsed documents by reference for
         native projection. Callers still read current bytes before selecting it.
+        A new process builds its own catalog; no Infra cache is read or written.
 
         Returns:
             Validated rules and their original parsed document inventory.
@@ -1088,35 +1040,13 @@ class FlextInfraUtilitiesCodemodRules(
                 t.MappingKV[Path, t.SequenceOf[t.JsonMapping]],
             ]
         ]
-        identity = u.Cli.json_dumps([
-            provider,
-            Path(__file__).read_text(encoding=c.DEFAULT_ENCODING),
-            [[str(resource), text] for resource, text in sources],
-        ])
-        if identity.failure:
-            return result.from_failure(identity)
-        cache_file = (
-            FlextInfraUtilitiesResourceLimits.external_cache_directory(
-                config.Infra.codegen.make.codemod_rules_cache,
-            )
-            / f"{u.Cli.sha256_content(identity.value)}.json"
-        )
         documents: t.MutableMappingKV[Path, t.SequenceOf[t.JsonMapping]] = {}
         for resource, text in sources:
             loaded = u.Cli.yaml_parse_documents(text)
             if loaded.failure:
                 return result.from_failure(loaded)
             documents[resource] = loaded.value
-        if cache_file.is_file():
-            parsed = r[t.SequenceOf[m.Infra.CodemodRule]].ok(
-                u.type_adapter(tuple[m.Infra.CodemodRule, ...]).validate_json(
-                    cache_file.read_text(encoding=c.DEFAULT_ENCODING)
-                )
-            )
-        else:
-            parsed = cls._write_rule_cache(
-                cache_file, cls._parse_rules(provider, sources, documents=documents)
-            )
+        parsed = cls._parse_rules(provider, sources, documents=documents)
         if parsed.failure:
             return result.from_failure(parsed)
         return result.ok((parsed.value, documents))

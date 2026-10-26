@@ -28,6 +28,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._rope.project import FlextInfraRopeProject
+from flext_infra._utilities._rope_analysis.sourcescan import (
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
+)
 
 
 class FlextInfraUtilitiesWorkspaceSnapshot:
@@ -122,6 +125,8 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 sources={},
                 packages={},
                 import_edges={},
+                absolute_import_roots={},
+                import_namespaces={},
                 class_ancestors={},
                 exports={},
                 bindings={},
@@ -349,6 +354,27 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             for path in cls.workspace_python_files(snapshot, member):
                 cls.workspace_source(snapshot, path)
         return snapshot.sources
+
+    @staticmethod
+    def workspace_public_exports(
+        snapshot: p.Infra.WorkspaceSnapshot,
+        path: Path,
+    ) -> t.StrSequence:
+        """Read a module's public exports once from its authenticated native tree.
+
+        Returns:
+            The names declared by the source module's literal ``__all__``.
+
+        """
+        owner = FlextInfraUtilitiesWorkspaceSnapshot
+        if path not in snapshot.exports:
+            owner.workspace_source(snapshot, path)
+            snapshot.exports[path] = (
+                FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
+                    owner.workspace_module_tree(snapshot, path), c.Infra.DUNDER_ALL
+                )
+            )
+        return snapshot.exports[path]
 
     @staticmethod
     def workspace_module_tree(

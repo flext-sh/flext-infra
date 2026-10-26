@@ -263,6 +263,70 @@ class FlextInfra(
             repository_root=request.repository_root,
         ).build_report()
 
+    @override
+    def mod(
+        self,
+        request: p.Infra.ModRequest,
+        progress: p.Infra.ModProgress,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Compose repository codemod runs in the declared dependency order.
+
+        Returns:
+            The first repository failure, or acceptance of every governed run.
+
+        """
+        root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
+        governed = frozenset(u.Infra.governed_project_roots(root))
+        if governed == {root}:
+            return FlextInfraModHandlers.mod(self, request, progress)
+        inputs = u.Infra.load_codegen_inputs(root)
+        if inputs.failure:
+            return r[t.Cli.ResultValue].from_failure(inputs)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            root, inputs=inputs.value
+        )
+        if workspace.failure:
+            return r[t.Cli.ResultValue].from_failure(workspace)
+        references = tuple(
+            repository
+            for repository in (
+                workspace.value.repository,
+                *workspace.value.subprojects,
+            )
+            if (root / repository.path).resolve() in governed
+        )
+        by_root = {
+            (root / repository.path).resolve(): repository for repository in references
+        }
+        if len(by_root) != len(references) or frozenset(by_root) != governed:
+            return r[t.Cli.ResultValue].fail(
+                "mod workspace declarations differ from governed repositories: "
+                f"duplicate_paths={len(references) - len(by_root)}; "
+                f"missing={tuple(sorted(governed.difference(by_root)))}"
+            )
+        ordered = u.Infra.workspace_dependency_order(root, references)
+        by_distribution = {
+            repository.distribution: repository_root
+            for repository_root, repository in by_root.items()
+        }
+        for distribution in ordered:
+            repository_root = by_distribution[distribution]
+            progress.emit(f"mod: repository {distribution} root={repository_root}")
+            child_request = (
+                request
+                if repository_root == root
+                else m.Infra.ModCommand(
+                    repository_root=repository_root,
+                    apply=request.apply,
+                    check=request.check,
+                    dry_run_mode=request.dry_run_mode,
+                )
+            )
+            completed = FlextInfraModHandlers.mod(self, child_request, progress)
+            if completed.failure:
+                return completed
+        return r[t.Cli.ResultValue].ok(value=True)
+
     @staticmethod
     def mod_text(request: m.Infra.ModTextCommand) -> p.Result[t.Cli.ResultValue]:
         """Compose the standalone authenticated text-rule replay.

@@ -930,7 +930,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             msg = "facade __all__ declares no exported names"
             raise ValueError(msg)
         names = ast.literal_eval(module.code_for_node(statement.value))
-        if not isinstance(names, list | tuple) or not all(
+        if not isinstance(names, (list, tuple)) or not all(
             isinstance(name, str) for name in names
         ):
             msg = f"facade __all__ is not a literal sequence of names: {names!r}"
@@ -1550,7 +1550,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                         for child in module_scope.get_scopes()
                         if child.get_start() == owner.lineno
                     )
-                    members = [(module_scope, member) for member in owner.body]
+                    members: list[t.Pair[p.Infra.RopeScope, ast.stmt]] = [
+                        (module_scope, member) for member in owner.body
+                    ]
                     members.extend(
                         (owner_scope, nested_member)
                         for nested in owner.body
@@ -1774,9 +1776,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             """Remove proven bindings in one identity-preserving traversal."""
 
             @override
-            def on_leave(
-                self, original_node: CSTNode, updated_node: CSTNode
-            ) -> CSTNode | RemovalSentinel:
+            def on_leave[CSTNodeT: CSTNode](
+                self, original_node: CSTNodeT, updated_node: CSTNodeT
+            ) -> CSTNodeT | RemovalSentinel:
                 if original_node in removals:
                     return RemovalSentinel.REMOVE
                 return updated_node

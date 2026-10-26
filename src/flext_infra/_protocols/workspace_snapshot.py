@@ -118,6 +118,18 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
+        def absolute_import_roots(self) -> MutableMapping[Path, t.StrTuple]:
+            """Absolute imported package roots per captured member."""
+            ...
+
+        @property
+        def import_namespaces(
+            self,
+        ) -> MutableMapping[t.Pair[Path, Path], t.Pair[Path, str] | None]:
+            """Import-law namespace election per consumer and source."""
+            ...
+
+        @property
         def class_ancestors(self) -> MutableMapping[str, t.StrTuple]:
             """C3 method order per qualified class identity."""
             ...

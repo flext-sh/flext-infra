@@ -2845,7 +2845,10 @@ the performance result without reducing scope or raising deadlines.
 
 ## Workspace snapshot and analysis engine
 
-This subproject contract implements [FLEXT ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17). The ADR links back to this exact section in its [bidirectional traceability table](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#bidirectional-traceability).
+| Infra declaration | FLEXT architectural declaration |
+| --- | --- |
+| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17) |
+| ADR backlink to this exact Infra section. | [ADR-028 bidirectional traceability](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#bidirectional-traceability) |
 
 Generation and modification run through one workspace organizer. It loops over the
 selected repositories in dependency order without worker pools; each repository
@@ -2855,6 +2858,11 @@ service that can run standalone opens its own snapshot only when none is injecte
 consumer opens a second snapshot or analysis project while one is bound. Generated
 rule builders pass the same snapshot to their classifiers and library-prefix discovery;
 they do not discard it before calling snapshot-owned package or layer queries.
+The public `mod` composition preflights the selected repository references and
+uses the existing dependency-order owner before invoking each repository handler
+in the same process. Each rule plan contains only that repository's generated
+provider. Authored fixture discovery collects resources from separate repository
+plans and verifies each fixture owner once; it does not union generated rule IDs.
 
 Each repository snapshot owns exactly one analysis project rooted at that repository's
 runtime owner root (`u.Infra.runtime_owner_root`). It does not merge sibling repository
@@ -2949,6 +2957,12 @@ The complete invocation, including profile publication and child cleanup, keeps
 the operator's 60-second budget. Reserve termination time inside that budget;
 never increase it to finish a profile. An interrupted capture remains partial,
 and absence of a readable capture is a profiling defect, never a speed result.
+When an external deadline encloses the shared heavy-operation lock, use the
+native `flock --no-fork` form: the monitored child must remain the actual Make
+invocation. If a forking lock holder exits on TERM first, the deadline monitor
+may return while its descendants remain alive. Consume the command result and
+verify termination of its owned processes; the monitor's disappearance alone
+does not prove cleanup.
 
 The first structural optimization retains the invocation's snapshot and
 precomposed rule plan through fixture verification and the initial scan. No
@@ -2968,6 +2982,11 @@ The original authenticated source states remain the verification inputs.
 Imported-package discovery also consumes that native tree. The existing
 absolute-import reader owns the statement traversal for both source-text and
 parsed-module callers, preserving nested imports and excluding relative imports.
+Its member-wide result is retained on the same source-epoch snapshot, so utility
+producers and renderers share one traversal of that member's native trees.
+Namespace-location questions also share that snapshot, keyed by the consumer root
+and source path. The import law remains their sole classifier; a captured
+non-package result is reusable only within that same source epoch.
 Runtime dependency facts are keyed by requirements and the interpreter import
 path, not by the facade or mixin class through which the producer was called.
 Both callers consume the same existing metadata owner and closure calculation.
@@ -2986,6 +3005,53 @@ normalizer. A scan stage writes its elected rules as one native document stream;
 global utilities remain single-document files. The same document writer serves
 generated providers and staged fixture rules. Source catalogs and golden
 snapshots are not rewritten by this optimization.
+Fixture staging also groups its bound rules into one native document stream,
+retaining every declared rule and test. Durability remains with the atomic
+publisher; one publication replaces per-rule file and parent-directory syncs.
+Internal scope metadata uses its declared JSON manifest: its derived selector
+keys may be longer than a YAML flow mapping permits. The generated provider's content
+identity hashes the exact serialized paths and bytes, including that format
+choice, so a different encoding cannot reuse an older directory's identity.
+Reusing a generated provider also verifies its complete physical inventory and
+every expected file digest through the existing authenticated tree owner.
+Directory existence alone does not admit a materialization; missing, unexpected
+or altered entries fail before native execution.
+Read-only member ancestry passes use the existing native project's frozen
+layout context, reusing folder and module elections for that pass without
+changing its consumer root. Facade component discovery obtains each holder's
+member inventory once before comparing component bindings; it does not repeat
+the same directory query for every member. Owned-member reference election also
+captures each facade's member names once per census, rather than enumerating
+the facade again for every owner/member/receiver combination.
+Family-composition checks consume the same snapshot's native trees and shared
+public-export reader. The source-text class-info reader delegates to its
+parsed-module reader; composition does not reread and reparse each family member.
+Authored catalog parses and provider mappings are memoized by their exact current
+contents in process memory. The custom persistent parsed-catalog store and its
+configuration are retired; native tool caches retain their existing contracts.
+The ancestry inventory may reuse its member-scoped native module only when the
+resource bytes and that module's source both equal the captured source. Proposed
+or changed text keeps its existing native string-module path. This does not
+combine member projects or change resolution of homonymous packages.
+Source-module reads require the native source-bearing capability before using its
+captured text. Callback admission uses Rope's native restructuring hook once;
+the adapter counts observed/admitted matches there and leaves change computation
+to the native implementation. It does not filter the same occurrence again in a
+second change-computer override. Snapshot consumers use the shared source ports,
+including their mutable-map value contracts, rather than concrete model classes.
+Untyped SDK core and match results enter through strict native adapter admission;
+the project subclass does not override SDK methods merely to replace their inferred
+return annotations.
+Documentation collection and pytest collection publish distinct manifest methods;
+their different inputs must not collide in the composed utilities facade.
+
+The joint loop consumes its returned post-phase scan instead of discarding it
+and repeating the same scan. Semantic publication retains the canonical
+publisher's acknowledged paths. CSV campaigns additionally return authenticated
+post-publication states; their count must agree with the published file count.
+An actual CSV effect refreshes the model and requires a new complete scan before
+the loop returns its report. Empty campaign effects do not authorize stale input
+reuse or waive the existing post-publication scan and cycle checks.
 
 Current state (2026-10-25): the root `rename-plan` closure and the quadratic
 scan-target discovery of the semantic source closure are being reduced under epic

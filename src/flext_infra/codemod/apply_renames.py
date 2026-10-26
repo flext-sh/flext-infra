@@ -143,7 +143,7 @@ class FlextInfraApplyRenames:
     @staticmethod
     def _excluded(
         path: Path,
-        source: m.Infra.WorkspaceSnapshotSource,
+        source: p.Infra.WorkspaceSnapshotSource,
         params: m.Infra.ApplyRenamesInput,
         exclusions: t.Triple[
             t.Pair[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
@@ -187,7 +187,7 @@ class FlextInfraApplyRenames:
         cls,
         params: m.Infra.ApplyRenamesInput,
         pairs: t.SequenceOf[t.Pair[str, str]],
-        snapshot: m.Infra.WorkspaceSnapshot,
+        snapshot: p.Infra.WorkspaceSnapshot,
         overrides: t.MappingKV[Path, bytes],
     ) -> t.Pair[t.MappingKV[Path, m.Cli.AtomicFileState], int]:
         """Elect the rename sources from the snapshot and the declared text surfaces.
@@ -240,7 +240,7 @@ class FlextInfraApplyRenames:
         cls,
         params: m.Infra.ApplyRenamesInput,
         pairs: t.SequenceOf[t.Pair[str, str]],
-        view: t.Pair[m.Infra.WorkspaceSnapshot, p.Infra.RopeProject],
+        view: t.Pair[p.Infra.WorkspaceSnapshot, p.Infra.RopeProject],
         overrides: t.MappingKV[Path, bytes],
     ) -> t.Triple[t.VariadicTuple[m.Infra.SemanticFilePlan], int, int]:
         """Plan one campaign pass against the snapshot and its Rope project.
@@ -381,7 +381,7 @@ class FlextInfraApplyRenames:
     def _publish(
         cls,
         params: m.Infra.ApplyRenamesInput,
-        snapshot: m.Infra.WorkspaceSnapshot,
+        snapshot: p.Infra.WorkspaceSnapshot,
         state: t.Pair[
             t.Pair[Path, m.Cli.AtomicFileState], t.SequenceOf[t.Pair[str, str]]
         ],
@@ -435,7 +435,11 @@ class FlextInfraApplyRenames:
                     params,
                     pairs,
                     (snapshot, overlay),
-                    {plan.path: plan.desired_content for plan in declared},
+                    {
+                        plan.path: content
+                        for plan in declared
+                        if (content := plan.desired_content) is not None
+                    },
                 )
             if pending:
                 return r[bool].fail(
@@ -526,6 +530,9 @@ class FlextInfraApplyRenames:
             occurrences=pending,
             files_changed=len(changed),
             applied=params.apply,
+            published_states=tuple(
+                u.Cli.atomic_read_binary_file_state(path).unwrap() for path in changed
+            ),
         )
         return r[m.Infra.ApplyRenamesReport].ok(report)
 

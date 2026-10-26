@@ -436,7 +436,7 @@ class FlextInfraConstantsRefactor:
     "Partition pattern placeholder for the escaped comma-separated key parts."
     CODEMOD_PARTITION_DEFAULT_PATTERN: ClassVar[str] = "^{key}$"
     "Partition pattern of a key that names its value exactly."
-    CODEMOD_SCOPES_FILENAME: ClassVar[str] = "scopes.yml"
+    CODEMOD_SCOPES_FILENAME: ClassVar[str] = "scopes.json"
     CODEMOD_SCOPE_FACTS: ClassVar[str] = "codemod_scope_facts"
     "Facts producer a generation seeds with its file scopes for the renderers."
     CODEMOD_LAYER_ZERO_SCOPE: ClassVar[str] = "layer-zero"

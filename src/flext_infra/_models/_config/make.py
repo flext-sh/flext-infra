@@ -654,23 +654,6 @@ class FlextInfraConfigModelsMake(
                         raise ValueError(msg)
                 return self
 
-        class CodemodRulesCacheSpec(
-            FlextInfraExternalCacheDirectorySpec.Directory,
-            FlextInfraConfigModelsContract.ConfigContract,
-        ):
-            """Content-keyed parsed codemod rule catalogs shared by every process."""
-
-            data_home_environment_variable: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="XDG persistent cache-home variable"),
-            ] = m.Field()
-            user_home_environment_variable: Annotated[
-                t.NonEmptyStr,
-                m.Field(
-                    description="User home variable for the XDG default",
-                ),
-            ] = m.Field()
-
         examples_timeout_seconds: Annotated[
             int,
             m.Field(gt=0, le=120, description="Workspace examples process deadline"),
@@ -802,10 +785,6 @@ class FlextInfraConfigModelsMake(
                     " testmon cache (#1001 delta)"
                 ),
             ),
-        ]
-        codemod_rules_cache: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec.CodemodRulesCacheSpec,
-            m.Field(description="Content-keyed parsed codemod rule catalog cache"),
         ]
         mypy_cache: Annotated[
             FlextInfraConfigModelsMake.MypyCacheSpec,

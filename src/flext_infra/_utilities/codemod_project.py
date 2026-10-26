@@ -35,9 +35,6 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope_analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope_analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
@@ -199,7 +196,12 @@ class FlextInfraUtilitiesCodemodProject(
         return cycles
 
     @classmethod
-    def composes_family_package(cls, facade_file: Path, namespace: str) -> bool:
+    def composes_family_package(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        facade_file: Path,
+        namespace: str,
+    ) -> bool:
         """Return whether ``namespace`` in a facade module composes its family.
 
         The family package of ``<pkg>/<stem>.py`` is ``<pkg>/_<stem>/``. Every
@@ -217,24 +219,26 @@ class FlextInfraUtilitiesCodemodProject(
             return True
         bases_by_class: MutableMapping[str, t.StrSequence] = {}
         exported: set[str] = set()
+        snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         for module in sorted(package.rglob(f"*{c.Infra.EXT_PYTHON}")):
             if module.name == c.Infra.INIT_PY:
                 continue
-            source = module.read_text(encoding=c.DEFAULT_ENCODING)
-            declared = frozenset(
-                FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                    source,
-                ),
-            )
+            declared = frozenset(snapshots.workspace_public_exports(snapshot, module))
             for (
                 info
-            ) in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_source(
-                source,
+            ) in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_module(
+                snapshots.workspace_module_tree(snapshot, module),
             ):
                 bases_by_class[info.name] = tuple(info.bases)
                 if info.name in declared:
                     exported.add(info.name)
-        pending = list(cls._nested_class_bases(facade_file, namespace))
+        pending = list(
+            cls._nested_class_bases(
+                snapshots.workspace_module_tree(snapshot, facade_file),
+                namespace,
+                facade_file,
+            )
+        )
         reached: set[str] = set()
         while pending:
             name = pending.pop()
@@ -245,7 +249,11 @@ class FlextInfraUtilitiesCodemodProject(
         return exported <= reached
 
     @staticmethod
-    def _nested_class_bases(facade_file: Path, namespace: str) -> t.StrSequence:
+    def _nested_class_bases(
+        tree: t.Infra.AstModule,
+        namespace: str,
+        facade_file: Path,
+    ) -> t.StrSequence:
         """Return the base names of class ``namespace`` nested in the facade.
 
         Returns:
@@ -255,9 +263,6 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If class.
 
         """
-        tree = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(
-            facade_file.read_text(encoding=c.DEFAULT_ENCODING),
-        ).get_ast()
         for node in FlextInfraUtilitiesRopeAnalysisAstHelpers.walk_ast_nodes(tree):
             if (
                 FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) == "ClassDef"

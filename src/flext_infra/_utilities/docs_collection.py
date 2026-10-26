@@ -470,7 +470,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         )
         cls._require_unique_sources(configuration)
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        manifest, excluded_outputs = cls.collection_manifest(
+        manifest, excluded_outputs = cls.docs_collection_manifest(
             canonical,
             projection,
             states,

@@ -109,11 +109,22 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
                 if request.path.is_file()
                 else None
             )
-            parsed = FlextInfraUtilitiesRopeRuntime.build_string_module(
-                request.project,
-                request.source,
-                resource=resource,
-            ).get_ast()
+            native = None
+            if resource is not None and resource.read() == request.source:
+                captured = request.project.get_pymodule(resource, force_errors=True)
+                if not FlextInfraUtilitiesRopeRuntime.source_module(captured):
+                    message = (
+                        f"Captured file has no native source module: {request.path}"
+                    )
+                    raise TypeError(message)
+                native = captured
+            if native is None or native.source_code != request.source:
+                native = FlextInfraUtilitiesRopeRuntime.build_string_module(
+                    request.project,
+                    request.source,
+                    resource=resource,
+                )
+            parsed = native.get_ast()
         if not isinstance(parsed, ast.Module):
             message = f"Rope returned a non-module AST for {request.path}"
             raise TypeError(message)

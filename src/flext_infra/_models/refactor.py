@@ -946,6 +946,33 @@ class FlextInfraModelsRefactor(
             m.Field(description="Files rewritten in apply mode"),
         ] = 0
         applied: Annotated[bool, m.Field(description="Whether changes were applied")]
+        published_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True,
+                description="Authenticated states of the acknowledged published paths",
+            ),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_published_states(self) -> Self:
+            """Require one actual state per acknowledged published file.
+
+            Returns:
+                The report with a complete, unique publication inventory.
+
+            Raises:
+                ValueError: If publication counts and states disagree.
+
+            """
+            paths = {state.path for state in self.published_states}
+            if len(paths) != len(self.published_states) or (
+                len(paths) != self.files_changed
+                or (not self.applied and self.published_states)
+            ):
+                msg = "rename publication states disagree with acknowledged files"
+                raise ValueError(msg)
+            return self
 
     # -- Namespace Enforcer Models ---------------------------------------------
 

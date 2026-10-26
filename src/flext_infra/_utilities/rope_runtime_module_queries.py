@@ -72,16 +72,26 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         return project
 
     @staticmethod
-    def extension_module_names(project: p.Infra.RopeProject) -> t.StrTuple:
+    def project_core(project: p.Infra.RopeProject) -> t.Infra.RopeNativeCore:
+        """Admit the original untyped SDK result at the native boundary.
+
+        Returns:
+            The native core retained by the project.
+
+        """
+        return u.type_adapter(TypeForm(t.Port[t.Infra.RopeNativeCore])).validate_python(
+            project.get_pycore(), strict=True
+        )
+
+    @classmethod
+    def extension_module_names(cls, project: p.Infra.RopeProject) -> t.StrTuple:
         """Read native extension names through their validated structural boundary.
 
         Returns:
             The exact elected extension names in deterministic order.
 
         """
-        core = u.type_adapter(
-            TypeForm(t.InstanceOf[p.Infra.RopePyCore])
-        ).validate_python(project.get_pycore(), strict=True)
+        core = cls.project_core(project)
         return tuple(
             sorted(
                 u.type_adapter(set[str]).validate_python(

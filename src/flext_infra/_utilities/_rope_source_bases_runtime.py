@@ -974,7 +974,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module = (
                 FlextInfraUtilitiesRopeRuntime.runtime_callable(
                     "rope.base.builtins", "BuiltinModule"
-                )(target, self._project.get_pycore())
+                )(target, FlextInfraUtilitiesRopeRuntime.project_core(self._project))
                 if spec is not None
                 and isinstance(spec.loader, importlib.machinery.ExtensionFileLoader)
                 else self._project.get_module(target)

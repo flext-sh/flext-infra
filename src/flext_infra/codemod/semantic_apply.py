@@ -379,6 +379,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         )
         responsibility = ""
         methods: t.StrSequence = ()
+        nested_classes: t.StrSequence = ()
         if len(declarations) == 1:
             declared = declarations[0].name
             responsibility = cls._declared_responsibility(path, owner, declared)
@@ -389,13 +390,28 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 and item.scope_path == f"{declared}.{item.name}"
                 and not item.name.startswith("_")
             )
+            nested_classes = tuple(
+                item.name
+                for item in objects
+                if item.kind == "class"
+                and item.scope_path.startswith(f"{declared}.")
+                and item.scope_path.count(".") == 1
+                and not item.name.startswith("_")
+            )
+            if not responsibility and len(nested_classes) == 1:
+                responsibility = cls._declared_responsibility(
+                    path, owner, nested_classes[0]
+                )
             if not responsibility:
-                responsibility = cls._member_responsibility(methods, owner)
+                responsibility = cls._member_responsibility(
+                    (*methods, *nested_classes), owner
+                )
         if not responsibility:
             msg = (
                 f"unresolved semantic grouping: {path}; numbered split requires "
                 "one owner-relative responsibility from native source evidence "
-                f"(public methods: {', '.join(methods) or 'none'})"
+                f"(public methods: {', '.join(methods) or 'none'}; "
+                f"public nested classes: {', '.join(nested_classes) or 'none'})"
             )
             raise ValueError(msg)
         return responsibility
@@ -972,11 +988,11 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         candidate: m.Infra.SemanticSourcePlan,
         *,
         publish: bool = True,
-    ) -> p.Result[bool]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Publish one rule-composed native candidate.
 
         Returns:
-            The shared semantic publication's actual acceptance or failure.
+            The canonical publisher's acknowledged paths or original failure.
 
         """
         return cls._publish_authenticated_source(root, candidate, publish=publish)
@@ -1030,7 +1046,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             root,
             artifact,
             publish=request.apply and not request.check and not request.dry_run_mode,
-        )
+        ).map(lambda _published: True)
 
     @classmethod
     def authenticate_rename_candidate(
@@ -1104,11 +1120,11 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         artifact: m.Infra.SemanticSourcePlan,
         *,
         publish: bool,
-    ) -> p.Result[bool]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Publish the candidate's planned effects through the shared publisher.
 
         Returns:
-            The publication outcome mapped to the candidate acceptance.
+            Actual published paths, or pending paths when publication is disabled.
 
         """
         originals = {state.path: state for state in artifact.candidate.inputs}
@@ -1148,7 +1164,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 ),
             ),
             publish=publish,
-        ).map(lambda _: True)
+        )
 
     @classmethod
     def census_constants(

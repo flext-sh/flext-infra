@@ -40,15 +40,15 @@ class TestsFlextInfraTypeGates:
     def test_required_cache_environment_fields_do_not_inherit_defaults(
         field: str,
     ) -> None:
-        """Testmon and codemod keep their explicitly required YAML contracts."""
+        """Testmon keeps its explicitly required YAML environment contract."""
         configured = config.Infra.codegen.make
-        for policy in (configured.testmon_cache, configured.codemod_rules_cache):
-            payload = policy.model_dump(
-                exclude={field},
-                exclude_computed_fields=True,
-            )
-            with pytest.raises(ValueError, match=field):
-                type(policy).model_validate(payload)
+        policy = configured.testmon_cache
+        payload = policy.model_dump(
+            exclude={field},
+            exclude_computed_fields=True,
+        )
+        with pytest.raises(ValueError, match=field):
+            type(policy).model_validate(payload)
 
     @staticmethod
     @pytest.mark.slow

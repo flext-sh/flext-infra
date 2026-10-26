@@ -12,6 +12,7 @@ from typing import override
 from flext_cli import u
 from rope.base.project import Project
 from rope.refactor.restructure import Restructure
+from rope.refactor.similarfinder import Match
 from rope.refactor.wildcards import DefaultWildcard
 from typing_extensions import TypeForm
 
@@ -52,6 +53,9 @@ class FlextInfraRopeRestructure(Restructure):
             message = "Rope restructuring requires a native project"
             raise TypeError(message)
         default: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
+        self._match_filter = request.match_filter
+        self.matched_count = 0
+        self.admitted_count = 0
 
         super().__init__(
             project,
@@ -75,22 +79,19 @@ class FlextInfraRopeRestructure(Restructure):
                     self._IdentityChoices(default),
                 )
             },
+            match_filter=self._admit_match,
         )
-        self.match_filter = request.match_filter
         self.import_policy = request.imports
-        self.matched_count = 0
-        self.admitted_count = 0
 
-    @override
-    def _compute_changes(
+    def _admit_match(
         self,
-        matches: t.SequenceOf[t.Infra.RopeNativeMatch],
         pymodule: t.Infra.RopeNativeSourceModule,
-    ) -> t.Infra.RopeNativeChangeComputer:
-        """Admit occurrences before the native change computer writes source.
+        match: Match,
+    ) -> bool:
+        """Admit each native occurrence once before native change computation.
 
         Returns:
-            The upstream source-preserving change computer.
+            Whether the request's lexical policy admits this occurrence.
 
         Raises:
             TypeError: The module is not a native source module.
@@ -99,17 +100,15 @@ class FlextInfraRopeRestructure(Restructure):
         if not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):
             message = "Rope restructuring requires a native source module"
             raise TypeError(message)
-        selected = [
-            match
-            for match in matches
-            if self.match_filter is None or self.match_filter(pymodule, match)
-        ]
-        self.matched_count += len(matches)
-        self.admitted_count += len(selected)
-
-        return u.type_adapter(
-            TypeForm(t.Port[t.Infra.RopeNativeChangeComputer])
-        ).validate_python(super()._compute_changes(selected, pymodule), strict=True)
+        occurrence = u.type_adapter(
+            TypeForm(t.Port[p.Infra.RopeContractMatch])
+        ).validate_python(match, strict=True)
+        self.matched_count += 1
+        admitted = self._match_filter is None or self._match_filter(
+            pymodule, occurrence
+        )
+        self.admitted_count += int(admitted)
+        return admitted
 
     @override
     def _add_imports(

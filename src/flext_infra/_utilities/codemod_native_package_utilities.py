@@ -63,7 +63,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         Exports are the ``__all__`` each initializer declares, read through the
         injected snapshot's source engine (a package without a literal
         ``__all__`` exports nothing); the directory and the child modules and
-        packages come from the same source index.
+        packages come from the same source index. Only files owned by this
+        repository contribute package facts; nested repositories are handled by
+        their own invocation.
 
         Returns:
             The typed package facts the utilities and renderers consume.
@@ -73,10 +75,13 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         index = FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
             snapshot, root
         )
+        project_files = frozenset(
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(snapshot, root)
+        )
         owned = tuple(
             entry
             for entry in index.modules_by_path.values()
-            if entry.module_name and entry.file_path.is_relative_to(root)
+            if entry.module_name and entry.file_path in project_files
         )
         packages = {
             entry.module_name: entry.file_path
@@ -666,7 +671,8 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                 for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
                     snapshot, root
                 )
-                if (located := law.import_namespace(root, path)) is not None
+                if (located := law.snapshot_import_namespace(snapshot, root, path))
+                is not None
                 and law.import_module_role(located[1]) in roles
             )
         )
@@ -695,13 +701,17 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The sorted distinct top-level module names.
 
         """
+        root = project.resolve()
+        if root in snapshot.absolute_import_roots:
+            return snapshot.absolute_import_roots[root]
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         roots = FlextInfraUtilitiesRopeAnalysisSourceScan.module_absolute_import_roots
         imported: set[str] = set()
-        for path in snapshots.workspace_python_files(snapshot, project):
+        for path in snapshots.workspace_python_files(snapshot, root):
             snapshots.workspace_source(snapshot, path)
             imported.update(roots(snapshots.workspace_module_tree(snapshot, path)))
-        return tuple(sorted(imported))
+        snapshot.absolute_import_roots[root] = tuple(sorted(imported))
+        return snapshot.absolute_import_roots[root]
 
     @classmethod
     def codemod_library_protocol_names(
@@ -867,7 +877,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         check: t.JsonDict = {
             "inside": {"kind": "argument_list", "inside": {"matches": "check"}}
         }
-        layer_zero = [
+        layer_zero: list[t.JsonValue] = [
             f"**/{path}" for path in cls.codemod_layer_zero_files(snapshot, project)
         ]
         library: t.JsonDict = {

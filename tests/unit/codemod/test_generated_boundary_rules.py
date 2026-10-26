@@ -26,6 +26,24 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
     LIBRARY = "ban-library-type-reference-outside-typings"
 
     @staticmethod
+    @pytest.mark.parametrize("selector_length", [1023, 1024, 1025, 4096])
+    def test_generated_scope_manifest_preserves_long_selector_keys(
+        tmp_path: Path, selector_length: int
+    ) -> None:
+        """JSON scope keys survive both sides of YAML's implicit-key limit."""
+        selector = "s" * selector_length
+        paths = ("src/consumer.py",)
+        u.Infra.codemod_write_native_documents(
+            tmp_path / c.Infra.CODEMOD_SCOPES_FILENAME,
+            ({selector: list(paths)},),
+        )
+        scopes = u.Infra.codemod_stage_scopes(
+            tmp_path / c.Infra.CODEMOD_CONFIG_FILENAME
+        )
+        tm.that(tuple(scopes), eq=(selector,))
+        tm.that(scopes[selector], eq=paths)
+
+    @staticmethod
     def scenario_source(
         fixture_tree: p.Tests.FixtureTree, tmp_path: Path, case: str
     ) -> str:

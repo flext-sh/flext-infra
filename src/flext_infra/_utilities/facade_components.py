@@ -104,6 +104,7 @@ class FlextInfraUtilitiesFacadeComponents:
         """
         module = import_module(root)
         facades = {getattr(module, letter, None) for letter in letters}
+        holder_members = frozenset(dir(holder))
         return tuple(
             f"{base.__name__}.{member}"
             for base in holder.__bases__
@@ -111,7 +112,7 @@ class FlextInfraUtilitiesFacadeComponents:
             for member in dir(base)
             if not member.startswith("_")
             and FlextInfraUtilitiesFacadeMembers.declared_by_package(base, member, root)
-            and member in dir(holder)
+            and member in holder_members
             and getattr(holder, member) is getattr(base, member)
         )
 

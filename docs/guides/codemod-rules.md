@@ -56,6 +56,10 @@ Its handler invokes the existing `flext-infra refactor mod-snapshots` operation
 with the repository root and apply flag. The source declaration requires native
 generation before the verb is available. No consumer owns another snapshot
 engine or edits the generated Makefile.
+Fixture refresh elects authored catalogs through the existing provider
+composition directly. Generated rules have no fixtures, so refresh does not
+build a source engine or render project-dependent rules to discover their
+authored owners.
 
 The catalog applies through ast-grep's own `scan --update-all`; the pipeline order,
 native tool use and validation in the real tree are ADR-028 Decisions 11-13. A draft
@@ -76,25 +80,60 @@ The stages repeat over one staged preview until no byte changes. Each stage's
 staged `sgconfig.yml` lives under `.reports/codemod/native/<stage>`, so
 `ast-grep scan -c` reproduces the stage by hand.
 
+Machine-only native configurations use JSON-form YAML documents, serialized by
+the existing typed JSON owner. Elected scan rules share one multi-document YAML
+file; global utilities retain one document per file as ast-grep requires.
+The generated scope manifest is `scopes.json` and is read by the JSON owner:
+selector keys may exceed YAML's implicit-key length limit. Its declared filename
+participates in the provider digest, so the format change elects a new immutable
+provider rather than reinterpreting a previously published YAML manifest.
+Authored catalogs, fixtures and snapshots keep their existing source format.
+This avoids runtime-value normalization and one file write per elected scan
+rule without changing native rule identities, scopes, bindings or diagnostics.
+Parsed authored catalogs are reused only in process memory, keyed by provider,
+resource paths and exact current contents. Planning always authenticates the
+current files before selecting that entry. Infra does not serialize its parsed
+catalog into a separate persistent cache; native tool caches keep their own
+contracts.
+
+Native parameterized utilities preserve their formal argument names and qualify
+only provider-global callees, including mapping-form `matches` calls. The
+`captured-rule` utility evaluates one complete predicate with its bindings and
+exports its named captures through ast-grep's native argument mechanism. Relational
+context stays inside that native predicate instead of repeating whole enclosing
+classes in every diagnostic. Primary match ranges, binding equality, messages and
+severity remain owned by the original rule; the complete native output is retained.
+
 The producers and renderers registered in `Infra.codegen.ast_grep` render each
 governed project's generated utilities and rules (`codemod_native_generated`).
 `u.Infra.codemod_rule_plan` materializes them as one native provider,
 `generated`, under `.reports/codemod/native/generated/<content digest>/`
 (`sgconfig.yml`, `ruleDirs/`, `utilDirs/`). It then elects that provider after the
-catalogs, like any other provider. Generated rule ids are package-qualified
-(`<shape>--<package>`). The scan, the `check` codemod gate and the cascade therefore
-consume rendered rules through the same plan as authored ones, and
-`ast-grep scan -c` on that directory reproduces them by hand. Generated rules carry
-no fixtures: renderer tests own their proof. Current state (2026-10-24): `make gen`
-still writes an unread per-rule projection under
-`config/rules/ast-grep/{utils,rules/generated}`, which bead `flext-13s6n` deletes.
+catalogs, like any other provider. Generated rules retain their renderer IDs.
+Each repository has its own plan and native stage; the workspace coordinator visits
+repositories in dependency order in one process. Each stage scans only its
+repository's owned sources; declared members enter their own stages.
+Generated providers also carry
+utilities and file scopes when they contribute no elected rules, so catalog rules can
+still consume those declarations. Each project's scan, `check`
+codemod gate and cascade consume its own generated provider through the same plan as its
+authored rules. `ast-grep scan -c` on that project provider reproduces the rule set.
+Generated rules carry no fixtures: renderer tests own their proof. The retired
+per-rule
+repository projections under `config/rules/ast-grep/{utils,rules/generated}` are
+declared at the generation owner; authored files are never retired by that declaration.
+
+| Workspace declaration | Infra implementation |
+| --- | --- |
+| [ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17) requires one snapshot/planner per repository. | [Codemod native utilities](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/src/flext_infra/_utilities/codemod_native_utilities.py) |
+| [ADR-028 Decision 18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-18) owns one generalized source rule per law. | Repository plans preserve renderer IDs; the source catalog remains the single rule owner. |
 
 Every finding is the native match; no Python admission runs after the scan. A
 project fact a catalog rule needs is a stable generated utility (`own-package`,
 `stdlib-module`, `runtime-package`, `facade-package`, `local-alias`,
 `runtime-alias`, `package-export`, `compose-module`, ...) that the rule references
 through `matches:`, or a file scope the generated provider publishes in its
-`scopes.yml`. Catalog fixtures resolve those identities through
+`scopes.json`. Catalog fixtures resolve those identities through
 `config/rules/ast-grep/fixture-utils/`, which only the fixture stage reads. A native
 rule that still reports an actionable finding after the cascade fails `make mod`.
 
@@ -129,6 +168,10 @@ The engine reads these `metadata` keys, declared in
 | `owned_path_suffix` | Reject owned `.pyi` paths from discovery even without a syntax tree; detection-only, with no exemption. |
 
 ### One rule per law
+
+| Workspace declaration | Accepted decision |
+| --- | --- |
+| This section, One rule per law; the generated Infra copy links back here. | [FLEXT ADR-028 Decision 18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-18) |
 
 Operator order of 2026-10-25, verbatim (tracker memory
 `operator-order-2026-10-25-rules-generalized-min-count`; ADR-028 Decision 18):
@@ -308,10 +351,10 @@ rule whenever the target has syntax.
   snapshot of a removed rule or case.
 - Infra's `make mod-snapshots` owns regeneration. Review its diff in the same
   commit as the rule; snapshot refresh never proves behavioral acceptance.
-
-Import-retirement fixtures preserve every remaining use of the imported name,
-including attribute receivers. Only an unused binding can be retired; a later
-pipeline rewrite is not evidence that a current reference has disappeared.
+- Invalid fixtures retain the rejected input, not its corrected output. For
+  adapter construction, `m.TypeAdapter(...)` and `t.TypeAdapter(...)` exercise the
+  rewrite, while `u.type_adapter(...)` is a valid fixed point. Regenerate snapshots
+  from those authored inputs; never repair stale labels by editing generated output.
 
 ## Workflow
 

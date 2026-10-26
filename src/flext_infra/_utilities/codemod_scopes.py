@@ -44,7 +44,7 @@ class FlextInfraUtilitiesCodemodScopes:
         """
         if generated is None:
             return {}
-        payload = u.Cli.yaml_safe_load(
+        payload = u.Cli.json_read(
             generated.parent / c.Infra.CODEMOD_SCOPES_FILENAME
         ).unwrap()
         scopes: dict[str, t.StrSequence] = {}
@@ -265,6 +265,8 @@ class FlextInfraUtilitiesCodemodScopes:
                 for found in (
                     (item,)
                     if key == "matches" and isinstance(item, str)
+                    else (*item, *cls._matched(item))
+                    if key == "matches" and isinstance(item, Mapping)
                     else cls._matched(item)
                 )
             )
@@ -506,7 +508,10 @@ class FlextInfraUtilitiesCodemodScopes:
             raise TypeError(msg)
         unknown = sorted(str(name) for name in names if str(name) not in scopes)
         if unknown:
-            msg = f"{rule_id}: unknown file scope selectors {unknown}"
+            msg = (
+                f"{rule_id}: unknown file scope selectors {unknown}; "
+                f"available selectors are {sorted(scopes)}"
+            )
             raise ValueError(msg)
         return tuple(sorted({path for name in names for path in scopes[str(name)]}))
 

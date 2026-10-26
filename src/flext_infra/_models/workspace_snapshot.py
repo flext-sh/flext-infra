@@ -11,7 +11,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsRefactorGrep
 from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInitModels
 
@@ -96,9 +96,7 @@ class FlextInfraModelsWorkspaceSnapshot:
             ),
         ]
         sources: Annotated[
-            t.Port[
-                dict[Path, FlextInfraModelsWorkspaceSnapshot.WorkspaceSnapshotSource]
-            ],
+            t.Port[dict[Path, p.Infra.WorkspaceSnapshotSource]],
             m.Field(exclude=True, description="Authenticated reads of this run"),
         ]
         packages: Annotated[
@@ -110,6 +108,20 @@ class FlextInfraModelsWorkspaceSnapshot:
             m.Field(
                 exclude=True,
                 description="Runtime and typing-only imported modules per source",
+            ),
+        ]
+        absolute_import_roots: Annotated[
+            t.Port[dict[Path, t.StrTuple]],
+            m.Field(
+                exclude=True,
+                description="Absolute imported package roots per captured member",
+            ),
+        ]
+        import_namespaces: Annotated[
+            t.Port[dict[t.Pair[Path, Path], t.Pair[Path, str] | None]],
+            m.Field(
+                exclude=True,
+                description="Import-law namespace election per consumer and source",
             ),
         ]
         class_ancestors: Annotated[

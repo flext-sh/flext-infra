@@ -224,13 +224,16 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             RuntimeError: If the syntax cascade repeats a source state, or a
                 native-eligible rule still reports an actionable finding
                 after the native cascade.
+            ValueError: If native syntax planning requires its original scan rule plan.
 
         """
         plans: dict[Path, m.Infra.SemanticFilePlan] = {}
         inputs = {state.path: state for state in seed.inputs}
         self._capture_ast_inputs(root, inputs)
-        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
-            rule_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
+        rule_plan = current.rule_plan
+        if rule_plan is None:
+            msg = "native syntax planning requires its original scan rule plan"
+            raise ValueError(msg)
         native_ids = frozenset(
             rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
         )
@@ -469,19 +472,25 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             candidate, planned.value[1]
         )
 
-    def _apply_renames(self) -> p.Result[bool]:
+    def _apply_renames(
+        self,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Apply every declared CSV rename campaign in declared order.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The latest authenticated state of every published campaign path.
 
         """
+        published: dict[Path, m.Cli.AtomicFileState] = {}
         for rename_params in self.rename_inputs:
             renamed = self.rename_runner.run(rename_params)
             if renamed.failure:
-                return r[bool].from_failure(renamed)
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(renamed)
+            published.update({
+                state.path: state for state in renamed.value.published_states
+            })
             self.progress.emit_rename(renamed.value)
-        return r[bool].ok(value=True)
+        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(published.values()))
 
     def _advance_phases(
         self,
@@ -530,7 +539,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         if accepted.failure:
             return outcome.from_failure(accepted)
         return self._finish_phases(
-            root, rope_workspace, current, (publish, phase_states)
+            root, rope_workspace, current, (publish, accepted.value, phase_states)
         )
 
     def _publish_phase_candidate(
@@ -539,7 +548,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         seed: m.Infra.SemanticSourcePlan,
         *,
         publish: bool,
-    ) -> p.Result[bool]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose final callbacks and text before publishing one candidate.
 
         Returns:
@@ -548,12 +557,12 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         """
         callbacks = self._plan_phase_callbacks(root, seed)
         if callbacks.failure:
-            return r[bool].from_failure(callbacks)
+            return r[t.VariadicTuple[Path]].from_failure(callbacks)
         text = self._plan_text_phase(
             root, callbacks.value, text_precondition_pending=False
         )
         if text.failure:
-            return r[bool].from_failure(text)
+            return r[t.VariadicTuple[Path]].from_failure(text)
         return FlextInfraCodemodSemanticApply.publish_candidate(
             root, text.value, publish=publish
         )
@@ -698,7 +707,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         current: m.Infra.ModScanReport,
-        publication: t.Pair[bool, list[t.VariadicTuple[t.Pair[str, str]]]],
+        publication: t.Triple[
+            bool, t.VariadicTuple[Path], list[t.VariadicTuple[t.Pair[str, str]]]
+        ],
     ) -> p.Result[
         t.Pair[m.Infra.ModScanReport, t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]]]
     ]:
@@ -713,10 +724,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 m.Infra.ModScanReport, t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]]
             ]
         ]
-        publish, phase_states = publication
+        publish, published_paths, phase_states = publication
         if not publish:
             return outcome.ok((current, tuple(phase_states)))
         self.rename_plan = None
+        self.progress.emit(f"mod: published {len(published_paths)} source file(s)")
         rope_workspace.refresh()
         after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         phase_states.append(
@@ -727,6 +739,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         renames = self._apply_renames()
         if renames.failure:
             return outcome.from_failure(renames)
+        u.Cli.atomic_verify_binary_file_states(renames.value).unwrap()
+        if renames.value:
+            rope_workspace.refresh()
+            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         return outcome.ok((after_ast, tuple(phase_states)))
 
     def _emit_residuals(
@@ -840,9 +856,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             if advanced.failure:
                 return r[t.Cli.ResultValue].from_failure(advanced)
-            _after_ast, phase_states = advanced.value
+            current, phase_states = advanced.value
             text_precondition_pending = False
-            current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
             current_text = FlextInfraModTextGateEngine.scan(root, fix=False).unwrap()
             after = fingerprint(root, current)
             if after != before:

@@ -31,9 +31,6 @@ from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope_analysis.sourcescan import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
-)
 from flext_infra._utilities._rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
@@ -241,17 +238,11 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         if module not in files:
             return frozenset()
-        if module not in snapshot.exports:
-            FlextInfraUtilitiesWorkspaceSnapshot.workspace_source(snapshot, module)
-            snapshot.exports[module] = (
-                FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
-                    FlextInfraUtilitiesWorkspaceSnapshot.workspace_module_tree(
-                        snapshot, module
-                    ),
-                    c.Infra.DUNDER_ALL,
-                )
+        return frozenset(
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_public_exports(
+                snapshot, module
             )
-        return frozenset(snapshot.exports[module])
+        )
 
     @classmethod
     def codemod_layout_scopes(
@@ -495,7 +486,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             for nested in top.body
             if isinstance(nested, ast.ClassDef)
             and not FlextInfraUtilitiesCodemodProject.composes_family_package(
-                path, nested.name
+                snapshot, path, nested.name
             )
         )
 
@@ -530,7 +521,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             located[1]: (path, snapshots.workspace_source(snapshot, path).text)
             for path in snapshots.workspace_python_files(snapshot, root)
             if path.suffix == c.Infra.EXT_PYTHON
-            and (located := law.import_namespace(root, path)) is not None
+            and (located := law.snapshot_import_namespace(snapshot, root, path))
+            is not None
         }
         # (relative path, qualified class, selector) per asked class.
         questions: list[t.Triple[str, str, str]] = []
@@ -563,7 +555,10 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             for module, (path, _text) in sources.items()
         }
         scopes: dict[str, set[str]] = {}
-        with FlextInfraUtilitiesRopeCore.open_project(root) as rope:
+        with (
+            FlextInfraUtilitiesRopeCore.open_project(root) as rope,
+            rope.frozen_layout(),
+        ):
             reached = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_reaches(
                 rope,
                 sources,
@@ -878,7 +873,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
             snapshot, root
         ):
-            located = FlextInfraUtilitiesImportLaw.import_namespace(root, path)
+            located = FlextInfraUtilitiesImportLaw.snapshot_import_namespace(
+                snapshot, root, path
+            )
             if located is not None:
                 modules[located[1]] = path.relative_to(root).as_posix()
         members: dict[str, set[str]] = {}
