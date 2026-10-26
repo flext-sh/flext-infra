@@ -799,7 +799,7 @@ class FlextInfraPytestRunnerExecution(
                 )
 
     def execute_full(self) -> p.Result[int]:
-        """Run the complete suite once, only on a green same-scope check.
+        """Run the complete suite once after global primary source admission.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -814,7 +814,7 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Select impacted global cases, retaining FULL's green-check prerequisite.
+        """Select impacted global cases, retaining primary source admission.
 
         Explicit FULL bypasses dependency selection, not the prerequisite. Both
         operations retain the same marker inventory and testmon environment.
@@ -829,16 +829,6 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        root = u.Infra.runtime_owner_root(self.repository_root).unwrap()
-        approved = u.Infra.git_require_green_check_receipt(
-            root,
-            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
-            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
-                repository_root=root,
-            ).plan_global_targets(gates),
-        )
-        if approved.failure:
-            return r[int].from_failure(approved)
         return self._execute_testmon(
             complete=execution_mode == c.Infra.PytestExecutionMode.FULL,
             execution_mode=execution_mode,
@@ -873,6 +863,17 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Result[int]``.
 
         """
+        root = u.Infra.runtime_owner_root(self.repository_root).unwrap()
+        approved = u.Infra.git_require_green_check_receipt(
+            root,
+            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
+            phase=c.Infra.CheckPhase.PRIMARY,
+            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
+                repository_root=root,
+            ).plan_global_targets(gates),
+        )
+        if approved.failure:
+            return r[int].from_failure(approved)
         execution_mode = (
             c.Infra.PytestExecutionMode.FULL if complete else execution_mode
         )

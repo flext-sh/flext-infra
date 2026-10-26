@@ -80,6 +80,14 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                     u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
                     eq=gates,
                 )
+                tm.that(
+                    u.Infra.selected_check_gates(
+                        make,
+                        c.Infra.CheckGateSet.CHECK,
+                        phase=c.Infra.CheckPhase.PRIMARY,
+                    ),
+                    eq=make.check_prerequisite_gates,
+                )
         with u.Tests.env_vars_context(vars_to_clear=(ci.variable,)):
             tm.that(
                 u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
@@ -207,8 +215,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
         commands = [str(step.get("run", "")) for step in steps]
         approvals = [
-            f"{make.ci.variable}={make.ci.value} make {verb}"
-            for verb in make.approval_verbs
+            f"{make.ci.variable}={make.ci.value} {step.make_command}"
+            for step in make.workflow
+            if "ci" in step.contexts
         ]
         positions = [commands.index(approval) for approval in approvals]
         tm.that(positions, eq=sorted(positions))
@@ -308,9 +317,10 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         rows.insert(
             next(i for i, row in enumerate(rows) if row["verb"] == before),
             m.Infra.MakeWorkflowStepSpec(
+                identity=phase.name,
                 verb=phase.name,
                 contexts=("local", "ci"),
-            ).model_dump(),
+            ).model_dump(exclude_computed_fields=True),
         )
         payload["workflow"] = rows
         active = m.Infra.MakeSpec.model_validate(payload)
@@ -335,8 +345,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 if str(step.get("id", "")).startswith("approval-")
             ),
             eq=tuple(
-                f"{active.ci.variable}={active.ci.value} make {verb}"
-                for verb in active.approval_verbs
+                f"{active.ci.variable}={active.ci.value} {step.make_command}"
+                for step in active.workflow
+                if "ci" in step.contexts
             ),
         )
 
@@ -357,14 +368,14 @@ class TestsFlextInfraCodegenMakeCheckPartition:
 
     @staticmethod
     def test_tests_workflow_step_must_require_check() -> None:
-        """Tests run only on a green check: the requirement cannot be dropped."""
+        """Initial tests require the primary phase, not complete check acceptance."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         payload["workflow"] = [
             {**row, "requires": ()} if row["verb"] == c.Infra.VERB_TEST else row
             for row in payload["workflow"]
         ]
         with pytest.raises(
-            e.PydanticValidationError, match="tests run only on a green check"
+            e.PydanticValidationError, match="tests require fresh global primary"
         ):
             m.Infra.MakeSpec.model_validate(payload)
 
@@ -396,10 +407,11 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.that([row for row in required if row.requires], empty=False)
         for row in required:
             for prerequisite in row.requires:
-                tm.that(
-                    steps[f"approval-{row.verb}"],
-                    has=f"steps.approval-{prerequisite}.outcome == 'success'",
-                )
+                if "ci" in prerequisite.contexts:
+                    tm.that(
+                        steps[f"approval-{row.identity}"],
+                        has=f"steps.approval-{prerequisite.step}.outcome == 'success'",
+                    )
 
     @staticmethod
     @pytest.mark.slow

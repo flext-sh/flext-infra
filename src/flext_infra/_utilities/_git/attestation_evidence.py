@@ -29,12 +29,13 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         make: m.Infra.MakeSpec,
         *,
         plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
+        phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
     ) -> p.Result[Path]:
         """Prove the newest same-partition check covers the global candidate.
 
-        Tests run only on a green check (the workflow's ``tests`` row requires
-        ``check``). The current context selects the gate partition, not project
-        or file coverage. Its newest receipt must carry original digest-bound,
+        Initial tests require primary source admission; complete-check callers
+        retain the full contract. The current context selects the gate partition,
+        not project or file coverage. Its newest receipt carries digest-bound,
         unfiltered coverage of the canonical global topology and every applicable
         gate, match the admitted HEAD/status, and postdate changed working-tree paths.
         Older reports without producer coverage proof require a new check.
@@ -43,9 +44,9 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
             The approving receipt, or the first reason tests must refuse.
 
         """
-        refuse = "tests run only on a green check: "
+        refuse = f"tests run only on a green check: {phase} phase: "
         gates = FlextInfraUtilitiesBase.selected_check_gates(
-            make, c.Infra.CheckGateSet.CHECK
+            make, c.Infra.CheckGateSet.CHECK, phase=phase
         )
         directory = repo_root / make.gate_receipts_directory
         runs = sorted(directory.iterdir(), reverse=True) if directory.is_dir() else []
@@ -54,10 +55,13 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
             if not start.is_file():
                 continue
             started = m.Infra.GateCaptureStart.model_validate_json(start.read_bytes())
-            if started.gate != c.Infra.VERB_CHECK or tuple(
-                started.intent.requested_gates
-            ) != tuple(gates):
+            if started.gate != c.Infra.VERB_CHECK or started.intent.phase != phase:
                 continue
+            if tuple(started.intent.requested_gates) != tuple(gates):
+                return r[Path].fail(
+                    f"{refuse}the newest check {run.name} differs from the "
+                    "current phase gate inventory; run the declared phase again",
+                )
             result = run / c.Infra.GATE_CAPTURE_RESULT_FILENAME
             if not result.is_file():
                 return r[Path].fail(
@@ -112,7 +116,8 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
             )
         return r[Path].fail(
             f"{refuse}no check receipt of gates {','.join(gates)} under "
-            f"{directory}; run make check first",
+            f"{directory}; run make check first for complete acceptance, or "
+            "workspace check --phase primary for initial source admission",
         )
 
     @classmethod
@@ -135,7 +140,9 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
                 f"{refuse}is red (exit {capture.process.raw_return_code}, "
                 f"outcome {evidence.native_outcome}); fix it and rerun make check",
             )
-        accepted = cls._accepted_gate_evidence(repo_root, evidence)
+        accepted = cls._accepted_gate_evidence(
+            repo_root, evidence, phase=evidence.intent.phase
+        )
         if accepted.failure:
             return r[Path].from_failure(accepted)
         coverage = cls._green_receipt_coverage(
@@ -353,7 +360,13 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         cls,
         repo_root: Path,
         evidence: m.Infra.GateExecutionFacts,
+        *,
+        phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
     ) -> p.Result[bool]:
+        if evidence.gate == c.Infra.VERB_CHECK and evidence.intent.phase != phase:
+            return r[bool].fail(
+                "original checker phase does not prove required stage acceptance"
+            )
         process = evidence.process
         digest_matches = evidence.result_digest == (
             "sha256:" + u.Cli.sha256_content(process.model_dump_json(round_trip=True))
@@ -453,11 +466,12 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         report = m.Infra.SarifReport.model_validate_json(source.value)
         if (
             report.properties is None
+            or report.properties.phase != evidence.intent.phase
             or tuple(report.properties.requested_gates)
             != evidence.intent.requested_gates
         ):
             return result_type.fail(
-                "checker report differs from original requested gates"
+                "checker report differs from original phase or requested gates"
             )
         return cls._check_report_outcome(report)
 

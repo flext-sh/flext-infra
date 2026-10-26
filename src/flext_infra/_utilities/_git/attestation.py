@@ -200,7 +200,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         root = request.repository_root.resolve()
         gates = request.gates or ",".join(
             FlextInfraUtilitiesBase.selected_check_gates(
-                inputs.spec.make, c.Infra.CheckGateSet.CHECK
+                inputs.spec.make, c.Infra.CheckGateSet.CHECK, phase=request.phase
             )
         )
         if not gates:
@@ -226,6 +226,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             str(root),
             "--gates",
             gates,
+            "--phase",
+            request.phase,
             "--scope",
             c.Infra.CodegenConformScope.ALL.value,
             "--reports-dir",
@@ -240,6 +242,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             {
                 "repository_root": root,
                 "gates": gates,
+                "phase": request.phase,
                 "scope": c.Infra.CodegenConformScope.ALL,
             },
         )
@@ -249,6 +252,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 gate=c.Infra.VERB_CHECK,
                 command=command,
                 intent=m.Infra.GateExecutionIntent(
+                    phase=request.phase,
                     requested_gates=tuple(native_request.gates),
                 ),
                 runtime_identity=read_runtime_identity(native_request.gates).unwrap(),

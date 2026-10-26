@@ -377,7 +377,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         for target in u.Infra.ast_grep_scan_targets(root):
             path = root / target
             paths = (
-                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
+                u.Infra.iter_directory_python_files(path, repository_root=root)
+                if path.is_dir()
+                else (path,)
             )
             for source in paths:
                 captured = u.Cli.atomic_read_binary_file_state(

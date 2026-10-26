@@ -170,13 +170,10 @@ class FlextInfraWorkspaceChecker(
         project_targets = project_targets_result.value
         # An omitted gate selection resolves the requested gate set from the
         # typed Make spec at runtime, never from a generated projection.
-        gates = list(
-            params.gates
-            or u.Infra.selected_check_gates(
-                u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make,
-                params.gate_set,
-            )
-        )
+        requested = self._resolve_requested_gates(params)
+        if requested.failure:
+            return r[m.Infra.CheckReportSummary].from_failure(requested)
+        gates = requested.value
         destination = params.report_output
         before = (
             None
@@ -217,7 +214,41 @@ class FlextInfraWorkspaceChecker(
             gates,
             gate_ctx,
             report_output_state=before,
+            phase=params.phase,
         )
+
+    @staticmethod
+    def _resolve_requested_gates(params: m.Infra.RunCommand) -> p.Result[t.StrSequence]:
+        """Bind primary admission to its exact unfiltered global policy.
+
+        Returns:
+            The declared inventory or the first invalid phase selection.
+
+        """
+        gates = u.Infra.selected_check_gates(
+            u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make,
+            params.gate_set,
+            phase=params.phase,
+        )
+        if params.phase == c.Infra.CheckPhase.PRIMARY:
+            if any((
+                params.file is not None,
+                params.projects,
+                params.scope != c.Infra.CodegenConformScope.ALL,
+                params.gate_set != c.Infra.CheckGateSet.CHECK,
+                params.apply,
+                params.check_only,
+                params.ruff_args is not None,
+                params.pyright_args is not None,
+            )):
+                return r[t.StrSequence].fail(
+                    "primary check requires unfiltered read-only global check scope"
+                )
+            if params.gates and tuple(params.gates) != gates:
+                return r[t.StrSequence].fail(
+                    "primary check gates differ from check_prerequisite_gates"
+                )
+        return r[t.StrSequence].ok(params.gates or gates)
 
     @staticmethod
     def _report_output_refusal(
@@ -529,6 +560,8 @@ class FlextInfraWorkspaceChecker(
         gates: t.StrSequence,
         ctx: m.Infra.GateContext | None = None,
         report_output_state: m.Cli.AtomicFileState | None = None,
+        *,
+        phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
     ) -> p.Result[m.Infra.CheckReportSummary]:
         """Run selected gates in one exclusively owned invocation report directory.
 
@@ -577,6 +610,7 @@ class FlextInfraWorkspaceChecker(
         targets = self._targets_for_gates(targets, admission_gates, effective_ctx)
         reached: dict[Path, m.Infra.ProjectResult] = {}
         current_summary = m.Infra.CheckReportSummary(
+            phase=phase,
             requested_gates=gates,
             pending_gates=pending_gates,
             targets=targets,
@@ -603,6 +637,7 @@ class FlextInfraWorkspaceChecker(
             reached[project_dir.resolve()] = project
             publish_summary(
                 m.Infra.CheckReportSummary(
+                    phase=phase,
                     requested_gates=gates,
                     pending_gates=pending_gates,
                     targets=targets,
@@ -654,6 +689,7 @@ class FlextInfraWorkspaceChecker(
                 return r[m.Infra.CheckReportSummary].from_failure(global_plan)
             global_targets = global_plan.value
         summary = m.Infra.CheckReportSummary(
+            phase=phase,
             requested_gates=gates,
             pending_gates=pending_gates,
             targets=targets,

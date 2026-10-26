@@ -151,12 +151,6 @@ class TestsFlextInfraCodegenHookConformance:
             **policy.model_dump(exclude_computed_fields=True),
             "pre_commit": False,
             "pre_push": True,
-            "workflow": (
-                m.Infra.MakeWorkflowStepSpec(
-                    verb="check",
-                    contexts=("local", "pre_push"),
-                ),
-            ),
         })
         rendered = tm.ok(
             u.Cli.template_render(
@@ -170,8 +164,16 @@ class TestsFlextInfraCodegenHookConformance:
         repositories = u.Cli.json_as_sequence(document["repos"])
         repository = u.Cli.json_as_mapping(repositories[0])
         hooks = u.Cli.json_as_sequence(repository["hooks"])
-        tm.that(len(hooks), eq=1)
-        hook = u.Cli.json_as_mapping(hooks[0])
+        check = next(
+            step for step in make.workflow
+            if step.verb == c.Infra.VERB_CHECK
+            and step.phase == c.Infra.CheckPhase.COMPLETE
+        )
+        hook = next(
+            mapping for row in hooks
+            if (mapping := u.Cli.json_as_mapping(row))["id"]
+            == f"flext-pre-push-{check.identity}"
+        )
         entry = u.Cli.json_pick_str(hook, "entry")
         tm.that(entry, empty=False)
         process = tm.ok(

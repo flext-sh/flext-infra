@@ -331,6 +331,13 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         NOTE = "note"
 
     @unique
+    class CheckPhase(StrEnum):
+        """Distinct source-admission and complete-check evidence partitions."""
+
+        PRIMARY = "primary"
+        COMPLETE = "complete"
+
+    @unique
     class CheckGateSet(StrEnum):
         """Gate inventory a Make verb asks the checker to resolve at runtime.
 

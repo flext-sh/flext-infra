@@ -21,7 +21,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     (outside CI), documentation and Git status follow. The commit hook token
     runs only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(PROJECT_ROOT)"
+{{ "\t" }}@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
@@ -150,6 +150,7 @@ WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproj
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
+export CHECK_PHASE
 PYTEST_REPORTS_DIR := {{ make.testmon_cache.reports_directory }}
 PYTEST_CACHE_HOME = $(if $(strip $({{ make.testmon_cache.data_home_environment_variable }})),$({{ make.testmon_cache.data_home_environment_variable }}),$(if $(strip $({{ make.testmon_cache.user_home_environment_variable }})),$({{ make.testmon_cache.user_home_environment_variable }})/{{ make.testmon_cache.home_cache_directory }},))
 # One persistent testmon database per project, shared by every checkout and

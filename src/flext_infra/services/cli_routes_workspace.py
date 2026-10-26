@@ -110,7 +110,10 @@ class FlextInfraWorkspaceRoutes:
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
         make = inputs.spec.make
         token = u.Infra.env_value(make.ci.variable)
-        complete = token != make.ci.pre_commit_value
+        complete = (
+            params.phase == c.Infra.CheckPhase.COMPLETE
+            and token != make.ci.pre_commit_value
+        )
         status = cls._captured_gate_status(params, inputs)
         if status:
             u.Cli.framework_exit(status)

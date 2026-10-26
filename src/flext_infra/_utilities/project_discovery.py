@@ -740,17 +740,16 @@ class FlextInfraUtilitiesProjectDiscovery(
         ) | {c.Infra.GIT_DIR}
         # Complete declared artifact roots are data, including direct files.
         # Do not open or parse Python scenarios while admitting source paths.
-        scenario_roots = tuple(
-            f"/{root}/" for root in config.Infra.codegen.exclusions.scenario_data_roots
-        )
         walk = (
             directory.walk(on_error=on_error)
             if source_project is None
             else source_project.source_walk(directory)
         )
         for parent, child_dirs, file_names in walk:
-            scenario_root = any(
-                root in f"{parent.as_posix()}/" for root in scenario_roots
+            scenario_root = (
+                FlextInfraUtilitiesIterationDirectory.source_scan_artifact_path(
+                    directory, parent
+                )
             )
             if scenario_root:
                 child_dirs.clear()

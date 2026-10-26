@@ -76,6 +76,10 @@ class FlextInfraModelsCheck:
                 ),
             ),
         ] = c.Infra.CheckGateSet.CHECK
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(description="Primary source admission or complete checker phase"),
+        ] = c.Infra.CheckPhase.COMPLETE
         scope: Annotated[
             c.Infra.CodegenConformScope,
             m.Field(
@@ -678,6 +682,12 @@ class FlextInfraModelsCheck:
         Missing global coverage is unknown, never implicit whole-workspace proof.
         """
 
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(
+                description="Original checker phase; primary is never complete check proof"
+            ),
+        ] = c.Infra.CheckPhase.COMPLETE
         requested_gates: Annotated[
             t.StrSequence,
             m.Field(

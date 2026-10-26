@@ -136,7 +136,8 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         make = config.Infra.codegen.make
         prefix = f"{make.ci.variable}={make.ci.value} make "
         expected = tuple(
-            f"{prefix}{step.verb}" for step in make.workflow if "ci" in step.contexts
+            f"{make.ci.variable}={make.ci.value} {step.make_command}"
+            for step in make.workflow if "ci" in step.contexts
         )
         observed = tuple(
             command
@@ -165,16 +166,20 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8",
         )
-        verbs = config.Infra.codegen.make.approval_verbs
-        for index, verb in enumerate(verbs):
-            block = workflow.split(f"- name: make {verb} (blocking)", maxsplit=1)[1]
+        phases = tuple(
+            step for step in config.Infra.codegen.make.workflow if "ci" in step.contexts
+        )
+        for index, phase in enumerate(phases):
+            block = workflow.split(
+                f"- name: {phase.make_command} (blocking)", maxsplit=1
+            )[1]
             block = block.split("\n      - name:", maxsplit=1)[0]
             tm.that(block, lacks="workflow_dispatch")
-            tm.that(block, has=f"make {verb}")
+            tm.that(block, has=phase.make_command)
             if index:
                 tm.that(
                     block,
-                    has=f"steps.approval-{verbs[0]}.outcome == 'success'",
+                    has=f"steps.approval-{phases[0].identity}.outcome == 'success'",
                 )
         tm.that(workflow, lacks="- name: Approval (blocking)")
 

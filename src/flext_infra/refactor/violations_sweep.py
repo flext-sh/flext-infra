@@ -811,7 +811,9 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         for target in targets:
             path = root / target
             paths.update(
-                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
+                u.Infra.iter_directory_python_files(path, repository_root=root)
+                if path.is_dir()
+                else (path,)
             )
         return paths, (str(text_paths.error),) if text_paths.failure else ()
 

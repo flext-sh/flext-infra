@@ -427,6 +427,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         until both agree, so one generation publishes a fixed point. The
         rounds are bounded by the facade family count plus one; a projection
         still moving after that fails with its diverging initializers.
+        The complete lazy plan already supplied by this invocation seeds the
+        first round unless a foreign provider or another input changed. The
+        existing re-plan after facade effects remains the convergence proof.
 
         Returns:
             Projected files, custom files and initializers, or the first failure.
@@ -439,7 +442,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Infra.CodegenFilePlan],
             ]
         ]
-        exported = self._projected_exports(root, cohort)
+        exported = (
+            self._existing_lazy_sources(root).map(tuple)
+            if self.state.provider_plans is not None
+            and not any(
+                (plan.project != root or plan.path.name != c.Infra.INIT_PY)
+                and u.Infra.codegen_file_requires_effect(plan)
+                for plan in cohort
+            )
+            else self._projected_exports(root, cohort)
+        )
         if exported.failure:
             return result_type.from_failure(exported)
         initializers = tuple(
@@ -453,29 +465,35 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         previous: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
         for _ in range(len(u.Infra.facade_families()) + 1):
-            sources = tuple(
-                {plan.path: plan for plan in (*cohort, *initializers)}.values()
-            )
-            with self._source_view(root, declared_files=sources) as binding:
+            source_plans = {plan.path: plan for plan in (*cohort, *initializers)}
+            with self._source_view(
+                root, declared_files=tuple(source_plans.values())
+            ) as binding:
                 custom_result = self._plan_existing_custom(
                     root,
                     codegen,
                     profile=profile,
                     binding=binding,
-                    declared_files=sources,
+                    declared_files=tuple(source_plans.values()),
                 )
             if custom_result.failure:
                 return result_type.from_failure(custom_result)
             projected_files = {
-                plan.path: plan for plan in (*sources, *custom_result.value)
+                **source_plans,
+                **{plan.path: plan for plan in custom_result.value},
             }
-            if self.state.provider_plans is not None and all(
-                plan.desired_content == plan.before.content
-                for plan in projected_files.values()
+            if all(
+                plan.desired_content
+                == (
+                    source_plans[plan.path].desired_content
+                    if plan.path in source_plans
+                    else plan.before.content
+                )
+                for plan in custom_result.value
             ):
-                # The projection keeps every current byte, including the
-                # initializers this run's lazy surface planned over the same
-                # tree and scope, so re-planning them reads unchanged inputs.
+                # Facades read this candidate, whose initializer effects may
+                # differ from the checkout already. Only a new content effect
+                # invalidates the export plan that seeded this round.
                 return result_type.ok((
                     tuple(projected_files.values()),
                     custom_result.value,

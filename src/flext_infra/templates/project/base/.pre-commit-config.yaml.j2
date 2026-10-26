@@ -1,9 +1,9 @@
 {% macro workflow_hook(step, context) %}
-      - id: flext-{{ context | replace("_", "-") }}-{{ step.verb }}
-        name: make {{ step.verb }}
+      - id: flext-{{ context | replace("_", "-") }}-{{ step.identity }}
+        name: {{ step.make_command }}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset MAKEFLAGS; {% if context == "pre_commit" %}{{ make.ci.variable }}={{ make.ci.pre_commit_value }} {% elif step.verb == "check" %}unset {{ make.ci.variable }}; {% else %}{{ make.ci.variable }}={{ make.ci.local_value }} {% endif %}make {{ step.verb }}'
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset MAKEFLAGS; {% if context == "pre_commit" %}{{ make.ci.variable }}={{ make.ci.pre_commit_value }} {% elif step.verb == "check" %}unset {{ make.ci.variable }}; {% else %}{{ make.ci.variable }}={{ make.ci.local_value }} {% endif %}{{ step.make_command }}'
         pass_filenames: false
         always_run: true
         stages: [{{ context | replace("_", "-") }}]

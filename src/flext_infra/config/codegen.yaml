@@ -764,31 +764,56 @@ Infra:
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
       workflow:
-      - { verb: setup, contexts: [ local, ci ] }
+      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      # Initial behavioral admission requires global source evidence, not full check.
+      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      - identity: tests-primary
+        verb: tests
+        contexts: [ local, ci, pre_push ]
+        requires:
+        - { step: check-primary, contexts: [ local, ci, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
       # local codemod cascade and verify only its own output.
-      - { verb: gen, contexts: [ local ] }
-      - { verb: fix, contexts: [ local ] }
-      - { verb: fmt, contexts: [ local ] }
-      - { verb: check, contexts: [ local, ci, pre_push, pre_commit ] }
-      # Tests run only on a green check (operator law): the requirement is
-      # declared once here and consumed by the CI step condition and the
-      # runner's check-receipt preflight.
-      - { verb: tests, contexts: [ local, ci, pre_push ], requires: [ check ] }
+      - { identity: gen, verb: gen, contexts: [ local ], requires: [ { step: tests-primary, contexts: [ local ] } ] }
+      - { identity: fmt, verb: fmt, contexts: [ local ], requires: [ { step: gen, contexts: [ local ] } ] }
+      - { identity: fix, verb: fix, contexts: [ local ], requires: [ { step: fmt, contexts: [ local ] } ] }
+      - { identity: mod, verb: mod, contexts: [ local ], requires: [ { step: fix, contexts: [ local ] } ] }
+      - identity: check-primary-refresh
+        verb: check
+        phase: primary
+        contexts: [ local ]
+        requires:
+        - { step: mod, contexts: [ local ] }
+      - identity: check
+        verb: check
+        contexts: [ local, ci, pre_push, pre_commit ]
+        requires:
+        - { step: tests-primary, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary-refresh, contexts: [ local ] }
+      - identity: tests
+        verb: tests
+        contexts: [ local, ci, pre_push ]
+        requires:
+        - { step: check, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary, contexts: [ ci, pre_push ] }
+        - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
       - { verb: help, contexts: [ local, ci ] }
       - { verb: setup, contexts: [ local, ci ] }
+      - { verb: check, phase: primary, contexts: [ local, ci ] }
+      - { verb: tests, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local, ci ] }
-      - { verb: mod, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local, ci ] }
-      - { verb: fix, contexts: [ local, ci ] }
       - { verb: fmt, contexts: [ local, ci ] }
+      - { verb: fix, contexts: [ local, ci ] }
+      - { verb: mod, contexts: [ local, ci ] }
       # Consecutive generation proves convergence on unchanged declarations.
       - { verb: gen, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local, ci ] }
+      - { verb: check, phase: primary, contexts: [ local, ci ] }
       - { verb: check, contexts: [ local, ci ] }
       - { verb: tests, contexts: [ local, ci ] }
       - { verb: build, contexts: [ local, ci ] }
@@ -852,6 +877,7 @@ Infra:
         description: Format authored content through the configured formatters.
       - name: check
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
+        arguments: [ CHECK_PHASE ]
       - name: tests
         description: Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
       - name: help

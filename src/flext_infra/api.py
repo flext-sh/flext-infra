@@ -438,10 +438,11 @@ class FlextInfra(
 
     @staticmethod
     def workspace_tests(request: m.Infra.WorkspaceTestsRequest) -> p.Result[int]:
-        """Require the original global green check before native test engines.
+        """Require original global primary source proof before native test engines.
 
         Ordinary test failures retain their original first status while every
-        selected repository is reached. Configuration failures escape unchanged.
+        selected repository is reached. Interruptions and infrastructure errors
+        stop dispatch with their native status; configuration failures escape.
         Admission, discovery and member execution share this operation's clock.
 
         Returns:
@@ -457,6 +458,7 @@ class FlextInfra(
         admitted = u.Infra.git_require_green_check_receipt(
             workspace_root,
             u.Infra.load_codegen_inputs(workspace_root).unwrap().spec.make,
+            phase=c.Infra.CheckPhase.PRIMARY,
             plan_global_targets=FlextInfraWorkspaceChecker(
                 repository_root=workspace_root,
             ).plan_global_targets,
@@ -497,8 +499,11 @@ class FlextInfra(
                 started_at_monotonic=started_at_monotonic,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")
-            if not status and outcome:
-                status = outcome
+            if outcome:
+                if outcome != c.Infra.Pytest.ExitCode.TESTS_FAILED:
+                    return r[int].ok(outcome)
+                if not status:
+                    status = outcome
         return r[int].ok(status)
 
     @staticmethod

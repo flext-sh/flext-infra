@@ -176,6 +176,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 for directory in self._existing_check_dirs(project_dir)
                 for path in u.Infra.iter_directory_python_files(
                     project_dir / directory,
+                    repository_root=project_dir,
                 )
                 if path.resolve() not in unparsable
             ),

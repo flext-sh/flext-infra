@@ -22,6 +22,42 @@ class TestsFlextInfraFacadeMemberConstraints:
 
     PACKAGE: str = "flext_core"
 
+    @staticmethod
+    def test_lazy_facade_import_keeps_source_kind() -> None:
+        """Classify a real lazy export through its declared source class."""
+        package_dir = tm.not_none(u.Infra.declared_package_dir("flext_cli"))
+        with u.Infra.codemod_workspace_snapshot(package_dir.parent.parent) as snapshot:
+            module = u.Infra.require_semantic_module(
+                snapshot.engine.get_module("flext_cli.utilities")
+            )
+            binding = module.get_attributes()["FlextCliUtilitiesAtomicFileCleanup"]
+            tm.that(
+                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                eq=c.Infra.FacadeMemberKind.TYPE,
+            )
+            tm.that(
+                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                eq="t",
+            )
+
+    @classmethod
+    def test_binary_stub_exception_keeps_source_kind(cls) -> None:
+        """Use the installed Pydantic core stub, not the binary's unknown Rope type."""
+        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            module = u.Infra.require_semantic_module(
+                snapshot.engine.get_module("flext_core._constants.pydantic")
+            )
+            owner = module.get_attributes()["FlextConstantsPydantic"].get_object()
+            binding = owner.get_attributes()["ValidationError"]
+            tm.that(
+                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                eq=c.Infra.FacadeMemberKind.EXCEPTION,
+            )
+            tm.that(
+                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                eq="c",
+            )
+
     @classmethod
     def _project(cls) -> Path:
         package_dir = tm.not_none(u.Infra.declared_package_dir(cls.PACKAGE))

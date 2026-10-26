@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import builtins
 import re
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -60,6 +62,9 @@ class FlextInfraUtilitiesFacadeMembers:
         )
         origin = binding.get_object()
         if origin is runtime.runtime_callable("rope.base.pyobjects", "get_unknown")():
+            stub_kind = cls._stub_kind(binding, source_project=source_project)
+            if stub_kind is not None:
+                return stub_kind
             message = f"unknown facade member kind: {binding.get_definition_location()}"
             raise ValueError(message)
         kind = c.Infra.FacadeMemberKind
@@ -85,6 +90,67 @@ class FlextInfraUtilitiesFacadeMembers:
             and origin_type.get_name() in c.Infra.FACADE_MEMBER_TYPING_MODULES
             else kind.CONSTANT
         )
+
+    @staticmethod
+    def _stub_kind(
+        value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+    ) -> c.Infra.FacadeMemberKind | None:
+        """Classify a binary export only when its installed stub declares a class.
+
+        Returns:
+            The source-declared class kind, or None without a proven declaration.
+
+        Raises:
+            ValueError: If the binary export has ambiguous or cyclic declarations.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        if not types.assigned_name(value) or len(value.assignments) != 1:
+            return None
+        assigned = value.assignments[0].ast_node
+        module, _line = runtime.definition_location(value)
+        if not isinstance(assigned, ast.Name) or not types.source_module(module):
+            return None
+        imported = module.get_attributes().get(assigned.id)
+        visited: set[tuple[Path, str]] = set()
+        while isinstance(imported, p.Infra.RopeImportedName):
+            resource = runtime.imported_module_resource(source_project, imported)
+            path = Path(resource.real_path).resolve()
+            identity = path, imported.imported_name
+            if identity in visited:
+                message = f"cyclic binary export: {identity}"
+                raise ValueError(message)
+            visited.add(identity)
+            stub = path / "__init__.pyi" if path.is_dir() else path.with_suffix(".pyi")
+            if stub.is_file():
+                declarations = [
+                    node
+                    for node in ast.parse(stub.read_text(encoding="utf-8")).body
+                    if isinstance(node, ast.ClassDef)
+                    and node.name == imported.imported_name
+                ]
+                if len(declarations) > 1:
+                    message = f"ambiguous binary class declaration: {identity}"
+                    raise ValueError(message)
+                if declarations:
+                    return (
+                        c.Infra.FacadeMemberKind.EXCEPTION
+                        if any(
+                            isinstance(base, ast.Name)
+                            and isinstance(
+                                base_type := vars(builtins).get(base.id), type
+                            )
+                            and issubclass(base_type, BaseException)
+                            for base in declarations[0].bases
+                        )
+                        else c.Infra.FacadeMemberKind.TYPE
+                    )
+            provider = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                source_project, resource
+            )
+            imported = provider.get_attributes().get(imported.imported_name)
+        return None
 
     @staticmethod
     def _annotation_kind(
@@ -210,9 +276,33 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        alias = runtime.annotation_alias_definition(value)
+        binding = value
+        if (
+            isinstance(value, p.Infra.RopeImportedName)
+            and value.get_object()
+            is runtime.runtime_callable("rope.base.pyobjects", "get_unknown")()
+        ):
+            resource = runtime.imported_module_resource(source_project, value)
+            provider = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                source_project, resource
+            )
+            resolved = FlextInfraUtilitiesImportLaw.resolve_declared_binding(
+                source_project,
+                provider.get_name(),
+                value.imported_name,
+                Path(source_project.root.real_path),
+                {},
+            )
+            if resolved is None:
+                message = (
+                    f"unproven lazy facade origin: "
+                    f"{provider.get_name()}.{value.imported_name}"
+                )
+                raise ValueError(message)
+            binding = resolved
+        alias = runtime.annotation_alias_definition(binding)
         if alias is None:
-            return value
+            return binding
         declaration, scope = alias
         origin = runtime.annotation_origin(source_project, declaration.value, scope)
         if origin is None:

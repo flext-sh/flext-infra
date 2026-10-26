@@ -145,22 +145,22 @@ jobs:
 {%- for step in make.workflow if "ci" in step.contexts %}
 {%- set verb = step.verb %}
 {%- if verb == "check" %}
-{%- set ci_check.step_id = "approval-" ~ verb %}
+{%- set ci_check.step_id = "approval-" ~ step.identity %}
 {%- endif %}
-{%- set approval_id = "approval-" ~ verb %}
+{%- set approval_id = "approval-" ~ step.identity %}
 {%- if verb == "tests" %}
 {%- set ci_tests.test_step_id = approval_id %}
 {%- endif %}
       # CI approval, one visible step per ci workflow row ({{ make.approval_verbs | join(" -> ") }}).
-      - name: make {{ verb }} (blocking)
+      - name: {{ step.make_command }} (blocking)
         id: {{ approval_id }}
 {%- if not loop.first %}
         # Every approval verb reports once setup provisioned the environment,
         # so one red verdict never hides the others; a declared requirement
         # (workflow requires) admits the step only after that verb is green.
-        if: {% raw %}${{ !cancelled() && steps.{% endraw %}approval-{{ make.approval_verbs[0] }}{% raw %}.outcome == 'success'{% endraw %}{% for required in step.requires %}{% raw %} && steps.{% endraw %}approval-{{ required }}{% raw %}.outcome == 'success'{% endraw %}{% endfor %}{% raw %} }}{% endraw %}
+        if: {% raw %}${{ !cancelled() && steps.{% endraw %}approval-{{ make.approval_verbs[0] }}{% raw %}.outcome == 'success'{% endraw %}{% for required in step.requires if "ci" in required.contexts %}{% raw %} && steps.{% endraw %}approval-{{ required.step }}{% raw %}.outcome == 'success'{% endraw %}{% endfor %}{% raw %} }}{% endraw %}
 {%- endif %}
-        run: {{ make.ci.variable }}={{ make.ci.value }} make {{ verb }}
+        run: {{ make.ci.variable }}={{ make.ci.value }} {{ step.make_command }}
 {%- endfor %}
 {%- include "_fragments/custom_post_steps.j2" %}
 {%- if ci_tests.selected %}

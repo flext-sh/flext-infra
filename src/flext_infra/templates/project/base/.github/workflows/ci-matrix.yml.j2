@@ -82,7 +82,7 @@ jobs:
           -w /workspace/{{ superproject.path }}
 {%- endif %}
           ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
-          bash -ec '{% for step in make.lifecycle_steps if "ci" in step.contexts %}{% if not loop.first %} && {% endif %}make {{ step.verb }}{% endfor %}'
+          bash -ec '{% for step in make.lifecycle_steps if "ci" in step.contexts %}{% if not loop.first %} && {% endif %}{{ step.make_command }}{% endfor %}'
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===

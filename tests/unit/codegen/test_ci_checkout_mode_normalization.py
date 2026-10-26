@@ -37,7 +37,7 @@ class TestsFlextInfraCiCheckoutModeNormalization:
         tm.that(ci_verbs, empty=False)
         tm.that(tuple(ci_verbs), eq=make.approval_verbs)
         approval_at = [
-            commands.index(f"{make.ci.variable}={make.ci.value} make {verb}")
-            for verb in ci_verbs
+            commands.index(f"{make.ci.variable}={make.ci.value} {step.make_command}")
+            for step in make.workflow if "ci" in step.contexts
         ]
         tm.ok(normalize_at < min(approval_at))

@@ -2,7 +2,8 @@
 
 A root namespace inherits the facade letters of its facade parents: the
 nearest parent that declares a letter wins, else the nearest that serves it
-through its published surface (spec §3, kept exactly).
+through its effective published surface. The public root also publishes its
+manifest-declared upstream facets after native identity verification.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,11 +13,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesPythonModel,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 
@@ -69,7 +72,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         only this project's chain (foreign parents are leaves) and takes the
         nearest parent that declares the letter, else the nearest actual
         publisher. A transitive dependency does not establish publication.
-        Local owners and foreign local overrides are never replaced.
+        Local owners win; manifest facets require identical upstream bindings.
         """
         python = FlextInfraUtilitiesPythonModel
         pkg_dir, current = context.pkg_dir, context.current_pkg
@@ -123,6 +126,7 @@ class FlextInfraUtilitiesLazyInitLetters:
                     package
                     for package in election
                     if letter in cls._lazy_init_declared_letters(run, package)
+                    and letter in cls._lazy_init_package_names(run, package)
                 ),
                 "",
             ) or next(
@@ -137,6 +141,148 @@ class FlextInfraUtilitiesLazyInitLetters:
                 lazy_map[letter] = (owner, letter)
             elif existing is not None:
                 del lazy_map[letter]
+        if pkg_dir == cls.lazy_init_public_root(run, project):
+            cls._lazy_init_inherited_facets(run, context, lazy_map, local_owners)
+
+    @classmethod
+    def _lazy_init_inherited_facets(
+        cls,
+        run: m.Infra.LazyInitRun,
+        context: m.Infra.LazyInitPackageContext,
+        lazy_map: t.MutableLazyAliasMap,
+        local_owners: set[str],
+    ) -> None:
+        """Publish only explicitly declared upstream facets by native identity.
+
+        An absent optional project subsection declares no manifest-only facets;
+        ordinary source-derived letters remain governed by ADR-018.
+
+        Raises:
+            ValueError: If a declared owner or inherited publication is invalid.
+
+        """
+        view = run.model.source_project
+        project = run.index.packages_by_dir[str(context.pkg_dir)].project_root
+        if project is None:
+            msg = f"lazy-init public root has no repository owner: {context.pkg_dir}"
+            raise ValueError(msg)
+        declaration = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_repository_declaration_inputs(project, source_project=view)
+            .unwrap()
+            .spec.project
+        )
+        if declaration is None:
+            return
+        upstream = declaration.upstream
+        facets = dict.fromkeys(declaration.inherited_facets)
+        for name in cls._lazy_init_imported_facets(run, context, upstream):
+            facets.setdefault(name)
+        for name in facets:
+            if name in local_owners:
+                continue
+            if name not in cls._lazy_init_package_names(run, upstream):
+                msg = f"lazy-init upstream '{upstream}' does not publish facet '{name}'"
+                raise ValueError(msg)
+            canonical = cls._lazy_init_facet_binding(run, (upstream, name))
+            existing = lazy_map.get(name)
+            if existing is not None and existing[0] != context.current_pkg:
+                actual = cls._lazy_init_facet_binding(run, existing)
+                if actual.get_object() is not canonical.get_object():
+                    msg = (
+                        f"lazy-init ambiguous inherited facet '{name}': "
+                        f"{existing} differs from {(upstream, name)}"
+                    )
+                    raise ValueError(msg)
+            lazy_map[name] = (upstream, name)
+
+    @classmethod
+    def _lazy_init_imported_facets(
+        cls,
+        run: m.Infra.LazyInitRun,
+        context: m.Infra.LazyInitPackageContext,
+        upstream: str,
+    ) -> t.StrSequence:
+        """Identify consumer imports bound to the declared upstream facets.
+
+        Returns:
+            Imported facet names in their native source traversal order.
+
+        """
+        view = run.model.source_project
+        declared = cls._lazy_init_declared_letters(run, upstream)
+        imported: list[str] = []
+        for child in view.source_children(context.pkg_dir):
+            if (
+                child.suffix != c.Infra.EXT_PYTHON
+                or child.name == c.Infra.INIT_PY
+                or not view.source_query(child, "isfile")
+            ):
+                continue
+            module = FlextInfraUtilitiesPythonModel.python_model_module_at(
+                run.model, child, f"{context.current_pkg}.{child.stem}"
+            )
+            for name, target in FlextInfraUtilitiesPythonModel.python_model_imports(
+                module
+            ).items():
+                provider, _, attribute = target.rpartition(".")
+                if (
+                    provider in {upstream, context.current_pkg}
+                    and name == attribute
+                    and name in declared
+                ):
+                    imported.append(name)
+        return imported
+
+    @staticmethod
+    def _lazy_init_facet_binding(
+        run: m.Infra.LazyInitRun, target: t.StrPair
+    ) -> p.Infra.RopePyName:
+        """Resolve the effective publication route through the run's native engine.
+
+        Returns:
+            The original class binding, never an inferred string identity.
+
+        Raises:
+            ValueError: If the planned publication is absent, incomplete or cyclic.
+
+        """
+        seen: set[t.StrPair] = set()
+        while target not in seen:
+            seen.add(target)
+            module, attribute = target
+            package_dir = run.index.package_dir_by_name.get(module)
+            plan = run.plans.get(package_dir) if package_dir is not None else None
+            if plan is None:
+                break
+            if (
+                plan.action
+                not in {
+                    c.Infra.LazyInitAction.WRITE,
+                    c.Infra.LazyInitAction.RETAIN,
+                }
+                or attribute not in plan.exports
+            ):
+                msg = f"lazy-init facet route is not published by its plan: {target}"
+                raise ValueError(msg)
+            route = plan.lazy_map.get(attribute) or plan.eager_dunders.get(attribute)
+            if route is None:
+                msg = f"lazy-init published facet has no planned route: {target}"
+                raise ValueError(msg)
+            if route == target and plan.ownership == "authored":
+                break
+            target = route
+        else:
+            msg = f"lazy-init cyclic facet publication: {target}"
+            raise ValueError(msg)
+        return FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
+            run.model.source_project,
+            m.Infra.SourceClassReference(
+                target=target[0],
+                attributes=(target[1],),
+                qualified_base=f"{target[0]}.{target[1]}",
+            ),
+        )
 
     @classmethod
     def _lazy_init_facade_chain(
@@ -314,10 +460,10 @@ class FlextInfraUtilitiesLazyInitLetters:
     def _lazy_init_package_names(
         cls, run: m.Infra.LazyInitRun, package: str
     ) -> frozenset[str]:
-        """Return a parent's published names plus its declared letters.
+        """Return a parent's effective published names, never candidate declarations.
 
         Returns:
-            The candidate letter names of one parent.
+            The effectively published names of one parent.
 
         Raises:
             ValueError: If an installed parent is a module, not a package.
@@ -331,6 +477,14 @@ class FlextInfraUtilitiesLazyInitLetters:
                 " not a package, in the active environment"
             )
             raise ValueError(msg)
+        plan = run.plans.get(package_dir)
+        if plan is not None:
+            return (
+                frozenset(plan.exports)
+                if plan.action
+                in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.RETAIN}
+                else frozenset()
+            )
         init_path = package_dir / c.Infra.INIT_PY
         text = cls.lazy_init_text(run, init_path)
         names: t.StrSequence = ()
@@ -347,11 +501,7 @@ class FlextInfraUtilitiesLazyInitLetters:
                 if declared is None and indexed and not generated
                 else declared or ()
             )
-        return (
-            frozenset(names) | cls._lazy_init_declared_letters(run, package)
-            if indexed
-            else frozenset(names)
-        )
+        return frozenset(names)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesLazyInitLetters"]

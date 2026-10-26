@@ -474,7 +474,7 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         tm.that(
             smoke,
             has=" && ".join(
-                f"make {step.verb}"
+                step.make_command
                 for step in make.lifecycle_steps
                 if "ci" in step.contexts
             ),

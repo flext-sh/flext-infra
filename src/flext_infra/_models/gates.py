@@ -484,6 +484,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateExecutionIntent(m.ContractModel):
         """Producer-owned operation coverage, independent of local argv paths."""
 
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(
+                description="Original checker evidence phase, never inferred from gates"
+            ),
+        ] = c.Infra.CheckPhase.COMPLETE
         requested_gates: Annotated[
             t.StrTuple, m.Field(description="Requested native checker gates")
         ] = ()
@@ -496,6 +502,14 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         def _validate_producer(self) -> Self:
             if bool(self.requested_gates) == (self.test_selection is not None):
                 msg = "original operation must declare exactly one producer intent"
+                raise ValueError(msg)
+            if (
+                self.test_selection is not None
+                and self.phase == c.Infra.CheckPhase.PRIMARY
+            ):
+                msg = (
+                    "primary source admission is a checker intent, never a test result"
+                )
                 raise ValueError(msg)
             return self
 
@@ -670,6 +684,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateCaptureRequest(m.ContractModel):
         """Capture the original read-only checker invocation exactly once."""
 
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(
+                description="Primary source admission or complete check acceptance"
+            ),
+        ] = c.Infra.CheckPhase.COMPLETE
         repository_root: Annotated[
             Path, m.Field(description="Actual root selected by the public Make verb")
         ]
@@ -790,6 +810,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 or gates != covered_gates
             ):
                 msg = "covered_gates and command evidence must match one-to-one"
+                raise ValueError(msg)
+            if any(
+                item.intent.phase == c.Infra.CheckPhase.PRIMARY
+                for item in self.commands
+            ):
+                msg = "primary source admission cannot attest complete stage acceptance"
                 raise ValueError(msg)
             return self
 

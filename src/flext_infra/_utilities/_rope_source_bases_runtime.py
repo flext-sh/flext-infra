@@ -491,6 +491,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Unreferenced module-level provider classes remain qualified
             declarations, not fabricated lineages. A captured class owns its
             nested declaration identities.
+            Unchanged snapshot text uses that project's canonical provider so
+            native class identity remains shared with consumer owner selection.
+            Only derived text receives a distinct provider in its own source view.
 
             Parameters:
                 module: The qualified module name under inventory.
@@ -505,6 +508,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             Raises:
                 ValueError: If the source provider is ambiguous.
+                TypeError: If an unchanged source has no native source module.
 
             """
             path, source = captured
@@ -514,12 +518,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ).as_posix()
                 resource = self._project.get_resource(relative)
                 # Derived facade text retains its original file input epoch.
-                FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                original = FlextInfraUtilitiesRopeRuntime.require_file_resource(
                     resource, path
                 ).read()
-                provider = FlextInfraUtilitiesRopeRuntime.build_string_module(
-                    self._project, source, resource=resource
-                )
+                if original == source:
+                    native = self._project.get_pymodule(resource, force_errors=True)
+                    if not FlextInfraUtilitiesRopeRuntime.source_module(native):
+                        message = f"Captured file has no native source module: {path}"
+                        raise TypeError(message)
+                    provider = native
+                else:
+                    provider = FlextInfraUtilitiesRopeRuntime.build_string_module(
+                        self._project, source, resource=resource
+                    )
             previous = self._providers.get(module)
             if previous is not None and (
                 previous.get_resource() != provider.get_resource()
@@ -783,6 +794,30 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 module = self._project.get_module(imported.module_name, folder)
             return FlextInfraUtilitiesRopeRuntime.require_semantic_module(module)
 
+        @staticmethod
+        def _provider_attribute_binding(
+            module: t.Infra.RopeSemanticModule,
+            name: str,
+            target: str,
+        ) -> p.Infra.RopePyName:
+            """Read a native binding and annotate its original lookup failure.
+
+            Returns:
+                The unchanged binding declared by the native provider.
+
+            """
+            try:
+                return module.get_attribute(name)
+            except (
+                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
+            ) as exc:
+                resource = module.get_resource()
+                exc.add_note(
+                    f"Provider base reference: {target}; source="
+                    f"{resource.real_path if resource is not None else '<native>'}"
+                )
+                raise
+
         def _provider_reference(
             self,
             module: t.Infra.RopeSemanticModule,
@@ -799,6 +834,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             Raises:
+                ImportError: A required provider cannot be imported by its native owner.
                 ValueError: If the walk exceeds the depth budget, uses a module
                     as a class base, or cycles through provider reexports.
 
@@ -823,21 +859,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 if reexported is not None:
                     return reexported
-            try:
-                binding = module.get_attribute(name)
-            except (
-                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
-            ) as exc:
-                resource = module.get_resource()
-                exc.add_note(
-                    f"Provider base reference: {target}; source="
-                    f"{resource.real_path if resource is not None else '<native>'}"
-                )
-                raise
+            binding = self._provider_attribute_binding(module, name, target)
             if isinstance(binding, p.Infra.RopeImportedName):
-                override = self._source_import_override(module, binding, attributes)
-                if override is not None:
-                    return self._resolve(override, visiting | {target}, depth + 1)
+                override = None
+                try:
+                    override = self._source_import_override(module, binding, attributes)
+                    if override is not None:
+                        return self._resolve(override, visiting | {target}, depth + 1)
+                except (ValueError, ImportError) as exc:
+                    resource = module.get_resource()
+                    exc.add_note(
+                        f"Provider source publication: module={module.get_name()!r}; "
+                        f"attributes={attributes!r}; resource="
+                        f"{resource.real_path if resource is not None else None!r}; "
+                        f"selected_source_binding={override!r}; "
+                        f"native_imported_name={binding.imported_name!r}"
+                    )
+                    raise
                 return self._provider_imported_name_reference(
                     binding,
                     remaining,
@@ -853,9 +891,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     visiting,
                     depth,
                 )
-            return self._provider_value_reference(
-                binding, tuple(remaining), visiting, depth
-            )
+            try:
+                return self._provider_value_reference(
+                    binding, tuple(remaining), visiting, depth
+                )
+            except (ValueError, ImportError) as exc:
+                resource = module.get_resource()
+                captured = tuple(
+                    (name, str(self._sources[name][0]))
+                    for name in self._captured_provider_modules(module)
+                )
+                exc.add_note(
+                    f"Provider member reference: module={module.get_name()!r}; "
+                    f"attributes={attributes!r}; resource="
+                    f"{resource.real_path if resource is not None else None!r}; "
+                    f"captured_sources={captured!r}"
+                )
+                raise
 
         def _missing_provider_reference(
             self,
@@ -890,39 +942,76 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
             return None
 
+        def _captured_provider_modules(
+            self,
+            module: t.Infra.RopeSemanticModule,
+        ) -> t.StrTuple:
+            """Elect captured module names by the native provider's source path.
+
+            Returns:
+                Captured owners of the source, including a package initializer.
+
+            """
+            resource = module.get_resource()
+            if resource is None:
+                return ()
+            path = Path(resource.real_path)
+            if resource.is_folder():
+                path /= c.Infra.INIT_PY
+            return tuple(
+                name
+                for name, (source_path, _) in self._sources.items()
+                if source_path == path
+            )
+
         def _source_import_override(
             self,
             module: t.Infra.RopeSemanticModule,
             binding: p.Infra.RopeImportedName,
             attributes: t.StrTuple,
         ) -> m.Infra.SourceClassReference | None:
-            """Resolve captured project bindings before forwarding native imports.
+            """Resolve captured source bindings before forwarding native imports.
+
+            Only an authenticated captured module owns a source override.
+            External providers retain their native imported-name contract;
+            an ordinary runtime inventory cannot redefine their lazy exports.
 
             Returns:
-                The final source override, when it differs from native provenance.
+                The captured override, or no override of the native provider.
 
             Raises:
                 ValueError: If the source binding has no declared provider.
 
             """
-            module_name = module.get_name()
-            if module_name not in self._sources:
-                return None
             declaring = module.get_module()
             if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
                 return None
             resource = declaring.get_resource()
             if resource is None:
-                message = f"source-backed provider has no resource: {module_name}"
+                message = (
+                    f"source-backed provider has no resource: {module.get_name()}"
+                )
                 raise ValueError(message)
+            owners = self._captured_provider_modules(declaring)
+            if not owners:
+                return None
+            if len(owners) > 1:
+                message = f"Ambiguous captured source owner: {resource.real_path}"
+                raise ValueError(message)
+            module_name = owners[0]
             name, *remaining = attributes
-            captured = self._sources[module_name]
-            bindings = self._inventory(
-                module_name,
-                captured,
-                allow_conditional=False,
-                provider=declaring if declaring.source_code == captured[1] else None,
-            )
+            bindings = self._modules.get(module_name)
+            if bindings is None:
+                captured = self._sources[module_name]
+                bindings = self._inventory(
+                    module_name,
+                    captured,
+                    allow_conditional=False,
+                    provider=declaring
+                    if declaring.source_code == captured[1]
+                    else None,
+                )
+                self._modules[module_name] = bindings
             reference = bindings.get(name)
             if reference is None:
                 message = f"Unresolved provider base: {module_name}.{name}"
@@ -1179,6 +1268,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             Raises:
+                ImportError: A required provider cannot be imported by its native owner.
                 ValueError: If the walk exceeds the depth budget, cycles
                     through class aliases, or resolves a module as a base.
 
@@ -1196,15 +1286,24 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             memo = self._resolved_memo.get(key)
             if memo is not None:
                 return memo
-            target, attributes = self._unresolved_target(
-                target,
-                list(attributes),
-                key,
-                visiting,
-                depth,
-            )
-            for attribute in attributes:
-                target = self._member(target, attribute, 0, visiting)
+            try:
+                target, attributes = self._unresolved_target(
+                    target,
+                    list(attributes),
+                    key,
+                    visiting,
+                    depth,
+                )
+                for attribute in attributes:
+                    target = self._member(target, attribute, 0, visiting)
+            except (ValueError, ImportError) as exc:
+                exc.add_note(
+                    f"Source class reference: target={reference.target!r}; "
+                    f"attributes={reference.attributes!r}; "
+                    f"qualified_base={reference.qualified_base!r}; "
+                    f"selected_target={target!r}; remaining={attributes!r}"
+                )
+                raise
             self._resolved_memo[key] = target
             return target
 

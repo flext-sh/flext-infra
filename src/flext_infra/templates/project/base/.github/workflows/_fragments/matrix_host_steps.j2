@@ -26,6 +26,6 @@
 {% if explicit_bash %}        shell: bash
 {% endif %}        run: |
 {%- for step in make.lifecycle_steps if "ci" in step.contexts %}
-          {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}
+          {{ make.ci.variable }}={{ make.ci.value }} {{ step.make_command }}
 {%- endfor %}
 {%- endmacro %}

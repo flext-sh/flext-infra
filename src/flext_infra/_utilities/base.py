@@ -65,6 +65,8 @@ class FlextInfraUtilitiesBase:
     def selected_check_gates(
         make: m.Infra.MakeSpec,
         gate_set: c.Infra.CheckGateSet,
+        *,
+        phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
     ) -> t.VariadicTuple[str]:
         """Resolve one gate inventory from the typed Make spec at runtime.
 
@@ -77,6 +79,8 @@ class FlextInfraUtilitiesBase:
             The registered gate ids of the requested inventory.
 
         """
+        if phase == c.Infra.CheckPhase.PRIMARY:
+            return make.check_prerequisite_gates
         match gate_set:
             case c.Infra.CheckGateSet.FIX:
                 return make.check_gates_fixable

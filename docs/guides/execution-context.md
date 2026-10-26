@@ -672,6 +672,18 @@ declared lazy exports and assignments after class declarations, before using
 native import inference. An explicit unknown source value is an error, not
 permission to reuse an earlier import. This completed provider view does not
 replace the declaration-line lexical view used to resolve that class's bases.
+This applies even when the supplied source map contains only unrelated scripts:
+the native provider's retained source and AST own its final publication. Exact
+resource matches elect planned source owners; absent a match, use the captured
+native source, never a fresh disk read or the earlier imported binding.
+Failed source-member resolution retains the original typed reference target,
+attributes and qualified spelling as exception notes. Provider failures also
+identify the selected native module, resource and matching captured source path.
+These notes preserve the original exception and traceback; they do not retry,
+drop members or substitute a different provider.
+Protocol owner additions use the same elected package name as their captured
+declarations when inserting imports. A native module's shortened display name
+must not introduce a new import root during the recursive projection pass.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
@@ -708,11 +720,24 @@ verb was invoked again. Selection and execution share one persistent database an
 aggregate deadline, with no second execution pass. The common catalog has no manual
 file selector or separate complete-suite alias. The 2026-10-26 operator priority
 requires global Ruff and Pyrefly admission before native incremental pytest and
-global pytest success before later phases. The public fleet owner is
-`flext-infra workspace tests --repository-root <root> --scope all`; it admits
-global source quality once before executing the native engines in dependency
-order. Ordinary test failures preserve the first original status while every
-selected repository is reached. Configuration failures escape unchanged. Existing
+global pytest success before later phases (ADR-029). Produce original global
+source-admission evidence with
+`flext-infra workspace check --repository-root <root> --phase primary`, then use
+`flext-infra workspace tests --repository-root <root> --scope all`. Generated Make
+consumers use `make check CHECK_PHASE=primary` followed by `make tests`; bare
+`make check` retains complete acceptance. An attached member's primary check
+uses its containing runtime workspace, never member-only evidence. The primary
+phase derives its gates from `make.check_prerequisite_gates`; the complete phase
+retains the full configured check inventory and its context partitions. Both use
+the same native checker, original capture and SARIF publisher. The test owners
+consume the newest primary-phase receipt before executing native engines in
+dependency order. Every test mode requires this admission. A direct diagnostic
+`check run` report is not captured evidence. Missing, incomplete, red or stale
+same-phase evidence refuses execution without electing an older success.
+Original invocation, policy, report digests, global topology and per-repository
+source identities remain mandatory; primary evidence never proves complete
+check or publication acceptance. Ordinary test failures preserve the first
+original status while every selected repository is reached. Configuration failures escape unchanged. Existing
 receipt-based operations retain their own admission contracts. Full applicable
 checks remain required before completion and integration; a member-only receipt
 never claims fleet completion.

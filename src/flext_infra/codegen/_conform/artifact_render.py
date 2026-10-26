@@ -734,7 +734,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 )
             markdown = tooling.document.tools.markdown
             spec = m.Infra.MarkdownLintRenderSpec(
-                rules=u.Infra.configuration_pairs(markdown.rules),
                 native_config=u.Infra.markdown_native_configuration(
                     markdown, codegen.markdown_exclude_globs
                 ),

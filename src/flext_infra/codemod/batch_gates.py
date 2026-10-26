@@ -1121,7 +1121,7 @@ class FlextInfraModGateEngine:
             path.absolute() if path.suffix == ".pyi" else path.resolve()
             for target in targets
             for path in (
-                u.Infra.iter_directory_python_files(root / target)
+                u.Infra.iter_directory_python_files(root / target, repository_root=root)
                 if (root / target).suffix != ".pyi" and (root / target).is_dir()
                 else (root / target,)
             )

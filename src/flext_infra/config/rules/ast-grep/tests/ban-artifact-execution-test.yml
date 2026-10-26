@@ -27,3 +27,5 @@ invalid:
     pytest_plugins = ["tests.fixtures.support"]
   - |
     pytest_plugins = "tests.fixtures.support"
+  - |
+    pytest_plugins += ["tests.fixtures.support"]

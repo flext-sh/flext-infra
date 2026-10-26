@@ -21,7 +21,21 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
     """Static helpers for iterating Python files within a single directory tree."""
 
     @staticmethod
-    def source_scan_ignored_path(root: Path, file_path: Path) -> bool:
+    def source_scan_artifact_path(root: Path, file_path: Path) -> bool:
+        """Classify artifact membership relative to the declared project owner.
+
+        Returns:
+            Whether the path belongs to a complete declared artifact tree.
+
+        """
+        relative = file_path.relative_to(root)
+        return any(
+            relative.is_relative_to(artifact_root)
+            for artifact_root in config.Infra.codegen.exclusions.scenario_data_roots
+        )
+
+    @classmethod
+    def source_scan_ignored_path(cls, root: Path, file_path: Path) -> bool:
         """Return whether ``file_path`` lies in a source-scan-ignored tree.
 
         The names are the codegen artifact SSOT (``source_scan_ignored``):
@@ -40,13 +54,12 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
         relative = file_path.relative_to(root)
         return not frozenset(config.Infra.codegen.source_scan_ignored).isdisjoint(
             relative.parts,
-        ) or any(
-            f"/{artifact_root}/" in file_path.as_posix()
-            for artifact_root in config.Infra.codegen.exclusions.scenario_data_roots
-        )
+        ) or cls.source_scan_artifact_path(root, file_path)
 
     @classmethod
-    def iter_directory_python_files(cls, directory: Path) -> t.SequenceOf[Path]:
+    def iter_directory_python_files(
+        cls, directory: Path, *, repository_root: Path
+    ) -> t.SequenceOf[Path]:
         """Iterate production Python files in one configured source tree.
 
         Scoped to one directory (project src, subdirectory, etc.) — unlike
@@ -55,6 +68,7 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
 
         Args:
             directory: Root directory to scan.
+            repository_root: Declared project owner of the selected directory.
 
         Returns:
             Sorted list of matching file paths. Empty list if directory
@@ -62,7 +76,10 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
 
         """
         resolved_directory = directory.resolve()
-        if not resolved_directory.is_dir():
+        resolved_root = repository_root.resolve()
+        if not resolved_directory.is_dir() or cls.source_scan_artifact_path(
+            resolved_root, resolved_directory
+        ):
             return []
         source_files = FlextInfraUtilitiesGitScopeMixin.git_source_scope_paths(
             resolved_directory,
@@ -81,7 +98,7 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
             for file_path in files
             if file_path.is_file()
             and file_path.suffixes == [c.Infra.EXT_PYTHON]
-            and not cls.source_scan_ignored_path(resolved_directory, file_path)
+            and not cls.source_scan_ignored_path(resolved_root, file_path)
         ]
 
 

@@ -55,6 +55,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
             "# Workspace Check Report",
             "",
             f"Generated: {timestamp}",
+            f"Check phase: {summary.phase}",
             f"Execution: {'COMPLETE' if summary.complete else 'INCOMPLETE'}",
             f"Projects reached: {len(summary.results)}/{len(summary.targets)}",
             "",

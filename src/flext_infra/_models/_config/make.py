@@ -192,10 +192,47 @@ class FlextInfraConfigModelsMake(
             ),
         ] = tuple(FlextInfraConstantsConfig.MakeProfile)
 
-    class MakeLifecycleStepSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One public command in the declared runtime acceptance sequence."""
+    class MakeOperationSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One typed public operation and its distinct checker evidence phase."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public Make verb")]
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(description="Checker evidence phase; other verbs are complete"),
+        ] = c.Infra.CheckPhase.COMPLETE
+
+        @m.computed_field
+        @property
+        def make_command(self) -> str:
+            """Canonical Make transport for this typed workflow operation."""
+            return f"make {self.verb}" + (
+                f" CHECK_PHASE={self.phase}"
+                if self.phase == c.Infra.CheckPhase.PRIMARY
+                else ""
+            )
+
+        @m.model_validator(mode="after")
+        def _validate_phase(self) -> Self:
+            """Keep source-admission semantics on the checker alone.
+
+            Returns:
+                The validated operation.
+
+            Raises:
+                ValueError: If another verb claims primary checker evidence.
+
+            """
+            if (
+                self.phase == c.Infra.CheckPhase.PRIMARY
+                and self.verb != c.Infra.VERB_CHECK
+            ):
+                msg = "only check declares primary workflow evidence"
+                raise ValueError(msg)
+            return self
+
+    class MakeLifecycleStepSpec(MakeOperationSpec):
+        """One public command in the declared runtime acceptance sequence."""
+
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci"]],
             m.Field(
@@ -203,10 +240,22 @@ class FlextInfraConfigModelsMake(
             ),
         ]
 
-    class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeWorkflowRequirementSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """An earlier phase required in explicitly declared execution contexts."""
+
+        step: Annotated[t.NonEmptyStr, m.Field(description="Required workflow identity")]
+        contexts: Annotated[
+            t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
+            m.Field(min_length=1, description="Contexts requiring the prior green phase"),
+        ]
+
+    class MakeWorkflowStepSpec(MakeOperationSpec):
         """One canonical workflow step."""
 
-        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
+        identity: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Unique dependency identity, never a new Make verb"),
+        ]
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
             m.Field(
@@ -215,11 +264,11 @@ class FlextInfraConfigModelsMake(
             ),
         ]
         requires: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeWorkflowRequirementSpec],
             m.Field(
                 description=(
-                    "Earlier workflow verbs whose green result admits this step "
-                    "in every one of its contexts"
+                    "Earlier workflow identities whose green result admits this step "
+                    "in the declared dependency contexts"
                 ),
             ),
         ] = ()
@@ -971,8 +1020,9 @@ class FlextInfraConfigModelsMake(
 
             """
             workflow_verbs = tuple(step.verb for step in self.workflow)
-            if len(set(workflow_verbs)) != len(workflow_verbs):
-                msg = "make workflow verbs must be unique"
+            identities = tuple(step.identity for step in self.workflow)
+            if len(set(identities)) != len(identities):
+                msg = "make workflow phase identities must be unique"
                 raise ValueError(msg)
             unknown_workflow = set(workflow_verbs) - declared
             if unknown_workflow:
@@ -1005,15 +1055,26 @@ class FlextInfraConfigModelsMake(
                     f"{required_profiles!r}"
                 )
                 raise ValueError(msg)
-            approval = self.approval_verbs
-            milestones = (c.Infra.VERB_CHECK, c.Infra.VERB_TEST)
+            approval = tuple(step for step in self.workflow if "ci" in step.contexts)
+            milestones = (
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+            )
             if (
-                approval[:1] != ("setup",)
-                or approval[-1:] != (c.Infra.VERB_TEST,)
-                or tuple(verb for verb in approval if verb in milestones) != milestones
+                not approval
+                or approval[0].verb != "setup"
+                or tuple(
+                    (step.verb, step.phase)
+                    for step in approval
+                    if step.verb in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
+                )
+                != milestones
             ):
                 msg = (
-                    "CI requires setup followed by the check and complete tests owners"
+                    "CI requires setup followed by primary check, native tests "
+                    "and complete check followed by final incremental tests"
                 )
                 raise ValueError(msg)
             hook = tuple(
@@ -1024,38 +1085,98 @@ class FlextInfraConfigModelsMake(
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:
-            """Admit each step only after the earlier verbs it requires.
+            """Validate the declared phase dependency topology and contexts.
 
             Raises:
-                ValueError: If a required verb does not precede the step or does
-                    not run in every one of its contexts; or if the tests step
-                    does not require check (tests run only on a green check).
+                ValueError: If a required phase is not earlier or does not run
+                    in the declared dependency contexts.
 
             """
             for index, step in enumerate(self.workflow):
                 earlier = {
-                    prior.verb: set(prior.contexts) for prior in self.workflow[:index]
+                    prior.identity: set(prior.contexts)
+                    for prior in self.workflow[:index]
                 }
                 for required in step.requires:
-                    if required not in earlier:
+                    if required.step not in earlier:
                         msg = (
-                            f"make workflow step {step.verb} requires {required}, "
+                            f"make workflow step {step.identity} requires {required.step}, "
                             "which must precede it"
                         )
                         raise ValueError(msg)
-                    if not set(step.contexts) <= earlier[required]:
+                    if not set(required.contexts) <= (
+                        set(step.contexts) & earlier[required.step]
+                    ):
                         msg = (
-                            f"make workflow step {step.verb} requires {required} "
-                            "in every one of its contexts"
+                            f"make workflow step {step.identity} requires {required.step} "
+                            "in unavailable dependency contexts"
                         )
                         raise ValueError(msg)
+            for step in self.workflow:
+                if step.verb == c.Infra.VERB_TEST:
+                    self._validate_test_admission(step)
+            self._validate_admission_requirements()
+
+        def _validate_test_admission(
+            self, tests: FlextInfraConfigModelsMake.MakeWorkflowStepSpec
+        ) -> None:
+            """Require primary evidence in every context of each test invocation.
+
+            Raises:
+                ValueError: If any test context lacks a declared primary dependency.
+
+            """
+            primary = {
+                step.identity for step in self.workflow
+                if step.verb == c.Infra.VERB_CHECK
+                and step.phase == c.Infra.CheckPhase.PRIMARY
+            }
+            covered = {
+                context for required in tests.requires
+                if required.step in primary
+                for context in required.contexts
+            }
+            if covered != set(tests.contexts):
+                msg = (
+                    "tests require fresh global primary check evidence: "
+                    "every tests context must require the primary check phase"
+                )
+                raise ValueError(msg)
+
+        def _validate_admission_requirements(self) -> None:
+            """Keep initial source, behavioral and complete acceptance distinct.
+
+            Raises:
+                ValueError: If tests lack global primary admission or complete
+                    check lacks prior behavioral admission outside the commit hook.
+
+            """
             tests = next(
                 step for step in self.workflow if step.verb == c.Infra.VERB_TEST
             )
-            if c.Infra.VERB_CHECK not in tests.requires:
-                msg = (
-                    "tests run only on a green check: the tests step must require check"
-                )
+            complete = next(
+                step
+                for step in self.workflow
+                if step.verb == c.Infra.VERB_CHECK
+                and step.phase == c.Infra.CheckPhase.COMPLETE
+            )
+            if not any(
+                required.step == tests.identity
+                and set(required.contexts) == set(complete.contexts) - {"pre_commit"}
+                for required in complete.requires
+            ):
+                msg = "complete check requires native tests outside the commit hook"
+                raise ValueError(msg)
+            final_tests = next(
+                step for step in reversed(self.workflow)
+                if step.verb == c.Infra.VERB_TEST
+            )
+            if not any(
+                required.step == complete.identity
+                and set(required.contexts) == set(final_tests.contexts)
+                for required in final_tests.requires
+            ):
+                msg = "final native tests require complete check acceptance"
                 raise ValueError(msg)
 
         def _validate_docs_policy(self) -> None:

@@ -103,10 +103,17 @@ force a full replay or add a second execution pass. The generated
 Make boundary fixes the target to the typed configuration's complete test directory;
 caller variables cannot replace it with a file or narrower directory. The runner
 accounts for collection, execution and declared exclusions through its existing typed
-receipts. Before collection, the original receipt owner requires a current complete,
-unfiltered green check for the native runtime's governed workspace; passing only Ruff
-and Pyrefly does not admit tests. Public global runner operations retain this same
-guard. Every member consumes the workspace test operation's original clock rather
+receipts. Before collection, every runner mode requires the newest original
+primary-phase receipt for the native runtime's whole governed workspace. Produce
+it with `make check CHECK_PHASE=primary` (or the native
+`workspace check --phase primary` command with the workspace root). Its gate
+inventory derives from `make.check_prerequisite_gates`, without file filters.
+Direct diagnostic checker reports are not captured admission. Original capture,
+report digests, global coverage, candidate identities and freshness remain required;
+incomplete or red evidence never falls back to an older success. Initial source
+admission is not complete-check acceptance: bare `make check` and all applicable
+gates still pass before completion or publication (ADR-029). Every member consumes
+the workspace test operation's original clock rather
 than receiving a fresh budget. The runner validates its project paths before creating
 its exclusive scratch directory, and its context execution cycle removes that exact
 directory on success or failure through the existing file owner. A cleanup failure

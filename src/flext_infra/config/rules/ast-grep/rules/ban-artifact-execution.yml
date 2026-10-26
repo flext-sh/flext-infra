@@ -18,7 +18,9 @@ rule:
               kind: string
               matches: artifact-root-reference
     - all:
-        - kind: assignment
+        - any:
+            - kind: assignment
+            - kind: augmented_assignment
         - has:
             field: left
             regex: '^pytest_plugins$'

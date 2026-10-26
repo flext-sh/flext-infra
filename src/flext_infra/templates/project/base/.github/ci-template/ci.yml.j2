@@ -25,7 +25,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
-{% for verb in make.approval_verbs %}
-      - name: make {{ verb }}
-        run: make {{ verb }}
+{% for step in make.workflow if "ci" in step.contexts %}
+      - name: {{ step.make_command }}
+        run: {{ step.make_command }}
 {% endfor %}

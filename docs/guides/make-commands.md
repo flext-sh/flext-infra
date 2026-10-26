@@ -218,11 +218,19 @@ to repair authored declarations.
 | `build` | Produce local distribution and documentation artifacts without publishing |
 | `clean` | Remove only declared disposable resources owned by the selected target |
 
-Fleet behavioral admission uses
-`flext-infra workspace tests --repository-root <root> --scope all`. This native
-owner requires global Ruff/Pyrefly success before reaching the per-repository
-Testmon engines. A successful member-only run never establishes fleet acceptance;
-all other applicable checks still precede completion and integration.
+Fleet behavioral admission starts with `make check CHECK_PHASE=primary`, then
+`make tests`. The equivalent native composition is
+`flext-infra workspace check --repository-root <root> --phase primary` followed by
+`flext-infra workspace tests --repository-root <root> --scope all`. The primary
+producer captures the configured `make.check_prerequisite_gates` through the same
+native checker and report publisher as complete checks; a diagnostic `check run`
+report is not an original receipt. The test owners require fresh, complete,
+unfiltered global proof of that phase. Bare `make check` retains the complete
+configured quality contract, and the generated workflow still requires it after
+initial behavioral admission and before publication. The fast commit hook retains
+its own configured gates without requiring pytest. A successful member-only run
+never establishes fleet acceptance; all applicable checks still precede completion
+and integration.
 
 Generation and captured check processes share the validated
 `settings.Infra.profile` instrumentation setting, disabled by default.
@@ -279,6 +287,14 @@ Facades and the planned package initializers required by their imports form one
 dependent publication group. Generation reuses those initializer plans rather than
 publishing a facade against an older export map. Unrelated managed artifacts remain
 outside that group.
+
+The complete lazy plan supplied by the same invocation seeds facade convergence
+when only that repository's initializer outputs change. A changed foreign provider
+or other planned input requires export planning against that candidate first.
+Facade effects still trigger the existing export revalidation and convergence
+check before publication. Their content is compared with the candidate they
+actually read, including its planned initializers, rather than repeatedly
+comparing that candidate with the original checkout.
 
 Completed receipts retain their original input evidence. The advancing publication
 frontier contains outputs: a later phase proves those outputs before consuming them,

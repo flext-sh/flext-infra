@@ -381,10 +381,6 @@ class FlextInfraModelsCodegenRender:
             strict=True,
         )
 
-        rules: Annotated[
-            t.JsonMapping,
-            m.Field(description="Elected native Markdown rules."),
-        ]
         native_config: Annotated[
             str,
             m.Field(description="Native Markdown TOML derived from the shared policy."),
