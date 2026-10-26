@@ -9,8 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import fnmatch
-from pathlib import Path
+from glob import translate
+from pathlib import Path, PurePosixPath
+from posixpath import normpath
 from typing import ClassVar
 from urllib.parse import urlsplit
 
@@ -28,6 +29,61 @@ class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
     _MIN_REPO_PARTS: ClassVar[int] = 2
+
+    @staticmethod
+    def docs_rebase_patterns(
+        patterns: t.StrSequence, *, repository_root: Path, docs_root: Path
+    ) -> t.StrSequence:
+        """Rebase repository globs to a docs root using native path matching."""
+        relative = PurePosixPath(docs_root.relative_to(repository_root).as_posix())
+        rebased: list[str] = []
+        for pattern in patterns:
+            parts = PurePosixPath(pattern).parts
+            if parts and parts[0] == "/":
+                parts = parts[1:]
+            if relative == PurePosixPath():
+                rebased.append("/".join(parts))
+                continue
+            if any(
+                ancestor.full_match("/".join(parts))
+                for ancestor in (relative, *relative.parents)
+                if ancestor != PurePosixPath()
+            ):
+                rebased.append("**")
+                continue
+            for boundary in range(1, len(parts)):
+                if relative.full_match("/".join(parts[:boundary])):
+                    # A recursive segment can also consume descendants of docs_root.
+                    start = boundary - (parts[boundary - 1] == "**")
+                    rebased.append("/".join(parts[start:]))
+        return tuple(dict.fromkeys(rebased))
+
+    @staticmethod
+    def _mkdocs_exclusions(
+        repository_root: Path,
+    ) -> t.Pair[t.StrSequence, t.StrSequence]:
+        """Project one repository's effective policy into both native consumers."""
+        codegen = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_codegen_inputs(repository_root)
+            .unwrap()
+            .spec
+        )
+        publish, copy = (
+            FlextInfraUtilitiesDocsRender.docs_rebase_patterns(
+                patterns,
+                repository_root=repository_root,
+                docs_root=repository_root / c.Infra.DIR_DOCS,
+            )
+            for patterns in (codegen.docs_publish_patterns, codegen.docs_copy_patterns)
+        )
+        return (
+            tuple(f"/{pattern}" for pattern in publish),
+            tuple(
+                translate(pattern, recursive=True, include_hidden=True)
+                for pattern in copy
+            ),
+        )
 
     @staticmethod
     def docs_markdown_line_length(tool_config: m.Infra.ToolConfigDocument) -> int:
@@ -365,8 +421,8 @@ class FlextInfraUtilitiesDocsRender:
             "repo_url",
             c.Infra.GITHUB_REPO_URL,
         )
-        declared_exclusions = FlextInfraUtilitiesDocsRender.as_string_sequence(
-            contract, "exclude_docs"
+        publish, copy = FlextInfraUtilitiesDocsRender._mkdocs_exclusions(
+            scope.path
         )
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_MKDOCS_PROJECT,
@@ -385,11 +441,8 @@ class FlextInfraUtilitiesDocsRender:
                 repo_url=repo_url,
                 repo_name=FlextInfraUtilitiesDocsRender._repository_name(repo_url),
                 scope_name=scope.name,
-                exclude_docs=(
-                    *declared_exclusions,
-                    *c.Infra.MKDOCS_FIXED_EXCLUDE_DOCS,
-                ),
-                exclude_plugin_patterns=declared_exclusions,
+                exclude_docs=publish,
+                exclude_plugin_patterns=copy,
                 mkdocstrings_paths=(c.Infra.DEFAULT_SRC_DIR,),
             ),
         )
@@ -497,6 +550,7 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.JsonMapping,
         src_paths: t.SequenceOf[str] = (),
         *,
+        repository_root: Path,
         documentation_language: t.Infra.DocumentationLanguage = "en",
     ) -> str:
         """Return the managed mkdocs.yml for the repository root.
@@ -515,8 +569,8 @@ class FlextInfraUtilitiesDocsRender:
             "repo_url",
             c.Infra.GITHUB_REPO_URL,
         )
-        declared_exclusions = FlextInfraUtilitiesDocsRender.as_string_sequence(
-            contract, "exclude_docs"
+        publish, copy = FlextInfraUtilitiesDocsRender._mkdocs_exclusions(
+            repository_root
         )
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_MKDOCS_ROOT,
@@ -530,11 +584,8 @@ class FlextInfraUtilitiesDocsRender:
                 ),
                 repo_url=repo_url,
                 repo_name=FlextInfraUtilitiesDocsRender._repository_name(repo_url),
-                exclude_docs=(
-                    *declared_exclusions,
-                    *c.Infra.MKDOCS_FIXED_EXCLUDE_DOCS,
-                ),
-                exclude_plugin_patterns=declared_exclusions,
+                exclude_docs=publish,
+                exclude_plugin_patterns=copy,
                 mkdocstrings_paths=src_paths,
             ),
         )
@@ -607,7 +658,9 @@ class FlextInfraUtilitiesDocsRender:
                     entry
                     for entry in entries
                     if not any(
-                        fnmatch.fnmatch(entry.api_page.removeprefix("../../"), pattern)
+                        PurePosixPath(
+                            normpath(f"docs/projects/generated/{entry.api_page}")
+                        ).full_match(pattern)
                         for pattern in exclude_patterns
                     )
                 ),

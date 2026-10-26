@@ -609,7 +609,7 @@ class FlextInfraModelsDepsToolConfig(
         ]
 
     class MarkdownConfig(m.ArbitraryTypesModel):
-        """Markdown lint rules and excluded non-documentation surfaces."""
+        """Markdown rules; artifact and exclusion declarations own file scope."""
 
         findings_exit_codes: Annotated[
             t.VariadicTuple[int],
@@ -620,11 +620,18 @@ class FlextInfraModelsDepsToolConfig(
         ]
         rules: Annotated[
             t.Infra.SettingsPairs,
-            m.Field(description="Ordered native Markdown rule key/value declarations."),
+            m.Field(description="Ordered rules supported by both Markdown tools."),
         ]
-        exclude: t.StrTuple = m.Field(
-            description="Glob patterns excluded from Markdown quality checks.",
-        )
+        native_rules: Annotated[
+            t.Infra.SettingsPairs,
+            m.Field(
+                description="Native Markdown rule overrides for the execution tool."
+            ),
+        ]
+        native_settings: Annotated[
+            t.Infra.SettingsPairs,
+            m.Field(description="Native Markdown configuration tables."),
+        ]
 
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""

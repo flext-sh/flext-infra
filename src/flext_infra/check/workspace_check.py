@@ -496,7 +496,6 @@ class FlextInfraWorkspaceChecker(
             return r[m.Infra.CheckReportSummary].from_failure(
                 resolved_gates_result,
             )
-        resolved_gates = resolved_gates_result.value
         targets = self._project_targets(projects)
         if not targets:
             return r[m.Infra.CheckReportSummary].fail(
@@ -512,30 +511,41 @@ class FlextInfraWorkspaceChecker(
                 "quality check selected projects without a pyproject: "
                 + ", ".join(unrunnable),
             )
-        base_ctx = ctx or m.Infra.GateContext(
+        effective_ctx = ctx or m.Infra.GateContext(
             repository_root=self._repository_root,
             reports_dir=self._default_reports_dir,
             fail_fast=c.Infra.CHECK_FAIL_FAST_DEFAULT,
             scope_facts=u.Infra.ScopeFacts(),
         )
-        dir_ensure = u.Cli.ensure_dir(base_ctx.reports_dir)
+        dir_ensure = u.Cli.ensure_dir(effective_ctx.reports_dir)
         if dir_ensure.failure:
             return r[m.Infra.CheckReportSummary].from_failure(dir_ensure)
         # One invocation owns one report leaf: concurrent checks never
         # overwrite each other's receipt.
-        report_base = base_ctx.reports_dir / u.generate_id()
-        report_base.mkdir(exist_ok=False)
-        effective_ctx = base_ctx.model_copy(update={"reports_dir": report_base})
-        requested_gates = tuple(resolved_gates)
-        report_targets = tuple(
+        effective_ctx = effective_ctx.model_copy(
+            update={"reports_dir": effective_ctx.reports_dir / u.generate_id()}
+        )
+        effective_ctx.reports_dir.mkdir(exist_ok=False)
+        gates = tuple(resolved_gates_result.value)
+        prerequisites = tuple(
+            gate
+            for gate in u.Infra
+            .load_codegen_inputs(self._repository_root)
+            .unwrap()
+            .spec.make.check_prerequisite_gates
+            if gate in gates
+        )
+        admission_gates = prerequisites or gates
+        pending_gates = tuple(gate for gate in gates if gate not in admission_gates)
+        targets = tuple(
             m.Infra.CheckProjectTarget(
                 name=target.path.name,
                 path=target.path.resolve(),
                 applicable_gates=(
-                    requested_gates
+                    admission_gates
                     if effective_ctx.selected_files
                     else self._registry.applicable_gate_ids(
-                        requested_gates, target.path, effective_ctx
+                        admission_gates, target.path, effective_ctx
                     )
                 ),
             )
@@ -543,8 +553,9 @@ class FlextInfraWorkspaceChecker(
         )
         reached: dict[Path, m.Infra.ProjectResult] = {}
         current_summary = m.Infra.CheckReportSummary(
-            requested_gates=requested_gates,
-            targets=report_targets,
+            requested_gates=gates,
+            pending_gates=pending_gates,
+            targets=targets,
             results=(),
             selected_files=tuple(effective_ctx.selected_files),
         )
@@ -559,7 +570,7 @@ class FlextInfraWorkspaceChecker(
                     summary,
                     report_output_state,
                 )
-            self._write_reports(report_base, summary).unwrap()
+            self._write_reports(effective_ctx.reports_dir, summary).unwrap()
             current_summary = summary
 
         publish_summary(current_summary)
@@ -568,11 +579,12 @@ class FlextInfraWorkspaceChecker(
             reached[project_dir.resolve()] = project
             publish_summary(
                 m.Infra.CheckReportSummary(
-                    requested_gates=requested_gates,
-                    targets=report_targets,
+                    requested_gates=gates,
+                    pending_gates=pending_gates,
+                    targets=targets,
                     results=tuple(
                         reached[target.path]
-                        for target in report_targets
+                        for target in targets
                         if target.path in reached
                     ),
                     selected_files=tuple(effective_ctx.selected_files),
@@ -582,50 +594,82 @@ class FlextInfraWorkspaceChecker(
         effective_ctx = effective_ctx.model_copy(
             update={"check_progress": publish_progress}
         )
-        # The loop consumes the applicability elected above: one owner
-        # computation per invocation, never a second content scan.
-        outcome = self._run_project_loop(
-            report_targets,
-            resolved_gates,
-            effective_ctx,
-            fail_fast=effective_ctx.fail_fast,
+        # Elect only the current phase before it runs. Later applicability
+        # remains explicit pending evidence until prerequisites are clean.
+        outcome = (
+            self._run_prerequisite_checks(targets, admission_gates, effective_ctx)
+            if prerequisites
+            and not effective_ctx.apply_fixes
+            and not effective_ctx.fail_fast
+            else self._run_project_phase(
+                targets,
+                admission_gates,
+                effective_ctx,
+                fail_fast=effective_ctx.fail_fast,
+            )
         )
+        if (
+            pending_gates
+            and not outcome.failed
+            and len(outcome.results) == len(targets)
+        ):
+            targets = tuple(
+                target.model_copy(
+                    update={
+                        "applicable_gates": (
+                            gates
+                            if effective_ctx.selected_files
+                            else self._registry.applicable_gate_ids(
+                                gates, target.path, effective_ctx
+                            )
+                        ),
+                    },
+                )
+                for target in targets
+            )
+            admission_gates = pending_gates
+            pending_gates = ()
+            outcome = self._run_project_phase(
+                targets,
+                admission_gates,
+                effective_ctx,
+                fail_fast=effective_ctx.fail_fast,
+                previous=outcome,
+            )
         summary = m.Infra.CheckReportSummary(
-            requested_gates=requested_gates,
-            targets=report_targets,
+            requested_gates=gates,
+            pending_gates=pending_gates,
+            targets=targets,
             results=tuple(outcome.results),
             # A file-scoped run never claims whole-project quality.
             selected_files=tuple(effective_ctx.selected_files),
         )
         # Preserve a changed returned result without repeating an identical
         # last-gate or zero-applicable-gate publication.
-        if summary.results != current_summary.results:
+        if summary != current_summary:
             publish_summary(summary)
-        self._print_summary(report_base, outcome, summary)
+        self._print_summary(effective_ctx.reports_dir, outcome, summary)
         return r[m.Infra.CheckReportSummary].ok(summary)
 
     def _project_targets(
         self,
         projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
-    ) -> t.SequenceOf[m.Infra.CheckProjectTarget]:
+    ) -> t.VariadicTuple[m.Infra.CheckProjectTarget]:
         """Return typed project targets from public names or internal selections.
 
         Returns:
             Typed project targets from public names or internal selections.
 
         """
-        targets: list[m.Infra.CheckProjectTarget] = []
-        for project in projects:
-            if isinstance(project, m.Infra.CheckProjectTarget):
-                targets.append(project)
-                continue
-            targets.append(
-                m.Infra.CheckProjectTarget(
-                    name=project,
-                    path=self._repository_root / project,
-                ),
+        return tuple(
+            project
+            if isinstance(project, m.Infra.CheckProjectTarget)
+            else m.Infra.CheckProjectTarget(
+                name=project,
+                path=self._repository_root / project,
             )
-        return tuple(targets)
+            for project in projects
+        )
 
 
 __all__: list[str] = ["FlextInfraWorkspaceChecker"]

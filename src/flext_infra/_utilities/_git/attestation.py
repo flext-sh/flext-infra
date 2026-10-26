@@ -226,6 +226,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             str(root),
             "--gates",
             gates,
+            "--scope",
+            c.Infra.CodegenConformScope.ALL.value,
             "--reports-dir",
             str(report_root / c.Infra.VERB_CHECK),
             *(
@@ -235,7 +237,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
         )
         native_request = m.Infra.RunCommand.model_validate(
-            {"repository_root": root, "gates": gates},
+            {
+                "repository_root": root,
+                "gates": gates,
+                "scope": c.Infra.CodegenConformScope.ALL,
+            },
         )
         started_capture = cls.git_begin_gate_capture(
             m.Infra.GateCaptureBeginRequest(

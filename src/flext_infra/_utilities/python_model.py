@@ -122,6 +122,19 @@ class FlextInfraUtilitiesPythonModel:
                     pass
         return m.Infra.PythonModuleFacts(
             path=path,
+            declaration_only=all(
+                (
+                    isinstance(node, ast.ImportFrom)
+                    and node.level == 0
+                    and node.module == "__future__"
+                )
+                or (
+                    isinstance(node, ast.Expr)
+                    and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                )
+                for node in tree.body
+            ),
             members=draft.members,
             imports=draft.imports,
             exports=cls._python_model_literal(draft.exports),

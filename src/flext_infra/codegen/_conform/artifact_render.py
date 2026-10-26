@@ -726,6 +726,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         elif destination in {
             c.Infra.MARKDOWNLINT_CONFIG_FILENAME,
             c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
+            c.Infra.MARKDOWN_CONFIG_FILENAME,
         }:
             tooling = render_inputs.tooling_runtime
             if tooling is None or tooling.document is None:
@@ -735,7 +736,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             markdown = tooling.document.tools.markdown
             spec = m.Infra.MarkdownLintRenderSpec(
                 rules=u.Infra.configuration_pairs(markdown.rules),
-                exclude=markdown.exclude,
+                native_config=u.Infra.markdown_native_configuration(
+                    markdown, codegen.markdown_exclude_globs
+                ),
+                exclude=codegen.markdown_exclude_globs,
             )
         elif destination in {
             c.Infra.MISE_TOML_FILENAME,

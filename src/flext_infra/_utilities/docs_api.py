@@ -581,7 +581,6 @@ class FlextInfraUtilitiesDocsApi:
             "public_symbols": [],
             "target_map": {},
             "modules": [],
-            "exclude_docs": list(docs.exclude_docs),
         })
 
     @staticmethod
@@ -697,7 +696,6 @@ class FlextInfraUtilitiesDocsApi:
             "public_symbols": public_symbols,
             "target_map": dict(target_map),
             "modules": modules,
-            "exclude_docs": list(docs.exclude_docs),
         })
 
     @staticmethod

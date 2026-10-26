@@ -1,4 +1,7 @@
-"""Declared facade composition and consumer-selected protocol owners.
+"""Compose declared facade bases while preserving class-publication identity.
+
+Family packages publish their declarations through derived lazy exports. Facades
+import those packages and compose upstream same-letter exports, never leaf modules.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -20,6 +23,8 @@ from libcst import (
     Annotation,
     Arg,
     Assign,
+    Attribute,
+    BaseExpression,
     ClassDef,
     Comma,
     CSTNode,
@@ -43,27 +48,20 @@ from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFacadeSyntax,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesRopeAnalysisExports,
+    FlextInfraUtilitiesRopeAnalysisImportState,
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
     FlextInfraUtilitiesWorkspaceSnapshot,
-)
-from flext_infra._utilities._rope_analysis import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
-)
-from flext_infra._utilities._rope_analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-)
-from flext_infra._utilities.codegen_facade_syntax import (
-    FlextInfraUtilitiesCodegenFacadeSyntax,
 )
 
 
@@ -309,6 +307,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             source,
             declarations,
         )
+        source = cls._inherit_upstream_namespace(project, facade_path, source)
         source = cls._publish_namespace_aliases(project, facade_path, source)
         if cls._explicit_class_facade(
             project,
@@ -792,12 +791,39 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     def _inherit_upstream_namespace(
         cls, project: p.Infra.RopeProject, path: Path, source: str
     ) -> str:
-        """Retain the inherited namespace when local parts extend its facade.
+        """Compose upstream package letters and retain their inherited namespace.
+
+        Elect the same-letter export by native class identity, not class spelling.
+        A distinct occupied letter uses a lowercase package-qualified import alias;
+        it never creates a second runtime facade or wrapper.
 
         Returns:
             Source with resolved upstream namespaces included as bases.
 
+        Raises:
+            ValueError: If the family, package publication or base is unresolved.
+
         """
+        cls._facade_classes(ast.parse(source), path)
+        module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project,
+            source,
+            resource=project.get_resource(
+                path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+        )
+        letters = {
+            str(family)
+            for family in c.Infra.FacadeFamily
+            if family
+            in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(source)
+        }
+        if len(letters) != 1:
+            message = f"Facade has no unique exported family letter: {path}"
+            raise ValueError(message)
+        source = cls._upstream_import_references(
+            project, path, source, module, next(iter(letters))
+        )
         facade, namespace = cls._facade_classes(ast.parse(source), path)
         if namespace is facade:
             return source
@@ -821,6 +847,320 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if bases == [ast.unparse(base) for base in namespace.bases]:
             return source
         return cls._declared_facade_render(CodemodContext(), source, namespace, bases)
+
+    @classmethod
+    def _upstream_base_imports(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+        module: p.Infra.RopePyModule,
+        letter: str,
+    ) -> Generator[tuple[t.Pair[str, p.Infra.RopePyObject], list[ast.Name]]]:
+        """Resolve facade base imports through their publishing package identity.
+
+        Yields:
+            Validated publishing native owners and their lexical references.
+
+        Raises:
+            ValueError: If a renamed base has no native references.
+
+        """
+        facade = cls._facade_classes(ast.parse(source), path)[0]
+        base_names = {
+            node.id
+            for base in facade.bases
+            for node in ast.walk(base)
+            if isinstance(node, ast.Name)
+        }
+        for statement in ast.parse(source, filename=str(path)).body:
+            if (
+                not isinstance(statement, ast.ImportFrom)
+                or statement.module is None
+                or not any(
+                    (alias.asname or alias.name) in base_names
+                    for alias in statement.names
+                )
+            ):
+                continue
+            origin = (
+                resolve_name(
+                    f"{'.' * statement.level}{statement.module}", module.get_name()
+                )
+                if statement.level
+                else statement.module
+            )
+            for alias in statement.names:
+                if (alias.asname or alias.name) not in base_names:
+                    continue
+                publication = cls._upstream_base_publication(
+                    project, path, origin, alias.name, letter
+                )
+                if publication is None:
+                    continue
+                names = cls._upstream_reference_names(
+                    module, source, alias.asname or alias.name, publication[1]
+                )
+                if not names and (alias.asname or alias.name) != letter:
+                    message = (
+                        "Unresolved native upstream base references: "
+                        f"{path}:{alias.asname or alias.name}"
+                    )
+                    raise ValueError(message)
+                yield publication, names
+
+    @staticmethod
+    def _upstream_import_references(
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+        module: p.Infra.RopePyModule,
+        letter: str,
+    ) -> str:
+        """Schedule package imports without capturing distinct lexical bindings.
+
+        Returns:
+            Source with identity-resolved references and package-letter imports.
+
+        Raises:
+            ValueError: If a package-qualified letter would capture another owner.
+
+        """
+        references: dict[tuple[int, int], str] = {}
+        context = CodemodContext()
+        elected: p.Infra.RopePyObject | None = None
+        imports: set[t.Pair[str, str]] = set()
+        for (
+            publication,
+            names,
+        ) in FlextInfraUtilitiesCodegenFacades._upstream_base_imports(
+            project, path, source, module, letter
+        ):
+            occupied = FlextInfraUtilitiesCodegenFacades._upstream_letter_occupied(
+                module, source, names, letter, (path, publication[1])
+            )
+            occupied |= elected is not None and elected is not publication[1]
+            destination = (
+                f"{publication[0].replace('.', '_').lower()}_{letter}"
+                if occupied
+                else letter
+            )
+            if occupied and (
+                FlextInfraUtilitiesCodegenFacades._upstream_letter_occupied(
+                    module, source, names, destination, (path, publication[1])
+                )
+            ):
+                message = f"Occupied upstream facade import: {path}:{destination}"
+                raise ValueError(message)
+            if not occupied:
+                elected = publication[1]
+            references.update(
+                ((node.lineno, node.col_offset), destination) for node in names
+            )
+            request = (publication[0], destination)
+            # Native aliased-import requests retain duplicates in their queue.
+            if request not in imports:
+                AddImportsVisitor.add_needed_import(
+                    context,
+                    publication[0],
+                    letter,
+                    asname=destination if destination != letter else None,
+                )
+                imports.add(request)
+        return (
+            FlextInfraUtilitiesCodegenFacades._rewrite_upstream_references(
+                context, source, references
+            )
+            if imports
+            else source
+        )
+
+    @staticmethod
+    def _upstream_reference_names(
+        module: p.Infra.RopePyModule,
+        source: str,
+        bound: str,
+        owner: p.Infra.RopePyObject,
+    ) -> list[ast.Name]:
+        """Resolve loaded references to their imported native base owner.
+
+        Returns:
+            Names whose lexical resolution retains the imported identity.
+
+        """
+        return [
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id == bound
+            and (
+                resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                    FlextInfraUtilitiesRopeRuntime.scope_at(
+                        module,
+                        FlextInfraUtilitiesRopeRuntime.source_offset(source, node),
+                        declaration_line=node.lineno,
+                    ),
+                    node,
+                )
+            )
+            is not None
+            and resolved.get_object() is owner
+        ]
+
+    @staticmethod
+    def _upstream_letter_occupied(
+        module: p.Infra.RopePyModule,
+        source: str,
+        names: t.SequenceOf[ast.Name],
+        letter: str,
+        binding: t.Pair[Path, p.Infra.RopePyObject],
+    ) -> bool:
+        """Preserve lexical collisions except the facade's later own publication.
+
+        Returns:
+            Whether replacing a reference would capture an occupied letter.
+
+        """
+        facade, _ = FlextInfraUtilitiesCodegenFacades._facade_classes(
+            ast.parse(source), binding[0]
+        )
+        own_aliases = FlextInfraUtilitiesRopeModulePatch.runtime_alias_bindings(
+            source, alias=letter
+        )
+        occupied = False
+        for node in names:
+            lexical = FlextInfraUtilitiesRopeRuntime.scope_at(
+                module,
+                FlextInfraUtilitiesRopeRuntime.source_offset(source, node),
+                declaration_line=node.lineno,
+            )
+            existing = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                lexical, ast.Name(id=letter, ctx=ast.Load())
+            )
+            if existing is None or existing.get_object() is binding[1]:
+                continue
+            if len(own_aliases) != 1:
+                occupied = True
+                continue
+            if not (
+                lexical.get_kind()
+                in {c.Infra.RopeScopeKind.MODULE, c.Infra.RopeScopeKind.CLASS}
+                and isinstance(own_aliases[0].value, ast.Name)
+                and own_aliases[0].value.id == facade.name
+                and node.lineno < own_aliases[0].lineno
+                and existing.get_object()
+                is module.get_scope().get_names()[facade.name].get_object()
+            ):
+                occupied = True
+        return occupied
+
+    @staticmethod
+    def _upstream_base_publication(
+        project: p.Infra.RopeProject, path: Path, origin: str, name: str, letter: str
+    ) -> t.Pair[str, p.Infra.RopePyObject] | None:
+        """Resolve a base's same-letter publication by native class identity.
+
+        Returns:
+            The publishing package and owner, or no same-letter publication.
+
+        Raises:
+            ValueError: If an origin, base or required publication is invalid.
+
+        """
+        resource = project.find_module(origin)
+        if resource is None:
+            message = f"Unresolved facade import origin: {origin}"
+            raise ValueError(message)
+        binding = (
+            FlextInfraUtilitiesRopeCore
+            .resolve_pymodule(project, resource)
+            .get_attributes()
+            .get(name)
+        )
+        if binding is None:
+            message = f"Unresolved facade base import: {origin}:{name}"
+            raise ValueError(message)
+        owner = binding.get_object()
+        publisher = origin
+        package = resource
+        if not package.is_folder():
+            publisher = publisher.rpartition(".")[0]
+            package = project.find_module(publisher)
+        if package is None:
+            message = f"Facade base has no publishing package: {origin}"
+            raise ValueError(message)
+        exported = (
+            FlextInfraUtilitiesRopeCore
+            .resolve_pymodule(project, package)
+            .get_attributes()
+            .get(letter)
+        )
+        if exported is None or exported.get_object() is not owner:
+            if FlextInfraUtilitiesRopeRuntime.py_class(owner):
+                declared = owner.get_module().get_attributes().get(letter)
+                if declared is not None and declared.get_object() is owner:
+                    message = (
+                        "Upstream facade letter is not published by its "
+                        f"package: {publisher}:{letter}"
+                    )
+                    raise ValueError(message)
+            return None
+        if Path(package.real_path).resolve() == path.parent.resolve():
+            message = f"Facade cannot compose its own package letter: {path}"
+            raise ValueError(message)
+        return publisher, owner
+
+    @staticmethod
+    def _rewrite_upstream_references(
+        context: CodemodContext,
+        source: str,
+        references: t.MappingKV[tuple[int, int], str],
+    ) -> str:
+        """Rewrite resolved names with a module-preserving native traversal.
+
+        Returns:
+            Source with matching references and their scheduled import changes.
+
+        """
+        wrapper = MetadataWrapper(parse_module(source))
+        lines = source.splitlines()
+        replacements = {
+            node: references[key]
+            for node, span in wrapper.resolve(PositionProvider).items()
+            if isinstance(node, Name)
+            and (
+                key := (
+                    span.start.line,
+                    len(lines[span.start.line - 1][: span.start.column].encode()),
+                )
+            )
+            in references
+        }
+        context = CodemodContext(wrapper=wrapper, scratch=context.scratch)
+        for node in replacements:
+            RemoveImportsVisitor.remove_unused_import_by_node(context, node)
+
+        class RewriteNames(CSTTransformer):
+            """Replace authenticated references, preserving the module kind."""
+
+            @override
+            def leave_Name(
+                self, original_node: t.Infra.Cst.Name, updated_node: t.Infra.Cst.Name
+            ) -> t.Infra.Cst.Name:
+                """Return the scheduled name or preserve the existing spelling.
+
+                Returns:
+                    The reference with its authenticated destination name.
+
+                """
+                return updated_node.with_changes(
+                    value=replacements.get(original_node, updated_node.value)
+                )
+
+        updated: t.Infra.CstModule = wrapper.module.visit(RewriteNames())
+        updated = AddImportsVisitor(context).transform_module(updated)
+        return RemoveImportsVisitor(context).transform_module(updated).code
 
     @classmethod
     def _generated_facade(
@@ -848,39 +1188,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
         )
-        sources, declarations, package_name = cls._declared_sources(
+        _, declarations, package_name = cls._declared_sources(
             pkg_dir, owners_dir, contents=contents, project=project
         )
-        family_package = f"{package_name}.{owners_dir.name}"
-        barrel = sources.get(family_package)
-        published = (
-            frozenset(
-                FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                    barrel[1]
-                )
-            )
-            if barrel is not None
-            else frozenset[str]()
+        source = cls._rebind_declared_imports(
+            package_name, owners_dir, source, declarations
         )
-        owners = {
-            item.qualified_base: item.target
-            for item in declarations
-            if item.qualified_base in published
-        }
-        for node in ast.parse(source).body:
-            if not isinstance(node, ast.ImportFrom) or node.module is None:
-                continue
-            module = (
-                resolve_name(f"{'.' * node.level}{node.module}", package_name)
-                if node.level
-                else node.module
-            )
-            for alias in node.names:
-                if owners.get(alias.name) != module:
-                    continue
-                source = cls._relocated_import_source(
-                    source, package_name, (module, alias.name), family_package
-                )
         source = cls._wrap_facade_imports(
             cls._merged_facade_imports(cls._canonical_exports(source))
         )
@@ -1496,33 +1809,37 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ) -> frozenset[t.Triple[Path, int, int]]:
         """Authenticate PEP 613 facade class publications at reported rows.
 
-        A publication is ``Name: TypeAlias = Owner`` declared directly in a
-        facade module's top-level class or in its nested namespace class, with
+        A publication is ``Name: TypeAlias = Owner`` declared directly in an
+        explicitly published facade class or in its nested namespace class, with
         ``TypeAlias`` bound by the module's own ``from typing import`` and
-        ``Owner`` resolving, by native Rope identity, to a class. Rows outside
-        facade modules, other statements and unresolved owners authenticate
-        nothing.
+        ``Owner`` resolving, by native Rope identity, to a class. The existing
+        publication owner authenticates the exported family alias and local class
+        independently of the filename. Other classes, statements and unresolved
+        owners authenticate nothing.
 
         Returns:
             Resolved path, row and one-based column of each authenticated
             publication.
 
         """
-        modules = frozenset(
-            f"{family.module}{c.Infra.EXT_PYTHON}"
-            for family in FlextInfraUtilitiesCodegenNamespace.facade_families().values()
-        )
-        selected = {
-            path.resolve(): wanted
-            for path, wanted in rows.items()
-            if path.name in modules and wanted
-        }
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        selected = {path.resolve(): wanted for path, wanted in rows.items() if wanted}
         if not selected:
             return frozenset()
         publications: set[t.Triple[Path, int, int]] = set()
         with cls.facade_source_project(root) as (project, sources):
             for path, wanted in sorted(selected.items()):
                 source = sources[path]
+                resource = project.get_file(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                )
+                published = (
+                    FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
+                        project, resource
+                    )
+                )
+                if published is None or published[0] not in families:
+                    continue
                 tree = ast.parse(source, filename=str(path))
                 if not any(
                     isinstance(node, ast.ImportFrom)
@@ -1538,12 +1855,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 module_scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
                     project,
                     source,
-                    resource=project.get_resource(
-                        path.relative_to(Path(project.root.real_path)).as_posix()
-                    ),
+                    resource=resource,
                 ).get_scope()
                 for owner in tree.body:
-                    if not isinstance(owner, ast.ClassDef):
+                    if not (
+                        isinstance(owner, ast.ClassDef) and owner.name == published[1]
+                    ):
                         continue
                     owner_scope = next(
                         child
@@ -1560,29 +1877,38 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                         for nested_member in nested.body
                     )
                     for scope, member in members:
-                        if not (
-                            isinstance(member, ast.AnnAssign)
-                            and member.lineno in wanted
-                            and isinstance(member.target, ast.Name)
-                            and isinstance(member.annotation, ast.Name)
-                            and member.annotation.id == "TypeAlias"
-                            and isinstance(member.value, ast.Name | ast.Attribute)
-                        ):
-                            continue
-                        value = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                            scope, member.value
-                        )
-                        if value is not None and (
-                            FlextInfraUtilitiesRopeRuntime.abstract_class(
-                                value.get_object()
-                            )
-                        ):
+                        if cls._facade_class_publication(scope, member, wanted):
                             publications.add((
                                 path,
                                 member.lineno,
                                 member.col_offset + 1,
                             ))
         return frozenset(publications)
+
+    @staticmethod
+    def _facade_class_publication(
+        scope: p.Infra.RopeScope, member: ast.stmt, wanted: frozenset[int]
+    ) -> bool:
+        """Authenticate a selected PEP 613 binding against its native class owner.
+
+        Returns:
+            Whether the selected statement publishes a resolved native class.
+
+        """
+        if not isinstance(member, ast.AnnAssign):
+            return False
+        if not (
+            member.lineno in wanted
+            and isinstance(member.target, ast.Name)
+            and isinstance(member.annotation, ast.Name)
+            and member.annotation.id == "TypeAlias"
+            and isinstance(member.value, ast.Name | ast.Attribute)
+        ):
+            return False
+        value = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, member.value)
+        return value is not None and FlextInfraUtilitiesRopeRuntime.abstract_class(
+            value.get_object()
+        )
 
     @classmethod
     def _inherited_namespace_members(
@@ -1648,9 +1974,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         scope: p.Infra.RopeScope,
         base_objects: tuple[p.Infra.RopePyObject, ...],
         *,
-        family: Literal["protocol", "model"],
+        family: Literal["protocol", "model", "utility"],
     ) -> str:
         """Keep declared owners authoritative over their generated class bindings.
+
+        A utility publication retires only when the same name inherits the same
+        class object. Being a namespace base does not make its alias redundant.
 
         Returns:
             Source without derived class bindings or proven redundant assignments.
@@ -1675,7 +2004,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         shadows: list[ast.stmt] = []
         for member, alias in aliases:
             name, expression, annotation = alias
-            canonical_class = (
+            shadowed = (
                 generated
                 and name in inherited
                 and FlextInfraUtilitiesRopeRuntime.abstract_class(inherited[name])
@@ -1702,7 +2031,15 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 and isinstance(expression, ast.Attribute)
                 and expression.attr not in resolved.get_object().get_attributes()
             )
-            if generated and (canonical_class or inherited_class or retired_member):
+            shadowed = shadowed or inherited_class or retired_member
+            if (
+                generated
+                and shadowed
+                and (
+                    family != "utility"
+                    or (target is not None and target is inherited.get(name))
+                )
+            ):
                 # A projection cannot turn an inherited declaration into a new
                 # alias or replace a different canonical member with its value.
                 shadows.append(member)
@@ -1728,7 +2065,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 raise ValueError(message)
             if target is inherited.get(name):
                 shadows.append(member)
-            elif inherited_class:
+            elif inherited_class and (family != "utility" or name in inherited):
                 message = (
                     f"ambiguous {family} class attribute {name}: "
                     "value does not identify the inherited contract"
@@ -1928,24 +2265,19 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             A facade whose direct owners preserve the existing source C3 order.
 
         """
-        project, contents = binding
-        facade, namespace = cls._facade_classes(
-            ast.parse(source, filename=str(facade_path)),
-            facade_path,
-        )
         owners_dir = (
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
         )
         sources, declarations, package_name = cls._declared_sources(
-            pkg_dir, owners_dir, contents=contents, project=project
+            pkg_dir, owners_dir, contents=binding[1], project=binding[0]
         )
         source = cls._rebind_declared_imports(
             package_name, owners_dir, source, declarations
         )
         sources[f"{package_name}.{facade_path.stem}"] = (facade_path, source)
         if cls._explicit_class_facade(
-            project, facade_path, source, declarations, binding=(sources, family)
+            binding[0], facade_path, source, declarations, binding=(sources, family)
         ):
             return cls._render_explicit_class_facade(
                 pkg_dir, facade_path, source, family=family, binding=binding
@@ -1954,19 +2286,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
-        if family in {c.Infra.FacadeFamily.C, c.Infra.FacadeFamily.M}:
+        if family in {
+            c.Infra.FacadeFamily.C,
+            c.Infra.FacadeFamily.M,
+            c.Infra.FacadeFamily.U,
+        }:
             declarations = cls._namespace_component_declarations(
-                project,
+                binding[0],
                 (facade_path, source),
                 declarations,
                 sources=sources,
                 family=family,
             )
-        independent = cls._independent_publishers(
-            pkg_dir, owners_dir, sources, package_name=package_name
-        )
         retired = cls._retired_owned_bases(
-            project,
+            binding[0],
             sources,
             (pkg_dir, owners_dir),
             (facade_path, namespace),
@@ -1984,32 +2317,197 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         else:
             context = CodemodContext(full_package_name=package_name)
         contract = cls._declared_facade_contract(
-            independent,
+            cls._independent_publishers(
+                pkg_dir, owners_dir, sources, package_name=package_name
+            ),
             declarations,
             facade,
             namespace,
             facade_target=f"{package_name}.{facade_path.stem}",
         )
-        ordered = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
-            project, sources, contract[0]
+        source = cls._reorder_declared_facade(
+            context,
+            source,
+            namespace,
+            contract,
+            ordering=(
+                FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
+                    binding[0], sources, contract[0]
+                ),
+                bool(retired),
+            ),
         )
-        existing = tuple(cls._base_name(base) for base in namespace.bases)
-        if existing != ordered or retired:
-            if contract[2]:
-                cls._declared_facade_stale_imports(context, source, contract[1])
-            cls._declared_facade_declared_imports(
-                context,
-                contract[0],
-                contract[1],
-                existing,
+        if family in {c.Infra.FacadeFamily.M, c.Infra.FacadeFamily.U}:
+            source = cls._remove_rendered_namespace_class_shadows(
+                binding[0],
                 source,
+                facade_path,
+                family="model" if family is c.Infra.FacadeFamily.M else "utility",
             )
-            source = cls._declared_facade_render(context, source, namespace, ordered)
-        if family is c.Infra.FacadeFamily.M:
-            source = cls._remove_model_namespace_class_shadows(
-                project, source, facade_path
-            )
+        source = cls._collapse_inherited_owner_references(
+            binding[0], facade_path, source
+        )
         return cls._wrap_facade_imports(source)
+
+    @classmethod
+    def _collapse_inherited_owner_references(
+        cls, project: p.Infra.RopeProject, facade_path: Path, source: str
+    ) -> str:
+        """Remove absent inherited qualifiers only after native identity proof.
+
+        Returns:
+            Source retaining each declaration's effective native class owner.
+
+        """
+        module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project,
+            source,
+            resource=project.get_resource(
+                facade_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+        )
+        facade, _ = cls._facade_classes(ast.parse(source), facade_path)
+        collapsed = set()
+        for owner in ast.walk(facade):
+            if not isinstance(owner, ast.ClassDef):
+                continue
+            for field in owner.body:
+                if (
+                    not isinstance(field, c.Infra.AST_ASSIGNMENT_TYPES)
+                    or field.value is None
+                ):
+                    continue
+                receivers = {
+                    child.value
+                    for child in ast.walk(field.value)
+                    if isinstance(child, ast.Attribute)
+                }
+                for node in ast.walk(field.value):
+                    if not (
+                        isinstance(node, ast.Attribute)
+                        and isinstance(node.ctx, ast.Load)
+                        and node not in receivers
+                    ):
+                        continue
+                    qualifier = cls._inherited_owner_reference(module, source, node)
+                    if qualifier is not None:
+                        collapsed.add((
+                            qualifier.end_lineno,
+                            qualifier.end_col_offset,
+                        ))
+        if collapsed:
+            wrapper = MetadataWrapper(parse_module(source))
+            lines = source.splitlines()
+            selected = {
+                node
+                for node, span in wrapper.resolve(PositionProvider).items()
+                if isinstance(node, Attribute)
+                and (
+                    span.end.line,
+                    len(lines[span.end.line - 1][: span.end.column].encode()),
+                )
+                in collapsed
+            }
+
+            class CollapseOwner(CSTTransformer):
+                """Remove only identity-authenticated, absent owner qualifiers."""
+
+                @override
+                def leave_Attribute(
+                    self, original_node: Attribute, updated_node: Attribute
+                ) -> BaseExpression:
+                    """Return the receiver of an authenticated reference."""
+                    return (
+                        updated_node.value
+                        if original_node in selected
+                        else updated_node
+                    )
+
+            source = wrapper.module.visit(CollapseOwner()).code
+        return source
+
+    @staticmethod
+    def _inherited_owner_reference(
+        module: p.Infra.RopePyModule, source: str, node: ast.Attribute
+    ) -> ast.Attribute | None:
+        """Authenticate an absent qualifier and its complete inherited member path.
+
+        Returns:
+            The absent qualifier when its entire tail retains declaration identity.
+
+        """
+        scope = FlextInfraUtilitiesRopeRuntime.scope_at(
+            module,
+            FlextInfraUtilitiesRopeRuntime.source_offset(source, node),
+            declaration_line=node.lineno,
+        )
+        path: list[ast.Attribute] = []
+        current: ast.expr = node
+        while isinstance(current, ast.Attribute):
+            path.append(current)
+            current = current.value
+        path.reverse()
+        for index, qualifier in enumerate(path[:-1]):
+            receiver = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                scope, qualifier.value
+            )
+            if receiver is None:
+                continue
+            namespace_owner = receiver.get_object()
+            if (
+                not FlextInfraUtilitiesRopeRuntime.abstract_class(namespace_owner)
+                or qualifier.attr in namespace_owner.get_attributes()
+            ):
+                continue
+            donors = [
+                ancestor
+                for ancestor in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
+                    namespace_owner
+                )
+                if ancestor is not namespace_owner
+                and FlextInfraUtilitiesRopeRuntime.py_class(ancestor)
+                and ancestor.get_name() == qualifier.attr
+            ]
+            if len(donors) != 1:
+                continue
+            direct: p.Infra.RopePyObject = namespace_owner
+            donated: p.Infra.RopePyObject = donors[0]
+            for segment in path[index + 1 :]:
+                member = direct.get_attributes().get(segment.attr)
+                inherited = donated.get_attributes().get(segment.attr)
+                if member is None or member is not inherited:
+                    return None
+                direct = member.get_object()
+                donated = direct
+            return qualifier
+        return None
+
+    @classmethod
+    def _reorder_declared_facade(
+        cls,
+        context: CodemodContext,
+        source: str,
+        namespace: ast.ClassDef,
+        contract: tuple[list[m.Infra.SourceClassReference], set[str], bool],
+        *,
+        ordering: t.Pair[t.StrTuple, bool],
+    ) -> str:
+        """Apply the resolved base order and imports only for changed contracts.
+
+        Returns:
+            Reordered source, or untouched source when no rewrite is due.
+
+        """
+        ordered, retired = ordering
+        existing = tuple(cls._base_name(base) for base in namespace.bases)
+        if existing == ordered and not retired:
+            return source
+        if contract[2]:
+            cls._declared_facade_stale_imports(context, source, contract[1])
+        cls._declared_facade_declared_imports(
+            context, contract[0], contract[1], existing, source
+        )
+        return cls._declared_facade_render(context, source, namespace, ordered)
 
     @classmethod
     def _explicit_class_facade(
@@ -2118,6 +2616,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         return family not in {
             c.Infra.FacadeFamily.C,
             c.Infra.FacadeFamily.M,
+            c.Infra.FacadeFamily.U,
         } or not cls._namespace_component_declarations(
             project,
             (facade_path, source),
@@ -2136,14 +2635,19 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         sources: t.MappingKV[str, t.Pair[Path, str]],
         family: c.Infra.FacadeFamily = c.Infra.FacadeFamily.M,
     ) -> list[m.Infra.SourceClassReference]:
-        """Elect plain namespace providers independently of whole class publications.
+        """Elect namespace providers independently of whole class publications.
 
         Model publications never compose the namespace. Mixed constants retain
         plain owners as both named publications and namespace providers, but never
-        inherit enum declarations.
+        inherit enum declarations. Native static or class methods admit utility
+        composition, not proof of statelessness or retirement of class publications.
 
         Returns:
             The declared plain namespace providers.
+
+        Raises:
+            TypeError: If a utility provider has no native class syntax tree.
+            ValueError: If descriptors coexist with an undeclared stateful role.
 
         """
         facade_path, source = source_entry
@@ -2192,12 +2696,34 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
             ):
                 continue
+            if family is c.Infra.FacadeFamily.U:
+                methods = {
+                    value.get_kind()
+                    for attribute in owner.get_attributes().values()
+                    if FlextInfraUtilitiesRopeRuntime.py_function(
+                        value := attribute.get_object()
+                    )
+                }
+                if not methods or not methods <= {"classmethod", "staticmethod"}:
+                    continue
+                node = owner.get_ast()
+                if not isinstance(node, ast.ClassDef):
+                    message = "utility provider has no native class syntax tree"
+                    raise TypeError(message)
+                if node.decorator_list or any(
+                    isinstance(member, ast.AnnAssign) for member in node.body
+                ):
+                    message = (
+                        "Utility class has descriptors but an undeclared namespace "
+                        f"role: {declaration.target}:{declaration.qualified_base}"
+                    )
+                    raise ValueError(message)
             published = any(owner is value for _, value in aliases)
             if family is c.Infra.FacadeFamily.M and published:
                 continue
             components.append(declaration)
             has_unpublished |= not published
-        return components if has_unpublished else []
+        return components if has_unpublished or family is c.Infra.FacadeFamily.U else []
 
     @staticmethod
     def _declared_facade_owners(
@@ -2308,13 +2834,18 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         return False
 
     @classmethod
-    def _remove_model_namespace_class_shadows(
-        cls, project: p.Infra.RopeProject, source: str, facade_path: Path
+    def _remove_rendered_namespace_class_shadows(
+        cls,
+        project: p.Infra.RopeProject,
+        source: str,
+        facade_path: Path,
+        *,
+        family: Literal["model", "utility"],
     ) -> str:
-        """Resolve the rendered model namespace before removing inherited shadows.
+        """Resolve the rendered namespace before removing inherited shadows.
 
         Returns:
-            The model facade source without redundant inherited class declarations.
+            The facade source without redundant inherited class declarations.
 
         Raises:
             TypeError: An inherited owner is not a native class object.
@@ -2325,13 +2856,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         )
         try:
             return cls._remove_namespace_class_shadows(
-                source, namespace, scope, base_objects, family="model"
+                source, namespace, scope, base_objects, family=family
             )
         except TypeError as error:
-            error.add_note(
-                f"Model facade: {facade_path}; namespace={namespace.name}; "
-                f"bases={tuple(ast.unparse(base) for base in namespace.bases)}"
-            )
+            if family == "model":
+                error.add_note(
+                    f"Model facade: {facade_path}; namespace={namespace.name}; "
+                    f"bases={tuple(ast.unparse(base) for base in namespace.bases)}"
+                )
             raise
 
     @classmethod
@@ -2476,7 +3008,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ):
                 AddImportsVisitor.add_needed_import(
                     context,
-                    item.target,
+                    item.target.rpartition(".")[0],
                     item.qualified_base,
                 )
 
@@ -2746,19 +3278,19 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         source: str,
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
     ) -> str:
-        """Rebind obsolete leaf imports to their current declaration modules.
+        """Import declared owners from their publishing family package.
 
-        Package-form imports also move to the direct declaration owner; the
-        family barrel is not an independent publication authority.
+        Declarations elect exports; the existing joint initializer plan publishes
+        them. A stale barrel is never bypassed by importing a concrete leaf.
 
         Returns:
-            Source with obsolete owned import origins replaced.
+            Source with owned leaf import origins replaced by their package.
 
         Raises:
             ValueError: If published owner spellings compete.
 
         """
-        owners = {item.qualified_base: item.target for item in declarations}
+        owners = {item.qualified_base for item in declarations}
         if len(owners) != len(declarations):
             message = "Competing declared facade import bindings"
             raise ValueError(message)
@@ -2774,11 +3306,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if module != prefix and not module.startswith(f"{prefix}."):
                 continue
             for alias in node.names:
-                target = owners.get(alias.name)
-                if target is None or target == module:
+                if alias.name not in owners or module == prefix:
                     continue
                 source = FlextInfraUtilitiesCodegenFacades._relocated_import_source(
-                    source, package_name, (module, alias.name), target
+                    source, package_name, (module, alias.name), prefix
                 )
         return source
 

@@ -51,6 +51,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
                     inputs.workspace_contract,
                     src_paths,
+                    repository_root=repository_root,
                 ),
             ),
             (

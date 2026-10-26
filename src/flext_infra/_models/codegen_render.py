@@ -385,6 +385,10 @@ class FlextInfraModelsCodegenRender:
             t.JsonMapping,
             m.Field(description="Elected native Markdown rules."),
         ]
+        native_config: Annotated[
+            str,
+            m.Field(description="Native Markdown TOML derived from the shared policy."),
+        ]
         exclude: Annotated[
             t.StrTuple,
             m.Field(description="Declared non-documentation path patterns."),
@@ -468,7 +472,7 @@ class FlextInfraModelsCodegenRender:
             description="Gitignore-style docs exclusions."
         )
         exclude_plugin_patterns: t.StrSequence = m.Field(
-            description="Plugin glob exclusions.",
+            description="Native translated physical-copy exclusion regular expressions.",
         )
         mkdocstrings_paths: t.StrSequence = m.Field(
             description="mkdocstrings source paths.",

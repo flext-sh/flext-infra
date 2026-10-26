@@ -160,6 +160,33 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = ()
+        markdown: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Positive repository-relative Markdown exclusion patterns "
+                    "not derived from analyzer or full-generated artifact ownership"
+                ),
+            ),
+        ]
+        docs_publish: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Repository-relative page patterns excluded from site "
+                    "publication, not from physical documentation copying"
+                ),
+            ),
+        ]
+        docs_copy: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Repository-relative documentation patterns excluded from "
+                    "physical copying and site publication"
+                ),
+            ),
+        ]
         pyproject_scan: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -238,9 +265,8 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(
                 description=(
                     "Project-relative roots of tests-tier scenario trees "
-                    "(ADR-028 point 6): each child directory is scenario data "
-                    "the engines under test consume, never governed code; "
-                    "modules directly under the root stay governed"
+                    "(ADR-028): complete roots and descendants are artifacts "
+                    "the engines under test consume as data, never governed code"
                 ),
             ),
         ] = ()
@@ -745,18 +771,60 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
         @m.computed_field
         @property
-        def scenario_data_globs(self) -> t.VariadicTuple[str]:
-            """Derived globs of the scenario trees under each declared root.
-
-            Only child directories are scenario data; modules directly under a
-            root (typed fixtures) remain governed.
+        def markdown_exclude_globs(self) -> t.VariadicTuple[str]:
+            """Derive Markdown scope without hiding authored or merged documents.
 
             Returns:
-                One recursive child-directory pattern per declared root.
+                Analyzer, full-generated Markdown and declared residual patterns.
 
             """
             return tuple(
-                f"**/{root}/*/**" for root in self.exclusions.scenario_data_roots
+                sorted(
+                    set(self.analyzer_exclude_globs)
+                    | {
+                        entry.destination
+                        for entry in self.templates.entries
+                        if entry.ownership is not None
+                        and entry.ownership.policy == c.Infra.MANAGED_FILE_POLICY_FULL
+                        and Path(entry.destination).suffix == ".md"
+                    }
+                    | set(self.exclusions.markdown)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def docs_publish_patterns(self) -> t.VariadicTuple[str]:
+            """Expose declared publication-only patterns in repository coordinates.
+
+            Returns:
+                Publication-only patterns in declaration order, without duplicates.
+
+            """
+            return tuple(dict.fromkeys(self.exclusions.docs_publish))
+
+        @m.computed_field
+        @property
+        def docs_copy_patterns(self) -> t.VariadicTuple[str]:
+            """Expose declared copy exclusions without importing Markdown scope.
+
+            Returns:
+                Copy patterns in declaration order, without duplicates.
+
+            """
+            return tuple(dict.fromkeys(self.exclusions.docs_copy))
+
+        @m.computed_field
+        @property
+        def scenario_data_globs(self) -> t.VariadicTuple[str]:
+            """Derived globs of complete artifact trees at each declared root.
+
+            Returns:
+                One recursive pattern per declared root.
+
+            """
+            return tuple(
+                f"**/{root}/**" for root in self.exclusions.scenario_data_roots
             )
 
         @m.computed_field

@@ -88,11 +88,17 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    @pytest.mark.parametrize("publication", ["facade", "unpublished", "foreign"])
     def test_class_publications_authenticate_only_facade_class_aliases(
         self,
         tmp_path: Path,
+        publication: Literal["facade", "unpublished", "foreign"],
     ) -> None:
-        """Only PEP 613 facade aliases of classes are exempt identities."""
+        """Authenticate published class identity independently of module spelling.
+
+        Missing facade publication or an alias bound to another class exempts
+        nothing; a published facade's non-class RHS remains ineligible too.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         directory = u.Infra.facade_families()["u"].directory
         self._write(package / "__init__.py", "")
@@ -112,8 +118,11 @@ class UtilityFacadeOwnerPublication:
             "    Value: TypeAlias = Owner.value\n"
             "    class Ns:\n"
             "        Nested: TypeAlias = Owner\n"
-            "u = Utilities\n"
-            "__all__ = ['Utilities', 'u']\n"
+            + {
+                "facade": "u = Utilities\n__all__ = ['Utilities', 'u']\n",
+                "unpublished": "u = Utilities\n__all__ = ['Utilities']\n",
+                "foreign": "u = Owner\n__all__ = ['Utilities', 'u']\n",
+            }[publication]
         )
         facade = package / "utilities.py"
         authored = package / "services.py"
@@ -125,7 +134,16 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(
             published,
-            eq=frozenset({(facade.resolve(), 4, 5), (facade.resolve(), 7, 9)}),
+            eq=(
+                frozenset({
+                    (facade.resolve(), 4, 5),
+                    (facade.resolve(), 7, 9),
+                    (authored.resolve(), 4, 5),
+                    (authored.resolve(), 7, 9),
+                })
+                if publication == "facade"
+                else frozenset()
+            ),
         )
 
     def test_initializer_retires_exports_moved_into_class_owners(

@@ -118,6 +118,43 @@ class FlextInfraUtilitiesNativeTooling:
         )
 
     @staticmethod
+    def markdown_native_configuration(
+        markdown: m.Infra.MarkdownConfig,
+        excludes: t.StrSequence,
+    ) -> str:
+        """Render native Markdown tables from the common policy and overrides.
+
+        Returns:
+            Native TOML consumed by lint, repair, formatting and the editor.
+
+        """
+        rules = FlextInfraUtilitiesNativeTooling.configuration_pairs(markdown.rules)
+        for name, value in markdown.native_rules:
+            common = rules.get(name)
+            rules[name] = (
+                {**common, **value}
+                if isinstance(common, Mapping) and isinstance(value, Mapping)
+                else value
+            )
+        document = FlextInfraUtilitiesNativeTooling.configuration_pairs(
+            markdown.native_settings
+        )
+        default = rules.pop("default")
+        global_options = u.Cli.toml_mapping_ensure_path(document, ("global",))
+        global_options["exclude"] = list(excludes)
+        global_options["disable"] = [
+            name for name, value in rules.items() if value is False
+        ]
+        if default is False:
+            global_options["enable"] = [
+                name for name, value in rules.items() if value is not False
+            ]
+        document.update({
+            name: value for name, value in rules.items() if isinstance(value, Mapping)
+        })
+        return u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
+
+    @staticmethod
     def native_tool_configuration(
         document: m.Infra.ToolConfigDocument, root: str
     ) -> t.JsonDict:

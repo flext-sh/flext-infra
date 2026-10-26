@@ -34,7 +34,7 @@ class FlextInfraModelsDocsGeneration:
         )
         exclude_docs: t.StrSequence = m.Field(
             default=(),
-            description="Excluded documentation page names",
+            description="Repository-relative publication exclusion globs from codegen",
         )
 
     class DocScope(FlextInfraModelsBase.FrozenArbitrary):

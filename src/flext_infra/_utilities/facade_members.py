@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import re
 from enum import Enum
 from importlib import import_module
@@ -34,6 +35,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeAnalysisExports,
+    FlextInfraUtilitiesRopeAnalysisImportState,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
 
@@ -141,31 +148,173 @@ class FlextInfraUtilitiesFacadeMembers:
         )
 
     @staticmethod
-    def specialized_aliases(package: str) -> t.StrTuple:
+    def specialized_aliases(
+        package: str, *, source_project: p.Infra.RopeProject
+    ) -> t.StrTuple:
         """Name the ``p`` aliases that specialize the same-named ``t`` generic.
 
+        Read the injected source engine, never import the pre-migration package
+        or evaluate an alias value. Native lazy routes and published class
+        identities establish the receivers; PEP 695 declarations establish aliases.
+
         Returns:
-            The sorted alias names; empty when the package is not installed
-            or does not bind both letters.
+            The sorted, statically proven specialization names.
+
+        Raises:
+            ValueError: A declared receiver or candidate has no static identity.
 
         """
-        if find_spec(package) is None:
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        module = types.require_parsed_module(source_project.get_module(package))
+        resource = module.get_resource()
+        if resource is None:
+            message = f"specialization package has no native source: {package}"
+            raise ValueError(message)
+        initializer = types.require_file_resource(
+            resource.get_child(c.Infra.INIT_PY)
+            if isinstance(resource, p.Infra.RopeRoot)
+            else resource,
+            package,
+        )
+        parsed = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            source_project, initializer
+        )
+        if not types.source_module(parsed):
+            message = f"specialization initializer has no source tree: {package}"
+            raise ValueError(message)
+        facades = FlextInfraUtilitiesFacadeMembers._specialization_facades(
+            package, source_project, module, parsed, initializer
+        )
+        if not facades:
             return ()
-        module = import_module(package)
-        protocols = getattr(module, c.Infra.FacadeFamily.P, None)
-        typings = getattr(module, c.Infra.FacadeFamily.T, None)
-        if protocols is None or typings is None:
-            return ()
+        typings = facades[c.Infra.FacadeFamily.T].get_attributes()
         return tuple(
             sorted(
                 name
-                for name in dir(protocols)
+                for name, binding in facades[c.Infra.FacadeFamily.P]
+                .get_attributes()
+                .items()
                 if not name.startswith("_")
-                and name in dir(typings)
-                and isinstance(alias := getattr(protocols, name), TypeAliasType)
-                and get_origin(alias.__value__) is getattr(typings, name)
+                and name in typings
+                and FlextInfraUtilitiesFacadeMembers._specialization_alias_matches(
+                    package, name, binding, typings[name]
+                )
             )
         )
+
+    @staticmethod
+    def _specialization_facades(
+        package: str,
+        source_project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+        parsed: p.Infra.RopeSourceModule,
+        initializer: p.Infra.RopeFile,
+    ) -> t.MappingKV[str, p.Infra.RopeClassObject]:
+        """Resolve the published specialization receivers from native source.
+
+        Returns:
+            Both authenticated facades, or no facades for an unpublished receiver.
+
+        Raises:
+            ValueError: A receiver is a module or lacks a proven class publication.
+
+        """
+        routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+            package,
+            Path(initializer.real_path),
+            parsed.source_code,
+            project=source_project,
+            pymodule=parsed,
+        )
+        exports = frozenset(
+            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                parsed.source_code
+            )
+        )
+        facades: dict[str, p.Infra.RopeClassObject] = {}
+        for letter in (c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.T):
+            route = routes.get(letter)
+            if route is not None and not route.attributes:
+                message = (
+                    f"specialization facade publishes a module: {package}.{letter}"
+                )
+                raise ValueError(message)
+            binding = (
+                FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                    source_project,
+                    ".".join(route.attributes),
+                    module_name=route.target,
+                )
+                if route is not None
+                else module.get_attributes().get(letter)
+            )
+            if binding is None and (exports or routes):
+                unpublished = (
+                    letter not in exports
+                    and letter not in routes
+                    and "__getattr__" not in parsed.get_attributes()
+                )
+                if unpublished:
+                    return {}
+            target = None if binding is None else binding.get_object()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(target):
+                message = f"unresolved specialization facade: {package}.{letter}"
+                raise ValueError(message)
+            owner = target.get_module()
+            if FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
+                source_project,
+                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    None if owner is None else owner.get_resource(),
+                    f"{package}.{letter}",
+                ),
+            ) != (letter, target.get_name()):
+                message = f"unproven specialization publication: {package}.{letter}"
+                raise ValueError(message)
+            facades[letter] = target
+        return facades
+
+    @staticmethod
+    def _specialization_alias_matches(
+        package: str,
+        name: str,
+        binding: p.Infra.RopePyName,
+        typing: p.Infra.RopePyName,
+    ) -> bool:
+        """Compare one protocol alias's immediate origin with its typing binding.
+
+        Returns:
+            Whether both declarations identify the same native generic.
+
+        Raises:
+            ValueError: A candidate alias or its origin has no static identity.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        alias = runtime.annotation_alias_definition(binding)
+        if alias is None:
+            value = binding.get_object()
+            if not (types.abstract_class(value) or types.py_function(value)):
+                message = f"unproven specialization alias: {package}.p.{name}"
+                raise ValueError(message)
+            return False
+        declaration, scope = alias
+        if not isinstance(declaration.value, ast.Subscript):
+            return False
+        origin = runtime.resolve_symbol(scope, declaration.value.value)
+        if origin is None:
+            message = f"unresolved specialization origin: {package}.p.{name}"
+            raise ValueError(message)
+        generic = runtime.annotation_alias_definition(typing)
+        actual = runtime.annotation_alias_definition(origin)
+        if (generic is None and not types.abstract_class(typing.get_object())) or (
+            actual is None and not types.abstract_class(origin.get_object())
+        ):
+            message = f"unproven specialization identity: {package}.p.{name}"
+            raise ValueError(message)
+        if generic is not None and actual is not None:
+            return generic[0] is actual[0]
+        return runtime.same_name(typing, origin)
 
     @classmethod
     def foreign_facade_member(

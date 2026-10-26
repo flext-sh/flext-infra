@@ -6,13 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from fnmatch import fnmatch
 from pathlib import Path
 
 from flext_cli import u
 
 from flext_infra import c, t
-from flext_infra._utilities import FlextInfraUtilitiesDocsScopeStateMixin
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocsScopeStateMixin,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 
 class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateMixin):
@@ -97,37 +99,23 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
         ).docs_meta
 
     @staticmethod
-    def docs_meta_list(project_root: Path, key: str) -> t.StrSequence:
-        """Return one normalized string-list value from ``tool.flext.docs``.
-
-        Returns:
-            One normalized string-list value from ``tool.flext.docs``.
-
-        """
-        docs_meta = FlextInfraUtilitiesDocsScopePolicyMixin.project_docs_meta(
-            project_root,
-        )
-        raw = docs_meta.get(key)
-        if not isinstance(raw, list):
-            return ()
-        return [str(item).strip() for item in raw if str(item).strip()]
-
-    @staticmethod
     def excluded_doc_path(project_root: Path, relative_path: Path) -> bool:
-        """Return whether a relative docs path is excluded by ``tool.flext.docs``.
+        """Return whether codegen excludes a docs-relative path from physical copy.
 
         Returns:
-            Whether a relative docs path is excluded by ``tool.flext.docs``.
+            Whether the docs-relative path is excluded by the typed copy policy.
 
         """
-        candidate = relative_path.as_posix()
-        for pattern in FlextInfraUtilitiesDocsScopePolicyMixin.docs_meta_list(
-            project_root,
-            "exclude_docs",
-        ):
-            if fnmatch(candidate, pattern):
-                return True
-        return False
+        codegen = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_codegen_inputs(project_root)
+            .unwrap()
+            .spec
+        )
+        candidate = Path(c.Infra.DIR_DOCS) / relative_path
+        return any(
+            candidate.full_match(pattern) for pattern in codegen.docs_copy_patterns
+        )
 
     @staticmethod
     def governed_project(project_name: str, repository_root: Path) -> bool:

@@ -12,7 +12,10 @@ import re
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
-from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra._utilities._git import FlextInfraUtilitiesGitScopeMixin
 
 if TYPE_CHECKING:
@@ -78,6 +81,29 @@ class FlextInfraUtilitiesIterationMatching(FlextInfraUtilitiesGitScopeMixin):
             (),
         )
 
+    @staticmethod
+    def scope_excluded_paths(
+        root: Path,
+        paths: t.SequenceOf[Path],
+        patterns: t.StrSequence,
+    ) -> t.SequenceOf[Path]:
+        """Apply the declared positive glob view through native path matching.
+
+        Git inventory owns tracking and ignore semantics; these derived globs
+        describe analysis eligibility, not another interpretation of .gitignore.
+
+        Returns:
+            Eligible paths, retaining the original path objects and order.
+
+        """
+        return tuple(
+            path
+            for path in paths
+            if not any(
+                path.relative_to(root).full_match(pattern) for pattern in patterns
+            )
+        )
+
     @classmethod
     def governed_scope_files(
         cls,
@@ -87,27 +113,22 @@ class FlextInfraUtilitiesIterationMatching(FlextInfraUtilitiesGitScopeMixin):
     ) -> t.SequenceOf[Path]:
         """Return the included governed files of one scope.
 
-        The tracked inventory already omits untracked trees; check-excluded
-        directories and the regenerated ``.github`` agent projections are
-        projections, never governed source.
+        The native tracked inventory preserves tracked ignored source. Analysis
+        exclusions use the same effective repository policy as tool projections.
 
         Returns:
             The governed files, in the matched order.
 
         """
-        excluded_dirs = frozenset(config.Infra.codegen.check_excluded_dirs)
-        scope_depth = len(root.resolve().parts)
-        return [
-            path
-            for path in cls.scope_matching_files(root, includes, scope_facts)
-            for relative_parts in (path.parts[scope_depth:],)
-            if excluded_dirs.isdisjoint(relative_parts)
-            and not (
-                len(relative_parts) > 1
-                and relative_parts[0] == c.Infra.GITHUB_DIRNAME
-                and relative_parts[1] in c.Infra.GITHUB_AGENT_PROJECTION_DIRS
-            )
-        ]
+        root = root.resolve()
+        inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            root
+        ).unwrap()
+        return cls.scope_excluded_paths(
+            root,
+            cls.scope_matching_files(root, includes, scope_facts),
+            inputs.spec.analyzer_exclude_globs,
+        )
 
     @classmethod
     def generated_projection_patterns(

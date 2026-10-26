@@ -192,6 +192,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                     FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
                         contract,
                         ("src",),
+                        repository_root=scope.path,
                         documentation_language=scope.documentation_language,
                     )
                     if scope.path == repository_root

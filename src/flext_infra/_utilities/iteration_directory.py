@@ -37,8 +37,12 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
             Whether ``file_path`` lies in a source-scan-ignored tree.
 
         """
+        relative = file_path.relative_to(root)
         return not frozenset(config.Infra.codegen.source_scan_ignored).isdisjoint(
-            file_path.relative_to(root).parts,
+            relative.parts,
+        ) or any(
+            f"/{artifact_root}/" in file_path.as_posix()
+            for artifact_root in config.Infra.codegen.exclusions.scenario_data_roots
         )
 
     @classmethod

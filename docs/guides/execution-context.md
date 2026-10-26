@@ -631,6 +631,19 @@ replace composition of its members alongside other namespace providers. Preserve
 both access paths; enum declarations remain whole-class publications, not bases.
 Whole-class publications also retain the upstream namespace inherited by their
 facade; publishing local owners must not shadow its existing methods or domains.
+Retained class-field expressions are source projected by that same facade renderer.
+An absent intermediate attribute may be removed only when its name uniquely elects
+an inherited native class owner and the following member has the identical native
+declaration binding on that owner and the receiving namespace. Existing nested
+publications, ambiguous owners, overrides and unrelated unresolved attributes stay
+unchanged; their failures are not suppressed. This operation resolves identifier
+chains only, never arbitrary RHS evaluation, and leaves generated-source exclusions
+and the existing publication path unchanged.
+The existing per-identity UP040 exemption authenticates the facade through its
+explicitly exported family alias and local class identity, using the same native
+publication owner as namespace discovery, not a canonical module filename. Only
+PEP 613 class publications on that elected facade or its nested namespace qualify;
+the TypeAlias import, reported location and native RHS class checks remain required.
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
@@ -2158,8 +2171,13 @@ the scalar is bound before lazy installation and omitted from the lazy map. Publ
 export traversal must not replace that scalar with the imported child module.
 Initializer ownership is elected from actual content and the accepted generator
 markers. Absent or empty initializers and explicitly marked projections may be
-generated. A nonempty authored initializer is retained in full, including executable
-loaders, declarations and constants; its public exports remain part of discovery.
+generated. A shell containing only documentation and future imports is derivable:
+the existing native syntax facts prove that it has no executable publication.
+A nonempty authored initializer with loaders, declarations or constants is retained
+in full; its public exports remain part of discovery. Custom facade planning first
+seeds derived export plans into its declared-source cohort, then converges facades
+and exports over that same authority. It does not publish a bootstrap initializer
+or replace a missing upstream publication with a private import.
 The lazy planning report records `ownership=authored`, `disposition=retained` and the
 existing RETAIN action. Publication reelects ownership from the current target before
 its single write, so a later authored replacement is retained and is not counted as
@@ -2904,6 +2922,16 @@ snapshot's source inventory only. Configuration, local workspace metadata and
 the conformance target are resolved by the managed pass that consumes them;
 initializer planning does not repeat that resolution for every member. Both
 passes retain the same source authentication and publication boundaries.
+The codemod generic-specialization fact is declaration-only, before migration:
+it passes the injected `snapshot.engine` to the facade-member owner, resolves
+the published `p` and `t` classes and their inherited members through native
+source identities, and reads PEP 695 alias declarations without evaluating
+their values. Only a `p` alias whose immediate subscript origin is the exact
+same-named `t` binding contributes. Target and dependency packages are never
+imported to derive this fact. Unresolved or dynamic candidate identities fail
+explicitly; no runtime retry, omitted fact or second analysis engine is allowed.
+This contract is not runtime acceptance; the consuming public `make mod` and
+subsequent global gates remain the integration owner's proof.
 Repository planning emits an exception's original traceback when capturing its
 failed outcome. The final report retains that same cause; interruption before
 the cohort finishes cannot hide the first failure behind a timeout.

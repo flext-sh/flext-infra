@@ -665,6 +665,19 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             utilities[c.Infra.CODEMOD_GENERIC_SPECIALIZATION_UTILITY] = (
                 cls._fact_exact_names(cls._specialized_aliases(snapshot, project))
             )
+        artifact_roots = config.Infra.codegen.exclusions.scenario_data_roots
+        if cls._catalog_references("artifact-root-reference"):
+            alternatives = "|".join(
+                r"[/\\.]".join(re.escape(part) for part in Path(root).parts)
+                for root in artifact_roots
+            )
+            utilities["artifact-root-reference"] = {
+                "regex": (
+                    rf"""(?:^|["'/\\])(?:{alternatives})(?:[/\\.]|["'])"""
+                    if alternatives
+                    else c.Infra.CODEMOD_NEVER_MATCH_REGEX
+                )
+            }
         return utilities
 
     @classmethod
@@ -729,7 +742,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 name
                 for package in packages(snapshot, project)
                 for name in FlextInfraUtilitiesFacadeMembers.specialized_aliases(
-                    package
+                    package, source_project=snapshot.engine
                 )
             })
         )

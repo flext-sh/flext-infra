@@ -70,7 +70,7 @@ Infra:
     - path: mise.version
       evidence: "2026.10.3"
     # The prettier projections retired with the npm-free toolchain
-    # (ADR-025: rumdl fmt formats markdown from .markdownlint.json). Neither
+    # (ADR-025: rumdl fmt formats markdown from .rumdl.toml). Neither
     # carried a generated marker, so each declares the rendered bytes that
     # prove machine provenance.
     - path: .prettierrc
@@ -602,6 +602,9 @@ Infra:
       generation_profile_path: .reports/codegen/gen.pstats
       modification_profile_path: .reports/refactor/mod.pstats
       check_profile_path: .reports/check/route.pstats
+      # Whole-composition prerequisites precede every other check gate.
+      # A partial inventory or any diagnostic prevents subsequent phases.
+      check_prerequisite_gates: [lint, pyrefly]
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -978,6 +981,36 @@ Infra:
       docs:
       - crg-reports
       - site
+      markdown:
+      # CLAUDE.md aliases the instruction document; do not format through a symlink.
+      # AGENTS.md contains authored content and remains checked.
+      - CLAUDE.md
+      # Fully generated provider pointer owned by generate-workspace-config.
+      - GEMINI.md
+      # ZCode session plans are machine-local scratch, not authored documentation.
+      - .zcode/**
+      # Release-please owns these release notes (operator authorization 2026-10-03).
+      - CHANGELOG.md
+      # External emitters own these table, API and project catalog projections.
+      - docs/knowledge-index.md
+      - docs/architecture/communities/index.md
+      - docs/architecture/crg-reports/**
+      - docs/api-reference/generated/**
+      - docs/projects/generated/**
+      # Frozen historical evidence; formatting must not rewrite the source record.
+      - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
+      - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
+      - docs/plans/2026-09-22-rope-generator-stabilization/02-achados-codegen.md
+      - docs/plans/2026-09-23-handoff-mypy-stabilization-e-integracao.md
+      - docs/plans/2026-09-25-v8-flext-service-base/05-phases.md
+      - docs/plans/2026-09-25-v8-flext-service-base/07-sessions-guide.md
+      - docs/standards/consumption-law.md
+      # Repository coordinates; publication rebases these to the actual docs root.
+      # The README and curated API mirrors are copied, but not separate site pages.
+      docs_publish:
+      - docs/README.md
+      - docs/API/**
+      docs_copy: []
       pyproject_scan:
       - .claude.disabled
       - context_test
@@ -1027,11 +1060,10 @@ Infra:
       - _parts
       helper_modules:
       - _cov.py
-      # Tests-tier scenario trees (ADR-028 point 6): every child directory of
-      # these roots is scenario data — sources the engines under test consume,
-      # deliberately violating ones included — never governed code. Modules
-      # directly under a root (typed fixtures) stay governed. flext-tests
-      # derives its fixture-tree location from this declaration.
+      # Complete artifact trees (ADR-028): roots and all descendants are data,
+      # including Python scenarios consumed as data by test engines. Executable
+      # test support belongs in the Tests facades and conftest.py outside these
+      # roots. flext-tests derives its fixture-tree location from this owner.
       scenario_data_roots:
       - tests/fixtures
     vscode:
@@ -1553,6 +1585,7 @@ Infra:
         - "!AGENTS.md"
         - "!codex.md"
         - "!.markdownlint.json"
+        - "!.rumdl.toml"
         - "!.markdownlintignore"
         - "!.shellcheckrc"
       - name: "Git configuration"
@@ -2093,6 +2126,12 @@ Infra:
             policy: full
         .markdownlintignore:
           source: base/markdownlintignore.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .rumdl.toml:
+          source: base/markdown.toml.j2
           profiles: [ workspace, standalone ]
           ownership:
             owner: codegen

@@ -81,10 +81,10 @@ class FlextInfraWorkspaceRoutes:
     ) -> p.Cli.ErasedCommandResult:
         """Run every read-only validation of the check verb in one process.
 
-        The projection verdict precedes the gates, whose captured checker keeps
-        its own attested producer process. The lane census (outside CI) and the
+        The captured checker completes its declared global prerequisites before
+        other gates. The projection verdict, lane census (outside CI), and
         documentation follow; a dirty or changing tree is never a check
-        condition. The commit hook token runs only the commit-stage gates. The
+        condition. The commit hook token selects only commit-stage gates. The
         first failure stops the verb with its original status or cause.
 
         Returns:
@@ -96,6 +96,9 @@ class FlextInfraWorkspaceRoutes:
         make = inputs.spec.make
         token = u.Infra.env_value(make.ci.variable)
         complete = token != make.ci.pre_commit_value
+        status = cls._captured_gate_status(params, inputs)
+        if status:
+            u.Cli.framework_exit(status)
         if complete:
             conformed = flext_infra.infra.codegen_conform(
                 m.Infra.CodegenConformRequest(
@@ -106,9 +109,6 @@ class FlextInfraWorkspaceRoutes:
             )
             if conformed.failure:
                 return r[bool].from_failure(conformed)
-        status = cls._captured_gate_status(params, inputs)
-        if status:
-            u.Cli.framework_exit(status)
         if not complete:
             return r[bool].ok(value=True)
         if token != make.ci.value:

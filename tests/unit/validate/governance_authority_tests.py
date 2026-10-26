@@ -61,6 +61,40 @@ class TestsFlextInfraGovernanceAuthority:
         line_length = u.Tests.toml_mapping(markdown_config["MD013"])["line_length"]
         tm.that(line_length, eq=u.Infra.docs_markdown_line_length(config.Infra.tooling))
 
+    def test_markdown_projections_follow_the_same_typed_policy(self) -> None:
+        """Generated JSON stays common while native tables preserve every override."""
+        policy = config.Infra.tooling.tools.markdown
+        common = u.Infra.configuration_pairs(policy.rules)
+        overrides = u.Infra.configuration_pairs(policy.native_rules)
+        compatible = u.Tests.json_payload(
+            (self.ROOT / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).read_text(
+                encoding="utf-8"
+            )
+        )
+        native = u.Tests.toml_payload(
+            (self.ROOT / c.Infra.MARKDOWN_CONFIG_FILENAME).read_text(encoding="utf-8")
+        )
+        tm.that(compatible, eq=common)
+        global_options = u.Tests.toml_mapping(native["global"])
+        disabled = u.Tests.toml_strings(global_options["disable"])
+        tm.that(global_options["exclude"], eq=list(policy.exclude))
+        for name in overrides.keys() - common.keys():
+            tm.that(name not in compatible, eq=True)
+        elected = {**common, **overrides}
+        for name, value in elected.items():
+            if name == "default":
+                continue
+            if isinstance(value, bool):
+                tm.that(name in disabled, eq=not value)
+            else:
+                expected = u.Tests.toml_mapping(value)
+                if name in common and u.mapping(common[name]):
+                    expected = {**u.Tests.toml_mapping(common[name]), **expected}
+                tm.that(native[name], eq=expected)
+        for name, options in policy.native_settings:
+            for key, value in u.Tests.toml_mapping(options).items():
+                tm.that(u.Tests.toml_mapping(native[name])[key], eq=value)
+
     def test_flext_law_requires_automated_structural_rewires(self) -> None:
         # Markdown reflows a clause across lines at whatever column the
         # formatter chooses, so a literal match answers about the wrap and not

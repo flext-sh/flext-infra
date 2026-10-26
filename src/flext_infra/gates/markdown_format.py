@@ -6,7 +6,7 @@ side (``rumdl fmt``) is reached only through the gate's fix contract from
 ``make fmt`` — the gate deliberately never appears in
 ``CANONICAL_FIXABLE_GATE_IDS``, so every tool runs exactly one operation per
 verb and no verb repeats another's work. Both sides read the generated
-``.markdownlint.json`` the ``markdown`` gate reads: one rule set, one owner.
+``.rumdl.toml`` the ``markdown`` gate reads: one rule set, one owner.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -49,7 +49,7 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
 
         """
         owner = project_dirs[0]
-        if not (owner / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).is_file():
+        if not (owner / c.Infra.MARKDOWN_CONFIG_FILENAME).is_file():
             return self.check(owner, ctx)
         return super().check_union(project_dirs, ctx)
 
@@ -65,15 +65,15 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        config_path = project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME
+        config_path = project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME
         if not config_path.is_file():
-            # .markdownlint.json is a codegen-managed artifact (policy full):
+            # .rumdl.toml is a codegen-managed artifact (policy full):
             # absence is a generation gap reported loud with the exact path,
             # never a silent fall back to the tool's built-in defaults.
             return self._build_single_issue_result(
                 project_dir,
                 (
-                    f"generated {c.Infra.MARKDOWNLINT_CONFIG_FILENAME} is absent: "
+                    f"generated {c.Infra.MARKDOWN_CONFIG_FILENAME} is absent: "
                     f"{config_path}; run make gen"
                 ),
                 ctx,

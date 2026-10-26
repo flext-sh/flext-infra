@@ -234,8 +234,15 @@ class FlextInfraUtilitiesLazyInitPlan:
         ):
             init_path = tree / c.Infra.INIT_PY
             text = FlextInfraUtilitiesLazyInitLetters.lazy_init_text(run, init_path)
-            if FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
-                None if text is None else text.encode(c.DEFAULT_ENCODING)
+            if (
+                FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
+                    None if text is None else text.encode(c.DEFAULT_ENCODING),
+                )
+                and not FlextInfraUtilitiesPythonModel.python_model_module_at(
+                    run.model,
+                    init_path,
+                    f"{plan.context.current_pkg}.{tree.name}",
+                ).declaration_only
             ):
                 continue
             generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADER)
@@ -314,8 +321,13 @@ class FlextInfraUtilitiesLazyInitPlan:
         python = FlextInfraUtilitiesPythonModel
         context = cls.lazy_init_context(run, pkg_dir)
         init = FlextInfraUtilitiesLazyInitLetters.lazy_init_text(run, context.init_path)
-        if FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
-            None if init is None else init.encode(c.DEFAULT_ENCODING)
+        if (
+            FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
+                None if init is None else init.encode(c.DEFAULT_ENCODING),
+            )
+            and not python.python_model_module_at(
+                run.model, context.init_path, context.current_pkg
+            ).declaration_only
         ):
             exports = (
                 python.python_model_exports(

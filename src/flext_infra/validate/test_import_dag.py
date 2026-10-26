@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, r, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -55,14 +55,23 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
             project_state.package_name,
             *(name.replace("-", "_") for name in project_state.dependency_names),
         })
-        violations: list[str] = []
+        violations = [
+            f"{path}: artifact trees cannot contain package or pytest wiring"
+            for artifact_root in config.Infra.codegen.exclusions.scenario_data_roots
+            for path in (project_root / artifact_root).rglob("*")
+            if path.name in {c.Infra.INIT_PY, "conftest.py"} and path.is_file()
+        ]
         with u.Infra.open_project(project_root) as project:
             for resource in u.Infra.python_resources(project):
                 file_path = u.Infra.resource_file_path(project, resource)
                 if file_path is None:
                     continue
                 module_imports = u.Infra.resolve_module_imports(project, resource)
-                for imported in u.Infra.imported_module_paths(module_imports):
+                relative = file_path.relative_to(project_root).with_suffix("")
+                for imported in u.Infra.imported_module_paths(
+                    module_imports,
+                    current_package=".".join(relative.parts[:-1]),
+                ):
                     reason = self._edge_violation(
                         file_path,
                         imported,
@@ -112,6 +121,11 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
         relative = file_path.resolve().relative_to(project_root.resolve())
         in_tests = c.Infra.DIR_TESTS in relative.parts
         imported_parts = imported.split(".")
+        imports_artifacts = any(
+            imported == (module := ".".join(Path(root).parts))
+            or imported.startswith(f"{module}.")
+            for root in config.Infra.codegen.exclusions.scenario_data_roots
+        )
         imports_tests = bool(imported_parts) and imported_parts[0] in {
             c.Infra.DIR_TESTS,
             *(
@@ -120,8 +134,12 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
                 else ()
             ),
         }
-        if not in_tests and imports_tests:
-            return "production code cannot import test infrastructure"
+        if imports_artifacts or (not in_tests and imports_tests):
+            return (
+                "artifact trees cannot be imported as executable test support"
+                if imports_artifacts
+                else "production code cannot import test infrastructure"
+            )
         if package_name.endswith(f"_{c.Infra.DIR_TESTS}") and (
             "fixtures" in relative.parts or file_path.stem.startswith("conftest")
         ):
@@ -142,13 +160,15 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
         )
         if facet_violation is not None:
             return facet_violation
-        if (
-            file_path.name == c.Infra.INIT_PY
-            and relative.parent.name == c.Infra.DIR_TESTS
-            and imports_test_support
-        ):
-            return "tests package root cannot import fixtures, conftest, or tests"
-        return None
+        return (
+            "tests package root cannot import fixtures, conftest, or tests"
+            if (
+                file_path.name == c.Infra.INIT_PY
+                and relative.parent.name == c.Infra.DIR_TESTS
+                and imports_test_support
+            )
+            else None
+        )
 
     @classmethod
     def _facet_violation(

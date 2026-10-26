@@ -142,9 +142,8 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             The resulting ``t.MappingKV[str, t.Pair[str, t.Pair[str, int]]]``.
 
         """
-        markdown_files = FlextInfraMarkdownGateBase.ignore_filtered(
-            project_dir,
-            FlextInfraMarkdownGateBase.collect_markdown_files(project_dir, scope_facts),
+        markdown_files = FlextInfraMarkdownGateBase.collect_markdown_files(
+            project_dir, scope_facts
         )
         return {
             name: (text, origin)
@@ -281,9 +280,8 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
         """
         rewritten: t.MutableSequenceOf[Path] = []
-        for md_path in FlextInfraMarkdownGateBase.ignore_filtered(
-            project_dir,
-            FlextInfraMarkdownGateBase.collect_markdown_files(project_dir, scope_facts),
+        for md_path in FlextInfraMarkdownGateBase.collect_markdown_files(
+            project_dir, scope_facts
         ):
             spliced = self._splice_document(md_path, project_dir, sources_dir)
             if spliced is not None:

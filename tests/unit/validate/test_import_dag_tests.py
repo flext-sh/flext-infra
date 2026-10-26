@@ -45,6 +45,9 @@ class TestsFlextInfraImportDag:
             ("tests/utilities.py", "from tests.models import M\n"),
             ("tests/constants.py", "from tests import c, r\n"),
             ("tests/models.py", "from tests.fixtures.users import user\n"),
+            ("tests/unit/test_behavior.py", "from tests.fixtures.users import user\n"),
+            ("tests/unit/test_behavior.py", "from ..fixtures import users\n"),
+            ("tests/conftest.py", "import tests.fixtures.users\n"),
             ("tests/__init__.py", "from tests.conftest import fixture\n"),
             ("src/sample/api.py", "from tests import c, r, u\n"),
         ],
@@ -61,6 +64,34 @@ class TestsFlextInfraImportDag:
             FlextInfraValidateTestImportDag().build_report(project),
         )
         tm.fail(report.passed)
+
+    @pytest.mark.parametrize("name", ["__init__.py", "conftest.py"])
+    def test_artifact_wiring_is_rejected_without_parsing(
+        self, tmp_path: Path, name: str
+    ) -> None:
+        """Reject package and pytest wiring using only its path."""
+        project = self._project(
+            tmp_path,
+            {f"tests/fixtures/scenario/{name}": "invalid Python artifact"},
+        )
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project),
+        )
+        tm.fail(report.passed)
+
+    def test_python_artifacts_are_data_without_source_parsing(
+        self, tmp_path: Path
+    ) -> None:
+        """Ignore root and nested Python artifacts without decoding their bytes."""
+        project = self._project(tmp_path, {"src/sample/api.py": "value = 1\n"})
+        for relative in ("tests/fixtures/input.py", "tests/fixtures/scenario/input.py"):
+            artifact = project / relative
+            artifact.parent.mkdir(parents=True, exist_ok=True)
+            artifact.write_bytes(b"\xff\xfe\x00")
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project),
+        )
+        tm.ok(report.passed)
 
     def test_forward_facets_and_type_checking_reverse_edges_pass(
         self,

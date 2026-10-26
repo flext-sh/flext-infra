@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import infra
+from flext_infra import config, infra
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.formatter import FlextInfraDocFormatter
 from tests import c, tm, u
@@ -33,8 +33,8 @@ class TestsFlextInfraDocsFormatter:
     @staticmethod
     def _write_markdown_rules(workspace: Path) -> None:
         """Provide the generated markdown rule projection the gate requires."""
-        (workspace / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
-            "{}\n",
+        (workspace / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
+            u.Infra.markdown_native_configuration(config.Infra.tooling.tools.markdown),
             encoding="utf-8",
         )
 
@@ -129,7 +129,7 @@ class TestsFlextInfraDocsFormatter:
         self,
         tmp_path: Path,
     ) -> None:
-        """A missing generated .markdownlint.json is a generation gap, never a pass."""
+        """A missing generated native config is a generation gap, never a pass."""
         workspace = u.Tests.create_docs_workspace(tmp_path)
 
         result = self._formatter().format(workspace, apply=False)

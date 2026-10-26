@@ -88,8 +88,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         name: str,
         *,
         pyproject: str = "[tool]\n",
+        markdown_config: str | None = None,
         with_src: bool = False,
-        with_git: bool = False,
     ) -> Path:
         """Provide the typed test helper `mk_project`.
 
@@ -100,13 +100,15 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project_dir = root / name
         project_dir.mkdir(parents=True, exist_ok=True)
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        if markdown_config is not None:
+            (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
+                markdown_config, encoding="utf-8"
+            )
         if with_src:
             package_dir = project_dir / "src" / name.replace("-", "_")
             package_dir.mkdir(parents=True, exist_ok=True)
             # FLEXT: with_src means a discoverable package, not an empty marker.
             (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        if with_git:
-            (project_dir / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             project_dir,
             name,

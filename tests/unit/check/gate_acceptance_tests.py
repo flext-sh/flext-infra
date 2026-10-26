@@ -432,6 +432,7 @@ class TestsFlextInfraGateAcceptance:
             tmp_path,
             "markdown-repair",
             pyproject='[project]\nname = "markdown-repair"\nversion = "0.1.0"\n',
+            markdown_config="",
         )
         source = project / "README.md"
         source.write_text(

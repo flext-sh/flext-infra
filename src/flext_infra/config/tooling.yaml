@@ -241,7 +241,7 @@ Infra:
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
-          # set through the generated .markdownlint.json. Headings use
+          # set through the generated .rumdl.toml. Headings use
           # MD013.heading_line_length because no tool can reflow a heading.
           #
           # Wrapping is hand-owned, not tool-owned: rumdl's normalize reflow
@@ -255,7 +255,6 @@ Infra:
             heading_line_length: 200
             code_block_line_length: *formatting_width
             tables: false
-            reflow: false
         - [MD022, false]
         - [MD023, false]
         - [MD024, { siblings_only: true }]
@@ -269,89 +268,13 @@ Infra:
         - [MD046, false]
         - [MD050, { style: consistent }]
         - [MD051, false]
-        - [MD057, false]
         - [MD060, false]
+        native_rules:
+        - [MD013, { reflow: false }]
+        - [MD057, false]
         - [MD076, false]
-        exclude:
-        # AGENTS.md is a tool-managed projection (tracker and agent setup
-        # blocks): gating generated output is a projection defect.
-        # CLAUDE.md is its symlink and would rewrite the projection through
-        # the link.
-        - AGENTS.md
-        - CLAUDE.md
-        # GEMINI.md is the same tool-managed instruction-pointer projection
-        # (generate-workspace-config); prose-wrap always rewraps its exact
-        # rendered pointer and the law-surface validator then fails closed.
-        - GEMINI.md
-        - .kilo/**
-        - .omo/**
-        # ZCode session artifacts (plan files) are machine-local scratch,
-        # never a live docs or markdown-gate surface.
-        - .zcode/**
-        - .tmp/**
-        - .claude/**
-        - .vscode/**
-        - .serena/**
-        - .snapshots/**
-        - .benchmarks/**
-        - .hypothesis/**
-        # CHANGELOG.md files are release-please output: their bullets embed
-        # compare/commit URLs that cannot reflow under the line budget, and
-        # hand-wrapping them is overwritten by the next release render
-        # (operator authorization 2026-10-03).
-        - CHANGELOG.md
-        # Codegen-managed docs projections (make gen / docs generate): the
-        # renderer's output is canonical as emitted — a formatter rewriting
-        # them fights the codegen fixed point and the conform gate flags
-        # the drift both ways (merge-admin 2026-10-07, root evidence).
-        - docs/docs_config.json
-        - docs/architecture/architecture_config.json
-        - .mypy_cache/**
-        - .pytest_cache/**
-        - .ruff_cache/**
-        - .venv/**
-        - __pycache__/**
-        - node_modules/**
-        - .reports/**
-        - dist/**
-        - build/**
-        - htmlcov/**
-        - legado/**
-        - .github/**
-        - site/**
-        # target/ is a fully generated build tree (mise/rust-style outputs):
-        # formatting generated output is a projection defect.
-        - target/**
-        # Provider-surface projections and tracker runtime state: never a
-        # lint/format surface.
-        - .agents/**
-        - .gemini/**
-        - .beads/**
-        # Gen-emitted table projections whose emitter lives outside the
-        # codegen surface; MD058 (blank lines around tables) is upstream of
-        # the projection and cannot be repaired at the projection itself.
-        - docs/knowledge-index.md
-        - docs/architecture/communities/index.md
-        # External CRG tool output: pipe-separated rows (MD075) and long JSON
-        # lines (MD013) originate from code-review-graph, not hand-authored docs.
-        - docs/architecture/crg-reports/**
-        # Generated api-reference and project-catalog projections (make gen /
-        # docs generate): the renderer's output is canonical as emitted, so
-        # no formatter rewrites generated docs and the codegen fixed point
-        # stays stable.
-        - docs/api-reference/generated/**
-        # Historical evidence documents (plans, handoffs, frozen law text):
-        # their formatting is frozen evidence per operator law 11 —
-        # reformatting rewrites the record. Frozen as evidence, never
-        # re-rendered.
-        - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
-        - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
-        - docs/plans/2026-09-22-rope-generator-stabilization/02-achados-codegen.md
-        - docs/plans/2026-09-23-handoff-mypy-stabilization-e-integracao.md
-        - docs/plans/2026-09-25-v8-flext-service-base/05-phases.md
-        - docs/plans/2026-09-25-v8-flext-service-base/07-sessions-guide.md
-        - docs/standards/consumption-law.md
-        - docs/projects/generated/**
+        native_settings:
+        - [per-file-flavor, { 'docs/**/*.md': mkdocs }]
       ruff:
         # Ruff exits 1 on findings. Remaining findings block repair acceptance;
         # the gate verifies the repaired state through the native read-only check.
@@ -559,7 +482,7 @@ Infra:
         # corrected owner instead of accumulating a backlog of unrelated
         # failures.
         max-failures: 1
-        enforcement-plugin: flext_tests_enforcement
+        enforcement-plugin: flext_tests.enforcement_plugin
         # Retain the complete selection, but expose known failures first.
         progress-args: [ --verbose, --failed-first ]
         report-args: [ -ra, --durations=25, --durations-min=0.001, --tb=short ]

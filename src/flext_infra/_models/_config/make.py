@@ -847,6 +847,15 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ] = ()
+        check_prerequisite_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Requested gates that must finish across every selected "
+                    "repository before the remaining gates execute"
+                ),
+            ),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
@@ -871,6 +880,17 @@ class FlextInfraConfigModelsMake(
                 msg = (
                     "make project_check_gates shadow built-in gates: "
                     f"{', '.join(shadowed)}"
+                )
+                raise ValueError(msg)
+            prerequisites = self.check_prerequisite_gates
+            if len(set(prerequisites)) != len(prerequisites):
+                msg = "make check_prerequisite_gates must be unique"
+                raise ValueError(msg)
+            unknown = set(prerequisites).difference(self.check_gates_allowed)
+            if unknown:
+                msg = (
+                    "make check_prerequisite_gates name unknown gates: "
+                    f"{', '.join(sorted(unknown))}"
                 )
                 raise ValueError(msg)
             return self

@@ -671,6 +671,14 @@ class FlextInfraModelsCheck:
                 description="Resolved gate inventory requested before execution",
             ),
         ]
+        pending_gates: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Requested gates whose project applicability is still pending"
+                ),
+            ),
+        ] = ()
         targets: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget],
             m.Field(description="Canonical project roots selected for this invocation"),
@@ -690,6 +698,7 @@ class FlextInfraModelsCheck:
             """Every selected target executed its exact applicable inventory."""
             return (
                 bool(self.targets)
+                and not self.pending_gates
                 and len(self.targets) == len(self.results)
                 and len({target.path for target in self.targets}) == len(self.targets)
                 and all(

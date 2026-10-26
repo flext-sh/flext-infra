@@ -23,6 +23,9 @@ class FlextInfraModelsCodegenLazyInitModels:
         """Static top-level facts of one module source, derived once per parse."""
 
         path: Annotated[Path, m.Field(description="Source file the facts describe")]
+        declaration_only: bool = m.Field(
+            description="Native syntax contains only documentation and future imports"
+        )
         members: Annotated[
             t.MappingKV[str, t.Infra.PythonMemberKind],
             m.Field(description="Every bound top-level name, in declaration order"),

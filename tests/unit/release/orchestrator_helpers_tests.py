@@ -73,8 +73,8 @@ class TestsFlextInfraReleaseHelpers:
             tm.ok(second)
             config_dir = Path(__file__).resolve().parents[3]
             release_dir = notes_path.parent
-            (release_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
-                (config_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).read_text(
+            (release_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
+                (config_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).read_text(
                     encoding="utf-8",
                 ),
                 encoding="utf-8",

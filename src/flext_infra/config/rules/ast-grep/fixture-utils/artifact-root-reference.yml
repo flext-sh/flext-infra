@@ -1,0 +1,6 @@
+# Deterministic catalog fixture fact; runtime derives this from the declared
+# artifact roots, never from this fixture catalog.
+id: artifact-root-reference
+language: Python
+rule:
+  regex: '(?:^|["''/\\])tests[/\\.]fixtures(?:[/\\.]|["''])'

@@ -38,8 +38,15 @@ environment. Do not assume another city's activation or connection settings.
   service calls typed, and retain their failure scenarios through real providers.
 - Project-owned helpers, including decorators, belong to the single `u` surface;
   do not introduce a competing `d`/`de` helper facade or compatibility shim.
-- Put shared setup in the unified `conftest.py` and typed fixtures under
-  `tests/fixtures/`.
+- Put shared setup in the unified `conftest.py`, shared test declarations in
+  `c/t/p/m/u.Tests.*`, and executable tests in `unit`, `integration`, or `e2e`.
+  The complete `tests/fixtures/` tree contains global data artifacts only.
+  Python scenario filenames remain valid data for refactoring engines, but no
+  source scanner, linter, refactorer, or generator interprets their contents.
+  Package and pytest wiring (`__init__.py`, `conftest.py`) and executable imports
+  or loading from that tree are forbidden. The source-admission declaration is
+  `codegen.exclusions.scenario_data_roots`; the test-import DAG enforces its
+  import boundary. See [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md).
 - Use `tm` matchers and shared `flext-tests` builders for assertions and test data.
 - Read project-owned values from typed config or settings. Never freeze current defaults
   in tests, examples, or golden files.

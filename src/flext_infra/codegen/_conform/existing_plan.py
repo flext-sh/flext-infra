@@ -372,8 +372,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             contract.destinations is not None
             and contract.destinations <= self._pyproject_destinations(codegen)
         )
-        # Metadata-only planning elects no initializer; custom planning elects
-        # them exactly once, over the sources its facades project.
+        # Custom convergence seeds exports before resolving its facade imports.
         lazy_result = (
             r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
             if metadata_only or contract.custom
@@ -441,7 +440,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Infra.CodegenFilePlan],
             ]
         ]
-        initializers = tuple(plan for plan in cohort if plan.project == root)
+        exported = self._projected_exports(root, cohort)
+        if exported.failure:
+            return result_type.from_failure(exported)
+        initializers = tuple(
+            {
+                plan.path: plan
+                for plan in (
+                    *(plan for plan in cohort if plan.project == root),
+                    *exported.value,
+                )
+            }.values()
+        )
         previous: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
         for _ in range(len(u.Infra.facade_families()) + 1):
             sources = tuple(

@@ -307,6 +307,22 @@ class TestsFlextInfraDepsModernizerTooling:
         )
 
     @staticmethod
+    def test_native_markdown_render_does_not_mutate_the_shared_policy(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """Native option merging preserves the common projection's source values."""
+        policy = tool_config_document.tools.markdown
+        original = policy.model_dump(mode="json")
+        first = u.Infra.markdown_native_configuration(policy)
+        second = u.Infra.markdown_native_configuration(policy)
+        tm.that(second, eq=first)
+        tm.that(policy.model_dump(mode="json"), eq=original)
+        tm.that(
+            u.Tests.toml_table_at(first, "global")["exclude"],
+            eq=list(policy.exclude),
+        )
+
+    @staticmethod
     def test_native_tool_configuration_rejects_an_undeclared_root(
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:

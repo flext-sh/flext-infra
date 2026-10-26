@@ -72,11 +72,13 @@ declares `script_dispatch`.
 
 - Rules-as-data: policy in `rules/*.yaml` + `config/*.yaml` (Pydantic); add a YAML row,
   not a detector class.
+
 ### ADR-028 Decision 5: Declarative enforcement
 
 This catalog is the enforcement owner; any remaining Core declarations are migration
 inputs. Follow [FLEXT ADR-028 Decision 5](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-5)
 and track the complete owner census in Bead `flext-43iz8`.
+
 - Codegen owns facets / `py.typed` / `[MANAGED]` sections — change SSOT/templates, run
   the generator; never hand-edit output.
 - Lazy exports reject competing owners of one published name in a package. Identical

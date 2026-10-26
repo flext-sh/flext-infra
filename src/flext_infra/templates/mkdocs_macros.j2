@@ -50,8 +50,8 @@ theme:
 plugins:
   - search
 {% if exclude_plugin_patterns %}  - exclude:
-      glob:
-{% for pattern in exclude_plugin_patterns %}        - {{ pattern }}
+      regex:
+{% for pattern in exclude_plugin_patterns %}        - {{ pattern | tojson }}
 {% endfor %}{% endif %}  - autorefs
   - section-index
   - mkdocstrings:

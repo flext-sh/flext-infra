@@ -18,6 +18,7 @@ from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 
 if TYPE_CHECKING:
@@ -265,7 +266,12 @@ class FlextInfraUtilitiesDocsContract:
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         project_name = str(project.get("name", "")).strip()
         classifiers_value = project.get("classifiers")
-        exclude_docs_value = docs_meta.get("exclude_docs")
+        codegen = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_codegen_inputs(project_root)
+            .unwrap()
+            .spec
+        )
         updated = dict(rendered_contract)
         updated.update({
             "name": project_name,
@@ -281,9 +287,7 @@ class FlextInfraUtilitiesDocsContract:
             "repo_url": str(
                 urls.get("Repository") or urls.get("Homepage") or "",
             ).strip(),
-            "exclude_docs": list(exclude_docs_value)
-            if isinstance(exclude_docs_value, list)
-            else [],
+            "exclude_docs": list(codegen.docs_publish_patterns),
         })
         validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(updated)
         return dict(validated)

@@ -36,6 +36,7 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
         target: m.Infra.CheckProjectTarget,
         resolved_gates: t.StrSequence,
         ctx: m.Infra.GateContext,
+        previous: m.Infra.ProjectResult | None = None,
     ) -> m.Infra.ProjectResult:
         """Check one project after the loop has validated its target.
 
@@ -51,6 +52,7 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
             project_dir,
             resolved_gates,
             project_ctx,
+            previous,
         )
         elapsed = time.monotonic() - start
         u.Cli.status(
@@ -61,13 +63,77 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
         )
         return project_result
 
-    def _run_project_loop(
+    def _run_prerequisite_checks(
+        self,
+        projects: t.SequenceOf[m.Infra.CheckProjectTarget],
+        gates: t.StrSequence,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.LoopOutcome:
+        """Use the native bounded signal wave for independent read-only checks.
+
+        Returns:
+            Every project's native prerequisite executions and elapsed time.
+
+        """
+        started = time.monotonic()
+        contexts = {
+            target.path: self._isolate_context(ctx, target) for target in projects
+        }
+        results = {
+            target.path: m.Infra.ProjectResult(project=target.name)
+            for target in projects
+        }
+        for project_ctx in contexts.values():
+            u.Cli.ensure_dir(project_ctx.reports_dir).unwrap()
+        jobs = tuple(
+            (target, gate)
+            for target in projects
+            for gate in self._gate_instances(
+                tuple(
+                    gate_id
+                    for gate_id in gates
+                    if ctx.selected_files or gate_id in target.applicable_gates
+                ),
+                mutating=False,
+            )
+        )
+        outcomes = u.Cli.run_in_signal_wave(
+            tuple(
+                partial(
+                    self._run_gate_stage,
+                    gate,
+                    target.path,
+                    contexts[target.path],
+                    results[target.path].gates,
+                )
+                for target, gate in jobs
+            ),
+            max_workers=self._gate_parallelism(len(jobs)),
+        )
+        for (target, gate), outcome in zip(jobs, outcomes, strict=True):
+            execution = results[target.path].gates[gate.gate_id]
+            if execution.result.passed:
+                outcome.unwrap()
+            self._report_gate_execution(gate.gate_id, execution)
+            if ctx.check_progress is not None:
+                ctx.check_progress(target.path, results[target.path])
+        return m.Infra.LoopOutcome(
+            results=tuple(results.values()),
+            failed=sum(
+                any(not execution.result.passed for execution in result.gates.values())
+                for result in results.values()
+            ),
+            total_elapsed=time.monotonic() - started,
+        )
+
+    def _run_project_phase(
         self,
         projects: t.SequenceOf[m.Infra.CheckProjectTarget],
         resolved_gates: t.StrSequence,
         ctx: m.Infra.GateContext,
         *,
         fail_fast: bool,
+        previous: m.Infra.LoopOutcome | None = None,
     ) -> m.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing.
 
@@ -78,7 +144,10 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
             The resulting ``m.Infra.LoopOutcome``.
 
         """
-        results: t.MutableSequenceOf[m.Infra.ProjectResult] = []
+        results: MutableMapping[str, m.Infra.ProjectResult] = {
+            result.project: result
+            for result in (() if previous is None else previous.results)
+        }
         total = len(projects)
         failed = 0
         loop_start = time.monotonic()
@@ -97,31 +166,46 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
                     if ctx.selected_files or gate_id in target.applicable_gates
                 ),
                 ctx,
+                results.get(target.name),
             )
             if union_gates:
                 project_result = self._merged_union_result(
                     project_result,
-                    resolved_gates,
+                    (
+                        *project_result.gates,
+                        *(
+                            gate_id
+                            for gate_id in resolved_gates
+                            if gate_id not in project_result.gates
+                        ),
+                    ),
                     {
                         gate_id: executions[target.path]
                         for gate_id, executions in union_executions.items()
                         if target.path in executions
                     },
                 )
-            results.append(project_result)
+            results[target.name] = project_result
             if not project_result.gates and ctx.check_progress is not None:
                 ctx.check_progress(target.path, project_result)
-            project_passed: bool = project_result.passed
-            if not project_passed:
+            project_failed = any(
+                not execution.result.passed
+                for execution in project_result.gates.values()
+            )
+            if project_failed:
                 failed += 1
             if any(
                 execution.interrupted for execution in project_result.gates.values()
-            ) or (not project_passed and fail_fast):
+            ) or (project_failed and fail_fast):
                 break
         return m.Infra.LoopOutcome(
-            results=tuple(results),
+            results=tuple(results.values()),
             failed=failed,
-            total_elapsed=time.monotonic() - loop_start,
+            total_elapsed=(
+                time.monotonic()
+                - loop_start
+                + (0.0 if previous is None else previous.total_elapsed)
+            ),
         )
 
     @staticmethod
@@ -194,6 +278,7 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
         project_dir: Path,
         gates: t.StrSequence,
         ctx: m.Infra.GateContext,
+        previous: m.Infra.ProjectResult | None = None,
     ) -> m.Infra.ProjectResult:
         """Run gates for one project and retain every executed gate in order.
 
@@ -209,7 +294,11 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
             The resulting ``m.Infra.ProjectResult``.
 
         """
-        result = m.Infra.ProjectResult(project=project_dir.name)
+        result = (
+            m.Infra.ProjectResult(project=project_dir.name)
+            if previous is None
+            else previous
+        )
         mutating = ctx.apply_fixes and not ctx.check_only
         executions: MutableMapping[str, m.Infra.GateExecution] = {}
         instances = self._gate_instances(gates, mutating=mutating)

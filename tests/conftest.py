@@ -6,24 +6,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib
+import sys
 import tempfile
+from collections.abc import Iterator
 from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from tests import c, u
+from flext_infra import config, p
+from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
+from tests import c, tm, u
 
 # The installed flext-tests pytest11 plugin owns the shared fixture set; these
-# project fixture plugins own the infra-specific fixtures. Conftest keeps only
-# registration and suite hooks: it never implements or shadows a fixture.
+# remaining project plugins own the infra-specific fixtures during migration.
+# Pytest fixture registration belongs here; reusable construction uses u.Tests.
 pytest_plugins = [
     "tests.fixtures.workspace",
-    "tests.fixtures.facades",
     "tests.fixtures.infra",
     "tests.fixtures.provisioning",
-    "tests.fixtures.git",
 ]
 
 _TRACKED_CODEGEN_CONFIG_PATH = (
@@ -33,6 +35,23 @@ _TRACKED_CODEGEN_CONFIG_PATH = (
 )
 _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
 _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
+
+
+@pytest.fixture
+def real_git_repo(tmp_path: Path) -> Path:
+    """Create a real repository through the shared Git construction owner.
+
+    Returns:
+        The initialized repository with its initial commit.
+
+    """
+    repo_root = tmp_path / "git_repo"
+    repo_root.mkdir()
+    (repo_root / "README.md").write_text(
+        "# Test Repository\n", encoding=c.DEFAULT_ENCODING
+    )
+    u.Tests.initialize_git_repo(repo_root)
+    return repo_root
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -131,3 +150,131 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     if deselected:
         deselected[0].config.hook.pytest_deselected(items=deselected)
     items[:] = selected
+
+
+@pytest.fixture
+def mod_progress() -> p.Infra.ModProgress:
+    """Provide the real CLI progress adapter to public mod consumers.
+
+    Returns:
+        The progress port used by the normal CLI route.
+
+    """
+    return FlextInfraCliModProgress()
+
+
+@pytest.fixture
+def installed_dependency_path(tmp_path: Path) -> Iterator[Path]:
+    """Expose real non-src package files through the selected import environment.
+
+    Yields:
+        Each ``Path``.
+
+    """
+    location = tmp_path / "installed"
+    location.mkdir()
+    sys.path.insert(0, str(location))
+    importlib.invalidate_caches()
+    try:
+        yield location
+    finally:
+        sys.path.remove(str(location))
+        importlib.invalidate_caches()
+
+
+@pytest.fixture
+def infra_subprocess() -> p.Cli.CommandRunner:
+    """Provide the public CLI utility facade for subprocess tests.
+
+    Returns:
+        The public command runner implemented by ``u.Cli``.
+
+    """
+    return u.Cli()
+
+
+@pytest.fixture
+def infra_toml() -> p.Cli.CommandRunner:
+    """Provide the public CLI utility facade for TOML tests.
+
+    Returns:
+        The public command runner implemented by ``u.Cli``.
+
+    """
+    return u.Cli()
+
+
+@pytest.fixture
+def infra_git() -> u.Infra:
+    """Provide the public infrastructure utility facade for Git tests.
+
+    Returns:
+        The resulting ``u.Infra``.
+
+    """
+    return u.Infra()
+
+
+@pytest.fixture
+def infra_io() -> u.Infra:
+    """Provide the public infrastructure utility facade for I/O tests.
+
+    Returns:
+        The resulting ``u.Infra``.
+
+    """
+    return u.Infra()
+
+
+@pytest.fixture
+def infra_path() -> u.Infra:
+    """Provide the public infrastructure utility facade for path tests.
+
+    Returns:
+        The resulting ``u.Infra``.
+
+    """
+    return u.Infra()
+
+
+@pytest.fixture
+def infra_patterns() -> u.Infra:
+    """Provide the public infrastructure utility facade for pattern tests.
+
+    Returns:
+        The resulting ``u.Infra``.
+
+    """
+    return u.Infra()
+
+
+@pytest.fixture
+def infra_selection() -> u.Infra:
+    """Provide the public infrastructure utility facade for selection tests.
+
+    Returns:
+        The resulting ``u.Infra``.
+
+    """
+    return u.Infra()
+
+
+@pytest.fixture
+def infra_safe_command_output(
+    infra_subprocess: p.Cli.CommandRunner,
+    infra_test_workspace: Path,
+) -> str:
+    """Capture successful public command output inside the test workspace.
+
+    Returns:
+        The resulting ``str``.
+
+    """
+    echo_result = infra_subprocess.capture(
+        ["echo", "infra-ok"],
+        cwd=infra_test_workspace,
+    )
+    tm.ok(echo_result)
+    pwd_result = infra_subprocess.capture(["pwd"], cwd=infra_test_workspace)
+    tm.ok(pwd_result)
+    return f"{echo_result.value.strip()}|{pwd_result.value.strip()}"

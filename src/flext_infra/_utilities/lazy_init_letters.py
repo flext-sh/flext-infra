@@ -372,8 +372,14 @@ class FlextInfraUtilitiesLazyInitLetters:
         if (
             indexed
             and package_dir is not None
-            and not FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
-                None if text is None else text.encode(c.DEFAULT_ENCODING)
+            and not (
+                FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
+                    None if text is None else text.encode(c.DEFAULT_ENCODING),
+                )
+                and init_path is not None
+                and not FlextInfraUtilitiesPythonModel.python_model_module_at(
+                    run.model, init_path, package
+                ).declaration_only
             )
         ):
             sources = cls.lazy_init_parent_packages(run, package_dir)
