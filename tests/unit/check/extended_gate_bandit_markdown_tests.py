@@ -33,6 +33,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
     # of the markdown contract read it instead of freezing a config literal.
     CANONICAL_MARKDOWN_CONFIG: ClassVar[str] = u.Infra.markdown_native_configuration(
         config.Infra.tooling.tools.markdown,
+        config.Infra.codegen.markdown_exclude_globs,
     )
 
     @staticmethod

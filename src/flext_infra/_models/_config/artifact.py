@@ -431,7 +431,107 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ]
 
-    class CodegenConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenArtifactScopeSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Declared artifacts and their editor, source and generated-tree views."""
+
+        artifacts: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenArtifactSpec],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Ephemeral/generated artifact SSOT; every ignore/exclude "
+                    "projection derives from this list"
+                ),
+            ),
+        ]
+
+        @m.computed_field
+        @property
+        def vscode_files_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``files.exclude`` entries from the artifact SSOT.
+
+            Returns:
+                The resulting ``Mapping[str, bool]``.
+
+            """
+            return {
+                f"**/{artifact.name}": True
+                for artifact in self.artifacts
+                if artifact.vscode_exclude
+            }
+
+        @m.computed_field
+        @property
+        def vscode_watcher_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``files.watcherExclude`` entries from the SSOT.
+
+            Returns:
+                The resulting ``Mapping[str, bool]``.
+
+            """
+            return {
+                (
+                    f"**/{artifact.name}/**"
+                    if artifact.is_dir
+                    else f"**/{artifact.name}"
+                ): True
+                for artifact in self.artifacts
+                if artifact.watch_exclude
+            }
+
+        @m.computed_field
+        @property
+        def vscode_search_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``search.exclude`` entries from the artifact SSOT.
+
+            Returns:
+                The resulting ``Mapping[str, bool]``.
+
+            """
+            return dict(self.vscode_files_exclude_map)
+
+        @m.computed_field
+        @property
+        def source_scan_ignored(self) -> t.VariadicTuple[str]:
+            """Derived ``source_scan.ignored_resources`` names from the SSOT.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                artifact.name
+                for artifact in self.artifacts
+                if artifact.source_scan_ignore or artifact.generated_source
+            )
+
+        @m.computed_field
+        @property
+        def generated_sources(self) -> t.VariadicTuple[str]:
+            """Derived names of the tracked foreign-generator source trees.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                artifact.name
+                for artifact in self.artifacts
+                if artifact.generated_source
+            )
+
+        @m.computed_field
+        @property
+        def generated_source_globs(self) -> t.VariadicTuple[str]:
+            """Derived path globs every analyzer excludes for generated sources.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(f"**/{name}/**" for name in self.generated_sources)
+
+    class CodegenConfigSpec(CodegenArtifactScopeSpec):
         """Fully modeled content of ``config/codegen.yaml``."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
@@ -629,16 +729,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             FlextInfraConfigModelsTemplates.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),
         ]
-        artifacts: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenArtifactSpec],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Ephemeral/generated artifact SSOT; every ignore/exclude "
-                    "projection derives from this list"
-                ),
-            ),
-        ]
         exclusions: Annotated[
             FlextInfraConfigModelsArtifact.DeclaredExclusionsSpec,
             m.Field(
@@ -657,92 +747,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ]
-
-        @m.computed_field
-        @property
-        def vscode_files_exclude_map(self) -> Mapping[str, bool]:
-            """Derived VS Code ``files.exclude`` entries from the artifact SSOT.
-
-            Returns:
-                The resulting ``Mapping[str, bool]``.
-
-            """
-            return {
-                f"**/{artifact.name}": True
-                for artifact in self.artifacts
-                if artifact.vscode_exclude
-            }
-
-        @m.computed_field
-        @property
-        def vscode_watcher_exclude_map(self) -> Mapping[str, bool]:
-            """Derived VS Code ``files.watcherExclude`` entries from the SSOT.
-
-            Returns:
-                The resulting ``Mapping[str, bool]``.
-
-            """
-            return {
-                (
-                    f"**/{artifact.name}/**"
-                    if artifact.is_dir
-                    else f"**/{artifact.name}"
-                ): True
-                for artifact in self.artifacts
-                if artifact.watch_exclude
-            }
-
-        @m.computed_field
-        @property
-        def vscode_search_exclude_map(self) -> Mapping[str, bool]:
-            """Derived VS Code ``search.exclude`` entries from the artifact SSOT.
-
-            Returns:
-                The resulting ``Mapping[str, bool]``.
-
-            """
-            return dict(self.vscode_files_exclude_map)
-
-        @m.computed_field
-        @property
-        def source_scan_ignored(self) -> t.VariadicTuple[str]:
-            """Derived ``source_scan.ignored_resources`` names from the SSOT.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            return tuple(
-                artifact.name
-                for artifact in self.artifacts
-                if artifact.source_scan_ignore or artifact.generated_source
-            )
-
-        @m.computed_field
-        @property
-        def generated_sources(self) -> t.VariadicTuple[str]:
-            """Derived names of the tracked foreign-generator source trees.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            return tuple(
-                artifact.name
-                for artifact in self.artifacts
-                if artifact.generated_source
-            )
-
-        @m.computed_field
-        @property
-        def generated_source_globs(self) -> t.VariadicTuple[str]:
-            """Derived path globs every analyzer excludes for generated sources.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            return tuple(f"**/{name}/**" for name in self.generated_sources)
 
         @m.computed_field
         @property
@@ -795,13 +799,18 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         @m.computed_field
         @property
         def docs_publish_patterns(self) -> t.VariadicTuple[str]:
-            """Expose declared publication-only patterns in repository coordinates.
+            """Compose page and copy exclusions in repository coordinates.
 
             Returns:
-                Publication-only patterns in declaration order, without duplicates.
+                Page and copy patterns in declaration order, without duplicates.
 
             """
-            return tuple(dict.fromkeys(self.exclusions.docs_publish))
+            return tuple(
+                dict.fromkeys((
+                    *self.exclusions.docs_publish,
+                    *self.exclusions.docs_copy,
+                ))
+            )
 
         @m.computed_field
         @property

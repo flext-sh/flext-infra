@@ -34,7 +34,10 @@ class TestsFlextInfraDocsFormatter:
     def _write_markdown_rules(workspace: Path) -> None:
         """Provide the generated markdown rule projection the gate requires."""
         (workspace / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
-            u.Infra.markdown_native_configuration(config.Infra.tooling.tools.markdown),
+            u.Infra.markdown_native_configuration(
+                config.Infra.tooling.tools.markdown,
+                config.Infra.codegen.markdown_exclude_globs,
+            ),
             encoding="utf-8",
         )
 

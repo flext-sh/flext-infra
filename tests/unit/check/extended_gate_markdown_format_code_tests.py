@@ -41,7 +41,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
     # rumdl fmt reads the generated .rumdl.toml; the fixtures
     # materialize that projection the way `make gen` does.
     RULES_CONFIG = u.Infra.markdown_native_configuration(
-        config.Infra.tooling.tools.markdown
+        config.Infra.tooling.tools.markdown,
+        config.Infra.codegen.markdown_exclude_globs,
     )
     UNFORMATTED_LIST = "# Test\n\n*   item one\n*   item two\n"
     FORMATTED_LIST = "# Test\n\n* item one\n* item two\n"
@@ -198,7 +199,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
                     ),
                     ("per-file-flavor", {"docs/**/*.md": "mkdocs"}),
                 ),
-            })
+            }),
+            config.Infra.codegen.markdown_exclude_globs,
         )
         projects = [
             u.Tests.mk_project(tmp_path, name, markdown_config=native_config)

@@ -218,6 +218,10 @@ class FlextInfraToolTablesPhase:
         # (ADR-028 point 6); the flext-tests plugin registers and reads the key.
         (scenario_root,) = config.Infra.codegen.exclusions.scenario_data_roots
         options[c.Infra.FLEXT_FIXTURE_TREES_ROOT] = scenario_root
+        options["norecursedirs"] = [
+            *config.Infra.codegen.analysis_excluded_dirs,
+            *config.Infra.codegen.exclusions.scenario_data_roots,
+        ]
         # Test plugins read the Make CI context through these ini keys, so no
         # test runtime imports flext-infra to learn it.
         ci = config.Infra.codegen.make.ci

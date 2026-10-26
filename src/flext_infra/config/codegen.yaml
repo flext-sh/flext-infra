@@ -849,7 +849,7 @@ Infra:
       - name: check
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
       - name: tests
-        description: Execute the complete applicable suite once with the persistent testmon database.
+        description: Execute impacted cases from the complete global inventory with the persistent testmon database.
       - name: help
         description: Discover the declared public interface without effects.
       - name: build

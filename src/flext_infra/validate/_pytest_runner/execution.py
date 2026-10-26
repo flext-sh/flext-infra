@@ -531,7 +531,7 @@ class FlextInfraPytestRunnerExecution(
             and not accounting.owns_no_tests
             and not (
                 cache_hit
-                and context.execution_mode == c.Infra.PytestExecutionMode.INCREMENTAL
+                and context.execution_mode.is_incremental
                 and raw_return_code
                 in {
                     c.Infra.PytestExitCode.OK,
@@ -700,7 +700,7 @@ class FlextInfraPytestRunnerExecution(
         """
         return (
             ""
-            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
+            if context.execution_mode.is_global
             else ",".join(config.Infra.tooling.tools.pytest.external_gate_markers)
         )
 
@@ -748,13 +748,40 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Result[int]``.
 
         """
+        return self.execute_global(execution_mode=c.Infra.PytestExecutionMode.FULL)
+
+    def execute_global(
+        self,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> p.Result[int]:
+        """Select impacted global cases, retaining FULL's green-check prerequisite.
+
+        Explicit FULL bypasses dependency selection, not the prerequisite. Both
+        operations retain the same marker inventory and testmon environment.
+
+        Returns:
+            The native status with selection, inventory and execution evidence.
+
+        Raises:
+            ValueError: If the requested mode does not own the global inventory.
+
+        """
+        if not execution_mode.is_global:
+            msg = f"global pytest operation requires a global mode: {execution_mode}"
+            raise ValueError(msg)
         approved = u.Infra.git_require_green_check_receipt(
             self.repository_root,
             u.Infra.load_codegen_inputs(self.repository_root).unwrap().spec.make,
         )
         if approved.failure:
             return r[int].from_failure(approved)
-        return self._execute_testmon(complete=True)
+        return self._execute_testmon(
+            complete=execution_mode == c.Infra.PytestExecutionMode.FULL,
+            execution_mode=execution_mode,
+        )
 
     def execute_file(self) -> p.Result[int]:
         """Run the complete declared file once through its persistent database.
@@ -771,7 +798,14 @@ class FlextInfraPytestRunnerExecution(
             raise ValueError(msg)
         return self._execute_testmon(complete=True)
 
-    def _execute_testmon(self, *, complete: bool) -> p.Result[int]:
+    def _execute_testmon(
+        self,
+        *,
+        complete: bool,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.INCREMENTAL
+        ),
+    ) -> p.Result[int]:
         """Execute one selected testmon phase without resetting shared state.
 
         Returns:
@@ -779,9 +813,7 @@ class FlextInfraPytestRunnerExecution(
 
         """
         execution_mode = (
-            c.Infra.PytestExecutionMode.FULL
-            if complete
-            else c.Infra.PytestExecutionMode.INCREMENTAL
+            c.Infra.PytestExecutionMode.FULL if complete else execution_mode
         )
         slow_marker = config.Infra.tooling.tools.pytest.slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(

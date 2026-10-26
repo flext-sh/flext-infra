@@ -853,19 +853,26 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         cls,
         project: p.Infra.RopeProject,
         path: Path,
-        source: str,
         module: p.Infra.RopePyModule,
         letter: str,
-    ) -> Generator[tuple[t.Pair[str, p.Infra.RopePyObject], list[ast.Name]]]:
+        context: CodemodContext,
+    ) -> Generator[
+        tuple[
+            t.Pair[str, p.Infra.RopePyObject],
+            list[ast.Name],
+            t.Triple[str, str, str | None],
+        ]
+    ]:
         """Resolve facade base imports through their publishing package identity.
 
         Yields:
-            Validated publishing native owners and their lexical references.
+            Native owners, lexical references and original import declarations.
 
         Raises:
             ValueError: If a renamed base has no native references.
 
         """
+        source = module.source_code
         facade = cls._facade_classes(ast.parse(source), path)[0]
         base_names = {
             node.id
@@ -899,7 +906,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if publication is None:
                     continue
                 names = cls._upstream_reference_names(
-                    module, source, alias.asname or alias.name, publication[1]
+                    module, source, alias.asname or alias.name, publication[1], context
                 )
                 if not names and (alias.asname or alias.name) != letter:
                     message = (
@@ -907,7 +914,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                         f"{path}:{alias.asname or alias.name}"
                     )
                     raise ValueError(message)
-                yield publication, names
+                yield publication, names, (origin, alias.name, alias.asname)
 
     @staticmethod
     def _upstream_import_references(
@@ -919,6 +926,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ) -> str:
         """Schedule package imports without capturing distinct lexical bindings.
 
+        Original Rope imports authorize cleanup requests. Rewrite references and
+        add imports together, then let the native unused-import pass retain live
+        bindings, exports and string annotations on the resulting source.
+
         Returns:
             Source with identity-resolved references and package-letter imports.
 
@@ -927,14 +938,15 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         """
         references: dict[tuple[int, int], str] = {}
-        context = CodemodContext()
+        context = CodemodContext(full_package_name=module.get_name().rpartition(".")[0])
         elected: p.Infra.RopePyObject | None = None
         imports: set[t.Pair[str, str]] = set()
         for (
             publication,
             names,
+            original_import,
         ) in FlextInfraUtilitiesCodegenFacades._upstream_base_imports(
-            project, path, source, module, letter
+            project, path, module, letter, context
         ):
             occupied = FlextInfraUtilitiesCodegenFacades._upstream_letter_occupied(
                 module, source, names, letter, (path, publication[1])
@@ -954,6 +966,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 raise ValueError(message)
             if not occupied:
                 elected = publication[1]
+            import_alias = destination if destination != letter else None
+            if original_import == (publication[0], letter, import_alias):
+                continue
+            RemoveImportsVisitor.remove_unused_import(context, *original_import)
             references.update(
                 ((node.lineno, node.col_offset), destination) for node in names
             )
@@ -964,7 +980,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     context,
                     publication[0],
                     letter,
-                    asname=destination if destination != letter else None,
+                    asname=import_alias,
                 )
                 imports.add(request)
         return (
@@ -981,32 +997,65 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         source: str,
         bound: str,
         owner: p.Infra.RopePyObject,
+        context: CodemodContext,
     ) -> list[ast.Name]:
-        """Resolve loaded references to their imported native base owner.
+        """Resolve native references and schedule only their imported owners.
+
+        Cleanup still requires the later native unused-import verdict, including
+        string annotations and exports. Non-import bindings authorize no removal.
 
         Returns:
             Names whose lexical resolution retains the imported identity.
 
+        Raises:
+            ValueError: If an imported reference has no declared module origin.
+
         """
-        return [
-            node
-            for node in ast.walk(ast.parse(source))
-            if isinstance(node, ast.Name)
-            and isinstance(node.ctx, ast.Load)
-            and node.id == bound
-            and (
-                resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                    FlextInfraUtilitiesRopeRuntime.scope_at(
-                        module,
-                        FlextInfraUtilitiesRopeRuntime.source_offset(source, node),
-                        declaration_line=node.lineno,
-                    ),
-                    node,
-                )
+        names: list[ast.Name] = []
+        for node in ast.walk(ast.parse(source)):
+            if not (
+                isinstance(node, ast.Name)
+                and isinstance(node.ctx, ast.Load)
+                and node.id == bound
+            ):
+                continue
+            resolved = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                FlextInfraUtilitiesRopeRuntime.scope_at(
+                    module,
+                    FlextInfraUtilitiesRopeRuntime.source_offset(source, node),
+                    declaration_line=node.lineno,
+                ),
+                node,
             )
-            is not None
-            and resolved.get_object() is owner
-        ]
+            if resolved is None or resolved.get_object() is not owner:
+                continue
+            names.append(node)
+            if not FlextInfraUtilitiesRopeRuntime.imported_name(resolved):
+                continue
+            imported = resolved.imported_module
+            if imported.module_name is None:
+                message = f"Upstream reference has no declared import origin: {bound}"
+                raise ValueError(message)
+            origin = (
+                resolve_name(
+                    f"{'.' * imported.level}{imported.module_name}",
+                    module.get_name().rpartition(".")[0],
+                )
+                if imported.level
+                else imported.module_name
+            )
+            RemoveImportsVisitor.remove_unused_import(
+                context,
+                origin,
+                resolved.imported_name,
+                bound if bound != resolved.imported_name else None,
+            )
+            if bound == resolved.imported_name:
+                # ImportedName omits spelling of explicit ``as SameName`` imports.
+                RemoveImportsVisitor.remove_unused_import(
+                    context, origin, resolved.imported_name, bound
+                )
+        return names
 
     @staticmethod
     def _upstream_letter_occupied(
@@ -1117,7 +1166,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         source: str,
         references: t.MappingKV[tuple[int, int], str],
     ) -> str:
-        """Rewrite resolved names with a module-preserving native traversal.
+        """Batch reference and import edits before one native unused-import pass.
 
         Returns:
             Source with matching references and their scheduled import changes.
@@ -1137,12 +1186,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             )
             in references
         }
-        context = CodemodContext(wrapper=wrapper, scratch=context.scratch)
-        for node in replacements:
-            RemoveImportsVisitor.remove_unused_import_by_node(context, node)
 
-        class RewriteNames(CSTTransformer):
-            """Replace authenticated references, preserving the module kind."""
+        class RewriteNames(AddImportsVisitor):
+            """Replace authenticated references while adding their native imports."""
 
             @override
             def leave_Name(
@@ -1158,8 +1204,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     value=replacements.get(original_node, updated_node.value)
                 )
 
-        updated: t.Infra.CstModule = wrapper.module.visit(RewriteNames())
-        updated = AddImportsVisitor(context).transform_module(updated)
+        updated: t.Infra.CstModule = wrapper.module.visit(RewriteNames(context))
         return RemoveImportsVisitor(context).transform_module(updated).code
 
     @classmethod

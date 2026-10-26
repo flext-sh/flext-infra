@@ -213,7 +213,7 @@ to repair authored declarations.
 | `fix` | Apply conformance repairs and the configured fixable gates |
 | `fmt` | Run the configured formatters |
 | `check` | Run the configured read-only gates and check conformance |
-| `tests` | Execute the complete applicable suite once with the persistent Testmon database |
+| `tests` | Execute native incremental Testmon selection over the applicable population with the persistent database |
 | `help` | Discover the declared public interface without effects |
 | `build` | Produce local distribution and documentation artifacts without publishing |
 | `clean` | Remove only declared disposable resources owned by the selected target |

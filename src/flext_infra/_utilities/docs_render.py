@@ -34,7 +34,12 @@ class FlextInfraUtilitiesDocsRender:
     def docs_rebase_patterns(
         patterns: t.StrSequence, *, repository_root: Path, docs_root: Path
     ) -> t.StrSequence:
-        """Rebase repository globs to a docs root using native path matching."""
+        """Rebase repository globs to a docs root using native path matching.
+
+        Returns:
+            Deduplicated documentation-root-relative exclusion globs.
+
+        """
         relative = PurePosixPath(docs_root.relative_to(repository_root).as_posix())
         rebased: list[str] = []
         for pattern in patterns:
@@ -62,7 +67,12 @@ class FlextInfraUtilitiesDocsRender:
     def _mkdocs_exclusions(
         repository_root: Path,
     ) -> t.Pair[t.StrSequence, t.StrSequence]:
-        """Project one repository's effective policy into both native consumers."""
+        """Project one repository's effective policy into both native consumers.
+
+        Returns:
+            Rooted page exclusions and translated physical-copy regular expressions.
+
+        """
         codegen = (
             FlextInfraUtilitiesProjectManagedArtifacts
             .load_codegen_inputs(repository_root)
@@ -421,9 +431,7 @@ class FlextInfraUtilitiesDocsRender:
             "repo_url",
             c.Infra.GITHUB_REPO_URL,
         )
-        publish, copy = FlextInfraUtilitiesDocsRender._mkdocs_exclusions(
-            scope.path
-        )
+        publish, copy = FlextInfraUtilitiesDocsRender._mkdocs_exclusions(scope.path)
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_MKDOCS_PROJECT,
             m.Infra.MkdocsProjectRenderContext(

@@ -67,7 +67,10 @@ class FlextInfraPytestProfile:
         started_at_monotonic: float,
         profile: cProfile.Profile,
     ) -> int:
-        """Bind the profile to the typed runner's repository, never the caller cwd.
+        """Profile global incremental execution at the typed runner's repository.
+
+        Match the regular Make tests inventory and green-check prerequisite;
+        profiling never changes dependency selection or the operation deadline.
 
         Returns:
             The native runner exit status.
@@ -120,7 +123,7 @@ class FlextInfraPytestProfile:
         # covers the parent work between them without bypassing finalization.
         signal.signal(signal.SIGTERM, terminate)
         try:
-            outcome = runner.execute().unwrap()
+            outcome = runner.execute_global().unwrap()
             return outcome
         finally:
             failure = sys.exception()

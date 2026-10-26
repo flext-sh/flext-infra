@@ -472,7 +472,7 @@ class FlextInfraModelsCodegenRender:
             description="Gitignore-style docs exclusions."
         )
         exclude_plugin_patterns: t.StrSequence = m.Field(
-            description="Native translated physical-copy exclusion regular expressions.",
+            description="Translated physical-copy exclusion regular expressions.",
         )
         mkdocstrings_paths: t.StrSequence = m.Field(
             description="mkdocstrings source paths.",

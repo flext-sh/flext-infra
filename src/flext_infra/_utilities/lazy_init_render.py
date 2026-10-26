@@ -81,12 +81,13 @@ class FlextInfraUtilitiesLazyInitRender:
         )
         public = {
             name: target
-            for name, target in plan.lazy_map.items()
+            for name, target in {**plan.lazy_map, **plan.eager_dunders}.items()
             if name in plan.exports and name not in helpers
         }
         entries = {
             name: (cls._lazy_init_compact_module(current, module), attr)
             for name, (module, attr) in public.items()
+            if name not in plan.eager_dunders
         }
         project_root = cls.lazy_init_project_root(model, plan.context.pkg_dir)
         first_party |= {current}
@@ -99,19 +100,10 @@ class FlextInfraUtilitiesLazyInitRender:
                 docstring=cls._lazy_init_docstring(plan, project_root, model),
                 runtime_import_lines=cls._lazy_init_runtime_imports(helpers),
                 type_checking_lines="\n".join(
-                    cls._lazy_init_type_checking(
-                        {**public, **plan.eager_dunders}, plan, first_party
-                    )
+                    cls._lazy_init_type_checking(public, first_party)
                 ),
                 eager_binding_lines=cls._lazy_init_eager_bindings(plan, first_party),
-                exports_tuple=cls._lazy_init_exports_tuple((
-                    *(
-                        name
-                        for name in plan.exports
-                        if name in entries or name in plan.eager_dunders
-                    ),
-                    *helpers,
-                )),
+                exports_tuple=cls._lazy_init_exports_tuple((*public, *helpers)),
                 lazy_export_mapping=cls._lazy_init_mapping(entries),
             ),
         ).unwrap()
@@ -294,36 +286,26 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @staticmethod
     def _lazy_init_import_groups(
-        public: t.LazyAliasMap, children: t.StrSequence
+        public: t.LazyAliasMap,
     ) -> t.MappingKV[str, t.SequenceOf[t.StrPair]]:
         """Group public targets by the module their static import names.
 
-        Child-module targets collapse into their child package.
+        Preserve the elected origin used by the runtime lazy mapping.
 
         Returns:
             The ``(export, imported)`` pairs per importing module.
 
         """
-        ordered = sorted(set(children), key=len, reverse=True)
-        collapsed: defaultdict[str, list[t.StrPair]] = defaultdict(list)
+        groups: defaultdict[str, list[t.StrPair]] = defaultdict(list)
         for name in sorted(public):
             module, attr = public[name]
-            owner = next(
-                (
-                    child
-                    for child in ordered
-                    if module == child or module.startswith(f"{child}.")
-                ),
-                module,
-            )
-            collapsed[owner].append((name, attr))
-        return collapsed
+            groups[module].append((name, attr))
+        return groups
 
     @classmethod
     def _lazy_init_type_checking(
         cls,
         public: t.LazyAliasMap,
-        plan: m.Infra.LazyInitPlan,
         first_party: frozenset[str],
     ) -> t.StrSequence:
         """Render the static import contract of the public exports.
@@ -335,7 +317,7 @@ class FlextInfraUtilitiesLazyInitRender:
             The ``if TYPE_CHECKING:`` block lines, empty without exports.
 
         """
-        merged = cls._lazy_init_import_groups(public, plan.child_packages_for_lazy)
+        merged = cls._lazy_init_import_groups(public)
         if not merged:
             return ()
         lines = ["if TYPE_CHECKING:"]

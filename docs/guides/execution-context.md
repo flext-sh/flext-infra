@@ -681,9 +681,14 @@ Rule definitions and their generated baselines ship in the same producer artifac
 Refresh them with `make mod-snapshots`; a source-checkout receipt does not validate a
 wheel that still contains older baselines. After adopting a new plugin declaration,
 reconcile installed metadata through `make setup` before running its consumer tests.
-`make tests` runs the complete applicable population once through the persistent
-Testmon owner. It has an aggregate deadline and no incremental prepass. The common
-catalog has no file selector or separate complete-suite alias.
+`make tests` uses the persistent Testmon owner's native incremental selection over
+the complete applicable population. The 2026-10-26 operator order supersedes the
+forced complete-run behavior: unchanged tests are not rerun merely because the
+verb was invoked again. Selection and execution share one persistent database and
+aggregate deadline, with no second execution pass. Every execution retains the
+same-scope green-check prerequisite. The common catalog has no manual file selector
+or separate complete-suite alias. Fleet acceptance requires global Ruff, Pyrefly
+and pytest evidence; a member-only receipt never claims fleet completion.
 
 ## New projects
 

@@ -20,11 +20,27 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     """One canonical vocabulary shared by generated Make and its services."""
 
     class PytestExecutionMode(StrEnum):
-        """Public operations whose test scope and accounting are distinct."""
+        """Keep test inventory scope distinct from dependency selection.
+
+        GLOBAL_INCREMENTAL shares FULL's marker scope and testmon environment,
+        but selects only impacted cases. INCREMENTAL retains the local/slow
+        partition contract; FULL explicitly executes the complete inventory.
+        """
 
         INCREMENTAL = "incremental"
+        GLOBAL_INCREMENTAL = "global-incremental"
         FULL = "full"
         COVERAGE = "coverage"
+
+        @property
+        def is_global(self) -> bool:
+            """Whether the inventory retains FULL's external and CI marker scope."""
+            return self in {self.GLOBAL_INCREMENTAL, self.FULL}
+
+        @property
+        def is_incremental(self) -> bool:
+            """Whether testmon selects impacted cases before suite execution."""
+            return self in {self.INCREMENTAL, self.GLOBAL_INCREMENTAL}
 
     MAKE_ASSIGNMENT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?=",

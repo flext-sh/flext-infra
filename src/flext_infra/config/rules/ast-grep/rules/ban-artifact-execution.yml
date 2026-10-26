@@ -24,10 +24,14 @@ rule:
             regex: '^pytest_plugins$'
         - has:
             field: right
-            has:
-              stopBy: end
-              kind: string
-              matches: artifact-root-reference
+            any:
+              - all:
+                  - kind: string
+                  - matches: artifact-root-reference
+              - has:
+                  stopBy: end
+                  kind: string
+                  matches: artifact-root-reference
 message: >-
   Artifact roots contain data only. Move executable support into the Tests
   facades or conftest.py before importing, loading, or registering it.

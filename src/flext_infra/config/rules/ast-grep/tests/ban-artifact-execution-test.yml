@@ -25,3 +25,5 @@ invalid:
     SourceFileLoader("support", "tests/fixtures/example.py")
   - |
     pytest_plugins = ["tests.fixtures.support"]
+  - |
+    pytest_plugins = "tests.fixtures.support"

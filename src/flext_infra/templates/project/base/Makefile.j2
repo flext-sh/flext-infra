@@ -59,12 +59,12 @@ scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
 TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
 {%- endmacro -%}
-{#- The complete applicable suite runs once against the persistent database. -#}
+{#- Select impacted cases from the global inventory using the persistent database. -#}
 {%- macro pytest_test_runner() -%}
 {{ pytest_testmon_guard() }}
 {{ pytest_scratch_root() }}
 unset FLEXT_PYTEST_TARGET_FILE; \
-{{ make.testmon_cache.database_environment_variable }}="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry full
+{{ make.testmon_cache.database_environment_variable }}="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry global
 {%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
