@@ -14,11 +14,11 @@ from flext_cli import u
 
 from flext_infra import c, m, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntime,
@@ -792,7 +792,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             msg = f"typing alias source is not a Rope resource: {source_file}"
             raise RuntimeError(msg)
         source_module, target_module = (
-            FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
+            FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                 path, project_root=Path(rope_project.root.real_path)
             )
             for path in (source_file, target_file)

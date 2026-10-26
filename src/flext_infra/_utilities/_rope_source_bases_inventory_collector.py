@@ -347,12 +347,12 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             and value.id not in spec.lexical
             and value.id not in bindings
         )
-        return spec.allow_conditional and all(
+        return bool(targets) and all(
             isinstance(target, ast.Attribute)
             and isinstance(target.value, ast.Name)
             and target.value.id in bindings
             and (
-                bindings[target.value.id] is None
+                (spec.allow_conditional and bindings[target.value.id] is None)
                 or (
                     metadata_value
                     and target.attr.startswith("__")
@@ -442,16 +442,16 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         """
         value = node.value
-        if len(targets) != 1 or not isinstance(value, ast.Name | ast.Call):
+        if not targets or not isinstance(value, ast.Name | ast.Call):
             return False
-        target = targets[0]
-        return (
+        return all(
             isinstance(target, ast.Attribute)
             and target.attr
             not in {"__bases__", "__base__", "__mro__", "__class__", "__dict__"}
             and isinstance(target.value, ast.Name)
             and target.value.id in bindings
             and bindings[target.value.id] is not None
+            for target in targets
         )
 
     @classmethod
@@ -473,28 +473,32 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             node, targets, visible
         ):
             return False
-        target = targets[0]
         value = node.value
-        if not isinstance(target, ast.Attribute) or (
-            isinstance(value, ast.Name) and value.id not in visible
-        ):
+        if isinstance(value, ast.Name) and value.id not in visible:
             return False
-        owner = cls._reference(target.value, visible, spec)
-        owner = cls._nested_class_receiver(owner, spec.definitions)
-        if owner is None:
-            return False
-        definition = spec.definitions[owner.target]
-        members = dict(definition.members)
+        receivers: list[t.Pair[m.Infra.SourceClassReference, str]] = []
+        for target in targets:
+            if not isinstance(target, ast.Attribute):
+                return False
+            owner = cls._nested_class_receiver(
+                cls._reference(target.value, visible, spec), spec.definitions
+            )
+            if owner is None:
+                return False
+            receivers.append((owner, target.attr))
         assigned = cls._name_assignment(spec, node, visible)
-        if assigned is None:
-            members.pop(target.attr, None)
-        else:
-            members[target.attr] = assigned
-        spec.definitions[owner.target] = m.Infra.SourceClassDefinition(
-            identity=definition.identity,
-            bases=definition.bases,
-            members=members,
-        )
+        for owner, name in receivers:
+            definition = spec.definitions[owner.target]
+            members = dict(definition.members)
+            if assigned is None:
+                members.pop(name, None)
+            else:
+                members[name] = assigned
+            spec.definitions[owner.target] = m.Infra.SourceClassDefinition(
+                identity=definition.identity,
+                bases=definition.bases,
+                members=members,
+            )
         return True
 
     @staticmethod

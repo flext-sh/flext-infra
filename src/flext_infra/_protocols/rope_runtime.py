@@ -385,6 +385,14 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingContext: ...
 
     @runtime_checkable
+    class RopeSourceMemberResolver(Protocol):
+        """Member lookup bound to one native project and captured source view."""
+
+        def __call__(
+            self, qualified: str | m.Infra.SourceClassReference, /
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
+
+    @runtime_checkable
     class RopeSemanticModule(RopeNamedObject, Protocol):
         """Module attributes shared by native builtins, packages, and source."""
 

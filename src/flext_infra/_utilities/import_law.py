@@ -23,7 +23,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -990,7 +989,7 @@ class FlextInfraUtilitiesImportLaw:
 
         """
         role = cls.import_module_role(
-            FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
+            FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                 source, project_root=Path(project.root.real_path)
             ),
         )

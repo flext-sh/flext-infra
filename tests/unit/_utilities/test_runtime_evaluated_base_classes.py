@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,163 @@ from tests import c, tm, u
 
 class TestsFlextInfraRuntimeEvaluatedBaseClasses:
     """Plan new packages without importing them or collapsing nested identities."""
+
+    @staticmethod
+    def test_namespace_lazy_provider_retains_its_full_import_identity(
+        tmp_path: Path,
+        installed_dependency_path: Path,
+    ) -> None:
+        """A namespace prefix survives lazy provider lookup beside an SDK collision."""
+        _ = u.Tests.standalone_workspace(tmp_path, "namespace-contract")
+        _ = u.Tests.write_standalone_workspace_manifest(
+            tmp_path,
+            "namespace-contract",
+            declaration=u.Tests.StandaloneManifestDeclaration(
+                repository_namespace_packages=("infra",),
+            ),
+        )
+        package = tmp_path / "infra" / "pulumi" / "lib"
+        package.mkdir(parents=True)
+        (package.parent / "__init__.py").write_text(
+            'raise RuntimeError("project package must remain unimported")\n',
+            encoding="utf-8",
+        )
+        (package / "__init__.py").write_text(
+            "from types import MappingProxyType\n"
+            "from flext_core.lazy import install_lazy_exports\n"
+            "install_lazy_exports(__name__, globals(), "
+            'MappingProxyType({"c": ".constants"}), public_exports=("c",))\n'
+            'raise RuntimeError("lazy package must remain unimported")\n',
+            encoding="utf-8",
+        )
+        (package / "constants.py").write_text(
+            u.Tests.runtime_root_import()
+            + "class Constants:\n    class Payload(RuntimeRoot): pass\n"
+            "c = Constants\n",
+            encoding="utf-8",
+        )
+        collision = installed_dependency_path / "pulumi"
+        collision.mkdir()
+        (collision / "__init__.py").write_text(
+            'raise RuntimeError("colliding SDK must remain unimported")\n',
+            encoding="utf-8",
+        )
+        consumer = tmp_path / "consumer"
+        source = consumer / "src" / "namespace_consumer" / "models.py"
+        imports_before = {
+            name: name in sys.modules
+            for name in ("infra", "infra.pulumi", "infra.pulumi.lib", "pulumi")
+        }
+        planned = {
+            source: "from infra.pulumi.lib import c\nclass Consumer(c.Payload): pass\n",
+        }
+        with (
+            closing(u.Infra.init_rope_project(tmp_path)) as original,
+            closing(u.Infra.snapshot_project(original, planned)) as project,
+        ):
+            tm.that(
+                u.Infra.runtime_evaluated_base_classes(
+                    consumer,
+                    planned,
+                    u.Tests.runtime_evaluated_roots(),
+                    source_project=project,
+                ),
+                eq=tuple(
+                    sorted({
+                        *u.Tests.runtime_evaluated_roots(),
+                        "infra.pulumi.lib.c.Payload",
+                    })
+                ),
+            )
+        tm.that((tmp_path / "infra" / "__init__.py").exists(), eq=False)
+        tm.that(
+            {name: name in sys.modules for name in imports_before},
+            eq=imports_before,
+        )
+
+    @staticmethod
+    def test_external_relative_child_import_resolves_without_package_reentry(
+        tmp_path: Path,
+        installed_dependency_path: Path,
+    ) -> None:
+        """An explicit child-module import reaches its class through static source."""
+        provider = installed_dependency_path / "relative_child_provider"
+        provider.mkdir()
+        (provider / "__init__.py").write_text(
+            "from . import runtime\n"
+            'raise RuntimeError("provider initializer must remain unimported")\n',
+            encoding="utf-8",
+        )
+        (provider / "runtime.py").write_text(
+            u.Tests.runtime_root_import() + "class Contract(RuntimeRoot): pass\n"
+            'raise RuntimeError("provider child must remain unimported")\n',
+            encoding="utf-8",
+        )
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    tmp_path / "src" / "child_consumer" / "models.py": (
+                        "import relative_child_provider\n"
+                        "class Consumer(relative_child_provider.runtime.Contract): pass\n"
+                    ),
+                },
+                u.Tests.runtime_evaluated_roots(),
+            ),
+            eq=tuple(
+                sorted({
+                    *u.Tests.runtime_evaluated_roots(),
+                    "relative_child_provider.runtime.Contract",
+                })
+            ),
+        )
+        tm.fail("relative_child_provider" in sys.modules)
+        tm.fail("relative_child_provider.runtime" in sys.modules)
+
+    @staticmethod
+    def test_external_data_mutation_preserves_the_unrelated_class_declaration(
+        tmp_path: Path,
+        installed_dependency_path: Path,
+    ) -> None:
+        """External augmented data stays unknown while its real class is resolved."""
+        (installed_dependency_path / "augmented_data_provider.py").write_text(
+            u.Tests.runtime_root_import() + "config_keys = set()\n"
+            "config_keys |= set(RuntimeRoot.__annotations__.keys())\n"
+            "class Contract(RuntimeRoot): pass\n"
+            'raise RuntimeError("data provider must remain unimported")\n',
+            encoding="utf-8",
+        )
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    tmp_path / "src" / "data_consumer" / "models.py": (
+                        "from augmented_data_provider import Contract\n"
+                        "class Consumer(Contract): pass\n"
+                    ),
+                },
+                u.Tests.runtime_evaluated_roots(),
+            ),
+            eq=tuple(
+                sorted({
+                    *u.Tests.runtime_evaluated_roots(),
+                    "augmented_data_provider.Contract",
+                })
+            ),
+        )
+        with pytest.raises(ValueError, match="Unsupported class binding mutation"):
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    tmp_path / "src" / "captured_mutation" / "models.py": (
+                        u.Tests.runtime_root_import()
+                        + "class Contract(RuntimeRoot): pass\n"
+                        "Contract |= RuntimeRoot\n"
+                    ),
+                },
+                u.Tests.runtime_evaluated_roots(),
+            )
+        tm.fail("augmented_data_provider" in sys.modules)
 
     @pytest.mark.parametrize(
         ("setup", "condition", "selects_model"),

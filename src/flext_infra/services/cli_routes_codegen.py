@@ -34,17 +34,24 @@ class FlextInfraCodegenRoutes:
     def execute_codegen_generate(
         request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Erase the typed generation receipt for the declarative CLI route.
+        """Report the native publication receipt for the declarative CLI route.
 
         Returns:
-            The generation failure verbatim, or an erased success marker whose
-            static route message is the CLI output.
+            The generation failure verbatim, or the successful route marker
+            after reporting the producer's actual scope and write count.
 
         """
         # Profiling is admitted once, around the whole command, by the CLI entry.
         generated = infra.codegen_generate(request)
         if generated.failure:
             return r[t.Cli.ResultValue].from_failure(generated)
+        receipt = generated.value
+        u.Cli.info(
+            f"generation receipt: repositories={len(receipt.plan.repositories)} "
+            f"planned_files={len(receipt.plan.files)} "
+            f"written_files={len(receipt.written_files)} "
+            f"errors={len(receipt.errors)}"
+        )
         return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod

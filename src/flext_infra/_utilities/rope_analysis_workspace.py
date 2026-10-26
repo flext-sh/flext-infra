@@ -65,29 +65,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return tuple(sorted(packages))
 
     @classmethod
-    def module_name_for_file(
-        cls,
-        file_path: Path,
-        *,
-        project_root: Path,
-        source_project: p.Infra.RopeProject | None = None,
-    ) -> str:
-        """Return the module name for a file.
-
-        Returns:
-            The module name for a file.
-
-        """
-        package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
-            file_path.parent,
-            project_root=project_root,
-            source_project=source_project,
-        )
-        if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
-            return package_name
-        return f"{package_name}.{file_path.stem}" if package_name else ""
-
-    @classmethod
     def runtime_evaluated_base_classes(
         cls,
         project_root: Path,
@@ -139,7 +116,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     for provider_root in provider_roots
                 ):
                     continue
-                module = cls.module_name_for_file(
+                module = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                     path, project_root=root, source_project=source_project
                 )
                 if module:

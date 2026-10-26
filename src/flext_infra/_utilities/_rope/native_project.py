@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib.machinery
+import importlib.util
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Self, cast, overload, override
 
+from rope.base.builtins import BuiltinModule
 from rope.base.project import Project
 from rope.base.resources import File, Folder, Resource
 
@@ -92,6 +95,12 @@ class FlextInfraRopeNativeProject(Project):
 
         """
         native = cast("p.Infra.RopeProject", super())
+        if self.find_module(name, folder) is None:
+            spec = importlib.util.find_spec(name)
+            if spec is not None and isinstance(
+                spec.loader, importlib.machinery.ExtensionFileLoader
+            ):
+                return BuiltinModule(name, self.pycore)
         return native.get_module(name, self._native_folder(folder))
 
     @override

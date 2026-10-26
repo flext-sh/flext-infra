@@ -1108,15 +1108,16 @@ class FlextInfraConfigModelsMake(
                 for required in step.requires:
                     if required.step not in earlier:
                         msg = (
-                            f"make workflow step {step.identity} requires {required.step}, "
-                            "which must precede it"
+                            f"make workflow step {step.identity} "
+                            f"requires {required.step}, which must precede it"
                         )
                         raise ValueError(msg)
                     if not set(required.contexts) <= (
                         set(step.contexts) & earlier[required.step]
                     ):
                         msg = (
-                            f"make workflow step {step.identity} requires {required.step} "
+                            f"make workflow step {step.identity} "
+                            f"requires {required.step} "
                             "in unavailable dependency contexts"
                         )
                         raise ValueError(msg)

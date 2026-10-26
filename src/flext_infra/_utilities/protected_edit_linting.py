@@ -162,6 +162,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
             changes.value,
             lock_path=lock.value,
             directory_mode=config.Infra.codegen.modes.directory_generated,
+            nonsecret_source_paths=tuple(
+                plan.path
+                for plan in plans
+                if plan.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            ),
         )
         if published.failure:
             return published

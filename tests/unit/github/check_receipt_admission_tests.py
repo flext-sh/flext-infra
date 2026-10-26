@@ -31,9 +31,9 @@ class TestsFlextInfraCheckReceiptAdmission:
                 infra_git_repo,
                 make,
                 phase=phase,
-                plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
+                plan_global_targets=FlextInfraWorkspaceChecker(
                     repository_root=infra_git_repo,
-                ).plan_global_targets(gates),
+                ).plan_global_targets,
             )
         tm.fail(admitted)
         tm.that(admitted.error or "", has="tests run only on a green check")
@@ -76,9 +76,9 @@ class TestsFlextInfraCheckReceiptAdmission:
                     infra_git_repo,
                     make,
                     phase=required_phase,
-                    plan_global_targets=lambda selected: FlextInfraWorkspaceChecker(
+                    plan_global_targets=FlextInfraWorkspaceChecker(
                         repository_root=infra_git_repo,
-                    ).plan_global_targets(selected),
+                    ).plan_global_targets,
                 )
                 tm.fail(admitted)
                 tm.that(
@@ -124,9 +124,9 @@ class TestsFlextInfraCheckReceiptAdmission:
             infra_git_repo,
             make,
             phase=phase,
-            plan_global_targets=lambda selected: FlextInfraWorkspaceChecker(
+            plan_global_targets=FlextInfraWorkspaceChecker(
                 repository_root=infra_git_repo,
-            ).plan_global_targets(selected),
+            ).plan_global_targets,
         )
         tm.fail(admitted)
         tm.that(

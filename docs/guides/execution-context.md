@@ -337,6 +337,13 @@ discovery owner, including nested and namespace packages. A directory basename i
 not a module identity: declarations, proposed imports, C3 references and codemod
 contexts must use the same qualified package. Generation must not create package
 initializers or relax Rope's class boundary to compensate for a truncated name.
+Source ancestry resolves provider identities from their captured physical paths,
+then the project's declared namespace discovery. Rope's shortened regular-package
+name cannot replace that identity when a namespace ancestor has no initializer.
+Project dependency inspection uses Rope and LibCST source analysis only; generation
+does not import the analyzed project or require its Pulumi SDK to be installed in
+the Infra runtime. Native extensions remain subject to the supplied Rope project's
+declared native-module election, without an independent import-spec probe.
 
 Type-facade admission evaluates the class, exports and alias bindings from one
 parsed view of the planned source. Node identity from a different parse cannot
@@ -672,15 +679,47 @@ declared lazy exports and assignments after class declarations, before using
 native import inference. An explicit unknown source value is an error, not
 permission to reuse an earlier import. This completed provider view does not
 replace the declaration-line lexical view used to resolve that class's bases.
+Literal dunder metadata on a bound provider does not bind or replace a class.
+Recognize that metadata in both completed and conditional source inventories;
+ordinary attribute rebinding still requires its declared class-namespace owner.
+When a package has no explicit binding for a name, a native submodule of that
+name remains a valid import provider. Resolve its remaining class path through
+the same native source owner; an explicit value binding keeps precedence and
+must not be replaced by a sibling file.
+For an explicit `from . import child` source binding, Rope's imported-name
+provenance and native child resource establish the submodule before following
+its remaining class members. Re-entering the package's same import binding is
+not a reexport cycle; completed class or value assignments retain precedence.
 This applies even when the supplied source map contains only unrelated scripts:
 the native provider's retained source and AST own its final publication. Exact
 resource matches elect planned source owners; absent a match, use the captured
 native source, never a fresh disk read or the earlier imported binding.
+Completed inventories of uncaptured external providers use the collector's
+external-provider mode, matching direct native class inventory. An augmented
+value mutation becomes an unknown binding; using that value as a class still
+fails. Owned resources and captured source declarations retain strict mutation
+rejection.
+Chained stores to known external class namespaces retain Python's single
+right-hand-side binding. Admit every nonstructural receiver before updating any
+member map, then apply that binding to each target in source order. A missing or
+structural receiver still rejects the complete statement.
+Uncaptured native class-constructor functions use the existing constructor
+identity resolver. Their callable binding does not require inventorying unrelated
+module mutations; captured source still owns any planned binding.
+Native module election retains source resources before compiled extensions.
+When no source resource exists, an extension import spec elects Rope's native
+builtin-module representation at the project boundary. Semantic base resolution
+uses that same election instead of constructing its own module representation.
 Failed source-member resolution retains the original typed reference target,
 attributes and qualified spelling as exception notes. Provider failures also
 identify the selected native module, resource and matching captured source path.
 These notes preserve the original exception and traceback; they do not retry,
 drop members or substitute a different provider.
+Repeated member queries within one captured source view bind one explicit
+resolver port. Its source mapping is an immutable copy for that binding, and
+its existing alias, resolution and C3 memoization remain local to the port.
+Rewritten source requires a new binding; no process-global resolver cache may
+serve another native project or a changed source view.
 Protocol owner additions use the same elected package name as their captured
 declarations when inserting imports. A native module's shortened display name
 must not introduce a new import root during the recursive projection pass.
@@ -796,6 +835,16 @@ Each invocation runs its pre hook, handler and post hook once, and a failure
 prevents later effects. Initial provisioning remains the responsibility of
 `make setup`. Public Make commands own the activation boundary and can be
 invoked directly.
+The generation CLI reports repository, planned-file and written-file counts from
+its returned typed publication receipt. A successful repeated invocation with
+zero written files proves that receipt's generated population required no effect;
+exit status alone does not prove convergence.
+
+Direnv confines its isolated Mise configuration directories to the native
+activation subprocess. The activated shell retains the host's native shim
+directory behind the project's resolved tool paths, so host-owned tools remain
+available without joining the project's tool catalog. Project provisioning and
+Make retain their own locked configuration boundary.
 
 Library defaults resolve through the concrete config class's import-package resource,
 not its declaration file's depth or the checkout's `config/` directory. Editable and

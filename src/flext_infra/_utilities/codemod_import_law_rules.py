@@ -24,7 +24,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
-    FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -442,7 +441,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         base_layer = order.index(c.Infra.IMPORT_LAW_BASE_LAYER)
         modules = {
-            FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
+            FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                 path, project_root=root
             ): (path, text)
             for path, text in sources.items()

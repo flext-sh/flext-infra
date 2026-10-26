@@ -685,7 +685,9 @@ class FlextInfraModelsCheck:
         phase: Annotated[
             c.Infra.CheckPhase,
             m.Field(
-                description="Original checker phase; primary is never complete check proof"
+                description=(
+                    "Original checker phase; primary is never complete check proof"
+                )
             ),
         ] = c.Infra.CheckPhase.COMPLETE
         requested_gates: Annotated[

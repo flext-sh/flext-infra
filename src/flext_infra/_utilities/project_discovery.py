@@ -7,12 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Generator, Iterator
-from contextlib import contextmanager
-from contextvars import ContextVar
+from collections.abc import Iterator
 from operator import attrgetter
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 
@@ -33,13 +31,6 @@ class FlextInfraUtilitiesProjectDiscovery(
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 ):
     """Static helpers for discovering governed project roots in a workspace."""
-
-    # The active source inventory epoch: discovered paths per argument set.
-    _inventory_epoch: ClassVar[
-        ContextVar[
-            dict[t.Triple[Path, frozenset[str], bool], t.SequenceOf[Path]] | None
-        ]
-    ] = ContextVar("source_inventory_epoch", default=None)
 
     @staticmethod
     def repository_operation_targets(
@@ -524,6 +515,29 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
+    def module_name_for_file(
+        cls,
+        file_path: Path,
+        *,
+        project_root: Path,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
+        """Return a file's complete declared import identity.
+
+        Returns:
+            The module identity, preserving declared namespace ancestors.
+
+        """
+        package_name = cls.package_name_for_dir(
+            file_path.parent,
+            project_root=project_root,
+            source_project=source_project,
+        )
+        if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
+            return package_name
+        return f"{package_name}.{file_path.stem}" if package_name else ""
+
+    @classmethod
     def package_name_for_dir(
         cls,
         package_dir: Path,
@@ -578,62 +592,7 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         Injected source paths stay lexical until native admission, so a selected
         aliased scan root cannot disappear through path resolution. Inside a
-        ``source_inventory_epoch`` the tree holds still, so one walk per
-        project and admission serves every repeated discovery.
-
-        Returns:
-            Sorted absolute Python source and stub paths.
-
-        """
-        epoch = cls._inventory_epoch.get()
-        if epoch is None or source_project is not None:
-            return cls._discover_python_files(
-                project_dir,
-                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
-                source_project=source_project,
-                owned_path_admission=owned_path_admission,
-            )
-        key = (project_dir.resolve(), workspace_excluded_top_dirs, owned_path_admission)
-        if key not in epoch:
-            epoch[key] = cls._discover_python_files(
-                project_dir,
-                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
-                source_project=None,
-                owned_path_admission=owned_path_admission,
-            )
-        return epoch[key]
-
-    @classmethod
-    @contextmanager
-    def source_inventory_epoch(cls) -> Generator[None]:
-        """Hold one source inventory for a computation over a still tree.
-
-        Nested epochs share the outermost inventory; leaving the outermost
-        epoch discards it, so the next discovery walks the tree again.
-
-        Yields:
-            Nothing; discoveries inside reuse one walk per argument set.
-
-        """
-        token = (
-            cls._inventory_epoch.set({}) if cls._inventory_epoch.get() is None else None
-        )
-        try:
-            yield
-        finally:
-            if token is not None:
-                cls._inventory_epoch.reset(token)
-
-    @classmethod
-    def _discover_python_files(
-        cls,
-        project_dir: Path,
-        *,
-        workspace_excluded_top_dirs: frozenset[str],
-        source_project: p.Infra.RopeProject | None,
-        owned_path_admission: bool,
-    ) -> t.SequenceOf[Path]:
-        """Walk one project's Python sources and stubs.
+        the native source view, the injected project owns capture and admission.
 
         Returns:
             Sorted absolute Python source and stub paths.

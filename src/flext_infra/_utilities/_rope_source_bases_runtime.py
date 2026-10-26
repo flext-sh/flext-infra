@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import importlib.machinery
 import importlib.util
 from pathlib import Path
+from types import MappingProxyType
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
@@ -40,9 +41,26 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             The member binding belonging to the exact source or external owner.
 
         """
+        return cls.source_member_resolver(
+            project, sources=sources if sources is not None else {}
+        )(qualified)
+
+    @classmethod
+    def source_member_resolver(
+        cls,
+        project: p.Infra.RopeProject,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+    ) -> p.Infra.RopeSourceMemberResolver:
+        """Bind reusable native member lookup to an immutable source mapping.
+
+        Returns:
+            The existing resolver's member operation for this source view.
+
+        """
         return cls._RuntimeBaseResolver(
-            project, sources if sources is not None else {}, (), None
-        ).source_member_binding(qualified)
+            project, MappingProxyType(dict(sources)), (), None
+        ).source_member_binding
 
     @staticmethod
     def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
@@ -615,15 +633,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"External class has no source declaration: {value.get_name()}"
                 )
                 raise ValueError(message)
-            owners = tuple(
-                name
-                for name, (path, _source) in self._sources.items()
-                if str(path) == resource.real_path
-            )
-            if len(owners) > 1:
-                message = f"Ambiguous captured source owner: {resource.real_path}"
-                raise ValueError(message)
-            name = owners[0] if owners else module.get_name()
+            name = self._provider_name(module)
             previous = self._providers.get(name)
             if previous is not None and (
                 previous.get_resource() != resource
@@ -843,37 +853,49 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if resource is None:
                 return None
             owned = not Path(resource.path).is_absolute()
-            target = f"{module.get_name()}.{attributes[0]}"
+            module_name = self._provider_name(module)
+            target = f"{module_name}.{attributes[0]}"
             provider = module.get_module()
             if not FlextInfraUtilitiesRopeRuntime.source_module(provider):
                 if owned:
                     message = f"Project-owned provider is not source: {target}"
                     raise TypeError(message)
                 return None
-            source_path = Path(resource.real_path)
-            if resource.is_folder():
-                source_path /= c.Infra.INIT_PY
-            captured = self._sources.get(
-                module.get_name(), (source_path, provider.source_code)
-            )
-            bindings = self._modules.get(module.get_name())
-            if bindings is None:
-                bindings = self._inventory(
-                    module.get_name(),
-                    captured,
-                    provider=(
-                        provider
-                        if captured == (source_path, provider.source_code)
-                        else None
-                    ),
-                )
-                self._modules[module.get_name()] = bindings
+            bindings = self._provider_source_bindings(module_name, provider, resource)
             reference = bindings.get(attributes[0])
             if reference is None:
-                if owned or module.get_name() in self._sources:
+                if (
+                    attributes[0] not in bindings
+                    and resource.is_folder()
+                    and self._project.find_module(target) is not None
+                ):
+                    return self._external_reference(
+                        target, attributes[1:], visiting | {target}, depth + 1
+                    )
+                if owned or module_name in self._sources:
                     message = f"Unresolved declared provider base: {target}"
                     raise ValueError(message)
                 return None
+            if (
+                resource.is_folder()
+                and reference.target == module_name
+                and reference.attributes == (attributes[0],)
+                and self._project.find_module(target) is not None
+            ):
+                binding = self._provider_attribute_binding(
+                    self._providers[module_name], attributes[0], target
+                )
+                if (
+                    isinstance(binding, p.Infra.RopeImportedName)
+                    and binding.imported_name == attributes[0]
+                    and self._provider_name(
+                        self._provider_module(binding.imported_module)
+                    )
+                    == module_name
+                ):
+                    return self._provider_imported_name_reference(
+                        binding, attributes[1:], target, visiting, depth
+                    )
             return self._resolve(
                 m.Infra.SourceClassReference(
                     target=reference.target,
@@ -883,6 +905,40 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 visiting | {target},
                 depth + 1,
             )
+
+        def _provider_source_bindings(
+            self,
+            module_name: str,
+            provider: p.Infra.RopeSourceModule,
+            resource: p.Infra.RopeResource,
+        ) -> t.MappingKV[str, m.Infra.SourceClassReference | None]:
+            """Inventory a provider in its captured epoch using the native origin.
+
+            Returns:
+                The existing or newly authenticated declaration bindings.
+
+            """
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            captured = self._sources.get(
+                module_name, (source_path, provider.source_code)
+            )
+            bindings = self._modules.get(module_name)
+            if bindings is None:
+                bindings = self._inventory(
+                    module_name,
+                    captured,
+                    allow_conditional=Path(resource.path).is_absolute()
+                    and module_name not in self._sources,
+                    provider=(
+                        provider
+                        if captured == (source_path, provider.source_code)
+                        else None
+                    ),
+                )
+                self._modules[module_name] = bindings
+            return bindings
 
         def _provider_reference(
             self,
@@ -913,11 +969,20 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 message = f"Module used as a class base: {module.get_name()}"
                 raise ValueError(message)
             name = attributes[0]
-            target = f"{module.get_name()}.{name}"
+            target = f"{self._provider_name(module)}.{name}"
             if target in visiting:
                 chain = " <- ".join(sorted(visiting))
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
+            if (
+                not self._captured_provider_modules(module)
+                and name in module.get_attributes()
+            ):
+                binding = self._provider_attribute_binding(module, name, target)
+                if self._function_object_identity(binding.get_object()) is not None:
+                    return self._provider_value_reference(
+                        binding, attributes[1:], visiting, depth
+                    )
             declared = self._declared_source_reference(
                 module, attributes, visiting, depth
             )
@@ -953,7 +1018,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             name, *remaining = attributes
-            target = f"{module.get_name()}.{name}"
+            target = f"{self._provider_name(module)}.{name}"
             if isinstance(binding, p.Infra.RopeImportedName):
                 override = None
                 try:
@@ -1017,7 +1082,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             name, *remaining = attributes
-            target = f"{module.get_name()}.{name}"
+            target = f"{self._provider_name(module)}.{name}"
             provider = self._provider_lazy_bindings(module).get(name)
             if provider is not None:
                 return self._resolve(
@@ -1035,6 +1100,48 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     reexporter, attributes, visiting | {target}, depth + 1
                 )
             return None
+
+        def _provider_name(
+            self,
+            module: t.Infra.RopeSemanticModule,
+        ) -> str:
+            """Return a provider's authenticated complete import identity.
+
+            Captured sources own their names. Other project resources use the
+            declared namespace discovery; external providers keep Rope's name.
+
+            Returns:
+                The provider identity used by declarations and relative aliases.
+
+            Raises:
+                ValueError: Captured names are ambiguous or an owned source has
+                    no declared module identity.
+
+            """
+            owners = self._captured_provider_modules(module)
+            resource = module.get_resource()
+            if len(owners) > 1:
+                message = (
+                    "Ambiguous captured source owner: "
+                    f"{resource.real_path if resource is not None else module.get_name()}"
+                )
+                raise ValueError(message)
+            if owners:
+                return owners[0]
+            if resource is None or Path(resource.path).is_absolute():
+                return module.get_name()
+            path = Path(resource.real_path)
+            if resource.is_folder():
+                path /= c.Infra.INIT_PY
+            name = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                path,
+                project_root=Path(self._project.root.real_path),
+                source_project=self._project,
+            )
+            if not name:
+                message = f"Project-owned provider has no declared identity: {path}"
+                raise ValueError(message)
+            return name
 
         def _captured_provider_modules(
             self,
@@ -1111,7 +1218,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if (
                 reference.target in self._definitions
                 or reference.target
-                != self._provider_module(binding.imported_module).get_name()
+                != self._provider_name(self._provider_module(binding.imported_module))
                 or reference.attributes != (binding.imported_name,)
             ):
                 return m.Infra.SourceClassReference(
@@ -1163,7 +1270,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if resource is None:
                 return {}
             return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                module.get_name(),
+                self._provider_name(module),
                 Path(resource.real_path),
                 declaring.source_code,
                 project=self._project,
@@ -1203,10 +1310,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if not isinstance(tree, ast.Module):
                 return None
             file_name = Path(resource.real_path).name
+            module_name = self._provider_name(module)
             package = (
-                module.get_name()
+                module_name
                 if file_name == c.Infra.INIT_PY or not file_name.endswith(".py")
-                else module.get_name().rpartition(".")[0]
+                else module_name.rpartition(".")[0]
             )
             for node in tree.body:
                 if not (
@@ -1240,7 +1348,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             imported = self._provider_module(binding.imported_module)
-            imported_name = imported.get_name()
+            imported_name = self._provider_name(imported)
             if (
                 target == f"{imported_name}.{binding.imported_name}"
                 and self._project.find_module(target) is not None
@@ -1282,7 +1390,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             imported = self._provider_module(binding)
-            imported_name = imported.get_name()
+            imported_name = self._provider_name(imported)
             if imported_name in self._namespaces:
                 return self._resolve(
                     m.Infra.SourceClassReference(
@@ -1310,8 +1418,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """Resolve one external qualified target through Rope.
 
             The injected project retains its original native-module election.
-            A compiled extension has no source for Rope to parse; its import
-            spec, resolved on demand, admits it as Rope's native module.
             Resolution and attribute errors propagate unchanged.
 
             Returns:
@@ -1319,15 +1425,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             resource = self._project.find_module(target)
-            spec = None if resource is not None else importlib.util.find_spec(target)
-            module = (
-                FlextInfraUtilitiesRopeRuntime.runtime_callable(
-                    "rope.base.builtins", "BuiltinModule"
-                )(target, FlextInfraUtilitiesRopeRuntime.project_core(self._project))
-                if spec is not None
-                and isinstance(spec.loader, importlib.machinery.ExtensionFileLoader)
-                else self._project.get_module(target)
-            )
+            module = self._project.get_module(target)
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,
