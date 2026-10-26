@@ -14,9 +14,16 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, d, m, p, r, t
-from flext_infra import deps as dependency_services
-from flext_infra import workspace as workspace_services
+from flext_infra import (
+    c,
+    d,
+    deps as dependency_services,
+    m,
+    p,
+    r,
+    t,
+    workspace as workspace_services,
+)
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -505,20 +512,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 )
                 return result_type.fail(
                     "imports, custom facades and initializers repeat a source "
-                    f"candidate without convergence for {root}: "
-                    + ", ".join(diverging)
+                    f"candidate without convergence for {root}: " + ", ".join(diverging)
                 )
             seen.add(identity)
-            with self._source_view(
-                root, declared_files=tuple(source_plans.values())
-            ) as binding:
-                custom_result = self._plan_existing_custom(
-                    root,
-                    codegen,
-                    profile=profile,
-                    binding=binding,
-                    declared_files=tuple(source_plans.values()),
-                )
+            custom_result = self._plan_existing_custom(
+                root,
+                codegen,
+                profile=profile,
+                declared_files=tuple(source_plans.values()),
+            )
             if custom_result.failure:
                 return result_type.from_failure(custom_result)
             projected_files = {
@@ -1375,7 +1377,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         config: m.Infra.CodegenConfigSpec,
         *,
         profile: str | None = None,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Validate custom Make content and stage dependency-ordered family facades.
@@ -1406,76 +1407,20 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if make_plan_present and make_plan_value is not None:
                 plans.append(make_plan_value)
         if root.is_dir():
-            layout = generation.layout(root)
-            project, sources = binding
-            package_dirs = {
-                path.parent
-                for path in sources
-                if path.is_relative_to(root)
-                and path.suffix == c.Infra.EXT_PYTHON
-                and path.parent / c.Infra.INIT_PY in sources
-            }
-            if layout is not None and layout.class_stem:
-                package_dirs.add(layout.package_dir)
-            staged = {plan.path: plan for plan in declared_files}
             snapshot = self.state.snapshot
             if snapshot is None:
                 message = "recursive family composition requires the run snapshot"
                 raise RuntimeError(message)
             recursive = generation.plan_component_facades(
                 root,
-                declared_files=tuple(staged.values()),
+                declared_files=declared_files,
                 snapshot=snapshot,
                 initializer_planner=self._projected_exports,
             )
             if recursive.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    recursive
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(recursive)
             plans.extend(recursive.value)
-            staged.update((plan.path, plan) for plan in recursive.value)
-            for declared_family in generation.facade_families().values():
-                family = c.Infra.FacadeFamily(declared_family.letter)
-                for package_dir in sorted(package_dirs):
-                    if (
-                        layout is None or package_dir != layout.package_dir
-                    ) and generation.facade_module_path(
-                        package_dir,
-                        family,
-                        project=project,
-                        sources=sources,
-                    ) is None:
-                        continue
-                    projected = self._captured_facade_plan(
-                        root, package_dir, family, staged
-                    )
-                    if projected.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            projected
-                        )
-                    plans.extend(projected.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
-
-    def _captured_facade_plan(
-        self,
-        root: Path,
-        package_dir: Path,
-        family: c.Infra.FacadeFamily,
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan one family facade over the staged candidate.
-
-        The staged plan map is updated in place.
-
-        Returns:
-            The facade plans, or the first planning failure.
-
-        """
-        with self._source_view(root, declared_files=tuple(staged.values())) as current:
-            planned = self._utility_facade_plan(root, package_dir, family, current)
-        if planned.success:
-            staged.update((plan.path, plan) for plan in planned.value)
-        return planned
 
     def _validated_custom_make_plan(
         self,
@@ -1508,68 +1453,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if planned.failure:
             return result_type.from_failure(planned)
         return result_type.ok((planned.value, True))
-
-    def _utility_facade_plan(
-        self,
-        root: Path,
-        package_dir: Path,
-        family: c.Infra.FacadeFamily,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan one projected facade for the discovered package layout.
-
-        Returns:
-            The owned facade file plan, or no plans for a family with no owners.
-
-        Raises:
-            ValueError: If a rendered facade has no declaring package module.
-
-        """
-        project, sources = binding
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        facade_path = generation.facade_module_path(
-            package_dir, family, project=project, sources=sources
-        )
-        match family:
-            case c.Infra.FacadeFamily.T:
-                if facade_path is None or not project.source_query(
-                    package_dir / generation.facade_families()[family].directory,
-                    "isdir",
-                ):
-                    return result_type.ok(())
-                rendered = generation.render_type_facade(
-                    package_dir,
-                    facade_path,
-                    {
-                        path: generation.require_file_resource(
-                            project.get_resource(path.relative_to(root).as_posix()),
-                            path,
-                        ).read()
-                        for path in sources
-                    },
-                    project=project,
-                )
-            case (
-                c.Infra.FacadeFamily.C
-                | c.Infra.FacadeFamily.U
-                | c.Infra.FacadeFamily.P
-                | c.Infra.FacadeFamily.M
-            ):
-                rendered = generation.render_utility_facade(
-                    package_dir,
-                    family=family,
-                    project=project,
-                    sources=sources,
-                )
-        if rendered is None:
-            return result_type.ok(())
-        if facade_path is None:
-            msg = f"rendered {family} facade has no declaring module"
-            raise ValueError(msg)
-        relative = facade_path.relative_to(root)
-        return self.file_plan(root, relative.as_posix(), rendered).map(
-            lambda plan: (plan,)
-        )
 
     def _complete_governed_plans(
         self,
@@ -1870,8 +1753,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         relative = request.relative
         path = root / relative
         normalized = (
-            workspace_services.FlextInfraWorkspaceEnvironmentContracts
-            .envrc_local_normalized
+            workspace_services.FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized
         )(
             request.current,
         )

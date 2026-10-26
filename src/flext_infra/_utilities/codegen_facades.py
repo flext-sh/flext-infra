@@ -862,7 +862,10 @@ class FlextInfraUtilitiesCodegenFacades(
                     continue
                 suppliers = (
                     *owner.get_superclasses(),
-                    *(member.get_object() for member in owner.get_attributes().values()),
+                    *(
+                        member.get_object()
+                        for member in owner.get_attributes().values()
+                    ),
                 )
                 if any(
                     runtime.py_class(supplier)
@@ -942,8 +945,7 @@ class FlextInfraUtilitiesCodegenFacades(
             if candidate.parent == path.parent
             and candidate.name != c.Infra.INIT_PY
             and any(
-                isinstance(statement, ClassDef)
-                and statement.name.value == class_name
+                isinstance(statement, ClassDef) and statement.name.value == class_name
                 for statement in parse_module(source).body
             )
         )
@@ -1039,9 +1041,10 @@ class FlextInfraUtilitiesCodegenFacades(
             final = cls._component_render(root, domain, seed, staged)
             planned[final.path] = final
             staged[final.path] = final
-        with cls.facade_source_project(
-            root, declared_files=tuple(staged.values())
-        ) as (project, sources):
+        with cls.facade_source_project(root, declared_files=tuple(staged.values())) as (
+            project,
+            sources,
+        ):
             layout = FlextInfraUtilitiesCodegenNamespace.layout(
                 root, rope_project=project
             )
@@ -1054,9 +1057,9 @@ class FlextInfraUtilitiesCodegenFacades(
             }
             if layout is not None and layout.class_stem:
                 packages.add(layout.package_dir)
-        for declared_family in (
-            FlextInfraUtilitiesCodegenNamespace.facade_families().values()
-        ):
+        for (
+            declared_family
+        ) in FlextInfraUtilitiesCodegenNamespace.facade_families().values():
             family = c.Infra.FacadeFamily(declared_family.letter)
             for package in sorted(packages):
                 with cls.facade_source_project(
@@ -1097,19 +1100,17 @@ class FlextInfraUtilitiesCodegenFacades(
             The root facade plan, or no plan when this package owns no family.
 
         """
-        path = cls.facade_module_path(
-            package, family, project=project, sources=sources
-        )
+        path = cls.facade_module_path(package, family, project=project, sources=sources)
         if family is c.Infra.FacadeFamily.T:
             if path is None or not project.source_query(
                 package
-                / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory,
+                / FlextInfraUtilitiesCodegenNamespace.facade_families()[
+                    family
+                ].directory,
                 "isdir",
             ):
                 return None
-            rendered = cls.render_type_facade(
-                package, path, sources, project=project
-            )
+            rendered = cls.render_type_facade(package, path, sources, project=project)
         else:
             rendered = cls.render_utility_facade(
                 package, family=family, project=project, sources=sources
@@ -1149,8 +1150,7 @@ class FlextInfraUtilitiesCodegenFacades(
             )
             for path in sources
             for family_root in path.parents
-            if family_root.is_relative_to(root)
-            and family_root.name == family.directory
+            if family_root.is_relative_to(root) and family_root.name == family.directory
             for directory in path.parents
             if directory != family_root
             and directory.is_relative_to(family_root)
@@ -4181,9 +4181,7 @@ class FlextInfraUtilitiesCodegenFacades(
         project = view.project
         contents = dict(view.sources.values())
         projection_is_autogen = contents[facade_path].startswith(c.Infra.AUTOGEN_HEADER)
-        barrel_state = project.source_state(
-            roots[1] / c.Infra.INIT_PY, required=False
-        )
+        barrel_state = project.source_state(roots[1] / c.Infra.INIT_PY, required=False)
         barrel = (
             None
             if barrel_state.content is None
@@ -4221,9 +4219,7 @@ class FlextInfraUtilitiesCodegenFacades(
             ):
                 retired.add(ast.unparse(base))
                 continue
-            binding = cls._declared_base_binding(
-                view, pymodule, facade, base
-            )
+            binding = cls._declared_base_binding(view, pymodule, facade, base)
             holder = binding.get_definition_location()[0]
             provider = holder.get_resource() if holder is not None else None
             if provider is None:

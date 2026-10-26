@@ -13,8 +13,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
-from flext_infra import workspace as workspace_services
+from flext_infra import c, m, p, r, t, workspace as workspace_services
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
 
@@ -51,9 +50,7 @@ class FlextInfraCodegenConform:
             return r[p.Infra.CodegenResult].from_failure(bound)
         executor = bound.value
         if admitted.mode is c.Infra.CodegenConformMode.CHECK:
-            with (
-                workspace_services.FlextInfraWorkspaceNativeReference.compilation_scope()
-            ):
+            with workspace_services.FlextInfraWorkspaceNativeReference.compilation_scope():
                 return executor.check_managed(admitted)
         governed = cls._migrate_governed_declarations(executor, admitted)
         if governed.failure:
@@ -136,9 +133,7 @@ class FlextInfraCodegenConform:
             files.extend(planned.value)
         ports = executor.state.ports
         if ports is None:
-            return r[bool].fail(
-                "conformance requires facade-wired file publication"
-            )
+            return r[bool].fail("conformance requires facade-wired file publication")
         return ports.file_publisher.publish_codegen_plans(request.root, files).map(
             lambda _: True
         )

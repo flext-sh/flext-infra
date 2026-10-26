@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r
-from flext_infra import workspace as workspace_services
+from flext_infra import c, config, m, p, r, workspace as workspace_services
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
@@ -34,10 +33,8 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[bool]
-        context = (
-            workspace_services.FlextInfraWorkspaceDetector.resolution_context(
-                repository_root
-            )
+        context = workspace_services.FlextInfraWorkspaceDetector.resolution_context(
+            repository_root
         )
         if context.failure:
             return result_type.from_failure(context)
@@ -117,11 +114,8 @@ class FlextInfraCodegenPreconditions:
         if item.source.editable is not None:
             return result_type.ok(value=True)
         origin = (
-            workspace_services.FlextInfraWorkspaceEnvironmentProvenance
-            .locked_origin_verdict
-        )(
-            distribution_name, item, direct_url
-        )
+            workspace_services.FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict
+        )(distribution_name, item, direct_url)
         if origin.failure:
             return origin
         if item.source.registry is not None and distribution.version != item.version:

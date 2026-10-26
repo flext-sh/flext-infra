@@ -63,12 +63,13 @@ class FlextInfraCodegenLazyInit(
             The same initializer cohort for conformance and source composition.
 
         """
-        with cls.facade_source_project(
-            root, declared_files=declared_files
-        ) as (project, _sources):
-            return cls(
-                repository_root=root, project_scope_roots=(root,)
-            ).plan_files(source_project=project, snapshot=snapshot)
+        with cls.facade_source_project(root, declared_files=declared_files) as (
+            project,
+            _sources,
+        ):
+            return cls(repository_root=root, project_scope_roots=(root,)).plan_files(
+                source_project=project, snapshot=snapshot
+            )
 
     @override
     def execute(self) -> p.Result[bool]:

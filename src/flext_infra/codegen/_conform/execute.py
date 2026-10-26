@@ -13,8 +13,7 @@ from typing import Self, override
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
-from flext_infra import workspace as workspace_services
+from flext_infra import c, m, p, r, t, workspace as workspace_services
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
@@ -312,7 +311,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
         ports = self.state.ports
         if ports is None:
-            return result_type.fail("conformance requires facade-wired candidate admission")
+            return result_type.fail(
+                "conformance requires facade-wired candidate admission"
+            )
         docs = self._docs_plans(request, plan)
         if docs.failure:
             return result_type.from_failure(docs)
@@ -322,10 +323,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return result_type.from_failure(changes)
         normalized = {change.path: change for change in changes.value}
         files = tuple(
-            file.model_copy(update={
-                "desired_content": normalized[file.path].desired_content,
-                "desired_mode": normalized[file.path].desired_mode,
-            })
+            file.model_copy(
+                update={
+                    "desired_content": normalized[file.path].desired_content,
+                    "desired_mode": normalized[file.path].desired_mode,
+                }
+            )
             for file in files
         )
         if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
@@ -342,11 +345,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             lambda candidate, _paths: ports.candidate_validator(
                 root,
                 candidate,
-                tuple(sorted({
-                    file.project
-                    for file in files
-                    if file.path.suffix == c.Infra.EXT_PYTHON
-                })),
+                tuple(
+                    sorted({
+                        file.project
+                        for file in files
+                        if file.path.suffix == c.Infra.EXT_PYTHON
+                    })
+                ),
             ),
             options=m.Infra.CodegenSourcePreviewOptions(
                 declared_files=files,

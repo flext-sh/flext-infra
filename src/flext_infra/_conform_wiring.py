@@ -93,7 +93,8 @@ class FlextInfraConformWiring:
             candidate / project.relative_to(workspace.value) for project in projects
         )
         return (
-            FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
+            FlextInfraUtilitiesProjectDiscovery
+            .runtime_owner_root(root)
             .flat_map(
                 lambda runtime: validate.FlextInfraValidateFreshImport(
                     repository_root=repository,
@@ -101,9 +102,11 @@ class FlextInfraConformWiring:
                 ).build_report(repository_roots=repositories)
             )
             .flat_map(
-                lambda report: r[bool].ok(value=True)
-                if report.passed
-                else r[bool].fail("\n".join((report.summary, *report.violations)))
+                lambda report: (
+                    r[bool].ok(value=True)
+                    if report.passed
+                    else r[bool].fail("\n".join((report.summary, *report.violations)))
+                )
             )
         )
 

@@ -35,9 +35,6 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
-)
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
 )
@@ -244,7 +241,9 @@ class FlextInfraUtilitiesFacadeComponents:
         """Prove both the imported component and its lexical facade receiver."""
         tree = module.get_ast()
         if not isinstance(tree, ast.Module):
-            message = f"component consumer has no native module tree: {module.get_name()}"
+            message = (
+                f"component consumer has no native module tree: {module.get_name()}"
+            )
             raise TypeError(message)
         bases = {
             id(node)
@@ -257,16 +256,20 @@ class FlextInfraUtilitiesFacadeComponents:
         types = FlextInfraUtilitiesRopeRuntimeTypes
         references: list[t.Triple[ast.Attribute, str, str]] = []
         for call in ast.walk(tree):
-            if not isinstance(call, ast.Call) or not isinstance(
-                reference := call.func, ast.Attribute
-            ) or id(reference) in bases:
+            if (
+                not isinstance(call, ast.Call)
+                or not isinstance(reference := call.func, ast.Attribute)
+                or id(reference) in bases
+            ):
                 continue
             offset = runtime.source_offset(module.source_code, reference)
             scope = module.get_source_binding_index().context_at(offset).environment
             receiver = runtime.resolve_symbol(scope, reference.value)
-            if receiver is None or not types.abstract_class(
-                component := receiver.get_object()
-            ) or cls._component_facade(component):
+            if (
+                receiver is None
+                or not types.abstract_class(component := receiver.get_object())
+                or cls._component_facade(component)
+            ):
                 continue
             targets = claims.get((component, reference.attr), ())
             if not targets:
@@ -306,136 +309,92 @@ class FlextInfraUtilitiesFacadeComponents:
     def codemod_facade_component_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> t.MappingKV[str, t.JsonMapping]:
-        """Render the one rule relocating every component reference to its namespace.
+        """Render native-proven component calls through their bound public facade.
 
-        ``Component.method(...)`` becomes ``letter.Namespace.method(...)`` where the
-        component is bound by a module-level import, the letter is bound by a
-        module-level import of the package that composes the namespace (the
-        own package for own components, any lineage package for upstream
-        ones), neither is shadowed, and the reference is never assigned
-        through. One ``any`` branch per namespace carries its exact
-        references and letter guard, and one rewriter per namespace emits the
-        replacement; no document is rendered per package or letter. An own
-        component inside its own letter's family never matches: that letter is
-        never bound from the own package there (ENFORCE-051).
+        Each rule is restricted to its consumer file and exact call range. Native
+        bindings elect both receivers before rendering; spelling alone never
+        admits a shadowed name. Constructors, class bases and entity references
+        have no callable attribute witness and therefore remain unchanged.
 
         Returns:
-            The single native rule document keyed by its rule id, or nothing
-            when the lineage composes no component.
+            Rules for the identity-proven calls in the captured project sources.
+
+        Raises:
+            TypeError: A consumer has no native source module.
+            ValueError: A call has no complete native source position.
 
         """
         root = project.absolute()
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
-        references = cls.facade_component_references(
-            root, source_project=snapshot.engine
-        )
-        if not references:
+        engine = snapshot.engine
+        claims = cls._component_claims(root, source_project=engine)
+        if not claims:
             return {}
-        own = tuple(
-            FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(root)
-        )
-        members = FlextInfraUtilitiesFacadeMembers
-        lineage = members.facade_member_lineage(
-            package,
-            sorted(set(config.Infra.tooling.facade_members.owners.values())),
-            source_project=snapshot.engine,
-        )
-        sources = sorted({*lineage, *own})
-        targets: dict[str, set[str]] = {}
-        guards: dict[str, t.StrSequence] = {}
-        for (composer, target), found in references.items():
-            targets.setdefault(target, set()).update(found)
-            guards[target] = own if composer == package else sources
-        rule_id = (
+        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        prefix = (
             f"{c.Infra.FACADE_COMPONENT_RELOCATE_SHAPE}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
         )
-        return {
-            rule_id: {
-                "id": rule_id,
-                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
-                "severity": "error",
-                "rule": {
-                    "all": [
-                        {"kind": "attribute"},
-                        {"inside": {"kind": "call", "field": "function"}},
-                        {
-                            "not": {
-                                "inside": {
-                                    "kind": "class_definition",
-                                    "field": "superclasses",
-                                    "stopBy": "end",
-                                }
-                            }
+        rules: dict[str, t.JsonMapping] = {}
+        for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+            snapshot, root
+        ):
+            resource = engine.get_file(
+                path.relative_to(Path(engine.root.real_path)).as_posix()
+            )
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+                engine.get_pymodule(resource, force_errors=True)
+            )
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+                message = f"component consumer has no native source module: {path}"
+                raise TypeError(message)
+            for node, original, destination in cls._component_calls(module, claims):
+                if node.end_lineno is None or node.end_col_offset is None:
+                    message = f"component call has no complete native position: {path}"
+                    raise ValueError(message)
+                lines = module.source_code.splitlines()
+                # Python AST columns count UTF-8 bytes; ast-grep ranges count
+                # characters. Decode only the native line prefix at each edge.
+                start_column = len(
+                    lines[node.lineno - 1].encode("utf-8")[: node.col_offset].decode(
+                        "utf-8"
+                    )
+                )
+                end_column = len(
+                    lines[node.end_lineno - 1]
+                    .encode("utf-8")[: node.end_col_offset]
+                    .decode("utf-8")
+                )
+                rule_id = (
+                    f"{prefix}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
+                    f"{len(rules)}"
+                )
+                rules[rule_id] = {
+                    "id": rule_id,
+                    "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                    "severity": "error",
+                    "files": [f"**/{path.relative_to(root).as_posix()}"],
+                    "rule": {
+                        "kind": "attribute",
+                        "regex": f"^{re.escape(original)}$",
+                        "inside": {"kind": "call", "field": "function"},
+                        "range": {
+                            "start": {
+                                "line": node.lineno - 1,
+                                "column": start_column,
+                            },
+                            "end": {
+                                "line": node.end_lineno - 1,
+                                "column": end_column,
+                            },
                         },
-                        {"pattern": "$REF"},
-                        {"pattern": "$COMPONENT.$MEMBER"},
-                        {
-                            "has": {
-                                "field": "object",
-                                "all": [
-                                    {"pattern": "$COMPONENT"},
-                                    members.facade_letter_bound_rule(
-                                        {"pattern": "$COMPONENT"}, sources
-                                    ),
-                                ],
-                            }
-                        },
-                        {
-                            "any": [
-                                {
-                                    "regex": members.exact_alternation(sorted(found)),
-                                    **members.facade_letter_bound_rule(
-                                        {
-                                            "regex": "^"
-                                            + re.escape(target.partition(".")[0])
-                                            + "$"
-                                        },
-                                        guards[target],
-                                    ),
-                                }
-                                for target, found in sorted(targets.items())
-                            ]
-                        },
-                        {
-                            "not": {
-                                "inside": {
-                                    "kind": "assignment",
-                                    "field": "left",
-                                    "stopBy": "end",
-                                }
-                            }
-                        },
-                    ]
-                },
-                "rewriters": [
-                    {
-                        "id": f"to-{index}",
-                        "rule": {
-                            "regex": members.exact_alternation(sorted(found)),
-                            "pattern": "$OWNER.$NAME",
-                        },
-                        "fix": f"{target}.$NAME",
-                    }
-                    for index, (target, found) in enumerate(sorted(targets.items()))
-                ],
-                "transform": {
-                    "RELOCATED": {
-                        "rewrite": {
-                            "source": "$REF",
-                            "rewriters": [
-                                f"to-{index}" for index in range(len(targets))
-                            ],
-                        }
-                    }
-                },
-                "fix": "$RELOCATED",
-                "message": (
-                    "Family class `$COMPONENT` read as a namespace: read "
-                    "`$RELOCATED` through the facade letter."
-                ),
-            }
-        }
+                    },
+                    "fix": destination,
+                    "message": (
+                        f"Call `{original}` through its composed public facade "
+                        f"`{destination}`."
+                    ),
+                }
+        return rules
 
     @classmethod
     def facade_library_prefixes(

@@ -12,8 +12,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r, t
-from flext_infra import deps as dependency_services
+from flext_infra import c, config, deps as dependency_services, m, p, r, t
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.context_render import (
     FlextInfraCodegenConformContextRender,
@@ -181,8 +180,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
         runtime["runtime-evaluated-base-classes"] = list(runtime_bases)
         return (
-            dependency_services.FlextInfraPyprojectModernizer
-            .tooling_context_from_payload
+            dependency_services.FlextInfraPyprojectModernizer.tooling_context_from_payload
         )(
             payload,
             project_kind=tooling.project_kind,

@@ -12,9 +12,16 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r, t
-from flext_infra import check as validation_services
-from flext_infra import deps as dependency_services
+from flext_infra import (
+    c,
+    check as validation_services,
+    config,
+    deps as dependency_services,
+    m,
+    p,
+    r,
+    t,
+)
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.pyproject_policy import (
     FlextInfraCodegenConformPyprojectPolicy,
@@ -253,17 +260,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             codegen,
         )
         try:
-            delegated_rules = (
-                validation_services.FlextInfraGateRegistry
-                .default()
-                .delegated_lint_rules(
-                    tooling.tools.ruff.lint.rule_owners,
-                    check_gates=codegen.make.check_gates_default,
-                    repair_gates=(
-                        *codegen.make.check_gates_fixable,
-                        *codegen.make.fmt_gates,
-                    ),
-                )
+            delegated_rules = validation_services.FlextInfraGateRegistry.default().delegated_lint_rules(
+                tooling.tools.ruff.lint.rule_owners,
+                check_gates=codegen.make.check_gates_default,
+                repair_gates=(
+                    *codegen.make.check_gates_fixable,
+                    *codegen.make.fmt_gates,
+                ),
             )
         except ValueError as exc:
             return r[m.Infra.MakeRenderContext].fail(str(exc), exception=exc)
@@ -641,16 +644,14 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 project_declaration_resource=(
                     (
-                        dependency_services.FlextInfraEnsurePackagingPhase
-                        .declaration_resource
+                        dependency_services.FlextInfraEnsurePackagingPhase.declaration_resource
                     )(
                         package=repository.package,
                     )
                 ),
                 packaged_data_excludes=(
                     (
-                        dependency_services.FlextInfraEnsurePackagingPhase
-                        .resolve_data_excludes
+                        dependency_services.FlextInfraEnsurePackagingPhase.resolve_data_excludes
                     )(
                         repository_root,
                         packaged_data_paths,
@@ -665,8 +666,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 # project declaration; conform owns no inferred Hatch hook.
                 hatch_build_hook_path=project.hatch_build_hook_path,
                 uv_cache_key_files=(
-                    dependency_services.FlextInfraEnsurePackagingPhase
-                    .uv_cache_key_files
+                    dependency_services.FlextInfraEnsurePackagingPhase.uv_cache_key_files
                 )(
                     project.hatch_build_hook_path,
                 ),

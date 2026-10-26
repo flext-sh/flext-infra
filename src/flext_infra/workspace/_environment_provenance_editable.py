@@ -42,8 +42,12 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
                 "member declaration needs one installed distribution: "
                 f"{distribution_name}",
             )
-        if not Path(str(matches[0].locate_file(""))).resolve().is_relative_to(
-            environment_root.resolve(),
+        if (
+            not Path(str(matches[0].locate_file("")))
+            .resolve()
+            .is_relative_to(
+                environment_root.resolve(),
+            )
         ):
             return result.fail(
                 "member distribution is outside the owned environment: "

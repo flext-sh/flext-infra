@@ -224,9 +224,10 @@ class FlextInfraUtilitiesImportLawRoutes(
                             attributes=(*target.attributes, *prefix),
                             qualified_base=f"{target.qualified_base}.{suffix}",
                         )
-                        if base.qualified_base in members.class_reaches(
-                            (child,), (base,)
-                        )[0]:
+                        if (
+                            base.qualified_base
+                            in members.class_reaches((child,), (base,))[0]
+                        ):
                             continue
                     msg = (
                         f"{state.scope.file_path}: local facade changes consumed "

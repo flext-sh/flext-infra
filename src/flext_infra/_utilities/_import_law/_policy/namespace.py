@@ -11,20 +11,17 @@ from functools import cache
 from importlib.metadata import entry_points
 from importlib.util import find_spec
 from pathlib import Path
-from time import monotonic
 from types import MappingProxyType
 from typing import Literal
 
 import flext_core
-from flext_cli import settings, u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, p, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
@@ -52,7 +49,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 project_root, file_path
             )
         return snapshot.import_namespaces[key]
-
 
     @classmethod
     def import_namespace(
@@ -102,7 +98,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             parts = parts[:-1]
         return namespace_dir, ".".join(parts)
 
-
     @staticmethod
     @cache
     def _layer_alias_modules() -> t.MappingKV[str, str]:
@@ -127,7 +122,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 raise TypeError(msg)
             modules[facade.__module__.rpartition(".")[2]] = layer
         return MappingProxyType(modules)
-
 
     @classmethod
     def module_import_layer(cls, module: str) -> int:
@@ -161,7 +155,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 return order.index(layer)
         return order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
 
-
     @staticmethod
     @cache
     def pytest_plugin_modules() -> frozenset[str]:
@@ -175,7 +168,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             entry.module
             for entry in entry_points(group=c.Infra.IMPORT_LAW_PYTEST_PLUGIN_GROUP)
         )
-
 
     @staticmethod
     @cache
@@ -229,7 +221,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                         pending.append(source)
         return frozenset(found)
 
-
     @classmethod
     def import_module_role(cls, module: str) -> Literal["layer0", "family", "consumer"]:
         """Classify a module from the canonical singleton and family vocabulary.
@@ -261,7 +252,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             if stem in config.Infra.tooling.lazy_init.import_layer_order:
                 return "consumer"
         return "consumer"
-
 
     @classmethod
     def import_source_role(
@@ -308,7 +298,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             )
         return role
 
-
     @classmethod
     def import_direct_module(cls, namespace_dir: Path, file_path: Path) -> bool:
         """Return whether one module keeps direct leaf imports.
@@ -332,7 +321,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             and relative.name == c.Infra.IMPORT_LAW_FAMILY_BASE_FILE
             and relative.parts[-2].startswith("_")
         )
-
 
     @classmethod
     def import_lazy_exports(
@@ -395,7 +383,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             for name in names
         }
 
-
     @staticmethod
     def import_package_dir(
         project_root: Path,
@@ -424,7 +411,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             )
         return None
 
-
     @staticmethod
     def import_bootstrap_dependency(
         namespace: str,
@@ -447,7 +433,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 visited.add(current)
                 pending.extend(import_graph.get(current, ()))
         return False
-
 
     @staticmethod
     def import_facade_dependencies(
@@ -472,7 +457,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                     visited.add(current)
                     pending.extend(import_graph.get(current, ()))
         return frozenset(dependencies)
-
 
     @classmethod
     def resolve_declared_binding(
@@ -551,7 +535,6 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 project.get_module(route.target)
             )
         return provider.get_attributes().get(alias_name)
-
 
 
 __all__: list[str] = ["FlextInfraUtilitiesImportLawPolicyNamespace"]

@@ -10,8 +10,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
-from flext_infra import deps as dependency_services
+from flext_infra import c, deps as dependency_services, m, p, r, t
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.existing_plan import (
     FlextInfraCodegenConformExistingPlan,

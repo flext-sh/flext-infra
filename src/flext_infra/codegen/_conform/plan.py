@@ -14,8 +14,7 @@ from typing import Literal
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
-from flext_infra import workspace as workspace_services
+from flext_infra import c, m, p, r, t, workspace as workspace_services
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.scaffold_plan import (
     FlextInfraCodegenConformScaffoldPlan,
@@ -336,7 +335,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             for participant in selected.value
             if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
         )
-        roots = tuple((root / participant.path).resolve() for participant in participants)
+        roots = tuple(
+            (root / participant.path).resolve() for participant in participants
+        )
         previous_snapshot = self.state.snapshot
         with (
             generation.workspace_snapshot(root, roots) as snapshot,
@@ -423,8 +424,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         workspace = self.state.initial_workspace
         if workspace is None:
             workspace_result = (
-                workspace_services.FlextInfraWorkspaceDetector
-                .load_workspace_spec(
+                workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(
                     root,
                     inputs=inputs,
                     allow_unprovisioned_members=(

@@ -193,9 +193,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             source, inputs, class_only=False, declared=declared
         )
         mode = (
-            declared[source].desired_mode
-            if source in declared
-            else states[source].mode
+            declared[source].desired_mode if source in declared else states[source].mode
         )
         if mode is None:
             raise FileNotFoundError(source)

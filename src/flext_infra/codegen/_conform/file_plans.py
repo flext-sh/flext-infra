@@ -12,9 +12,9 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra.deps import phases as dependency_phases
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.bootstrap import FlextInfraCodegenConformBootstrap
+from flext_infra.deps import phases as dependency_phases
 
 
 class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
