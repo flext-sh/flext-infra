@@ -200,7 +200,7 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(exclude=True, description="Native staged source-view owner"),
         ]
         candidate_validator: Annotated[
-            t.Port[Callable[[Path, Path], p.Result[bool]]],
+            t.Port[Callable[[Path, Path, t.VariadicTuple[Path]], p.Result[bool]]],
             m.Field(
                 exclude=True,
                 description="Native cold-import admission in the source runtime",

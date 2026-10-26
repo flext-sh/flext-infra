@@ -70,12 +70,16 @@ class FlextInfraConformWiring:
         )
 
     @staticmethod
-    def validate_codegen_candidate(root: Path, candidate: Path) -> p.Result[bool]:
+    def validate_codegen_candidate(
+        root: Path,
+        candidate: Path,
+        projects: t.VariadicTuple[Path],
+    ) -> p.Result[bool]:
         """Admit the complete candidate through the existing fresh-import owner.
 
         The source repository elects its physical runtime. Only the candidate's
-        sources are probed; a successful import of the live package cannot admit
-        a half-published facade and initializer cohort.
+        sources of every owning project are probed; a successful import of the
+        live package cannot admit a half-published facade and initializer cohort.
 
         Returns:
             Acceptance, or the original native runtime or import failure.
@@ -85,13 +89,16 @@ class FlextInfraConformWiring:
         if workspace.failure:
             return r[bool].from_failure(workspace)
         repository = candidate / root.relative_to(workspace.value)
+        repositories = tuple(
+            candidate / project.relative_to(workspace.value) for project in projects
+        )
         return (
             FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
             .flat_map(
                 lambda runtime: validate.FlextInfraValidateFreshImport(
                     repository_root=repository,
                     runtime_root=runtime,
-                ).build_report(repository_roots=(repository,))
+                ).build_report(repository_roots=repositories)
             )
             .flat_map(
                 lambda report: r[bool].ok(value=True)

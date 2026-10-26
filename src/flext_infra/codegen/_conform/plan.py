@@ -315,6 +315,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Withholding a private child's exports changes the interfaces its generated
         parent facades consume. The existing source convergence owns those coupled
         plans; an initializer-only filter must not split that publication cohort.
+        Each selected repository retains its own snapshot authority through the
+        same invocation, including declared-subproject scope.
 
         Returns:
             The dependency-complete source plan, or the first planning failure.
@@ -338,6 +340,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         previous_snapshot = self.state.snapshot
         with (
             generation.workspace_snapshot(root, roots) as snapshot,
+            ExitStack() as repository_snapshots,
             self.shared_source_views(),
         ):
             self.state.snapshot = snapshot
@@ -352,6 +355,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 files = {file.path: file for file in planned.value}
                 for participant in participants:
                     project = (root / participant.path).resolve()
+                    self.state.snapshot = (
+                        snapshot
+                        if project == root
+                        else repository_snapshots.enter_context(
+                            generation.workspace_snapshot(project, ())
+                        )
+                    )
                     project_inputs = (
                         r[m.Infra.CodegenInputs].ok(inputs)
                         if project == root

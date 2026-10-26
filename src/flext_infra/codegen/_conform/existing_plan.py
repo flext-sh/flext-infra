@@ -629,13 +629,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if snapshot is not None and snapshot is not self.state.snapshot:
             message = "component initializer snapshot differs from the run"
             raise ValueError(message)
-        with self._source_view(root, declared_files=declared_files) as projected:
-            return FlextInfraCodegenLazyInit(
-                repository_root=root, project_scope_roots=(root,)
-            ).plan_files(
-                source_project=projected[0],
-                snapshot=self.state.snapshot,
-            )
+        active = self.state.snapshot
+        if active is None:
+            message = "projected exports require the run snapshot"
+            raise RuntimeError(message)
+        return FlextInfraCodegenLazyInit.plan_candidate(
+            root, declared_files=declared_files, snapshot=active
+        )
 
     def _existing_lazy_sources(
         self,

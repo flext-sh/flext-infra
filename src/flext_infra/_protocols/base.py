@@ -113,7 +113,9 @@ class FlextInfraProtocolsBase(Protocol):
         def source_preview(self) -> FlextInfraProtocolsBase.SourcePreview: ...
 
         @property
-        def candidate_validator(self) -> Callable[[Path, Path], p.Result[bool]]: ...
+        def candidate_validator(
+            self,
+        ) -> Callable[[Path, Path, t.VariadicTuple[Path]], p.Result[bool]]: ...
 
         @property
         def imports_planner(

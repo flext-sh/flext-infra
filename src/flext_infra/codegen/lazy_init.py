@@ -35,6 +35,7 @@ from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 class FlextInfraCodegenLazyInit(
     FlextInfraCodegenExecutionBase[bool],
     m.Infra.ModuleSelectionMixin,
+    FlextInfraUtilitiesCodegenFacades,
 ):
     """Plan every generated ``__init__.py`` of the selected repositories."""
 
@@ -47,6 +48,27 @@ class FlextInfraCodegenLazyInit(
             ),
         ),
     ] = None
+
+    @classmethod
+    def plan_candidate(
+        cls,
+        root: Path,
+        *,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        snapshot: p.Infra.WorkspaceSnapshot,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan this candidate's exports through the existing public initializer.
+
+        Returns:
+            The same initializer cohort for conformance and source composition.
+
+        """
+        with cls.facade_source_project(
+            root, declared_files=declared_files
+        ) as (project, _sources):
+            return cls(
+                repository_root=root, project_scope_roots=(root,)
+            ).plan_files(source_project=project, snapshot=snapshot)
 
     @override
     def execute(self) -> p.Result[bool]:

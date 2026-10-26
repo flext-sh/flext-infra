@@ -339,7 +339,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 else None
                 for file in files
             },
-            lambda candidate, _paths: ports.candidate_validator(root, candidate),
+            lambda candidate, _paths: ports.candidate_validator(
+                root,
+                candidate,
+                tuple(sorted({
+                    file.project
+                    for file in files
+                    if file.path.suffix == c.Infra.EXT_PYTHON
+                })),
+            ),
             options=m.Infra.CodegenSourcePreviewOptions(
                 declared_files=files,
                 inputs=tuple(file.before for file in files),

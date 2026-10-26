@@ -996,7 +996,7 @@ class FlextInfraUtilitiesCodegenFacades(
         snapshot: p.Infra.WorkspaceSnapshot,
         initializer_planner: p.Infra.SourceInitializerPlanner,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Compose recursive domains and their initializers in one candidate.
+        """Compose recursive domains, root facades and exports in one candidate.
 
         Existing file plans retain their physical witnesses and tombstones.
         Every source move and seed is rebound before its renderer consumes it.
@@ -1039,7 +1039,98 @@ class FlextInfraUtilitiesCodegenFacades(
             final = cls._component_render(root, domain, seed, staged)
             planned[final.path] = final
             staged[final.path] = final
+        with cls.facade_source_project(
+            root, declared_files=tuple(staged.values())
+        ) as (project, sources):
+            layout = FlextInfraUtilitiesCodegenNamespace.layout(
+                root, rope_project=project
+            )
+            packages = {
+                path.parent
+                for path in sources
+                if path.is_relative_to(root)
+                and path.suffix == c.Infra.EXT_PYTHON
+                and path.parent / c.Infra.INIT_PY in sources
+            }
+            if layout is not None and layout.class_stem:
+                packages.add(layout.package_dir)
+        for declared_family in (
+            FlextInfraUtilitiesCodegenNamespace.facade_families().values()
+        ):
+            family = c.Infra.FacadeFamily(declared_family.letter)
+            for package in sorted(packages):
+                with cls.facade_source_project(
+                    root, declared_files=tuple(staged.values())
+                ) as (project, sources):
+                    if (
+                        layout is None or package != layout.package_dir
+                    ) and cls.facade_module_path(
+                        package, family, project=project, sources=sources
+                    ) is None:
+                        continue
+                    final = cls._component_root_facade(
+                        root, package, family, project, sources
+                    )
+                if final is not None:
+                    planned[final.path] = final
+                    staged[final.path] = final
+        initializers = initializer_planner(
+            root, declared_files=tuple(staged.values()), snapshot=snapshot
+        )
+        if initializers.failure:
+            return result_type.from_failure(initializers)
+        planned.update((plan.path, plan) for plan in initializers.value)
         return result_type.ok(tuple(planned.values()))
+
+    @classmethod
+    def _component_root_facade(
+        cls,
+        root: Path,
+        package: Path,
+        family: c.Infra.FacadeFamily,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+    ) -> m.Infra.CodegenFilePlan | None:
+        """Plan one root family through its existing renderer and source witness.
+
+        Returns:
+            The root facade plan, or no plan when this package owns no family.
+
+        """
+        path = cls.facade_module_path(
+            package, family, project=project, sources=sources
+        )
+        if family is c.Infra.FacadeFamily.T:
+            if path is None or not project.source_query(
+                package
+                / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory,
+                "isdir",
+            ):
+                return None
+            rendered = cls.render_type_facade(
+                package, path, sources, project=project
+            )
+        else:
+            rendered = cls.render_utility_facade(
+                package, family=family, project=project, sources=sources
+            )
+        if rendered is None:
+            return None
+        if path is None:
+            message = f"Rendered {family} facade has no declaring module"
+            raise ValueError(message)
+        before = project.source_state(path, required=False)
+        return m.Infra.CodegenFilePlan(
+            project=root,
+            path=path,
+            before=before,
+            desired_content=rendered.encode(c.DEFAULT_ENCODING),
+            desired_mode=(
+                before.mode
+                if before.mode is not None
+                else config.Infra.codegen.modes.file_default
+            ),
+        )
 
     @staticmethod
     def _component_domains(
