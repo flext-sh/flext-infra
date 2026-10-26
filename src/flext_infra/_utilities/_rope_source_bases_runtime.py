@@ -792,7 +792,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> str:
             """Follow one provider module's reexport chain to a class identity.
 
-            Completed source bindings take precedence over stale native imports.
+            Completed owned-source bindings take precedence over stale imports.
+            Providers retain their native Rope import provenance.
 
             Returns:
                 The resolved declaration identity.
@@ -877,15 +878,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             binding: p.Infra.RopeImportedName,
             attributes: t.StrTuple,
         ) -> m.Infra.SourceClassReference | None:
-            """Prefer an authenticated source binding over a stale native import.
+            """Prefer captured owned-source bindings over stale native imports.
 
             Returns:
-                The source reference when it supersedes the native import.
+                The owned source override; external providers keep native imports.
 
             Raises:
                 ValueError: If the source binding has no declared provider.
 
             """
+            module_name = module.get_name()
+            if module_name not in self._sources:
+                return None
             declaring = module.get_module()
             if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
                 return None
@@ -893,15 +897,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if resource is None:
                 return None
             name, *remaining = attributes
-            module_name = module.get_name()
-            captured = self._sources.get(
-                module_name,
-                (Path(resource.real_path), declaring.source_code),
-            )
+            captured = self._sources[module_name]
             bindings = self._inventory(
                 module_name,
                 captured,
-                allow_conditional=module_name not in self._sources,
+                allow_conditional=False,
                 provider=declaring if declaring.source_code == captured[1] else None,
             )
             reference = bindings.get(name)
