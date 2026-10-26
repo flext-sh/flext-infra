@@ -1,10 +1,10 @@
 """Facade component calls use their identity-proven composed public receiver.
 
 Every facade letter, and every namespace class nested in it, composes family
-component classes by MRO. A consumer that reads a member through the component
-class (``FlextInfraConstantsPytest.X``) instead of the facade namespace
-(``c.Infra.X``) bypasses the facade alphabet; the generated rules here rewrite
-it, with the mapping derived from the native source composition, never listed.
+component classes by MRO. A consumer that calls a method through the component
+class instead of its composed facade namespace bypasses the facade alphabet.
+The generated rules derive both receiver identities from native composition;
+constructors and entity references retain their declared owners.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,6 +21,7 @@ from pathlib import Path
 from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesFacadeMembers,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
 )
 from flext_infra._utilities._codemod.codemod_native_package_utilities import (
@@ -37,6 +38,9 @@ from flext_infra._utilities._rope.rope_runtime_types import (
 )
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
+)
+from flext_infra._utilities.workspace_snapshot import (
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 
 
@@ -113,7 +117,12 @@ class FlextInfraUtilitiesFacadeComponents:
     def _component_ancestors(
         holder: p.Infra.RopeClassObject,
     ) -> t.VariadicTuple[p.Infra.RopeClassObject]:
-        """Traverse native ancestry without electing a second method order."""
+        """Traverse native ancestry without electing a second method order.
+
+        Returns:
+            The resulting ``t.VariadicTuple[p.Infra.RopeClassObject]``.
+
+        """
         pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(holder))
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
@@ -129,32 +138,6 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(ancestors)
 
     @classmethod
-    def _composed_references(
-        cls,
-        root: str,
-        letters: t.StrSequence,
-        holder: p.Infra.RopeClassObject,
-        *,
-        source_project: p.Infra.RopeProject,
-    ) -> t.StrSequence:
-        """Reference each method a component ancestor composes into ``holder``.
-
-        A base is a component when ``root`` declares it and it is not itself a
-        facade letter of ``root``; its public member counts when the holder
-        resolves the identical object by MRO (a lazy alias is never evaluated).
-
-        Returns:
-            The exact ``Component.member`` texts.
-
-        """
-        return tuple(
-            f"{base.get_name()}.{member}"
-            for base, member in cls._composed_methods(
-                root, letters, holder, source_project=source_project
-            )
-        )
-
-    @classmethod
     def _composed_methods(
         cls,
         root: str,
@@ -163,7 +146,12 @@ class FlextInfraUtilitiesFacadeComponents:
         *,
         source_project: p.Infra.RopeProject,
     ) -> t.SequenceOf[t.Pair[p.Infra.RopeClassObject, str]]:
-        """Keep component receivers only when their effective method is identical."""
+        """Keep component receivers only when their effective method is identical.
+
+        Returns:
+            The resulting ``t.SequenceOf[t.Pair[p.Infra.RopeClassObject, str]]``.
+
+        """
         members = FlextInfraUtilitiesFacadeMembers
         facades = tuple(
             members.facade_source_classes(
@@ -177,7 +165,16 @@ class FlextInfraUtilitiesFacadeComponents:
             (base, member)
             for base in cls._component_ancestors(holder)
             if (module := base.get_module()) is not None
-            and (module.get_name() == root or module.get_name().startswith(f"{root}."))
+            and (
+                (
+                    name
+                    := FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                        module, source_project=source_project
+                    )
+                )
+                == root
+                or name.startswith(f"{root}.")
+            )
             and base not in facades
             for member, binding in members.facade_source_members(
                 base, source_project=source_project
@@ -199,7 +196,13 @@ class FlextInfraUtilitiesFacadeComponents:
         t.Pair[p.Infra.RopeClassObject, str],
         t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]],
     ]:
-        """Retain native receiver identities while discovering public composition."""
+        """Retain native receiver identities while discovering public composition.
+
+        Returns:
+            The resulting ``t.MappingKV[t.Pair[p.Infra.RopeClassObject, str],
+                t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]]]``.
+
+        """
         package = FlextInfraUtilitiesPyproject.project_package_name(project)
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         claims: dict[
@@ -220,7 +223,12 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @staticmethod
     def _component_facade(value: p.Infra.RopeClassObject) -> bool:
-        """Recognize a sibling facade backed by its native private child domain."""
+        """Recognize a sibling facade backed by its native private child domain.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
         module = value.get_module()
         resource = None if module is None else module.get_resource()
         return (
@@ -238,7 +246,17 @@ class FlextInfraUtilitiesFacadeComponents:
             t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]],
         ],
     ) -> t.SequenceOf[t.Triple[ast.Attribute, str, str]]:
-        """Prove both the imported component and its lexical facade receiver."""
+        """Prove both the imported component and its lexical facade receiver.
+
+        Returns:
+            The resulting ``t.SequenceOf[t.Triple[ast.Attribute, str, str]]``.
+
+        Raises:
+            TypeError: If component consumer has no native module tree.
+            ValueError: If component method has competing bound facades; or if component
+                method has no native source segment.
+
+        """
         tree = module.get_ast()
         if not isinstance(tree, ast.Module):
             message = (
@@ -252,8 +270,6 @@ class FlextInfraUtilitiesFacadeComponents:
             for base in declaration.bases
             for node in ast.walk(base)
         }
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
         references: list[t.Triple[ast.Attribute, str, str]] = []
         for call in ast.walk(tree):
             if (
@@ -262,48 +278,213 @@ class FlextInfraUtilitiesFacadeComponents:
                 or id(reference) in bases
             ):
                 continue
-            offset = runtime.source_offset(module.source_code, reference)
-            scope = module.get_source_binding_index().context_at(offset).environment
-            receiver = runtime.resolve_symbol(scope, reference.value)
-            if (
-                receiver is None
-                or not types.abstract_class(component := receiver.get_object())
-                or cls._component_facade(component)
-            ):
+            destination = cls._component_destination(module, reference, claims)
+            if destination is None:
                 continue
-            targets = claims.get((component, reference.attr), ())
-            if not targets:
+            text = ast.get_source_segment(module.source_code, reference)
+            if text is None:
+                message = "component method has no native source segment"
+                raise ValueError(message)
+            references.append((reference, text, destination))
+        return tuple(references)
+
+    @classmethod
+    def _component_destination(
+        cls,
+        module: p.Infra.RopePyModule,
+        reference: ast.Attribute,
+        claims: t.MappingKV[
+            t.Pair[p.Infra.RopeClassObject, str],
+            t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]],
+        ],
+    ) -> str | None:
+        """Elect an already bound facade for one native component call.
+
+        Returns:
+            The identity-proven destination, or none without a bound facade.
+
+        Raises:
+            ValueError: If the method has competing bound facade destinations.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        offset = runtime.source_offset(module.source_code, reference)
+        scope = module.get_source_binding_index().context_at(offset).environment
+        receiver = runtime.resolve_symbol(scope, reference.value)
+        if (
+            receiver is None
+            or not types.abstract_class(component := receiver.get_object())
+            or cls._component_facade(component)
+        ):
+            return None
+        targets = claims.get((component, reference.attr), ())
+        original = runtime.resolve_symbol(scope, reference)
+        if original is None or not types.py_function(original.get_object()):
+            return None
+        destinations = cls._bound_destinations(scope, reference, original, targets)
+        if len(destinations) > 1:
+            message = (
+                "component method has competing bound facades: "
+                f"{module.get_name()}:{ast.unparse(reference)}: "
+                f"{sorted(destinations)}"
+            )
+            raise ValueError(message)
+        return next(iter(destinations)) if destinations else None
+
+    @staticmethod
+    def _bound_destinations(
+        scope: p.Infra.RopeScope,
+        reference: ast.Attribute,
+        original: p.Infra.RopePyName,
+        targets: t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]],
+    ) -> set[str]:
+        """Retain effective native callable identities in the consumer scope.
+
+        Returns:
+            Bound facade calls resolving to the original native callable.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        destinations: set[str] = set()
+        for _root, target, holder in targets:
+            public = runtime.resolve_symbol(scope, ast.parse(target, mode="eval").body)
+            if public is None or public.get_object() is not holder:
                 continue
-            original = runtime.resolve_symbol(scope, reference)
-            if original is None or not types.py_function(original.get_object()):
-                continue
-            destinations: set[str] = set()
-            for _root, target, holder in targets:
-                public = runtime.resolve_symbol(
-                    scope, ast.parse(target, mode="eval").body
-                )
-                if public is None or public.get_object() is not holder:
-                    continue
-                destination = f"{target}.{reference.attr}"
-                actual = runtime.resolve_symbol(
-                    scope, ast.parse(destination, mode="eval").body
-                )
-                if actual is not None and runtime.same_name(original, actual):
-                    destinations.add(destination)
-            if len(destinations) > 1:
+            destination = f"{target}.{reference.attr}"
+            actual = runtime.resolve_symbol(
+                scope, ast.parse(destination, mode="eval").body
+            )
+            if actual is not None and runtime.same_name(original, actual):
+                destinations.add(destination)
+        return destinations
+
+    @staticmethod
+    def _consumer_module(
+        engine: p.Infra.RopeProject, path: Path
+    ) -> p.Infra.RopePyModule:
+        """Load one native source module through the captured project owner.
+
+        Returns:
+            The source module authenticated by the captured project.
+
+        Raises:
+            TypeError: If the consumer is not a native source module.
+
+        """
+        resource = engine.get_file(
+            path.relative_to(Path(engine.root.real_path)).as_posix()
+        )
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+            engine.get_pymodule(resource, force_errors=True)
+        )
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            message = f"component consumer has no native source module: {path}"
+            raise TypeError(message)
+        return module
+
+    @staticmethod
+    def _call_witness(node: ast.Attribute, original: str, source: str) -> t.JsonDict:
+        """Translate Python UTF-8 byte columns to ast-grep character ranges.
+
+        Returns:
+            The exact source-text and character-range witness for this call.
+
+        Raises:
+            ValueError: If the call lacks a complete native source position.
+
+        """
+        if node.end_lineno is None or node.end_col_offset is None:
+            message = "component call has no complete native position"
+            raise ValueError(message)
+        lines = source.splitlines()
+        return {
+            "regex": f"^{re.escape(original)}$",
+            "range": {
+                "start": {
+                    "line": node.lineno - 1,
+                    "column": len(
+                        lines[node.lineno - 1]
+                        .encode("utf-8")[: node.col_offset]
+                        .decode("utf-8")
+                    ),
+                },
+                "end": {
+                    "line": node.end_lineno - 1,
+                    "column": len(
+                        lines[node.end_lineno - 1]
+                        .encode("utf-8")[: node.end_col_offset]
+                        .decode("utf-8")
+                    ),
+                },
+            },
+        }
+
+    @classmethod
+    def _component_rule(
+        cls,
+        rule_id: str,
+        relative: str,
+        namespace: str,
+        calls: t.SequenceOf[t.Triple[ast.Attribute, str, str]],
+        source: str,
+    ) -> t.JsonMapping:
+        """Group native call witnesses by consumer file and public namespace.
+
+        Returns:
+            One declarative rule for the identity-proven calls and replacements.
+
+        Raises:
+            ValueError: If a source spelling has competing facade destinations.
+
+        """
+        witnesses: list[t.JsonValue] = []
+        replacements: dict[str, str] = {}
+        for node, original, destination in calls:
+            witnesses.append(cls._call_witness(node, original, source))
+            if original in replacements and replacements[original] != destination:
                 message = (
-                    "component method has competing bound facades: "
-                    f"{module.get_name()}:{ast.unparse(reference)}: "
-                    f"{sorted(destinations)}"
+                    "component spelling has competing namespace destinations: "
+                    f"{relative}:{original}"
                 )
                 raise ValueError(message)
-            if destinations:
-                text = ast.get_source_segment(module.source_code, reference)
-                if text is None:
-                    message = "component method has no native source segment"
-                    raise ValueError(message)
-                references.append((reference, text, next(iter(destinations))))
-        return tuple(references)
+            replacements[original] = destination
+        rewriters: list[t.JsonValue] = [
+            {
+                "id": f"to-{index}",
+                "rule": {"regex": f"^{re.escape(original)}$"},
+                "fix": destination,
+            }
+            for index, (original, destination) in enumerate(
+                sorted(replacements.items())
+            )
+        ]
+        return {
+            "id": rule_id,
+            "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+            "severity": "error",
+            "files": [f"**/{relative}"],
+            "rule": {
+                "kind": "attribute",
+                "pattern": "$REF",
+                "inside": {"kind": "call", "field": "function"},
+                "any": witnesses,
+            },
+            "rewriters": rewriters,
+            "transform": {
+                "RELOCATED": {
+                    "rewrite": {
+                        "source": "$REF",
+                        "rewriters": [f"to-{index}" for index in range(len(rewriters))],
+                    }
+                }
+            },
+            "fix": "$RELOCATED",
+            "message": (
+                "Call the component method through its composed public "
+                f"facade `{namespace}`."
+            ),
+        }
 
     @classmethod
     def codemod_facade_component_rules(
@@ -311,89 +492,43 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> t.MappingKV[str, t.JsonMapping]:
         """Render native-proven component calls through their bound public facade.
 
-        Each rule is restricted to its consumer file and exact call range. Native
-        bindings elect both receivers before rendering; spelling alone never
-        admits a shadowed name. Constructors, class bases and entity references
-        have no callable attribute witness and therefore remain unchanged.
+        Calls share one rule per consumer file and public namespace, with exact
+        native call-range alternatives. Bindings elect both receivers before
+        rendering; spelling alone never admits a shadowed name. Constructors,
+        class bases and entity references remain unchanged.
 
         Returns:
             Rules for the identity-proven calls in the captured project sources.
 
-        Raises:
-            TypeError: A consumer has no native source module.
-            ValueError: A call has no complete native source position.
-
         """
         root = project.absolute()
-        engine = snapshot.engine
-        claims = cls._component_claims(root, source_project=engine)
+        claims = cls._component_claims(root, source_project=snapshot.engine)
         if not claims:
             return {}
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
         prefix = (
             f"{c.Infra.FACADE_COMPONENT_RELOCATE_SHAPE}"
-            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
+            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
+            f"{FlextInfraUtilitiesPyproject.project_package_name(root)}"
         )
         rules: dict[str, t.JsonMapping] = {}
         for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
             snapshot, root
         ):
-            resource = engine.get_file(
-                path.relative_to(Path(engine.root.real_path)).as_posix()
-            )
-            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
-                engine.get_pymodule(resource, force_errors=True)
-            )
-            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
-                message = f"component consumer has no native source module: {path}"
-                raise TypeError(message)
-            for node, original, destination in cls._component_calls(module, claims):
-                if node.end_lineno is None or node.end_col_offset is None:
-                    message = f"component call has no complete native position: {path}"
-                    raise ValueError(message)
-                lines = module.source_code.splitlines()
-                # Python AST columns count UTF-8 bytes; ast-grep ranges count
-                # characters. Decode only the native line prefix at each edge.
-                start_column = len(
-                    lines[node.lineno - 1].encode("utf-8")[: node.col_offset].decode(
-                        "utf-8"
-                    )
-                )
-                end_column = len(
-                    lines[node.end_lineno - 1]
-                    .encode("utf-8")[: node.end_col_offset]
-                    .decode("utf-8")
-                )
+            module = cls._consumer_module(snapshot.engine, path)
+            groups: dict[str, list[t.Triple[ast.Attribute, str, str]]] = {}
+            for witness in cls._component_calls(module, claims):
+                groups.setdefault(witness[2].rpartition(".")[0], []).append(witness)
+            for namespace, calls in sorted(groups.items()):
                 rule_id = (
-                    f"{prefix}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
-                    f"{len(rules)}"
+                    f"{prefix}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{len(rules)}"
                 )
-                rules[rule_id] = {
-                    "id": rule_id,
-                    "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
-                    "severity": "error",
-                    "files": [f"**/{path.relative_to(root).as_posix()}"],
-                    "rule": {
-                        "kind": "attribute",
-                        "regex": f"^{re.escape(original)}$",
-                        "inside": {"kind": "call", "field": "function"},
-                        "range": {
-                            "start": {
-                                "line": node.lineno - 1,
-                                "column": start_column,
-                            },
-                            "end": {
-                                "line": node.end_lineno - 1,
-                                "column": end_column,
-                            },
-                        },
-                    },
-                    "fix": destination,
-                    "message": (
-                        f"Call `{original}` through its composed public facade "
-                        f"`{destination}`."
-                    ),
-                }
+                rules[rule_id] = cls._component_rule(
+                    rule_id,
+                    path.relative_to(root).as_posix(),
+                    namespace,
+                    calls,
+                    module.source_code,
+                )
         return rules
 
     @classmethod

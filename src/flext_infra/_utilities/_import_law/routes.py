@@ -8,17 +8,16 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableMapping
-from contextlib import ExitStack
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
-from flext_infra._utilities._import_law.ast import FlextInfraUtilitiesImportLawAst
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._semantic_cutover.bindings import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
 
@@ -94,56 +93,48 @@ class FlextInfraUtilitiesImportLawRoutes(
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
         """
-        with ExitStack() as stack:
-            return cls._import_law_native_route_edits(
-                state,
-                lines,
-                stack,
-                sources=sources,
-                rope_project=rope_project,
-                member_resolver=member_resolver,
-            )
+        return cls._import_law_native_route_edits(
+            state,
+            lines,
+            sources=sources,
+            native=(rope_project, member_resolver),
+        )
 
     @classmethod
     def _import_law_native_route_edits(
         cls,
         state: m.Infra.ImportLawPass,
         lines: t.StrSequence,
-        stack: ExitStack,
         *,
         sources: t.MappingKV[Path, str] | None,
-        rope_project: p.Infra.RopeProject | None,
-        member_resolver: p.Infra.RopeSourceMemberResolver | None,
+        native: t.Pair[
+            p.Infra.RopeProject | None, p.Infra.RopeSourceMemberResolver | None
+        ],
     ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
         """Route aliases only when the declared native bindings are identical.
 
         Returns:
             Import edits with one provider per lexical facade binding.
 
+        Raises:
+            ValueError: If the caller did not supply its captured source project.
+
         """
         edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
         bindings: dict[tuple[int, str], tuple[str, str]] = {}
-        members = member_resolver
+        rope_project, members = native
+        if rope_project is None:
+            message = "import routes require the captured source project"
+            raise ValueError(message)
+        project = rope_project
 
         def resolve(module: str, name: str) -> p.Infra.RopePyName | None:
-            nonlocal rope_project
-            if rope_project is None:
-                rope_project = stack.enter_context(
-                    FlextInfraUtilitiesRopeRuntime.open_import_project(
-                        state.scope.project_root
-                    )
-                )
-                if sources is not None:
-                    rope_project = FlextInfraUtilitiesRopeRuntime.snapshot_project(
-                        rope_project, sources
-                    )
-                    stack.callback(rope_project.close)
             return cls.resolve_declared_binding(
-                rope_project,
+                project,
                 module,
                 name,
                 state.scope.project_root,
-                sources if sources is not None else {},
+                sources or {},
             )
 
         def inherited(
@@ -152,89 +143,13 @@ class FlextInfraUtilitiesImportLawRoutes(
             original: p.Infra.RopePyName,
             local: p.Infra.RopePyName,
         ) -> bool:
-            nonlocal members
-            if rope_project is None:
-                msg = "import ancestry requires the resolved source project"
-                raise ValueError(msg)
-            if not (
-                FlextInfraUtilitiesRopeRuntime.py_class(original.get_object())
-                and FlextInfraUtilitiesRopeRuntime.py_class(local.get_object())
-            ):
-                return False
-            module, alias = imported
-            if members is None:
-                captured: dict[str, t.Pair[Path, str]] = {}
-                for path, text in (sources or {}).items():
-                    resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
-                        rope_project, path
-                    )
-                    if resource is None:
-                        continue
-                    provider = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                        rope_project, resource
-                    )
-                    captured[provider.get_name()] = path, text
-                members = (
-                    FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver(
-                        rope_project, sources=captured
-                    )
-                )
-            source = m.Infra.SourceClassReference(
-                target=module,
-                attributes=(alias.name,),
-                qualified_base=f"{module}.{alias.name}",
+            return cls._import_law_inherited_facade(
+                state,
+                imported,
+                (root, original, local),
+                (rope_project, members),
+                sources,
             )
-            target = m.Infra.SourceClassReference(
-                target=root,
-                attributes=(alias.asname or alias.name,),
-                qualified_base=f"{root}.{alias.asname or alias.name}",
-            )
-            if (
-                source.qualified_base
-                not in members.class_reaches((target,), (source,))[0]
-            ):
-                return False
-            paths = cls._import_law_consumed_facade_paths(
-                state, alias.asname or alias.name
-            )
-            if paths is None:
-                return False
-            for path in paths:
-                for index in range(1, len(path) + 1):
-                    prefix = path[:index]
-                    suffix = ".".join(prefix)
-                    before = members(f"{source.qualified_base}.{suffix}")
-                    after = members(f"{target.qualified_base}.{suffix}")
-                    if FlextInfraUtilitiesRopeRuntime.same_name(before, after):
-                        # The same declared receiver proves every remaining
-                        # attribute too, including attributes of enum instances.
-                        break
-                    if (
-                        index < len(path)
-                        and FlextInfraUtilitiesRopeRuntime.py_class(before.get_object())
-                        and FlextInfraUtilitiesRopeRuntime.py_class(after.get_object())
-                    ):
-                        base = m.Infra.SourceClassReference(
-                            target=source.target,
-                            attributes=(*source.attributes, *prefix),
-                            qualified_base=f"{source.qualified_base}.{suffix}",
-                        )
-                        child = m.Infra.SourceClassReference(
-                            target=target.target,
-                            attributes=(*target.attributes, *prefix),
-                            qualified_base=f"{target.qualified_base}.{suffix}",
-                        )
-                        if (
-                            base.qualified_base
-                            in members.class_reaches((child,), (base,))[0]
-                        ):
-                            continue
-                    msg = (
-                        f"{state.scope.file_path}: local facade changes consumed "
-                        f"member {target.qualified_base}.{suffix}"
-                    )
-                    raise ValueError(msg)
-            return True
 
         # A runtime provider wins over an identical typing-only declaration.
         imports = sorted(
@@ -297,6 +212,124 @@ class FlextInfraUtilitiesImportLawRoutes(
                 ),
             )
         return edits
+
+    @classmethod
+    def _import_law_inherited_facade(
+        cls,
+        state: m.Infra.ImportLawPass,
+        imported: t.Pair[str, ast.alias],
+        route: t.Triple[str, p.Infra.RopePyName, p.Infra.RopePyName],
+        native: t.Pair[
+            p.Infra.RopeProject | None, p.Infra.RopeSourceMemberResolver | None
+        ],
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool:
+        """Prove the local facade inherits the consumed upstream declarations.
+
+        Returns:
+            Whether native ancestry and member bindings permit the local route.
+
+        Raises:
+            ValueError: If ancestry has no source context or changes a member.
+
+        """
+        root, original, local = route
+        rope_project, members = native
+        if rope_project is None:
+            msg = "import ancestry requires the resolved source project"
+            raise ValueError(msg)
+        if not (
+            FlextInfraUtilitiesRopeRuntime.py_class(original.get_object())
+            and FlextInfraUtilitiesRopeRuntime.py_class(local.get_object())
+        ):
+            return False
+        module, alias = imported
+        if members is None:
+            captured: dict[str, t.Pair[Path, str]] = {}
+            for path, text in (sources or {}).items():
+                resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
+                    rope_project, path
+                )
+                if resource is None:
+                    continue
+                provider = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    rope_project, resource
+                )
+                captured[provider.get_name()] = path, text
+            members = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver(
+                rope_project, sources=captured
+            )
+        source = m.Infra.SourceClassReference(
+            target=module,
+            attributes=(alias.name,),
+            qualified_base=f"{module}.{alias.name}",
+        )
+        target = m.Infra.SourceClassReference(
+            target=root,
+            attributes=(alias.asname or alias.name,),
+            qualified_base=f"{root}.{alias.asname or alias.name}",
+        )
+        if source.qualified_base not in members.class_reaches((target,), (source,))[0]:
+            return False
+        paths = cls._import_law_consumed_facade_paths(state, alias.asname or alias.name)
+        if paths is None:
+            return False
+        return cls._import_law_matching_members(state, paths, (source, target), members)
+
+    @classmethod
+    def _import_law_matching_members(
+        cls,
+        state: m.Infra.ImportLawPass,
+        paths: t.SequenceOf[t.StrTuple],
+        references: t.Pair[m.Infra.SourceClassReference, m.Infra.SourceClassReference],
+        members: p.Infra.RopeSourceMemberResolver,
+    ) -> bool:
+        """Prove that every consumed member retains its native declaration.
+
+        Returns:
+            Whether every consumed member retains its binding.
+
+        Raises:
+            ValueError: If a local facade changes a consumed member.
+
+        """
+        source, target = references
+        for path in paths:
+            for index in range(1, len(path) + 1):
+                prefix = path[:index]
+                suffix = ".".join(prefix)
+                before = members(f"{source.qualified_base}.{suffix}")
+                after = members(f"{target.qualified_base}.{suffix}")
+                if FlextInfraUtilitiesRopeRuntime.same_name(before, after):
+                    # The same declared receiver proves every remaining
+                    # attribute too, including attributes of enum instances.
+                    break
+                if (
+                    index < len(path)
+                    and FlextInfraUtilitiesRopeRuntime.py_class(before.get_object())
+                    and FlextInfraUtilitiesRopeRuntime.py_class(after.get_object())
+                ):
+                    base = m.Infra.SourceClassReference(
+                        target=source.target,
+                        attributes=(*source.attributes, *prefix),
+                        qualified_base=f"{source.qualified_base}.{suffix}",
+                    )
+                    child = m.Infra.SourceClassReference(
+                        target=target.target,
+                        attributes=(*target.attributes, *prefix),
+                        qualified_base=f"{target.qualified_base}.{suffix}",
+                    )
+                    if (
+                        base.qualified_base
+                        in members.class_reaches((child,), (base,))[0]
+                    ):
+                        continue
+                msg = (
+                    f"{state.scope.file_path}: local facade changes consumed "
+                    f"member {target.qualified_base}.{suffix}"
+                )
+                raise ValueError(msg)
+        return True
 
     @classmethod
     def _import_law_native_root_alias_source(
@@ -528,8 +561,12 @@ class FlextInfraUtilitiesImportLawRoutes(
         for name in missing:
             provider = state.root_exports[name]
             if (
-                provider.split(".")[0] == scope.namespace
-                and cls.module_import_layer(provider) > scope.layer
+                (
+                    provider == scope.namespace
+                    or provider.startswith(f"{scope.namespace}.")
+                )
+                and cls.module_import_layer(provider, namespace=scope.namespace)
+                > scope.layer
                 and cls._import_law_runtime_uses(state.tree, name, state.parents)
             ):
                 msg = (

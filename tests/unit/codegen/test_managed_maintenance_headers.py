@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
@@ -70,7 +70,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         root.mkdir(parents=True, exist_ok=True)
         (root / c.PYPROJECT_FILENAME).write_text(first, encoding="utf-8")
         second = tm.ok(
-            FlextInfraCodegenConformExecute.compose_project_artifact(
+            FlextInfraCodegenConform.Generate.compose_project_artifact(
                 root,
                 c.PYPROJECT_FILENAME,
                 first,

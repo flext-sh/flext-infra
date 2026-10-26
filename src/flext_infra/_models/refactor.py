@@ -1026,17 +1026,27 @@ class FlextInfraModelsRefactor(
                 ),
             ),
         ] = False
+        bootstrap_dependency: Annotated[
+            bool,
+            m.Field(
+                description="Whether the captured root graph bootstraps this module"
+            ),
+        ] = False
 
         @m.computed_field
         @property
         def namespace(self) -> str:
-            """Top-level package name of the owning namespace.
+            """Qualified publishing package derived from the explicit module facts.
 
             Returns:
                 The namespace package name.
 
             """
-            return self.namespace_dir.name
+            depth = len(self.file_path.relative_to(self.namespace_dir).parts) - (
+                self.file_path.name == c.Infra.INIT_PY
+            )
+            parts = self.module.split(".")
+            return ".".join(parts[: len(parts) - depth])
 
     class ImportLawPass(FlextInfraModelsBase.FrozenArbitrary):
         """One parsed module and the facts one import-law pass reads from it."""
@@ -1058,6 +1068,14 @@ class FlextInfraModelsRefactor(
             t.StrMapping,
             m.Field(description="Names the namespace root publishes lazily"),
         ]
+        sources: Annotated[
+            t.MappingKV[Path, str] | None,
+            m.Field(description="Captured sources used by this normalization pass"),
+        ] = None
+        source_project: Annotated[
+            t.Port[t.Infra.RopeProject] | None,
+            m.Field(description="Native source view owning this pass"),
+        ] = None
 
 
 __all__: list[str] = ["FlextInfraModelsRefactor"]

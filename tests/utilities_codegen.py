@@ -184,7 +184,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
                     encoding="utf-8",
                 )
         request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
-        result = codegen.FlextInfraCodegenConformExecute(
+        result = codegen.FlextInfraCodegenConform.Generate(
             state=m.Infra.CodegenConformState(repository_root=root, request=request),
         ).plan(request)
         return m.Infra.CodegenPlan.model_validate(tm.ok(result))

@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra, m, t
-from flext_infra.refactor import FlextInfraImportNormalization
 from tests import c, tm, u
 
 
@@ -89,7 +88,7 @@ class TestsFlextInfraApiAliasCutover:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                    import_normalizer=FlextInfraImportNormalization.normalize_source,
+                    import_normalizer=u.Infra.normalize_import_source,
                     rope_workspace=workspace,
                     sources=sources,
                 )
@@ -122,7 +121,7 @@ class TestsFlextInfraApiAliasCutover:
                 tm.ok(
                     u.Infra.plan_semantic_cutover(
                         c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                        import_normalizer=FlextInfraImportNormalization.normalize_source,
+                        import_normalizer=u.Infra.normalize_import_source,
                         rope_workspace=workspace,
                         sources=updated,
                     )
@@ -177,7 +176,7 @@ class TestsFlextInfraApiAliasCutover:
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=workspace,
                 sources=sources,
             )
@@ -231,7 +230,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),
@@ -327,7 +326,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),
@@ -344,7 +343,7 @@ class TestsFlextInfraApiAliasCutover:
             tm.that(rewritten[owner], lacks="sample = FlextSample")
             converged = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=rope,
                 sources=rewritten,
                 findings=(finding,),
@@ -458,7 +457,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),
@@ -528,7 +527,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),

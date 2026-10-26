@@ -312,7 +312,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             The file's snapshot entry.
 
         Raises:
-            OSError: If the authenticated read fails or the file is absent.
             ValueError: If the file lies outside every member.
 
         """

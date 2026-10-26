@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.services import FlextInfraCodegenVscodeMixin as FlextInfraCodegen
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 
 
@@ -325,7 +325,9 @@ class TestsFlextInfraCodegenArtifactSsot:
             project,
             origin_url=u.Tests.repository_ref("artifact-ssot").url,
         )
-        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
+        rendered: str = tm.ok(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(project)
+        )
         settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
         tm.that(settings["files.exclude"], eq=dict(codegen.vscode_files_exclude_map))
         tm.that(settings["search.exclude"], eq=dict(codegen.vscode_search_exclude_map))

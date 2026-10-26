@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
+from types import MappingProxyType
+from typing import Final, override
 
 import libcst as cst
 from libcst.helpers import get_full_name_for_node
@@ -17,250 +19,190 @@ class FlextInfraUtilitiesRopeMovePublication:
     """Keep lazy publication module references inside the source-move transaction."""
 
     @classmethod
-    def plan_retired_module_publication_repairs(
-        cls,
-        sources: Mapping[str, str],
-        *,
-        consumers: Sequence[str],
-    ) -> dict[str, tuple[str, dict[str, str]]]:
-        """Complete source moves whose existing lazy targets name retired modules.
-
-        ``sources`` is the caller's authenticated package module inventory.
-        Export names remain unchanged. Each retired provider must have exactly
-        one current declaration for its existing published class.
-
-        Returns:
-            Changed module text and the exact relocation evidence per consumer.
-
-        Raises:
-            ValueError: A retired publication has missing or competing owners.
-
-        """
-        parsed = {name: cst.parse_module(source) for name, source in sources.items()}
-        declarations: dict[str, list[str]] = {}
-        for module, tree in parsed.items():
-            for statement in tree.body:
-                if isinstance(statement, cst.ClassDef):
-                    declarations.setdefault(statement.name.value, []).append(module)
-        repaired: dict[str, tuple[str, dict[str, str]]] = {}
-        for consumer, tree in parsed.items():
-            if consumer not in consumers:
-                continue
-            package = consumer.removesuffix(".__init__")
-            moves: dict[str, str] = {}
-
-            class Locate(cst.CSTVisitor):
-                def visit_Call(self, node: cst.Call) -> None:
-                    if not (
-                        isinstance(node.func, cst.Name)
-                        and node.func.value == "install_lazy_exports"
-                    ):
-                        return
-                    for argument in node.args:
-                        mapping = argument.value
-                        if not (
-                            isinstance(mapping, cst.Call)
-                            and isinstance(mapping.func, cst.Name)
-                            and mapping.func.value == "MappingProxyType"
-                            and len(mapping.args) == 1
-                            and isinstance(mapping.args[0].value, cst.Dict)
-                        ):
-                            continue
-                        for entry in mapping.args[0].value.elements:
-                            if not (
-                                isinstance(entry, cst.DictElement)
-                                and isinstance(entry.key, cst.SimpleString)
-                            ):
-                                message = "Lazy move repair requires literal exports"
-                                raise ValueError(message)
-                            target = entry.value
-                            module = (
-                                target.elements[0].value
-                                if isinstance(target, cst.Tuple) and target.elements
-                                else target
-                            )
-                            attribute = (
-                                target.elements[1].value
-                                if isinstance(target, cst.Tuple)
-                                and len(target.elements) == 2
-                                else entry.key
-                            )
-                            if not (
-                                isinstance(module, cst.SimpleString)
-                                and isinstance(attribute, cst.SimpleString)
-                            ):
-                                message = "Lazy move repair requires literal targets"
-                                raise ValueError(message)
-                            spelling = module.evaluated_value
-                            exported = attribute.evaluated_value
-                            if not isinstance(spelling, str) or not isinstance(
-                                exported, str
-                            ):
-                                message = "Lazy move repair requires text targets"
-                                raise ValueError(message)
-                            absolute = (
-                                importlib.util.resolve_name(spelling, package)
-                                if spelling.startswith(".")
-                                else spelling
-                            )
-                            if (
-                                absolute in parsed
-                                or absolute.partition(".")[0]
-                                != consumer.partition(".")[0]
-                            ):
-                                continue
-                            owners = declarations.get(exported, ())
-                            if len(owners) != 1:
-                                message = (
-                                    "Retired lazy publication has no unique owner: "
-                                    f"{consumer}:{exported}:{absolute}; "
-                                    f"owners={tuple(owners)}"
-                                )
-                                raise ValueError(message)
-                            existing = moves.setdefault(absolute, owners[0])
-                            if existing != owners[0]:
-                                message = (
-                                    "Retired lazy module has split declarations: "
-                                    f"{absolute}; owners={existing},{owners[0]}"
-                                )
-                                raise ValueError(message)
-
-            tree.visit(Locate())
-            if moves:
-                repaired[consumer] = (
-                    cls.rewrite_module_move_publications(
-                        sources[consumer], package=package, moves=moves
-                    ),
-                    moves,
-                )
-        return repaired
-
-    @staticmethod
     def rewrite_module_move_publications(
+        cls,
         source: str,
         *,
         package: str,
         moves: Mapping[str, str],
     ) -> str:
-        """Relocate existing installer targets without changing their export names.
+        """Carry exact native module relocations into existing lazy publication data.
 
-        Only literal module targets inside the canonical lazy installer are
-        rewritten. The native module move owns import and symbol references;
-        these data references need the same exact relocation map.
+        Native Rope owns executable symbol references. This CST pass changes only
+        exact import providers and literal installer module targets, preserving
+        import aliases, export attributes and all unrelated string payloads.
 
         Returns:
-            Source with the same publication keys and relocated module targets.
-
-        Raises:
-            ValueError: An installer contains a nonliteral module target.
+            Source with unchanged publication keys and relocated module targets.
 
         """
+        return cst.parse_module(source).visit(cls._Relocate(package, moves)).code
 
-        class Relocate(cst.CSTTransformer):
-            def leave_ImportFrom(
-                self,
-                original_node: cst.ImportFrom,
-                updated_node: cst.ImportFrom,
-            ) -> cst.ImportFrom:
-                if original_node.module is None:
-                    return updated_node
-                module = get_full_name_for_node(original_node.module)
-                if module is None:
-                    message = "Module move requires a named import provider"
-                    raise ValueError(message)
-                absolute = (
-                    importlib.util.resolve_name(
-                        "." * len(original_node.relative) + module, package
-                    )
-                    if original_node.relative
-                    else module
-                )
-                relocated = moves.get(absolute)
-                return (
-                    updated_node
-                    if relocated is None
-                    else updated_node.with_changes(
-                        module=cst.parse_expression(relocated),
-                        relative=(),
-                    )
-                )
+    class _Publication:
+        """Decode the installer's literal provider contract for both CST passes."""
 
-            def leave_Call(
-                self, original_node: cst.Call, updated_node: cst.Call
-            ) -> cst.Call:
-                if not (
-                    isinstance(original_node.func, cst.Name)
-                    and original_node.func.value == "install_lazy_exports"
+        @staticmethod
+        def _mapping(value: cst.BaseExpression) -> cst.Dict | None:
+            match value:
+                case cst.Call(
+                    func=cst.Name(value="MappingProxyType"),
+                    args=[cst.Arg(value=cst.Dict() as mapping)],
                 ):
-                    return updated_node
-                arguments: list[cst.Arg] = []
-                for argument in updated_node.args:
-                    value = argument.value
-                    if not (
-                        isinstance(value, cst.Call)
-                        and isinstance(value.func, cst.Name)
-                        and value.func.value == "MappingProxyType"
-                        and len(value.args) == 1
-                        and isinstance(value.args[0].value, cst.Dict)
-                    ):
-                        arguments.append(argument)
-                        continue
-                    entries: list[cst.DictElement] = []
-                    for entry in value.args[0].value.elements:
-                        if not isinstance(entry, cst.DictElement):
-                            message = "Lazy publication move requires literal entries"
-                            raise ValueError(message)
-                        target = entry.value
-                        module = (
-                            target.elements[0].value
-                            if isinstance(target, cst.Tuple) and target.elements
-                            else target
-                        )
-                        if not isinstance(module, cst.SimpleString):
-                            message = "Lazy publication move requires literal targets"
-                            raise ValueError(message)
-                        spelling = module.evaluated_value
-                        if not isinstance(spelling, str):
-                            message = "Lazy publication move requires text targets"
-                            raise ValueError(message)
-                        absolute = (
-                            importlib.util.resolve_name(spelling, package)
-                            if spelling.startswith(".")
-                            else spelling
-                        )
-                        relocated = moves.get(absolute)
-                        if relocated is not None:
-                            replacement = (
-                                "." + relocated[len(package) + 1 :]
-                                if relocated.startswith(f"{package}.")
-                                else relocated
-                            )
-                            rewritten = module.with_changes(value=repr(replacement))
-                            if isinstance(target, cst.Tuple):
-                                first = target.elements[0]
-                                if not isinstance(first, cst.Element):
-                                    message = "Lazy publication move requires a module"
-                                    raise ValueError(message)
-                                target = target.with_changes(
-                                    elements=(
-                                        first.with_changes(value=rewritten),
-                                        *target.elements[1:],
-                                    )
-                                )
-                            else:
-                                target = rewritten
-                        entries.append(entry.with_changes(value=target))
-                    mapping = value.args[0].value.with_changes(elements=entries)
-                    arguments.append(
-                        argument.with_changes(
-                            value=value.with_changes(
-                                args=(value.args[0].with_changes(value=mapping),)
-                            )
-                        )
-                    )
-                return updated_node.with_changes(args=arguments)
+                    return mapping
+                case _:
+                    return None
 
-        return cst.parse_module(source).visit(Relocate()).code
+        @staticmethod
+        def _target(entry: cst.BaseDictElement) -> tuple[cst.SimpleString, str]:
+            """Read the installer's provider or explicit provider/attribute pair.
+
+            Returns:
+                The original provider token and exact published attribute.
+
+            Raises:
+                TypeError: A key, provider or attribute has the wrong type.
+                ValueError: A tuple is not the installer's supported pair shape.
+
+            """
+            if not isinstance(entry, cst.DictElement) or not isinstance(
+                entry.key, cst.SimpleString
+            ):
+                message = "Lazy publication move requires literal export keys"
+                raise TypeError(message)
+            match entry.value:
+                case cst.Tuple(
+                    elements=[cst.Element(value=module), cst.Element(value=attr)]
+                ):
+                    pass
+                case cst.Tuple():
+                    message = "Lazy publication move requires a provider/attribute pair"
+                    raise ValueError(message)
+                case module:
+                    attr = entry.key
+            if not isinstance(module, cst.SimpleString) or not isinstance(
+                attr, cst.SimpleString
+            ):
+                message = "Lazy publication move requires literal targets"
+                raise TypeError(message)
+            if not isinstance(module.evaluated_value, str) or not isinstance(
+                attr.evaluated_value, str
+            ):
+                message = "Lazy publication move requires text targets"
+                raise TypeError(message)
+            return module, attr.evaluated_value
+
+        @staticmethod
+        def _absolute(module: cst.SimpleString, package: str) -> str:
+            """Resolve a text token without shortening its qualified root.
+
+            Returns:
+                The exact absolute provider name.
+
+            Raises:
+                TypeError: The literal is bytes rather than an installer target.
+
+            """
+            spelling = module.evaluated_value
+            if not isinstance(spelling, str):
+                message = "Lazy publication move requires text targets"
+                raise TypeError(message)
+            return (
+                importlib.util.resolve_name(spelling, package)
+                if spelling.startswith(".")
+                else spelling
+            )
+
+    class _Relocate(_Publication, cst.CSTTransformer):
+        def __init__(self, package: str, moves: Mapping[str, str]) -> None:
+            self.package: Final = package
+            self.moves: Final = MappingProxyType(dict(moves))
+
+        @override
+        def leave_ImportFrom(
+            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
+        ) -> cst.ImportFrom:
+            """Keep aliases while relocating an exact imported module provider.
+
+            Returns:
+                The original import or its relocated provider.
+
+            Raises:
+                ValueError: The provider is not a named module expression.
+
+            """
+            if original_node.module is None:
+                return updated_node
+            module = get_full_name_for_node(original_node.module)
+            if module is None:
+                message = "Module move requires a named import provider"
+                raise ValueError(message)
+            absolute = (
+                importlib.util.resolve_name(
+                    "." * len(original_node.relative) + module, self.package
+                )
+                if original_node.relative
+                else module
+            )
+            relocated = self.moves.get(absolute)
+            return (
+                updated_node
+                if relocated is None
+                else updated_node.with_changes(
+                    module=cst.parse_expression(relocated), relative=()
+                )
+            )
+
+        @override
+        def leave_Call(
+            self, original_node: cst.Call, updated_node: cst.Call
+        ) -> cst.Call:
+            if not isinstance(original_node.func, cst.Name) or (
+                original_node.func.value != "install_lazy_exports"
+            ):
+                return updated_node
+            return updated_node.with_changes(
+                args=tuple(self._argument(argument) for argument in updated_node.args)
+            )
+
+        def _argument(self, argument: cst.Arg) -> cst.Arg:
+            value = argument.value
+            mapping = self._mapping(value)
+            if mapping is None or not isinstance(value, cst.Call):
+                return argument
+            return argument.with_changes(
+                value=value.with_changes(
+                    args=(
+                        value.args[0].with_changes(
+                            value=mapping.with_changes(
+                                elements=tuple(
+                                    self._entry(entry) for entry in mapping.elements
+                                )
+                            )
+                        ),
+                    )
+                )
+            )
+
+        def _entry(self, entry: cst.BaseDictElement) -> cst.BaseDictElement:
+            module, _attribute = self._target(entry)
+            relocated = self.moves.get(self._absolute(module, self.package))
+            if relocated is None or not isinstance(entry, cst.DictElement):
+                return entry
+            replacement = (
+                "." + relocated[len(self.package) + 1 :]
+                if relocated.startswith(f"{self.package}.")
+                else relocated
+            )
+            rewritten = module.with_changes(value=repr(replacement))
+            target = entry.value
+            if isinstance(target, cst.Tuple):
+                first, *remaining = target.elements
+                target = target.with_changes(
+                    elements=(first.with_changes(value=rewritten), *remaining)
+                )
+            else:
+                target = rewritten
+            return entry.with_changes(value=target)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeMovePublication"]

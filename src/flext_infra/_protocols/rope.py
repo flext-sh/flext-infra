@@ -290,7 +290,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
-            """Return the generic source epoch already owned by this session."""
+            """The generic source epoch already owned by this session."""
             ...
 
         @classmethod

@@ -11,10 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra, m
-from flext_infra.codegen import (
-    FlextInfraCodegenConformExecute,
-    FlextInfraCodegenMakeBootstrap,
-)
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
 from tests import c, tm, u
 
 
@@ -71,7 +68,7 @@ class TestsFlextInfraCodegenCiMatrixSupport:
             tm.ok(service.execute(), eq=True)
         else:
             tm.ok(
-                FlextInfraCodegenConformExecute.execute_request(
+                FlextInfraCodegenConform.Generate.execute_request(
                     u.Tests.conform_request(
                         root,
                         what=c.Infra.CodegenConformSurface.ALL,

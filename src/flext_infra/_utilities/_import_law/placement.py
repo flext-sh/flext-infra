@@ -13,7 +13,7 @@ from collections.abc import MutableMapping
 
 from flext_infra import c, m, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._import_law.ast import FlextInfraUtilitiesImportLawAst
+from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
 
 
 class FlextInfraUtilitiesImportLawPlacement(
@@ -163,15 +163,16 @@ class FlextInfraUtilitiesImportLawPlacement(
 
         """
         section = cls._import_law_import_section(state, node)
-        root = state.scope.namespace_dir.name
+        root = state.scope.namespace
         if isinstance(node, ast.ImportFrom) and (node.module or root) == root:
             layer = min(
                 (
-                    cls.module_import_layer(f"{root}.{alias.name}")
+                    cls.module_import_layer(f"{root}.{alias.name}", namespace=root)
                     for alias in node.names
                 ),
                 default=cls.module_import_layer(
                     f"{root}.{c.Infra.IMPORT_LAW_OTHER_LAYER}",
+                    namespace=root,
                 ),
             )
             module = root
@@ -182,7 +183,7 @@ class FlextInfraUtilitiesImportLawPlacement(
                 else node.names[0].name
             )
             layer = (
-                cls.module_import_layer(module)
+                cls.module_import_layer(module, namespace=root)
                 if section == cls._IMPORT_SECTION_OWN
                 else 0
             )
@@ -202,17 +203,21 @@ class FlextInfraUtilitiesImportLawPlacement(
 
         """
         root = (
-            (node.module or "").split(".")[0]
+            (node.module or "")
             if isinstance(node, ast.ImportFrom) and not node.level
-            else node.names[0].name.split(".")[0]
+            else node.names[0].name
             if isinstance(node, ast.Import) and node.names
             else ""
         )
-        if not root or root == state.scope.namespace_dir.name:
+        if (
+            not root
+            or root == state.scope.namespace
+            or root.startswith(f"{state.scope.namespace}.")
+        ):
             return cls._IMPORT_SECTION_OWN
         return (
             cls._IMPORT_SECTION_STDLIB
-            if root in sys.stdlib_module_names
+            if root.partition(".")[0] in sys.stdlib_module_names
             else cls._IMPORT_SECTION_THIRD_PARTY
         )
 
@@ -503,12 +508,17 @@ class FlextInfraUtilitiesImportLawPlacement(
             )
         else:
             target = node.module or ""
-            exports = cls.import_lazy_exports(scope.project_root, target)
+            exports = cls.import_lazy_exports(
+                scope.project_root,
+                target,
+                sources=state.sources,
+                source_project=state.source_project,
+            )
             if exports is not None:
                 target = exports.get(alias.name, target)
-        if target.split(".")[0] != scope.namespace:
+        if target != scope.namespace and not target.startswith(f"{scope.namespace}."):
             return False
-        return cls.module_import_layer(target) > scope.layer
+        return cls.module_import_layer(target, namespace=scope.namespace) > scope.layer
 
     @staticmethod
     def _import_law_binds_same(

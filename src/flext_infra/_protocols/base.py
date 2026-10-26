@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from contextlib import AbstractContextManager
 from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
@@ -28,17 +29,6 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
-
-    class SourceComponentPlanner(Protocol):
-        """Plan dependent initializers over one authenticated source candidate."""
-
-        def __call__(
-            self,
-            root: Path,
-            *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-            snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
-        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]: ...
 
     @runtime_checkable
     class CommandPayloadContext(Protocol):
@@ -121,6 +111,11 @@ class FlextInfraProtocolsBase(Protocol):
         def imports_planner(
             self,
         ) -> FlextInfraProtocolsBase.SourceImportPlanner: ...
+
+        @property
+        def component_planner(
+            self,
+        ) -> FlextInfraProtocolsBase.SourceComponentPlanner: ...
 
     @runtime_checkable
     class CodegenGenerateRequest(Protocol):
@@ -243,6 +238,7 @@ class FlextInfraProtocolsBase(Protocol):
             files: t.SequenceOf[Path],
             *,
             sources: t.MappingKV[Path, str],
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
             """Return source-preserving import plans without publishing them."""
@@ -261,8 +257,29 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
     @runtime_checkable
+    class SourceViewProvider(Protocol):
+        """Borrow the caller-owned native view for one candidate source epoch.
+
+        Identical effective bytes and tombstones under the same root share the
+        invocation's existing view. Changed candidates require another binding;
+        the caller retains original file witnesses, snapshot authority and teardown.
+        """
+
+        def __call__(
+            self,
+            root: Path,
+            *,
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        ) -> AbstractContextManager[
+            t.Pair[
+                FlextInfraProtocolsRopeRuntime.RopeProject,
+                t.MappingKV[Path, str],
+            ]
+        ]: ...
+
+    @runtime_checkable
     class SourceComponentPlanner(Protocol):
-        """Compose nested facades through the same initializer planning owner."""
+        """Compose nested facades through caller-owned views and initializers."""
 
         def __call__(
             self,
@@ -271,6 +288,7 @@ class FlextInfraProtocolsBase(Protocol):
             declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
             initializer_planner: FlextInfraProtocolsBase.SourceInitializerPlanner,
+            source_view: FlextInfraProtocolsBase.SourceViewProvider,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
     @runtime_checkable

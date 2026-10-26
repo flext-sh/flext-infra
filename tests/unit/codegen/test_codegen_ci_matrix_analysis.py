@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -106,7 +106,7 @@ class TestsFlextInfraCodegenCiMatrixAnalysis(TestsFlextInfraCodegenCiMatrixSuppo
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
         )
         managed_tests_files = [
             item.path.as_posix()

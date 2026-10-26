@@ -14,10 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, config, infra
-from flext_infra.codegen import (
-    FlextInfraCodegenConformExecute,
-    FlextInfraCodegenMakeBootstrap,
-)
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -61,7 +58,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
         )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
         )
         tm.that(plan.issues, eq=())
         tm.that(plan.exception, eq=None)
@@ -614,7 +611,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = FlextInfraCodegenConformExecute(
+        planned = FlextInfraCodegenConform.Generate(
             repository_root=root,
             state=m.Infra.CodegenConformState(repository_root=root, request=request),
         ).plan(

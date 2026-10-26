@@ -390,23 +390,25 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             msg = "Rope identifier resolution returned an invalid name"
             raise TypeError(msg)
         for attribute in reversed(attributes):
-            result = cls._class_assignment_alias(result)
+            result = cls.class_assignment_binding(result)
             if result is None:
                 return None
             result = result.get_object().get_attributes().get(attribute)
-        return cls._class_assignment_alias(result)
+        return cls.class_assignment_binding(result)
 
     @classmethod
-    def _class_assignment_alias(
+    def class_assignment_binding(
         cls,
         binding: p.Infra.RopePyName | None,
         *,
         visited: frozenset[t.Pair[str, int]] = frozenset(),
+        classes_only: bool = True,
     ) -> p.Infra.RopePyName | None:
         """Resolve a class alias through its native pre-assignment name view.
 
         Returns:
             The proven native alias, or None for an ambiguous lexical binding.
+            Kind queries may include value origins; binding queries retain them.
 
         Raises:
             TypeError: If the native alias holder does not expose its Python AST.
@@ -452,6 +454,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                     primary,
                     binding=binding,
                     visited=visited | {key},
+                    classes_only=classes_only,
                 )
         return binding
 
@@ -599,6 +602,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         *,
         binding: p.Infra.RopePyName,
         visited: frozenset[t.Pair[str, int]],
+        classes_only: bool,
     ) -> p.Infra.RopePyName | None:
         result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
             temporary,
@@ -607,7 +611,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "class RHS lookup returned an invalid native name"
             raise TypeError(msg)
-        result = cls._class_assignment_alias(result, visited=visited)
+        result = cls.class_assignment_binding(
+            result, visited=visited, classes_only=classes_only
+        )
         attributes: list[str] = []
         value = declaration.value
         while isinstance(value, ast.Attribute):
@@ -617,9 +623,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             if result is None:
                 return None
             result = result.get_object().get_attributes().get(attribute)
-            result = cls._class_assignment_alias(result, visited=visited)
+            result = cls.class_assignment_binding(
+                result, visited=visited, classes_only=classes_only
+            )
         if (
-            result is not None
+            classes_only
+            and result is not None
             and not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
                 result.get_object()
             )

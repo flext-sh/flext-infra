@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm, u
 
@@ -171,7 +171,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
         tm.ok(infra.codegen_conform(request))
         initial_plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -207,7 +207,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         tm.ok((root / "README.md").is_file())
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.ok((root / required).is_file())
-        fixed_point = FlextInfraCodegenConformExecute(repository_root=root).plan(
+        fixed_point = FlextInfraCodegenConform.Generate(repository_root=root).plan(
             request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
         )
         verified = tm.ok(fixed_point)
@@ -289,7 +289,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
             The conform plan result.
 
         """
-        return FlextInfraCodegenConformExecute(repository_root=root).plan(
+        return FlextInfraCodegenConform.Generate(repository_root=root).plan(
             u.Tests.conform_request(
                 root,
                 what=what,

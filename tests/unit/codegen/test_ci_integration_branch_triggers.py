@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, m
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, t, tm, u
 
 
@@ -169,7 +169,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_workflow_projection_uses_only_manifest_workflows() -> None:
         """Scoped recovery retains every non-workflow destination."""
         codegen = config.Infra.codegen
-        contract = FlextInfraCodegenConformExecute.surface_contract(
+        contract = FlextInfraCodegenConform.Generate.surface_contract(
             c.Infra.CodegenConformSurface.WORKFLOWS,
             codegen=codegen,
         )

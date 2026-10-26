@@ -340,6 +340,18 @@ initializers or relax Rope's class boundary to compensate for a truncated name.
 Source ancestry resolves provider identities from their captured physical paths,
 then the project's declared namespace discovery. Rope's shortened regular-package
 name cannot replace that identity when a namespace ancestor has no initializer.
+Member lineage, package ownership and component discovery share the provider-name
+boundary with source ancestry; native external providers retain their own names.
+Member classification uses the existing pre-assignment binding owner for class
+publications. Native builtin ancestry follows the original builtin class, not the
+identity of a Rope wrapper, whose superclass list may be empty.
+Kind queries follow the source origin of value aliases as well as class aliases;
+ordinary binding queries retain value declarations and their reference identity.
+Annotations are classified on that proven origin before unknown inference is rejected.
+Opaque binary exports are admitted from their installed stub declaration before
+source-only alias traversal; a binary resource is never treated as Python source.
+An annotation-only global in that stub declares a value, not a type alias. It
+retains the constant owner; duplicate class/value declarations remain ambiguous.
 Project dependency inspection uses Rope and LibCST source analysis only; generation
 does not import the analyzed project or require its Pulumi SDK to be installed in
 the Infra runtime. Native extensions remain subject to the supplied Rope project's
@@ -367,6 +379,13 @@ the native workspace authenticates the destination before planning. Import and
 declaration tokens and string payloads are not renamed. The existing publisher
 adds the public receiver import and removes the unused private import. A competing
 lexical receiver binding rejects the candidate rather than capturing another name.
+
+A package destination in that same campaign retargets a composite's imported
+member references to their native declaring class within the selected package.
+Only consumers inside that package participate. Native definition resources and
+lexical class scopes determine each destination, not facade-name conventions or
+field maps. A declaration in the consumer's own module uses its local class name
+without importing itself; siblings use their declaring package's lazy export.
 
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
@@ -735,6 +754,11 @@ drop members or substitute a different provider.
 Repeated member queries within one captured source view bind one explicit
 resolver port. Its source mapping is an immutable copy for that binding, and
 its existing alias, resolution and C3 memoization remain local to the port.
+The resolver retains that supplied capture by reference and derives one exact
+path-to-owner index from it. Each path retains every module name in capture
+order, including competing owners; the index neither resolves paths nor
+normalizes aliases. Native folder providers still use their initializer path.
+This index has the same fixed-capture lifetime as the existing derived state.
 Rewritten source requires a new binding; no process-global resolver cache may
 serve another native project or a changed source view.
 Protocol owner additions use the same elected package name as their captured
@@ -743,6 +767,36 @@ must not introduce a new import root during the recursive projection pass.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
+
+Recursive private domains use the same composition owner for every declared
+`c`, `t`, `p`, `m`, and `u` family. A domain directory publishes through its
+canonical sibling module: `_utilities/rope.py` composes `_utilities/_rope/`,
+and `_rope/analysis.py` composes `_rope/_analysis/`. Existing public class
+identities survive module relocation. Native source ancestry elects meaningful
+providers; generated inheritance exposes their behavior without delegation
+wrappers or duplicated entities. Opposing base precedence and competing owners
+remain errors.
+
+`plan_component_facades` stages domains deepest-first, their dependent
+initializers, all root family facades, and the final package exports in one
+candidate. Conformance and other callers inject the same
+`FlextInfraCodegenLazyInit.plan_candidate` initializer capability. Module moves
+authenticate any existing candidate against its declared `CodegenFilePlan`
+bytes and original physical witness; lazy installer targets participate in the
+same move as ordinary imports. A later physical edit still fails publication
+CAS. Planning performs no target-provider imports and publishes no intermediate
+source state.
+
+Conform supplies its complete initial lazy plan through the existing
+`provider_plans` state for that invocation, restoring the caller's state on exit.
+Only the existing unchanged-input and foreign-provider predicate permits seed
+reuse; actual facade or consumer effects still require export replanning.
+Component composition consumes the caller's existing source-view capability.
+Within the repository planning scope, identical root and effective planned bytes,
+including retirement tombstones, reuse the same native project and bindings.
+Changed candidates bind distinct views before dependent families render; this
+does not batch dependency-sensitive renders or replace original physical plan
+witnesses. The caller retains snapshot authority and source-view teardown.
 
 Generation, modernization, lint repair and read-only checks consume the same
 import planner. The planner elects the nearest lazy publisher from the captured
@@ -1242,7 +1296,15 @@ check; it does not disable the environment guard or replace the generator.
 Activation loads the native `mise env --shell bash` output, which puts the
 installed tool directories ahead of the host's shared shims. This includes the
 self-managed Mise executable: a shim named `mise` otherwise invokes the host
-release instead of the project release. Activation does not install tools or
+release instead of the project release. The project-only registry selectors
+belong to that environment evaluation, not to the caller's resulting shell.
+After applying the native output, activation removes those selectors and puts
+the existing shared shim farm last in PATH. Project-pinned executable paths
+remain first; tools declared exclusively by the AI Hub host registry retain
+their existing native shim and lock ownership. Make independently selects its
+isolated project registry for its own lifecycle. This follows AI Hub ADR-0037's
+host/project PATH composition without copying host tool declarations.
+Activation does not install tools or
 write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
 `make upg`. Audit reports a missing pin; only `make upg` may resolve and write it.
 A runtime that is not yet installed requires `make setup`, whose provisioning
@@ -2767,6 +2829,9 @@ proposed source cohort through a functional port; native source-engine objects
 remain inside the utility boundary. Applying operations publish its typed file
 plans through their existing journal. Verification reports the same pending
 changes without publishing them, and no operation invokes another public verb.
+Batch consumers use `u.Infra.plan_import_normalization`; single-source lint and
+semantic callbacks use `u.Infra.normalize_import_source`. Both public capabilities
+compose the same import-law implementation through the utility facade.
 
 Concrete class imports use the nearest package that actually publishes that
 source identity. Application modules consume their local facade when its native
@@ -2960,6 +3025,11 @@ instance without serializing or revalidating it. Failure metadata and causes
 retain their original Result boundary, and no success marker replaces the
 operation's receipt before formatting.
 
+Generation's public execution class is
+`codegen.FlextInfraCodegenConform.Generate`. Bootstrap and tests consume its
+inherited planning and execution methods through this facade. The private
+execution part remains an implementation supplier and has no public export.
+
 The infrastructure CLI profiler starts before importing its public CLI facade.
 Each completed invocation retains a uniquely named raw profile beside the latest
 profile through that same publisher. It also retains the previous completed
@@ -3057,6 +3127,19 @@ declarations retain their identity and behavior.
 Native composition ownership includes both domain superclasses and published
 class members supplied by that domain. A facade that publishes input entities
 through aliases retains its authored identity and nested declarations.
+Supplier admission reads native declarations lazily; it does not infer every
+inherited attribute to establish a direct domain publication.
+The method admission predicate reads the class's cached native AST, including
+conditional definitions and excluding methods owned by nested classes. Native
+member bindings are evaluated only when superclass suppliers do not elect it.
+Domains at one depth stage their seeds together before one dependent initializer
+pass; shallower domains then consume the completed child publications.
+An unchanged module owner retains its captured native view while seeding.
+Actual module moves rebind their candidate before the seed consumes it.
+Provider reexports retain Rope's imported-name provenance through resolution.
+The existing captured-source override decides rebinding before the imported
+module is elected; a declared leaf import does not restart at an ancestor
+package and mistake namespace traversal for a provider cycle.
 
 Component-call correction follows the same native family composition through
 all ancestor components and nested namespaces. It rewrites a direct component
@@ -3066,7 +3149,11 @@ existing declarations. Consumers without a bound facade and calls within the
 owning private family require the separate semantic receiver cutover; textual
 class-name replacement does not authorize those rewrites.
 
-The component planner receives typed file plans and the repository snapshot.
+The API composition root binds the component and import planners through
+`p.Infra.CodegenConformPorts`, using the public utility facade. The orchestrator
+passes the same typed candidate and snapshot to those injected capabilities.
+The component planner receives the existing initializer planner by reference;
+it does not construct a second lazy-export implementation.
 It retains original physical witnesses, additions and retirements through each
 fresh candidate view, and returns file plans to the same atomic publisher.
 Domain discovery uses the snapshot's repository ownership inventory, so nested

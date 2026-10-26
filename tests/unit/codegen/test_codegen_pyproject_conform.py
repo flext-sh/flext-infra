@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 from tests.unit.codegen.pyproject_conform_support import (
     TestsFlextInfraPyprojectConformSupport,
@@ -80,7 +80,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             ci_enabled=False,
             gascity_enabled=False,
         )
-        inputs = FlextInfraCodegenConformExecute.resolve_render_inputs(
+        inputs = FlextInfraCodegenConform.Generate.resolve_render_inputs(
             target=target,
             workspace=workspace,
             codegen=config.Infra.codegen,
@@ -90,7 +90,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             ),
         )
         first = tm.ok(
-            FlextInfraCodegenConformExecute.compose_project_artifact(
+            FlextInfraCodegenConform.Generate.compose_project_artifact(
                 tmp_path,
                 c.PYPROJECT_FILENAME,
                 source,
@@ -102,7 +102,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         tm.that(first_pyright["executionEnvironments"], eq=expected)
         (tmp_path / c.PYPROJECT_FILENAME).write_text(first, encoding=c.DEFAULT_ENCODING)
         second = tm.ok(
-            FlextInfraCodegenConformExecute.compose_project_artifact(
+            FlextInfraCodegenConform.Generate.compose_project_artifact(
                 tmp_path,
                 c.PYPROJECT_FILENAME,
                 first,

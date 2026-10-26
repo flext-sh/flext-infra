@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import ast
 from difflib import SequenceMatcher
+from functools import partial
+from hashlib import sha256
 from pathlib import Path
 
 from flext_infra import c, m, p, t, u
@@ -928,8 +930,19 @@ class FlextInfraRenameSymbols:
             if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
                 msg = f"expected a Rope file resource: {path}"
                 raise TypeError(msg)
-            if resource.read() != sources[path]:
-                msg = f"Rope input changed after authentication: {path}"
+            observed = resource.read()
+            if observed != sources[path]:
+                msg = (
+                    f"Rope input changed after authentication: {path}; "
+                    f"authenticated_sha256={
+                        sha256(sources[path].encode()).hexdigest()
+                    }; "
+                    f"native_sha256={sha256(observed.encode()).hexdigest()}; "
+                    f"newline_equivalent={
+                        observed
+                        == sources[path].replace('\r\n', '\n').replace('\r', '\n')
+                    }"
+                )
                 raise ValueError(msg)
             resources[path] = resource
         return resources
@@ -996,6 +1009,16 @@ class FlextInfraRenameSymbols:
                     )
                     accepted = accepted or resolved
                     continue
+                if cls._package_path(project, f"{owner}.{new_suffix}") is not None:
+                    cls._plan_imported_names(
+                        project,
+                        (owner, old_suffix, new_suffix),
+                        corpus[0],
+                        (ordered_paths, resources),
+                        plan[0],
+                    )
+                    accepted = True
+                    continue
                 if cls.resolve_member(project, owner, new_suffix) is None:
                     continue
                 accepted = True
@@ -1045,20 +1068,90 @@ class FlextInfraRenameSymbols:
         if resource is None:
             return
         declaring_root = u.Infra.project_root(Path(resource.real_path))
+        package_path = cls._package_path(project, f"{owner}.{new}")
         for path in inventory[0]:
             source = sources[path]
             if old.rsplit(".", 1)[-1] not in source:
                 continue
             if u.Infra.project_root(path) != declaring_root:
                 continue
+            if package_path is not None and not path.is_relative_to(package_path):
+                continue
             current = u.Infra.content_change(
                 inventory[1][path], source, planned.get(path, ())
             ).new_contents
             updated = FlextInfraUtilitiesQualifiedNames.retarget_imported_names(
-                current, owner, (old, new)
+                current,
+                owner,
+                (old, new),
+                member_target=(
+                    partial(
+                        cls._declaring_member_target,
+                        u.Infra.source_member_resolver(project, sources={}),
+                        (path, package_path),
+                    )
+                )
+                if package_path is not None
+                else None,
             )
             if updated != current:
                 planned[path] = list(cls._content_rewrites(source, updated))
+
+    @staticmethod
+    def _package_path(project: p.Infra.RopeProject, qualified: str) -> Path | None:
+        """Return the native directory of a selected package destination.
+
+        Returns:
+            The directory, or no package when the destination is an object.
+
+        """
+        package = project.find_module(qualified)
+        return (
+            Path(package.real_path)
+            if package is not None and package.is_folder()
+            else None
+        )
+
+    @staticmethod
+    def _declaring_member_target(
+        resolver: p.Infra.RopeSourceMemberResolver,
+        location: t.Pair[Path, Path],
+        qualified: str,
+    ) -> t.Pair[str, str] | None:
+        """Elect a member's actual source class and nearest package export.
+
+        Returns:
+            The import package and class path, or no member within this family.
+
+        Raises:
+            ValueError: If the native declaration lacks a source namespace.
+
+        """
+        binding = resolver(qualified)
+        if not u.Infra.py_class(binding.get_object()):
+            return None
+        module, _line = binding.get_definition_location()
+        resource = module.get_resource() if module is not None else None
+        if resource is None or not Path(resource.real_path).is_relative_to(location[1]):
+            return None
+        value = u.Infra.require_source_object(binding.get_object(), qualified)
+        scope = value.get_scope()
+        names: list[str] = []
+        while scope.get_kind() == "Class":
+            names.append(scope.pyobject.get_name())
+            if scope.parent is None:
+                break
+            scope = scope.parent
+        path = Path(resource.real_path)
+        root = u.Infra.project_root(path)
+        namespace = u.Infra.import_namespace(root, path) if root is not None else None
+        if namespace is None or not names:
+            msg = f"native member has no declaring namespace: {qualified}"
+            raise ValueError(msg)
+        return (
+            "" if path == location[0] else namespace[1].rpartition(".")[0],
+            ".".join(reversed(names)),
+        )
 
     @classmethod
     def _plan_declaration_owner(

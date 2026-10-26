@@ -12,10 +12,11 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, p, t
-from flext_infra._utilities._import_law.policy import FlextInfraUtilitiesImportLawPolicy
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.source_bases_aliases import (
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
@@ -60,11 +61,18 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
                 due,
             )
             pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-            name = pymodule.get_name()
+            path = Path(resource.real_path).resolve()
+            root = Path(project.root.real_path)
+            name = (
+                pymodule.get_name()
+                if not path.is_relative_to(root)
+                else FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                    path, project_root=root, source_project=project
+                )
+            )
             if not name:
                 msg = f"rope could not name module {resource.path}"
                 raise ValueError(msg)
-            path = Path(resource.real_path).resolve()
             modules[path] = name
             package = name if path.name == c.Infra.INIT_PY else name.rpartition(".")[0]
             raw[name] = set(

@@ -406,7 +406,7 @@ class TestsFlextInfraGeneratedRuntime:
             )
         )
         with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
-            outcome = codegen.FlextInfraCodegenConformExecute.plan_repository_task(
+            outcome = codegen.FlextInfraCodegenConform.Generate.plan_repository_task(
                 m.Infra.CodegenRepositoryPlanTask(
                     root=root,
                     workspace=spec,

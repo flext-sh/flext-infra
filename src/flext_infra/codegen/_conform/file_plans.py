@@ -9,10 +9,7 @@ from __future__ import annotations
 from functools import partial
 from pathlib import Path
 
-from flext_cli import u
-
-from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra import FlextInfraConfig, c, m, p, r, t, u
 from flext_infra.codegen._conform.bootstrap import FlextInfraCodegenConformBootstrap
 from flext_infra.deps import phases as dependency_phases
 
@@ -48,7 +45,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         if declared is not None:
             return declared
         values: t.JsonMapping = {"repository": {"kind": kind.value}}
-        composed = generation.project_codegen_inputs(
+        composed = u.Infra.project_codegen_inputs(
             root,
             inputs,
             projections=(
@@ -85,7 +82,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         own = next((state for state in inputs.sources if state.path == own_path), None)
         if own is None or own.content is None:
             return None
-        document = generation.read_codegen_config_document(own.content)
+        document = u.Infra.read_codegen_config_document(own.content)
         if document.failure:
             return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(document)
         declared = u.Cli.json_walk_path(
@@ -116,12 +113,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         result_type = r[m.Infra.CodegenFilePlan]
         project = root.expanduser().absolute()
         target = path.expanduser().absolute()
-        before = generation.codegen_target_snapshot(target)
+        before = u.Infra.codegen_target_snapshot(target)
         if before.failure:
             return result_type.from_failure(before)
         payload: t.JsonMapping = {}
         if before.value.content is not None:
-            parsed = generation.read_codegen_config_document(before.value.content)
+            parsed = u.Infra.read_codegen_config_document(before.value.content)
             if parsed.failure:
                 return result_type.from_failure(parsed)
             payload = parsed.value
@@ -160,7 +157,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
 
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        legacy_path = generation.workspace_manifest_path(root)
+        legacy_path = u.Infra.workspace_manifest_path(root)
         project = inputs.spec.repository.project
         resource_owned = project is not None and any(
             legacy_path.is_relative_to(root / path)
@@ -245,13 +242,13 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             return result_type.from_failure(captured)
         if captured.value.content is None:
             return None
-        parsed = generation.read_codegen_config_document(captured.value.content)
+        parsed = u.Infra.read_codegen_config_document(captured.value.content)
         if parsed.failure:
             return result_type.from_failure(parsed)
         legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
         if legacy.failure:
             return result_type.from_failure(legacy)
-        delta = generation.repository_declaration_delta(legacy.value)
+        delta = u.Infra.repository_declaration_delta(legacy.value)
         if delta.failure:
             return result_type.from_failure(delta)
         return result_type.ok((captured.value, delta.value, legacy.value))
@@ -286,7 +283,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             Whether the captured declaration admits the migration input.
 
         """
-        own_document = generation.read_codegen_config_document(content)
+        own_document = u.Infra.read_codegen_config_document(content)
         if own_document.failure:
             return r[bool].from_failure(own_document)
         own_values = u.Cli.json_walk_path(
@@ -339,7 +336,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             exclude_defaults=True,
             exclude_computed_fields=True,
         )
-        composed = generation.project_codegen_inputs(
+        composed = u.Infra.project_codegen_inputs(
             root,
             inputs,
             projections=(
@@ -391,7 +388,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
 
         """
         if legacy.external_consumers:
-            discovered = generation.discover_external_consumers(root, inputs)
+            discovered = u.Infra.discover_external_consumers(root, inputs)
             if discovered.failure:
                 return r[bool].from_failure(discovered)
             covered = {consumer.root for consumer in discovered.value}
@@ -430,7 +427,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         """
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
-        before = generation.codegen_target_snapshot(path)
+        before = u.Infra.codegen_target_snapshot(path)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
         return r[m.Infra.CodegenFilePlan].ok(
@@ -543,7 +540,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
 
         """
         if inputs is None:
-            loaded = generation.load_codegen_inputs(root)
+            loaded = u.Infra.load_codegen_inputs(root)
             if loaded.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(loaded)
             inputs = loaded.value

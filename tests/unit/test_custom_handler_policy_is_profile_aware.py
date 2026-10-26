@@ -11,7 +11,7 @@ from collections.abc import Mapping
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConformPyprojectPolicy
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm
 
 
@@ -76,7 +76,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
             allow_public_targets=allow_public_targets,
             allow_toolchain_declarations=allow_toolchain_declarations,
         )
-        validate = FlextInfraCodegenConformPyprojectPolicy.validate_custom_make
+        validate = FlextInfraCodegenConform.Generate.validate_custom_make
         tm.that(
             validate("public-task:\n\t@:\n", policy).success,
             eq=allow_public_targets,

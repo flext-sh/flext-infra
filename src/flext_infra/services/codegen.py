@@ -36,7 +36,15 @@ class FlextInfraCodegenHandlers:
 
     @staticmethod
     def _codegen_message(operation: str, value: t.Cli.ResultValue) -> str:
-        """Render a public codegen receipt at the CLI's output boundary."""
+        """Render a public codegen receipt at the CLI's output boundary.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If Codegen operation.
+
+        """
         if not isinstance(value, p.Infra.CodegenResult):
             message = f"Codegen operation {operation} returned no generation receipt"
             raise TypeError(message)

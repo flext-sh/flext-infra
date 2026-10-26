@@ -11,10 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Self, override
 
-from flext_cli import u
-
-from flext_infra import c, m, p, r, t, workspace as workspace_services
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra import c, m, p, r, t, u, workspace as workspace_services
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
@@ -37,7 +34,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
         """
         root = request.root.expanduser().resolve()
-        identity = generation.exact_worktree_root(root)
+        identity = u.Infra.exact_worktree_root(root)
         if identity.failure:
             return r[FlextInfraCodegenConformExecute].from_failure(identity)
         generation_root = (
@@ -56,7 +53,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             request.what is c.Infra.CodegenConformSurface.ALL
             and not (root / c.PYPROJECT_FILENAME).exists()
         ):
-            inputs = generation.load_codegen_inputs(root)
+            inputs = u.Infra.load_codegen_inputs(root)
             if inputs.failure:
                 return r[FlextInfraCodegenConformExecute].from_failure(inputs)
             observed = (
@@ -275,12 +272,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             completed = operation(published.value)
             if completed.failure:
                 return result_type.from_failure(completed)
-        if plan.issues or plan.exception is not None:
-            return result_type.fail(
-                "\n".join(issue.formatted for issue in plan.issues)
-                or "generation planning failed",
-                exception=plan.exception,
-            )
         payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
             plan=plan,
             written_files=published.value,
@@ -331,6 +322,21 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
             for file in files
         )
+        return self._validated_source_plans(request, files, ports)
+
+    @staticmethod
+    def _validated_source_plans(
+        request: p.Infra.CodegenGenerateRequest,
+        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        ports: p.Infra.CodegenConformPorts,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Admit the normalized candidate through its injected runtime validator.
+
+        Returns:
+            The unchanged normalized plans, or the original validation failure.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
             return result_type.ok(files)
         root = request.root.expanduser().resolve()

@@ -12,10 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import (
-    FlextInfraCodegenConformExecute,
-    FlextInfraCodegenLazyInit,
-)
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -193,7 +190,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
 
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(
+            FlextInfraCodegenConform.Generate(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -326,7 +323,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             for package in packages
         }
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(
+            FlextInfraCodegenConform.Generate(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,

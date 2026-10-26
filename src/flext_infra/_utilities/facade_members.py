@@ -73,14 +73,24 @@ class FlextInfraUtilitiesFacadeMembers:
         annotation_kind = cls._annotation_kind(value, source_project=source_project)
         if annotation_kind is not None:
             return annotation_kind
+        if (
+            value.get_object()
+            is runtime.runtime_callable("rope.base.pyobjects", "get_unknown")()
+        ):
+            stub_kind = cls._stub_kind(value, source_project=source_project)
+            if stub_kind is not None:
+                return stub_kind
         binding = FlextInfraUtilitiesFacadeMembers._typing_origin(
             value, source_project=source_project
         )
+        if binding is not value:
+            annotation_kind = cls._annotation_kind(
+                binding, source_project=source_project
+            )
+            if annotation_kind is not None:
+                return annotation_kind
         origin = binding.get_object()
         if origin is runtime.runtime_callable("rope.base.pyobjects", "get_unknown")():
-            stub_kind = cls._stub_kind(binding, source_project=source_project)
-            if stub_kind is not None:
-                return stub_kind
             message = f"unknown facade member kind: {binding.get_definition_location()}"
             raise ValueError(message)
         kind = c.Infra.FacadeMemberKind
@@ -111,10 +121,10 @@ class FlextInfraUtilitiesFacadeMembers:
     def _stub_kind(
         value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
     ) -> c.Infra.FacadeMemberKind | None:
-        """Classify a binary export only when its installed stub declares a class.
+        """Classify a binary export from its installed class or value declaration.
 
         Returns:
-            The source-declared class kind, or None without a proven declaration.
+            The source-declared kind, or None without a proven declaration.
 
         Raises:
             ValueError: If the binary export has ambiguous or cyclic declarations.
@@ -140,15 +150,26 @@ class FlextInfraUtilitiesFacadeMembers:
             visited.add(identity)
             stub = path / "__init__.pyi" if path.is_dir() else path.with_suffix(".pyi")
             if stub.is_file():
+                statements = ast.parse(stub.read_text(encoding="utf-8")).body
                 declarations = [
                     node
-                    for node in ast.parse(stub.read_text(encoding="utf-8")).body
+                    for node in statements
                     if isinstance(node, ast.ClassDef)
                     and node.name == imported.imported_name
                 ]
-                if len(declarations) > 1:
-                    message = f"ambiguous binary class declaration: {identity}"
+                values = [
+                    node
+                    for node in statements
+                    if isinstance(node, ast.AnnAssign)
+                    and node.value is None
+                    and isinstance(node.target, ast.Name)
+                    and node.target.id == imported.imported_name
+                ]
+                if len(declarations) + len(values) > 1:
+                    message = f"ambiguous binary declaration: {identity}"
                     raise ValueError(message)
+                if values:
+                    return c.Infra.FacadeMemberKind.CONSTANT
                 if declarations:
                     return (
                         c.Infra.FacadeMemberKind.EXCEPTION
@@ -211,15 +232,15 @@ class FlextInfraUtilitiesFacadeMembers:
         types = FlextInfraUtilitiesRopeRuntimeTypes
         kind = c.Infra.FacadeMemberKind
         ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(origin)
-        for identity, selected in (
-            ("builtins.BaseException", kind.EXCEPTION),
-            ("enum.Enum", kind.ENUM),
+        if any(
+            isinstance(ancestor, p.Infra.RopeBuiltinClass)
+            and isinstance(ancestor.builtin, type)
+            and issubclass(ancestor.builtin, BaseException)
+            for ancestor in ancestry
         ):
-            if (
-                runtime.qualified_name(source_project, identity).get_object()
-                in ancestry
-            ):
-                return selected
+            return kind.EXCEPTION
+        if runtime.qualified_name(source_project, "enum.Enum").get_object() in ancestry:
+            return kind.ENUM
         direct = FlextInfraUtilitiesDeclarationPayload.direct_bases(origin)
         if any(
             runtime.qualified_name(source_project, identity).get_object() in direct
@@ -292,27 +313,30 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        binding = value
+        binding = runtime.class_assignment_binding(value, classes_only=False)
+        if binding is None:
+            message = f"ambiguous facade declaration: {value.get_definition_location()}"
+            raise ValueError(message)
         if (
-            isinstance(value, p.Infra.RopeImportedName)
-            and value.get_object()
+            isinstance(binding, p.Infra.RopeImportedName)
+            and binding.get_object()
             is runtime.runtime_callable("rope.base.pyobjects", "get_unknown")()
         ):
-            resource = runtime.imported_module_resource(source_project, value)
+            resource = runtime.imported_module_resource(source_project, binding)
             provider = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 source_project, resource
             )
             resolved = FlextInfraUtilitiesImportLaw.resolve_declared_binding(
                 source_project,
                 provider.get_name(),
-                value.imported_name,
+                binding.imported_name,
                 Path(source_project.root.real_path),
                 {},
             )
             if resolved is None:
                 message = (
                     f"unproven lazy facade origin: "
-                    f"{provider.get_name()}.{value.imported_name}"
+                    f"{provider.get_name()}.{binding.imported_name}"
                 )
                 raise ValueError(message)
             binding = resolved
@@ -711,7 +735,11 @@ class FlextInfraUtilitiesFacadeMembers:
                     ),
                 )
                 if published is not None and published[0] in letters:
-                    publishers.add(module.get_name().rpartition(".")[0])
+                    publishers.add(
+                        FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                            module, source_project=source_project
+                        ).rpartition(".")[0]
+                    )
         return tuple(
             publisher
             for publisher in sorted(publishers)
@@ -1287,7 +1315,6 @@ class FlextInfraUtilitiesFacadeMembers:
             Whether only classes of the package bind ``member`` in the MRO.
 
         """
-        del source_project
         holders = [
             ancestor
             for ancestor in FlextInfraUtilitiesDeclarationPayload.class_ancestry(facade)
@@ -1301,8 +1328,14 @@ class FlextInfraUtilitiesFacadeMembers:
         return bool(holders) and all(
             (module := ancestor.get_module()) is not None
             and (
-                module.get_name() == package
-                or module.get_name().startswith(f"{package}.")
+                (
+                    name
+                    := FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                        module, source_project=source_project
+                    )
+                )
+                == package
+                or name.startswith(f"{package}.")
             )
             for ancestor in holders
         )

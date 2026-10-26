@@ -152,7 +152,12 @@ class TestsFlextInfraRopeSnapshot:
     def test_source_view_retains_native_provider_epoch_and_rejects_live_edit(
         tmp_path: Path,
     ) -> None:
-        """Rope and source planning share one capture; CAS preserves a later edit."""
+        """Rope and source planning share one capture; CAS preserves a later edit.
+
+        Raises:
+            TypeError: If Native source has no Rope module.
+
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         source = package / "provider.py"
         original = b"class Original: pass\n"

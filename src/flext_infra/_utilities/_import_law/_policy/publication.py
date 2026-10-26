@@ -13,16 +13,24 @@ from time import monotonic
 from flext_cli import settings, u
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectDiscovery,
+)
+from flext_infra._utilities._import_law._policy.namespace import (
+    FlextInfraUtilitiesImportLawPolicyNamespace,
+)
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
-class FlextInfraUtilitiesImportLawPolicyPublication:
+class FlextInfraUtilitiesImportLawPolicyPublication(
+    FlextInfraUtilitiesImportLawPolicyNamespace,
+):
     """Declare the publication facts of the composed import policy."""
 
     @staticmethod
@@ -59,41 +67,6 @@ class FlextInfraUtilitiesImportLawPolicyPublication:
             ),
             None,
         )
-
-    @staticmethod
-    def _module_bindings(tree: ast.Module) -> t.MappingKV[str, ast.stmt]:
-        """Return the module-level statement binding each top-level name.
-
-        Returns:
-            The last declaring statement for each module-level name.
-
-        """
-        bindings: t.MutableMappingKV[str, ast.stmt] = {}
-        for statement in tree.body:
-            names: list[str] = []
-            match statement:
-                case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
-                    names = [
-                        alias.asname or alias.name.partition(".")[0]
-                        for alias in aliases
-                    ]
-                case (
-                    ast.FunctionDef(name=name)
-                    | ast.AsyncFunctionDef(name=name)
-                    | ast.ClassDef(name=name)
-                ):
-                    names = [name]
-                case ast.Assign(targets=targets):
-                    names = [
-                        target.id for target in targets if isinstance(target, ast.Name)
-                    ]
-                case ast.AnnAssign(target=ast.Name(id=name)):
-                    names = [name]
-                case _:
-                    pass
-            for bound in names:
-                bindings[bound] = statement
-        return bindings
 
     @classmethod
     def lazy_source(
@@ -283,32 +256,6 @@ class FlextInfraUtilitiesImportLawPolicyPublication:
                             )
                         )
         return frozenset(ancestors)
-
-    @classmethod
-    def _declared_binding(
-        cls, tree: ast.Module, name: str
-    ) -> tuple[str, ast.stmt | None]:
-        """Follow module-level name aliases without executing the provider.
-
-        Returns:
-            The original bound name and its declaring statement.
-
-        Raises:
-            ValueError: When aliases form a cycle.
-
-        """
-        bindings = cls._module_bindings(tree)
-        seen: set[str] = set()
-        while name not in seen:
-            seen.add(name)
-            binding = bindings.get(name)
-            if not isinstance(binding, c.Infra.AST_ASSIGNMENT_TYPES) or not isinstance(
-                binding.value, ast.Name
-            ):
-                return name, binding
-            name = binding.value.id
-        msg = f"Cyclic declared binding: {name}"
-        raise ValueError(msg)
 
     @classmethod
     def _declaration_identity(
@@ -510,7 +457,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication:
             Path(project.root.real_path), path, source_project=project
         )
         located = (
-            cls.import_namespace(root, path, sources=sources)
+            cls.import_namespace(root, path, sources=sources, source_project=project)
             if root is not None
             else None
         )

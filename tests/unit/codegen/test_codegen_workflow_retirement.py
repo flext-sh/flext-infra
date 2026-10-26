@@ -110,7 +110,9 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            codegen.FlextInfraCodegenConformExecute(repository_root=root).plan(request),
+            codegen.FlextInfraCodegenConform.Generate(repository_root=root).plan(
+                request
+            ),
         )
 
         workflow_paths = {root / entry.destination for entry in workflows}

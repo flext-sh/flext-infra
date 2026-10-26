@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u
-
-from flext_infra import c, deps as dependency_services, m, p, r, t
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra import c, deps as dependency_services, m, p, r, t, u
 from flext_infra.codegen._conform.existing_plan import (
     FlextInfraCodegenConformExistingPlan,
 )
@@ -66,7 +63,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 entry.destination.format(
                     package_name=project.package_name,
                     ns=project.namespace,
-                    **generation.runtime_module_names(
+                    **u.Infra.runtime_module_names(
                         project_name=target.repository.distribution,
                         codegen=codegen,
                     ),
@@ -96,7 +93,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         modernizer = dependency_services.FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,
-            managed_artifacts=generation.empty_snapshot().resolution,
+            managed_artifacts=u.Infra.empty_snapshot().resolution,
         )
         # Why: a scaffold's declared roots are the complete
         # future topology only for a subproject/standalone target; a workspace
@@ -107,7 +104,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         tooling_request = m.Infra.ToolingContextRequest(
             # A future scaffold owns its declared runtime (standalone), so the
             # runtime root is pinned to the scaffold root itself.
-            environment_dir=generation.runtime_environment_dir(root, runtime_root=root),
+            environment_dir=u.Infra.runtime_environment_dir(root, runtime_root=root),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in lazy_sources.value
@@ -161,7 +158,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 workspace=workspace,
                 codegen=codegen,
                 tooling_runtime=tooling_result.value,
-                managed_artifacts=generation.empty_snapshot(),
+                managed_artifacts=u.Infra.empty_snapshot(),
             )
             context = self._project_render_context(
                 render_inputs,
@@ -283,7 +280,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             return result_type.fail(
                 f"render entry has no template source: {destination}",
             )
-        source = generation.codegen_artifact_source(codegen, entry)
+        source = u.Infra.codegen_artifact_source(codegen, entry)
         if not source.is_file():
             return result_type.fail(
                 f"artifact source is missing: {entry.source}",

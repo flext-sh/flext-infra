@@ -23,6 +23,60 @@ class TestsFlextInfraFacadeMemberConstraints:
     PACKAGE: str = "flext_core"
 
     @staticmethod
+    def test_namespace_ancestor_keeps_publisher_and_member_owner(
+        tmp_path: Path,
+    ) -> None:
+        """Use declared provider identities across a missing namespace initializer."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        leaf = package / "namespace" / "leaf"
+        leaf.mkdir(parents=True)
+        (leaf / "__init__.py").write_text(
+            "from .constants import LeafConstants, c\n"
+            '__all__ = ["LeafConstants", "c"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (leaf / "constants.py").write_text(
+            "class LeafConstants:\n"
+            "    class Capability:\n"
+            "        VALUE = 1\n"
+            "c = LeafConstants\n"
+            '__all__ = ["LeafConstants", "c"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publisher = f"{package.name}.namespace.leaf"
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            provider = u.Infra.require_semantic_module(
+                snapshot.engine.get_module(f"{publisher}.constants")
+            )
+            tm.that(
+                u.Infra.module_name_for_provider(
+                    provider, source_project=snapshot.engine
+                ),
+                eq=f"{publisher}.constants",
+            )
+            lineage = u.Infra.facade_member_lineage(
+                publisher, ("c",), source_project=snapshot.engine
+            )
+            tm.that(publisher in lineage, eq=True)
+            tm.that("leaf" in lineage, eq=False)
+            facade = u.Infra.facade_source_classes(
+                publisher, ("c",), source_project=snapshot.engine
+            )["c"]
+            tm.that(
+                u.Infra.declared_by_package(
+                    facade, "Capability", publisher, source_project=snapshot.engine
+                ),
+                eq=True,
+            )
+            tm.that(
+                u.Infra.module_name_for_provider(
+                    u.Infra.require_semantic_module(snapshot.engine.get_module("sys")),
+                    source_project=snapshot.engine,
+                ),
+                eq="sys",
+            )
+
+    @staticmethod
     def test_lazy_facade_import_keeps_source_kind() -> None:
         """Classify a real lazy export through its declared source class."""
         package_dir = tm.not_none(u.Infra.declared_package_dir("flext_cli"))
@@ -57,6 +111,41 @@ class TestsFlextInfraFacadeMemberConstraints:
                 u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
                 eq="c",
             )
+
+    @classmethod
+    def test_source_exception_alias_keeps_native_ancestor(cls) -> None:
+        """Follow the source alias and the original native builtin exception."""
+        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            module = u.Infra.require_semantic_module(
+                snapshot.engine.get_module("flext_core._constants.pydantic")
+            )
+            owner = module.get_attributes()["FlextConstantsPydantic"].get_object()
+            binding = owner.get_attributes()["PydanticImportError"]
+            tm.that(
+                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                eq=c.Infra.FacadeMemberKind.EXCEPTION,
+            )
+            tm.that(
+                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                eq="c",
+            )
+
+    @classmethod
+    def test_value_origin_classification_preserves_declarations(cls) -> None:
+        """Keep value bindings while classifying their authenticated declarations."""
+        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            module = snapshot.engine.get_module("flext_core._constants.pydantic")
+            owner = module.get_attributes()["FlextConstantsPydantic"].get_object()
+            for name, kind in (
+                ("PydanticErrorCodes", c.Infra.FacadeMemberKind.TYPE),
+                ("PYDANTIC_UNDEFINED", c.Infra.FacadeMemberKind.CONSTANT),
+            ):
+                binding = owner.get_attributes()[name]
+                tm.that(u.Infra.class_assignment_binding(binding) is binding, eq=True)
+                tm.that(
+                    u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                    eq=kind,
+                )
 
     @classmethod
     def _project(cls) -> Path:

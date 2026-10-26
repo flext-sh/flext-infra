@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.refactor import FlextInfraImportNormalization
 from tests import c, t, tm, u
 
 if TYPE_CHECKING:
@@ -53,13 +52,14 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
             "demo_pkg",
             pyproject="[project]\nname='demo'\nversion='1.0.0'\n",
         )
+        families = u.Infra.facade_families()
         cls._lazy_init(
             package,
             {
-                "c": ".constants",
-                "t": ".typings",
-                "m": ".models",
-                "u": ".utilities",
+                **{
+                    letter: f".{families[letter].module}"
+                    for letter in ("c", "t", "m", "u")
+                },
                 "r": "flext_core",
                 "DemoApi": ".api",
             },
@@ -67,7 +67,7 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
         cls._lazy_init(package / "_utilities", {"DemoHelper": ".helper"})
         cls._lazy_init(package / "_models", {"DemoRecord": ".record"})
         cls._lazy_init(package / "services", {"DemoRunner": ".runner"})
-        for letter, family in u.Infra.facade_families().items():
+        for letter, family in families.items():
             (package / f"{family.module}.py").write_text(
                 f"from flext_cli import {letter}\n__all__ = ['{letter}']\n",
                 encoding="utf-8",
@@ -82,10 +82,53 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
             The rewritten source.
 
         """
-        normalized = FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project,
             file_path=file_path,
             source=source,
         )
         tm.ok(normalized is not None)
         return normalized or ""
+
+    @classmethod
+    def _inherited_project(
+        cls, tmp_path: Path, *, override_member: bool = False
+    ) -> tuple[Path, Path]:
+        """Build real upstream and consumer facades with inherited members.
+
+        Returns:
+            The project root and consumer package directory.
+
+        """
+        project, package = cls._project(tmp_path)
+        families = u.Infra.facade_families()
+        upstream = package.parent / "upstream_pkg"
+        cls._lazy_init(
+            upstream,
+            {letter: f".{families[letter].module}" for letter in ("c", "m", "u")},
+        )
+        for letter in ("c", "m", "u"):
+            module = families[letter].module
+            (upstream / f"{module}.py").write_text(
+                f"class {letter}:\n"
+                "    @staticmethod\n"
+                "    def render(value: str) -> str:\n"
+                "        return value\n"
+                f"__all__ = [{letter!r}]\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            replacement = (
+                "    @staticmethod\n"
+                "    def render(value: str) -> str:\n"
+                "        return value.upper()\n"
+                if override_member and letter == "m"
+                else "    pass\n"
+            )
+            (package / f"{module}.py").write_text(
+                f"from upstream_pkg import {letter} as upstream_{letter}\n"
+                f"class {letter}(upstream_{letter}):\n"
+                f"{replacement}"
+                f"__all__ = [{letter!r}]\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        return project, package

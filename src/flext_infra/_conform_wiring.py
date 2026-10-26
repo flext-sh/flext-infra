@@ -9,13 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import codegen, docs, gates, m, r, t, validate
+from flext_infra import codegen, docs, gates, m, r, t, u, validate
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
-)
-from flext_infra._utilities._import_law.normalization import (
-    FlextInfraUtilitiesImportLawNormalization,
 )
 
 if TYPE_CHECKING:
@@ -66,7 +63,8 @@ class FlextInfraConformWiring:
             file_publisher=FlextInfraUtilitiesProtectedEditLinting,
             source_preview=codegen.FlextInfraStagedPackage(),
             candidate_validator=self.validate_codegen_candidate,
-            imports_planner=FlextInfraUtilitiesImportLawNormalization.plan_import_normalization,
+            imports_planner=u.Infra.plan_import_normalization,
+            component_planner=u.Infra.plan_component_facades,
         )
 
     @staticmethod

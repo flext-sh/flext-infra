@@ -75,9 +75,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         Returns:
             The consistent ordered ancestors.
 
-        Raises:
-            ValueError: If no consistent ordering exists.
-
         """
         sequences = [list(lineage) for lineage in lineages]
         result: list[TIdentity] = []
@@ -280,6 +277,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> None:
             """Bind the resolution inputs and initialize the derived state.
 
+            The supplied capture remains fixed and is retained by reference.
+            Its exact paths index every module owner in capture order, preserving
+            ambiguity without rescanning the complete capture for each lookup.
+
             Parameters:
                 project: The open Rope project scoped to the analysis roots.
                 sources: The qualified module name to captured path and source.
@@ -289,6 +290,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             self._project = project
             self._sources = sources
+            names_by_path: dict[Path, list[str]] = {}
+            for name, (path, _) in sources.items():
+                names_by_path.setdefault(path, []).append(name)
+            self._source_names_by_path: t.MappingKV[Path, t.StrTuple] = {
+                path: tuple(names) for path, names in names_by_path.items()
+            }
             self._roots = roots
             self._extra_module_aliases = extra_module_aliases
             self._definitions: t.MutableMappingKV[
@@ -340,6 +347,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 Declaration spellings in consistent source precedence order.
 
+            Raises:
+                ValueError: Owners have duplicate identities or inconsistent precedence.
+
             """
             self._prepare_ordering()
             identities = tuple(self._resolve(item) for item in declarations)
@@ -357,13 +367,35 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     }"
                 )
                 raise failure
-            lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
-                (*(self._linearize(identity) for identity in identities),),
-                message=(
-                    "Inconsistent declared facade owner precedence: declarations="
-                    f"{tuple(item.qualified_base for item in declarations)}"
-                ),
-            )
+            lineages = tuple(self._linearize(identity) for identity in identities)
+            try:
+                lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
+                    lineages,
+                    message=(
+                        "Inconsistent declared facade owner precedence: declarations="
+                        f"{tuple(item.qualified_base for item in declarations)}"
+                    ),
+                )
+            except ValueError as failure:
+                orders: dict[tuple[str, str], set[str]] = {}
+                for declaration, ancestors in zip(declarations, lineages, strict=True):
+                    for index, left in enumerate(ancestors):
+                        for right in ancestors[index + 1 :]:
+                            orders.setdefault((left, right), set()).add(
+                                declaration.qualified_base
+                            )
+                conflicts = tuple(
+                    (
+                        left,
+                        right,
+                        tuple(sorted(owners)),
+                        tuple(sorted(orders[right, left])),
+                    )
+                    for (left, right), owners in sorted(orders.items())
+                    if left < right and (right, left) in orders
+                )
+                failure.add_note(f"conflicting_declared_owner_orders={conflicts}")
+                raise
             spellings = {
                 identity: item.qualified_base
                 for identity, item in zip(identities, declarations, strict=True)
@@ -898,35 +930,41 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     message = f"Unresolved declared provider base: {target}"
                     raise ValueError(message)
                 return None
-            if (
-                resource.is_folder()
-                and reference.target == module_name
-                and reference.attributes == (attributes[0],)
-                and self._project.find_module(target) is not None
-            ):
-                binding = self._provider_attribute_binding(
-                    self._providers[module_name], attributes[0], target
+            binding = self._providers[module_name].get_attributes().get(attributes[0])
+            if isinstance(binding, p.Infra.RopeImportedName):
+                return self._native_provider_reference(
+                    self._providers[module_name],
+                    binding,
+                    attributes,
+                    visiting,
+                    depth,
                 )
-                if (
-                    isinstance(binding, p.Infra.RopeImportedName)
-                    and binding.imported_name == attributes[0]
-                    and self._provider_name(
-                        self._provider_module(binding.imported_module)
+            try:
+                return self._resolve(
+                    m.Infra.SourceClassReference(
+                        target=reference.target,
+                        attributes=(*reference.attributes, *attributes[1:]),
+                        qualified_base=reference.qualified_base,
+                    ),
+                    visiting | {target},
+                    depth + 1,
+                )
+            except (ValueError, ImportError) as failure:
+                binding = (
+                    self._providers[module_name].get_attributes().get(attributes[0])
+                )
+                failure.add_note(
+                    f"Declared provider binding: provider={module_name!r}; "
+                    f"reference={reference!r}; native_type={type(binding).__qualname__}"
+                )
+                if isinstance(binding, p.Infra.RopeImportedName):
+                    failure.add_note(
+                        "Native imported name: "
+                        f"module={binding.imported_module.module_name!r}; "
+                        f"level={binding.imported_module.level}; "
+                        f"name={binding.imported_name!r}"
                     )
-                    == module_name
-                ):
-                    return self._provider_imported_name_reference(
-                        binding, attributes[1:], target, visiting, depth
-                    )
-            return self._resolve(
-                m.Infra.SourceClassReference(
-                    target=reference.target,
-                    attributes=(*reference.attributes, *attributes[1:]),
-                    qualified_base=reference.qualified_base,
-                ),
-                visiting | {target},
-                depth + 1,
-            )
+                raise
 
         def _provider_source_bindings(
             self,
@@ -995,7 +1033,26 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if target in visiting:
                 chain = " <- ".join(sorted(visiting))
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
-                raise ValueError(message)
+                failure = ValueError(message)
+                resource = module.get_resource()
+                failure.add_note(
+                    f"Provider origin: name={module.get_name()!r}; "
+                    "resource="
+                    f"{resource.real_path if resource is not None else None!r}; "
+                    f"captured={self._captured_provider_modules(module)!r}; "
+                    f"attributes={attributes!r}"
+                )
+                if resource is not None:
+                    failure.add_note(
+                        f"Provider captured descendants={
+                            tuple(
+                                (name, str(path))
+                                for name, (path, _) in self._sources.items()
+                                if path.is_relative_to(Path(resource.real_path))
+                            )
+                        }"
+                    )
+                raise failure
             if (
                 not self._captured_provider_modules(module)
                 and name in module.get_attributes()
@@ -1150,26 +1207,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 raise ValueError(message)
             if owners:
                 return owners[0]
-            if resource is None or Path(resource.path).is_absolute():
-                return module.get_name()
-            path = Path(resource.real_path)
-            if resource.is_folder():
-                path /= c.Infra.INIT_PY
-            name = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
-                path,
-                project_root=Path(self._project.root.real_path),
+            return FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                module,
                 source_project=self._project,
             )
-            if not name:
-                message = f"Project-owned provider has no declared identity: {path}"
-                raise ValueError(message)
-            return name
 
         def _captured_provider_modules(
             self,
             module: t.Infra.RopeSemanticModule,
         ) -> t.StrTuple:
-            """Elect captured module names by the native provider's source path.
+            """Read captured module owners from the fixed exact-path index.
+
+            Ordered competing names remain present for the caller's ambiguity
+            check. Native package folders retain their initializer identity.
 
             Returns:
                 Captured owners of the source, including a package initializer.
@@ -1181,11 +1231,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             path = Path(resource.real_path)
             if resource.is_folder():
                 path /= c.Infra.INIT_PY
-            return tuple(
-                name
-                for name, (source_path, _) in self._sources.items()
-                if source_path == path
-            )
+            return self._source_names_by_path.get(path, ())
 
         def _source_import_override(
             self,
@@ -1445,6 +1491,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 The resolved declaration identity.
 
+            Raises:
+                ValueError: The native provider rejects the requested class binding.
+                ImportError: The native import owner cannot resolve the provider.
+
             """
             resource = self._project.find_module(target)
             module = self._project.get_module(target)
@@ -1456,12 +1506,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._project,
                     resource,
                 )
-            return self._provider_reference(
-                FlextInfraUtilitiesRopeRuntime.require_semantic_module(module),
-                attributes,
-                visiting,
-                depth,
-            )
+            try:
+                return self._provider_reference(
+                    FlextInfraUtilitiesRopeRuntime.require_semantic_module(module),
+                    attributes,
+                    visiting,
+                    depth,
+                )
+            except (ValueError, ImportError) as failure:
+                origin = module.get_resource()
+                failure.add_note(
+                    f"Native module election: requested={target!r}; "
+                    f"found={resource.real_path if resource is not None else None!r}; "
+                    f"selected={module.get_name()!r}; "
+                    "selected_resource="
+                    f"{origin.real_path if origin is not None else None!r}"
+                )
+                raise
 
         def _resolve(
             self,
@@ -1627,9 +1688,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     break
                 if submodule not in self._namespaces:
                     if self._project.find_module(submodule) is not None:
-                        return self._external_reference(
-                            submodule, tuple(remaining), visiting, depth + 1
-                        ), []
+                        try:
+                            return self._external_reference(
+                                submodule, tuple(remaining), visiting, depth + 1
+                            ), []
+                        except (ValueError, ImportError) as failure:
+                            resource = self._project.find_module(".".join(parts))
+                            failure.add_note(
+                                f"Uncaptured namespace descent: module={module!r}; "
+                                f"selected={submodule!r}; remaining={remaining!r}; "
+                                f"full_target={'.'.join(parts)!r}; native_origin="
+                                f"{resource.real_path if resource is not None else None!r}"
+                            )
+                            raise
                     break
                 module = submodule
             if module not in self._modules:
@@ -1639,15 +1710,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if binding is None:
                 message = f"Unresolved planned base: {module}.{name}"
                 raise ValueError(message)
-            return self._resolve(
-                m.Infra.SourceClassReference(
-                    target=binding.target,
-                    attributes=(*binding.attributes, *remaining),
-                    qualified_base=binding.qualified_base,
-                ),
-                visiting | {key},
-                depth + 1,
-            ), []
+            try:
+                return self._resolve(
+                    m.Infra.SourceClassReference(
+                        target=binding.target,
+                        attributes=(*binding.attributes, *remaining),
+                        qualified_base=binding.qualified_base,
+                    ),
+                    visiting | {key},
+                    depth + 1,
+                ), []
+            except (ValueError, ImportError) as failure:
+                failure.add_note(
+                    f"Planned namespace binding: module={module!r}; name={name!r}; "
+                    f"target={binding.target!r}; attributes={binding.attributes!r}; "
+                    f"remaining={remaining!r}; visiting={tuple(sorted(visiting))!r}"
+                )
+                raise
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.

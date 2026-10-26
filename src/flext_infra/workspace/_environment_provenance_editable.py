@@ -14,9 +14,12 @@ from urllib.request import url2pathname
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
-class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
+class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin(
+    FlextInfraUtilitiesDiscovery,
+):
     """Bind editable receipts and path files to declared package sources."""
 
     @staticmethod
@@ -188,11 +191,9 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
             The complete deduplicated package declarations, including namespace roots.
 
         """
-        from flext_infra import u
-
         result = r[t.VariadicTuple[t.Pair[str, Path | None]]]
-        package_name = u.Infra.project_package_name(expected_root)
-        payload = u.Infra.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
+        package_name = cls.project_package_name(expected_root)
+        payload = cls.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
         wheel: t.JsonMapping = payload
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             child = u.Cli.toml_mapping_child(wheel, key)
@@ -287,8 +288,9 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
                 packages.append((".".join(destination_path.parts), target.value))
         return result.ok(tuple(packages))
 
-    @staticmethod
+    @classmethod
     def _editable_pth_source(
+        cls,
         distribution: str,
         entry: str,
         expected_root: Path,
@@ -300,8 +302,6 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
             Every package exposed by this entry, preserving complete coverage checks.
 
         """
-        from flext_infra import u
-
         result = r[frozenset[t.Pair[str, Path | None]]]
         if not Path(entry).is_absolute():
             return result.fail(
@@ -325,7 +325,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
             for name, target in packages
             if (
                 (
-                    package := u.Infra.declared_package_dir(
+                    package := cls.declared_package_dir(
                         name,
                         search_paths=(str(actual_source),),
                     )

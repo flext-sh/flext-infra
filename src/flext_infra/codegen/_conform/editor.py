@@ -8,15 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, deps as dependency_services, m, p, r, t
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra import c, deps as dependency_services, m, p, r, t, u
 from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
 from flext_infra.services._codegen.vscode import FlextInfraCodegenVscodeMixin
 
 
-class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
+class FlextInfraCodegenConformEditor(
+    FlextInfraCodegenConformArtifactRender,
+    FlextInfraCodegenVscodeMixin,
+):
     """Compose existing editor, analyzer and Git-ignore owners into one plan."""
 
     @staticmethod
@@ -32,7 +34,7 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         result_type = r[t.MappingKV[str, m.Cli.AtomicFileState]]
         original: t.MutableMappingKV[str, m.Cli.AtomicFileState] = {}
         for relative in sorted(destinations):
-            observed = generation.codegen_target_snapshot(root / relative)
+            observed = u.Infra.codegen_target_snapshot(root / relative)
             if observed.failure:
                 return result_type.from_failure(observed)
             original[relative] = observed.value
@@ -51,7 +53,7 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
 
         """
         result_type = r[str]
-        tooling = generation.load_tooling_inputs(target.root)
+        tooling = u.Infra.load_tooling_inputs(target.root)
         if tooling.failure:
             return result_type.from_failure(tooling)
         tool_config = tooling.value.document
@@ -71,7 +73,7 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         )
         if manifest.failure:
             return result_type.from_failure(manifest)
-        return generation.format_toml_source(
+        return u.Infra.format_toml_source(
             manifest.value,
             path=target.root / c.PYPROJECT_FILENAME,
             toolchain_root=self.state.repository_root,
@@ -91,7 +93,7 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
 
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        loaded = generation.load_codegen_inputs(target.root)
+        loaded = u.Infra.load_codegen_inputs(target.root)
         if loaded.failure:
             return result_type.from_failure(loaded)
         codegen = loaded.value.spec
@@ -104,12 +106,12 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         )
         if manifest.failure:
             return result_type.from_failure(manifest)
-        settings = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+        settings = self.render_vscode_settings(
             target.root, spec=codegen.vscode, codegen=codegen
         )
         if settings.failure:
             return result_type.from_failure(settings)
-        ignored = generation.render_project_gitignore(
+        ignored = u.Infra.render_project_gitignore(
             codegen,
             profile=target.make_profile,
             project_name=target.repository.name,

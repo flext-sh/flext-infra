@@ -13,7 +13,7 @@ from typing import Literal
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, t, tm, u
 
 
@@ -266,7 +266,7 @@ class UtilityFacadeOwnerPublication:
                 )
             )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(
+            FlextInfraCodegenConform.Generate(
                 state=m.Infra.CodegenConformState(repository_root=root),
             ).plan(
                 u.Tests.conform_request(

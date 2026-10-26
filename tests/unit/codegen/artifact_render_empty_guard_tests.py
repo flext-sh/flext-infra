@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
 
 
@@ -79,7 +79,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
-        planned = FlextInfraCodegenConformExecute(
+        planned = FlextInfraCodegenConform.Generate(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -58,7 +58,7 @@ class TestsFlextInfraCodegenMakeContracts:
                 c.Infra.MakeProfile.STANDALONE
             ]
         )
-        result = FlextInfraCodegenConformExecute.validate_custom_make(
+        result = FlextInfraCodegenConform.Generate.validate_custom_make(
             tm.ok(u.Cli.files_read_text(custom)),
             policy,
         )
@@ -102,7 +102,7 @@ class TestsFlextInfraCodegenMakeContracts:
             ]
         )
 
-        result = FlextInfraCodegenConformExecute.validate_custom_make(
+        result = FlextInfraCodegenConform.Generate.validate_custom_make(
             ".PHONY: \\\n\t_custom_check_demo \\",
             policy,
         )

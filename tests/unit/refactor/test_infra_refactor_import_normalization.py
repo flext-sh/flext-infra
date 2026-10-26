@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, refactor, transformers
+from flext_infra import m, transformers
 from tests import c, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
@@ -46,7 +46,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "if TYPE_CHECKING:\n"
             "    from demo_pkg._utilities.inspection import inspect_value\n"
         )
-        normalized = refactor.FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project, file_path=target, source=before
         )
         if consumer:
@@ -54,7 +54,7 @@ class TestsFlextInfraRefactorImportNormalization(
         else:
             tm.that(normalized, eq=None)
             tm.that(
-                refactor.FlextInfraImportNormalization.normalize_source(
+                u.Infra.normalize_import_source(
                     project_root=project, file_path=target, source=before
                 ),
                 eq=None,
@@ -101,6 +101,7 @@ class TestsFlextInfraRefactorImportNormalization(
                     project,
                     (target,),
                     sources=working,
+                    declared_files=(),
                     snapshot=snapshot,
                 )
             )
@@ -157,7 +158,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(
-            refactor.FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
@@ -176,7 +177,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         target.write_text(source, encoding="utf-8")
         with pytest.raises(ValueError, match="destination is occupied"):
-            refactor.FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=source,
@@ -198,7 +199,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         module.write_text(source, encoding="utf-8")
         with pytest.raises(ValueError, match="forbidden reverse namespace import"):
-            refactor.FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=source
             )
         tm.that(module.read_text(encoding="utf-8"), eq=source)
@@ -248,7 +249,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(
-            refactor.FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=normalized
             ),
             eq=None,
@@ -276,7 +277,7 @@ class TestsFlextInfraRefactorImportNormalization(
         target = package / "bootstrap.py"
         target.write_text(source, encoding="utf-8")
         tm.that(
-            refactor.FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=source,
@@ -367,7 +368,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "class LocalTypes:\n    type JsonPayload = str\n\nt = LocalTypes\n",
             encoding="utf-8",
         )
-        normalized = refactor.FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -415,7 +416,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "__all__ = ['u']\n",
             encoding="utf-8",
         )
-        normalized = refactor.FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -461,7 +462,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "from flext_cli import m, u\n\n"
             "ADAPTER: u.type_adapter[str] = u.type_adapter(str)\n"
         )
-        normalized = refactor.FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -553,7 +554,7 @@ class TestsFlextInfraRefactorImportNormalization(
     def test_reverse_runtime_import_keeps_its_place(cls, tmp_path: Path) -> None:
         """A lower layer reading a higher layer at runtime keeps the import inline."""
         project, package = cls._project(tmp_path)
-        result = refactor.FlextInfraImportNormalization.normalize_source(
+        result = u.Infra.normalize_import_source(
             project_root=project,
             file_path=package / "_utilities" / "bridge.py",
             source=(
@@ -614,3 +615,155 @@ class TestsFlextInfraRefactorImportNormalization(
         tm.that(normalized, has="from demo_pkg import r\n")
         tm.that(normalized, has="from demo_pkg import t\n")
         tm.that(normalized, lacks="from flext_core import r")
+
+
+class TestsFlextInfraNamespaceImportNormalization(
+    TestsFlextInfraRefactorImportNormalizationSupport,
+):
+    """Declared PEP 420 roots retain their regular publishing package identity."""
+
+    @classmethod
+    @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
+    @pytest.mark.parametrize("parent", ["", "region"])
+    def test_regular_publisher_under_declared_namespace(
+        cls, tmp_path: Path, namespace: str, parent: str
+    ) -> None:
+        """Normalize captured imports without creating a namespace initializer."""
+        project, _package = cls._project(tmp_path)
+        declaration = u.Tests.project_spec("demo").model_copy(
+            update={"repository_namespace_packages": (namespace,)}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                project / "config" / "codegen.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "project": declaration.model_dump(mode="json"),
+                            }
+                        }
+                    }
+                },
+            )
+        )
+        publisher = project / namespace / parent / "contracts"
+        cls._lazy_init(publisher, {"DemoEntity": ".entity"})
+        (publisher / "entity.py").write_text(
+            "class DemoEntity:\n    pass\n__all__ = ['DemoEntity']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = publisher / "consumer.py"
+        settings = publisher / "settings.py"
+        root_module = project / "entry.py"
+        orphan = project / namespace / "orphan.py"
+        undeclared = project / "undeclared"
+        undeclared.mkdir()
+        unowned = undeclared / "consumer.py"
+        for path in (target, settings, root_module, orphan, unowned):
+            path.write_text("value = 'physical'\n", encoding=c.DEFAULT_ENCODING)
+        package = ".".join(publisher.relative_to(project).parts)
+        with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
+            sources = {
+                path: entry.text
+                for path, entry in u.Infra.workspace_sources(snapshot).items()
+            }
+            tm.that(
+                u.Infra.module_name_for_file(
+                    root_module, project_root=project, source_project=snapshot.engine
+                ),
+                eq=root_module.stem,
+            )
+            working = {
+                **sources,
+                target: (
+                    f"from {package}.entity import DemoEntity as imported\n"
+                    "value = imported\n"
+                ),
+            }
+            for lookup_sources in (working, {target: working[target]}):
+                tm.that(
+                    u.Infra.import_namespace(
+                        project,
+                        target,
+                        sources=lookup_sources,
+                        source_project=snapshot.engine,
+                    ),
+                    eq=(publisher, f"{package}.consumer"),
+                )
+                tm.that(
+                    u.Infra.import_lazy_exports(
+                        project,
+                        package,
+                        sources=lookup_sources,
+                        source_project=snapshot.engine,
+                    ),
+                    eq={"DemoEntity": f"{package}.entity"},
+                )
+            tm.that(
+                u.Infra.import_namespace(
+                    project, unowned, sources=sources, source_project=snapshot.engine
+                ),
+                eq=None,
+            )
+            for missing in (namespace, undeclared.name):
+                tm.that(
+                    u.Infra.import_package_dir(
+                        project,
+                        missing,
+                        sources=sources,
+                        source_project=snapshot.engine,
+                    ),
+                    eq=None,
+                )
+            with pytest.raises(
+                ValueError, match="namespace without an owned package init"
+            ):
+                u.Infra.plan_import_normalization(
+                    project,
+                    (orphan,),
+                    sources=sources,
+                    declared_files=(),
+                    snapshot=snapshot,
+                )
+            plans = tm.ok(
+                u.Infra.plan_import_normalization(
+                    project,
+                    (target,),
+                    sources=working,
+                    declared_files=(),
+                    snapshot=snapshot,
+                )
+            )
+            tm.that(plans, length=1)
+            desired = tm.not_none(plans[0].desired_content).decode(c.DEFAULT_ENCODING)
+            tm.that(
+                desired, eq=f"from {package} import DemoEntity\nvalue = DemoEntity\n"
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_import_normalization(
+                        project,
+                        (target,),
+                        sources={**working, target: desired},
+                        declared_files=(),
+                        snapshot=snapshot,
+                    )
+                ),
+                eq=(),
+            )
+            with pytest.raises(
+                ValueError, match="layer-zero module imports its own namespace"
+            ):
+                u.Infra.plan_import_normalization(
+                    project,
+                    (settings,),
+                    sources={
+                        **sources,
+                        settings: f"from {package} import DemoEntity\n",
+                    },
+                    declared_files=(),
+                    snapshot=snapshot,
+                )
+        tm.that((project / namespace / c.Infra.INIT_PY).exists(), eq=False)
+        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=sources[target])

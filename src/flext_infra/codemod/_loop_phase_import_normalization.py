@@ -41,7 +41,11 @@ class FlextInfraImportNormalizationPhase:
                 for path, captured in u.Infra.workspace_sources(snapshot).items()
             }
             planned = u.Infra.plan_import_normalization(
-                project_root, files, sources=sources, snapshot=snapshot
+                project_root,
+                files,
+                sources=sources,
+                declared_files=(),
+                snapshot=snapshot,
             ).unwrap()
         return cls._publish(project_root, planned).unwrap()
 
@@ -96,6 +100,7 @@ class FlextInfraImportNormalizationPhase:
                 project_root,
                 selected,
                 sources=sources,
+                declared_files=(),
                 snapshot=rope_workspace.snapshot,
             )
             if planned.failure:

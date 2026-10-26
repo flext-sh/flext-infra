@@ -108,8 +108,8 @@ class TestsFlextInfraUtilitiesConform:
         """
         request = TestsFlextInfraUtilitiesConform.conform_request(root, what=what)
         return (
-            codegen
-            .FlextInfraCodegenConformExecute(
+            codegen.FlextInfraCodegenConform
+            .Generate(
                 repository_root=root if executor_root is None else executor_root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root if executor_root is None else executor_root,

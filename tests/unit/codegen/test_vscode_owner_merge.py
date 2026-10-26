@@ -11,8 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, config, infra
-from flext_infra.codegen import FlextInfraCodegenConformExecute
-from flext_infra.services import FlextInfraCodegenVscodeMixin as FlextInfraCodegen
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 
 
@@ -25,16 +24,18 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "standalone"
         directory = root / c.CONFIG_DIR_NAME
         directory.mkdir(parents=True)
-        baseline = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
+        baseline = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(root))
         inherited = tm.ok(
-            FlextInfraCodegen.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 root,
                 spec=baseline,
             ),
         )
         tm.that(
-            FlextInfraCodegen.vscode_settings(baseline),
-            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode),
+            FlextInfraCodegenConform.Generate.vscode_settings(baseline),
+            eq=FlextInfraCodegenConform.Generate.vscode_settings(
+                config.Infra.codegen.vscode
+            ),
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -52,23 +53,25 @@ class TestsFlextInfraVscodeOwnerMerge:
                 },
             ),
         )
-        explicit = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
+        explicit = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(root))
         tm.that(
-            FlextInfraCodegen.vscode_settings(explicit),
-            eq=FlextInfraCodegen.vscode_settings(baseline),
+            FlextInfraCodegenConform.Generate.vscode_settings(explicit),
+            eq=FlextInfraCodegenConform.Generate.vscode_settings(baseline),
         )
         tm.that(
             tm.ok(
-                FlextInfraCodegen.render_vscode_settings(
+                FlextInfraCodegenConform.Generate.render_vscode_settings(
                     root,
                     spec=explicit,
                 ),
             ),
             eq=inherited,
         )
-        document = tm.ok(FlextInfraCodegen.parse_vscode_settings(inherited))
+        document = tm.ok(
+            FlextInfraCodegenConform.Generate.parse_vscode_settings(inherited)
+        )
         delta = tm.ok(
-            FlextInfraCodegen.vscode_declaration_delta(
+            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
                 root,
                 document,
                 spec=baseline,
@@ -104,7 +107,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         captured = tm.ok(u.Infra.load_codegen_inputs(root))
         tm.that(captured.spec.make.gate_acceptance_policy, eq=chosen)
         tm.that(
-            tm.ok(FlextInfraCodegen.load_vscode_spec(root)),
+            tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(root)),
             eq=captured.spec.vscode,
         )
         tm.ok(
@@ -203,16 +206,20 @@ class TestsFlextInfraVscodeOwnerMerge:
             ),
         })
         planned = tm.ok(
-            FlextInfraCodegen.vscode_declaration_delta(
+            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
                 tmp_path,
                 {key: replacement},
                 spec=spec,
             )
         )
         tm.that(planned.values, eq={"settings": [[key, replacement]]})
-        composed = tm.ok(FlextInfraCodegen.compose_vscode_delta(spec, planned))
+        composed = tm.ok(
+            FlextInfraCodegenConform.Generate.compose_vscode_delta(spec, planned)
+        )
         rendered = tm.ok(
-            FlextInfraCodegen.render_vscode_settings(tmp_path, spec=composed)
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
+                tmp_path, spec=composed
+            )
         )
         tm.that(u.Tests.json_payload(rendered)[key], eq=replacement)
 
@@ -221,7 +228,9 @@ class TestsFlextInfraVscodeOwnerMerge:
         """Two injected repositories retain independent committed and local choices."""
         key = "python.analysis.userFileIndexingLimit"
         baseline = u.type_adapter(int).validate_python(
-            FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[key],
+            FlextInfraCodegenConform.Generate.vscode_settings(
+                config.Infra.codegen.vscode
+            )[key],
         )
         project_choice = baseline + 7
         local_choice = baseline + 13
@@ -250,10 +259,16 @@ class TestsFlextInfraVscodeOwnerMerge:
                 {"Infra": {"codegen": {"vscode": {"settings": [[key, local_choice]]}}}},
             ),
         )
-        chosen = tm.ok(FlextInfraCodegen.load_vscode_spec(first))
-        other = tm.ok(FlextInfraCodegen.load_vscode_spec(second))
-        tm.that(FlextInfraCodegen.vscode_settings(chosen)[key], eq=local_choice)
-        tm.that(FlextInfraCodegen.vscode_settings(other)[key], eq=other_choice)
+        chosen = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(first))
+        other = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(second))
+        tm.that(
+            FlextInfraCodegenConform.Generate.vscode_settings(chosen)[key],
+            eq=local_choice,
+        )
+        tm.that(
+            FlextInfraCodegenConform.Generate.vscode_settings(other)[key],
+            eq=other_choice,
+        )
         tm.that(
             FlextInfraConfig.config_sources_for_repository(
                 first,
@@ -315,11 +330,16 @@ class TestsFlextInfraVscodeOwnerMerge:
                 },
             )
         )
-        elected = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
-        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(root, spec=elected))
+        elected = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(root))
+        rendered = tm.ok(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(root, spec=elected)
+        )
         document = u.Tests.json_payload(rendered)
         for name, value in values.items():
-            tm.that(FlextInfraCodegen.vscode_settings(elected)[name], eq=value)
+            tm.that(
+                FlextInfraCodegenConform.Generate.vscode_settings(elected)[name],
+                eq=value,
+            )
             tm.that(document[name], eq=value)
 
     @staticmethod
@@ -337,13 +357,17 @@ class TestsFlextInfraVscodeOwnerMerge:
         }
         specification = config.Infra.codegen.vscode
         delta = tm.ok(
-            FlextInfraCodegen.vscode_declaration_delta(
+            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
                 tmp_path, values, spec=specification
             )
         )
-        composed = tm.ok(FlextInfraCodegen.compose_vscode_delta(specification, delta))
+        composed = tm.ok(
+            FlextInfraCodegenConform.Generate.compose_vscode_delta(specification, delta)
+        )
         rendered = tm.ok(
-            FlextInfraCodegen.render_vscode_settings(tmp_path, spec=composed)
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
+                tmp_path, spec=composed
+            )
         )
         document = u.Tests.json_payload(rendered)
         for key, value in values.items():
@@ -368,7 +392,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             scope=c.Infra.CodegenConformScope.SELF,
         )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
         )
         governed = next(
             item
@@ -381,7 +405,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         tm.fail(settings_path.exists())
         tm.that(
             u.Tests.codegen_file_text(file),
-            eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root)),
+            eq=tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root)),
         )
 
     @staticmethod
@@ -406,7 +430,10 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
         tm.ok(root / governed.path in first.written_files)
         rendered = (root / governed.path).read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that(rendered, eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root)))
+        tm.that(
+            rendered,
+            eq=tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root)),
+        )
         second = tm.ok(infra.codegen_generate(request))
         tm.that(second.written_files, empty=True)
         tm.fail((root / c.Infra.VENV_DIR).exists())
@@ -438,7 +465,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
         settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         settings_path.parent.mkdir(parents=True, exist_ok=True)
-        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(root))
+        rendered = tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root))
         settings_path.write_text(rendered, encoding=c.DEFAULT_ENCODING)
         directory = member / c.CONFIG_DIR_NAME
         directory.mkdir(exist_ok=True)
@@ -499,7 +526,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         settings_path = root / governed.path
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(
-            tm.ok(FlextInfraCodegen.render_vscode_settings(root)),
+            tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root)),
             encoding=c.DEFAULT_ENCODING,
         )
         (root / c.Infra.GITIGNORE).write_text(
@@ -576,7 +603,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             },
         )
         rendered = tm.ok(
-            FlextInfraCodegen.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 root,
                 spec=spec,
             ),
@@ -600,11 +627,11 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodegen.render_vscode_settings(root)
+        result = FlextInfraCodegenConform.Generate.render_vscode_settings(root)
 
         tm.ok(result)
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(result.value)
-        for key, expected_value in FlextInfraCodegen.vscode_settings(
+        for key, expected_value in FlextInfraCodegenConform.Generate.vscode_settings(
             config.Infra.codegen.vscode
         ).items():
             if key in config.Infra.codegen.vscode.stripped_keys:
@@ -627,9 +654,9 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
         tm.that(
             doc[search_paths_key],
-            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[
-                search_paths_key
-            ],
+            eq=FlextInfraCodegenConform.Generate.vscode_settings(
+                config.Infra.codegen.vscode
+            )[search_paths_key],
         )
 
     @staticmethod
@@ -640,11 +667,11 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         settings_path.parent.mkdir(parents=True)
         tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         _ = settings_path.write_text("{}\n", encoding="utf-8")
-        first = FlextInfraCodegen.render_vscode_settings(root)
+        first = FlextInfraCodegenConform.Generate.render_vscode_settings(root)
         tm.ok(first)
         _ = settings_path.write_text(first.value, encoding="utf-8")
 
-        second = FlextInfraCodegen.render_vscode_settings(root)
+        second = FlextInfraCodegenConform.Generate.render_vscode_settings(root)
 
         tm.ok(second)
         tm.that(second.value, eq=first.value)
@@ -664,7 +691,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodegen.render_vscode_settings(root)
+        result = FlextInfraCodegenConform.Generate.render_vscode_settings(root)
 
         tm.ok(result)
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(result.value)
@@ -693,7 +720,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodegen.render_vscode_settings(root)
+        result = FlextInfraCodegenConform.Generate.render_vscode_settings(root)
 
         tm.ok(result)
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(result.value)
@@ -741,9 +768,11 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             ),
         )
         original = path.read_text(encoding=c.DEFAULT_ENCODING)
-        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(member))
+        rendered = tm.ok(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(member)
+        )
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
-        for key, expected in FlextInfraCodegen.vscode_settings(
+        for key, expected in FlextInfraCodegenConform.Generate.vscode_settings(
             config.Infra.codegen.vscode
         ).items():
             if key in config.Infra.codegen.vscode.stripped_keys:
@@ -755,10 +784,10 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
         tm.fail(str(tmp_path) in rendered)
         migrated = tm.ok(
-            FlextInfraCodegen.vscode_declaration_delta(
+            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
                 member,
                 doc,
-                spec=tm.ok(FlextInfraCodegen.load_vscode_spec(member)),
+                spec=tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(member)),
             ),
         )
         tm.that(
@@ -775,22 +804,22 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             ),
         )
         standalone_rendered = tm.ok(
-            FlextInfraCodegen.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 standalone,
             ),
         )
         standalone_doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(standalone_rendered)
         tm.that(
             standalone_doc["terminal.integrated.env.linux"],
-            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[
-                "terminal.integrated.env.linux"
-            ],
+            eq=FlextInfraCodegenConform.Generate.vscode_settings(
+                config.Infra.codegen.vscode
+            )["terminal.integrated.env.linux"],
         )
         tm.that(
             standalone_doc["ruff.interpreter"],
-            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[
-                "ruff.interpreter"
-            ],
+            eq=FlextInfraCodegenConform.Generate.vscode_settings(
+                config.Infra.codegen.vscode
+            )["ruff.interpreter"],
         )
         tm.that(standalone_doc["operator.note"], eq=doc["operator.note"])
         tm.that(
@@ -804,10 +833,14 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         spec = config.Infra.codegen.vscode
         key = "operator.orderedOptions"
         preferred: t.JsonValue = ["child", "parent"]
-        expected = dict(FlextInfraCodegen.vscode_settings(spec))
+        expected = dict(FlextInfraCodegenConform.Generate.vscode_settings(spec))
         expected[key] = preferred
         delta = m.Infra.CodegenVscodeDeclarationDelta(
             values={"settings": [[key, preferred]]}
         )
-        composed = tm.ok(FlextInfraCodegen.compose_vscode_delta(spec, delta))
-        tm.that(FlextInfraCodegen.vscode_settings(composed), eq=expected)
+        composed = tm.ok(
+            FlextInfraCodegenConform.Generate.compose_vscode_delta(spec, delta)
+        )
+        tm.that(
+            FlextInfraCodegenConform.Generate.vscode_settings(composed), eq=expected
+        )

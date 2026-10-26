@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_cli import u
 
@@ -24,9 +24,6 @@ from flext_infra._utilities._rope.rope_module_patch import (
     FlextInfraUtilitiesRopeModulePatch,
 )
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
-)
 from flext_infra._utilities._semantic_cutover.facade_owners import (
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
 )
@@ -63,24 +60,23 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
-    FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
-    FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeModulePatch,
-    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
@@ -91,6 +87,7 @@ class FlextInfraUtilitiesCodegen(
     if TYPE_CHECKING:
 
         @staticmethod
+        @override
         def project_root(
             file_path: Path,
             *,

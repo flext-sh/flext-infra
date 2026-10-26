@@ -17,18 +17,81 @@ from typing import Literal
 import flext_core
 
 from flext_infra import c, config, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectDiscovery,
+)
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesImportLawPolicyNamespace:
     """Declare the namespace facts of the composed import policy."""
+
+    @staticmethod
+    def _module_bindings(tree: ast.Module) -> t.MappingKV[str, ast.stmt]:
+        """Return the module-level statement binding each top-level name.
+
+        Returns:
+            The last declaring statement for each module-level name.
+
+        """
+        bindings: t.MutableMappingKV[str, ast.stmt] = {}
+        for statement in tree.body:
+            names: list[str] = []
+            match statement:
+                case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
+                    names = [
+                        alias.asname or alias.name.partition(".")[0]
+                        for alias in aliases
+                    ]
+                case (
+                    ast.FunctionDef(name=name)
+                    | ast.AsyncFunctionDef(name=name)
+                    | ast.ClassDef(name=name)
+                ):
+                    names = [name]
+                case ast.Assign(targets=targets):
+                    names = [
+                        target.id for target in targets if isinstance(target, ast.Name)
+                    ]
+                case ast.AnnAssign(target=ast.Name(id=name)):
+                    names = [name]
+                case _:
+                    pass
+            for bound in names:
+                bindings[bound] = statement
+        return bindings
+
+    @classmethod
+    def _declared_binding(
+        cls, tree: ast.Module, name: str
+    ) -> tuple[str, ast.stmt | None]:
+        """Follow module-level name aliases without executing the provider.
+
+        Returns:
+            The original bound name and its declaring statement.
+
+        Raises:
+            ValueError: When aliases form a cycle.
+
+        """
+        bindings = cls._module_bindings(tree)
+        seen: set[str] = set()
+        while name not in seen:
+            seen.add(name)
+            binding = bindings.get(name)
+            if not isinstance(binding, c.Infra.AST_ASSIGNMENT_TYPES) or not isinstance(
+                binding.value, ast.Name
+            ):
+                return name, binding
+            name = binding.value.id
+        msg = f"Cyclic declared binding: {name}"
+        raise ValueError(msg)
 
     @classmethod
     def snapshot_import_namespace(
@@ -46,7 +109,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         key = (project_root, file_path)
         if key not in snapshot.import_namespaces:
             snapshot.import_namespaces[key] = cls.import_namespace(
-                project_root, file_path
+                project_root, file_path, source_project=snapshot.engine
             )
         return snapshot.import_namespaces[key]
 
@@ -57,12 +120,13 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         file_path: Path,
         *,
         sources: t.MappingKV[Path, str] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.Pair[Path, str] | None:
         """Return the namespace directory and dotted module of one file.
 
-        A namespace is a top-level package of a project: the source package
-        under ``src/`` or an internal tier (``tests``, ``examples``,
-        ``scripts``) whose directory carries an ``__init__.py``.
+        Regular source packages and internal tiers own their root. A declared
+        PEP 420 root instead delegates publication to its first regular package
+        ancestor of the file, retaining the complete declared module identity.
 
         Returns:
             The namespace directory and the file's dotted module name, or
@@ -87,16 +151,36 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         init = namespace_dir / c.Infra.INIT_PY
         # A regular package needs no declaration lookup: the repository's
         # declared namespace packages are read only for an init-less tier.
-        if not (init.is_file() if sources is None else init in sources) and not (
-            base == root
-            and namespace_name
-            in FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(root)
+        if not (
+            source_project.source_query(init, "isfile")
+            if source_project is not None
+            else init in sources
+            if sources is not None
+            else init.is_file()
         ):
-            return None
-        parts = relative.with_suffix("").parts
-        if parts[-1] == "__init__":
-            parts = parts[:-1]
-        return namespace_dir, ".".join(parts)
+            if base != root or namespace_name not in (
+                FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(
+                    root, source_project=source_project
+                )
+            ):
+                return None
+            for part in module_parts[:-1]:
+                namespace_dir /= part
+                init = namespace_dir / c.Infra.INIT_PY
+                if (
+                    source_project.source_query(init, "isfile")
+                    if source_project is not None
+                    else init in sources
+                    if sources is not None
+                    else init.is_file()
+                ):
+                    break
+            else:
+                # Namespace admission does not fabricate a publishing package.
+                namespace_dir = base / namespace_name
+        return namespace_dir, FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+            resolved, project_root=root, source_project=source_project
+        )
 
     @staticmethod
     @cache
@@ -124,7 +208,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         return MappingProxyType(modules)
 
     @classmethod
-    def module_import_layer(cls, module: str) -> int:
+    def module_import_layer(cls, module: str, *, namespace: str | None = None) -> int:
         """Return the layer rank of one dotted module of a namespace.
 
         A module's layer is the first path segment, from its namespace
@@ -148,7 +232,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 )
             },
         }
-        for part in module.split(".")[1:]:
+        for part in module.split(".")[len(namespace.split(".")) if namespace else 1 :]:
             stem = part.lstrip("_")
             layer = families.get(stem, stem)
             if layer in order:
@@ -222,7 +306,9 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         return frozenset(found)
 
     @classmethod
-    def import_module_role(cls, module: str) -> Literal["layer0", "family", "consumer"]:
+    def import_module_role(
+        cls, module: str, *, namespace: str | None = None
+    ) -> Literal["layer0", "family", "consumer"]:
         """Classify a module from the canonical singleton and family vocabulary.
 
         Layer-zero declarations cannot depend on their own namespace, even
@@ -237,10 +323,14 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         """
         if module in cls.pytest_plugin_modules():
             return "layer0"
-        if module in cls.bootstrap_modules(module.partition(".")[0]):
+        if (namespace is None or "." not in namespace) and (
+            module in cls.bootstrap_modules(module.partition(".")[0])
+        ):
             return "layer0"
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
-        for index, part in enumerate(module.split(".")[1:]):
+        for index, part in enumerate(
+            module.split(".")[len(namespace.split(".")) if namespace else 1 :]
+        ):
             stem = part.lstrip("_")
             if any(stem == family.module for family in families.values()):
                 return "family"
@@ -299,7 +389,9 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         return role
 
     @classmethod
-    def import_direct_module(cls, namespace_dir: Path, file_path: Path) -> bool:
+    def import_direct_module(
+        cls, namespace_dir: Path, file_path: Path, *, namespace: str
+    ) -> bool:
         """Return whether one module keeps direct leaf imports.
 
         A layer-zero settings/config module and a family
@@ -313,8 +405,8 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
 
         """
         relative = file_path.resolve().relative_to(namespace_dir.resolve())
-        module = ".".join((namespace_dir.name, *relative.with_suffix("").parts))
-        if cls.import_module_role(module) == "layer0":
+        module = ".".join((namespace, *relative.with_suffix("").parts))
+        if cls.import_module_role(module, namespace=namespace) == "layer0":
             return True
         return (
             len(relative.parts) > 1
@@ -329,6 +421,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         package: str,
         *,
         sources: t.MappingKV[Path, str] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrMapping | None:
         """Map each name one owned package ``__init__`` publishes to its module.
 
@@ -348,30 +441,19 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             ValueError: If the package init declares its lazy map indirectly.
 
         """
-        top, *rest = package.split(".")
-        bases = (project_root / c.Infra.DEFAULT_SRC_DIR, project_root)
-        owner = next(
-            (
-                base
-                for base in bases
-                if (
-                    (base / top / c.Infra.INIT_PY).is_file()
-                    if sources is None
-                    else base / top / c.Infra.INIT_PY in sources
-                )
-            ),
-            None,
+        directory = cls.import_package_dir(
+            project_root, package, sources=sources, source_project=source_project
         )
-        if owner is None:
+        if directory is None:
             return None
-        init = owner.joinpath(top, *rest, c.Infra.INIT_PY)
-        if not (init.is_file() if sources is None else init in sources):
-            return None
+        init = directory / c.Infra.INIT_PY
         targets, references = (
             FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                init.read_text(encoding=c.DEFAULT_ENCODING)
-                if sources is None
-                else sources[init],
+                source_project.source_text(init)
+                if source_project is not None
+                else sources[init]
+                if sources is not None
+                else init.read_text(encoding=c.DEFAULT_ENCODING),
             )
         )
         if references:
@@ -389,6 +471,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         package: str,
         *,
         sources: t.MappingKV[Path, str] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> Path | None:
         """Return the directory of one dotted package the project owns.
 
@@ -399,16 +482,34 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         """
         top, *rest = package.split(".")
         for base in (project_root / c.Infra.DEFAULT_SRC_DIR, project_root):
-            init = base / top / c.Infra.INIT_PY
-            if not (init.is_file() if sources is None else init in sources):
-                continue
             candidate = base.joinpath(top, *rest)
             init = candidate / c.Infra.INIT_PY
-            return (
-                candidate
-                if (init.is_file() if sources is None else init in sources)
-                else None
-            )
+            if (
+                source_project.source_query(init, "isfile")
+                if source_project is not None
+                else init in sources
+                if sources is not None
+                else init.is_file()
+            ):
+                return (
+                    candidate
+                    if FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                        candidate,
+                        project_root=project_root,
+                        source_project=source_project,
+                    )
+                    == package
+                    else None
+                )
+            top_init = base / top / c.Infra.INIT_PY
+            if (
+                source_project.source_query(top_init, "isfile")
+                if source_project is not None
+                else top_init in sources
+                if sources is not None
+                else top_init.is_file()
+            ):
+                return None
         return None
 
     @staticmethod
@@ -492,12 +593,19 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                     msg = f"lazy route package has no folder contract: {resource.path}"
                     raise TypeError(msg)
                 resource = resource.get_child(c.Infra.INIT_PY)
-            identity = provider.get_name(), alias_name
+            path = Path(resource.real_path).resolve()
+            module_name = (
+                FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                    path, project_root=root, source_project=project
+                )
+                if path.is_relative_to(root)
+                else provider.get_name()
+            )
+            identity = module_name, alias_name
             if identity in visited:
                 msg = f"cyclic lazy export {identity}"
                 raise ValueError(msg)
             visited.add(identity)
-            path = Path(resource.real_path).resolve()
             source = (
                 sources[path]
                 if path.is_relative_to(root) and path in sources
@@ -508,7 +616,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 )
             )
             route = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                provider.get_name(), path, source, project=project, pymodule=provider
+                module_name, path, source, project=project, pymodule=provider
             ).get(alias_name)
             if route is None:
                 alias_name, _declaration = cls._declared_binding(

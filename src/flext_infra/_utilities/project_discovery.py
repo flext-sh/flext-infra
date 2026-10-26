@@ -33,40 +33,6 @@ class FlextInfraUtilitiesProjectDiscovery(
     """Static helpers for discovering governed project roots in a workspace."""
 
     @staticmethod
-    def repository_operation_targets(
-        root: Path,
-        scope: c.Infra.CodegenConformScope,
-    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]:
-        """Retain declared roots, including missing checkouts, in discovery order.
-
-        Returns:
-            The declared roots in discovery order.
-
-        """
-        resolved = root.expanduser().resolve()
-        result_type = r[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]
-        if not resolved.is_dir():
-            return result_type.fail(f"operation root does not exist: {resolved}")
-        target = m.Infra.WorkspaceOperationTarget(root=resolved)
-        if scope == c.Infra.CodegenConformScope.SELF:
-            return result_type.ok((target,))
-        if scope != c.Infra.CodegenConformScope.ALL:
-            return result_type.fail(f"operation scope must be self or all: {scope}")
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(resolved)
-        if declared.failure:
-            return result_type.from_failure(declared)
-        return result_type.ok((
-            target,
-            *(
-                m.Infra.WorkspaceOperationTarget(
-                    root=resolved / declaration.path,
-                    managed=declaration.managed,
-                )
-                for declaration in declared.value
-            ),
-        ))
-
-    @staticmethod
     def repository_operation_applicability(
         target: m.Infra.WorkspaceOperationTarget,
         *,
@@ -515,6 +481,38 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
+    def module_name_for_provider(
+        cls,
+        module: p.Infra.RopeSemanticModule,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> str:
+        """Preserve declared source identities and native external providers.
+
+        Returns:
+            The complete import identity of the original native provider.
+
+        Raises:
+            ValueError: A project-owned provider has no declared identity.
+
+        """
+        resource = module.get_resource()
+        if resource is None or Path(resource.path).is_absolute():
+            return module.get_name()
+        path = Path(resource.real_path)
+        if resource.is_folder():
+            path /= c.Infra.INIT_PY
+        name = cls.module_name_for_file(
+            path,
+            project_root=Path(source_project.root.real_path),
+            source_project=source_project,
+        )
+        if not name:
+            message = f"Project-owned provider has no declared identity: {path}"
+            raise ValueError(message)
+        return name
+
+    @classmethod
     def module_name_for_file(
         cls,
         file_path: Path,
@@ -535,7 +533,17 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
             return package_name
-        return f"{package_name}.{file_path.stem}" if package_name else ""
+        if package_name:
+            return f"{package_name}.{file_path.stem}"
+        owner = cls.nearest_project_root(
+            project_root, file_path, source_project=source_project
+        )
+        return (
+            file_path.stem
+            if owner is not None
+            and file_path.parent in {owner, owner / c.Infra.DEFAULT_SRC_DIR}
+            else ""
+        )
 
     @classmethod
     def package_name_for_dir(

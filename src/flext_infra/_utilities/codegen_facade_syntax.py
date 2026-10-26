@@ -307,7 +307,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
             for node in ast.walk(ast.parse(source))
             if isinstance(node, ast.ImportFrom)
             and node.module is not None
-            and node.module.split(".")[0] == package
+            and (node.module == package or node.module.startswith(f"{package}."))
             for alias in node.names
             if alias.asname is not None
             and alias.asname != alias.name

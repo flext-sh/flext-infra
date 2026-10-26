@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, infra, m
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 
 pytestmark = pytest.mark.slow
@@ -359,7 +359,7 @@ class TestsFlextInfraCodegenHookConformance:
             encoding="utf-8",
         )
 
-        planned = FlextInfraCodegenConformExecute.retired_projection_plans(
+        planned = FlextInfraCodegenConform.Generate.retired_projection_plans(
             root,
             c.Infra.MakeProfile.STANDALONE,
         )
@@ -379,7 +379,7 @@ class TestsFlextInfraCodegenHookConformance:
             encoding="utf-8",
         )
 
-        planned = FlextInfraCodegenConformExecute.retired_projection_plans(
+        planned = FlextInfraCodegenConform.Generate.retired_projection_plans(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
         )

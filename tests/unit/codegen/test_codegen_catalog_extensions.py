@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
@@ -610,7 +610,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         # The composer reads the committed catalog: the overlay must be in HEAD.
         u.Tests.initialize_git_repo(tmp_path)
 
-        result = FlextInfraCodegenConformExecute.compose_project_artifact(
+        result = FlextInfraCodegenConform.Generate.compose_project_artifact(
             tmp_path,
             c.Infra.MISE_TOML_FILENAME,
             '[tools]\npython = "3.13"\n',
@@ -691,7 +691,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             scope=c.Infra.CodegenConformScope.ALL,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        result = FlextInfraCodegenConformExecute(
+        result = FlextInfraCodegenConform.Generate(
             repository_root=repository_root,
             state=m.Infra.CodegenConformState(
                 repository_root=repository_root,

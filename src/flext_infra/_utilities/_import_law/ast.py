@@ -11,7 +11,7 @@ import operator
 from collections.abc import MutableMapping
 
 from flext_infra import c, t
-from flext_infra._utilities._import_law.policy import FlextInfraUtilitiesImportLawPolicy
+from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
 
 
 class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):

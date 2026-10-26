@@ -16,10 +16,10 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     (the CI token selects the check partition), so adding or deleting a gate
     never desynchronizes a generated Makefile. -#}
 {%- macro check_run(gate_set, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set {{ gate_set }}{{ extra }}{%- endmacro -%}
-{#- One process runs the whole read-only verb: the locked generator's
-    projection verdict precedes the captured gates, then the lane census
-    (outside CI), documentation and Git status follow. The commit hook token
-    runs only the stage-derived commit gates. -#}
+{#- One process runs the whole read-only verb: captured gates run first.
+    The complete phase then checks the locked generator's projection verdict,
+    lane census (outside CI) and documentation. The commit hook token runs
+    only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
 {{ "\t" }}@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}

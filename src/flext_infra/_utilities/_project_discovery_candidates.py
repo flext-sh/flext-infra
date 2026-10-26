@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
@@ -19,6 +19,40 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
 ):
     """Private candidate enumeration for workspace project discovery."""
+
+    @staticmethod
+    def repository_operation_targets(
+        root: Path,
+        scope: c.Infra.CodegenConformScope,
+    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]:
+        """Retain declared roots, including missing checkouts, in discovery order.
+
+        Returns:
+            The declared roots in discovery order.
+
+        """
+        resolved = root.expanduser().resolve()
+        result_type = r[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]
+        if not resolved.is_dir():
+            return result_type.fail(f"operation root does not exist: {resolved}")
+        target = m.Infra.WorkspaceOperationTarget(root=resolved)
+        if scope == c.Infra.CodegenConformScope.SELF:
+            return result_type.ok((target,))
+        if scope != c.Infra.CodegenConformScope.ALL:
+            return result_type.fail(f"operation scope must be self or all: {scope}")
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(resolved)
+        if declared.failure:
+            return result_type.from_failure(declared)
+        return result_type.ok((
+            target,
+            *(
+                m.Infra.WorkspaceOperationTarget(
+                    root=resolved / declaration.path,
+                    managed=declaration.managed,
+                )
+                for declaration in declared.value
+            ),
+        ))
 
     @classmethod
     def discover_project_candidates(

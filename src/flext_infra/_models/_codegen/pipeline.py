@@ -210,7 +210,16 @@ class FlextInfraModelsCodegenPipelineModels:
             t.Port[p.Infra.SourceImportPlanner],
             m.Field(
                 exclude=True,
-                description="Shared import planner over the authenticated source candidate",
+                description=(
+                    "Shared import planner over the authenticated source candidate"
+                ),
+            ),
+        ]
+        component_planner: Annotated[
+            t.Port[p.Infra.SourceComponentPlanner],
+            m.Field(
+                exclude=True,
+                description="Shared recursive facade composition planner",
             ),
         ]
 

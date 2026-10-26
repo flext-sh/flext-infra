@@ -11,11 +11,7 @@ from typing import Annotated, override
 
 from flext_infra import c, m, p, r, u
 from flext_infra._conform_wiring import FlextInfraConformWiring
-from flext_infra.codegen import (
-    FlextInfraCodegenConform,
-    FlextInfraCodegenConformExecute,
-    FlextInfraCodegenExecutionBase,
-)
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenExecutionBase
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -96,12 +92,12 @@ class FlextInfraCodegenMakeBootstrap(
             request = m.Infra.CodegenGenerateRequest(root=requested)
             if self.effective_dry_run:
                 return (
-                    FlextInfraCodegenConformExecute
+                    FlextInfraCodegenConform.Generate
                     .from_request(request, execution_context=self)
                     .flat_map(lambda executor: executor.check_managed(request))
                     .map(lambda _: True)
                 )
-            conformed = FlextInfraCodegenConformExecute.execute_request(
+            conformed = FlextInfraCodegenConform.Generate.execute_request(
                 request, execution_context=self
             )
         else:

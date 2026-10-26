@@ -10,8 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from flext_infra import c, m, p, s, t
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -142,12 +141,12 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                 target.project.package_name if target.project is not None else ""
             )
             roots.append(
-                (declared_name or generation.project_package_name(target.root), Path()),
+                (declared_name or u.Infra.project_package_name(target.root), Path()),
             )
         if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
             roots.extend(
                 (
-                    generation.project_package_name(target.root / member.path),
+                    u.Infra.project_package_name(target.root / member.path),
                     member.path,
                 )
                 for member in workspace.subprojects

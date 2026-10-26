@@ -20,12 +20,10 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
 from flext_core import FlextRuntime
 from flext_core.config_sources import FlextStrictYamlConfigSource
 
-from flext_infra import c, m, r, t
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra import c, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -45,7 +43,7 @@ class FlextInfraCodegenVscodeMixin:
             Library defaults overlaid by this project's and local declarations.
 
         """
-        return generation.load_codegen_inputs(repository_root).map(
+        return u.Infra.load_codegen_inputs(repository_root).map(
             lambda inputs: inputs.spec.vscode,
         )
 
@@ -57,7 +55,7 @@ class FlextInfraCodegenVscodeMixin:
             Each setting's complete value from its final declared pair.
 
         """
-        return generation.configuration_pairs(spec.settings)
+        return u.Infra.configuration_pairs(spec.settings)
 
     @classmethod
     def vscode_declaration_delta(
@@ -77,7 +75,7 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
-        loaded = generation.load_codegen_inputs(repository_root)
+        loaded = u.Infra.load_codegen_inputs(repository_root)
         if loaded.failure:
             return result_type.from_failure(loaded)
         expected: t.MutableJsonMapping = {}
@@ -175,7 +173,7 @@ class FlextInfraCodegenVscodeMixin:
             for key, value in read_result.value.items()
         }
         if codegen is None:
-            selected = generation.load_codegen_inputs(repository_root)
+            selected = u.Infra.load_codegen_inputs(repository_root)
             if selected.failure:
                 return r[str].from_failure(selected)
             codegen = selected.value.spec
@@ -357,7 +355,7 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         if codegen is None:
-            loaded = generation.load_codegen_inputs(repository_root)
+            loaded = u.Infra.load_codegen_inputs(repository_root)
             if loaded.failure:
                 return r[bool].from_failure(loaded)
             codegen = loaded.value.spec

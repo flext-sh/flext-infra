@@ -11,10 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u
-
-from flext_infra import c, m, p, r, t, workspace as workspace_services
-from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra import c, m, p, r, t, u, workspace as workspace_services
 from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
 
 
@@ -41,7 +38,7 @@ class FlextInfraCodegenConform:
         admitted = m.Infra.CodegenConformRequest.model_validate(
             request, from_attributes=True
         )
-        bound = FlextInfraCodegenConformExecute.from_request(
+        bound = cls.Generate.from_request(
             admitted,
             execution_context=execution_context,
             repository_root=repository_root,
@@ -50,7 +47,8 @@ class FlextInfraCodegenConform:
             return r[p.Infra.CodegenResult].from_failure(bound)
         executor = bound.value
         if admitted.mode is c.Infra.CodegenConformMode.CHECK:
-            with workspace_services.FlextInfraWorkspaceNativeReference.compilation_scope():
+            native = workspace_services.FlextInfraWorkspaceNativeReference
+            with native.compilation_scope():
                 return executor.check_managed(admitted)
         governed = cls._migrate_governed_declarations(executor, admitted)
         if governed.failure:
@@ -82,7 +80,7 @@ class FlextInfraCodegenConform:
             planning issue, otherwise the migration failure.
 
         """
-        inputs = generation.load_codegen_inputs(request.root.expanduser().resolve())
+        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[bool].from_failure(inputs)
         contract = executor.surface_contract(request.what, codegen=inputs.value.spec)
@@ -102,21 +100,21 @@ class FlextInfraCodegenConform:
             Success after publishing every selected target's migration.
 
         """
-        targets = generation.repository_operation_targets(request.root, request.scope)
+        targets = u.Infra.repository_operation_targets(request.root, request.scope)
         if targets.failure:
             return r[bool].from_failure(targets)
         kind = request.declaration_kind
         files: list[m.Infra.CodegenFilePlan] = []
         for target in targets.value:
             if target.managed is False or not (
-                generation.workspace_manifest_path(target.root).is_file()
+                u.Infra.workspace_manifest_path(target.root).is_file()
                 or (
                     request.declaration_kind is not None
                     and target.root.resolve() == request.root.resolve()
                 )
             ):
                 continue
-            inputs = generation.load_codegen_inputs(target.root)
+            inputs = u.Infra.load_codegen_inputs(target.root)
             if inputs.failure:
                 return r[bool].from_failure(inputs)
             planned = (

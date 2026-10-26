@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra, m
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import c, tm, u
 
@@ -68,7 +68,7 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(
+            FlextInfraCodegenConform.Generate(
                 repository_root=lane,
                 state=m.Infra.CodegenConformState(
                     repository_root=lane,

@@ -12,23 +12,22 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._import_law.graph import FlextInfraUtilitiesImportLawGraph
-from flext_infra._utilities._import_law.placement import (
-    FlextInfraUtilitiesImportLawPlacement,
-)
-from flext_infra._utilities._import_law.routes import FlextInfraUtilitiesImportLawRoutes
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
-)
-from flext_infra._utilities.codegen_facade_syntax import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
-)
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra._utilities.workspace_snapshot import (
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
+)
+from flext_infra._utilities._import_law import (
+    FlextInfraUtilitiesImportLawGraph,
+    FlextInfraUtilitiesImportLawPlacement,
+    FlextInfraUtilitiesImportLawRoutes,
+)
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 if TYPE_CHECKING:
@@ -75,6 +74,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         files: t.SequenceOf[Path],
         *,
         sources: t.MappingKV[Path, str],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         snapshot: p.Infra.WorkspaceSnapshot,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan import rewrites against the working sources.
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         root = project_root.resolve()
         with ExitStack() as stack:
             source_project = FlextInfraUtilitiesRopeRuntime.snapshot_project(
-                snapshot.engine, sources
+                snapshot.engine, sources, declared_files=declared_files
             )
             stack.callback(source_project.close)
             owned = set(
@@ -113,13 +113,10 @@ class FlextInfraUtilitiesImportLawNormalization(
                 )
             )
             plans = cls._import_law_plan_import_sources(
-                root,
-                selected,
-                sources,
-                snapshot,
-                source_project,
-                import_graph,
-                member_resolver,
+                location=(root, selected),
+                sources=sources,
+                snapshot=snapshot,
+                native=(source_project, import_graph, member_resolver),
             )
             if plans.failure:
                 return plans
@@ -133,16 +130,17 @@ class FlextInfraUtilitiesImportLawNormalization(
                 if plan.desired_content is not None
             )
             verified = FlextInfraUtilitiesRopeRuntime.snapshot_project(
-                snapshot.engine, candidate
+                snapshot.engine, candidate, declared_files=declared_files
             )
             stack.callback(verified.close)
-            final_graph, _ = cls.snapshot_import_graph(
-                verified,
-                resources=cls._import_law_import_resources(
-                    verified, tuple(sorted(owned))
-                ),
+            cycles = cls.project_import_cycles(
+                cls.snapshot_import_graph(
+                    verified,
+                    resources=cls._import_law_import_resources(
+                        verified, tuple(sorted(owned))
+                    ),
+                )[0]
             )
-            cycles = cls.project_import_cycles(final_graph)
             if cycles:
                 message = (
                     f"canonical imports retain runtime dependency cycles in {root}: "
@@ -178,13 +176,15 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_plan_import_sources(
         cls,
-        project_root: Path,
-        files: t.SequenceOf[Path],
+        *,
+        location: t.Pair[Path, t.SequenceOf[Path]],
         sources: t.MappingKV[Path, str],
         snapshot: p.Infra.WorkspaceSnapshot,
-        source_project: p.Infra.RopeProject,
-        import_graph: t.MappingKV[str, frozenset[str]],
-        member_resolver: p.Infra.RopeSourceMemberResolver,
+        native: t.Triple[
+            p.Infra.RopeProject,
+            t.MappingKV[str, frozenset[str]],
+            p.Infra.RopeSourceMemberResolver,
+        ],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Normalize one elected cohort through its shared source resolver.
 
@@ -192,6 +192,8 @@ class FlextInfraUtilitiesImportLawNormalization(
             Import plans retaining their original authenticated file states.
 
         """
+        project_root, files = location
+        source_project, import_graph, member_resolver = native
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         plans: list[m.Infra.CodegenFilePlan] = []
         for path in files:
@@ -243,10 +245,13 @@ class FlextInfraUtilitiesImportLawNormalization(
             The rewritten source, or ``None`` when the module is out of scope
             or already canonical.
 
+        Raises:
+            ValueError: If the canonical candidate retains runtime import cycles.
+
         """
         with ExitStack() as stack:
             origin = stack.enter_context(
-                FlextInfraUtilitiesRopeRuntime.open_import_project(project_root)
+                FlextInfraUtilitiesRopeCore.open_import_project(project_root)
             )
             candidate = dict(sources or {})
             candidate[file_path] = source
@@ -310,20 +315,25 @@ class FlextInfraUtilitiesImportLawNormalization(
 
         """
         project_root, file_path = location
-        import_graph, sources, _ = inputs
+        import_graph, sources, project = inputs
         if file_path.name == c.Infra.INIT_PY:
             return None
         if (
-            located := cls.import_namespace(project_root, file_path, sources=sources)
+            located := cls.import_namespace(
+                project_root, file_path, sources=sources, source_project=project
+            )
         ) is None:
             return None
         namespace_dir, module = located
+        namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+            namespace_dir, project_root=project_root, source_project=project
+        )
         root_exports = cls.import_lazy_exports(
-            project_root, namespace_dir.name, sources=sources
+            project_root, namespace, sources=sources, source_project=project
         )
         if root_exports is None:
-            msg = f"{namespace_dir} is a namespace without an owned package init"
-            raise ValueError(msg)
+            message = f"{namespace_dir} is a namespace without an owned package init"
+            raise ValueError(message)
         if import_graph is None:
             message = "import normalization requires its captured runtime graph"
             raise ValueError(message)
@@ -333,7 +343,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             import_graph,
         )
         current = FlextInfraUtilitiesCodegenFacadeSyntax.unalias_own_package_imports(
-            package=namespace_dir.name, source=source
+            package=namespace, source=source
         )
         for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
             tree = ast.parse(current, filename=str(file_path))
@@ -343,24 +353,26 @@ class FlextInfraUtilitiesImportLawNormalization(
                     file_path=file_path,
                     namespace_dir=namespace_dir,
                     module=module,
-                    layer=cls.module_import_layer(module),
+                    layer=cls.module_import_layer(module, namespace=namespace),
                     own_exports=cls._import_law_declared_exports(tree),
                     facade_dependencies=facade_dependencies,
                     family_letter=cls.family_letter(namespace_dir, file_path),
                     direct_imports=cls.import_direct_module(
                         namespace_dir,
                         file_path,
+                        namespace=namespace,
                     )
-                    or cls.import_bootstrap_dependency(
-                        namespace_dir.name,
-                        module,
-                        import_graph,
+                    or cls.import_bootstrap_dependency(namespace, module, import_graph),
+                    bootstrap_dependency=cls.import_bootstrap_dependency(
+                        namespace, module, import_graph
                     ),
                 ),
                 tree=tree,
                 parents=cls._import_law_parent_map(tree),
                 bindings=cls._module_bindings(tree),
                 root_exports=root_exports,
+                sources=sources,
+                source_project=project,
             )
             updated = cls._import_law_one_pass(
                 state,
@@ -434,7 +446,11 @@ class FlextInfraUtilitiesImportLawNormalization(
 
         """
         scope = state.scope
-        role = cls.import_module_role(scope.module)
+        role = (
+            "layer0"
+            if scope.bootstrap_dependency
+            else cls.import_module_role(scope.module, namespace=scope.namespace)
+        )
         for node in cls._import_law_iter_imports(state.tree):
             if isinstance(node, ast.ImportFrom) and node.level:
                 continue  # The next pass validates the absolute rewrite.
@@ -444,7 +460,9 @@ class FlextInfraUtilitiesImportLawNormalization(
                     if isinstance(node, ast.ImportFrom)
                     else alias.name
                 )
-                if target.split(".")[0] != scope.namespace:
+                if target != scope.namespace and not target.startswith(
+                    f"{scope.namespace}."
+                ):
                     continue
                 if role == "layer0":
                     msg = (
