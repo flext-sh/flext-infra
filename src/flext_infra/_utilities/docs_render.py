@@ -85,10 +85,7 @@ class FlextInfraUtilitiesDocsRender:
                 repository_root=repository_root,
                 docs_root=repository_root / c.Infra.DIR_DOCS,
             )
-            for patterns in (
-                codegen.exclusions.docs_publish,
-                codegen.exclusions.docs_copy,
-            )
+            for patterns in (codegen.docs_publish_patterns, codegen.docs_copy_patterns)
         )
         return (
             tuple(f"/{pattern}" for pattern in publish),
