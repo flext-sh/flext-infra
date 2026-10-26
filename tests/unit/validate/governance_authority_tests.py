@@ -63,7 +63,7 @@ class TestsFlextInfraGovernanceAuthority:
 
     def test_markdown_projections_follow_the_same_typed_policy(self) -> None:
         """Generated JSON stays common while native tables preserve every override."""
-        policy = config.Infra.tooling.tools.markdown
+        policy = u.Infra.load_tooling_inputs(self.ROOT).unwrap().document.tools.markdown
         common = u.Infra.configuration_pairs(policy.rules)
         overrides = u.Infra.configuration_pairs(policy.native_rules)
         compatible = u.Tests.json_payload(
@@ -77,7 +77,8 @@ class TestsFlextInfraGovernanceAuthority:
         tm.that(compatible, eq=common)
         global_options = u.Tests.toml_mapping(native["global"])
         disabled = u.Tests.toml_strings(global_options["disable"])
-        tm.that(global_options["exclude"], eq=list(policy.exclude))
+        codegen = u.Infra.load_codegen_inputs(self.ROOT).unwrap().spec
+        tm.that(global_options["exclude"], eq=list(codegen.markdown_exclude_globs))
         for name in overrides.keys() - common.keys():
             tm.that(name not in compatible, eq=True)
         elected = {**common, **overrides}

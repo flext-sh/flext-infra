@@ -118,7 +118,9 @@ class TestsFlextInfraDocumentationLanguage:
         portuguese = self._scope(tmp_path, "pt-BR")
         english = u.Infra.docs_project_mkdocs(self._scope(tmp_path), {})
         member = u.Infra.docs_project_mkdocs(portuguese, {})
-        root = u.Infra.docs_root_mkdocs({}, documentation_language="pt-BR")
+        root = u.Infra.docs_root_mkdocs(
+            {}, repository_root=tmp_path, documentation_language="pt-BR"
+        )
         for rendered in (member, root):
             tm.that(rendered, has="  language: pt-BR\n")
             tm.that(rendered, has="name: Alternar para o modo escuro")

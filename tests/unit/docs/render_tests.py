@@ -139,7 +139,9 @@ class TestsFlextInfraDocsRender:
             page.write_text("# Maintained page\n", encoding="utf-8")
         config_file = tmp_path / "mkdocs.yml"
         config_file.write_text(
-            u.Infra.docs_root_mkdocs({"site_title": "Workspace"}),
+            u.Infra.docs_root_mkdocs(
+                {"site_title": "Workspace"}, repository_root=tmp_path
+            ),
             encoding="utf-8",
         )
         configuration = mkdocs_project_config(mkdocs.config, str(config_file))
@@ -172,7 +174,7 @@ class TestsFlextInfraDocsRender:
         }
 
         project = u.Infra.docs_project_mkdocs(scope, contract)
-        root = u.Infra.docs_root_mkdocs(contract)
+        root = u.Infra.docs_root_mkdocs(contract, repository_root=tmp_path)
 
         tm.that(project, has="repo_name: example/consumer")
         tm.that(root, has="repo_name: example/consumer")
@@ -219,7 +221,11 @@ class TestsFlextInfraDocsRender:
             path=tmp_path,
             report_dir=tmp_path / ".reports/docs",
         )
-        fixed = c.Infra.MKDOCS_FIXED_EXCLUDE_DOCS
+        fixed = u.Infra.docs_rebase_patterns(
+            config.Infra.codegen.docs_publish_patterns,
+            repository_root=tmp_path,
+            docs_root=tmp_path / c.Infra.DIR_DOCS,
+        )
         declared: t.JsonValueList = ["drafts/**", fixed[0]]
 
         parsed = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
