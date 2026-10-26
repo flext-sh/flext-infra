@@ -802,6 +802,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         it never creates a second runtime facade or wrapper.
         Nested namespaces come from the outer base's declaration-time binding in
         this exact rendered source, never a later write to the exported letter.
+        Every lookup shares the full captured cohort across import normalization.
 
         Returns:
             Source with resolved upstream namespaces included as bases.
@@ -827,8 +828,41 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if len(letters) != 1:
             message = f"Facade has no unique exported family letter: {path}"
             raise ValueError(message)
+        root = Path(project.root.real_path)
+        package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+            path.parent, project_root=root, source_project=project
+        )
+        if not package_name:
+            message = f"Facade has no captured publishing package: {path}"
+            raise ValueError(message)
+        consumer_module = f"{package_name}.{path.stem}"
+        sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
+        for source_path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+            root, workspace_excluded_top_dirs=frozenset(), source_project=project
+        ):
+            package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                source_path.parent, project_root=root, source_project=project
+            )
+            if not package_name:
+                continue
+            module_name = (
+                package_name
+                if source_path.name == c.Infra.INIT_PY
+                else f"{package_name}.{source_path.stem}"
+            )
+            if module_name in sources and sources[module_name][0] != source_path:
+                message = f"Competing captured publication modules: {module_name}"
+                raise ValueError(message)
+            sources[module_name] = (
+                source_path,
+                source if source_path == path else project.source_text(source_path),
+            )
+        if consumer_module in sources and sources[consumer_module][0] != path:
+            message = f"Competing captured facade module: {consumer_module}"
+            raise ValueError(message)
+        sources[consumer_module] = (path, source)
         source = cls._upstream_import_references(
-            project, path, source, module, next(iter(letters))
+            project, path, source, module, next(iter(letters)), sources=sources
         )
         facade, namespace = cls._facade_classes(ast.parse(source), path)
         if namespace is facade:
@@ -840,7 +874,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 path.relative_to(Path(project.root.real_path)).as_posix()
             ),
         )
-        sources = {module.get_name(): (path, source)}
+        sources[consumer_module] = (path, source)
         bases = [ast.unparse(base) for base in namespace.bases]
         for base in facade.bases:
             binding = cls._declared_base_binding(
@@ -867,6 +901,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         module: p.Infra.RopePyModule,
         letter: str,
         context: CodemodContext,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
     ) -> Generator[
         tuple[
             tuple[str, p.Infra.RopePyObject, str],
@@ -915,7 +951,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if (alias.asname or alias.name) not in base_names:
                     continue
                 publication = cls._upstream_base_publication(
-                    project, path, origin, alias.name, letter
+                    project, path, origin, alias.name, letter, sources=sources
                 )
                 if publication is None:
                     continue
@@ -926,6 +962,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     publication[1],
                     context,
                     header=(project, path, facade, base_references),
+                    sources=sources,
                 )
                 if not names and (alias.asname or alias.name) != letter:
                     message = (
@@ -942,6 +979,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         source: str,
         module: p.Infra.RopePyModule,
         letter: str,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
     ) -> str:
         """Schedule upstream same-letter imports without capturing lexical bindings.
 
@@ -950,6 +989,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         bindings, exports and string annotations on the resulting source. Public
         owner identity is elected at module completion, while base references keep
         their declaration-time origin across the later local letter publication.
+        Publication resolution shares the injected project's captured source view,
+        including staged initializers; owned files never become external providers.
 
         Returns:
             Source with identity-resolved references and public letter imports.
@@ -967,10 +1008,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             names,
             original_import,
         ) in FlextInfraUtilitiesCodegenFacades._upstream_base_imports(
-            project, path, module, letter, context
+            project, path, module, letter, context, sources=sources
         ):
             occupied = FlextInfraUtilitiesCodegenFacades._upstream_letter_occupied(
-                module, source, names, letter, (path, publication[1]), project=project
+                module,
+                source,
+                names,
+                letter,
+                (path, publication[1]),
+                project=project,
+                sources=sources,
             )
             occupied |= letter in elected and elected[letter] is not publication[1]
             destination = (
@@ -986,6 +1033,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     destination,
                     (path, publication[1]),
                     project=project,
+                    sources=sources,
                 )
             ):
                 message = f"Occupied upstream facade import: {path}:{destination}"
@@ -1026,6 +1074,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         context: CodemodContext,
         *,
         header: tuple[p.Infra.RopeProject, Path, ast.ClassDef, list[ast.Name]],
+        sources: t.MappingKV[str, t.Pair[Path, str]],
     ) -> list[ast.Name]:
         """Resolve native references and schedule only their imported owners.
 
@@ -1033,6 +1082,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         string annotations and exports. Non-import bindings authorize no removal.
         Class-header names use the existing declaration-order binding owner so
         later publication of the local family letter cannot hide their origin.
+        Header imports resolve through the same complete captured source cohort.
 
         Returns:
             Names whose lexical resolution retains the imported identity.
@@ -1055,7 +1105,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 FlextInfraUtilitiesCodegenFacades._declared_facade_base_binding(
                     project,
                     module,
-                    {module.get_name(): (path, source)},
+                    sources,
                     (path, facade),
                     (node, node, ()),
                 )
@@ -1108,11 +1158,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         binding: t.Pair[Path, p.Infra.RopePyObject],
         *,
         project: p.Infra.RopeProject,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
     ) -> bool:
         """Preserve lexical collisions except the facade's later own publication.
 
         Header slots use their captured declaration-time bindings, not an imported
         letter retained by Rope after the module publishes its own facade.
+        Publication and collision checks retain the same captured source cohort.
 
         Returns:
             Whether replacing a reference would capture an occupied letter.
@@ -1154,7 +1206,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
                         project,
                         reference,
-                        sources={module.get_name(): (binding[0], source)},
+                        sources=sources,
                     )
                 )
                 occupied |= declared.get_object() is not binding[1]
@@ -1186,7 +1238,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
     @staticmethod
     def _upstream_base_publication(
-        project: p.Infra.RopeProject, path: Path, origin: str, name: str, letter: str
+        project: p.Infra.RopeProject,
+        path: Path,
+        origin: str,
+        name: str,
+        letter: str,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
     ) -> tuple[str, p.Infra.RopePyObject, str] | None:
         """Resolve a base's same-letter publication by native class identity.
 
@@ -1194,6 +1252,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         imported-letter binding. The nominal export must retain the same identity,
         but composition imports the canonical upstream letter (ADR-028 decision 10).
         Admission requires a class belonging to a foreign publishing package.
+        Owner, letter, nominal and export inventory use the same captured view.
 
         Returns:
             The publishing package, owner and authenticated public class name,
@@ -1212,6 +1271,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             m.Infra.SourceClassReference(
                 target=origin, attributes=(name,), qualified_base=f"{origin}.{name}"
             ),
+            sources=sources,
         )
         owner = binding.get_object()
         publisher = origin
@@ -1225,7 +1285,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         package_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, package)
         public_exports = (
             FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                package_module.source_code
+                sources[publisher][1]
+                if publisher in sources
+                else package_module.source_code
             )
         )
         exported = (
@@ -1236,6 +1298,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     attributes=(letter,),
                     qualified_base=f"{publisher}.{letter}",
                 ),
+                sources=sources,
             )
             if letter in public_exports
             else None
@@ -1257,6 +1320,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                                 attributes=(letter,),
                                 qualified_base=f"{declaring.get_name()}.{letter}",
                             ),
+                            sources=sources,
                         )
                     )
                 else:
@@ -1286,6 +1350,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     attributes=(class_name,),
                     qualified_base=f"{publisher}.{class_name}",
                 ),
+                sources=sources,
             )
             if class_name in public_exports
             else None
@@ -1295,7 +1360,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 "Upstream facade class is not published by its "
                 f"package: {publisher}:{class_name}"
             )
-            raise ValueError(message)
+            failure = ValueError(message)
+            failure.add_note(
+                f"facade={path}; import={origin}.{name}; letter={letter}; "
+                f"selected={owner.get_module().get_name()}:{class_name}; "
+                "captured_sources="
+                f"{
+                    tuple(
+                        (module, str(captured[0]))
+                        for module, captured in sources.items()
+                        if module == publisher or module.startswith(f'{publisher}.')
+                    )
+                }"
+            )
+            raise failure
         return publisher, owner, class_name
 
     @staticmethod

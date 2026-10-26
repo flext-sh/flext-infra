@@ -165,12 +165,14 @@ class TestsFlextInfraCodegenHookConformance:
         repository = u.Cli.json_as_mapping(repositories[0])
         hooks = u.Cli.json_as_sequence(repository["hooks"])
         check = next(
-            step for step in make.workflow
+            step
+            for step in make.workflow
             if step.verb == c.Infra.VERB_CHECK
             and step.phase == c.Infra.CheckPhase.COMPLETE
         )
         hook = next(
-            mapping for row in hooks
+            mapping
+            for row in hooks
             if (mapping := u.Cli.json_as_mapping(row))["id"]
             == f"flext-pre-push-{check.identity}"
         )

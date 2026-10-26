@@ -268,7 +268,8 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             if "ci" not in step.contexts:
                 continue
             tm.that(
-                f"{spec.make.ci.variable}={spec.make.ci.value} {step.make_command}" in commands
+                f"{spec.make.ci.variable}={spec.make.ci.value} {step.make_command}"
+                in commands
             )
 
     def test_version_admits_detached_candidate_without_moving_its_sha(

@@ -215,11 +215,15 @@ class TestsFlextInfraGithubGateAttestation:
             )
             digest = u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             tm.that(report.digest == f"sha256:{digest}", truth=True)
-            summary = tm.not_none(m.Infra.SarifReport.model_validate_json(
-                (tmp_path / report.path).read_bytes()
-            ).properties)
+            summary = tm.not_none(
+                m.Infra.SarifReport.model_validate_json(
+                    (tmp_path / report.path).read_bytes()
+                ).properties
+            )
             tm.that(summary.phase, eq=phase)
-            tm.that(tuple(summary.requested_gates), eq=first_evidence.intent.requested_gates)
+            tm.that(
+                tuple(summary.requested_gates), eq=first_evidence.intent.requested_gates
+            )
 
     @staticmethod
     @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])

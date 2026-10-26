@@ -137,7 +137,8 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         prefix = f"{make.ci.variable}={make.ci.value} make "
         expected = tuple(
             f"{make.ci.variable}={make.ci.value} {step.make_command}"
-            for step in make.workflow if "ci" in step.contexts
+            for step in make.workflow
+            if "ci" in step.contexts
         )
         observed = tuple(
             command

@@ -218,7 +218,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             tuple(step["run"] for step in approval),
             eq=tuple(
                 f"{codegen.make.ci.variable}={codegen.make.ci.value} {step.make_command}"
-                for step in codegen.make.workflow if "ci" in step.contexts
+                for step in codegen.make.workflow
+                if "ci" in step.contexts
             ),
         )
         # Quoted diagnostics may recommend a local resolver without executing it.

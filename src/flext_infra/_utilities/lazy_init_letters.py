@@ -19,7 +19,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesPythonModel,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
+    FlextInfraUtilitiesRopeRuntime,
 )
 
 
@@ -275,14 +275,20 @@ class FlextInfraUtilitiesLazyInitLetters:
         else:
             msg = f"lazy-init cyclic facet publication: {target}"
             raise ValueError(msg)
-        return FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
-            run.model.source_project,
-            m.Infra.SourceClassReference(
-                target=target[0],
-                attributes=(target[1],),
-                qualified_base=f"{target[0]}.{target[1]}",
-            ),
+        reference = m.Infra.SourceClassReference(
+            target=target[0],
+            attributes=(target[1],),
+            qualified_base=f"{target[0]}.{target[1]}",
         )
+        binding = FlextInfraUtilitiesRopeRuntime.qualified_name(
+            run.model.source_project,
+            ".".join(reference.attributes),
+            module_name=reference.target,
+        )
+        FlextInfraUtilitiesRopeRuntime.require_class_object(
+            binding.get_object(), reference.qualified_base
+        )
+        return binding
 
     @classmethod
     def _lazy_init_facade_chain(

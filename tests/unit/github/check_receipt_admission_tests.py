@@ -71,16 +71,22 @@ class TestsFlextInfraCheckReceiptAdmission:
                     started.model_dump_json(round_trip=True) + "\n",
                 ),
             )
-            admitted = u.Infra.git_require_green_check_receipt(
-                infra_git_repo,
-                make,
-                phase=phase,
-                plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
-                    repository_root=infra_git_repo,
-                ).plan_global_targets(gates),
-            )
-        tm.fail(admitted)
-        tm.that(admitted.error or "", has="never completed")
+            for required_phase in c.Infra.CheckPhase:
+                admitted = u.Infra.git_require_green_check_receipt(
+                    infra_git_repo,
+                    make,
+                    phase=required_phase,
+                    plan_global_targets=lambda selected: FlextInfraWorkspaceChecker(
+                        repository_root=infra_git_repo,
+                    ).plan_global_targets(selected),
+                )
+                tm.fail(admitted)
+                tm.that(
+                    admitted.error or "",
+                    has="never completed"
+                    if required_phase == phase
+                    else "no check receipt",
+                )
 
     @staticmethod
     @pytest.mark.parametrize("phase", tuple(c.Infra.CheckPhase))

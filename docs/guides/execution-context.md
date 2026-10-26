@@ -736,11 +736,21 @@ dependency order. Every test mode requires this admission. A direct diagnostic
 same-phase evidence refuses execution without electing an older success.
 Original invocation, policy, report digests, global topology and per-repository
 source identities remain mandatory; primary evidence never proves complete
-check or publication acceptance. Ordinary test failures preserve the first
-original status while every selected repository is reached. Configuration failures escape unchanged. Existing
+check or publication acceptance. Initial admission does not replace the final
+completion-cycle tests. Mutating local operations refresh primary source proof
+before complete check and final native incremental tests; the read-only CI
+workflow reuses initial proof only while it remains current. These are separate
+declared invocations, never a forced second pass inside one tests invocation.
+Ordinary test failures preserve the first original status while every selected
+repository is reached. Configuration failures escape unchanged. Existing
 receipt-based operations retain their own admission contracts. Full applicable
 checks remain required before completion and integration; a member-only receipt
 never claims fleet completion.
+
+The phase-aware Make and CI consumers are generated projections. Until the
+updated template is published, use the native `workspace check --phase primary`
+composition above; setting `CHECK_PHASE` on an older Make projection does not
+select the new policy. Template edits alone are not rollout or runtime evidence.
 
 ## New projects
 

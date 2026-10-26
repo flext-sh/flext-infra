@@ -243,10 +243,14 @@ class FlextInfraConfigModelsMake(
     class MakeWorkflowRequirementSpec(FlextInfraConfigModelsContract.ConfigContract):
         """An earlier phase required in explicitly declared execution contexts."""
 
-        step: Annotated[t.NonEmptyStr, m.Field(description="Required workflow identity")]
+        step: Annotated[
+            t.NonEmptyStr, m.Field(description="Required workflow identity")
+        ]
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
-            m.Field(min_length=1, description="Contexts requiring the prior green phase"),
+            m.Field(
+                min_length=1, description="Contexts requiring the prior green phase"
+            ),
         ]
 
     class MakeWorkflowStepSpec(MakeOperationSpec):
@@ -254,7 +258,10 @@ class FlextInfraConfigModelsMake(
 
         identity: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Unique dependency identity, never a new Make verb"),
+            m.Field(
+                pattern=r"^[A-Za-z_][A-Za-z0-9_-]*$",
+                description="Unique dependency identity, never a new Make verb",
+            ),
         ]
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
@@ -899,12 +906,13 @@ class FlextInfraConfigModelsMake(
         check_prerequisite_gates: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
+                min_length=1,
                 description=(
                     "Requested gates that must finish across every selected "
                     "repository before the remaining gates execute"
                 ),
             ),
-        ] = ()
+        ]
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
@@ -1127,12 +1135,14 @@ class FlextInfraConfigModelsMake(
 
             """
             primary = {
-                step.identity for step in self.workflow
+                step.identity
+                for step in self.workflow
                 if step.verb == c.Infra.VERB_CHECK
                 and step.phase == c.Infra.CheckPhase.PRIMARY
             }
             covered = {
-                context for required in tests.requires
+                context
+                for required in tests.requires
                 if required.step in primary
                 for context in required.contexts
             }
@@ -1168,7 +1178,8 @@ class FlextInfraConfigModelsMake(
                 msg = "complete check requires native tests outside the commit hook"
                 raise ValueError(msg)
             final_tests = next(
-                step for step in reversed(self.workflow)
+                step
+                for step in reversed(self.workflow)
                 if step.verb == c.Infra.VERB_TEST
             )
             if not any(

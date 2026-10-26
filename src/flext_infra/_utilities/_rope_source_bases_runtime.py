@@ -818,6 +818,72 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 raise
 
+        def _declared_source_reference(
+            self,
+            module: t.Infra.RopeSemanticModule,
+            attributes: t.StrTuple,
+            visiting: frozenset[str],
+            depth: int,
+        ) -> str | None:
+            """Resolve completed source declarations before imported aliases.
+
+            Rope records project resources with relative paths and external
+            resources with absolute paths. Both may declare a final class alias;
+            only missing external declarations defer to native import binding.
+
+            Returns:
+                The declared class identity, or None for a native external import.
+
+            Raises:
+                TypeError: If an owned resource has no native source module.
+                ValueError: If owned or planned source lacks the declaration.
+
+            """
+            resource = module.get_resource()
+            if resource is None:
+                return None
+            owned = not Path(resource.path).is_absolute()
+            target = f"{module.get_name()}.{attributes[0]}"
+            provider = module.get_module()
+            if not FlextInfraUtilitiesRopeRuntime.source_module(provider):
+                if owned:
+                    message = f"Project-owned provider is not source: {target}"
+                    raise TypeError(message)
+                return None
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            captured = self._sources.get(
+                module.get_name(), (source_path, provider.source_code)
+            )
+            bindings = self._modules.get(module.get_name())
+            if bindings is None:
+                bindings = self._inventory(
+                    module.get_name(),
+                    captured,
+                    provider=(
+                        provider
+                        if captured == (source_path, provider.source_code)
+                        else None
+                    ),
+                )
+                self._modules[module.get_name()] = bindings
+            reference = bindings.get(attributes[0])
+            if reference is None:
+                if owned or module.get_name() in self._sources:
+                    message = f"Unresolved declared provider base: {target}"
+                    raise ValueError(message)
+                return None
+            return self._resolve(
+                m.Infra.SourceClassReference(
+                    target=reference.target,
+                    attributes=(*reference.attributes, *attributes[1:]),
+                    qualified_base=reference.qualified_base,
+                ),
+                visiting | {target},
+                depth + 1,
+            )
+
         def _provider_reference(
             self,
             module: t.Infra.RopeSemanticModule,
@@ -834,7 +900,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             Raises:
-                ImportError: A required provider cannot be imported by its native owner.
                 ValueError: If the walk exceeds the depth budget, uses a module
                     as a class base, or cycles through provider reexports.
 
@@ -847,12 +912,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if not attributes:
                 message = f"Module used as a class base: {module.get_name()}"
                 raise ValueError(message)
-            name, *remaining = attributes
+            name = attributes[0]
             target = f"{module.get_name()}.{name}"
             if target in visiting:
                 chain = " <- ".join(sorted(visiting))
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
+            declared = self._declared_source_reference(
+                module, attributes, visiting, depth
+            )
+            if declared is not None:
+                return declared
             if name not in module.get_attributes():
                 reexported = self._missing_provider_reference(
                     module, attributes, visiting, depth
@@ -860,6 +930,30 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 if reexported is not None:
                     return reexported
             binding = self._provider_attribute_binding(module, name, target)
+            return self._native_provider_reference(
+                module, binding, attributes, visiting, depth
+            )
+
+        def _native_provider_reference(
+            self,
+            module: t.Infra.RopeSemanticModule,
+            binding: p.Infra.RopePyName,
+            attributes: t.StrTuple,
+            visiting: frozenset[str],
+            depth: int,
+        ) -> str:
+            """Resolve one external binding through its native Rope import owner.
+
+            Returns:
+                The native class identity reached by the provider binding.
+
+            Raises:
+                ImportError: If the imported provider cannot be resolved.
+                ValueError: If the binding does not identify a class.
+
+            """
+            name, *remaining = attributes
+            target = f"{module.get_name()}.{name}"
             if isinstance(binding, p.Infra.RopeImportedName):
                 override = None
                 try:
@@ -988,9 +1082,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return None
             resource = declaring.get_resource()
             if resource is None:
-                message = (
-                    f"source-backed provider has no resource: {module.get_name()}"
-                )
+                message = f"source-backed provider has no resource: {module.get_name()}"
                 raise ValueError(message)
             owners = self._captured_provider_modules(declaring)
             if not owners:

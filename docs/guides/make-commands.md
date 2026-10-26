@@ -218,8 +218,9 @@ to repair authored declarations.
 | `build` | Produce local distribution and documentation artifacts without publishing |
 | `clean` | Remove only declared disposable resources owned by the selected target |
 
-Fleet behavioral admission starts with `make check CHECK_PHASE=primary`, then
-`make tests`. The equivalent native composition is
+After phase-aware projection generation, fleet behavioral admission starts with
+`make check CHECK_PHASE=primary`, then `make tests`. Before that rollout, use the
+native composition:
 `flext-infra workspace check --repository-root <root> --phase primary` followed by
 `flext-infra workspace tests --repository-root <root> --scope all`. The primary
 producer captures the configured `make.check_prerequisite_gates` through the same
@@ -227,7 +228,9 @@ native checker and report publisher as complete checks; a diagnostic `check run`
 report is not an original receipt. The test owners require fresh, complete,
 unfiltered global proof of that phase. Bare `make check` retains the complete
 configured quality contract, and the generated workflow still requires it after
-initial behavioral admission and before publication. The fast commit hook retains
+initial behavioral admission and before final incremental tests and publication.
+Mutating operations refresh primary source proof before the remaining acceptance
+steps; the initial tests never replace completion-cycle tests. The fast commit hook retains
 its own configured gates without requiring pytest. A successful member-only run
 never establishes fleet acceptance; all applicable checks still precede completion
 and integration.
