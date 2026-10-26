@@ -13,41 +13,47 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._models._codegen import (
-        FlextInfraCodegen,
-        FlextInfraModelsCodegenFixModels,
+    from flext_infra._models._codegen.base import FlextInfraCodegen
+    from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
+    from flext_infra._models._codegen.lazy_init import (
         FlextInfraModelsCodegenLazyInitModels,
+    )
+    from flext_infra._models._codegen.pipeline import (
         FlextInfraModelsCodegenPipelineModels,
+    )
+    from flext_infra._models._codegen.scaffold import (
         FlextInfraModelsCodegenScaffoldModels,
+    )
+    from flext_infra._models._codegen.transaction import (
         FlextInfraModelsCodegenTransactionModels,
     )
-    from flext_infra._models._config import (
-        FlextInfraConfigModels,
-        FlextInfraConfigModelsArtifact,
-        FlextInfraConfigModelsBeads,
-        FlextInfraConfigModelsContexts,
-        FlextInfraConfigModelsContract,
-        FlextInfraConfigModelsMake,
-        FlextInfraConfigModelsMakeClean,
-        FlextInfraConfigModelsMakeDocs,
-        FlextInfraConfigModelsProvider,
-        FlextInfraConfigModelsRefactorCampaigns,
-        FlextInfraConfigModelsRelease,
-        FlextInfraConfigModelsRender,
-        FlextInfraConfigModelsRepository,
-        FlextInfraConfigModelsRoot,
-        FlextInfraConfigModelsScaffold,
-        FlextInfraConfigModelsSonarcloud,
-        FlextInfraConfigModelsStatic,
-        FlextInfraConfigModelsTemplates,
-        FlextInfraConfigModelsWorkspace,
+    from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
+    from flext_infra._models._config.base import FlextInfraConfigModels
+    from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+    from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
+    from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+    from flext_infra._models._config.external_cache import (
         FlextInfraExternalCacheDirectorySpec,
     )
-    from flext_infra._models._git import (
-        FlextInfraModelsGitIdentity,
-        FlextInfraModelsGitWorktreeFacts,
-        FlextInfraModelsGitWorktreeState,
+    from flext_infra._models._config.make import FlextInfraConfigModelsMake
+    from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
+    from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
+    from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
+    from flext_infra._models._config.refactor_campaigns import (
+        FlextInfraConfigModelsRefactorCampaigns,
     )
+    from flext_infra._models._config.release import FlextInfraConfigModelsRelease
+    from flext_infra._models._config.render import FlextInfraConfigModelsRender
+    from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
+    from flext_infra._models._config.root import FlextInfraConfigModelsRoot
+    from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+    from flext_infra._models._config.sonarcloud import FlextInfraConfigModelsSonarcloud
+    from flext_infra._models._config.static import FlextInfraConfigModelsStatic
+    from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
+    from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+    from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
+    from flext_infra._models._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
+    from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
     from flext_infra._models.base import FlextInfraModelsBase
     from flext_infra._models.census import FlextInfraModelsCensus
     from flext_infra._models.check import FlextInfraModelsCheck

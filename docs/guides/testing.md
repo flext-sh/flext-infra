@@ -97,8 +97,9 @@ Run tests only through the dispatcher at the workspace root:
 make tests
 ```
 
-`make tests` executes the complete applicable suite once and retains the project's
-persistent Testmon database. It does not run an incremental suite first. The generated
+`make tests` discovers the complete global pytest inventory and executes Testmon's
+incremental selection using the project's persistent external database. It does not
+force a full replay or add a second execution pass. The generated
 Make boundary fixes the target to the typed configuration's complete test directory;
 caller variables cannot replace it with a file or narrower directory. The runner
 accounts for collection, execution and declared exclusions through its existing typed
@@ -135,9 +136,10 @@ enforcement suspension remains visible in those receipts. Unexpected skips block
 acceptance; connectivity prerequisite skips retain their explicit unavailable reason
 and never establish production readiness.
 
-The persistent database remains available for impact analysis and later runs. A cache
-hit cannot replace the complete execution required by `make tests`. Empty collection
-or zero execution fails this verb.
+The persistent database remains available for impact analysis and later runs. A valid
+cache hit can select no tests; it is selection evidence, not evidence that every test
+executed. Empty collection and zero execution retain the runner's native accounting
+and acceptance rules.
 
 A receipt used for acceptance must identify the exact source candidate, local changes,
 installed dependencies and checker policy, command, working directory, declared scope,

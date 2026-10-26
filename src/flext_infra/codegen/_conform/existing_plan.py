@@ -325,7 +325,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
         managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
     ) -> p.Result[m.Infra.ToolingRuntimeContext] | None:
-        """Resolve only the runtime consumed by an untooled template surface.
+        """Resolve the full live-source runtime consumed by a scoped pyproject.
 
         Returns:
             The elected pyproject runtime, no runtime, or its original failure.
@@ -338,7 +338,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 managed_artifacts=managed_artifacts.resolution,
             ).resolve_tooling_context(
                 self._existing_tooling_request(target, identity, codegen, ()),
-                derive_runtime=False,
             )
         return None
 

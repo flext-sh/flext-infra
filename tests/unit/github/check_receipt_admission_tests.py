@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config
+from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, m, tm, u
 
 
@@ -20,7 +21,13 @@ class TestsFlextInfraCheckReceiptAdmission:
         """A repository whose check never ran cannot admit tests."""
         make = config.Infra.codegen.make
         with u.Tests.env_vars_context(vars_to_clear=(make.ci.variable,)):
-            admitted = u.Infra.git_require_green_check_receipt(infra_git_repo, make)
+            admitted = u.Infra.git_require_green_check_receipt(
+                infra_git_repo,
+                make,
+                plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
+                    repository_root=infra_git_repo,
+                ).plan_global_targets(gates),
+            )
         tm.fail(admitted)
         tm.that(admitted.error or "", has="tests run only on a green check")
         tm.that(admitted.error or "", has="run make check first")
@@ -51,6 +58,12 @@ class TestsFlextInfraCheckReceiptAdmission:
                     started.model_dump_json(round_trip=True) + "\n",
                 ),
             )
-            admitted = u.Infra.git_require_green_check_receipt(infra_git_repo, make)
+            admitted = u.Infra.git_require_green_check_receipt(
+                infra_git_repo,
+                make,
+                plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
+                    repository_root=infra_git_repo,
+                ).plan_global_targets(gates),
+            )
         tm.fail(admitted)
         tm.that(admitted.error or "", has="never completed")

@@ -130,12 +130,10 @@ class FlextInfraPytestRunnerBase(s[int]):
         if not home.is_absolute() or not cache_home.is_absolute():
             msg = "pytest home and persistent cache anchors must be absolute"
             raise ValueError(msg)
-        scratch_root = (
-            Path(
-                f"{home / scratch.home_relative_directory / scratch.state_directory_name}{root}"
-            )
-            / scratch.namespace
+        scratch_base = (
+            home / scratch.home_relative_directory / scratch.state_directory_name
         )
+        scratch_root = Path(f"{scratch_base}{root}") / scratch.namespace
         if scratch_root.resolve().is_relative_to(
             context.runtime.runtime_root.resolve()
         ):

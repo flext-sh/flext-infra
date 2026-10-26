@@ -745,9 +745,9 @@ Infra:
         #   and the project-owned tools.mypy.timeout_seconds budget.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
-        # Tests execute the complete applicable population once in every
-        # context. Pre-commit never runs tests. The pre-push hook runs every
-        # pre_push row below. Local make setup installs both hooks through the
+        # Tests discover the complete global population and execute Testmon's
+        # incremental selection. Pre-commit never runs tests. The pre-push hook
+        # runs every pre_push row below. Local make setup installs both hooks through the
         # declared prek runner; CI=Y installs none.
       pre_commit: true
       pre_push: true
@@ -849,7 +849,7 @@ Infra:
       - name: check
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
       - name: tests
-        description: Execute impacted cases from the complete global inventory with the persistent testmon database.
+        description: Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
       - name: help
         description: Discover the declared public interface without effects.
       - name: build

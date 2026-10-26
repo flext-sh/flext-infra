@@ -13,7 +13,10 @@ from flext_cli import u
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesBase
-from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitSemanticIdentityMixin,
+)
 
 
 class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo):
@@ -24,6 +27,8 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         cls,
         repo_root: Path,
         make: m.Infra.MakeSpec,
+        *,
+        plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
     ) -> p.Result[Path]:
         """Prove the newest same-partition check covers the global candidate.
 
@@ -31,7 +36,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         ``check``). The current context selects the gate partition, not project
         or file coverage. Its newest receipt must carry original digest-bound,
         unfiltered coverage of the canonical global topology and every applicable
-        gate, remain clean, match HEAD, and postdate changed working-tree paths.
+        gate, match the admitted HEAD/status, and postdate changed working-tree paths.
         Older reports without producer coverage proof require a new check.
 
         Returns:
@@ -70,7 +75,41 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
             evidence = m.Infra.GateCommandEvidence.model_validate_json(
                 receipt.read_bytes(),
             )
-            return cls._green_receipt_admission(repo_root, receipt, evidence, capture)
+            original_facts_mismatch = (
+                capture.receipt,
+                started.repository_root,
+                evidence.gate,
+                evidence.intent,
+                evidence.started_at,
+                evidence.context_digest,
+                evidence.runtime_identity,
+                evidence.policy,
+                evidence.policy_digest,
+                evidence.process,
+            ) != (
+                receipt,
+                repo_root,
+                started.gate,
+                started.intent,
+                started.started_at,
+                started.context_digest,
+                started.runtime_identity,
+                started.policy,
+                started.policy_digest,
+                capture.process,
+            )
+            if original_facts_mismatch:
+                return r[Path].fail(
+                    f"{refuse}the newest check {run.name} "
+                    "has mismatched original facts",
+                )
+            return cls._green_receipt_admission(
+                repo_root,
+                receipt,
+                evidence,
+                capture,
+                plan_global_targets=plan_global_targets,
+            )
         return r[Path].fail(
             f"{refuse}no check receipt of gates {','.join(gates)} under "
             f"{directory}; run make check first",
@@ -83,6 +122,8 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         receipt: Path,
         evidence: m.Infra.GateCommandEvidence,
         capture: m.Infra.GateCaptureReport,
+        *,
+        plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
     ) -> p.Result[Path]:
         refuse = f"tests run only on a green check: {receipt.parent.name} "
         if (
@@ -94,34 +135,180 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
                 f"{refuse}is red (exit {capture.process.raw_return_code}, "
                 f"outcome {evidence.native_outcome}); fix it and rerun make check",
             )
-        opened = cls._open_repo(repo_root)
+        accepted = cls._accepted_gate_evidence(repo_root, evidence)
+        if accepted.failure:
+            return r[Path].from_failure(accepted)
+        coverage = cls._green_receipt_coverage(
+            repo_root, receipt, evidence, plan_global_targets=plan_global_targets
+        )
+        if coverage.failure:
+            return r[Path].from_failure(coverage)
+        return cls._green_receipt_currentness(
+            repo_root, receipt, evidence, coverage.value
+        )
+
+    @classmethod
+    def _green_receipt_coverage(
+        cls,
+        repo_root: Path,
+        receipt: Path,
+        evidence: m.Infra.GateCommandEvidence,
+        *,
+        plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CheckProjectTarget]]:
+        """Require complete unfiltered coverage of the current native gate plan.
+
+        Returns:
+            Accepted coverage or the first original report or topology failure.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CheckProjectTarget]]
+        refuse = f"tests run only on a green check: {receipt.parent.name} "
+        source = cls._report_contract_bytes(
+            repo_root, evidence.reports, c.Infra.GateEvidenceReportKind.CHECK_SARIF
+        )
+        if source.failure:
+            return result_type.from_failure(source)
+        summary = m.Infra.SarifReport.model_validate_json(source.value).properties
+        if (
+            summary is None
+            or summary.global_targets is None
+            or summary.selected_files
+            or not summary.complete
+        ):
+            return result_type.fail(
+                f"{refuse}has no complete unfiltered global coverage; rerun make check",
+            )
+        planned = plan_global_targets(evidence.intent.requested_gates)
+        if planned.failure:
+            return result_type.from_failure(planned)
+        expected = tuple(
+            (target.name, target.path, tuple(target.applicable_gates))
+            for target in planned.value
+        )
+        for inventory in (summary.global_targets, summary.targets):
+            if (
+                tuple(
+                    (target.name, target.path, tuple(target.applicable_gates))
+                    for target in inventory
+                )
+                != expected
+            ):
+                return result_type.fail(
+                    f"{refuse}does not cover the current global topology and "
+                    "applicable gates; rerun make check",
+                )
+        return result_type.ok(summary.targets)
+
+    @classmethod
+    def _green_receipt_currentness(
+        cls,
+        repo_root: Path,
+        receipt: Path,
+        evidence: m.Infra.GateCommandEvidence,
+        targets: t.VariadicTuple[m.Infra.CheckProjectTarget],
+    ) -> p.Result[Path]:
+        """Require original HEAD/status and freshness for every covered repository.
+
+        A root gitlink directory cannot prove a member's source currentness.
+        Consume each actual target's pre-gate identity from the digest-bound
+        producer report, and run the same native changed-file loop per root.
+        Changed inputs must predate the original candidate checkpoint, including
+        inputs already dirty when the check began.
+        Missing original identities require a new check, never a current probe
+        substituted as the original observation.
+
+        Returns:
+            The approving receipt or the first candidate-currentness failure.
+
+        """
+        refuse = f"tests run only on a green check: {receipt.parent.name} "
+        started = datetime.fromisoformat(evidence.started_at)
+        for target in targets:
+            original = target.source_identity
+            if original is None or original.repo_root != target.path:
+                return r[Path].fail(
+                    f"{refuse}has no original source identity for {target.path}; "
+                    "rerun make check",
+                )
+            observed = FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_root(
+                target.path
+            )
+            if observed.failure:
+                return r[Path].from_failure(observed)
+            current = observed.value
+            if (
+                (
+                    current.git_dir,
+                    current.common_dir,
+                    current.head_oid,
+                    current.porcelain,
+                )
+                != (
+                    original.git_dir,
+                    original.common_dir,
+                    original.head_oid,
+                    original.porcelain,
+                )
+                or original.head_oid is None
+                or (
+                    target.path == repo_root
+                    and (
+                        original.head_oid != evidence.commit_sha
+                        or original.head_oid != evidence.after_commit_sha
+                    )
+                )
+            ):
+                return r[Path].fail(
+                    f"{refuse}source identity or HEAD changed in {target.path}; "
+                    "rerun make check",
+                )
+            freshness = cls._green_target_paths_currentness(original, started, refuse)
+            if freshness.failure:
+                return r[Path].from_failure(freshness)
+        return r[Path].ok(receipt)
+
+    @classmethod
+    def _green_target_paths_currentness(
+        cls,
+        original: m.Infra.GitIdentityReport,
+        started: datetime,
+        refuse: str,
+    ) -> p.Result[Path]:
+        """Check native changed paths against the original candidate checkpoint.
+
+        Returns:
+            The repository root or its first unsafe or newer changed path.
+
+        """
+        opened = cls._open_repo(original.repo_root)
         if opened.failure:
             return r[Path].from_failure(opened)
         repo = opened.value
-        head = repo.head.commit.hexsha
-        if evidence.after_commit_sha != head:
-            return r[Path].fail(
-                f"{refuse}approved {evidence.after_commit_sha}, HEAD is {head}; "
-                "rerun make check",
-            )
         changed: set[str] = {
             path
-            for diff in (repo.index.diff(None), repo.index.diff(head))
+            for diff in (repo.index.diff(None), repo.index.diff(original.head_oid))
             for item in diff
             for path in (item.a_path, item.b_path)
             if path is not None
         }
         changed.update(repo.untracked_files)
-        completed = datetime.fromisoformat(evidence.completed_at)
         for relative in sorted(changed):
-            path = repo_root / relative
-            if path.is_file() and (
-                datetime.fromtimestamp(path.stat().st_mtime, tz=UTC) > completed
+            path = original.repo_root / relative
+            if path.is_symlink() or any(
+                (original.repo_root / parent).is_symlink()
+                for parent in Path(relative).parents
             ):
                 return r[Path].fail(
-                    f"{refuse}predates the change to {relative}; rerun make check",
+                    f"{refuse}changed path traverses a symlink: {path}",
                 )
-        return r[Path].ok(receipt)
+            if path.is_file() and (
+                datetime.fromtimestamp(path.stat().st_mtime, tz=UTC) > started
+            ):
+                return r[Path].fail(
+                    f"{refuse}predates the change to {path}; rerun make check",
+                )
+        return r[Path].ok(original.repo_root)
 
     @classmethod
     def _original_gate_evidence(
@@ -169,7 +356,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
     ) -> p.Result[bool]:
         process = evidence.process
         digest_matches = evidence.result_digest == (
-            f"sha256:{u.Cli.sha256_content(process.model_dump_json(round_trip=True))}"
+            "sha256:" + u.Cli.sha256_content(process.model_dump_json(round_trip=True))
         )
         process_incomplete = (
             process.timed_out

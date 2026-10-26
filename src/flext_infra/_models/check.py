@@ -14,6 +14,7 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsCheck:
@@ -133,7 +134,11 @@ class FlextInfraModelsCheck:
             return (self.repository_root / reports_dir).resolve()
 
     class CheckProjectTarget(m.ArbitraryTypesModel):
-        """Resolved project target for workspace gate execution."""
+        """Resolved target and its original pre-gate Git identity, when captured.
+
+        Coverage planning never invents source identity. Global currentness
+        requires the producer's identity for each actual target, including root.
+        """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             frozen=True,
@@ -146,6 +151,10 @@ class FlextInfraModelsCheck:
             t.StrSequence,
             m.Field(description="Requested gates elected for this project's inputs"),
         ] = ()
+        source_identity: Annotated[
+            FlextInfraModelsGitIdentity.GitIdentityReport | None,
+            m.Field(description="Original exact repository identity before gates"),
+        ] = None
 
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
@@ -696,6 +705,16 @@ class FlextInfraModelsCheck:
             t.VariadicTuple[Path],
             m.Field(description="File selection; empty means full-project execution"),
         ]
+        global_targets: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget] | None,
+            m.Field(
+                min_length=1,
+                description=(
+                    "Producer's unfiltered canonical global project and gate plan; "
+                    "absent for legacy, filtered or applicability-pending reports"
+                ),
+            ),
+        ] = None
 
         @m.computed_field
         @property

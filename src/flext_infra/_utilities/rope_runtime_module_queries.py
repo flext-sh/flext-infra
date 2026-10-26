@@ -25,6 +25,31 @@ from flext_infra._utilities import (
 class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
     """Authenticate native suppliers and construct Rope source snapshots."""
 
+    @staticmethod
+    def source_offset(source: str, node: p.Infra.RopeAstNode) -> int:
+        """Resolve Rope AST byte coordinates to a Python source offset.
+
+        Returns:
+            The source offset.
+
+        Raises:
+            TypeError: If the native AST node has no source position.
+            ValueError: If the node line is outside its source.
+
+        """
+        line = getattr(node, "lineno", None)
+        column = getattr(node, "col_offset", None)
+        lines = source.splitlines(keepends=True)
+        if not isinstance(line, int) or not isinstance(column, int):
+            msg = "Rope AST node has no source position"
+            raise TypeError(msg)
+        if line < 1 or line > len(lines):
+            msg = f"Rope AST node line is outside its source: {line}"
+            raise ValueError(msg)
+        encoded_prefix = lines[line - 1].encode("utf-8")[:column]
+        prefix = encoded_prefix.decode("utf-8")
+        return sum(map(len, lines[: line - 1])) + len(prefix)
+
     @classmethod
     def new_project(
         cls,

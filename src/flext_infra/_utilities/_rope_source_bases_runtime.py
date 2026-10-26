@@ -16,8 +16,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._rope_source_bases_inventory import (
     FlextInfraUtilitiesRopeSourceBasesInventory,
 )
 
@@ -27,19 +25,24 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
     @classmethod
     def source_member_binding(
-        cls, project: p.Infra.RopeProject, qualified: str
+        cls,
+        project: p.Infra.RopeProject,
+        qualified: str | m.Infra.SourceClassReference,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]] | None = None,
     ) -> p.Infra.RopePyName:
         """Resolve the first declared member along its authenticated native C3 order.
 
-        Native resolution failures propagate without changing their cause.
+        Typed base references resolve the class itself. Planned sources retain
+        their original mapping; native resolution failures propagate unchanged.
 
         Returns:
             The member binding belonging to the exact source or external owner.
 
         """
-        return cls._RuntimeBaseResolver(project, {}, (), None).source_member_binding(
-            qualified
-        )
+        return cls._RuntimeBaseResolver(
+            project, sources if sources is not None else {}, (), None
+        ).source_member_binding(qualified)
 
     @staticmethod
     def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
@@ -142,7 +145,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return False
             return True
 
-        def source_member_binding(self, qualified: str) -> p.Infra.RopePyName:
+        def source_member_binding(
+            self, qualified: str | m.Infra.SourceClassReference
+        ) -> p.Infra.RopePyName:
             """Read a member from the first native declaration in the source MRO.
 
             Returns:
@@ -152,31 +157,73 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ValueError: If an owner scope or declared member cannot be proven.
 
             """
+            if isinstance(qualified, m.Infra.SourceClassReference):
+                return self._source_class_binding(qualified)
             receiver, _, member = qualified.rpartition(".")
             identity = self._resolve(self._root_reference(receiver))
             for ancestor in self._linearize(identity):
-                if ancestor in self._external:
-                    binding = self._external[ancestor].get_attributes().get(member)
-                else:
-                    module_name, _class_name, line = ancestor.rsplit(":", 2)
-                    declaration_line = int(line)
-                    declared = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
-                        self._project.get_module(module_name)
-                    )
-                    scope = declared.get_scope().get_inner_scope_for_line(
-                        declaration_line
-                    )
-                    if scope.get_start() != declaration_line:
-                        msg = (
-                            "native class scope does not identify source owner: "
-                            f"{ancestor}"
-                        )
-                        raise ValueError(msg)
-                    binding = scope.get_defined_names().get(member)
+                binding = self._declared_member_binding(ancestor, member)
                 if binding is not None:
                     return binding
             msg = f"model utility has no declared binding: {qualified}"
             raise ValueError(msg)
+
+        def _declared_member_binding(
+            self, ancestor: str, member: str
+        ) -> p.Infra.RopePyName | None:
+            """Read one declared binding from its authenticated native owner.
+
+            Returns:
+                The member declared by this owner, or no declaration.
+
+            Raises:
+                ValueError: If the native class scope has another source identity.
+
+            """
+            if ancestor in self._external:
+                return self._external[ancestor].get_attributes().get(member)
+            module_name, _class_name, line = ancestor.rsplit(":", 2)
+            declaration_line = int(line)
+            declared = self._providers[module_name]
+            scope = declared.get_scope().get_inner_scope_for_line(declaration_line)
+            if scope.get_start() != declaration_line:
+                msg = f"native class scope does not identify source owner: {ancestor}"
+                raise ValueError(msg)
+            return scope.get_defined_names().get(member)
+
+        def _source_class_binding(
+            self, qualified: m.Infra.SourceClassReference
+        ) -> p.Infra.RopePyName:
+            """Resolve the native class declaration before reading its members.
+
+            Returns:
+                The proven binding of the declared source class.
+
+            Raises:
+                ValueError: If the native resource or scope has another identity.
+
+            """
+            self._prepare_ordering()
+            identity = self._resolve(qualified)
+            self._linearize(identity)
+            if identity in self._external:
+                return self._class_bindings[identity]
+            module_name, class_name, line = identity.rsplit(":", 2)
+            declared = self._providers[module_name]
+            scope = declared.get_scope().get_inner_scope_for_line(int(line))
+            parent = scope.parent
+            if (
+                scope.get_start() != int(line)
+                or scope.pyobject.get_name() != class_name.rsplit(".", 1)[-1]
+                or parent is None
+            ):
+                msg = f"native class scope does not identify source owner: {identity}"
+                raise ValueError(msg)
+            binding = parent.get_defined_names().get(scope.pyobject.get_name())
+            if binding is None or binding.get_object() is not scope.pyobject:
+                msg = f"Ambiguous source class binding: {identity}"
+                raise ValueError(msg)
+            return binding
 
         def __init__(
             self,
@@ -205,11 +252,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 str,
                 t.MappingKV[str, m.Infra.SourceClassReference | None],
             ] = {}
+            self._providers: t.MutableMappingKV[str, t.Infra.RopePyModule] = {}
             self._namespaces: set[str] = set()
             self._module_aliases: t.MutableMappingKV[
                 str, m.Infra.SourceClassReference
             ] = {}
             self._external: t.MutableMappingKV[str, t.Infra.RopePyObject] = {}
+            self._class_bindings: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
             self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
             self._active: set[str] = set()
             self._resolved_memo: t.MutableMappingKV[str, str] = {}
@@ -454,18 +503,30 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The module's explicit lexical bindings, including value
                 shadowing.
 
+            Raises:
+                ValueError: If the source provider is ambiguous.
+
             """
             path, source = captured
             if provider is None:
                 relative = path.relative_to(
                     Path(self._project.root.real_path)
                 ).as_posix()
-                if self._project.root.has_child(relative):
-                    resource = self._project.get_resource(relative)
-                    # Derived facade text retains its original file input epoch.
-                    FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                        resource, path
-                    ).read()
+                resource = self._project.get_resource(relative)
+                # Derived facade text retains its original file input epoch.
+                FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                    resource, path
+                ).read()
+                provider = FlextInfraUtilitiesRopeRuntime.build_string_module(
+                    self._project, source, resource=resource
+                )
+            previous = self._providers.get(module)
+            if previous is not None and (
+                previous.get_resource() != provider.get_resource()
+                or previous.source_code != provider.source_code
+            ):
+                message = f"Ambiguous source provider: {module}"
+                raise ValueError(message)
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module,
@@ -474,11 +535,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 required_line=required_line,
                 allow_conditional=allow_conditional,
             )
-            return FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+            bindings = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
                 request,
                 self._definitions,
                 provider=provider,
             )
+            self._providers[module] = provider
+            return bindings
 
         def _external_identity(self, value: t.Infra.RopePyObject) -> str:
             """Return the declaration identity of one external Rope object.
@@ -541,7 +604,36 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"External class has no source declaration: {value.get_name()}"
                 )
                 raise ValueError(message)
-            name = module.get_name()
+            owners = tuple(
+                name
+                for name, (path, _source) in self._sources.items()
+                if str(path) == resource.real_path
+            )
+            if len(owners) > 1:
+                message = f"Ambiguous captured source owner: {resource.real_path}"
+                raise ValueError(message)
+            name = owners[0] if owners else module.get_name()
+            previous = self._providers.get(name)
+            if previous is not None and (
+                previous.get_resource() != resource
+                or (
+                    name not in self._sources
+                    and previous.source_code != module.source_code
+                )
+            ):
+                message = f"Ambiguous source provider: {name}"
+                raise ValueError(message)
+            if name in self._sources:
+                captured = self._sources[name]
+                if str(captured[0]) != resource.real_path:
+                    message = f"Source class resource does not identify owner: {name}"
+                    raise ValueError(message)
+                if name not in self._modules:
+                    self._modules[name] = self._inventory(
+                        name,
+                        captured,
+                        provider=module if module.source_code == captured[1] else None,
+                    )
             line = scope.get_start()
             if name in self._modules:
                 return self._declared_pyclass_identity(value, module, name, line)
@@ -700,6 +792,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> str:
             """Follow one provider module's reexport chain to a class identity.
 
+            Completed source bindings take precedence over stale native imports.
+
             Returns:
                 The resolved declaration identity.
 
@@ -755,6 +849,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 raise
             if isinstance(binding, p.Infra.RopeImportedName):
+                override = self._captured_import_override(module, binding, attributes)
+                if override is not None:
+                    return self._resolve(override, visiting | {target}, depth + 1)
                 return self._provider_imported_name_reference(
                     binding,
                     remaining,
@@ -773,6 +870,56 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             return self._provider_value_reference(
                 binding, tuple(remaining), visiting, depth
             )
+
+        def _captured_import_override(
+            self,
+            module: t.Infra.RopeSemanticModule,
+            binding: p.Infra.RopeImportedName,
+            attributes: t.StrTuple,
+        ) -> m.Infra.SourceClassReference | None:
+            """Prefer an authenticated source binding over a stale native import.
+
+            Returns:
+                The source reference when it supersedes the native import.
+
+            Raises:
+                ValueError: If the source binding has no declared provider.
+
+            """
+            declaring = module.get_module()
+            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+                return None
+            resource = declaring.get_resource()
+            if resource is None:
+                return None
+            name, *remaining = attributes
+            module_name = module.get_name()
+            captured = self._sources.get(
+                module_name,
+                (Path(resource.real_path), declaring.source_code),
+            )
+            bindings = self._inventory(
+                module_name,
+                captured,
+                allow_conditional=module_name not in self._sources,
+                provider=declaring if declaring.source_code == captured[1] else None,
+            )
+            reference = bindings.get(name)
+            if reference is None:
+                message = f"Unresolved provider base: {module_name}.{name}"
+                raise ValueError(message)
+            if (
+                reference.target in self._definitions
+                or reference.target
+                != self._provider_module(binding.imported_module).get_name()
+                or reference.attributes != (binding.imported_name,)
+            ):
+                return m.Infra.SourceClassReference(
+                    target=reference.target,
+                    attributes=(*reference.attributes, *remaining),
+                    qualified_base=f"{module_name}.{name}",
+                )
+            return None
 
         def _provider_value_reference(
             self,
@@ -793,6 +940,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 # reaches the class attribute through the instance's type.
                 value = value.get_type()
             identity = self._external_identity(value)
+            if identity in self._external and binding.get_object() is value:
+                self._class_bindings[identity] = binding
             for attribute in remaining:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
@@ -1322,7 +1471,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 value = self._external[ancestor]
                 external_members = value.get_attributes()
                 if name in external_members:
-                    return self._external_identity(external_members[name].get_object())
+                    binding = external_members[name]
+                    resolved = self._external_identity(binding.get_object())
+                    if resolved in self._external:
+                        self._class_bindings[resolved] = binding
+                    return resolved
             message = f"Missing inherited class member: {identity}.{name}"
             raise ValueError(message)
 

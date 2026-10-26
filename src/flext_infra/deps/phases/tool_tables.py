@@ -224,10 +224,19 @@ class FlextInfraToolTablesPhase:
         # (ADR-028 point 6); the flext-tests plugin registers and reads the key.
         (scenario_root,) = self._codegen.exclusions.scenario_data_roots
         options[c.Infra.FLEXT_FIXTURE_TREES_ROOT] = scenario_root
-        options["norecursedirs"] = [
-            *self._codegen.analysis_excluded_dirs,
-            *self._codegen.exclusions.scenario_data_roots,
-        ]
+        # Additive collection exclusions retain pytest's native recursion
+        # defaults and any elected project-specific norecursedirs policy.
+        options["addopts"] = list(
+            dict.fromkeys((
+                *u.Infra.native_tool_strings(
+                    self._tool_config, "pytest.ini_options", "addopts"
+                ),
+                *(
+                    f"--ignore={root}"
+                    for root in self._codegen.exclusions.scenario_data_roots
+                ),
+            ))
+        )
         # Test plugins read the Make CI context through these ini keys, so no
         # test runtime imports flext-infra to learn it.
         ci = self._codegen.make.ci

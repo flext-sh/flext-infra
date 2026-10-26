@@ -2,7 +2,7 @@
 
 A facade letter (``c``, ``t``, ``p``, ``m``, ``u`` ...) may re-export a name a
 lower layer already owns. The owner of a member is selected by the kind of the
-runtime object the name binds, through the declarative ``facade-members``
+source binding of the name, through the declarative ``facade-members``
 policy; every other facade binding the same object is a duplicate that
 ``make mod`` retires, and its consumers are relocated to the owner. No member
 or letter is listed here.
@@ -15,24 +15,13 @@ from __future__ import annotations
 
 import ast
 import re
-from enum import Enum
-from importlib import import_module
-from importlib.util import find_spec
-from inspect import isroutine
 from pathlib import Path
-from typing import (
-    Annotated,
-    TypeAliasType,
-    get_args,
-    get_origin,
-    is_protocol,
-    is_typeddict,
-)
 
 from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodNativeUtilities,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -41,109 +30,210 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesAliases,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 
 class FlextInfraUtilitiesFacadeMembers:
     """Derive facade member kinds and their single owner letter."""
 
-    @staticmethod
-    def facade_member_kind(value: p.AttributeProbe) -> c.Infra.FacadeMemberKind:
-        """Classify the runtime object a facade member binds.
-
-        A type alias is classified by the value it names, so an alias of an
-        exception or model is a duplicate of that owner's binding. An alias
-        whose value cannot be evaluated propagates its ``NameError``: an
-        unresolvable alias is a declaration defect, never a default.
+    @classmethod
+    def facade_member_kind(
+        cls, value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+    ) -> c.Infra.FacadeMemberKind:
+        """Classify a proven native declaration, never an unknown inference.
 
         Returns:
-            The member kind the owner policy maps to a facade letter.
+            The configured declaration kind of the native binding.
+
+        Raises:
+            ValueError: The native binding has no proven declaration kind.
 
         """
-        origin = FlextInfraUtilitiesFacadeMembers._typing_origin(value)
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        alias = runtime.annotation_alias_definition(value)
+        if (
+            alias is not None
+            and isinstance(alias[0].value, ast.BinOp)
+            and isinstance(alias[0].value.op, ast.BitOr)
+        ):
+            return c.Infra.FacadeMemberKind.TYPE
+        assigned = runtime.annotation_assignment_outer_type(source_project, value)
+        if assigned is not None and runtime.same_name(
+            runtime.qualified_name(source_project, "typing.Literal"), assigned
+        ):
+            return c.Infra.FacadeMemberKind.TYPE
+        binding = FlextInfraUtilitiesFacadeMembers._typing_origin(
+            value, source_project=source_project
+        )
+        origin = binding.get_object()
+        if origin is runtime.runtime_callable("rope.base.pyobjects", "get_unknown")():
+            message = f"unknown facade member kind: {binding.get_definition_location()}"
+            raise ValueError(message)
         kind = c.Infra.FacadeMemberKind
         policy = config.Infra.tooling.facade_members
-        if isinstance(origin, type):
-            module = origin.__module__
-            classes = (
-                (issubclass(origin, BaseException), kind.EXCEPTION),
-                (issubclass(origin, Enum), kind.ENUM),
-                (is_protocol(origin), kind.PROTOCOL),
-                (isinstance(origin, p.ModelType) or is_typeddict(origin), kind.MODEL),
-                # A subscripted wrapper (``SerializeAsAny[T]``) builds a type that
-                # annotations in t itself need, so it is a type constructor.
-                ("__class_getitem__" in vars(origin), kind.TYPE),
-                # ADR-027: field specifiers and the Annotated validator and
-                # serializer classes declare models.
-                (module in policy.model_declaration_modules, kind.MODEL_DECLARATION),
-            )
-            return next((found for hit, found in classes if hit), kind.TYPE)
-        if isroutine(origin):
-            # C method descriptors (``str.join``) are routines without
-            # ``__module__``; typeshed declares it on every object.
-            routine_module: str = getattr(origin, "__module__", "")
-            if routine_module in policy.type_constructor_modules:
+        module = origin.get_module()
+        module_name = "" if module is None else module.get_name()
+        if types.abstract_class(origin):
+            return cls._class_kind(origin, source_project=source_project)
+        if types.py_function(origin) or isinstance(
+            origin, runtime.runtime_type("rope.base.builtins", "BuiltinFunction")
+        ):
+            if module_name in policy.type_constructor_modules:
                 return kind.TYPE
             return (
                 kind.MODEL_DECLARATION
-                if routine_module in policy.model_declaration_modules
+                if module_name in policy.model_declaration_modules
                 else kind.FUNCTION
             )
+        origin_type = origin.get_type().get_module()
         return (
             kind.TYPE
-            if type(origin).__module__ in c.Infra.FACADE_MEMBER_TYPING_MODULES
+            if origin_type is not None
+            and origin_type.get_name() in c.Infra.FACADE_MEMBER_TYPING_MODULES
             else kind.CONSTANT
         )
 
     @staticmethod
-    def _typing_origin(value: p.AttributeProbe) -> p.AttributeProbe:
-        """Unwrap aliases, ``Annotated`` bases and generic origins to one object.
+    def _class_kind(
+        origin: p.Infra.RopeClassObject, *, source_project: p.Infra.RopeProject
+    ) -> c.Infra.FacadeMemberKind:
+        """Classify native class ancestry and its declared structural contract.
 
         Returns:
-            The class, routine or typing form the member ultimately names.
+            The class's owner kind, preserving direct protocol declarations.
 
         """
-        current = value
-        while True:
-            if isinstance(current, TypeAliasType):
-                current = current.__value__
-                continue
-            origin = get_origin(current)
-            if origin is Annotated:
-                current = get_args(current)[0]
-                continue
-            if origin is None or origin is current:
-                return current
-            current = origin
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        kind = c.Infra.FacadeMemberKind
+        ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(origin)
+        for identity, selected in (
+            ("builtins.BaseException", kind.EXCEPTION),
+            ("enum.Enum", kind.ENUM),
+        ):
+            if (
+                runtime.qualified_name(source_project, identity).get_object()
+                in ancestry
+            ):
+                return selected
+        direct = FlextInfraUtilitiesDeclarationPayload.direct_bases(origin)
+        if any(
+            runtime.qualified_name(source_project, identity).get_object() in direct
+            for identity in ("typing.Protocol", "typing_extensions.Protocol")
+        ):
+            return kind.PROTOCOL
+        if FlextInfraUtilitiesFacadeMembers._model_class(
+            origin, ancestry, source_project=source_project
+        ):
+            return kind.MODEL
+        own = (
+            origin.get_scope().get_defined_names()
+            if types.py_class(origin)
+            else origin.get_attributes()
+        )
+        module = origin.get_module()
+        return (
+            kind.MODEL_DECLARATION
+            if "__class_getitem__" not in own
+            and module is not None
+            and module.get_name()
+            in config.Infra.tooling.facade_members.model_declaration_modules
+            else kind.TYPE
+        )
+
+    @staticmethod
+    def _model_class(
+        origin: p.Infra.RopeClassObject,
+        ancestry: t.SequenceOf[p.Infra.RopePyObject],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> bool:
+        """Recognize the canonical structural model contract and native TypedDict.
+
+        Returns:
+            Whether the native declaration satisfies a model contract.
+
+        Raises:
+            ValueError: The canonical model protocol declares no public members.
+
+        """
+        model = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
+            source_project, f"{c.Infra.PKG_CORE_UNDERSCORE}.p.ModelType"
+        ).get_object()
+        required = frozenset(
+            name for name in model.get_attributes() if not name.startswith("_")
+        )
+        if not required:
+            message = "native model-type contract has no declared members"
+            raise ValueError(message)
+        return required.issubset(origin.get_attributes()) or any(
+            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                source_project, identity
+            ).get_object()
+            in ancestry
+            for identity in ("typing.TypedDict", "typing_extensions.TypedDict")
+        )
+
+    @staticmethod
+    def _typing_origin(
+        value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+    ) -> p.Infra.RopePyName:
+        """Resolve alias origins for kind classification, never for value identity.
+
+        Returns:
+            The native alias origin, or the original non-alias declaration.
+
+        Raises:
+            ValueError: The declared alias origin cannot be proven.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        alias = runtime.annotation_alias_definition(value)
+        if alias is None:
+            return value
+        declaration, scope = alias
+        origin = runtime.annotation_origin(source_project, declaration.value, scope)
+        if origin is None:
+            message = f"unproven facade alias origin: {declaration.name.id}"
+            raise ValueError(message)
+        return origin
 
     @classmethod
-    def facade_member_owner(cls, value: p.AttributeProbe) -> str:
-        """Return the facade letter that owns a member's runtime object.
+    def facade_member_owner(
+        cls, value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+    ) -> str:
+        """Return the configured owner of the member's native declaration.
 
         Returns:
             The owner letter declared for the member's kind.
 
         """
-        return config.Infra.tooling.facade_members.owners[cls.facade_member_kind(value)]
+        return config.Infra.tooling.facade_members.owners[
+            cls.facade_member_kind(value, source_project=source_project)
+        ]
 
     @classmethod
-    def library_members_owned_by(cls, library: str, letter: str) -> t.StrTuple:
-        """Name a library's public members whose runtime object a letter owns.
-
-        Each member is read from the imported library itself, so ownership
-        follows the object's kind exactly as for a facade member.
+    def library_members_owned_by(
+        cls, library: str, letter: str, *, source_project: p.Infra.RopeProject
+    ) -> t.StrTuple:
+        """Name a library's public native bindings owned by the selected letter.
 
         Returns:
             The sorted public member names the letter owns.
 
         """
-        module = import_module(library)
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+            source_project.get_module(library)
+        )
         return tuple(
             sorted(
                 name
-                for name in getattr(module, "__all__", dir(module))
+                for name, binding in module.get_attributes().items()
                 if not name.startswith("_")
-                and cls.facade_member_owner(getattr(module, name)) == letter
+                and cls.facade_member_owner(binding, source_project=source_project)
+                == letter
             )
         )
 
@@ -160,32 +250,13 @@ class FlextInfraUtilitiesFacadeMembers:
         Returns:
             The sorted, statically proven specialization names.
 
-        Raises:
-            ValueError: A declared receiver or candidate has no static identity.
-
         """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        module = types.require_parsed_module(source_project.get_module(package))
-        resource = module.get_resource()
-        if resource is None:
-            message = f"specialization package has no native source: {package}"
-            raise ValueError(message)
-        initializer = types.require_file_resource(
-            resource.get_child(c.Infra.INIT_PY)
-            if isinstance(resource, p.Infra.RopeRoot)
-            else resource,
+        facades = FlextInfraUtilitiesFacadeMembers.facade_source_classes(
             package,
+            (c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.T),
+            source_project=source_project,
         )
-        parsed = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            source_project, initializer
-        )
-        if not types.source_module(parsed):
-            message = f"specialization initializer has no source tree: {package}"
-            raise ValueError(message)
-        facades = FlextInfraUtilitiesFacadeMembers._specialization_facades(
-            package, source_project, module, parsed, initializer
-        )
-        if not facades:
+        if not {c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.T}.issubset(facades):
             return ()
         typings = facades[c.Infra.FacadeFamily.T].get_attributes()
         return tuple(
@@ -203,22 +274,35 @@ class FlextInfraUtilitiesFacadeMembers:
         )
 
     @staticmethod
-    def _specialization_facades(
+    def facade_source_classes(
         package: str,
+        letters: t.StrSequence,
+        *,
         source_project: p.Infra.RopeProject,
-        module: p.Infra.RopeParsedModule,
-        parsed: p.Infra.RopeSourceModule,
-        initializer: p.Infra.RopeFile,
     ) -> t.MappingKV[str, p.Infra.RopeClassObject]:
-        """Resolve the published specialization receivers from native source.
+        """Resolve exactly the requested published facade receivers from native source.
 
         Returns:
-            Both authenticated facades, or no facades for an unpublished receiver.
+            Authenticated facades keyed by their published letters.
 
         Raises:
             ValueError: A receiver is a module or lacks a proven class publication.
 
         """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        module = types.require_parsed_module(source_project.get_module(package))
+        resource = module.get_resource()
+        if isinstance(resource, p.Infra.RopeRoot):
+            if not resource.has_child(c.Infra.INIT_PY):
+                return {}
+            resource = resource.get_child(c.Infra.INIT_PY)
+        initializer = types.require_file_resource(resource, package)
+        parsed = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            source_project, initializer
+        )
+        if not types.source_module(parsed):
+            message = f"facade publisher has no native source tree: {package}"
+            raise ValueError(message)
         routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
             package,
             Path(initializer.real_path),
@@ -232,7 +316,7 @@ class FlextInfraUtilitiesFacadeMembers:
             )
         )
         facades: dict[str, p.Infra.RopeClassObject] = {}
-        for letter in (c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.T):
+        for letter in letters:
             route = routes.get(letter)
             if route is not None and not route.attributes:
                 message = (
@@ -248,14 +332,14 @@ class FlextInfraUtilitiesFacadeMembers:
                 if route is not None
                 else module.get_attributes().get(letter)
             )
-            if binding is None and (exports or routes):
+            if binding is None:
                 unpublished = (
                     letter not in exports
                     and letter not in routes
                     and "__getattr__" not in parsed.get_attributes()
                 )
                 if unpublished:
-                    return {}
+                    continue
             target = None if binding is None else binding.get_object()
             if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(target):
                 message = f"unresolved specialization facade: {package}.{letter}"
@@ -317,44 +401,62 @@ class FlextInfraUtilitiesFacadeMembers:
         return runtime.same_name(typing, origin)
 
     @classmethod
-    def foreign_facade_member(
-        cls,
-        package: str,
-        reference: t.StrPair,
-        placement: c.Infra.FacadeMemberPlacement,
-    ) -> bool:
-        """Decide whether a facade letter binds a member another facade owns.
+    def facade_source_members(
+        cls, facade: p.Infra.RopeClassObject, *, source_project: p.Infra.RopeProject
+    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+        """Read the inherited bindings selected by the native class object.
 
-        ``reference`` is the facade letter and the member name of ``package``.
+        Returns:
+            Public native member bindings selected by the source MRO.
+
+        """
+        del cls, source_project
+        return {
+            name: facade.get_attribute(name)
+            for name in facade.get_attributes()
+            if not name.startswith("_")
+        }
+
+    @classmethod
+    def facade_member_placement(
+        cls,
+        reference: t.Triple[str, str, str],
+        *,
+        facades: t.MappingKV[str, p.Infra.RopeClassObject],
+        bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        source_project: p.Infra.RopeProject,
+    ) -> c.Infra.FacadeMemberPlacement | None:
+        """Classify a foreign member's actual placement through native bindings.
+
+        ``reference`` identifies the package, facade letter and member name.
         ``EXPOSED`` holds when the owner already binds the identical object,
         so the duplicate is retired automatically. ``MISSING`` holds when the
         owner binds nothing under that name yet: the declaration moves to the
         owner family before consumers relocate.
 
         Returns:
-            Whether the member is foreign to the letter with that placement.
+            The proven foreign placement, or no foreign member at this receiver.
 
         """
-        letter, member = reference
+        package, letter, member = reference
         if member.startswith("_"):
-            return False
-        module = import_module(package)
-        facade = getattr(module, letter, None)
-        if not isinstance(facade, type) or not cls.declared_by_package(
-            facade, member, package
+            return None
+        facade = facades.get(letter)
+        if facade is None or not cls.declared_by_package(
+            facade, member, package, source_project=source_project
         ):
-            return False
-        value: p.AttributeProbe = getattr(facade, member)
-        owner = cls.facade_member_owner(value)
-        owner_facade = getattr(module, owner, None)
-        bound = isinstance(owner_facade, type) and member in dir(owner_facade)
-        if placement is c.Infra.FacadeMemberPlacement.EXPOSED:
-            return (
-                owner != letter
-                and bound
-                and cls._same_binding(getattr(owner_facade, member), value)
-            )
-        kind = cls.facade_member_kind(value)
+            return None
+        value = bindings[letter][member]
+        owner = cls.facade_member_owner(value, source_project=source_project)
+        members: t.MappingKV[str, p.Infra.RopePyName] = bindings.get(owner, {})
+        bound = member in members
+        if (
+            owner != letter
+            and bound
+            and cls._same_binding(members[member], value, source_project=source_project)
+        ):
+            return c.Infra.FacadeMemberPlacement.EXPOSED
+        kind = cls.facade_member_kind(value, source_project=source_project)
         # A ``type`` alias is a type declaration by construction (t), except an
         # alias of a structural contract, which p owns; only a strongly typed
         # object whose owner binds nothing yet must move.
@@ -365,18 +467,21 @@ class FlextInfraUtilitiesFacadeMembers:
         )
         declared_owner = (
             config.Infra.tooling.facade_members.owners[alias_kind]
-            if isinstance(value, TypeAliasType)
+            if FlextInfraUtilitiesRopeRuntimeModules.annotation_alias_definition(value)
+            is not None
             else owner
         )
         return (
-            declared_owner != letter
+            c.Infra.FacadeMemberPlacement.MISSING
+            if declared_owner != letter
             and not bound
             and kind is not c.Infra.FacadeMemberKind.TYPE
+            else None
         )
 
     @classmethod
     def facade_member_census(
-        cls, project: Path
+        cls, project: Path, *, source_project: p.Infra.RopeProject
     ) -> t.Triple[
         t.StrSequence,
         t.MappingKV[str, frozenset[str]],
@@ -394,7 +499,7 @@ class FlextInfraUtilitiesFacadeMembers:
         moves to the owner. References are derived over the core facade
         package, the project's package and every package its facades inherit
         from, so a consumer relocates inherited duplicates too. A facade whose
-        ancestry cannot be imported fails here, loudly.
+        ancestry cannot be proven from source fails here, loudly.
 
         Returns:
             The lineage packages, the references by owner letter and the
@@ -403,24 +508,40 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         package = FlextInfraUtilitiesPyproject.project_package_name(project)
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
-        lineage = cls.facade_member_lineage(package, letters)
+        lineage = cls.facade_member_lineage(
+            package, letters, source_project=source_project
+        )
         references: dict[str, set[str]] = {}
         names: dict[str, set[str]] = {}
-        for root, letter in ((root, letter) for root in lineage for letter in letters):
-            facade = getattr(import_module(root), letter, None)
-            if not isinstance(facade, type):
-                continue
-            for member in dir(facade):
-                if not cls.foreign_facade_member(
-                    root, (letter, member), c.Infra.FacadeMemberPlacement.EXPOSED
-                ):
-                    continue
-                owner = cls.facade_member_owner(getattr(facade, member))
-                references.setdefault(owner, set()).add(f"{letter}.{member}")
-                if root == package:
-                    names.setdefault(letter, set()).add(member)
         for root in lineage:
-            for owner, reference in cls._owned_references(root, letters):
+            facades = cls.facade_source_classes(
+                root, letters, source_project=source_project
+            )
+            bindings = {
+                letter: cls.facade_source_members(facade, source_project=source_project)
+                for letter, facade in facades.items()
+            }
+            for letter, members in bindings.items():
+                for member, value in members.items():
+                    if (
+                        cls.facade_member_placement(
+                            (root, letter, member),
+                            facades=facades,
+                            bindings=bindings,
+                            source_project=source_project,
+                        )
+                        is not c.Infra.FacadeMemberPlacement.EXPOSED
+                    ):
+                        continue
+                    owner = cls.facade_member_owner(
+                        value, source_project=source_project
+                    )
+                    references.setdefault(owner, set()).add(f"{letter}.{member}")
+                    if root == package:
+                        names.setdefault(letter, set()).add(member)
+            for owner, reference in cls._owned_references(
+                root, facades, bindings, source_project=source_project
+            ):
                 references.setdefault(owner, set()).add(reference)
         return (
             lineage,
@@ -428,36 +549,50 @@ class FlextInfraUtilitiesFacadeMembers:
             {letter: frozenset(found) for letter, found in sorted(names.items())},
         )
 
-    @staticmethod
-    def facade_member_lineage(package: str, letters: t.StrSequence) -> t.StrTuple:
+    @classmethod
+    def facade_member_lineage(
+        cls,
+        package: str,
+        letters: t.StrSequence,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> t.StrTuple:
         """Name the core package, ``package`` and every package its facades extend.
 
-        A project whose package is not installed has no runtime facades of its
-        own; its consumers still face the core facades. An installed package
-        that fails to import raises here.
+        Publisher identities retain their complete qualified package path.
+        Missing native declarations fail instead of importing the target.
 
         Returns:
             The facade-publishing root packages of the composition lineage.
 
         """
-        ancestry = (
-            {
-                klass.__module__.partition(".")[0]
-                for letter in letters
-                if isinstance(
-                    facade := getattr(import_module(package), letter, None), type
+        publishers = {c.Infra.PKG_CORE_UNDERSCORE, package}
+        for facade in cls.facade_source_classes(
+            package, letters, source_project=source_project
+        ).values():
+            ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(facade)
+            for ancestor in ancestry:
+                module = ancestor.get_module()
+                if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+                    continue
+                exports = FlextInfraUtilitiesRopeAnalysisExports
+                exported = exports.public_export_names_source(module.source_code)
+                if not frozenset(letters).intersection(exported):
+                    continue
+                state = FlextInfraUtilitiesRopeAnalysisImportState
+                published = state.published_facade_owner(
+                    source_project,
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                        module.get_resource(), module.get_name()
+                    ),
                 )
-                for klass in facade.__mro__
-            }
-            if find_spec(package) is not None
-            else set[str]()
-        )
+                if published is not None and published[0] in letters:
+                    publishers.add(module.get_name().rpartition(".")[0])
         return tuple(
-            root
-            for root in sorted({c.Infra.PKG_CORE_UNDERSCORE, *ancestry})
-            if any(
-                isinstance(getattr(import_module(root), letter, None), type)
-                for letter in letters
+            publisher
+            for publisher in sorted(publishers)
+            if cls.facade_source_classes(
+                publisher, letters, source_project=source_project
             )
         )
 
@@ -483,7 +618,12 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @classmethod
     def _owned_references(
-        cls, root: str, letters: t.StrSequence
+        cls,
+        root: str,
+        facades: t.MappingKV[str, p.Infra.RopeClassObject],
+        bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> t.SequenceOf[t.StrPair]:
         """Reference every owned member through each other letter of ``root``.
 
@@ -494,46 +634,47 @@ class FlextInfraUtilitiesFacadeMembers:
             Each owner letter with one foreign ``letter.member`` reference.
 
         """
-        module = import_module(root)
-        facades = {
-            letter: (facade, frozenset(dir(facade)))
-            for letter in letters
-            if isinstance(facade := getattr(module, letter, None), type)
-        }
         return tuple(
             (owner, f"{letter}.{member}")
-            for owner, value, member in cls._owned_members(root, letters)
-            for letter, (facade, members) in facades.items()
+            for owner, value, member in cls._owned_members(
+                root, facades, bindings, source_project=source_project
+            )
+            for letter, members in bindings.items()
             if letter != owner
             and (
                 member not in members
-                or cls._same_binding(getattr(facade, member), value)
+                or cls._same_binding(
+                    members[member], value, source_project=source_project
+                )
             )
         )
 
     @classmethod
     def _owned_members(
-        cls, root: str, letters: t.StrSequence
-    ) -> t.SequenceOf[t.Triple[str, p.AttributeProbe, str]]:
+        cls,
+        root: str,
+        facades: t.MappingKV[str, p.Infra.RopeClassObject],
+        bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> t.SequenceOf[t.Triple[str, p.Infra.RopePyName, str]]:
         """Collect each public member a letter of ``root`` declares as owner.
 
         Returns:
             The owner letter, the bound object and the member name.
 
         """
-        module = import_module(root)
-        owned: list[t.Triple[str, p.AttributeProbe, str]] = []
-        for owner in letters:
-            facade = getattr(module, owner, None)
-            if not isinstance(facade, type):
-                continue
-            for member in dir(facade):
-                if member.startswith("_") or not cls.declared_by_package(
-                    facade, member, root
+        owned: list[t.Triple[str, p.Infra.RopePyName, str]] = []
+        for owner, facade in facades.items():
+            for member, value in bindings[owner].items():
+                if not cls.declared_by_package(
+                    facade, member, root, source_project=source_project
                 ):
                     continue
-                value: p.AttributeProbe = getattr(facade, member)
-                if cls.facade_member_owner(value) == owner:
+                if (
+                    cls.facade_member_owner(value, source_project=source_project)
+                    == owner
+                ):
                     owned.append((owner, value, member))
         return tuple(owned)
 
@@ -546,7 +687,7 @@ class FlextInfraUtilitiesFacadeMembers:
         A family module of letter ``L`` declaring a member another letter owns
         is a duplicate to retire when the owner already binds the identical
         object, and a misplaced declaration while the owner binds nothing
-        under that name; both name sets come from the project's runtime
+        under that name; both name sets come from the project's native source
         facades, and each document is scoped to the exact family files of
         its letter.
 
@@ -554,11 +695,12 @@ class FlextInfraUtilitiesFacadeMembers:
             The rendered rule documents keyed by rule id.
 
         """
-        del snapshot
         root = project.absolute()
         package = FlextInfraUtilitiesPyproject.project_package_name(root)
-        _lineage, _references, exposed = cls.facade_member_census(root)
-        missing = cls._misplaced_members(package)
+        _lineage, _references, exposed = cls.facade_member_census(
+            root, source_project=snapshot.engine
+        )
+        missing = cls._misplaced_members(package, source_project=snapshot.engine)
         families = cls.facade_member_family_files(root)
         separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
         documents: dict[str, t.JsonMapping] = {}
@@ -641,29 +783,36 @@ class FlextInfraUtilitiesFacadeMembers:
         }
 
     @classmethod
-    def _misplaced_members(cls, package: str) -> t.MappingKV[str, frozenset[str]]:
+    def _misplaced_members(
+        cls, package: str, *, source_project: p.Infra.RopeProject
+    ) -> t.MappingKV[str, frozenset[str]]:
         """Collect each letter's members whose owner binds nothing under the name.
 
         Returns:
             The misplaced member names by declaring letter; empty for a
-            package that is not installed.
+            package that declares no facade receivers.
 
         """
-        if find_spec(package) is None:
-            return {}
-        module = import_module(package)
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
+        facades = cls.facade_source_classes(
+            package, letters, source_project=source_project
+        )
+        bindings = {
+            letter: cls.facade_source_members(facade, source_project=source_project)
+            for letter, facade in facades.items()
+        }
         found: dict[str, frozenset[str]] = {}
-        for letter in letters:
-            facade = getattr(module, letter, None)
-            if not isinstance(facade, type):
-                continue
+        for letter, members in bindings.items():
             names = frozenset(
                 member
-                for member in dir(facade)
-                if cls.foreign_facade_member(
-                    package, (letter, member), c.Infra.FacadeMemberPlacement.MISSING
+                for member in members
+                if cls.facade_member_placement(
+                    (package, letter, member),
+                    facades=facades,
+                    bindings=bindings,
+                    source_project=source_project,
                 )
+                is c.Infra.FacadeMemberPlacement.MISSING
             )
             if names:
                 found[letter] = names
@@ -689,8 +838,9 @@ class FlextInfraUtilitiesFacadeMembers:
             when the lineage re-exports no foreign member.
 
         """
-        del snapshot
-        lineage, references, _names = cls.facade_member_census(project)
+        lineage, references, _names = cls.facade_member_census(
+            project, source_project=snapshot.engine
+        )
         if not references:
             return {}
         package = FlextInfraUtilitiesPyproject.project_package_name(project)
@@ -996,7 +1146,13 @@ class FlextInfraUtilitiesFacadeMembers:
         return "^(?:" + "|".join(re.escape(text) for text in texts) + ")$"
 
     @staticmethod
-    def declared_by_package(facade: type, member: str, package: str) -> bool:
+    def declared_by_package(
+        facade: p.Infra.RopeClassObject,
+        member: str,
+        package: str,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> bool:
         """Whether a class of ``package`` declares ``member`` in the facade MRO.
 
         Members a facade inherits from a third-party base (``model_dump`` from
@@ -1007,25 +1163,59 @@ class FlextInfraUtilitiesFacadeMembers:
             Whether only classes of the package bind ``member`` in the MRO.
 
         """
-        root = package.partition(".")[0]
-        holders = tuple(klass for klass in facade.__mro__ if member in vars(klass))
+        del source_project
+        holders = [
+            ancestor
+            for ancestor in FlextInfraUtilitiesDeclarationPayload.class_ancestry(facade)
+            if member
+            in (
+                ancestor.get_scope().get_defined_names()
+                if FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor)
+                else ancestor.get_attributes()
+            )
+        ]
         return bool(holders) and all(
-            klass.__module__.partition(".")[0] == root for klass in holders
+            (module := ancestor.get_module()) is not None
+            and (
+                module.get_name() == package
+                or module.get_name().startswith(f"{package}.")
+            )
+            for ancestor in holders
         )
 
     @staticmethod
-    def _same_binding(left: p.AttributeProbe, right: p.AttributeProbe) -> bool:
-        """Compare two bindings through the objects their aliases name.
+    def _same_binding(
+        left: p.Infra.RopePyName,
+        right: p.Infra.RopePyName,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> bool:
+        """Prove declaration or nominal identity without erasing generic arguments.
 
         Returns:
-            Whether both names bind the identical runtime object.
+            Whether both names have the exact same proven source identity.
 
         """
-        targets = tuple(
-            value.__value__ if isinstance(value, TypeAliasType) else value
-            for value in (left, right)
+        del source_project
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        aliases = tuple(
+            runtime.annotation_alias_definition(value) for value in (left, right)
         )
-        return targets[0] is targets[1]
+        if aliases[0] is not None or aliases[1] is not None:
+            return (
+                aliases[0] is not None
+                and aliases[1] is not None
+                and aliases[0][0] is aliases[1][0]
+            )
+        if runtime.same_name(left, right):
+            return True
+        values = (left.get_object(), right.get_object())
+        if all(
+            types.abstract_class(value) or types.py_function(value) for value in values
+        ):
+            return values[0] is values[1]
+        return False
 
 
 __all__: list[str] = ["FlextInfraUtilitiesFacadeMembers"]

@@ -353,8 +353,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     ) -> Self:
         """Build a read-only project over ``live``'s tree with planned sources.
 
-        ``additional_source_folders`` are virtual import roots; each must hold
-        planned content inside the project.
+        ``additional_source_folders`` elect live or virtual import roots inside
+        the project. Live roots retain their native directory identity; a
+        virtual root must hold declared planned content.
 
         Returns:
             The project reading planned sources before the live tree.
@@ -371,10 +372,13 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 folder != (relative.as_posix() if relative.parts else "")
                 or relative.is_absolute()
                 or ".." in relative.parts
-                or not any(
-                    plan.desired_content is not None
-                    and plan.path.is_relative_to(candidate)
-                    for plan in declared_files
+                or (
+                    not live.source_query(candidate, "isdir")
+                    and not any(
+                        plan.desired_content is not None
+                        and plan.path.is_relative_to(candidate)
+                        for plan in declared_files
+                    )
                 )
             ):
                 msg = f"Rope virtual source root lacks a planned file: {folder}"

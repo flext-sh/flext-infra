@@ -1,0 +1,144 @@
+id: ban-artifact-execution
+snapshots:
+  "SourceFileLoader(\"support\", \"tests/fixtures/example.py\")\n":
+    labels:
+    - source: SourceFileLoader("support", "tests/fixtures/example.py")
+      style: primary
+      start: 0
+      end: 56
+    - source: SourceFileLoader
+      style: secondary
+      start: 0
+      end: 16
+    - source: "\"tests/fixtures/example.py\""
+      style: secondary
+      start: 28
+      end: 55
+    - source: "\"tests/fixtures/example.py\""
+      style: secondary
+      start: 28
+      end: 55
+  "__import__(\"tests.fixtures.support\")\n":
+    labels:
+    - source: __import__("tests.fixtures.support")
+      style: primary
+      start: 0
+      end: 36
+    - source: __import__
+      style: secondary
+      start: 0
+      end: 10
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 11
+      end: 35
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 11
+      end: 35
+  "importlib.import_module(\"tests.fixtures.support\")\n":
+    labels:
+    - source: importlib.import_module("tests.fixtures.support")
+      style: primary
+      start: 0
+      end: 49
+    - source: importlib.import_module
+      style: secondary
+      start: 0
+      end: 23
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 24
+      end: 48
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 24
+      end: 48
+  "importlib.util.spec_from_file_location(\"support\", \"/project/tests/fixtures/example.py\")\n":
+    labels:
+    - source: >-
+        importlib.util.spec_from_file_location("support",
+        "/project/tests/fixtures/example.py")
+      style: primary
+      start: 0
+      end: 87
+    - source: importlib.util.spec_from_file_location
+      style: secondary
+      start: 0
+      end: 38
+    - source: "\"/project/tests/fixtures/example.py\""
+      style: secondary
+      start: 50
+      end: 86
+    - source: "\"/project/tests/fixtures/example.py\""
+      style: secondary
+      start: 50
+      end: 86
+  "pytest_plugins = \"tests.fixtures.support\"\n":
+    labels:
+    - source: pytest_plugins = "tests.fixtures.support"
+      style: primary
+      start: 0
+      end: 41
+    - source: pytest_plugins
+      style: secondary
+      start: 0
+      end: 14
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 17
+      end: 41
+  "pytest_plugins = [\"tests.fixtures.support\"]\n":
+    labels:
+    - source: pytest_plugins = ["tests.fixtures.support"]
+      style: primary
+      start: 0
+      end: 43
+    - source: pytest_plugins
+      style: secondary
+      start: 0
+      end: 14
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 18
+      end: 42
+    - source: "[\"tests.fixtures.support\"]"
+      style: secondary
+      start: 17
+      end: 43
+  "runpy.run_module(\"tests.fixtures.support\")\n":
+    labels:
+    - source: runpy.run_module("tests.fixtures.support")
+      style: primary
+      start: 0
+      end: 42
+    - source: runpy.run_module
+      style: secondary
+      start: 0
+      end: 16
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 17
+      end: 41
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 17
+      end: 41
+  "runpy.run_path(\"tests/fixtures/example.py\")\n":
+    labels:
+    - source: runpy.run_path("tests/fixtures/example.py")
+      style: primary
+      start: 0
+      end: 43
+    - source: runpy.run_path
+      style: secondary
+      start: 0
+      end: 14
+    - source: "\"tests/fixtures/example.py\""
+      style: secondary
+      start: 15
+      end: 42
+    - source: "\"tests/fixtures/example.py\""
+      style: secondary
+      start: 15
+      end: 42

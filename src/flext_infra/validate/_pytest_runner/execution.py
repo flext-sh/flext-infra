@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, override
 from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
@@ -775,6 +776,9 @@ class FlextInfraPytestRunnerExecution(
         approved = u.Infra.git_require_green_check_receipt(
             self.repository_root,
             u.Infra.load_codegen_inputs(self.repository_root).unwrap().spec.make,
+            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
+                repository_root=self.repository_root,
+            ).plan_global_targets(gates),
         )
         if approved.failure:
             return r[int].from_failure(approved)

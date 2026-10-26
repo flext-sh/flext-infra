@@ -25,6 +25,32 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     """Resolve lexical identities and construct Rope module/import objects."""
 
     @staticmethod
+    def _source_import_binding(
+        binding: p.Infra.RopePyName,
+    ) -> p.Infra.RopePyName | None:
+        """Follow native imported names to their declaring source binding.
+
+        Returns:
+            The declared binding, or None for an unresolved or cyclic import.
+
+        """
+        imported: set[int] = set()
+        while isinstance(binding, p.Infra.RopeImportedName):
+            if id(binding) in imported:
+                return None
+            imported.add(id(binding))
+            supplier = (
+                binding.imported_module
+                .get_object()
+                .get_attributes()
+                .get(binding.imported_name)
+            )
+            if supplier is None:
+                return None
+            binding = supplier
+        return binding
+
+    @staticmethod
     def definition_location(
         binding: t.Infra.RopePyName,
     ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
@@ -68,26 +94,14 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             TypeError: If the native module does not expose a Python syntax tree.
 
         """
-        imported: set[int] = set()
-        while isinstance(binding, p.Infra.RopeImportedName):
-            if id(binding) in imported:
-                return None
-            imported.add(id(binding))
-            supplier = (
-                binding.imported_module
-                .get_object()
-                .get_attributes()
-                .get(binding.imported_name)
-            )
-            if supplier is None:
-                return None
-            binding = supplier
+        supplier = cls._source_import_binding(binding)
         if (
-            not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
-            or binding.assignments
+            supplier is None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
+            or supplier.assignments
         ):
             return None
-        module, _line = cls.definition_location(binding)
+        module, _line = cls.definition_location(supplier)
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
         tree = module.get_ast()
@@ -101,9 +115,35 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             lexical = cls.scope_at(module, cls.source_offset(module.source_code, node))
             # TypeAlias bindings intentionally have no inferred assignment or
             # line in Rope. Only the source token's exact identity proves them.
-            if cls.resolve_symbol(lexical, node.name) is binding:
+            if cls.resolve_symbol(lexical, node.name) is supplier:
                 declarations.append((node, lexical))
         return declarations[0] if len(declarations) == 1 else None
+
+    @classmethod
+    def annotation_assignment_outer_type(
+        cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
+    ) -> p.Infra.RopePyName | None:
+        """Resolve a source-assigned generic's outer type through native bindings.
+
+        Returns:
+            The lexical type identity, or None without an assigned subscript.
+
+        """
+        supplier = cls._source_import_binding(binding)
+        if (
+            supplier is None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
+            or len(supplier.assignments) != 1
+        ):
+            return None
+        assigned = supplier.assignments[0].ast_node
+        module, _line = cls.definition_location(supplier)
+        if not isinstance(
+            assigned, ast.Subscript
+        ) or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            return None
+        scope = cls.scope_at(module, cls.source_offset(module.source_code, assigned))
+        return cls.annotation_origin(project, assigned, scope)
 
     @classmethod
     def annotation_origin(
@@ -269,31 +309,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if resource is None:
             return None
         return resource.real_path
-
-    @staticmethod
-    def source_offset(source: str, node: p.Infra.RopeAstNode) -> int:
-        """Resolve Rope AST byte coordinates to a Python source offset.
-
-        Returns:
-            The resulting ``int``.
-
-        Raises:
-            TypeError: If Rope AST node has no source position.
-            ValueError: If Rope AST node line is outside its source.
-
-        """
-        line = getattr(node, "lineno", None)
-        column = getattr(node, "col_offset", None)
-        lines = source.splitlines(keepends=True)
-        if not isinstance(line, int) or not isinstance(column, int):
-            msg = "Rope AST node has no source position"
-            raise TypeError(msg)
-        if line < 1 or line > len(lines):
-            msg = f"Rope AST node line is outside its source: {line}"
-            raise ValueError(msg)
-        encoded_prefix = lines[line - 1].encode("utf-8")[:column]
-        prefix = encoded_prefix.decode("utf-8")
-        return sum(map(len, lines[: line - 1])) + len(prefix)
 
     @staticmethod
     def scope_at(

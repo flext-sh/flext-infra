@@ -4,7 +4,7 @@ Every facade letter, and every namespace class nested in it, composes family
 component classes by MRO. A consumer that reads a member through the component
 class (``FlextInfraConstantsPytest.X``) instead of the facade namespace
 (``c.Infra.X``) bypasses the facade alphabet; the generated rules here rewrite
-it, with the mapping derived from the runtime composition, never listed.
+it, with the mapping derived from the native source composition, never listed.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import re
 import sys
-from importlib import import_module
 from importlib.metadata import packages_distributions
 from pathlib import Path
 
@@ -22,8 +21,11 @@ from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodNativePackageUtilities,
     FlextInfraUtilitiesCodemodNativeUtilities,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 
 
@@ -32,7 +34,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @classmethod
     def facade_component_references(
-        cls, project: Path
+        cls, project: Path, *, source_project: p.Infra.RopeProject
     ) -> t.MappingKV[t.StrPair, frozenset[str]]:
         """Map each facade namespace to the component references it composes.
 
@@ -52,10 +54,14 @@ class FlextInfraUtilitiesFacadeComponents:
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         claims: dict[str, set[t.StrPair]] = {}
         for root in FlextInfraUtilitiesFacadeMembers.facade_member_lineage(
-            package, letters
+            package, letters, source_project=source_project
         ):
-            for holder, target in cls._facade_namespace_holders(root, letters):
-                for reference in cls._composed_references(root, letters, holder):
+            for holder, target in cls._facade_namespace_holders(
+                root, letters, source_project=source_project
+            ):
+                for reference in cls._composed_references(
+                    root, letters, holder, source_project=source_project
+                ):
                     claims.setdefault(reference, set()).add((root, target))
         references: dict[t.StrPair, set[str]] = {}
         for reference, targets in claims.items():
@@ -65,32 +71,41 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @staticmethod
     def _facade_namespace_holders(
-        root: str, letters: t.StrSequence
-    ) -> t.SequenceOf[tuple[type, str]]:
+        root: str, letters: t.StrSequence, *, source_project: p.Infra.RopeProject
+    ) -> t.SequenceOf[tuple[p.Infra.RopeClassObject, str]]:
         """List each facade letter of ``root`` and every namespace class it nests.
 
         Returns:
             Each holder class with its ``letter[.Namespace]`` reference text.
 
+        Raises:
+            ValueError: A facade namespace has no native class scope.
+
         """
-        module = import_module(root)
-        holders: list[tuple[type, str]] = []
-        for letter in letters:
-            facade = getattr(module, letter, None)
-            if not isinstance(facade, type):
-                continue
+        holders: list[tuple[p.Infra.RopeClassObject, str]] = []
+        for letter, facade in FlextInfraUtilitiesFacadeMembers.facade_source_classes(
+            root, letters, source_project=source_project
+        ).items():
             holders.append((facade, letter))
-            holders.extend(
-                (nested, f"{letter}.{name}")
-                for name, nested in vars(facade).items()
-                if isinstance(nested, type)
-                and nested.__qualname__ == f"{facade.__qualname__}.{name}"
-            )
+            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(facade):
+                message = f"facade namespace has no native scope: {root}.{letter}"
+                raise ValueError(message)
+            for nested in facade.get_scope().get_scopes():
+                if nested.get_kind() == "Class":
+                    value = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                        nested.pyobject, f"{root}.{letter}"
+                    )
+                    holders.append((value, f"{letter}.{value.get_name()}"))
         return tuple(holders)
 
     @classmethod
     def _composed_references(
-        cls, root: str, letters: t.StrSequence, holder: type
+        cls,
+        root: str,
+        letters: t.StrSequence,
+        holder: p.Infra.RopeClassObject,
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> t.StrSequence:
         """Reference each member a component base of ``holder`` composes into it.
 
@@ -102,18 +117,32 @@ class FlextInfraUtilitiesFacadeComponents:
             The exact ``Component.member`` texts.
 
         """
-        module = import_module(root)
-        facades = {getattr(module, letter, None) for letter in letters}
-        holder_members = frozenset(dir(holder))
+        members = FlextInfraUtilitiesFacadeMembers
+        facades = tuple(
+            members.facade_source_classes(
+                root, letters, source_project=source_project
+            ).values()
+        )
+        holder_members = members.facade_source_members(
+            holder, source_project=source_project
+        )
         return tuple(
-            f"{base.__name__}.{member}"
-            for base in holder.__bases__
-            if base.__module__.partition(".")[0] == root and base not in facades
-            for member in dir(base)
-            if not member.startswith("_")
-            and FlextInfraUtilitiesFacadeMembers.declared_by_package(base, member, root)
+            f"{base.get_name()}.{member}"
+            for candidate in FlextInfraUtilitiesDeclarationPayload.direct_bases(holder)
+            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base := candidate)
+            and (module := base.get_module()) is not None
+            and (module.get_name() == root or module.get_name().startswith(f"{root}."))
+            and base not in facades
+            for member, binding in members.facade_source_members(
+                base, source_project=source_project
+            ).items()
+            if members.declared_by_package(
+                base, member, root, source_project=source_project
+            )
             and member in holder_members
-            and getattr(holder, member) is getattr(base, member)
+            and FlextInfraUtilitiesRopeRuntimeModules.same_name(
+                holder_members[member], binding
+            )
         )
 
     @classmethod
@@ -138,10 +167,11 @@ class FlextInfraUtilitiesFacadeComponents:
             when the lineage composes no component.
 
         """
-        del snapshot
         root = project.absolute()
         package = FlextInfraUtilitiesPyproject.project_package_name(root)
-        references = cls.facade_component_references(root)
+        references = cls.facade_component_references(
+            root, source_project=snapshot.engine
+        )
         if not references:
             return {}
         own = tuple(
@@ -149,7 +179,9 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         members = FlextInfraUtilitiesFacadeMembers
         lineage = members.facade_member_lineage(
-            package, sorted(set(config.Infra.tooling.facade_members.owners.values()))
+            package,
+            sorted(set(config.Infra.tooling.facade_members.owners.values())),
+            source_project=snapshot.engine,
         )
         sources = sorted({*lineage, *own})
         targets: dict[str, set[str]] = {}

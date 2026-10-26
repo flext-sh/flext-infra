@@ -218,6 +218,12 @@ to repair authored declarations.
 | `build` | Produce local distribution and documentation artifacts without publishing |
 | `clean` | Remove only declared disposable resources owned by the selected target |
 
+Fleet behavioral admission uses
+`flext-infra workspace tests --repository-root <root> --scope all`. This native
+owner requires global Ruff/Pyrefly success before reaching the per-repository
+Testmon engines. A successful member-only run never establishes fleet acceptance;
+all other applicable checks still precede completion and integration.
+
 Generation and captured check processes share the validated
 `settings.Infra.profile` instrumentation setting, disabled by default.
 `FLEXT_INFRA_PROFILE=true` enables profiling through the existing adapter without
