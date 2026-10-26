@@ -114,7 +114,9 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
         )
         candidate = Path(c.Infra.DIR_DOCS) / relative_path
         return any(
-            candidate.full_match(pattern) for pattern in codegen.docs_copy_patterns
+            path.full_match(pattern)
+            for path in (candidate, *candidate.parents)
+            for pattern in codegen.docs_copy_patterns
         )
 
     @staticmethod

@@ -420,6 +420,19 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
+    class WorkspaceTestsRequest(WorkspaceRequest):
+        """Select repositories for native persistent incremental tests."""
+
+        scope: Annotated[
+            Literal[
+                c.Infra.CodegenConformScope.ALL,
+                c.Infra.CodegenConformScope.SELF,
+            ],
+            m.Field(
+                description="Test all governed repositories or only this repository"
+            ),
+        ] = c.Infra.CodegenConformScope.ALL
+
     class FlextEditableRequest(WorkspaceRequest):
         """Setup's FLEXT editable selection: a workspace root, or none to clear."""
 

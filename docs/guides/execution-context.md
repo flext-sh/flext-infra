@@ -652,6 +652,14 @@ unpublished packages. Original-file reads and package membership checks retain
 their native project-tree scope; planned initializer bytes own alias analysis.
 Generated Ruff bases retain the qualified import spelling used by the consumer.
 The provider's declaration identity remains separate from that reexport spelling.
+Facade base retirement resolves imported member expressions from the lexical
+import provenance visible at the class declaration, not a later module-level
+alias assignment. The shared source-member resolver follows declared public lazy
+exports and native C3 to return the actual declaring binding in the captured,
+planned project view. Local scope, value shadowing, module-as-base, cyclic routes
+and unknown bindings retain their native failure; spelling alone never proves
+that a base can be dropped. No private import or live-disk replacement may bypass
+that public source provenance.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.

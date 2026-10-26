@@ -278,6 +278,7 @@ class FlextInfraPyprojectModernizerDocument(
                     state,
                     canonical_dev=canonical_dev,
                     topology=topology,
+                    codegen=inputs.value.spec,
                 ),
             ),
             skip_comments=skip_comments,
@@ -289,6 +290,7 @@ class FlextInfraPyprojectModernizerDocument(
         *,
         canonical_dev: t.StrSequence,
         topology: m.Infra.PyprojectDeclaredTopology,
+        codegen: m.Infra.CodegenConfigSpec,
         tool_config: m.Infra.ToolConfigDocument | None = None,
     ) -> t.StrSequence:
         """Run every managed phase, in order, over one parsed payload.
@@ -353,7 +355,7 @@ class FlextInfraPyprojectModernizerDocument(
         changes: t.MutableSequenceOf[str] = [
             *self._normalize_build_payload(payload),
             *FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
-            *FlextInfraToolTablesPhase(tooling).apply_payload(
+            *FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
                 payload,
                 path=path,
                 repository_namespace_packages=topology.repository_namespace_packages,
@@ -361,7 +363,7 @@ class FlextInfraPyprojectModernizerDocument(
             ),
             # Pyrefly derives its include globs from the canonical Pyright
             # roots, so resolve Pyright first and converge in one pass.
-            *FlextInfraEnsurePyrightConfigPhase(tooling).apply_payload(
+            *FlextInfraEnsurePyrightConfigPhase(tooling, codegen=codegen).apply_payload(
                 payload,
                 context=analyzer_context,
                 paths_manager=paths_manager,
@@ -369,7 +371,7 @@ class FlextInfraPyprojectModernizerDocument(
             ),
             # Declared roots are topology facts only during atomic creation;
             # normal modernization derives productive roots on disk.
-            *FlextInfraEnsurePyreflyConfigPhase(tooling).apply_payload(
+            *FlextInfraEnsurePyreflyConfigPhase(tooling, codegen=codegen).apply_payload(
                 payload,
                 context=(
                     analyzer_context
@@ -382,6 +384,7 @@ class FlextInfraPyprojectModernizerDocument(
             ),
             *FlextInfraEnsureRuffConfigPhase(
                 tooling,
+                codegen=codegen,
             ).apply_payload(
                 payload,
                 path=path,

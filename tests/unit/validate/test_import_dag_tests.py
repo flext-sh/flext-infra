@@ -16,7 +16,7 @@ from tests import c, tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, t
+    from tests import m, p, t
 
 
 class TestsFlextInfraImportDag:
@@ -45,9 +45,6 @@ class TestsFlextInfraImportDag:
             ("tests/utilities.py", "from tests.models import M\n"),
             ("tests/constants.py", "from tests import c, r\n"),
             ("tests/models.py", "from tests.fixtures.users import user\n"),
-            ("tests/unit/test_behavior.py", "from tests.fixtures.users import user\n"),
-            ("tests/unit/test_behavior.py", "from ..fixtures import users\n"),
-            ("tests/conftest.py", "import tests.fixtures.users\n"),
             ("tests/__init__.py", "from tests.conftest import fixture\n"),
             ("src/sample/api.py", "from tests import c, r, u\n"),
         ],
@@ -60,6 +57,32 @@ class TestsFlextInfraImportDag:
     ) -> None:
         """Test forbidden edges fail."""
         project = self._project(tmp_path, {source: imported})
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project),
+        )
+        tm.fail(report.passed)
+
+    @pytest.mark.parametrize(
+        ("source", "case"),
+        [
+            ("tests/unit/test_behavior.py", "absolute"),
+            ("tests/unit/test_behavior.py", "relative"),
+            ("tests/conftest.py", "plugin"),
+        ],
+    )
+    def test_artifact_imports_fail_from_every_test_layer(
+        self,
+        tmp_path: Path,
+        fixture_tree: p.Tests.FixtureTree,
+        source: str,
+        case: str,
+    ) -> None:
+        """Reject imports of artifact data from ordinary tests and conftest."""
+        scenario = fixture_tree("artifact-imports", destination=tmp_path / "scenarios")
+        project = self._project(
+            tmp_path,
+            {source: (scenario / f"{case}.py").read_text(encoding=c.DEFAULT_ENCODING)},
+        )
         report: m.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )

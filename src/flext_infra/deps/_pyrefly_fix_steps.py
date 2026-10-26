@@ -9,13 +9,13 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, r, t, u
+from flext_infra import c, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
+    from flext_infra import m, p
 
 
 class FlextInfraConfigFixerSteps:
@@ -144,6 +144,9 @@ class FlextInfraConfigFixerSteps:
     @staticmethod
     def _sync_project_excludes(
         pyrefly: MutableMapping[str, t.JsonValue],
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+        tool_config: m.Infra.ToolConfigDocument,
     ) -> p.Result[t.StrSequence]:
         """Synchronize tool.pyrefly.project-excludes from YAML rules.
 
@@ -163,10 +166,11 @@ class FlextInfraConfigFixerSteps:
             current_excludes = [str(value) for value in validated.value]
         expected_excludes = u.Infra.pyrefly_project_excludes(
             u.Infra.native_tool_strings(
-                config.Infra.tooling,
+                tool_config,
                 c.Infra.PYREFLY,
                 c.Infra.PROJECT_EXCLUDES,
             ),
+            codegen=codegen,
         )
         if current_excludes != expected_excludes:
             pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Cli.toml_array(expected_excludes)

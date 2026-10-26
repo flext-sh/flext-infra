@@ -161,7 +161,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ] = ()
         markdown: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
             m.Field(
                 description=(
                     "Positive repository-relative Markdown exclusion patterns "
@@ -170,7 +170,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ]
         docs_publish: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
             m.Field(
                 description=(
                     "Repository-relative page patterns excluded from site "
@@ -179,7 +179,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ]
         docs_copy: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
             m.Field(
                 description=(
                     "Repository-relative documentation patterns excluded from "

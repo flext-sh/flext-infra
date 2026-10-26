@@ -46,6 +46,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
         changes = FlextInfraEnsurePyreflyConfigPhase(
             config.Infra.tooling,
+            codegen=config.Infra.codegen,
         ).apply_payload(
             payload,
             context=m.Infra.PyprojectAnalyzerContext(
@@ -129,6 +130,7 @@ class TestsFlextInfraModernizerPyrefly:
                     pyproject.read_text(encoding="utf-8"),
                     path=pyproject,
                     topology=m.Infra.PyprojectDeclaredTopology(),
+                    codegen=tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec,
                 ),
             )
             tm.that(
@@ -187,7 +189,10 @@ class TestsFlextInfraModernizerPyrefly:
     def test_phase_is_idempotent(self) -> None:
         """A second Pyrefly run over the converged payload changes nothing."""
         payload, _, _ = self._applied()
-        second = FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
+        second = FlextInfraEnsurePyreflyConfigPhase(
+            config.Infra.tooling,
+            codegen=config.Infra.codegen,
+        ).apply_payload(
             payload,
             context=m.Infra.PyprojectAnalyzerContext(is_root=True),
         )
@@ -294,7 +299,7 @@ class TestsFlextInfraModernizerPyrefly:
             project_name=project_dir.name,
             package_name=u.Tests.project_spec(project_dir.name).package_name,
             path=project_dir / c.PYPROJECT_FILENAME,
-            scaffold_project=config.Infra.codegen.scaffold.project,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec,
             runtime_dependency_overlay=(),
             declared_project_dependencies=(),
             topology=topology,
@@ -328,6 +333,7 @@ class TestsFlextInfraModernizerPyrefly:
                 path=request.path,
                 format_source=False,
                 topology=request.topology,
+                codegen=request.codegen,
             ),
         )
         pyrefly = u.Tests.toml_table_at(rendered, c.Infra.TOOL, "pyrefly")
@@ -396,7 +402,10 @@ class TestsFlextInfraModernizerPyrefly:
         _ = TestsFlextInfraExtraPathsSupport.workspace_with_dependency(tmp_path)
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
 
-        _ = FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
+        _ = FlextInfraEnsurePyreflyConfigPhase(
+            config.Infra.tooling,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec,
+        ).apply_payload(
             payload,
             context=m.Infra.PyprojectAnalyzerContext(
                 is_root=True,

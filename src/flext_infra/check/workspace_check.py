@@ -28,7 +28,11 @@ class FlextInfraWorkspaceChecker(
     FlextInfraWorkspaceCheckGatesMixin,
     FlextInfraWorkspaceCheckReportsMixin,
 ):
-    """Run workspace quality gates and generate reports."""
+    """Run workspace quality gates and generate reports.
+
+    The native scope planner and gate registry also own the global inventory
+    used to publish and admit coverage proof; admission never executes gates.
+    """
 
     _repository_root: Path = m.PrivateAttr()
     _registry: FlextInfraGateRegistry = m.PrivateAttr()

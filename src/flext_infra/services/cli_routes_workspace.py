@@ -38,6 +38,16 @@ class FlextInfraWorkspaceRoutes:
         return r[int].ok(len(selected.value))
 
     @staticmethod
+    def _tests(params: m.Infra.WorkspaceTestsRequest) -> p.Cli.ErasedCommandResult:
+        """Preserve the first native test status at the CLI boundary."""
+        completed = flext_infra.infra.workspace_tests(params)
+        if completed.failure:
+            return r[int].from_failure(completed)
+        if completed.value:
+            u.Cli.framework_exit(completed.value)
+        return completed
+
+    @staticmethod
     def _detect_workspace(
         params: workspace.FlextInfraWorkspaceDetector,
     ) -> p.Result[str]:
@@ -206,6 +216,13 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             *u.Infra.result_routes((
+                (
+                    c.Infra.VERB_TESTS,
+                    "Run persistent incremental tests after global source admission",
+                    m.Infra.WorkspaceTestsRequest,
+                    cls._tests,
+                    None,
+                ),
                 (
                     "capture-gate",
                     "Execute the original checker once and publish its receipt",

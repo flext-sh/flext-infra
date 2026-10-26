@@ -81,7 +81,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                 'testpaths = ["architecture", "guides", "tests"]\n',
             ),
         )
-        phase = FlextInfraToolTablesPhase(tooling)
+        phase = FlextInfraToolTablesPhase(tooling, codegen=config.Infra.codegen)
         pyproject = tmp_path / "flext-sample" / c.PYPROJECT_FILENAME
 
         first_changes = phase.apply_payload(payload, path=pyproject)

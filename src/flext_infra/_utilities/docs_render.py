@@ -90,8 +90,12 @@ class FlextInfraUtilitiesDocsRender:
         return (
             tuple(f"/{pattern}" for pattern in publish),
             tuple(
-                translate(pattern, recursive=True, include_hidden=True)
+                translate(candidate, recursive=True, include_hidden=True)
                 for pattern in copy
+                for candidate in dict.fromkeys((
+                    pattern,
+                    f"{pattern.removesuffix('/**')}/**",
+                ))
             ),
         )
 

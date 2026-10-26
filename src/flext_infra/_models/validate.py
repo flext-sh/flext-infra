@@ -283,7 +283,11 @@ class FlextInfraModelsCore:
         )
 
     class PytestRunContext(m.Value):
-        """Immutable execution identity shared by a phase's native receipts."""
+        """Immutable execution identity shared by a phase's native receipts.
+
+        Keep execution_mode as its closed enum in memory, including recovery
+        from JSON strings; JSON serialization still publishes its string value.
+        """
 
         execution_mode: c.Infra.PytestExecutionMode = m.Field(
             description="Canonical test operation for this report directory",

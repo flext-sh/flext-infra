@@ -19,8 +19,8 @@ from flext_infra._models import (
     FlextInfraModelsWorkspace,
 )
 from flext_infra._models._config import (
+    FlextInfraConfigModelsArtifact,
     FlextInfraConfigModelsRepository,
-    FlextInfraConfigModelsScaffold,
 )
 
 GitSourceUrlPrefixField = Annotated[
@@ -611,9 +611,9 @@ class FlextInfraModelsDeps(
             FlextInfraModelsDeps.PyprojectDeclaredTopology,
             m.Field(description="Declared repository topology"),
         ]
-        scaffold_project: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldProjectSpec,
-            m.Field(description="Scaffold project specification"),
+        codegen: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
+            m.Field(description="Elected effective target codegen policy"),
         ]
         runtime_dependency_overlay: Annotated[
             t.StrSequence,

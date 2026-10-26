@@ -662,7 +662,12 @@ class FlextInfraModelsCheck:
             }
 
     class CheckReportSummary(m.ContractModel):
-        """Invocation-owned execution facts retained by the published SARIF."""
+        """Invocation-owned execution facts retained by the published SARIF.
+
+        Global admission requires the producer's unfiltered topology and full
+        applicable gate plan, not merely completion of the requested subset.
+        Missing global coverage is unknown, never implicit whole-workspace proof.
+        """
 
         requested_gates: Annotated[
             t.StrSequence,

@@ -13,10 +13,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPythonModel,
+)
 
 
 class FlextInfraUtilitiesLazyInitLetters:
@@ -66,8 +67,9 @@ class FlextInfraUtilitiesLazyInitLetters:
 
         Discovery reads the nearest-first facade chain; the election walks
         only this project's chain (foreign parents are leaves) and takes the
-        nearest parent that declares the letter, else the nearest that serves
-        it. Local owners and foreign local overrides are never replaced.
+        nearest parent that declares the letter, else the nearest actual
+        publisher. A transitive dependency does not establish publication.
+        Local owners and foreign local overrides are never replaced.
         """
         python = FlextInfraUtilitiesPythonModel
         pkg_dir, current = context.pkg_dir, context.current_pkg
@@ -127,7 +129,7 @@ class FlextInfraUtilitiesLazyInitLetters:
                 (
                     package
                     for package in election
-                    if cls._lazy_init_serves(run, package, letter, set())
+                    if letter in cls._lazy_init_package_names(run, package)
                 ),
                 "",
             )
@@ -349,50 +351,6 @@ class FlextInfraUtilitiesLazyInitLetters:
             frozenset(names) | cls._lazy_init_declared_letters(run, package)
             if indexed
             else frozenset(names)
-        )
-
-    @classmethod
-    def _lazy_init_serves(
-        cls, run: m.Infra.LazyInitRun, package: str, letter: str, visited: set[str]
-    ) -> bool:
-        """Return whether a package declares a letter or re-exports a declarer's.
-
-        Returns:
-            Whether ``package`` serves ``letter``.
-
-        """
-        if package in visited:
-            return False
-        visited.add(package)
-        if letter in cls._lazy_init_declared_letters(run, package):
-            return True
-        package_dir, indexed = cls._lazy_init_package_dir(run, package)
-        init_path = None if package_dir is None else package_dir / c.Infra.INIT_PY
-        text = None if init_path is None else cls.lazy_init_text(run, init_path)
-        if (
-            indexed
-            and package_dir is not None
-            and not (
-                FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
-                    None if text is None else text.encode(c.DEFAULT_ENCODING),
-                )
-                and init_path is not None
-                and not FlextInfraUtilitiesPythonModel.python_model_module_at(
-                    run.model, init_path, package
-                ).declaration_only
-            )
-        ):
-            sources = cls.lazy_init_parent_packages(run, package_dir)
-        elif init_path is not None and text is not None:
-            python = FlextInfraUtilitiesPythonModel
-            target = python.python_model_import_target(
-                python.python_model_module_at(run.model, init_path, package), letter
-            )
-            sources = (target.split(".", maxsplit=1)[0],) if target else ()
-        else:
-            sources = ()
-        return any(
-            cls._lazy_init_serves(run, source, letter, visited) for source in sources
         )
 
 

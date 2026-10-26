@@ -237,6 +237,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 source,
                 path=pyproject,
                 topology=m.Infra.PyprojectDeclaredTopology(),
+                codegen=tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec,
             ),
         )
         tm.that(rendered.count("[project]"), eq=1)

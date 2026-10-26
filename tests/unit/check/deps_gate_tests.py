@@ -655,7 +655,10 @@ class TestsFlextInfraDepsGate:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Cli.toml_read_json(pyproject).unwrap(),
         )
-        FlextInfraToolTablesPhase(config.Infra.tooling).apply_payload(
+        FlextInfraToolTablesPhase(
+            config.Infra.tooling,
+            codegen=u.Infra.load_codegen_inputs(root).unwrap().spec,
+        ).apply_payload(
             payload,
             path=pyproject,
         )

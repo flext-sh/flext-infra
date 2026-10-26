@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from typing_extensions import TypeForm
 
-from flext_infra import config
 from flext_infra.deps import FlextInfraConfigFixer, FlextInfraExtraPathsManager
 from tests import c, t, tm, u
 
@@ -232,11 +231,12 @@ class TestsFlextInfraExtendedConfigFixer:
                 eq=list(
                     u.Infra.pyrefly_project_excludes(
                         u.Infra.native_tool_setting(
-                            config.Infra.tooling,
+                            tm.ok(u.Infra.load_tooling_inputs(tmp_path)).document,
                             c.Infra.PYREFLY,
                             c.Infra.PROJECT_EXCLUDES,
                             TypeForm(t.StrSequence),
                         ),
+                        codegen=u.Infra.load_codegen_inputs(tmp_path).unwrap().spec,
                     )
                 ),
             )

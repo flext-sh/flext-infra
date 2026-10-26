@@ -742,7 +742,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             project_name=repository.distribution,
             package_name=metadata.package_name,
             path=root / c.PYPROJECT_FILENAME,
-            scaffold_project=codegen.scaffold.project,
+            codegen=codegen,
             runtime_dependency_overlay=project.runtime_dependency_overlay,
             declared_project_dependencies=metadata.project.dependencies,
             topology=m.Infra.PyprojectDeclaredTopology(

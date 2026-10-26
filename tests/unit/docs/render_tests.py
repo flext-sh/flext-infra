@@ -215,31 +215,51 @@ class TestsFlextInfraDocsRender:
     def test_declared_exclusions_reach_docs_and_plugin_without_duplicates(
         tmp_path: Path,
     ) -> None:
-        """Declared exclusions merge once with the fixed ones and feed the plugin."""
+        """Repository policy reaches page and physical-copy consumers exactly once."""
         scope = m.Infra.DocScope(
             name="flext-demo",
             path=tmp_path,
             report_dir=tmp_path / ".reports/docs",
         )
-        fixed = u.Infra.docs_rebase_patterns(
-            config.Infra.codegen.docs_publish_patterns,
-            repository_root=tmp_path,
-            docs_root=tmp_path / c.Infra.DIR_DOCS,
+        defaults = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec.exclusions
+        directory = tmp_path / c.Infra.CODEGEN_CONFIG_DIR
+        directory.mkdir()
+        page_pattern = f"{c.Infra.DIR_DOCS}/drafts/**"
+        copy_pattern = f"{c.Infra.DIR_DOCS}/private/**"
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "exclusions": {
+                                "docs_publish": [
+                                    *defaults.docs_publish,
+                                    page_pattern,
+                                    page_pattern,
+                                ],
+                                "docs_copy": [
+                                    *defaults.docs_copy,
+                                    copy_pattern,
+                                    copy_pattern,
+                                ],
+                            },
+                        },
+                    },
+                },
+            )
         )
-        declared: t.JsonValueList = ["drafts/**", fixed[0]]
-
         parsed = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
             tm.ok(
                 u.Cli.yaml_roundtrip_load_map_text(
-                    u.Infra.docs_project_mkdocs(scope, {"exclude_docs": declared})
+                    u.Infra.docs_project_mkdocs(scope, {})
                 )
             )
         )
 
-        tm.that(
-            str(parsed["exclude_docs"]).split(),
-            eq=list(dict.fromkeys([*declared, *fixed])),
-        )
+        published = str(parsed["exclude_docs"]).split()
+        tm.that(published.count("/drafts/**"), eq=1)
+        tm.that(published.count("/private/**"), eq=1)
         plugins = parsed["plugins"]
         if not isinstance(plugins, list):
             pytest.fail("the rendered plugins must be a list")
@@ -248,4 +268,15 @@ class TestsFlextInfraDocsRender:
             for entry in plugins
             if isinstance(entry, dict) and "exclude" in entry
         ]
-        tm.that(exclusion, eq=[{"glob": declared}])
+        tm.that(len(exclusion), eq=1)
+        options = u.Tests.toml_mapping(exclusion[0])
+        patterns = u.Tests.toml_strings(options["regex"])
+        tm.that(len(patterns), eq=len(set(patterns)))
+        tm.that(
+            any(re.fullmatch(pattern, "private/secret.md") for pattern in patterns),
+            eq=True,
+        )
+        tm.that(
+            any(re.fullmatch(pattern, "drafts/proposal.md") for pattern in patterns),
+            eq=False,
+        )

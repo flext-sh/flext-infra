@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config
+from flext_infra import c
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra import m, t
 
 
 class FlextInfraUtilitiesPyrefly:
@@ -66,7 +66,11 @@ class FlextInfraUtilitiesPyrefly:
         )
 
     @staticmethod
-    def pyrefly_project_excludes(declared_globs: t.StrSequence) -> t.StrSequence:
+    def pyrefly_project_excludes(
+        declared_globs: t.StrSequence,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> t.StrSequence:
         """Compose Pyrefly exclusions with the shared analysis artifact catalog.
 
         Every analyzer consumes the same declared file and directory patterns,
@@ -76,7 +80,7 @@ class FlextInfraUtilitiesPyrefly:
             The sorted, deduplicated ``project-excludes`` values.
 
         """
-        return sorted({*declared_globs, *config.Infra.codegen.analyzer_exclude_globs})
+        return sorted({*declared_globs, *codegen.analyzer_exclude_globs})
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPyrefly"]

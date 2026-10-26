@@ -120,7 +120,10 @@ class TestsFlextInfraRuffProjectPolicy:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload('[project]\nname = "changed-owner-policy"\n'),
         )
-        phase = FlextInfraEnsureRuffConfigPhase(policy)
+        phase = FlextInfraEnsureRuffConfigPhase(
+            policy,
+            codegen=config.Infra.codegen,
+        )
         phase.apply_payload(
             payload,
             path=tmp_path / c.PYPROJECT_FILENAME,
@@ -164,7 +167,10 @@ class TestsFlextInfraRuffProjectPolicy:
                 '[tool.ruff.lint.extend-per-file-ignores]\n"scripts/**" = ["ALL"]\n',
             ),
         )
-        phase = FlextInfraEnsureRuffConfigPhase(config.Infra.tooling)
+        phase = FlextInfraEnsureRuffConfigPhase(
+            config.Infra.tooling,
+            codegen=config.Infra.codegen,
+        )
         phase.apply_payload(
             payload,
             path=tmp_path / c.PYPROJECT_FILENAME,
@@ -228,7 +234,10 @@ class TestsFlextInfraRuffProjectPolicy:
                 (project / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
             ),
         )
-        FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
+        FlextInfraEnsureRuffConfigPhase(
+            config.Infra.tooling,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(project)).spec,
+        ).apply_payload(
             payload,
             path=project / c.PYPROJECT_FILENAME,
             analysis_exclusions=(),
@@ -289,7 +298,10 @@ class TestsFlextInfraRuffProjectPolicy:
                 (project / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
             ),
         )
-        FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
+        FlextInfraEnsureRuffConfigPhase(
+            config.Infra.tooling,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(project)).spec,
+        ).apply_payload(
             payload,
             path=project / c.PYPROJECT_FILENAME,
             analysis_exclusions=(),

@@ -7,12 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import (
     FlextInfraConformWiring,
     FlextInfraGitService,
     FlextInfraPreviewWiring,
+    c,
     m,
     r,
     s,
@@ -32,7 +34,7 @@ from flext_infra.services import (
     FlextInfraCodegenHandlers,
     FlextInfraModHandlers,
 )
-from flext_infra.validate import FlextInfraNamespaceValidator
+from flext_infra.validate import FlextInfraNamespaceValidator, FlextInfraPytestRunner
 from flext_infra.workspace import FlextInfraRopeWorkspace, FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -433,6 +435,77 @@ class FlextInfra(
         return r[t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]].ok(
             (workspace.value, target.value),
         )
+
+    @staticmethod
+    def workspace_tests(request: m.Infra.WorkspaceTestsRequest) -> p.Result[int]:
+        """Admit global source quality once, then run each native test engine.
+
+        Ordinary test failures retain their original first status while every
+        selected repository is reached. Configuration failures escape unchanged.
+
+        Returns:
+            The first failing native test status, or zero after every success.
+
+        """
+        context = FlextInfra.project_context(request.repository_root).unwrap()
+        if context.identity is None or context.runtime is None:
+            return r[int].fail(f"tests require a project context: {context.cwd}")
+        root = context.identity.repo_root
+        workspace_root = context.runtime.runtime_root
+        inputs = u.Infra.load_codegen_inputs(workspace_root).unwrap()
+        admitted = FlextInfraWorkspaceChecker(
+            repository_root=workspace_root,
+        ).execute_payload(
+            m.Infra.RunCommand(
+                repository_root=workspace_root,
+                scope=c.Infra.CodegenConformScope.ALL,
+                gates=inputs.spec.make.check_prerequisite_gates,
+            ),
+        )
+        if admitted.failure:
+            return r[int].from_failure(admitted)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            workspace_root,
+        ).unwrap()
+        governed = frozenset(u.Infra.governed_project_roots(workspace_root))
+        references = tuple(
+            repository
+            for repository in (workspace.repository, *workspace.subprojects)
+            if (workspace_root / repository.path).resolve() in governed
+        )
+        ordered = u.Infra.workspace_dependency_order(workspace_root, references)
+        by_distribution = {
+            repository.distribution: (workspace_root / repository.path).resolve()
+            for repository in references
+        }
+        if frozenset(by_distribution.values()) != governed:
+            return r[int].fail(
+                "tests workspace declarations differ from governed roots"
+            )
+        status = 0
+        for distribution in ordered:
+            selected = by_distribution[distribution]
+            if request.scope == c.Infra.CodegenConformScope.SELF and selected != root:
+                continue
+            u.Cli.info(f"tests: repository {distribution} root={selected}")
+            project = (
+                context
+                if selected == root
+                else FlextInfra.project_context(selected).unwrap()
+            )
+            outcome = (
+                FlextInfraPytestRunner
+                .from_project_context(
+                    project,
+                    started_at_monotonic=monotonic(),
+                )
+                .execute()
+                .unwrap()
+            )
+            u.Cli.info(f"tests: repository {distribution} exit={outcome}")
+            if not status and outcome:
+                status = outcome
+        return r[int].ok(status)
 
     @staticmethod
     def project_context(cwd: Path) -> p.Result[m.Infra.WorkspaceProjectContext]:

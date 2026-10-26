@@ -25,13 +25,14 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         repo_root: Path,
         make: m.Infra.MakeSpec,
     ) -> p.Result[Path]:
-        """Prove the newest same-scope check receipt approves this candidate.
+        """Prove the newest same-partition check covers the global candidate.
 
         Tests run only on a green check (the workflow's ``tests`` row requires
-        ``check``). The scope is this repository and the check partition the
-        current context token selects; the newest receipt of that scope must
-        be clean, bound to the current HEAD, and newer than every changed
-        path of the working tree.
+        ``check``). The current context selects the gate partition, not project
+        or file coverage. Its newest receipt must carry original digest-bound,
+        unfiltered coverage of the canonical global topology and every applicable
+        gate, remain clean, match HEAD, and postdate changed working-tree paths.
+        Older reports without producer coverage proof require a new check.
 
         Returns:
             The approving receipt, or the first reason tests must refuse.

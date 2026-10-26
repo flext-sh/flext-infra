@@ -64,7 +64,10 @@ class TestsFlextInfraPyrightPublicContract:
             )
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
             payload["project"] = {"name": name, "version": "0.1.0"}
-            FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(
+                tool_config_document,
+                codegen=u.Infra.load_codegen_inputs(root).unwrap().spec,
+            ).apply_payload(
                 payload,
                 context=m.Infra.PyprojectAnalyzerContext(
                     is_root=False,
@@ -84,7 +87,10 @@ class TestsFlextInfraPyrightPublicContract:
             u.Tests.write_project_beads_config(tmp_path, selected)
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
             payload["project"] = {"name": selected, "version": "0.1.0"}
-            FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(
+                tool_config_document,
+                codegen=u.Infra.load_codegen_inputs(project).unwrap().spec,
+            ).apply_payload(
                 payload,
                 context=m.Infra.PyprojectAnalyzerContext(
                     is_root=True, repository_root=project
@@ -167,7 +173,10 @@ class TestsFlextInfraPyrightPublicContract:
             encoding="utf-8",
         )
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
-        FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+        FlextInfraEnsurePyrightConfigPhase(
+            tool_config_document,
+            codegen=u.Infra.load_codegen_inputs(tmp_path).unwrap().spec,
+        ).apply_payload(
             payload,
             context=m.Infra.PyprojectAnalyzerContext(
                 is_root=False,
