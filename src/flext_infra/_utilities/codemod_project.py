@@ -348,7 +348,7 @@ class FlextInfraUtilitiesCodemodProject(
             snapshot, root
         )
         boundary = sorted({
-            *cls.codemod_layer_zero_files(root),
+            *cls.codemod_layer_zero_files(snapshot, root),
             *(
                 path.relative_to(root).as_posix()
                 for path in cls.codemod_isolated_entrypoints(root, sources)

@@ -39,24 +39,23 @@ every loaded provider. A text rule may also name the projects it targets in
 
 ## Make verbs
 
-Common verbs are declared in `src/flext_infra/config/codegen.yaml`
-(`make.verbs`). This repository declares its snapshot operation in
-`config/codegen.yaml` (`repository.extra_verbs`), with the native handler in
-`custom.mk`.
+Common verbs are declared in
+`flext-infra/src/flext_infra/config/codegen.yaml` (`make.verbs`). Infra declares
+its owned snapshot operation in `flext-infra/config/codegen.yaml`
+(`repository.extra_verbs`), with the native handler in `flext-infra/custom.mk`.
 
 | Surface | Effect |
 |---|---|
 | `make mod` | Apply ast-grep, semantic and text rules to a proven fixed point; committed snapshots are verified, never rewritten. |
 | `flext-infra refactor mod-text` | Replay only the authenticated declarative text rules. |
 | `flext-infra refactor ast` | Scan report of the ast-grep and sed cascades over the governed corpus; `--apply` reaches the mechanical fixed point. |
-| `make mod-snapshots` | Regenerate every owned ast-grep rule-test snapshot from its tests and report the changes for a reviewed commit. |
+| `make mod-snapshots` (Infra root) | Regenerate every owned rule-test snapshot through the existing native refresh owner, for a reviewed commit. |
 
-`make mod` is the common Make verb. `make mod-snapshots` is this repository's
-explicit extension: its handler invokes the existing
-`flext-infra refactor mod-snapshots --repository-root "$(PROJECT_ROOT)" --apply`
-operation through the provisioned runtime. It adds no selector, alternate
-snapshot engine or implicit refresh to `make mod`. The remaining surfaces are
-`flext-infra refactor` subcommands (`flext-infra refactor --help`).
+`make mod-snapshots` is an Infra extension, not an implicit part of `make mod`.
+Its handler invokes the existing `flext-infra refactor mod-snapshots` operation
+with the repository root and apply flag. The source declaration requires native
+generation before the verb is available. No consumer owns another snapshot
+engine or edits the generated Makefile.
 
 The catalog applies through ast-grep's own `scan --update-all`; the pipeline order,
 native tool use and validation in the real tree are ADR-028 Decisions 11-13. A draft
@@ -307,15 +306,18 @@ rule whenever the target has syntax.
   snapshot under `tests/__snapshots__/<id>-snapshot.yml` for each invalid case.
 - `make mod` verifies them and fails on a changed fix output, a missing snapshot, or a
   snapshot of a removed rule or case.
-- `make mod-snapshots` explicitly regenerates the owned projections through the
-  existing snapshot-refresh service. That native service's dry run fails while any
-  snapshot differs. Review the generated diff in the same commit as the rule.
+- Infra's `make mod-snapshots` owns regeneration. Review its diff in the same
+  commit as the rule; snapshot refresh never proves behavioral acceptance.
+
+Import-retirement fixtures preserve every remaining use of the imported name,
+including attribute receivers. Only an unused binding can be retired; a later
+pipeline rewrite is not evidence that a current reference has disappeared.
 
 ## Workflow
 
 1. Search both catalogs and `utils/` for the law; widen an existing rule first.
 2. Write or widen the rule and its test. Prototype only on scratch copies.
-3. Run `make mod-snapshots` and review the snapshot diff.
+3. Run Infra's `make mod-snapshots` and review the snapshot diff.
 4. Run `flext-infra refactor ast` to see every occurrence across the fleet.
 5. Apply with `make mod`, then run `make tests`.
 6. Commit the rule, test, snapshot and rewrites together.

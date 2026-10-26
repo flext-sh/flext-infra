@@ -776,52 +776,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         return resource
 
     @classmethod
-    def new_project(
-        cls,
-        root: str,
-        *,
-        ropefolder: str,
-        save_objectdb: bool,
-        filter_lists: t.Pair[t.SequenceOf[str], t.SequenceOf[str]],
-    ) -> t.Infra.RopeProject:
-        """Create one Rope project.
-
-        ``filter_lists`` carries the Rope filter sequences in order:
-        ignored resources, source folders. The project itself declares the
-        interpreter's sourceless stdlib modules.
-
-        Returns:
-            The resulting ``t.Infra.RopeProject``.
-
-        Raises:
-            TypeError: If Rope project does not satisfy its project contract.
-
-        """
-        ignored_resources, source_folders = filter_lists
-        project_factory = cls.runtime_callable(
-            "flext_infra._utilities._rope.project",
-            "FlextInfraRopeProject",
-        )
-        # FLEXT owns writes; disable Rope's leaking Git subprocess.
-        fscommands_factory = cls.runtime_callable(
-            "rope.base.fscommands",
-            "FileSystemCommands",
-        )
-        project = project_factory(
-            root,
-            fscommands=fscommands_factory(),
-            ropefolder=ropefolder,
-            save_objectdb=save_objectdb,
-            save_history=False,
-            ignored_resources=list(ignored_resources),
-            source_folders=list(source_folders),
-        )
-        if not isinstance(project, p.Infra.RopeProject):
-            msg = "rope Project does not satisfy p.Infra.RopeProject"
-            raise TypeError(msg)
-        return project
-
-    @classmethod
     def module_imports_for_pymodule(
         cls,
         rope_project: t.Infra.RopeProject,

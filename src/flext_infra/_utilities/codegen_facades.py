@@ -419,7 +419,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if path.is_relative_to(pkg_dir / directory)
             and path.name != c.Infra.INIT_PY
             and "t"
-            in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(content)
+            in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_at(project, path)
             and any(
                 isinstance(binding, ast.Assign)
                 and isinstance(binding.value, ast.Name)
@@ -545,14 +545,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         for module in cls._facade_source_membership(project, pkg_dir):
             if module.name == c.Infra.INIT_PY:
                 continue
-            resource = project.get_resource(
-                module.relative_to(Path(project.root.real_path)).as_posix()
-            )
-            source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                resource, module
-            ).read()
-            if family in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
-                source
+            if family in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_at(
+                project, module
             ):
                 owners.append(module)
         if len(owners) > 1:
@@ -1295,6 +1289,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         A PEP 613 ``Name: TypeAlias = Owner`` publication is the canonical form
         (``_publish_namespace_aliases``); bare and ``type[...]`` bindings are
         read so generation can derive it from them.
+        Generated facades also admit undecorated, non-generic subclasses whose
+        only body statement is a docstring; authored classes keep their identity.
 
         Returns:
             The name, RHS and optional class annotation, or no supported binding.
@@ -1693,28 +1689,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     for attribute in owner.get_attributes().values()
                 )
             )
-            receiver = (
+            resolved = (
                 FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, expression.value)
                 if isinstance(expression, ast.Attribute)
                 else None
             )
             retired_member = (
-                receiver is not None
-                and receiver.get_object() in owners
+                resolved is not None
+                and resolved.get_object() in owners
                 and isinstance(expression, ast.Attribute)
-                and expression.attr not in receiver.get_object().get_attributes()
+                and expression.attr not in resolved.get_object().get_attributes()
             )
             if generated and (canonical_class or inherited_class or retired_member):
                 # A projection cannot turn an inherited declaration into a new
                 # alias or replace a different canonical member with its value.
                 shadows.append(member)
                 continue
-            annotated = (
+            resolved = (
                 FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, annotation)
                 if annotation is not None
                 else value
             )
-            if value is None or annotated is None:
+            if value is None or resolved is None:
                 if annotation is not None:
                     message = f"Unresolved {family} class attribute: {name}"
                     raise ValueError(message)
@@ -1722,7 +1718,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             target = value.get_object()
             if not FlextInfraUtilitiesRopeRuntime.abstract_class(target):
                 continue
-            if target is not annotated.get_object():
+            if target is not resolved.get_object():
                 message = (
                     f"ambiguous {family} class attribute {name}: "
                     "annotation does not identify the declared contract"
@@ -2983,6 +2979,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Returns:
             The required public members; invalid source positions fail at Rope.
 
+        Raises:
+            TypeError: If the native consumer exposes no source module or module AST.
+
         """
         project, contents = binding
         for parent in sorted({
@@ -3006,21 +3005,22 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 c.Infra.AUTOGEN_HEADER,
             ):
                 continue
-            # One parse per exact source content serves every reader of it.
-            tree = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+            pymodule = project.get_pymodule(
+                FlextInfraUtilitiesRopeRuntime.file_resource_at(project, path),
+                force_errors=True,
+            )
+            if not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):
+                message = f"protocol consumer has no native source module: {path}"
+                raise TypeError(message)
+            tree = pymodule.get_ast()
+            if not isinstance(tree, ast.Module):
+                message = f"protocol consumer has no module syntax tree: {path}"
+                raise TypeError(message)
             references = cls._family_receiver_references(
                 tree, family, nested_namespace=nested_namespace, namespace=namespace
             )
             if not references:
                 continue
-            resource = project.get_resource(
-                path.relative_to(Path(project.root.real_path)).as_posix(),
-            )
-            pymodule = FlextInfraUtilitiesRopeRuntime.build_string_module(
-                project,
-                source,
-                resource=resource,
-            )
             module_paths: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] = {}
             # A letter whose single binding is one module-level import resolves
             # every load to that import, so the module scope answers once for

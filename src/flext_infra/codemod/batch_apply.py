@@ -84,16 +84,36 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
         with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
             planned = u.Infra.codemod_rule_plan(snapshot)
-        if planned.failure:
-            return r[t.Cli.ResultValue].from_failure(planned)
-        rules = u.Infra.codemod_fixture_resources(planned.value)
+            if planned.failure:
+                return r[t.Cli.ResultValue].from_failure(planned)
+            rules = u.Infra.codemod_fixture_resources(planned.value)
+            if self.effective_dry_run:
+                self.progress.emit(f"mod: scan {len(rules)} discovered rule file(s)")
+            else:
+                self.progress.emit("mod: validate ast-grep rule fixtures")
+                FlextInfraModGateEngine.validate_rule_fixtures(
+                    self.repository_root,
+                    rules,
+                ).unwrap()
+            u.Infra.workspace_snapshot_verify(
+                snapshot, tuple(snapshot.sources)
+            ).unwrap()
+            pending = FlextInfraModGateEngine.scan(
+                self.repository_root,
+                fix=False,
+                selection=planned.value,
+            ).unwrap()
+            u.Infra.workspace_snapshot_verify(
+                snapshot, tuple(snapshot.sources)
+            ).unwrap()
         if self.effective_dry_run:
-            return self._execute_dry_run(rules)
-        return self._execute_apply(rules)
+            return self._execute_dry_run(rules, pending)
+        return self._execute_apply(pending)
 
     def _execute_dry_run(
         self,
         rules: t.SequenceOf[Path],
+        pending: m.Infra.ModScanReport,
     ) -> p.Result[t.Cli.ResultValue]:
         """Report every pending finding without applying any phase.
 
@@ -101,11 +121,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The inspection verdict over the discovered rule cascade.
 
         """
-        self.progress.emit(f"mod: scan {len(rules)} discovered rule file(s)")
-        pending = FlextInfraModGateEngine.scan(
-            self.repository_root,
-            fix=False,
-        ).unwrap()
         if self.rename_plan is not None:
             preview = self._advance_phases(
                 self.repository_root,
@@ -143,19 +158,20 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         self.progress.emit("mod: no pending ast-grep or sed-by-list fixes")
         return r[t.Cli.ResultValue].ok(value=True)
 
-    def _execute_apply(self, rules: t.SequenceOf[Path]) -> p.Result[t.Cli.ResultValue]:
+    def _execute_apply(
+        self, current: m.Infra.ModScanReport
+    ) -> p.Result[t.Cli.ResultValue]:
         """Converge AST, semantic, and text phases over the same source state.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        self.progress.emit("mod: validate ast-grep rule fixtures")
-        FlextInfraModGateEngine.validate_rule_fixtures(
+        result = self._converge(
             self.repository_root,
-            rules,
-        ).unwrap()
-        result = self._execute_apply_cycle(text_precondition_pending=True)
+            current,
+            text_precondition_pending=True,
+        )
         if result.failure:
             return result
         self.progress.emit("mod: verify the workspace constants census")
@@ -784,25 +800,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"{current_text.findings} text finding(s); owner repair required"
             )
         return None
-
-    def _execute_apply_cycle(
-        self,
-        *,
-        text_precondition_pending: bool,
-    ) -> p.Result[t.Cli.ResultValue]:
-        """Converge every mod phase while retaining accepted progress.
-
-        Returns:
-            The resulting ``p.Result[t.Cli.ResultValue]``.
-
-        """
-        root = self.repository_root
-        current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        return self._converge(
-            root,
-            current,
-            text_precondition_pending=text_precondition_pending,
-        )
 
     def _converge(
         self,

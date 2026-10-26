@@ -304,6 +304,8 @@ class FlextInfraConstantsRefactor:
     RK_ALLOW_ALIASES: ClassVar[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: ClassVar[str] = "allow_target_suffixes"
     CODEMOD_RULE_SUFFIX: ClassVar[str] = ".yml"
+    CODEMOD_NATIVE_RULE_BUNDLE_FILENAME: ClassVar[str] = "rules.yml"
+    CODEMOD_NATIVE_DOCUMENT_SEPARATOR: ClassVar[str] = "\n---\n"
     # Native ast-grep language of every generated utility rule.
     CODEMOD_PYTHON_LANGUAGE: ClassVar[str] = "Python"
     # Rust-regex pattern that matches no text: a generated utility whose

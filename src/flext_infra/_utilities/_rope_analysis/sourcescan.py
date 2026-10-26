@@ -56,10 +56,22 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             Each declared class name with the names its bases spell.
 
         """
-        found: list[t.Pair[str, frozenset[str]]] = []
-        pending: list[ast.AST] = [
+        return FlextInfraUtilitiesRopeAnalysisSourceScan.module_class_base_names(
             FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
-        ]
+        )
+
+    @staticmethod
+    def module_class_base_names(
+        module: ast.Module,
+    ) -> t.VariadicTuple[t.Pair[str, frozenset[str]]]:
+        """Read class names and base spellings from the existing module tree.
+
+        Returns:
+            Each class and its syntactic base names, including nested bodies.
+
+        """
+        found: list[t.Pair[str, frozenset[str]]] = []
+        pending: list[ast.AST] = [module]
         while pending:
             node = pending.pop()
             for field in ("body", "orelse", "finalbody", "handlers", "cases"):
@@ -95,10 +107,20 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             The distinct top-level module names, without relative imports.
 
         """
-        found: set[str] = set()
-        pending: list[ast.AST] = [
+        return FlextInfraUtilitiesRopeAnalysisSourceScan.module_absolute_import_roots(
             FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
-        ]
+        )
+
+    @staticmethod
+    def module_absolute_import_roots(module: ast.Module) -> frozenset[str]:
+        """Read absolute import roots from an already parsed module.
+
+        Returns:
+            Top-level imported packages, including nested statement bodies.
+
+        """
+        found: set[str] = set()
+        pending: list[ast.AST] = [module]
         while pending:
             node = pending.pop()
             for field in ("body", "orelse", "finalbody", "handlers", "cases"):
@@ -294,7 +316,18 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             The value node assigned in the owning declaration scope.
 
         """
-        module = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+        return FlextInfraUtilitiesRopeAnalysisSourceScan._module_top_level_value(
+            FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source), name
+        )
+
+    @staticmethod
+    def _module_top_level_value(module: ast.Module, name: str) -> ast.expr | None:
+        """Read one binding from the supplied module's declaration scope.
+
+        Returns:
+            The original assigned expression, or None without a binding.
+
+        """
         body = (
             FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(module)
             if name == "__all__"
@@ -343,7 +376,17 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             The resulting ``t.StrSequence``.
 
         """
-        value = cls._top_level_value(source, name)
+        return cls.module_assignment_strings(cls.parsed_module(source), name)
+
+    @classmethod
+    def module_assignment_strings(cls, module: ast.Module, name: str) -> t.StrSequence:
+        """Read literal and named-sequence strings from an existing parse.
+
+        Returns:
+            The declared strings using the source reader's export semantics.
+
+        """
+        value = cls._module_top_level_value(module, name)
         values = cls.literal_string_sequence(value)
         if values:
             return values
@@ -352,7 +395,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         nested_name = cls._sequence_constructor_ref(value)
         if not nested_name or nested_name == name:
             return ()
-        return cls.module_assignment_strings_source(source, nested_name)
+        return cls.module_assignment_strings(module, nested_name)
 
     @classmethod
     def module_mapping_assignment_source(

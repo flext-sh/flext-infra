@@ -17,14 +17,16 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope_analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
@@ -106,23 +108,23 @@ class FlextInfraUtilitiesCodemodImportLawRules:
             The rendered rule documents keyed by rule id.
 
         """
-        del snapshot
         root = project.absolute()
         package = FlextInfraUtilitiesPyproject.project_package_name(root)
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         layer_zero = frozenset(
             FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_layer_zero_files(
-                root
+                snapshot, root
             )
         )
-        ranks = cls._project_layer_ranks(root)
+        ranks = cls._project_layer_ranks(snapshot, root)
         facts = (
             cls._runtime_letter_ranks(order),
             cls._reverse_import_targets(ranks),
             FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(root),
         )
-        guard = FlextInfraUtilitiesCodemodNativeUtilities.codemod_catalog_utility(
-            c.Infra.CODEMOD_TYPE_CHECKING_GUARD_UTILITY
+        guard = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
+            FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH,
+            c.Infra.CODEMOD_TYPE_CHECKING_GUARD_UTILITY,
         )
         documents: dict[str, t.JsonMapping] = {}
         for rank, layer in enumerate(order):
@@ -319,6 +321,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
     @classmethod
     def _project_layer_ranks(
         cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
         root: Path,
     ) -> t.MappingKV[str, t.Pair[str, int]]:
         """Rank every module of the project in the import-layer order.
@@ -331,11 +334,13 @@ class FlextInfraUtilitiesCodemodImportLawRules:
             Each dotted module mapped to its relative path and layer rank.
 
         """
+        snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         sources = {
-            path: path.read_text(encoding=c.DEFAULT_ENCODING)
-            for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
-                root, workspace_excluded_top_dirs=frozenset()
-            )
+            path: snapshots.workspace_source(snapshot, path).text
+            for path in snapshots.workspace_python_files(snapshot, root)
+        }
+        trees = {
+            path: snapshots.workspace_module_tree(snapshot, path) for path in sources
         }
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         located = {
@@ -352,10 +357,10 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         }
         other = order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
         candidates = cls._service_candidates(
-            {path: sources[path] for path, rank in ranks.items() if rank == other},
-            sources,
+            {path: trees[path] for path, rank in ranks.items() if rank == other},
+            trees,
         )
-        for path in cls._service_modules(root, sources, candidates):
+        for path in cls._service_modules(root, sources, candidates, trees):
             ranks[path] = order.index("services")
         return {
             found[1]: (path.relative_to(root).as_posix(), ranks[path])
@@ -364,7 +369,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
     @staticmethod
     def _service_candidates(
-        others: t.MappingKV[Path, str], sources: t.MappingKV[Path, str]
+        others: t.MappingKV[Path, ast.Module], sources: t.MappingKV[Path, ast.Module]
     ) -> frozenset[Path]:
         """Pre-elect the modules a class of which may derive from the service root.
 
@@ -379,8 +384,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         """
         declared: dict[Path, list[t.Pair[str, frozenset[str]]]] = {}
         names = {"s"}
-        for path, text in sources.items():
-            tree = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(text)
+        for path, tree in sources.items():
             names.update(
                 node.value.id
                 for node in tree.body
@@ -392,7 +396,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
                 )
             )
             declared[path] = list(
-                FlextInfraUtilitiesRopeAnalysisSourceScan.class_base_names(text)
+                FlextInfraUtilitiesRopeAnalysisSourceScan.module_class_base_names(tree)
             )
         while True:
             grown = names | {
@@ -416,6 +420,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         root: Path,
         sources: t.MappingKV[Path, str],
         candidates: frozenset[Path],
+        trees: t.MappingKV[Path, ast.Module],
     ) -> frozenset[Path]:
         """Elect the candidate modules declaring a class of the service root.
 
@@ -432,7 +437,6 @@ class FlextInfraUtilitiesCodemodImportLawRules:
             return frozenset()
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         base_layer = order.index(c.Infra.IMPORT_LAW_BASE_LAYER)
-        parse = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module
         modules = {
             FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
                 path, project_root=root
@@ -449,7 +453,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
                 ".".join(path.relative_to(root).with_suffix("").parts)
             )
             == base_layer
-            and "s" in cls._module_level_bindings(parse(text))
+            and "s" in cls._module_level_bindings(trees[path])
         )
         declared = tuple(
             (
@@ -462,7 +466,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
             )
             for name, (path, text) in modules.items()
             if path in candidates
-            for node in parse(text).body
+            for node in trees[path].body
             if isinstance(node, ast.ClassDef)
         )
         if not roots or not declared:

@@ -151,13 +151,9 @@ rule:
         kind: identifier
         regex: "^pytest$"
         not:
-          any:
-            - inside:
-                kind: import_statement
-                stopBy: end
-            - inside:
-                kind: attribute
-                field: object
+          inside:
+            kind: import_statement
+            stopBy: end
 fix: ""
 message: >-
   `import pytest` in a test module: pytest is reached through the flext-tests

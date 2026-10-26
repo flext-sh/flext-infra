@@ -1,5 +1,63 @@
 id: rewire-type-adapter-construction
 snapshots:
+  "from . import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
+    fixed: |
+      from . import m, u
+      
+      ADAPTER = u.type_adapter(int)
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 30
+      end: 48
+    - source: m
+      style: secondary
+      start: 30
+      end: 31
+    - source: m
+      style: secondary
+      start: 30
+      end: 31
+    - source: from . import m, u
+      style: secondary
+      start: 0
+      end: 18
+    - source: |
+        from . import m, u
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 49
+  "from ai_hub import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
+    fixed: |
+      from ai_hub import m, u
+      
+      ADAPTER = u.type_adapter(int)
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 35
+      end: 53
+    - source: m
+      style: secondary
+      start: 35
+      end: 36
+    - source: m
+      style: secondary
+      start: 35
+      end: 36
+    - source: from ai_hub import m, u
+      style: secondary
+      start: 0
+      end: 23
+    - source: |
+        from ai_hub import m, u
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 54
   "from flext_cli import t\nfrom flext_core import u\n\nADAPTER = t.TypeAdapter(t.StrMapping)\n":
     fixed: |
       from flext_cli import t
@@ -102,3 +160,32 @@ snapshots:
       style: secondary
       start: 0
       end: 87
+  "from tests import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
+    fixed: |
+      from tests import m, u
+      
+      ADAPTER = u.type_adapter(int)
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 34
+      end: 52
+    - source: m
+      style: secondary
+      start: 34
+      end: 35
+    - source: m
+      style: secondary
+      start: 34
+      end: 35
+    - source: from tests import m, u
+      style: secondary
+      start: 0
+      end: 22
+    - source: |
+        from tests import m, u
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 53

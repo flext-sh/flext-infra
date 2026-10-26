@@ -11,6 +11,7 @@
 - [Environment activation](#environment-activation)
 - [Dependency locks](#dependency-locks)
 - [Runtime environment](#runtime-environment)
+  - [Check engine contract](#check-engine-contract)
 - [Mise toolchain](#mise-toolchain)
 - [SonarCloud exclusions](#sonarcloud-exclusions)
 - [Bootstrap credentials](#bootstrap-credentials)
@@ -21,6 +22,8 @@
 - [Abstraction-boundary project identity](#abstraction-boundary-project-identity)
 - [Service foundation](#service-foundation)
 - [Codemod scanner contract](#codemod-scanner-contract)
+- [Workspace snapshot and analysis engine](#workspace-snapshot-and-analysis-engine)
+  - [Profiling a root verb](#profiling-a-root-verb)
 
 <!-- TOC END -->
 
@@ -682,7 +685,7 @@ without evaluating the values as shell code.
 
 The generated project owns its declaration, Makefile, CI workflows, package,
 examples, and tests. Provision and validate it through its own `make setup`,
-`make gen`, `make check`, `make test`, and `make build`. Its physical environment
+`make gen`, `make check`, `make tests`, and `make build`. Its physical environment
 belongs to the generated repository.
 
 First generation authenticates the staged scaffold through the explicitly declared
@@ -2842,25 +2845,29 @@ the performance result without reducing scope or raising deadlines.
 
 ## Workspace snapshot and analysis engine
 
-Generation and modification run as one process with one planning loop over the
-selected workspace, in dependency order, without worker pools. Each operation opens
-one workspace snapshot at its entry (conform when it gathers repository plans, a
-codemod or refactoring session on first use) and injects it as the
-`p.Infra.WorkspaceSnapshot` protocol into every planner, renderer and query. A
-service that can run standalone opens its own snapshot only when none is injected;
-no consumer opens a second snapshot or analysis project while one is bound.
+This subproject contract implements [FLEXT ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17). The ADR links back to this exact section in its [bidirectional traceability table](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#bidirectional-traceability).
 
-The snapshot owns exactly one analysis engine: an overlay project rooted at the
-runtime owner root (`u.Infra.runtime_owner_root`), so workspace members and the
-shared test package resolve through the same engine. Only the `u.Infra` snapshot
-and Rope adapter owners name the underlying library; orchestrators, models and
-protocols see the engine through `p.Infra` protocols.
+Generation and modification run through one workspace organizer. It loops over the
+selected repositories in dependency order without worker pools; each repository
+invocation owns one planner and one native workspace model. The model is injected as
+`p.Infra.WorkspaceSnapshot` into that repository's planners, renderers and queries. A
+service that can run standalone opens its own snapshot only when none is injected; no
+consumer opens a second snapshot or analysis project while one is bound. Generated
+rule builders pass the same snapshot to their classifiers and library-prefix discovery;
+they do not discard it before calling snapshot-owned package or layer queries.
+
+Each repository snapshot owns exactly one analysis project rooted at that repository's
+runtime owner root (`u.Infra.runtime_owner_root`). It does not merge sibling repository
+trees into one project. A cross-repository operation passes its separately owned native
+projects to the native multi-project refactoring capability rather than building a
+parallel cross-repository model. Only the `u.Infra` snapshot and adapter owners name the
+underlying implementation; orchestrators, models, protocols and external consumers see
+the generic `p.Infra` capability.
 
 Every derived fact is a lazy memo on the snapshot, computed on first query and
 reused for the rest of the run:
 
-- `workspace_python_files`: the governed source inventory per member, excluding
-  nested members;
+- `workspace_python_files`: the governed source inventory for this repository;
 - `workspace_source` / `workspace_sources`: authenticated reads carrying the
   atomic file state, digest, module and member of each source;
 - `workspace_module_tree`, `workspace_module_imports`,
@@ -2878,11 +2885,11 @@ derived from them. A later query recomputes from the new bytes. Publication and
 source authentication still belong to the existing transaction owner; the
 snapshot never authorizes a write.
 
-The snapshot lives only for its run. There is no cross-run cache, no persisted
-import index, and no automatic-import database; the engine's object database is
+Each repository snapshot lives only for its invocation. There is no cross-run cache,
+persisted import index, or automatic-import database; the engine's object database is
 persisted only for the generation and modification verbs that declare it.
-`workspace_snapshot_verify` rechecks the captured source states before the run
-accepts its plans.
+`workspace_snapshot_verify` rechecks the captured source states before that repository
+invocation accepts its plans.
 
 The lazy-provider pass consumes the authenticated repository root and the
 snapshot's source inventory only. Configuration, local workspace metadata and
@@ -2893,25 +2900,35 @@ Repository planning emits an exception's original traceback when capturing its
 failed outcome. The final report retains that same cause; interruption before
 the cohort finishes cannot hide the first failure behind a timeout.
 Each repository keeps its own module index and name bindings, including internal
-packages whose names may also occur in another member. The original source
-engine shares directory facts keyed by physical path and module facts keyed by
-native parsed-module identity. Resource invalidation cannot reuse facts from
-the replaced parse. An explicit planned source view derives its own facts and
-cannot populate the original snapshot's facts.
+packages whose names may also occur in another member. The source engine shares
+directory facts keyed by physical path and module facts keyed by native parsed-module
+identity. Resource invalidation cannot reuse facts from the replaced parse. An explicit
+planned source view derives its own facts and cannot populate the original snapshot's
+facts.
+Facade-letter election consumes the parsed module from that same source
+project, including candidate overlays. It must not parse the module's text
+again or keep a separate source-text cache to identify its exported letters.
+Export declarations retain the shared literal and named-sequence semantics.
+This query does not authorize publication or replace source-state verification.
+Protocol-consumer discovery likewise reads the native module's tree and lexical
+scope together. It must not construct a string module after separately parsing
+the same source to find receiver references.
 Tooling derived from planned Python sources uses that same injected view for
 first-party namespace discovery as well as runtime bases. It must not reopen
 physical workspace metadata while deriving the planned artifact.
+Native project construction belongs with the existing source-project factories;
+module queries inherit that capability through the runtime facade. Catalog
+utility rules use the declared provider-rule owner directly, without a second
+catalog reader.
 
-Current state (2026-10-25): module-level identities resolve; nested class
-qualnames, the publication refresh query and the migration of the remaining
-source-bases consumers onto `workspace_resolve` / `workspace_class_ancestors`
-are being implemented under epic `flext-1engx`. The managed conformance rounds
-currently retain a source engine per distinct planned view within a repository;
-the lazy-provider pass shares the workspace engine. Eliminating that remaining
-split requires proving provider invalidation and member-scoped bindings for
-homonymous internal packages.
-The single-engine workspace contract above remains the target, not a completed
-performance or convergence result.
+Current state (2026-10-26): the one-project-per-repository contract is accepted in
+ADR-028 Decision 17. Module-level identity reuse is partially implemented; nested class
+qualnames, publication refresh, and the remaining consumers of source-base analysis are
+still in the `flext-1engx.15` cutover. Managed conformance currently retains a source
+engine per distinct planned view in some repository paths, while the provider pass uses
+the repository workspace engine. That split violates the accepted target until each
+repository invocation has one shared project with proven provider invalidation and
+member-scoped bindings. This status is not a performance or convergence receipt.
 
 ### Profiling a root verb
 
@@ -2920,11 +2937,55 @@ recipes set `FLEXT_INFRA_PROFILE_OUTPUT` themselves, from the typed Make spec
 (`generation_profile_path`, `modification_profile_path`), so an output path
 exported by the caller is overridden. A profiled run writes
 `<reports>/codegen/gen-<id>.pstats` (and `<reports>/refactor/mod-<id>.pstats`)
-with a readable `.txt` beside it, and writes it on `SIGINT` as well, so a run
-stopped by the 60-second bound still leaves its profile. The dump of a root run
-takes several seconds: when the bound is applied with `timeout`, pass
-`--kill-after=20s` or longer, otherwise the follow-up `SIGKILL` can precede the
-profile.
+with a readable `.txt` beside it. The signal checkpoint observes termination
+through the CLI's existing parent-signal observer while a native child is
+active. It captures completed profile entries without disabling the profiler,
+restoring handlers or invoking the displaced terminating action; the process
+owner first cancels and reaps its child. Direct termination outside that
+containment retains the previous native signal action. A checkpoint publication
+failure remains visible without replacing the command's first failure.
+
+The complete invocation, including profile publication and child cleanup, keeps
+the operator's 60-second budget. Reserve termination time inside that budget;
+never increase it to finish a profile. An interrupted capture remains partial,
+and absence of a readable capture is a profiling defect, never a speed result.
+
+The first structural optimization retains the invocation's snapshot and
+precomposed rule plan through fixture verification and the initial scan. No
+source transformation precedes that scan. Later candidate changes still require
+their own current analysis; this first cut does not authorize reusing the
+original plan after publication. Native tool caches and per-invocation facts
+are the approved reuse boundary; Infra adds no persistent semantic index or
+derived-fact database. The existing shared workspace, candidate and report
+owners remain the implementation boundary; ADR-026 is still proposed.
+
+Scope producers share the snapshot's explicit-export facts, read from the
+engine's existing module tree with the canonical assignment reader. Membership
+queries use the same elected file inventory as a set; they do not traverse the
+member's full path sequence for each module or ancestor. Declaration discovery
+uses that same native tree instead of parsing its captured text a second time.
+The original authenticated source states remain the verification inputs.
+Imported-package discovery also consumes that native tree. The existing
+absolute-import reader owns the statement traversal for both source-text and
+parsed-module callers, preserving nested imports and excluding relative imports.
+Runtime dependency facts are keyed by requirements and the interpreter import
+path, not by the facade or mixin class through which the producer was called.
+Both callers consume the same existing metadata owner and closure calculation.
+The existing progress channel records each scope producer, utility producer and
+renderer before invocation and on exit, with its wall duration and a completion
+flag. A failed producer remains incomplete and its original exception escapes.
+A timeout therefore identifies the unfinished producer without
+mistaking an earlier completed log line for the current work.
+The reverse-import producer receives the same snapshot inventory and native
+trees for syntactic service pre-election and layer ranking. It retains its
+member-scoped ancestry resolver; sharing syntax does not change import
+resolution or merge homonymous internal packages across repositories.
+Native staging serializes already validated rule mappings through the existing
+JSON adapter, using JSON-form YAML rather than the generic runtime-value YAML
+normalizer. A scan stage writes its elected rules as one native document stream;
+global utilities remain single-document files. The same document writer serves
+generated providers and staged fixture rules. Source catalogs and golden
+snapshots are not rewritten by this optimization.
 
 Current state (2026-10-25): the root `rename-plan` closure and the quadratic
 scan-target discovery of the semantic source closure are being reduced under epic

@@ -189,17 +189,19 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.from_failure(selected)
         if selected.value.content is None or selected.value.mode is None:
             return result_type.fail(f"facade input is absent: {destination}")
-        family = self._facade_family(selected.value.content.decode(c.DEFAULT_ENCODING))
-        if family.failure:
-            return result_type.from_failure(family)
-        # Type projection reads only its private family; the other renderers
-        # also resolve executable consumers throughout the selected package.
-        scope = destination.parent
-        if family.value == "t":
-            scope /= u.Infra.facade_families()[family.value].directory
         with u.Infra.facade_source_project(
             root, declared_files=self.state.provider_plans or ()
         ) as (project, sources):
+            family = self._facade_family(
+                u.Infra.facade_letter_names_at(project, destination)
+            )
+            if family.failure:
+                return result_type.from_failure(family)
+            # Type projection reads only its private family; other renderers
+            # also resolve executable consumers throughout the selected package.
+            scope = destination.parent
+            if family.value == "t":
+                scope /= u.Infra.facade_families()[family.value].directory
             rendered = self._render_facade(
                 destination,
                 family.value,
@@ -220,7 +222,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
 
     @staticmethod
-    def _facade_family(source: str) -> p.Result[Literal["c", "t", "u", "p", "m"]]:
+    def _facade_family(
+        names: frozenset[str],
+    ) -> p.Result[Literal["c", "t", "u", "p", "m"]]:
         """Identify the selected renderer from the module's published declaration.
 
         Returns:
@@ -228,7 +232,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[Literal["c", "t", "u", "p", "m"]]
-        match tuple(sorted(u.Infra.facade_letter_names_source(source))):
+        match tuple(sorted(names)):
             case ("c",):
                 return result_type.ok("c")
             case ("t",):
@@ -986,6 +990,33 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             tuple((root / task.repository.path).resolve() for task in tasks),
         ) as snapshot:
             outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshot)
+        return self._reported_repository_plans(root, selected, outcomes)
+
+    def _reported_repository_plans(
+        self,
+        root: Path,
+        selected: t.VariadicTuple[m.Infra.RepositoryRef],
+        outcomes: t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
+    ) -> p.Result[
+        t.Triple[
+            list[m.Infra.CodegenFilePlan],
+            list[m.Infra.UvEnvironmentPlan],
+            list[m.Infra.Issue],
+        ]
+    ]:
+        """Publish planning evidence and collect the same observed outcomes.
+
+        Returns:
+            Planned files, environments and issues, or the evidence failure.
+
+        """
+        result_type = r[
+            t.Triple[
+                list[m.Infra.CodegenFilePlan],
+                list[m.Infra.UvEnvironmentPlan],
+                list[m.Infra.Issue],
+            ]
+        ]
         repository_paths = {
             repository.name: root / repository.path for repository in selected
         }

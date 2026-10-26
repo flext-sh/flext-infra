@@ -281,22 +281,24 @@ class FlextInfraUtilitiesCodemodRules(
         cls,
         rule: m.Infra.CodemodRule,
         documents: t.MutableMappingKV[Path, t.SequenceOf[t.JsonMapping]],
-        rule_directory: Path,
         aliases: t.MappingKV[Path, t.MutableStrMapping],
         context: t.Pair[
             t.MappingKV[str, t.StrSequence],
             t.Pair[t.MappingKV[str, t.JsonMapping], frozenset[str]],
         ],
-    ) -> None:
+    ) -> t.JsonMapping:
         """Project one elected rule document under its owning provider aliases.
 
         A document naming ``in``/``not-in`` file scopes under
         ``metadata.scope`` receives them as its native ``files``/``ignores``.
-        The engine reads only the primary match, so a document that declares
-        no ``labels`` is staged with none: relational anchors never repeat
-        their source text in every finding. Every binding-sensitive utility
+        Explicit labels remain unchanged. Native metavariable captures,
+        including relational anchors, remain part of the complete output.
+        Every binding-sensitive utility
         the document references is embedded as a local, the only scope in
         which ast-grep shares the rule's metavariables with it.
+
+        Returns:
+            The elected native document with its scoped bindings.
 
         Raises:
             ValueError: If the rule input is absent, its election is
@@ -336,15 +338,32 @@ class FlextInfraUtilitiesCodemodRules(
         projected = FlextInfraUtilitiesCodemodScopes.codemod_bound_document(
             projected, bodies, sensitive
         )
-        u.Cli.yaml_dump(
-            rule_directory
-            / f"{u.Cli.sha256_content(rule.id)}{c.Infra.CODEMOD_RULE_SUFFIX}",
-            {
-                c.Infra.CODEMOD_RULE_LABELS_KEY: {},
-                **FlextInfraUtilitiesCodemodScopes.codemod_scoped_document(
-                    projected, scopes, rule.id
-                ),
-            },
+        return {
+            c.Infra.CODEMOD_RULE_LABELS_KEY: {},
+            **FlextInfraUtilitiesCodemodScopes.codemod_scoped_document(
+                projected, scopes, rule.id
+            ),
+        }
+
+    @staticmethod
+    def codemod_write_native_documents(
+        path: Path, documents: t.SequenceOf[t.JsonMapping]
+    ) -> None:
+        """Write typed mappings as a native JSON-form YAML document stream.
+
+        Raises:
+            ValueError: If no native document was supplied.
+
+        """
+        if not documents:
+            msg = "native rule document stream must not be empty"
+            raise ValueError(msg)
+        u.Cli.atomic_write_text_file(
+            path,
+            c.Infra.CODEMOD_NATIVE_DOCUMENT_SEPARATOR.join(
+                u.Cli.json_dumps(dict(document)).unwrap() for document in documents
+            )
+            + "\n",
         ).unwrap()
 
     @classmethod
@@ -398,9 +417,10 @@ class FlextInfraUtilitiesCodemodRules(
                 stable=ruleset.provider == c.Infra.CODEMOD_GENERATED_PROVIDER,
             )
         for digest, document in utilities.items():
-            u.Cli.yaml_dump(
-                utility_directory / f"{digest}{c.Infra.CODEMOD_RULE_SUFFIX}", document
-            ).unwrap()
+            cls.codemod_write_native_documents(
+                utility_directory / f"{digest}{c.Infra.CODEMOD_RULE_SUFFIX}",
+                (document,),
+            )
         for ruleset in plan.rulesets:
             cls.codemod_catalog_rules(
                 ruleset.provider, ruleset.config, documents=documents
@@ -411,14 +431,20 @@ class FlextInfraUtilitiesCodemodRules(
             if isinstance(rule_body := document.get("rule"), Mapping)
         }
         sensitive = FlextInfraUtilitiesCodemodScopes.codemod_binding_sensitive(bodies)
-        for rule in plan.rules:
-            cls._project_rule_document(
-                rule, documents, rule_directory, aliases, (scopes, (bodies, sensitive))
+        if plan.rules:
+            cls.codemod_write_native_documents(
+                rule_directory / c.Infra.CODEMOD_NATIVE_RULE_BUNDLE_FILENAME,
+                tuple(
+                    cls._project_rule_document(
+                        rule, documents, aliases, (scopes, (bodies, sensitive))
+                    )
+                    for rule in plan.rules
+                ),
             )
         native_config[c.Infra.CODEMOD_RULE_DIRS_KEY] = [rule_directory.name]
         native_config[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [utility_directory.name]
         config_path = destination / c.Infra.CODEMOD_CONFIG_FILENAME
-        u.Cli.yaml_dump(config_path, native_config).unwrap()
+        cls.codemod_write_native_documents(config_path, (native_config,))
         return m.Infra.CodemodRuleset(
             provider=",".join(plan.provider_order),
             config=config_path,

@@ -3,4 +3,4 @@
 id: library-member-owner-pytest-c
 language: Python
 rule:
-  regex: "^(?:UsageError|exit|fail|skip|xfail)$"
+  regex: "^(?:ExitCode|FixtureLookupError|UsageError|fail|mark|skip)$"

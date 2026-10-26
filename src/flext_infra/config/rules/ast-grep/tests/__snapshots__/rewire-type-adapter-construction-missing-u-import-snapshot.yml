@@ -1,5 +1,47 @@
 id: rewire-type-adapter-construction-missing-u-import
 snapshots:
+  "from ai_hub import m\n\nADAPTER = m.TypeAdapter(int)\n":
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 32
+      end: 50
+    - source: m
+      style: secondary
+      start: 32
+      end: 33
+    - source: m
+      style: secondary
+      start: 32
+      end: 33
+    - source: |
+        from ai_hub import m
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 51
+  "from ai_hub import m, u as utilities\n\nADAPTER = m.TypeAdapter(int)\n":
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 48
+      end: 66
+    - source: m
+      style: secondary
+      start: 48
+      end: 49
+    - source: m
+      style: secondary
+      start: 48
+      end: 49
+    - source: |
+        from ai_hub import m, u as utilities
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 67
   "from flext_core import m\n\nADAPTER = m.TypeAdapter(int)\n":
     labels:
     - source: m.TypeAdapter(int)

@@ -696,14 +696,12 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
         """
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
-        roots = FlextInfraUtilitiesRopeAnalysisSourceScan.absolute_import_roots
-        return tuple(
-            sorted({
-                name
-                for path in snapshots.workspace_python_files(snapshot, project)
-                for name in roots(snapshots.workspace_source(snapshot, path).text)
-            })
-        )
+        roots = FlextInfraUtilitiesRopeAnalysisSourceScan.module_absolute_import_roots
+        imported: set[str] = set()
+        for path in snapshots.workspace_python_files(snapshot, project):
+            snapshots.workspace_source(snapshot, path)
+            imported.update(roots(snapshots.workspace_module_tree(snapshot, path)))
+        return tuple(sorted(imported))
 
     @classmethod
     def codemod_library_protocol_names(

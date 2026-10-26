@@ -460,7 +460,10 @@ class TestsFlextInfraCodemodOwnPackageScans:
             }
         tm.ok(u.Cli.toml_write_mapping(project / c.PYPROJECT_FILENAME, declaration))
         tm.that(u.Infra.codemod_runtime_modules(project), empty=True)
-        tm.that(u.Infra.codemod_facade_packages(project), lacks="pydantic")
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            tm.that(
+                u.Infra.codemod_facade_packages(snapshot, project), lacks="pydantic"
+            )
 
     @staticmethod
     def test_declared_installed_runtime_package_is_a_runtime_module(

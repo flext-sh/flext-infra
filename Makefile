@@ -332,8 +332,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := setup upg gen mod fix fmt check tests help build clean release-plan release-version release-tag release-build release-publish
-SCRIPT_VERBS :=
+PUBLIC_VERBS := setup upg gen mod fix fmt check tests help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
+SCRIPT_VERBS := mod-snapshots
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 override FLEXT_MAKE_EMPTY :=
@@ -773,6 +773,9 @@ VERB_ARGUMENTS_build :=
 VERB_DESCRIPTION_clean := Remove only declared disposable resources owned by the selected target.
 VERB_ARGUMENTS_clean :=
 
+VERB_DESCRIPTION_mod-snapshots := Regenerate every owned ast-grep rule-test snapshot and report changes for review.
+VERB_ARGUMENTS_mod-snapshots :=
+
 VERB_DESCRIPTION_release-plan := Execute the declared release plan phase.
 VERB_ARGUMENTS_release-plan := PR_TITLE
 
@@ -852,13 +855,32 @@ upg: _builtin_require_workspace
 endif
 SCRIPT_VERBS_PLAIN :=
 SCRIPT_VERBS_DISPATCH :=
-SCRIPT_VERBS_ACTIVATED :=
+SCRIPT_VERBS_ACTIVATED := mod-snapshots
 SCRIPT_VERBS_INTERPRETER :=
 SCRIPT_VERBS_HOOKED := $(foreach v,$(filter-out $(SCRIPT_VERBS_INTERPRETER),$(SCRIPT_VERBS_ACTIVATED)),$(if $(filter pre-$(v) _custom-$(v) post-$(v),$(CUSTOM_DECLARED_TARGETS)),$(v)))
 SCRIPT_VERBS_DIRECT := $(filter-out $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER),$(SCRIPT_VERBS_ACTIVATED))
 SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
+
+$(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+.PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
+ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
+$(addprefix _activated-,$(SCRIPT_VERBS_DIRECT)): _activated-%: _builtin-%
+$(addprefix _builtin-,$(SCRIPT_VERBS_DIRECT)): _builtin_require_environment
+endif
+ifneq ($(strip $(SCRIPT_VERBS_HOOKED)),)
+$(addprefix _activated-,$(SCRIPT_VERBS_HOOKED)): _builtin_require_environment
+endif
+ifneq ($(strip $(SCRIPT_VERBS_INTERPRETER)),)
+$(addprefix _activated-,$(SCRIPT_VERBS_INTERPRETER)): _builtin_require_interpreter
+endif
+ifneq ($(strip $(SCRIPT_VERBS_ROUTED)),)
+$(addprefix _activated-,$(SCRIPT_VERBS_ROUTED)): _activated-%:
+	$(call RUN_PUBLIC,$*)
+endif
 
 else
 $(PUBLIC_VERBS):

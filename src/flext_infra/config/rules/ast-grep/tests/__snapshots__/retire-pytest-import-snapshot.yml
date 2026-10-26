@@ -1,0 +1,21 @@
+id: retire-pytest-import
+snapshots:
+  "import pytest\nfrom tests import c\n@c.Tests.MARK.slow\ndef test_value() -> None: ...\n":
+    fixed: |
+      
+      from tests import c
+      @c.Tests.MARK.slow
+      def test_value() -> None: ...
+    labels:
+    - source: import pytest
+      style: primary
+      start: 0
+      end: 13
+    - source: |
+        import pytest
+        from tests import c
+        @c.Tests.MARK.slow
+        def test_value() -> None: ...
+      style: secondary
+      start: 0
+      end: 83

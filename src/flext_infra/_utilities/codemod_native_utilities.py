@@ -19,6 +19,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import cache
@@ -30,7 +31,7 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
-from flext_infra import FlextInfraConfig, c, config, m, p, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
@@ -43,6 +44,29 @@ from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 class FlextInfraUtilitiesCodemodNativeUtilities:
     """Derive native ast-grep utility rules from project sources of truth."""
+
+    @staticmethod
+    @contextmanager
+    def _producer_progress(name: str, project: Path) -> Generator[None]:
+        """Measure one declared producer through the existing progress owner.
+
+        Yields:
+            Control while the producer runs; failures escape unchanged.
+
+        """
+        FlextInfraUtilitiesImportLaw.codemod_progress(
+            f"producer start name={name} project={project.name}"
+        )
+        started = time.monotonic()
+        completed = False
+        try:
+            yield
+            completed = True
+        finally:
+            FlextInfraUtilitiesImportLaw.codemod_progress(
+                f"producer stop name={name} completed={completed} "
+                f"duration={time.monotonic() - started:.2f}s"
+            )
 
     @staticmethod
     def codemod_native_utility_document(
@@ -190,10 +214,10 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
             return frozenset()
         return cls._runtime_modules_of(tuple(project[1]), tuple(sys.path))
 
-    @classmethod
+    @staticmethod
     @cache
     def _runtime_modules_of(
-        cls, requirements: t.VariadicTuple[str], import_path: t.VariadicTuple[str]
+        requirements: t.VariadicTuple[str], import_path: t.VariadicTuple[str]
     ) -> frozenset[str]:
         """Resolve the import packages of one requirement set, once per process.
 
@@ -217,7 +241,8 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         )
         progress(f"runtime dependency closure finish distributions={len(closure)}")
         progress("runtime import package metadata start")
-        packages = cls.codemod_installed_import_packages()
+        owner = FlextInfraUtilitiesCodemodNativeUtilities
+        packages = owner.codemod_installed_import_packages()
         progress(f"runtime import package metadata finish packages={len(packages)}")
         selected: set[str] = set()
         due = 0.0
@@ -364,9 +389,11 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
             if not callable(producer):
                 msg = f"ast-grep file-scope producer is not declared: {name}"
                 raise TypeError(msg)
-            for selector, files in adapter.validate_python(
-                producer(snapshot, project), strict=True
-            ).items():
+            with cls._producer_progress(name, project):
+                emitted = adapter.validate_python(
+                    producer(snapshot, project), strict=True
+                )
+            for selector, files in emitted.items():
                 if selector in scopes:
                     msg = f"ast-grep file scope produced twice: {selector}"
                     raise ValueError(msg)
@@ -484,23 +511,6 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         }
 
     @staticmethod
-    def codemod_catalog_utility(identity: str) -> t.JsonMapping:
-        """Return the native rule of one utility the packaged catalog declares.
-
-        A generated rule embeds a catalog utility locally: catalog utilities
-        are qualified per provider in a stage, so only the stable generated
-        utilities are referenced across providers.
-
-        Returns:
-            The catalog utility's native rule mapping.
-
-        """
-        return FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
-            FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH,
-            identity,
-        )
-
-    @staticmethod
     def codemod_fixture_resources(
         plan: m.Infra.CodemodRulePlan,
     ) -> t.VariadicTuple[Path]:
@@ -593,7 +603,9 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
                     u.Cli.ensure_dir(staging / declared).unwrap()
                 for relative, document in files.items():
                     u.Cli.ensure_dir((staging / relative).parent).unwrap()
-                    u.Cli.yaml_dump(staging / relative, document).unwrap()
+                    FlextInfraUtilitiesCodemodRules.codemod_write_native_documents(
+                        staging / relative, (document,)
+                    )
             except BaseException:
                 # Rollback removes only this invocation's own staging tree;
                 # the original failure is re-raised unchanged.
@@ -702,7 +714,8 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         documents: dict[str, t.JsonMapping] = {}
         computed: dict[str, p.Model] = dict(facts or {})
         for entry in spec.renderers:
-            rendered = cls.codemod_native_render(snapshot, project, entry, computed)
+            with cls._producer_progress(entry.name, project):
+                rendered = cls.codemod_native_render(snapshot, project, entry, computed)
             shapes = cls._renderer_shapes(entry)
             for rule_id, document in rendered.items():
                 shape = rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
@@ -745,7 +758,10 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
             if not callable(producer):
                 msg = f"ast-grep utility producer is not declared: {name}"
                 raise TypeError(msg)
-            emitted = adapter.validate_python(producer(snapshot, project), strict=True)
+            with cls._producer_progress(name, project):
+                emitted = adapter.validate_python(
+                    producer(snapshot, project), strict=True
+                )
             for utility_id, rule in emitted.items():
                 if utility_id in documents:
                     msg = f"ast-grep utility id produced twice: {utility_id}"

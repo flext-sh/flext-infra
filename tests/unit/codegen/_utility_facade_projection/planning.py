@@ -22,6 +22,39 @@ from tests.unit.codegen._utility_facade_projection.publication import (
 class UtilityFacadePlanning(UtilityFacadePublication):
     """Exercise source election, future owners and projection planning."""
 
+    @pytest.mark.parametrize(
+        "exports",
+        [
+            "__all__ = ['c']\n",
+            "_PUBLIC_EXPORTS = ['c']\n__all__ = tuple(_PUBLIC_EXPORTS)\n",
+            "",
+        ],
+    )
+    def test_facade_election_uses_candidate_source_epoch(
+        self, tmp_path: Path, exports: str
+    ) -> None:
+        """A candidate singleton cannot inherit its original class publication."""
+        root, package = u.Tests.demo_lazy_init_workspace(tmp_path)
+        facade = package / c.Infra.CONSTANTS_PY
+        original = "class Owner:\n    __all__ = ['c']\nc = Owner\n" + exports
+        self._write(facade, original)
+        for candidate, expected in (
+            (None, facade),
+            ({facade: original.replace("c = Owner\n", "c = Owner()\n")}, None),
+            (None, facade),
+        ):
+            with u.Infra.facade_source_project(root, planned_sources=candidate) as (
+                project,
+                sources,
+            ):
+                tm.that(
+                    u.Infra.facade_module_path(
+                        package, "c", project=project, sources=sources
+                    ),
+                    eq=expected,
+                )
+        tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+
     def _future_exposure_sources(
         self, tmp_path: Path, scope: str
     ) -> tuple[

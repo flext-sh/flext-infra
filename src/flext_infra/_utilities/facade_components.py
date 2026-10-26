@@ -238,7 +238,9 @@ class FlextInfraUtilitiesFacadeComponents:
         }
 
     @classmethod
-    def facade_library_prefixes(cls, project: Path) -> t.StrTuple:
+    def facade_library_prefixes(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.StrTuple:
         """Name every third-party distribution the project's imports resolve to.
 
         Each top-level module the project imports that is neither the standard
@@ -256,14 +258,14 @@ class FlextInfraUtilitiesFacadeComponents:
         native = FlextInfraUtilitiesCodemodNativePackageUtilities
         known = {
             *sys.stdlib_module_names,
-            *native.codemod_facade_packages(root),
+            *native.codemod_facade_packages(snapshot, root),
             *FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(root),
         }
         providers = packages_distributions()
         return tuple(
             sorted({
                 distribution.lower().replace("-", "_").replace(".", "_")
-                for module in native.codemod_imported_top_modules(root)
+                for module in native.codemod_imported_top_modules(snapshot, root)
                 if module not in known and not module.startswith("_")
                 for distribution in providers.get(module, ())
             })
@@ -289,9 +291,8 @@ class FlextInfraUtilitiesFacadeComponents:
             project imports no third-party library.
 
         """
-        del snapshot
         root = project.absolute()
-        prefixes = cls.facade_library_prefixes(root)
+        prefixes = cls.facade_library_prefixes(snapshot, root)
         if not prefixes:
             return {}
         snake = "|".join(re.escape(prefix) for prefix in prefixes)

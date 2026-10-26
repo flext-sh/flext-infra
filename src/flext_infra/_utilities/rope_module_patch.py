@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from functools import cache
+from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, p, t
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
 from flext_infra._utilities._rope_analysis import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
@@ -45,11 +46,10 @@ class FlextInfraUtilitiesRopeModulePatch:
             )
         )
 
-    @classmethod
-    @cache
-    def facade_letter_names_source(
-        cls,
-        source: str,
+    @staticmethod
+    def facade_letter_names_at(
+        project: p.Infra.RopeProject,
+        path: Path,
     ) -> frozenset[str]:
         """Return the exported lower-case names bound directly to a class.
 
@@ -63,9 +63,18 @@ class FlextInfraUtilitiesRopeModulePatch:
         Returns:
             The exported lower-case names bound directly to a class.
 
+        Raises:
+            TypeError: If the native module exposes no module syntax tree.
+
         """
-        # The one parse per exact content, shared with every source reader.
-        tree = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+        module = project.get_pymodule(
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
+            force_errors=True,
+        )
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            message = f"facade source carries no module syntax tree: {path}"
+            raise TypeError(message)
         class_names = {
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
         } | {
@@ -89,8 +98,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             }:
                 bindings_by_name.setdefault(bound, []).append(node)
         letters: set[str] = set()
-        for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            source,
+        for name in FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
+            tree,
+            c.Infra.DUNDER_ALL,
         ):
             if not name.islower() or name.startswith("_"):
                 continue

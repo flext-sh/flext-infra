@@ -287,6 +287,7 @@ class FlextInfraConstantsBase(
     MISE: ClassVar[str] = "mise"
     "Canonical mise binary; -C <root> exec -- resolves the repository-pinned tool."
     SG_CONFIG_FLAG: ClassVar[str] = "--config"
+    SG_INCLUDE_OFF_FLAG: ClassVar[str] = "--include-off"
     "Canonical ast-grep configuration-file option."
     SG_FILTER_FLAG: ClassVar[str] = "--filter"
     "Canonical ast-grep rule-ID filter option."

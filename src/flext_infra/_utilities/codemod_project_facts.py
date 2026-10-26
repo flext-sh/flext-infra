@@ -186,8 +186,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         root = project.resolve()
         letters = frozenset(config.Infra.tooling.lazy_init.import_layer_order)
-        files = FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
-            snapshot, root
+        files = frozenset(
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(snapshot, root)
         )
 
         def declared(module: Path) -> frozenset[str]:
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @staticmethod
     def _source_exports(
         snapshot: p.Infra.WorkspaceSnapshot,
-        files: t.SequenceOf[Path],
+        files: frozenset[Path],
         module: Path,
     ) -> frozenset[str]:
         """Read the names one member module's own ``__all__`` publishes.
@@ -241,13 +241,17 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         if module not in files:
             return frozenset()
-        return frozenset(
-            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                FlextInfraUtilitiesWorkspaceSnapshot.workspace_source(
-                    snapshot, module
-                ).text
+        if module not in snapshot.exports:
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_source(snapshot, module)
+            snapshot.exports[module] = (
+                FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
+                    FlextInfraUtilitiesWorkspaceSnapshot.workspace_module_tree(
+                        snapshot, module
+                    ),
+                    c.Infra.DUNDER_ALL,
+                )
             )
-        )
+        return frozenset(snapshot.exports[module])
 
     @classmethod
     def codemod_layout_scopes(
@@ -279,8 +283,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
-        files = FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
-            snapshot, root
+        files = frozenset(
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(snapshot, root)
         )
 
         def exported(module: Path) -> frozenset[str]:
@@ -423,7 +427,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     def _family_peer_scope(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
-        files: t.SequenceOf[Path],
+        files: frozenset[Path],
         path: Path,
         order: t.StrSequence,
     ) -> t.StrSequence:
@@ -531,14 +535,12 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         # (relative path, qualified class, selector) per asked class.
         questions: list[t.Triple[str, str, str]] = []
         family = cls._family_files(snapshot, root)
-        for module, (path, text) in sources.items():
+        for module, (path, _text) in sources.items():
             relative = path.relative_to(root).as_posix()
             if relative not in family:
                 continue
             in_models = law.module_import_layer(module) == models_layer
-            for top in FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(
-                text
-            ).body:
+            for top in snapshots.workspace_module_tree(snapshot, path).body:
                 if not isinstance(top, ast.ClassDef):
                     continue
                 if top.bases:

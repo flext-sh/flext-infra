@@ -6,8 +6,17 @@ valid:
     plugins = [pytest]
   - |
     from tests import u
-invalid:
   - |
     import pytest
     @pytest.mark.slow
+    def test_value() -> None: ...
+  - |
+    import pytest
+    with pytest.raises(ValueError):
+        build()
+invalid:
+  - |
+    import pytest
+    from tests import c
+    @c.Tests.MARK.slow
     def test_value() -> None: ...

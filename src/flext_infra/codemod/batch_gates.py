@@ -334,10 +334,10 @@ class FlextInfraModGateEngine:
                 if not isinstance(rule_id, str) or not rule_id:
                     msg = f"ast-grep rule document missing required id: {rule}"
                     raise RuntimeError(msg)
-                u.Cli.yaml_dump(
+                u.Infra.codemod_write_native_documents(
                     temp_rule.with_name(f"{rule_id}{c.Infra.CODEMOD_RULE_SUFFIX}"),
-                    u.Infra.codemod_bound_document(document, bodies, sensitive),
-                ).unwrap()
+                    (u.Infra.codemod_bound_document(document, bodies, sensitive),),
+                )
 
     @staticmethod
     def _split_utility_files(
@@ -354,12 +354,12 @@ class FlextInfraModGateEngine:
                 temp_utility = temp_root / utility.relative_to(config_root)
                 temp_utility.unlink()
                 for document in documents:
-                    u.Cli.yaml_dump(
+                    u.Infra.codemod_write_native_documents(
                         temp_utility.with_name(
                             f"{document['id']}{c.Infra.CODEMOD_RULE_SUFFIX}"
                         ),
-                        document,
-                    ).unwrap()
+                        (document,),
+                    )
 
     @staticmethod
     def _staged_utility_bodies(
@@ -449,6 +449,7 @@ class FlextInfraModGateEngine:
             (
                 c.Infra.SG,
                 c.Infra.TEST,
+                c.Infra.SG_INCLUDE_OFF_FLAG,
                 *flags,
                 c.Infra.SG_CONFIG_FLAG,
                 str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
