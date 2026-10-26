@@ -760,6 +760,9 @@ class FlextInfraPytestRunnerExecution(
         context: m.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
     ) -> int:
         """Execute with the exclusive scratch created by the context factory.
 
@@ -771,8 +774,15 @@ class FlextInfraPytestRunnerExecution(
 
         Raises:
             ValueError: If the context factory returned no owned scratch.
+                Also rejects nonglobal modes or changed inputs between suites.
 
         """
+        if execution_mode not in {
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
+            c.Infra.PytestExecutionMode.FULL,
+        }:
+            msg = f"project context requires a global pytest mode: {execution_mode}"
+            raise ValueError(msg)
         runner = cls.from_project_context(
             context,
             started_at_monotonic=started_at_monotonic,
@@ -782,7 +792,26 @@ class FlextInfraPytestRunnerExecution(
             msg = "project context runner requires its exclusive scratch directory"
             raise ValueError(msg)
         try:
-            return runner.execute().unwrap()
+            if execution_mode == c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL:
+                return runner.execute().unwrap()
+            original_inputs = runner.testmon_input_identity()
+            incremental = runner.execute().unwrap()
+            if incremental:
+                return incremental
+            if runner.testmon_input_identity() != original_inputs:
+                msg = (
+                    "pytest runtime or declared configuration changed "
+                    "after incremental execution"
+                )
+                raise ValueError(msg)
+            complete = runner.execute_full().unwrap()
+            if not complete and runner.testmon_input_identity() != original_inputs:
+                msg = (
+                    "pytest runtime or declared configuration changed "
+                    "during full execution"
+                )
+                raise ValueError(msg)
+            return complete
         finally:
             primary = sys.exception()
             try:

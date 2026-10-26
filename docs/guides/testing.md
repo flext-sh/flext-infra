@@ -135,9 +135,22 @@ inventory contract: symbolic links and multiply linked files fail explicitly. Th
 not an unrestricted filesystem dependency scanner; declare physical source inputs and
 repair the inventory owner if a legitimate native consumer requires another shape.
 
-The approved Make consolidation contract supersedes the older incremental/full verb
-split. CI and pre-push also call `make tests`; pre-commit runs no tests. No compatibility
-aliases or file selectors belong to the common Make interface.
+To execute every collected case, use the separate public operation:
+
+```bash
+make tests-full
+```
+
+For each repository in the declared dependency order, this operation first executes
+the same incremental operation as `make tests`, then the existing native `FULL`
+operation. Both use one project context, runner, external database and operation
+deadline. The runtime and declared configuration inputs must remain unchanged
+between operations, and both operations retain the original source-admission guard.
+An incremental failure stops that repository before its full operation; its original
+native status remains the operation's first failure. An incremental cache hit is
+reported as such, while the full operation must provide actual execution accounting.
+CI and pre-push retain their declared workflow; pre-commit runs no tests. No file
+selectors or alternate databases belong to either Make operation.
 
 The complete suite retains its declared services, network access and authentication
 requirements. Connectivity prerequisite skips follow root `AGENTS.md`; they never

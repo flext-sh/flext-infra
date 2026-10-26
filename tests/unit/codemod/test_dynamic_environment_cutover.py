@@ -240,7 +240,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
 
     @staticmethod
     def _finding(path: Path, access: str) -> m.Infra.ModOccurrence:
-        rule = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[
+        (rule,) = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[
             c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
         ]
         return m.Infra.ModOccurrence(

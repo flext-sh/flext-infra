@@ -71,15 +71,14 @@ class FlextInfraUtilitiesFacadeMembers:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesRopeRuntimeTypes
         annotation_kind = cls._annotation_kind(value, source_project=source_project)
-        if annotation_kind is not None:
-            return annotation_kind
         if (
-            value.get_object()
+            annotation_kind is None
+            and value.get_object()
             is runtime.runtime_callable("rope.base.pyobjects", "get_unknown")()
         ):
-            stub_kind = cls._stub_kind(value, source_project=source_project)
-            if stub_kind is not None:
-                return stub_kind
+            annotation_kind = cls._stub_kind(value, source_project=source_project)
+        if annotation_kind is not None:
+            return annotation_kind
         binding = FlextInfraUtilitiesFacadeMembers._typing_origin(
             value, source_project=source_project
         )
@@ -132,22 +131,31 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        if not types.assigned_name(value) or len(value.assignments) != 1:
-            return None
-        assigned = value.assignments[0].ast_node
-        module, _line = runtime.definition_location(value)
-        if not isinstance(assigned, ast.Name) or not types.source_module(module):
-            return None
-        imported = module.get_attributes().get(assigned.id)
-        visited: set[tuple[Path, str]] = set()
-        while isinstance(imported, p.Infra.RopeImportedName):
+        imported = runtime.class_assignment_binding(value, classes_only=False)
+        visited: set[int] = set()
+        while imported is not None:
+            if id(imported) in visited:
+                message = f"cyclic binary export: {imported.get_definition_location()}"
+                raise ValueError(message)
+            visited.add(id(imported))
+            if types.assigned_name(imported):
+                if len(imported.assignments) != 1:
+                    return None
+                assigned = imported.assignments[0].ast_node
+                module, _line = runtime.definition_location(imported)
+                if not isinstance(
+                    assigned, ast.Name | ast.Attribute
+                ) or not types.source_module(module):
+                    return None
+                scope = runtime.scope_at(
+                    module, runtime.source_offset(module.source_code, assigned)
+                )
+                imported = runtime.resolve_symbol(scope, assigned)
+                continue
+            if not types.imported_name(imported):
+                return None
             resource = runtime.imported_module_resource(source_project, imported)
             path = Path(resource.real_path).resolve()
-            identity = path, imported.imported_name
-            if identity in visited:
-                message = f"cyclic binary export: {identity}"
-                raise ValueError(message)
-            visited.add(identity)
             stub = path / "__init__.pyi" if path.is_dir() else path.with_suffix(".pyi")
             if stub.is_file():
                 statements = ast.parse(stub.read_text(encoding="utf-8")).body
@@ -166,7 +174,10 @@ class FlextInfraUtilitiesFacadeMembers:
                     and node.target.id == imported.imported_name
                 ]
                 if len(declarations) + len(values) > 1:
-                    message = f"ambiguous binary declaration: {identity}"
+                    message = (
+                        "ambiguous binary declaration: "
+                        f"{(path, imported.imported_name)}"
+                    )
                     raise ValueError(message)
                 if values:
                     return c.Infra.FacadeMemberKind.CONSTANT
@@ -183,10 +194,11 @@ class FlextInfraUtilitiesFacadeMembers:
                         )
                         else c.Infra.FacadeMemberKind.TYPE
                     )
-            provider = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                source_project, resource
+            imported = (
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(source_project, resource)
+                .get_attributes()
+                .get(imported.imported_name)
             )
-            imported = provider.get_attributes().get(imported.imported_name)
         return None
 
     @staticmethod
@@ -195,18 +207,50 @@ class FlextInfraUtilitiesFacadeMembers:
     ) -> c.Infra.FacadeMemberKind | None:
         """Identify explicit annotation declarations before resolving their value.
 
+        Args:
+            value: The annotation to inspect.
+            source_project: The native project providing the annotation's context.
+
         Returns:
             The declared annotation kind, or no applicable annotation declaration.
+
+        Raises:
+            ValueError: If a cyclic annotation is detected.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         alias = runtime.annotation_alias_definition(value)
-        if (
-            alias is not None
-            and isinstance(alias[0].value, ast.BinOp)
-            and isinstance(alias[0].value.op, ast.BitOr)
-        ):
-            return c.Infra.FacadeMemberKind.TYPE
+        visited: set[int] = set()
+        while alias is not None:
+            declaration, scope = alias
+            if id(declaration) in visited:
+                message = f"cyclic facade annotation: {declaration.name.id}"
+                raise ValueError(message)
+            visited.add(id(declaration))
+            expression = declaration.value
+            while isinstance(expression, ast.Subscript) and runtime.same_name(
+                runtime.qualified_name(source_project, "typing.Annotated"),
+                runtime.resolve_symbol(scope, expression.value),
+            ):
+                if (
+                    not isinstance(expression.slice, ast.Tuple)
+                    or not expression.slice.elts
+                ):
+                    return None
+                expression = expression.slice.elts[0]
+            if isinstance(expression, ast.BinOp) and isinstance(
+                expression.op, ast.BitOr
+            ):
+                return c.Infra.FacadeMemberKind.TYPE
+            origin = runtime.resolve_symbol(
+                scope,
+                expression.value
+                if isinstance(expression, ast.Subscript)
+                else expression,
+            )
+            alias = (
+                None if origin is None else runtime.annotation_alias_definition(origin)
+            )
         assigned = runtime.annotation_assignment_outer_type(source_project, value)
         if assigned is not None:
             origin, from_value = assigned

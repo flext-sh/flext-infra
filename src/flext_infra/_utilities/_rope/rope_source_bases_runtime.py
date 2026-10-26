@@ -11,6 +11,8 @@ import importlib.util
 from pathlib import Path
 from types import MappingProxyType
 
+from flext_cli import u
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
@@ -369,12 +371,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 raise failure
             lineages = tuple(self._linearize(identity) for identity in identities)
             try:
-                lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
-                    lineages,
-                    message=(
-                        "Inconsistent declared facade owner precedence: declarations="
-                        f"{tuple(item.qualified_base for item in declarations)}"
-                    ),
+                lineage = (
+                    FlextInfraUtilitiesRopeSourceBasesRuntime
+                    .merge_class_lineages(
+                        lineages,
+                        message=(
+                            "Inconsistent declared facade owner precedence: "
+                            "declarations="
+                            f"{tuple(item.qualified_base for item in declarations)}"
+                        ),
+                    )
                 )
             except ValueError as failure:
                 orders: dict[tuple[str, str], set[str]] = {}
@@ -425,6 +431,72 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 for item in declarations
             )
+
+        def class_defers_annotations(
+            self, qualified: m.Infra.SourceClassReference
+        ) -> bool:
+            """Prove ordinary class construction through authenticated ancestry.
+
+            Args:
+                qualified: The source class reference to inspect.
+
+            Returns:
+                Whether the class defers annotations through its ancestry.
+
+            """
+
+            def reject(identity: str, reason: str) -> bool:
+                u.Cli.info(
+                    f"annotation deferral class={qualified.target}."
+                    f"{'.'.join(qualified.attributes)} ancestor={identity} "
+                    f"reason={reason}"
+                )
+                return False
+
+            self._prepare_ordering()
+            typing_module = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                self._project.get_module("typing")
+            )
+            protocol = self._resolve(
+                m.Infra.SourceClassReference(target="typing", attributes=("Protocol",))
+            )
+            runtime_checkable = typing_module.get_attributes()[
+                "runtime_checkable"
+            ].get_object()
+            for identity in self._linearize(self._resolve(qualified)):
+                if identity in {self._object_id, protocol}:
+                    continue
+                if identity not in self._definitions:
+                    return reject(identity, "uncaptured-source")
+                module_name, _name, line = identity.rsplit(":", 2)
+                tree = self._providers[module_name].get_ast()
+                if not isinstance(tree, ast.Module):
+                    message = f"Source provider has no module AST: {module_name}"
+                    raise TypeError(message)
+                declaration = next(
+                    node
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.ClassDef) and node.lineno == int(line)
+                )
+                scope = (
+                    self
+                    ._providers[module_name]
+                    .get_scope()
+                    .get_inner_scope_for_line(int(line))
+                )
+                if scope.parent is None:
+                    return reject(identity, "missing-parent-scope")
+                for decorator in declaration.decorator_list:
+                    binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                        scope.parent, decorator
+                    )
+                    if binding is None or binding.get_object() is not runtime_checkable:
+                        return reject(identity, "evaluating-decorator")
+                if declaration.keywords:
+                    return reject(identity, "class-keywords")
+                if "__init_subclass__" in self._definitions[identity].members:
+                    return reject(identity, "subclass-hook")
+            return True
 
         def _prepare_ordering(self) -> None:
             """Build the namespace and alias maps once per resolver.
@@ -901,6 +973,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Raises:
                 TypeError: If an owned resource has no native source module.
                 ValueError: If owned or planned source lacks the declaration.
+                ImportError: If the native import binding fails to resolve.
 
             """
             resource = module.get_resource()
@@ -926,7 +999,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return self._external_reference(
                         target, attributes[1:], visiting | {target}, depth + 1
                     )
-                if owned or module_name in self._sources:
+                if attributes[0] in bindings or owned or module_name in self._sources:
                     message = f"Unresolved declared provider base: {target}"
                     raise ValueError(message)
                 return None
@@ -1239,14 +1312,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             binding: p.Infra.RopeImportedName,
             attributes: t.StrTuple,
         ) -> m.Infra.SourceClassReference | None:
-            """Resolve captured source bindings before forwarding native imports.
+            """Resolve completed source bindings before forwarding native imports.
 
-            Only an authenticated captured module owns a source override.
-            External providers retain their native imported-name contract;
-            an ordinary runtime inventory cannot redefine their lazy exports.
+            Captured providers retain their planned bytes; uncaptured providers
+            retain their elected native source. Both completed inventories own
+            assignments that replace earlier imports. Unchanged imports retain
+            their native imported-name provenance.
 
             Returns:
-                The captured override, or no override of the native provider.
+                The completed source override, or no override of the native import.
 
             Raises:
                 ValueError: If the source binding has no declared provider.
@@ -1259,26 +1333,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if resource is None:
                 message = f"source-backed provider has no resource: {module.get_name()}"
                 raise ValueError(message)
-            owners = self._captured_provider_modules(declaring)
-            if not owners:
-                return None
-            if len(owners) > 1:
-                message = f"Ambiguous captured source owner: {resource.real_path}"
-                raise ValueError(message)
-            module_name = owners[0]
+            module_name = self._provider_name(declaring)
             name, *remaining = attributes
-            bindings = self._modules.get(module_name)
-            if bindings is None:
-                captured = self._sources[module_name]
-                bindings = self._inventory(
-                    module_name,
-                    captured,
-                    allow_conditional=False,
-                    provider=declaring
-                    if declaring.source_code == captured[1]
-                    else None,
-                )
-                self._modules[module_name] = bindings
+            bindings = self._provider_source_bindings(module_name, declaring, resource)
             reference = bindings.get(name)
             if reference is None:
                 message = f"Unresolved provider base: {module_name}.{name}"
@@ -1664,6 +1721,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Raises:
                 ValueError: If a module is used as a class base, the namespace
                     has no module binding, or the name is unresolved.
+                ImportError: If the native import binding fails to resolve.
 
             """
             index = next(
@@ -1682,9 +1740,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._modules[module] = self._inventory(
                         module, self._sources[module]
                     )
-                bound = module in self._modules and name in self._modules[module]
                 submodule = f"{module}.{name}"
-                if bound:
+                if name in self._modules.get(module, {}):
                     break
                 if submodule not in self._namespaces:
                     if self._project.find_module(submodule) is not None:
@@ -1694,11 +1751,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                             ), []
                         except (ValueError, ImportError) as failure:
                             resource = self._project.find_module(".".join(parts))
+                            origin = resource.real_path if resource is not None else None
                             failure.add_note(
                                 f"Uncaptured namespace descent: module={module!r}; "
                                 f"selected={submodule!r}; remaining={remaining!r}; "
                                 f"full_target={'.'.join(parts)!r}; native_origin="
-                                f"{resource.real_path if resource is not None else None!r}"
+                                f"{origin!r}"
                             )
                             raise
                     break

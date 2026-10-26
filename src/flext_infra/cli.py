@@ -44,7 +44,6 @@ class FlextInfraCli(FlextInfraCliDispatchService):
         if output is None:
             msg = "FLEXT_INFRA_PROFILE requires FLEXT_INFRA_PROFILE_OUTPUT"
             raise ValueError(msg)
-        output.parent.mkdir(parents=True, exist_ok=True)
         return FlextInfraPytestClock.profile_command(
             lambda: FlextInfraCli().main(cli_args), output
         )

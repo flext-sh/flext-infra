@@ -254,6 +254,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
+            selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
     @runtime_checkable
@@ -279,7 +280,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class SourceComponentPlanner(Protocol):
-        """Compose nested facades through caller-owned views and initializers."""
+        """Close an admitted facade's dependencies, or all families with None."""
 
         def __call__(
             self,
@@ -287,8 +288,11 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
-            initializer_planner: FlextInfraProtocolsBase.SourceInitializerPlanner,
-            source_view: FlextInfraProtocolsBase.SourceViewProvider,
+            planners: t.Pair[
+                FlextInfraProtocolsBase.SourceInitializerPlanner,
+                FlextInfraProtocolsBase.SourceViewProvider,
+            ],
+            selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
     @runtime_checkable

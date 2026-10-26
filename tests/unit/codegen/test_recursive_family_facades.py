@@ -101,10 +101,13 @@ class TestsFlextInfraRecursiveFamilyFacades:
         return f"{header}\nclass {owner}:\n{members[family]}\n__all__ = [{owner!r}]\n"
 
     @staticmethod
-    def _plans(root: Path) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    def _plans(
+        root: Path,
+        selection: tuple[Path, c.Infra.FacadeFamily] | None = None,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
             initial = FlextInfraCodegenLazyInit.plan_candidate(
-                root, declared_files=(), snapshot=snapshot
+                root, declared_files=(), snapshot=snapshot, selection=selection
             )
             if initial.failure:
                 return initial
@@ -112,9 +115,58 @@ class TestsFlextInfraRecursiveFamilyFacades:
                 root,
                 declared_files=initial.value,
                 snapshot=snapshot,
-                initializer_planner=FlextInfraCodegenLazyInit.plan_candidate,
-                source_view=u.Infra.facade_source_project,
+                planners=(
+                    FlextInfraCodegenLazyInit.plan_candidate,
+                    u.Infra.facade_source_project,
+                ),
+                selection=selection,
             )
+
+    @classmethod
+    def test_selected_family_retains_authored_child_composition(
+        cls, tmp_path: Path
+    ) -> None:
+        """Move a declared holder without deriving a replacement name or other families."""
+        root, package, sentinel = cls._workspace(tmp_path)
+        layout = tm.not_none(u.Infra.layout(root))
+        directory = package / "_utilities" / "_dispatch"
+        name = f"{layout.class_stem}DispatchUtilities"
+        supplier = f"{layout.class_stem}DispatchRunner"
+        cls._write(directory / c.Infra.INIT_PY, '"""Dispatch capabilities."""\n')
+        cls._write(directory / "runner.py", cls._part(supplier, "u", "Execute"))
+        origin = directory / "namespace.py"
+        cls._write(
+            origin,
+            '"""Authored dispatch composition."""\n'
+            f"from {package.name}._utilities._dispatch.runner import {supplier}\n"
+            f"class {name}:\n"
+            f"    {supplier} = {supplier}\n"
+            f"__all__ = [{name!r}]\n",
+        )
+        destination = package / "utilities.py"
+        planned = {
+            plan.path: plan
+            for plan in tm.ok(cls._plans(root, (destination, c.Infra.FacadeFamily.U)))
+        }
+        sibling = package / "_utilities" / "dispatch.py"
+        tm.that(sibling in planned and destination in planned)
+        tm.that(planned[origin].desired_content is None)
+        tm.that(planned[sibling].before.content is None)
+        tm.that(planned[origin].before.content, eq=origin.read_bytes())
+        tm.that(
+            f"class {name}(".encode() in tm.not_none(planned[sibling].desired_content)
+        )
+        for family in u.Infra.facade_families().values():
+            if family.letter != "u":
+                tm.fail(package / f"{family.module}.py" in planned)
+                tm.fail(
+                    any(
+                        path.is_relative_to(package / family.directory)
+                        for path in planned
+                    )
+                )
+        tm.fail(package / "_utilities" / "base.py" in planned)
+        tm.fail(sentinel.exists())
 
     @staticmethod
     def test_planned_source_views_observe_changes_and_retirement(

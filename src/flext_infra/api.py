@@ -318,6 +318,7 @@ class FlextInfra(
                     apply=request.apply,
                     check=request.check,
                     dry_run_mode=request.dry_run_mode,
+                    consumer_roots=request.consumer_roots,
                 )
             )
             completed = FlextInfraModHandlers.mod(self, child_request, progress)
@@ -439,13 +440,20 @@ class FlextInfra(
         )
 
     @staticmethod
-    def workspace_tests(request: m.Infra.WorkspaceTestsRequest) -> p.Result[int]:
+    def workspace_tests(
+        request: m.Infra.WorkspaceTestsRequest,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> p.Result[int]:
         """Require original global primary source proof before native test engines.
 
         Ordinary test failures retain their original first status while every
         selected repository is reached. Interruptions and infrastructure errors
         stop dispatch with their native status; configuration failures escape.
         Admission, discovery and member execution share this operation's clock.
+        FULL executes incremental then complete suites in each project context.
 
         Returns:
             The first failing native test status, or zero after every success.
@@ -501,6 +509,7 @@ class FlextInfra(
             outcome = validate.FlextInfraPytestRunner.execute_project_context(
                 project,
                 started_at_monotonic=started_at_monotonic,
+                execution_mode=execution_mode,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")
             if outcome:

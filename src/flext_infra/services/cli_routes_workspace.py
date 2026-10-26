@@ -38,19 +38,39 @@ class FlextInfraWorkspaceRoutes:
         return r[int].ok(len(selected.value))
 
     @staticmethod
-    def _tests(params: m.Infra.WorkspaceTestsRequest) -> p.Cli.ErasedCommandResult:
+    def _tests(
+        params: m.Infra.WorkspaceTestsRequest,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> p.Cli.ErasedCommandResult:
         """Preserve the first native test status at the CLI boundary.
 
         Returns:
             The successful native test result or its unchanged failure.
 
         """
-        completed = flext_infra.infra.workspace_tests(params)
+        completed = flext_infra.infra.workspace_tests(
+            params, execution_mode=execution_mode
+        )
         if completed.failure:
             return r[int].from_failure(completed)
         if completed.value:
             u.Cli.framework_exit(completed.value)
         return completed
+
+    @classmethod
+    def _tests_full(
+        cls, params: m.Infra.WorkspaceTestsRequest
+    ) -> p.Cli.ErasedCommandResult:
+        """Run incremental then complete native suites through the same boundary.
+
+        Returns:
+            The native result, preserving the first failing status.
+
+        """
+        return cls._tests(params, execution_mode=c.Infra.PytestExecutionMode.FULL)
 
     @staticmethod
     def _detect_workspace(
@@ -229,6 +249,13 @@ class FlextInfraWorkspaceRoutes:
                     "Run persistent incremental tests after global source admission",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests,
+                    None,
+                ),
+                (
+                    c.Infra.VERB_TEST_FULL,
+                    "Run incremental then full tests with the same persistent database",
+                    m.Infra.WorkspaceTestsRequest,
+                    cls._tests_full,
                     None,
                 ),
                 (

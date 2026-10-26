@@ -26,7 +26,10 @@ from flext_infra._utilities._semantic_cutover import (
 )
 
 
-class FlextInfraUtilitiesDeclarationPayload:
+class FlextInfraUtilitiesDeclarationPayload(
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+):
     """Identify inherited declarations without parsing or spelling heuristics."""
 
     @staticmethod
@@ -60,6 +63,93 @@ class FlextInfraUtilitiesDeclarationPayload:
             if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(current):
                 pending.extend(cls.direct_bases(current))
         return found
+
+    @classmethod
+    def utility_behavior_provider(
+        cls, project: p.Infra.RopeProject, owner: p.Infra.RopePyObject
+    ) -> bool:
+        """Prove stateless utility behavior without reclassifying class entities.
+
+        Returns:
+            Whether native ancestry, descriptors and storage establish behavior.
+
+        """
+        if not cls.py_class(owner):
+            return False
+        ancestry = cls.class_ancestry(owner)
+        entities = tuple(
+            cls.identity_name(project, identity).get_object()
+            for identity in ("enum.Enum", "typing.Protocol", "pydantic.BaseModel")
+        )
+        if any(ancestor in entities for ancestor in ancestry):
+            return False
+        methods = tuple(
+            value
+            for attribute in owner.get_attributes().values()
+            if cls.py_function(value := attribute.get_object())
+        )
+        return (
+            bool(methods)
+            and all(
+                method.get_kind() in {"classmethod", "staticmethod"}
+                for method in methods
+            )
+            and all(
+                not cls.py_class(ancestor)
+                or cls.utility_namespace_declaration(project, ancestor)
+                for ancestor in ancestry
+            )
+        )
+
+    @classmethod
+    def utility_namespace_declaration(
+        cls, project: p.Infra.RopeProject, owner: p.Infra.RopeSourceClass
+    ) -> bool:
+        """Validate native utility storage for rendering and semantic migration.
+
+        Returns:
+            Whether the declaration contains only admissible class storage.
+
+        Raises:
+            TypeError: The native utility declaration is not a class syntax tree.
+
+        """
+        node = owner.get_ast()
+        if not isinstance(node, ast.ClassDef):
+            message = "utility provider has no native class syntax tree"
+            raise TypeError(message)
+        return not node.decorator_list and not any(
+            isinstance(member, ast.AnnAssign)
+            and not cls._declares_class_storage(project, owner.get_scope(), member)
+            for member in node.body
+        )
+
+    @classmethod
+    def _declares_class_storage(
+        cls,
+        project: p.Infra.RopeProject,
+        scope: p.Infra.RopeScope,
+        member: ast.AnnAssign,
+    ) -> bool:
+        """Authenticate ClassVar and initialized Final through native identities.
+
+        Returns:
+            Whether the annotation proves class storage for this declaration.
+
+        """
+        annotation = member.annotation
+        qualifier = cls.resolve_symbol(
+            scope,
+            annotation.value if isinstance(annotation, ast.Subscript) else annotation,
+        )
+        return cls.same_name(
+            cls.qualified_name(project, "ClassVar", module_name="typing"), qualifier
+        ) or (
+            member.value is not None
+            and cls.same_name(
+                cls.qualified_name(project, "Final", module_name="typing"), qualifier
+            )
+        )
 
     @classmethod
     def _header_argument_span(

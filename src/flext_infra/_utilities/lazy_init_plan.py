@@ -18,7 +18,6 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
 from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra._utilities.lazy_init_letters import FlextInfraUtilitiesLazyInitLetters
 from flext_infra._utilities.lazy_init_render import FlextInfraUtilitiesLazyInitRender
@@ -346,6 +345,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 exports=tuple(sorted(exports)),
                 lazy_map={name: (context.current_pkg, name) for name in exports},
                 eager_dunders={},
+                child_packages_for_lazy=cls._lazy_init_child_packages(run, context),
             )
         residue = (
             c.Infra.LazyInitAction.REMOVE
@@ -355,7 +355,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         if not context.importable or cls._lazy_init_shadows_stdlib(context):
             return cls._lazy_init_empty_plan(context, residue)
         lazy_map = cls._lazy_init_package_exports(run, context)
-        children = cls._lazy_init_merge_children(run, context, lazy_map)
+        children = cls._lazy_init_child_packages(run, context)
         FlextInfraUtilitiesLazyInitLetters.lazy_init_resolve_aliases(
             run, context, lazy_map
         )
@@ -378,17 +378,10 @@ class FlextInfraUtilitiesLazyInitPlan:
                 and context.current_pkg != c.Infra.DIR_TESTS
             ) or cls._lazy_init_owns_modules(run, pkg_dir)
             return cls._lazy_init_empty_plan(
-                context, c.Infra.LazyInitAction.WRITE if keeps else residue
+                context,
+                c.Infra.LazyInitAction.WRITE if keeps else residue,
+                child_packages=children,
             )
-        if facade_root:
-            root = context.current_pkg
-            lazy_map = {
-                name: target
-                for name, target in lazy_map.items()
-                if target[0].rsplit(".", maxsplit=1)[0] == root
-                or not target[0].startswith(f"{root}.")
-            }
-            children = ()
         return m.Infra.LazyInitPlan(
             context=context,
             action=c.Infra.LazyInitAction.WRITE,
@@ -404,6 +397,8 @@ class FlextInfraUtilitiesLazyInitPlan:
     def _lazy_init_empty_plan(
         context: m.Infra.LazyInitPackageContext,
         action: c.Infra.LazyInitAction,
+        *,
+        child_packages: t.StrSequence = (),
     ) -> m.Infra.LazyInitPlan:
         """Return a plan without exports for one decided action.
 
@@ -419,6 +414,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             disposition="planned" if owned else None,
             lazy_map={},
             eager_dunders={},
+            child_packages_for_lazy=child_packages,
         )
 
     @staticmethod
@@ -426,7 +422,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         """Return whether a package is a public ``src`` root or the tests root.
 
         Returns:
-            Whether the package withholds private children and nested exports.
+            Whether the package owns a root facade surface.
 
         """
         name = context.current_pkg
@@ -521,32 +517,24 @@ class FlextInfraUtilitiesLazyInitPlan:
         return lazy_map
 
     @classmethod
-    def _lazy_init_merge_children(
+    def _lazy_init_child_packages(
         cls,
         run: m.Infra.LazyInitRun,
         context: m.Infra.LazyInitPackageContext,
-        lazy_map: t.MutableLazyAliasMap,
     ) -> t.StrSequence:
-        """Propagate the exports of direct child packages into the parent.
+        """Record importable direct child packages without publishing their names.
 
-        A child package is never itself a published name: an initializer
-        propagates what modules declare in ``__all__`` (generator law p.1-2),
-        and a package object reached by attribute is banned (ADR-028), so
-        consumers import a child's names from the child package. Non-public
-        tiers (tests, examples, scripts) propagate nothing. Private ``_x``
-        domains with an elected sibling MRO facade retain that boundary at every
-        nesting level. Ordinary child packages retain their declared propagation.
+        The child initializer owns its own direct declarations. Its exports
+        never participate in the parent's export election.
 
         Returns:
-            The sorted names of the merged child packages.
+            The sorted child package names retained as planning metadata.
 
         """
         entry = run.index.packages_by_dir.get(str(context.pkg_dir))
         if entry is None:
             return ()
-        publish = context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
-        facade_root = cls.lazy_init_is_facade_root(context)
-        merged: list[str] = []
+        children: list[str] = []
         candidates = dict.fromkeys((
             *entry.descendant_child_dirs,
             *(
@@ -562,33 +550,8 @@ class FlextInfraUtilitiesLazyInitPlan:
             child = cls._lazy_init_child_name(run, context, child_dir)
             if not child:
                 continue
-            merged.append(child)
-            leaf = child.rsplit(".", maxsplit=1)[-1]
-            if not publish or (
-                leaf.startswith("_")
-                and (
-                    facade_root
-                    or FlextInfraUtilitiesCodegenFacades.family_subfacade_owners(
-                        run.model.source_project, child_dir
-                    )
-                )
-            ):
-                continue
-            plan = run.plans.get(child_dir)
-            for name, (module_name, attr) in (
-                plan.lazy_map.items() if plan is not None else ()
-            ):
-                if (
-                    attr
-                    and not name.startswith("_")
-                    and name not in c.Infra.LAZY_INIT_HIDDEN_CHILD_EXPORTS
-                    and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(
-                        f"{module_name.rsplit('.', maxsplit=1)[-1]}.py"
-                    )
-                    is None
-                ):
-                    cls._lazy_init_add(run, lazy_map, name, (module_name, attr))
-        return tuple(sorted(merged))
+            children.append(child)
+        return tuple(sorted(children))
 
     @classmethod
     def _lazy_init_child_name(
@@ -597,14 +560,14 @@ class FlextInfraUtilitiesLazyInitPlan:
         context: m.Infra.LazyInitPackageContext,
         child_dir: Path,
     ) -> str:
-        """Return the import name of a child package that merges into its parent.
+        """Return an importable child package name for the parent's metadata.
 
         A planned write counts as a package before its initializer exists; a
         planned removal or skip never does; without a plan the on-disk
         initializer decides.
 
         Returns:
-            The child's package name, or ``""`` when it does not merge.
+            The child's package name, or ``""`` when it is not importable.
 
         """
         plan = run.plans.get(child_dir)

@@ -28,6 +28,42 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
     """Authenticate native suppliers and construct Rope source snapshots."""
 
     @staticmethod
+    def imported_module_resource(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopeImportedName,
+    ) -> p.Infra.RopeResource:
+        """Resolve a declared import through its native Rope resource identity.
+
+        Returns:
+            The exact file or package resource declared by the import.
+
+        Raises:
+            ValueError: If the declared import has no resolvable source resource.
+
+        """
+        imported = binding.imported_module
+        resource = imported.resource
+        if resource is None:
+            name = imported.module_name
+            module = imported.importing_module.get_module()
+            source = module.get_resource()
+            if source is None or (name is None and imported.level == 0):
+                message = (
+                    f"import has no declared module location: {binding.imported_name}"
+                )
+                raise ValueError(message)
+            if imported.level == 0 and name is not None:
+                resource = project.find_module(name, source.parent)
+            else:
+                resource = project.find_relative_module(
+                    name if name is not None else "", source.parent, imported.level
+                )
+        if resource is None:
+            message = f"unresolved imported module: {imported.module_name}"
+            raise ValueError(message)
+        return resource
+
+    @staticmethod
     def source_offset(source: str, node: p.Infra.RopeAstNode) -> int:
         """Resolve Rope AST byte coordinates to a Python source offset.
 

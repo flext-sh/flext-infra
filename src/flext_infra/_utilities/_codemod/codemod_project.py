@@ -709,7 +709,11 @@ class FlextInfraUtilitiesCodemodProject(
             if rule.fixable
             or rule.relocation is not None
             or rule.id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
-            in c.Infra.SEMANTIC_CUTOVER_RULE_IDS.values()
+            in {
+                rule_id
+                for rule_ids in c.Infra.SEMANTIC_CUTOVER_RULE_IDS.values()
+                for rule_id in rule_ids
+            }
         )
         parsed: list[m.Infra.CensusViolation] = []
         for violation in validation.value.violations:

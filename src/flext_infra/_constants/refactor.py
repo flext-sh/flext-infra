@@ -277,21 +277,26 @@ class FlextInfraConstantsRefactor:
         MODULE_END = "module-end"
         NOTICE_LAST = "notice-last"
 
-    SEMANTIC_CUTOVER_RULE_IDS: ClassVar[t.MappingKV[str, str]] = MappingProxyType({
-        SemanticCutoverPhase.DECLARATION_RELOCATION: (
-            "ban-nested-payload-outside-models"
-        ),
-        SemanticCutoverPhase.COMPAT_ALIAS: "ban-compat-alias",
-        SemanticCutoverPhase.PRIVATE_IMPORT: "ban-private-import",
-        SemanticCutoverPhase.FACADE_BASE: "facade-base-by-class-name",
-        SemanticCutoverPhase.MODEL_FIELDS: (
-            "rewire-getattr-model-fields-to-direct-access"
-        ),
-        SemanticCutoverPhase.DYNAMIC_ENVIRONMENT: "ban-ambient-environ-read",
-        SemanticCutoverPhase.MODULE_END: "require-all-last",
-        SemanticCutoverPhase.NOTICE_LAST: "require-notice-last",
-    })
-    "ast-grep rule whose findings select each finding-driven semantic cutover."
+    SEMANTIC_CUTOVER_RULE_IDS: ClassVar[t.MappingKV[str, t.StrTuple]] = (
+        MappingProxyType({
+            SemanticCutoverPhase.DECLARATION_RELOCATION: (
+                "ban-nested-payload-outside-models",
+            ),
+            SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
+            SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
+            SemanticCutoverPhase.FACADE_BASE: (
+                "facade-base-by-class-name",
+                "require-facade-mro-completeness",
+            ),
+            SemanticCutoverPhase.MODEL_FIELDS: (
+                "rewire-getattr-model-fields-to-direct-access",
+            ),
+            SemanticCutoverPhase.DYNAMIC_ENVIRONMENT: ("ban-ambient-environ-read",),
+            SemanticCutoverPhase.MODULE_END: ("require-all-last",),
+            SemanticCutoverPhase.NOTICE_LAST: ("require-notice-last",),
+        })
+    )
+    "Distinct ast-grep laws whose findings share a semantic cutover stage."
 
     RK_FORBIDDEN_IMPORTS: ClassVar[str] = "forbidden_imports"
     RK_REDUNDANT_TYPE_TARGETS: ClassVar[str] = "redundant_type_targets"

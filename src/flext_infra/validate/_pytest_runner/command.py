@@ -120,10 +120,20 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         scope = hashlib.sha256(
             self._marker_expression(execution_mode).encode(),
         ).hexdigest()[:8]
-        toolchain = (
-            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
+        toolchain, configuration = self.testmon_input_identity()
+        return f"toolchain-{toolchain[:12]}-{configuration}-{scope}"
+
+    def testmon_input_identity(self) -> t.Pair[str, str]:
+        """Read runtime and configuration identities independently of selection.
+
+        Returns:
+            The existing installed toolchain identity and declared-input digest.
+
+        """
+        return (
+            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity(),
+            self._config_testmon_digest(),
         )
-        return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
 
     def _config_testmon_digest(self) -> str:
         """Fingerprint the project's current ``config/*.yaml`` behavior inputs.

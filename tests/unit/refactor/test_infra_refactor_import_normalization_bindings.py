@@ -553,6 +553,99 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
     """Inherited facade routes preserve runtime behavior and graph ownership."""
 
     @classmethod
+    def test_planned_retirements_do_not_restore_a_discarded_import_cycle(
+        cls, tmp_path: Path
+    ) -> None:
+        """The same captured witnesses retain tombstones through both plan passes."""
+        project, package = cls._project(tmp_path)
+        retired = (package / "retired_a.py", package / "retired_b.py")
+        retired[0].write_text(
+            "from demo_pkg.retired_b import Beta\nclass Alpha(Beta):\n    pass\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        retired[1].write_text(
+            "from demo_pkg.retired_a import Alpha\nclass Beta(Alpha):\n    pass\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "_utilities" / "helper.py").write_text(
+            "class DemoHelper:\n    marker = 'retirement'\n__all__ = ['DemoHelper']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = package / "consumer.py"
+        target.write_text(
+            "from demo_pkg._utilities.helper import DemoHelper\n"
+            "value = DemoHelper.marker\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
+            captured = u.Infra.workspace_sources(snapshot)
+            sources = {path: entry.text for path, entry in captured.items()}
+            live = u.Infra.plan_import_normalization(
+                project,
+                (target,),
+                sources=sources,
+                declared_files=(),
+                snapshot=snapshot,
+            )
+            tm.that(live.failure, eq=True)
+            tm.that(live.error, has="runtime dependency cycles")
+            tombstones = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=project,
+                    path=path,
+                    before=captured[path].state,
+                    desired_content=None,
+                    desired_mode=None,
+                )
+                for path in retired
+            )
+            for path in retired:
+                del sources[path]
+            planned = tm.ok(
+                u.Infra.plan_import_normalization(
+                    project,
+                    (target,),
+                    sources=sources,
+                    declared_files=tombstones,
+                    snapshot=snapshot,
+                )
+            )
+            tm.that(planned, length=1)
+            tm.that(planned[0].before, eq=captured[target].state)
+            sources[target] = tm.not_none(planned[0].desired_content).decode(
+                c.DEFAULT_ENCODING
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_import_normalization(
+                        project,
+                        (target,),
+                        sources=sources,
+                        declared_files=tombstones,
+                        snapshot=snapshot,
+                    )
+                ),
+                eq=(),
+            )
+            for path in retired:
+                tm.that(path.read_bytes(), eq=captured[path].state.content)
+        tm.ok(u.Infra.publish_codegen_plans(project, (*tombstones, *planned)))
+        for path in retired:
+            tm.that(path.exists(), eq=False)
+        process = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    "from demo_pkg.consumer import value; assert value == 'retirement'",
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.ok(u.Cli.process_succeeded(process.outcome))
+
+    @classmethod
     def test_inherited_facades_preserve_runtime_and_lexical_aliases(
         cls, tmp_path: Path
     ) -> None:

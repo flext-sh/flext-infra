@@ -132,11 +132,6 @@ class FlextInfraConstantsCodegenLazy:
         })
     )
     "Mapping of test-only aliases to flext-tests runtime targets."
-    LAZY_INIT_HIDDEN_CHILD_EXPORTS: ClassVar[frozenset[str]] = frozenset({
-        "__init__",
-        "pytestmark",
-    })
-    "Child-package exports never re-published by a parent initializer."
     LAZY_INIT_FIXTURES_DIR: ClassVar[str] = "_fixtures"
     "Package name whose modules are governed fixture publication owners."
     LAZY_INIT_CONSTANTS_MARKER: ClassVar[str] = "Constants"

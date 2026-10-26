@@ -425,8 +425,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
         return self._converged_custom_sources(
             root,
-            codegen,
-            profile=target.make_profile.value,
+            (codegen, target.make_profile.value),
             cohort=cohort,
             normalize_imports=contract.complete_governed,
         )
@@ -434,11 +433,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     def _converged_custom_sources(
         self,
         root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        configuration: t.Pair[m.Infra.CodegenConfigSpec, str],
         *,
-        profile: str,
         cohort: t.VariadicTuple[m.Infra.CodegenFilePlan],
         normalize_imports: bool,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None = None,
     ) -> p.Result[
         t.Triple[
             t.VariadicTuple[m.Infra.CodegenFilePlan],
@@ -457,6 +456,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         The complete lazy plan already supplied by this invocation seeds the
         first round unless a foreign provider or another input changed. The
         existing re-plan after facade effects remains the convergence proof.
+        A targeted facade uses the same component stage and fixed point for its
+        admitted package/family, without scheduling unrelated custom artifacts.
 
         Returns:
             Projected files, custom files and initializers, or the first failure.
@@ -469,16 +470,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Infra.CodegenFilePlan],
             ]
         ]
-        exported = (
-            self._existing_lazy_sources(root).map(tuple)
-            if self.state.provider_plans is not None
-            and not any(
-                (plan.project != root or plan.path.name != c.Infra.INIT_PY)
-                and u.Infra.codegen_file_requires_effect(plan)
-                for plan in cohort
-            )
-            else self._projected_exports(root, cohort)
-        )
+        exported = self._custom_export_seed(root, cohort, selection=selection)
         if exported.failure:
             return result_type.from_failure(exported)
         initializers = tuple(
@@ -510,11 +502,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     f"candidate without convergence for {root}: " + ", ".join(diverging)
                 )
             seen.add(identity)
-            custom_result = self._plan_existing_custom(
+            custom_result = self._custom_candidate_sources(
                 root,
-                codegen,
-                profile=profile,
-                declared_files=tuple(source_plans.values()),
+                configuration,
+                tuple(source_plans.values()),
+                selection=selection,
             )
             if custom_result.failure:
                 return result_type.from_failure(custom_result)
@@ -523,7 +515,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 **{plan.path: plan for plan in custom_result.value},
             }
             imports = (
-                self._planned_source_imports(root, tuple(projected_files.values()))
+                self._planned_source_imports(
+                    root,
+                    tuple(projected_files.values()),
+                    files=tuple(projected_files) if selection is not None else None,
+                )
                 if normalize_imports
                 else r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(())
             )
@@ -545,7 +541,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 # differ from the checkout already. Only a new content effect
                 # invalidates the export plan that seeded this round.
                 break
-            exported = self._projected_exports(root, tuple(projected_files.values()))
+            exported = self._projected_exports(
+                root, tuple(projected_files.values()), selection=selection
+            )
             if exported.failure:
                 return result_type.from_failure(exported)
             projected_files.update((plan.path, plan) for plan in exported.value)
@@ -564,12 +562,77 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             initializers,
         ))
 
+    def _custom_export_seed(
+        self,
+        root: Path,
+        cohort: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Reuse the complete lazy plan only while its candidate is unchanged.
+
+        Returns:
+            Initial exports over the admitted source cohort.
+
+        """
+        if (
+            selection is None
+            and self.state.provider_plans is not None
+            and not any(
+                (plan.project != root or plan.path.name != c.Infra.INIT_PY)
+                and u.Infra.codegen_file_requires_effect(plan)
+                for plan in cohort
+            )
+        ):
+            return self._existing_lazy_sources(root).map(tuple)
+        return self._projected_exports(root, cohort, selection=selection)
+
+    def _custom_candidate_sources(
+        self,
+        root: Path,
+        configuration: t.Pair[m.Infra.CodegenConfigSpec, str],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Dispatch the same custom planner for a complete or selected candidate.
+
+        Returns:
+            Custom plans, or the original planning admission failure.
+
+        """
+        if selection is None:
+            return self._plan_existing_custom(
+                root,
+                configuration[0],
+                profile=configuration[1],
+                declared_files=declared_files,
+            )
+        ports, snapshot = self.state.ports, self.state.snapshot
+        if ports is None or snapshot is None:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                "selected family composition requires caller-bound planning "
+                "and an authenticated repository snapshot"
+            )
+        return ports.component_planner(
+            root,
+            declared_files=declared_files,
+            snapshot=snapshot,
+            planners=(self._projected_exports, self._source_view),
+            selection=selection,
+        )
+
     def _planned_source_imports(
         self,
         root: Path,
         declared: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        files: t.VariadicTuple[Path] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan imports through the caller's capability over the same candidate.
+
+        Selected component cohorts normalize their destinations and native move
+        consumers; the complete source mapping remains the reference authority.
 
         Returns:
             Import plans, or the original admission or semantic failure.
@@ -585,7 +648,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         with self._source_view(root, declared_files=declared) as binding:
             return ports.imports_planner(
                 root,
-                tuple(binding[1]),
+                tuple(binding[1])
+                if files is None
+                else tuple(path for path in files if path in binding[1]),
                 sources=binding[1],
                 snapshot=snapshot,
                 declared_files=declared,
@@ -617,6 +682,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
         snapshot: p.Infra.WorkspaceSnapshot | None = None,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Re-plan initializers over one repository's projected sources.
 
@@ -636,7 +702,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             message = "projected exports require the run snapshot"
             raise RuntimeError(message)
         return FlextInfraCodegenLazyInit.plan_candidate(
-            root, declared_files=declared_files, snapshot=active
+            root, declared_files=declared_files, snapshot=active, selection=selection
         )
 
     def _existing_lazy_sources(
@@ -1420,8 +1486,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 root,
                 declared_files=declared_files,
                 snapshot=snapshot,
-                initializer_planner=self._projected_exports,
-                source_view=self._source_view,
+                planners=(self._projected_exports, self._source_view),
+                selection=None,
             )
             if recursive.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(recursive)

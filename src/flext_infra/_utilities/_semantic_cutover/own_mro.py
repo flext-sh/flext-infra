@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import override
 
 import libcst as cst
-from libcst.metadata import ParentNodeProvider, Scope, ScopeProvider
+from libcst.metadata import Assignment, ParentNodeProvider, Scope, ScopeProvider
 
 
 class FlextInfraUtilitiesSemanticCutoverOwnMro:
@@ -195,7 +195,10 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
                 return updated_node
             scope = self._scope(original_node.value)
             bindings = scope[owner.name.value]
-            if len(bindings) != 1 or next(iter(bindings)).node is not owner:
+            if len(bindings) != 1:
+                return updated_node
+            binding = next(iter(bindings))
+            if not isinstance(binding, Assignment) or binding.node is not owner:
                 return updated_node
             if self._role(target) == "instance":
                 message = (

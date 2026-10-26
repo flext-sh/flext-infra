@@ -674,6 +674,14 @@ class FlextInfraModelsRefactor(
     class CensusOptions(m.ContractModel):
         """Declared census filters and report destinations."""
 
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit external consumer checkout roots for this census",
+        )
+        source_plan_output: Path | None = m.Field(
+            default=None,
+            description="Destination for the same authenticated SemanticSourcePlan",
+        )
         json_output: Annotated[
             str | None, m.Field(description="Path to write JSON report")
         ] = None
@@ -1076,6 +1084,10 @@ class FlextInfraModelsRefactor(
             t.Port[t.Infra.RopeProject] | None,
             m.Field(description="Native source view owning this pass"),
         ] = None
+        deferred_class_lines: Annotated[
+            frozenset[int],
+            m.Field(description="Class declarations with proven ordinary construction"),
+        ] = frozenset()
 
 
 __all__: list[str] = ["FlextInfraModelsRefactor"]

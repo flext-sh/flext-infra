@@ -311,7 +311,7 @@ class FlextInfraUtilitiesLazyInitRender:
         """Render the static import contract of the public exports.
 
         Every name is imported from the module that declares it, never
-        assigned: an initializer propagates and never declares.
+        assigned: an initializer reexports direct declarations and never declares.
 
         Returns:
             The ``if TYPE_CHECKING:`` block lines, empty without exports.

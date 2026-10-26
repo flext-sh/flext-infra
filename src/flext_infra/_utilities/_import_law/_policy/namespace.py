@@ -232,7 +232,11 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 )
             },
         }
-        for part in module.split(".")[len(namespace.split(".")) if namespace else 1 :]:
+        for index, part in enumerate(
+            module.split(".")[len(namespace.split(".")) if namespace else 1 :]
+        ):
+            if index and not part.startswith("_"):
+                continue
             stem = part.lstrip("_")
             layer = families.get(stem, stem)
             if layer in order:

@@ -53,9 +53,11 @@ from flext_infra._utilities._rope.rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+)
+from flext_infra._utilities._semantic_cutover.composition import (
+    FlextInfraUtilitiesSemanticComposition,
 )
 
 if TYPE_CHECKING:
@@ -64,8 +66,8 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
+    FlextInfraUtilitiesSemanticComposition,
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
-    FlextInfraUtilitiesSemanticCutoverEdits,
 ):
     """Rewire a facade that extends its parent's letter to the declared class."""
 
@@ -1374,6 +1376,51 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
     @classmethod
     def _plan_facade_bases(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Close distinct import-base and MRO-composition laws in one candidate.
+
+        Returns:
+            Original-to-final source edits covering declarations and consumers.
+
+        """
+        import_findings = tuple(
+            finding
+            for finding in findings
+            if finding.rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
+            == "facade-base-by-class-name"
+        )
+        imported = cls._plan_facade_import_bases(
+            workspace.repository_root, sources, import_findings
+        )
+        if imported.failure:
+            return imported
+        working = dict(sources)
+        for edit in imported.value:
+            working[edit.file_path] = edit.updated_source
+        composed = cls.plan_facade_composition(workspace, working)
+        if composed.failure:
+            return composed
+        for edit in composed.value:
+            working[edit.file_path] = edit.updated_source
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+            tuple(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=path,
+                    original_source=source,
+                    updated_source=working[path],
+                    changes=("closed facade import and composition laws",),
+                )
+                for path, source in sources.items()
+                if working[path] != source
+            )
+        )
+
+    @classmethod
+    def _plan_facade_import_bases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],

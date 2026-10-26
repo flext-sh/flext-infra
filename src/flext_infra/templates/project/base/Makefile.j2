@@ -60,8 +60,8 @@ TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
 {%- endmacro -%}
 {#- Select impacted cases from the global inventory using the persistent database. -#}
-{%- macro pytest_test_runner() -%}
-$(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
+{%- macro pytest_test_runner(operation="tests") -%}
+$(PROJECT_FLEXT_INFRA) workspace {{ operation }} --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
 {%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
@@ -769,6 +769,9 @@ _builtin_check_all: _builtin_require_environment
 _builtin_tests_all: _builtin_require_environment
 	@{{ pytest_test_runner() | trim }}
 
+_builtin_tests_full_all: _builtin_require_environment
+	@{{ pytest_test_runner("tests-full") | trim }}
+
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
 # lint repair belongs to `make fix`. Every repair requires read-only native
@@ -799,6 +802,7 @@ _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
 
 _builtin-tests: _builtin_tests_all
+_builtin-tests-full: _builtin_tests_full_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated

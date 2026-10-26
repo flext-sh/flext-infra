@@ -232,7 +232,7 @@ class FlextInfraRefactorRoutes:
         ),
         m.Cli.ResultCommandRoute(
             name="census",
-            help_text="Run a Rope-only workspace census for Python objects",
+            help_text="Run the authenticated workspace object census",
             model_cls=m.Infra.CensusInput,
             handler=infra.census,
         ),

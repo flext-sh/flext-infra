@@ -232,6 +232,7 @@ class FlextInfraPytestClock:
             and FlextInfraPytestClock._threads[current] == get_ident()
         ):
             return operation()
+        output.parent.mkdir(parents=True, exist_ok=True)
         immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
         previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
         profiler = FlextInfraPytestClock.create_profiler()

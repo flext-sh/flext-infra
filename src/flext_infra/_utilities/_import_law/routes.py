@@ -567,7 +567,7 @@ class FlextInfraUtilitiesImportLawRoutes(
                 )
                 and cls.module_import_layer(provider, namespace=scope.namespace)
                 > scope.layer
-                and cls._import_law_runtime_uses(state.tree, name, state.parents)
+                and cls._import_law_runtime_uses(state, name)
             ):
                 msg = (
                     f"{scope.file_path}: unbound runtime alias {name} requires "

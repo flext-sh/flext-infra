@@ -59,11 +59,11 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         return next(
             (
                 letter
-                for part in (*relative.parts[:-1], relative.stem)
                 for letter, family in (
                     FlextInfraUtilitiesCodegenNamespace.facade_families().items()
                 )
-                if part in {family.directory, family.module}
+                if family.directory in relative.parts[:-1]
+                or (len(relative.parts) == 1 and relative.stem == family.module)
             ),
             None,
         )

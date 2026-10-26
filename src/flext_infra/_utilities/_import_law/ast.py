@@ -10,7 +10,7 @@ import ast
 import operator
 from collections.abc import MutableMapping
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
 
 
@@ -161,19 +161,20 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         return False
 
     @classmethod
-    def _import_law_annotation_ids(cls, tree: ast.Module) -> frozenset[int]:
+    def _import_law_annotation_ids(cls, state: m.Infra.ImportLawPass) -> frozenset[int]:
         """Return the ids of every node inside a non-evaluated annotation.
 
         Function argument and return annotations and module-level variable
         annotations are strings under ``from __future__ import annotations``.
-        A class-body annotation is evaluated by Pydantic and dataclass
-        machinery, so it is never typing-only.
+        Class-body annotations remain runtime-sensitive unless native ancestry
+        proves ordinary class construction or the declaration is a ClassVar.
 
         Returns:
             The resulting ``frozenset[int]``.
 
         """
         ids: set[int] = set()
+        tree = state.tree
         for node in ast.walk(tree):
             annotations: list[ast.expr] = []
             if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
@@ -204,27 +205,21 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
                 node, ast.AnnAssign
             ) and cls._import_law_is_classvar_annotation(node.annotation):
                 ids.update(id(sub) for sub in ast.walk(node.annotation))
-        cls._import_law_collect_plain_namespace_annotations(tree, ids)
+        cls._import_law_collect_plain_namespace_annotations(state, ids)
         return frozenset(ids)
 
     @classmethod
     def _import_law_collect_plain_namespace_annotations(
         cls,
-        tree: ast.Module,
+        state: m.Infra.ImportLawPass,
         ids: set[int],
     ) -> None:
-        """Collect annotation ids inside base-less class bodies.
-
-        A class with no bases is a plain namespace holder: under deferred
-        annotations its body annotations are never evaluated by anything
-        (no Pydantic/dataclass machinery resolves them), so annotation-name
-        reads inside it are typing-only. Based classes keep the
-        conservative runtime classification — their annotations may feed
-        model construction.
-
-        """
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and not node.bases:
+        """Collect annotations only for positively proven namespace classes."""
+        for node in ast.walk(state.tree):
+            if (
+                isinstance(node, ast.ClassDef)
+                and node.lineno in state.deferred_class_lines
+            ):
                 for statement in node.body:
                     if isinstance(statement, ast.AnnAssign):
                         ids.update(id(sub) for sub in ast.walk(statement.annotation))
@@ -262,9 +257,8 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     @classmethod
     def _import_law_runtime_uses(
         cls,
-        tree: ast.Module,
+        state: m.Infra.ImportLawPass,
         name: str,
-        parents: t.MappingKV[int, ast.AST],
     ) -> bool:
         """Return whether one binding is read anywhere at runtime.
 
@@ -276,18 +270,33 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
             Whether the binding has at least one runtime read.
 
         """
+        return bool(cls._import_law_runtime_reads(state, name))
+
+    @classmethod
+    def _import_law_runtime_reads(
+        cls,
+        state: m.Infra.ImportLawPass,
+        name: str,
+    ) -> tuple[ast.Name, ...]:
+        """Locate runtime reads for both placement and causal diagnostics.
+
+        Returns:
+            Loads of the binding outside deferred annotations and typing guards.
+
+        """
         typing_only = (
-            cls._import_law_annotation_ids(tree)
-            if cls._import_law_defers_annotations(tree)
+            cls._import_law_annotation_ids(state)
+            if cls._import_law_defers_annotations(state.tree)
             else ()
         )
-        return any(
-            isinstance(node, ast.Name)
+        return tuple(
+            node
+            for node in ast.walk(state.tree)
+            if isinstance(node, ast.Name)
             and node.id == name
             and isinstance(node.ctx, ast.Load)
             and id(node) not in typing_only
-            and not cls._import_law_inside_type_checking(node, parents)
-            for node in ast.walk(tree)
+            and not cls._import_law_inside_type_checking(node, state.parents)
         )
 
     @staticmethod

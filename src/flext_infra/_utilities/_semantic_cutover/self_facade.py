@@ -182,11 +182,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
             return updated, (*mro_changes, *changes)
 
         return cls._semantic_edits(
-            tuple(
-                item
-                for item in cls._editable_sources(sources)
-                if item[0] in selected or item[0] in declarations
-            ),
+            cls._editable_sources(sources),
             rewrite,
         )
 

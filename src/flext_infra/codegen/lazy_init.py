@@ -56,8 +56,13 @@ class FlextInfraCodegenLazyInit(
         *,
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         snapshot: p.Infra.WorkspaceSnapshot,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan this candidate's exports through the existing public initializer.
+
+        A selected facade retains its package and private-family projections,
+        plus initializer consumers already changed by authenticated native moves.
+        None preserves the complete repository planning contract.
 
         Returns:
             The same initializer cohort for conformance and source composition.
@@ -67,8 +72,29 @@ class FlextInfraCodegenLazyInit(
             project,
             _sources,
         ):
-            return cls(repository_root=root, project_scope_roots=(root,)).plan_files(
+            planned = cls(repository_root=root, project_scope_roots=(root,)).plan_files(
                 source_project=project, snapshot=snapshot
+            )
+            if selection is None:
+                return planned
+            destination, family = selection
+            family_root = destination.parent / cls.facade_families()[family].directory
+            consumers = {
+                plan.path
+                for plan in declared_files
+                if plan.path.name == c.Infra.INIT_PY
+                and FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect(
+                    plan
+                )
+            }
+            return planned.map(
+                lambda files: tuple(
+                    file
+                    for file in files
+                    if file.path.is_relative_to(family_root)
+                    or file.path == destination.parent / c.Infra.INIT_PY
+                    or file.path in consumers
+                )
             )
 
     @override

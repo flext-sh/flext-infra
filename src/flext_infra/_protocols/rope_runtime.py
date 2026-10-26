@@ -402,6 +402,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             anchors: t.SequenceOf[m.Infra.SourceClassReference],
         ) -> t.VariadicTuple[frozenset[str]]: ...
 
+        def class_defers_annotations(
+            self, qualified: m.Infra.SourceClassReference
+        ) -> bool: ...
+
     @runtime_checkable
     class RopeSemanticModule(RopeNamedObject, Protocol):
         """Module attributes shared by native builtins, packages, and source."""

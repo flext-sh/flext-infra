@@ -117,6 +117,44 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         }
         return graph, modules
 
+    @classmethod
+    def import_cycle_statements(
+        cls,
+        project: p.Infra.RopeProject,
+        cycles: t.MappingKV[str, frozenset[str]],
+        modules: t.MappingKV[Path, str],
+    ) -> t.StrTuple:
+        """Describe native top-level imports of the rejected cyclic candidate.
+
+        Returns:
+            Native statements and their one-based inclusive line ranges.
+
+        Raises:
+            ValueError: If a cyclic module is absent from its candidate view.
+
+        """
+        evidence: list[str] = []
+        for path, module in sorted(modules.items()):
+            if module not in cycles:
+                continue
+            resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
+                project, path
+            )
+            if resource is None:
+                message = f"cyclic candidate resource is absent: {path}"
+                raise ValueError(message)
+            imports = FlextInfraUtilitiesRopeCore.resolve_module_imports(
+                project, resource
+            )
+            evidence.extend(
+                f"{module}:{statement.start_line}-{statement.end_line - 1}: "
+                f"{statement.import_info.get_import_statement()}"
+                for statement in FlextInfraUtilitiesRopeImports.import_statements(
+                    imports
+                )
+            )
+        return tuple(evidence)
+
     @staticmethod
     def project_import_cycles(
         graph: t.MappingKV[str, frozenset[str]],

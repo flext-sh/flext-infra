@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import keyword
-import operator
 import os
 import re
 from collections.abc import Callable, Generator, MutableMapping
@@ -71,32 +70,56 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
         if planned.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(planned)
-        content = cls._validated_rename_content(
-            observed.value, planned.value, target, root
-        )
+        return cls.publish_source_plan(
+            root, target, planned.value, before=observed.value
+        ).map(lambda _written: planned.value)
+
+    @classmethod
+    def publish_source_plan(
+        cls,
+        root: Path,
+        target: Path,
+        planned: m.Infra.SemanticSourcePlan,
+        *,
+        before: m.Cli.AtomicFileState,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish a captured source artifact through the existing guarded owner.
+
+        The caller observes the destination before capturing its source epoch.
+        Explicit rename artifacts retain their concrete model and validation.
+
+        Returns:
+            Published paths, or the original authenticity or publication failure.
+
+        """
+        outcome = r[t.VariadicTuple[Path]]
+        root, target = root.resolve(), target.resolve()
+        if not target.is_relative_to(root):
+            return outcome.fail("source plan output escapes workspace")
+        content = cls._validated_source_plan_content(before, planned, target, root)
         if content.failure:
-            return r[m.Infra.SemanticRenamePlan].from_failure(content)
+            return outcome.from_failure(content)
         lock = u.Infra.mutation_lock_path(root)
         if lock.failure:
-            return r[m.Infra.SemanticRenamePlan].from_failure(lock)
+            return outcome.from_failure(lock)
         return u.Cli.publish_file_changes(
             (
                 m.Cli.FileChange(
                     path=target,
-                    before=observed.value,
+                    before=before,
                     desired_content=f"{content.value}\n".encode(c.DEFAULT_ENCODING),
-                    desired_mode=observed.value.mode
-                    if observed.value.content is not None
+                    desired_mode=before.mode
+                    if before.content is not None
                     else config.Infra.codegen.modes.file_default,
                 ),
             ),
             lock_path=lock.value,
-        ).map(lambda _written: planned.value)
+        )
 
     @staticmethod
-    def _validated_rename_content(
+    def _validated_source_plan_content(
         before: m.Cli.AtomicFileState,
-        planned: m.Infra.SemanticRenamePlan,
+        planned: m.Infra.SemanticSourcePlan,
         target: Path,
         root: Path,
     ) -> p.Result[str]:
@@ -114,21 +137,22 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
             for state in planned.candidate.inputs
         ):
-            return r[str].fail("rename plan output aliases a governed candidate input")
+            return r[str].fail("source plan output aliases a governed candidate input")
+        plan_type = type(planned)
         if before.content is not None:
-            previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
+            previous = plan_type.model_validate_json(before.content)
             if (previous.candidate.workspaces or (previous.candidate.workspace,))[
                 0
             ] != u.Infra.import_project_roots(root)[0].resolve():
-                return r[str].fail("rename plan output belongs to another workspace")
+                return r[str].fail("source plan output belongs to another workspace")
         content = planned.model_dump_json(indent=2, round_trip=True)
         if (
-            m.Infra.SemanticRenamePlan.model_validate_json(content).model_dump_json(
+            plan_type.model_validate_json(content).model_dump_json(
                 indent=2, round_trip=True
             )
             != content
         ):
-            return r[str].fail("rename artifact did not round-trip exactly")
+            return r[str].fail("source artifact did not round-trip exactly")
         return r[str].ok(value=content)
 
     @classmethod
@@ -183,8 +207,11 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
 
         """
         return cls._source_scopes(root, consumer_roots).flat_map(
-            lambda scopes: cls._build_native_source_plan(scopes, ()).map(
-                operator.itemgetter(0)
+            lambda scopes: cls._source_closure(scopes).map(
+                lambda candidate: m.Infra.SemanticSourcePlan(
+                    candidate=candidate,
+                    consumer_roots=scopes[1:],
+                )
             )
         )
 

@@ -134,7 +134,9 @@ class TestsFlextInfraFacadeMemberConstraints:
     def test_value_origin_classification_preserves_declarations(cls) -> None:
         """Keep value bindings while classifying their authenticated declarations."""
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
-            module = snapshot.engine.get_module("flext_core._constants.pydantic")
+            module = u.Infra.require_semantic_module(
+                snapshot.engine.get_module("flext_core._constants.pydantic")
+            )
             owner = module.get_attributes()["FlextConstantsPydantic"].get_object()
             for name, kind in (
                 ("PydanticErrorCodes", c.Infra.FacadeMemberKind.TYPE),

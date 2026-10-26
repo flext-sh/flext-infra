@@ -95,6 +95,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                     snapshot, root, project=source_project
                 )
             )
+            sources = {path: source_project.source_text(path) for path in owned}
             selected = tuple(sorted(owned.intersection(files)))
             resources = cls._import_law_import_resources(
                 source_project, tuple(sorted(owned))
@@ -112,11 +113,13 @@ class FlextInfraUtilitiesImportLawNormalization(
                     },
                 )
             )
+            runtime_diagnostics: dict[str, t.StrTuple] = {}
             plans = cls._import_law_plan_import_sources(
                 location=(root, selected),
                 sources=sources,
                 snapshot=snapshot,
                 native=(source_project, import_graph, member_resolver),
+                runtime_diagnostics=runtime_diagnostics,
             )
             if plans.failure:
                 return plans
@@ -133,27 +136,57 @@ class FlextInfraUtilitiesImportLawNormalization(
                 snapshot.engine, candidate, declared_files=declared_files
             )
             stack.callback(verified.close)
-            cycles = cls.project_import_cycles(
-                cls.snapshot_import_graph(
-                    verified,
-                    resources=cls._import_law_import_resources(
-                        verified, tuple(sorted(owned))
-                    ),
-                )[0]
-            )
-            if cycles:
-                message = (
-                    f"canonical imports retain runtime dependency cycles in {root}: "
-                    f"{sorted({tuple(sorted(group)) for group in cycles.values()})}"
-                )
+            if message := cls._import_law_cycle_message(
+                root, verified, tuple(sorted(owned)), runtime_diagnostics
+            ):
                 return result_type.fail(message)
             return plans
+
+    @classmethod
+    def _import_law_cycle_message(
+        cls,
+        root: Path,
+        project: p.Infra.RopeProject,
+        paths: t.SequenceOf[Path],
+        runtime_diagnostics: t.MappingKV[str, t.StrTuple],
+    ) -> str | None:
+        """Describe retained cycles using the verified candidate's native graph.
+
+        Returns:
+            The cycle diagnostic, or None when the candidate has no cycles.
+
+        """
+        graph, modules = cls.snapshot_import_graph(
+            project, resources=cls._import_law_import_resources(project, paths)
+        )
+        cycles = cls.project_import_cycles(graph)
+        if not cycles:
+            return None
+        statements = cls.import_cycle_statements(project, cycles, modules)
+        reads = tuple(
+            (module, runtime_diagnostics.get(module, ())) for module in sorted(cycles)
+        )
+        edges = tuple(
+            (module, tuple(sorted(graph[module] & cycles[module])))
+            for module in sorted(cycles)
+        )
+        return (
+            f"canonical imports retain runtime dependency cycles in {root}: "
+            f"{sorted({tuple(sorted(group)) for group in cycles.values()})}"
+            f"; candidate_cycle_edges={edges}"
+            f"; candidate_top_level_imports={statements}"
+            f"; normalizer_runtime_reads={reads}"
+        )
 
     @classmethod
     def _import_law_import_resources(
         cls, project: p.Infra.RopeProject, paths: t.SequenceOf[Path]
     ) -> t.VariadicTuple[t.Infra.RopeFile]:
         """Elect only owned sources through their candidate native resources.
+
+        Args:
+            project: The native project providing the candidate resources.
+            paths: The sequence of file paths to resolve into native resources.
 
         Returns:
             Native resources of the selected source cohort.
@@ -185,8 +218,18 @@ class FlextInfraUtilitiesImportLawNormalization(
             t.MappingKV[str, frozenset[str]],
             p.Infra.RopeSourceMemberResolver,
         ],
+        runtime_diagnostics: t.MutableMappingKV[str, t.StrTuple] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Normalize one elected cohort through its shared source resolver.
+
+        Args:
+            location: A pair of the project root and the sequence of file paths to
+              normalize.
+            sources: A mapping from file paths to their source content.
+            snapshot: The workspace snapshot capturing the current state of the files.
+            native: A triple containing the source project, the import graph, and the
+              member resolver.
+            runtime_diagnostics: Optional evidence sink for rejected candidates.
 
         Returns:
             Import plans retaining their original authenticated file states.
@@ -205,6 +248,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 source=source,
                 inputs=(import_graph, sources, source_project),
                 member_resolver=member_resolver,
+                runtime_diagnostics=runtime_diagnostics,
             )
             if normalized is None or normalized == source:
                 continue
@@ -258,10 +302,11 @@ class FlextInfraUtilitiesImportLawNormalization(
             project = FlextInfraUtilitiesRopeRuntime.snapshot_project(origin, candidate)
             stack.callback(project.close)
             observed_graph, modules = cls.snapshot_import_graph(project)
+            working_sources = {path: project.source_text(path) for path in modules}
             members = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver(
                 project,
                 sources={
-                    module: (path, project.source_text(path))
+                    module: (path, working_sources[path])
                     for path, module in modules.items()
                 },
             )
@@ -270,7 +315,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 source=source,
                 inputs=(
                     observed_graph if import_graph is None else import_graph,
-                    candidate,
+                    working_sources,
                     project,
                 ),
                 member_resolver=members,
@@ -304,6 +349,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             p.Infra.RopeProject | None,
         ],
         member_resolver: p.Infra.RopeSourceMemberResolver | None = None,
+        runtime_diagnostics: t.MutableMappingKV[str, t.StrTuple] | None = None,
     ) -> str | None:
         """Normalize against the caller's existing native inventory when supplied.
 
@@ -315,21 +361,22 @@ class FlextInfraUtilitiesImportLawNormalization(
 
         """
         project_root, file_path = location
-        import_graph, sources, project = inputs
+        import_graph = inputs[0]
+        sources = inputs[1]
         if file_path.name == c.Infra.INIT_PY:
             return None
         if (
             located := cls.import_namespace(
-                project_root, file_path, sources=sources, source_project=project
+                project_root, file_path, sources=sources, source_project=inputs[2]
             )
         ) is None:
             return None
         namespace_dir, module = located
         namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
-            namespace_dir, project_root=project_root, source_project=project
+            namespace_dir, project_root=project_root, source_project=inputs[2]
         )
         root_exports = cls.import_lazy_exports(
-            project_root, namespace, sources=sources, source_project=project
+            project_root, namespace, sources=sources, source_project=inputs[2]
         )
         if root_exports is None:
             message = f"{namespace_dir} is a namespace without an owned package init"
@@ -345,8 +392,10 @@ class FlextInfraUtilitiesImportLawNormalization(
         current = FlextInfraUtilitiesCodegenFacadeSyntax.unalias_own_package_imports(
             package=namespace, source=source
         )
+        state: m.Infra.ImportLawPass | None = None
         for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
             tree = ast.parse(current, filename=str(file_path))
+            parents = cls._import_law_parent_map(tree)
             state = m.Infra.ImportLawPass(
                 scope=m.Infra.ImportLawScope(
                     project_root=project_root.resolve(),
@@ -368,11 +417,14 @@ class FlextInfraUtilitiesImportLawNormalization(
                     ),
                 ),
                 tree=tree,
-                parents=cls._import_law_parent_map(tree),
+                parents=parents,
                 bindings=cls._module_bindings(tree),
                 root_exports=root_exports,
                 sources=sources,
-                source_project=project,
+                source_project=inputs[2],
+                deferred_class_lines=cls._import_law_deferred_class_lines(
+                    tree, parents, module, member_resolver
+                ),
             )
             updated = cls._import_law_one_pass(
                 state,
@@ -384,7 +436,85 @@ class FlextInfraUtilitiesImportLawNormalization(
             if updated is None:
                 break
             current = updated
+        if runtime_diagnostics is not None and state is not None:
+            runtime_diagnostics[module] = cls._import_law_runtime_diagnostics(state)
         return current if current != source else None
+
+    @classmethod
+    def _import_law_deferred_class_lines(
+        cls,
+        tree: ast.Module,
+        parents: t.MappingKV[int, ast.AST],
+        module: str,
+        member_resolver: p.Infra.RopeSourceMemberResolver | None,
+    ) -> frozenset[int]:
+        """Collect class lines whose native ancestry defers their annotations.
+
+        Returns:
+            Lines of positively proven deferred class declarations.
+
+        """
+        if member_resolver is None or not cls._import_law_defers_annotations(tree):
+            return frozenset()
+        lines: set[int] = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef) or not any(
+                isinstance(statement, ast.AnnAssign) for statement in node.body
+            ):
+                continue
+            attributes = [node.name]
+            parent = parents.get(id(node))
+            while isinstance(parent, ast.ClassDef):
+                attributes.append(parent.name)
+                parent = parents.get(id(parent))
+            if parent is tree and member_resolver.class_defers_annotations(
+                m.Infra.SourceClassReference(
+                    target=module, attributes=tuple(reversed(attributes))
+                )
+            ):
+                lines.add(node.lineno)
+        return frozenset(lines)
+
+    @classmethod
+    def _import_law_runtime_diagnostics(
+        cls, state: m.Infra.ImportLawPass
+    ) -> t.StrTuple:
+        """Describe the existing classifier's reads without changing placement.
+
+        Returns:
+            Binding positions and their existing lexical classification context.
+
+        """
+        evidence: list[str] = []
+        for node in cls._import_law_iter_imports(state.tree):
+            for alias in node.names:
+                bound = alias.asname or alias.name.partition(".")[0]
+                for read in cls._import_law_runtime_reads(state, bound):
+                    context: list[str] = []
+                    child: ast.AST = read
+                    parent = state.parents.get(id(read))
+                    while parent is not None:
+                        if isinstance(parent, ast.ClassDef):
+                            context.append(
+                                f"class={parent.name}:{parent.lineno},"
+                                "deferred="
+                                f"{parent.lineno in state.deferred_class_lines}"
+                            )
+                        elif isinstance(parent, ast.AnnAssign):
+                            context.append(
+                                f"annotation={parent.lineno}"
+                                if child is parent.annotation
+                                else f"assignment-value={parent.lineno}"
+                            )
+                        elif isinstance(parent, c.Infra.AST_FUNCTION_TYPES):
+                            context.append(f"function={parent.name}:{parent.lineno}")
+                        child, parent = parent, state.parents.get(id(parent))
+                    evidence.append(
+                        f"{bound}@{read.lineno}:{read.col_offset + 1} "
+                        f"parent={type(state.parents[id(read)]).__name__} "
+                        f"context={tuple(context)}"
+                    )
+        return tuple(evidence)
 
     @classmethod
     def _import_law_one_pass(

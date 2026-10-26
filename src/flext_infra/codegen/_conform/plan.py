@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import operator
 import time
 import traceback
 from contextlib import ExitStack
@@ -111,7 +112,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         request: p.Infra.CodegenGenerateRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[m.Infra.CodegenPlan]:
-        """Admit a destination and plan it through its canonical family renderer.
+        """Admit a destination and close its recursive family dependency cohort.
+
+        The selected facade, native component moves, dependent initializers and
+        consumer imports share the existing fixed point and publication owner.
 
         Args:
             request: The conform request containing the root and destination module.
@@ -126,69 +130,74 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         topology = self._planning_workspace(request, root, inputs=inputs)
         if topology.failure:
             return result_type.from_failure(topology)
-        workspace, _target, repository = topology.value
-        file = self._facade_file_plan(root, request.module)
-        if file.failure:
-            return result_type.from_failure(file)
+        workspace, target, repository = topology.value
+        files = self._facade_file_plans(
+            root, request.module, inputs.spec, profile=target.make_profile.value
+        )
+        if files.failure:
+            return result_type.from_failure(files)
         return result_type.ok(
             m.Infra.CodegenPlan(
                 request=request,
                 repositories=(repository,),
                 workspace=workspace,
                 uv_environments=(),
-                files=(file.value,),
+                files=files.value,
                 issues=tuple(self.state.planning_issues),
                 exception=self.state.planning_exception,
             )
         )
 
-    def _facade_file_plan(
+    def _facade_file_plans(
         self,
         root: Path,
         module: str | None,
-    ) -> p.Result[m.Infra.CodegenFilePlan]:
-        """Render an admitted module inside the repository into its file plan.
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        profile: str,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Authenticate one facade and use the existing source convergence owner.
+
+        The current module elects the family; directory spelling never elects a
+        namespace identity. The caller's snapshot authority is restored on exit.
 
         Returns:
-            The facade file plan or its first planning failure.
+            The dependency-complete selected cohort, or its planning failure.
 
         """
-        result_type = r[m.Infra.CodegenFilePlan]
-        with u.Infra.facade_source_project(
-            root, declared_files=self.state.provider_plans or ()
-        ) as (project, sources):
-            selected = self._facade_source_selection(root, module, project, sources)
-            if selected.failure:
-                return result_type.from_failure(selected)
-            destination, mode = selected.value
-            family = self._facade_family(
-                u.Infra.facade_letter_names_at(project, destination)
-            )
-            if family.failure:
-                return result_type.from_failure(family)
-            # Type projection reads only its private family; other renderers
-            # also resolve executable consumers throughout the selected package.
-            scope = destination.parent
-            if family.value == "t":
-                scope /= u.Infra.facade_families()[family.value].directory
-            rendered = self._render_facade(
-                destination,
-                family.value,
-                {
-                    path: source
-                    for path, source in sources.items()
-                    if path == destination or path.is_relative_to(scope)
-                },
-                project=project,
-            )
-        if rendered.failure:
-            return result_type.from_failure(rendered)
-        return self.file_plan(
-            root,
-            destination.relative_to(root).as_posix(),
-            rendered.value,
-            mode=mode,
-        )
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        previous_snapshot = self.state.snapshot
+        with (
+            u.Infra.workspace_snapshot(root, (root,)) as snapshot,
+            self.shared_source_views(),
+        ):
+            self.state.snapshot = snapshot
+            try:
+                cohort = tuple(self.state.provider_plans or ())
+                with self._source_view(root, declared_files=cohort) as (
+                    project,
+                    sources,
+                ):
+                    selected = self._facade_source_selection(
+                        root, module, project, sources
+                    )
+                    if selected.failure:
+                        return result_type.from_failure(selected)
+                    destination, _mode = selected.value
+                    family = self._facade_family(
+                        u.Infra.facade_letter_names_at(project, destination)
+                    )
+                    if family.failure:
+                        return result_type.from_failure(family)
+                return self._converged_custom_sources(
+                    root,
+                    (codegen, profile),
+                    cohort=cohort,
+                    normalize_imports=True,
+                    selection=(destination, c.Infra.FacadeFamily(family.value)),
+                ).map(operator.itemgetter(0))
+            finally:
+                self.state.snapshot = previous_snapshot
 
     @staticmethod
     def _facade_source_selection(
@@ -373,8 +382,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                         return result_type.from_failure(project_inputs)
                     converged = self._converged_custom_sources(
                         project,
-                        project_inputs.value.spec,
-                        profile=participant.role.value,
+                        (project_inputs.value.spec, participant.role.value),
                         cohort=tuple(files.values()),
                         normalize_imports=True,
                     )

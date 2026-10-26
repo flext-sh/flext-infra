@@ -152,12 +152,12 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             The findings whose rule family is the phase's rule.
 
         """
-        rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
+        rule_ids = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase, ())
         return tuple(
             finding
             for finding in findings
             if finding.rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
-            == rule_id
+            in rule_ids
         )
 
     @classmethod
@@ -274,7 +274,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 cls._plan_private_imports(root, sources, selected)
             ),
             c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
-                root, sources, selected
+                rope_workspace, sources, selected
             ),
             c.Infra.SemanticCutoverPhase.MODEL_FIELDS: lambda: cls._plan_model_fields(
                 sources

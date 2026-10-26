@@ -451,7 +451,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 return cls._class_alias_value(
                     temporary,
                     declaration,
-                    primary,
                     binding=binding,
                     visited=visited | {key},
                     classes_only=classes_only,
@@ -598,15 +597,22 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         cls,
         temporary: p.Infra.RopeScope,
         declaration: ast.Assign | ast.AnnAssign,
-        primary: ast.Name,
         *,
         binding: p.Infra.RopePyName,
         visited: frozenset[t.Pair[str, int]],
         classes_only: bool,
     ) -> p.Infra.RopePyName | None:
+        attributes: list[str] = []
+        value = declaration.value
+        while isinstance(value, ast.Attribute):
+            attributes.append(value.attr)
+            value = value.value
+        if not isinstance(value, ast.Name):
+            message = "native class alias has no identifier origin"
+            raise TypeError(message)
         result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
             temporary,
-            primary,
+            value,
         )
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "class RHS lookup returned an invalid native name"
@@ -614,11 +620,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         result = cls.class_assignment_binding(
             result, visited=visited, classes_only=classes_only
         )
-        attributes: list[str] = []
-        value = declaration.value
-        while isinstance(value, ast.Attribute):
-            attributes.append(value.attr)
-            value = value.value
         for attribute in reversed(attributes):
             if result is None:
                 return None
@@ -774,42 +775,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if resolved is not None:
             resolved[binding.imported_module] = path
         return path
-
-    @staticmethod
-    def imported_module_resource(
-        project: p.Infra.RopeProject,
-        binding: p.Infra.RopeImportedName,
-    ) -> p.Infra.RopeResource:
-        """Resolve a declared import through its native Rope resource identity.
-
-        Returns:
-            The exact file or package resource declared by the import.
-
-        Raises:
-            ValueError: If the declared import has no resolvable source resource.
-
-        """
-        imported = binding.imported_module
-        resource = imported.resource
-        if resource is None:
-            name = imported.module_name
-            module = imported.importing_module.get_module()
-            source = module.get_resource()
-            if source is None or (name is None and imported.level == 0):
-                message = (
-                    f"import has no declared module location: {binding.imported_name}"
-                )
-                raise ValueError(message)
-            if imported.level == 0 and name is not None:
-                resource = project.find_module(name, source.parent)
-            else:
-                resource = project.find_relative_module(
-                    name if name is not None else "", source.parent, imported.level
-                )
-        if resource is None:
-            message = f"unresolved imported module: {imported.module_name}"
-            raise ValueError(message)
-        return resource
 
     @classmethod
     def module_imports_for_pymodule(

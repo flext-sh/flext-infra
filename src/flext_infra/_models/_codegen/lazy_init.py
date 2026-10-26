@@ -187,7 +187,10 @@ class FlextInfraModelsCodegenLazyInitModels:
         )
         child_packages_for_lazy: t.StrSequence = m.Field(
             default_factory=tuple,
-            description="Direct child package imports merged at runtime.",
+            description=(
+                "Importable direct child packages recorded as metadata; "
+                "their symbols are not reexported by an ancestor."
+            ),
         )
 
     class QualityGateCheck(m.ArbitraryTypesModel):

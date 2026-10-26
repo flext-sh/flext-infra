@@ -404,12 +404,16 @@ class FlextInfraUtilitiesImportLawPlacement(
         selected: list[ast.alias] = []
         for alias in node.names:
             bound = alias.asname or alias.name.partition(".")[0]
-            if not cls._import_law_runtime_uses(state.tree, bound, state.parents):
+            if not cls._import_law_runtime_uses(state, bound):
                 continue
             if cls._import_law_is_reverse(state, node, alias):
+                reads = cls._import_law_runtime_reads(state, bound)
+                positions = ", ".join(
+                    f"{read.lineno}:{read.col_offset + 1}" for read in reads
+                )
                 msg = (
                     f"{state.scope.file_path}: runtime binding {bound} "
-                    "requires a forbidden reverse namespace import"
+                    f"requires a forbidden reverse namespace import at {positions}"
                 )
                 raise ValueError(msg)
             selected.append(alias)
@@ -467,7 +471,7 @@ class FlextInfraUtilitiesImportLawPlacement(
         """
         bound = alias.asname or alias.name.partition(".")[0]
         reverse = cls._import_law_is_reverse(state, node, alias)
-        if reverse and cls._import_law_runtime_uses(state.tree, bound, state.parents):
+        if reverse and cls._import_law_runtime_uses(state, bound):
             return c.Infra.ImportPlacement.STAY
         if not reverse and not inline:
             return c.Infra.ImportPlacement.STAY

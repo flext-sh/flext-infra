@@ -73,7 +73,6 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
-    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
@@ -81,6 +80,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
     FlextInfraUtilitiesWorkspaceSnapshot,
+    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
 ):
     """Compose the source helpers consumed by the generation operation."""
 

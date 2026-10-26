@@ -256,11 +256,14 @@ class TestsFlextInfraRefactorImportNormalization(
         )
 
     @classmethod
+    @pytest.mark.parametrize("own_provider", [False, True])
     def test_eager_root_dependencies_preserve_bootstrap_imports(
         cls,
         tmp_path: Path,
+        *,
+        own_provider: bool,
     ) -> None:
-        """A loader's dependency stays direct before the root publishes exports."""
+        """Bootstrap retains upstream providers, never an own layer-zero edge."""
         project, package = cls._project(tmp_path)
         initializer = package / "__init__.py"
         initializer.write_text(
@@ -272,10 +275,26 @@ class TestsFlextInfraRefactorImportNormalization(
             "from demo_pkg.bootstrap import Bootstrap\n\ninstall = Bootstrap\n",
             encoding="utf-8",
         )
-        source = "from demo_pkg._models.record import DemoRecord\n\n"
-        source += "class Bootstrap(DemoRecord):\n    pass\n"
+        source = (
+            "from demo_pkg._models.record import DemoRecord\n\n"
+            "class Bootstrap(DemoRecord):\n    pass\n"
+            if own_provider
+            else "from flext_cli import m\n\n"
+            "class Bootstrap(m.ContractModel):\n    pass\n"
+        )
         target = package / "bootstrap.py"
         target.write_text(source, encoding="utf-8")
+        if own_provider:
+            with pytest.raises(
+                ValueError, match="layer-zero module imports its own namespace"
+            ):
+                u.Infra.normalize_import_source(
+                    project_root=project,
+                    file_path=target,
+                    source=source,
+                )
+            tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+            return
         tm.that(
             u.Infra.normalize_import_source(
                 project_root=project,
@@ -284,6 +303,58 @@ class TestsFlextInfraRefactorImportNormalization(
             ),
             eq=None,
         )
+
+    @classmethod
+    @pytest.mark.parametrize("captured", [False, True])
+    @pytest.mark.parametrize(
+        ("letter", "family"),
+        [("r", None), ("u", None), ("m", "m"), ("p", "p"), ("t", "t")],
+    )
+    def test_upstream_capabilities_respect_publication_and_family_role(
+        cls,
+        tmp_path: Path,
+        letter: str,
+        family: str | None,
+        *,
+        captured: bool,
+    ) -> None:
+        """Absent root facets and a family's own primitives keep their provider."""
+        project, package = cls._project(tmp_path)
+        families = u.Infra.facade_families()
+        cls._lazy_init(
+            package,
+            {name: f".{families[name].module}" for name in ("c", "m", "p", "t")},
+        )
+        parent = package if family is None else package / families[family].directory
+        parent.mkdir(parents=True, exist_ok=True)
+        target = parent / "declaration.py"
+        source = f"from flext_cli import {letter}\nprimitive = {letter}\n"
+        target.write_text(source, encoding=c.DEFAULT_ENCODING)
+        if captured:
+            with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_import_normalization(
+                            project,
+                            (target,),
+                            sources={target: source},
+                            declared_files=(),
+                            snapshot=snapshot,
+                        )
+                    ),
+                    eq=(),
+                )
+        else:
+            tm.that(
+                u.Infra.normalize_import_source(
+                    project_root=project,
+                    file_path=target,
+                    source=source,
+                    sources={target: source},
+                ),
+                eq=None,
+            )
+        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @classmethod
     @pytest.mark.parametrize("destination", ["missing", "stale"])

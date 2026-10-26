@@ -29,6 +29,12 @@
 
 ## Runtime is the authority
 
+Generation must remain importable before repairing projections. Authored component
+facades that share ancestors must impose compatible C3 precedence; reordering a
+generated outer facade cannot repair contradictory component hierarchies. Repair
+the authored composition first, then regenerate through `make gen`. Unresolvable
+source ancestry remains an error, never a reason to drop a component silently.
+
 ### Post-install cold atomic resource ownership
 
 The SDK CLI owns atomic IO. The post-install authenticated import guard consumes
@@ -419,7 +425,8 @@ target-only AST and semantic planning before that group's publication. Ordinary
 `mod` accepts repeated `--consumer-roots <absolute-checkout>` options and builds
 the same captured read scope without a manual rename catalog. The request root
 remains the syntax/declaration target; elected consumers are reference readers
-and receive only proven dependency effects. The common coordinate parent is not
+and receive only proven dependency effects. Workspace dispatch retains the exact
+consumer selection on each declared member request. The common coordinate parent is not
 a discovery root. Staged native module destinations retain the captured origin
 mode, as does publication. A plan
 captured before a producer upgrade is not a portable release migration history;
@@ -761,6 +768,9 @@ normalizes aliases. Native folder providers still use their initializer path.
 This index has the same fixed-capture lifetime as the existing derived state.
 Rewritten source requires a new binding; no process-global resolver cache may
 serve another native project or a changed source view.
+The upstream-import pass and its following namespace-base queries reuse that port
+when the pass returns identical source. A changed import starts a new source mapping,
+native module and port together; it never mutates a mapping already held by a resolver.
 Protocol owner additions use the same elected package name as their captured
 declarations when inserting imports. A native module's shortened display name
 must not introduce a new import root during the recursive projection pass.
@@ -792,6 +802,22 @@ Conform supplies its complete initial lazy plan through the existing
 Only the existing unchanged-input and foreign-provider predicate permits seed
 reuse; actual facade or consumer effects still require export replanning.
 Component composition consumes the caller's existing source-view capability.
+The targeted `facades` surface authenticates its existing destination module and
+published family before selecting that package's recursive family cohort. The
+same component, initializer, import-normalization and candidate-admission owners
+close that scope and all native move consumers; an explicit `None` selection means
+all owned families. Unrelated family drift is not added to the selected cohort.
+Native declarations elect an authored methodless composition beside or inside
+its private child domain before any missing identity is derived. Suppliers must
+come from other native domain modules, not the holder's own nested declarations.
+An inherited component is not a competing owner when another candidate is its
+strict native descendant. Elect maximal owners by source ancestry; incomparable
+owners still fail. An existing family `base.py` that is already the domain's
+canonical sibling stays in place rather than being rejected as a relocation.
+Its class name is retained when the native module move places that owner at its
+canonical sibling. The complete source inventory, consumer rewrites, dependent
+initializers and original file witnesses stay in one candidate. The root private
+family's existing `base.py` is not moved or replaced to manufacture a namespace.
 Within the repository planning scope, identical root and effective planned bytes,
 including retirement tombstones, reuse the same native project and bindings.
 Changed candidates bind distinct views before dependent families render; this
@@ -2376,6 +2402,14 @@ star exports reject the entire move before publication, including creation of a
 previously absent destination. Quoted type expressions participate in semantic
 identity checks; ordinary strings, `Literal` values and `Annotated` metadata do not.
 
+Lazy initializer planning publishes only explicit exports of a package's direct
+declaring modules. A child's `__all__` never adds symbols to an ancestor
+initializer, regardless of the family, source tier or directory depth.
+`child_packages_for_lazy` records importable direct child packages as metadata;
+it does not authorize reexports. Explicit facade letters and inherited serving
+contracts continue through the existing letter election. Authored initializers
+retain their declared publications and content.
+
 Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:
 the scalar is bound before lazy installation and omitted from the lazy map. Public
@@ -2757,6 +2791,19 @@ and facade exclusions, test/example exclusions and reexport exclusions still own
 the old counts and unused/removal classification. All-surface evidence must never
 be interpreted as permission to delete a helper or as a dynamic closure proof.
 
+The existing `refactor census` request also accepts explicit `consumer_roots`
+and an optional `source_plan_output` destination for the authenticated
+`SemanticSourcePlan`. This invocation remains read-only: `--check` or the
+existing dry-run mode must be selected before collecting external consumers or
+exporting the source plan. The same captured native closure feeds both census
+evidence and the optional artifact; exporting it does not start a second source
+scan or require a placeholder rename decision. The ordinary census contract is
+unchanged when neither option is supplied. External roots remain exact request
+inputs and never expand through an implicit host-wide inventory.
+Source-only capture returns that authenticated closure directly; it does not
+enter declaration-renaming analysis or recapture the same candidate. Explicit
+rename plans continue to require real, nonempty naming decisions.
+
 `reference_evidence_collected` distinguishes an empty collected result from a
 disabled search (`include_references=False`, or census rule selection without
 `unused`). Evidence covers only the active Rope workspace's indexed files and its
@@ -2832,6 +2879,9 @@ changes without publishing them, and no operation invokes another public verb.
 Batch consumers use `u.Infra.plan_import_normalization`; single-source lint and
 semantic callbacks use `u.Infra.normalize_import_source`. Both public capabilities
 compose the same import-law implementation through the utility facade.
+Batch callers supply their existing `declared_files` plans explicitly, including
+retirements; a live cohort supplies an empty tuple. Both planning and runtime-cycle
+verification retain those tombstones and their original file witnesses.
 
 Concrete class imports use the nearest package that actually publishes that
 source identity. Application modules consume their local facade when its native
@@ -2841,6 +2891,16 @@ runtime dependencies that would introduce a cycle retain their original provider
 Import aliases keep their lexical binding. Unknown origins, conflicting owners
 and incompatible member paths fail before publication; a matching letter or
 directory name never proves identity.
+
+Deferred class annotations stay typing-only when native source ancestry proves
+ordinary class construction through `object`: undecorated declarations, no class
+keywords and no class-construction hook. Inheritance alone does not make annotations
+runtime reads. Decorated, metaclass-driven and unresolved external classes remain
+runtime-sensitive. Initialized `Final` alone does not exempt a field, because
+dataclasses can consume it. Reverse-import failures report runtime-read positions.
+Family ownership comes from catalog-declared private directories or a facade module
+at its namespace root, not a similarly named test category such as
+`tests/unit/utilities/`. Bare nested categories do not assign an import layer.
 
 ## Codemod scanner contract
 
@@ -3124,6 +3184,13 @@ module and the child package's generated initializer. Discovery follows the
 declared facade family and source ownership, including nested domains; it does
 not maintain a separate directory or class catalog. Existing authored
 declarations retain their identity and behavior.
+An owning composition's base order is part of that semantic contract. Two
+individually valid domains can impose opposite precedence on shared ancestors,
+making their generated aggregate impossible to import. Repair the contradictory
+owning composition and preserve its consumed capabilities; do not hand-reorder
+the generated root, drop a capability, or suppress the native C3 failure.
+Generation must retain a jointly valid ancestry for dependent facades before
+publication. A failure while importing that aggregate does not prove any gate ran.
 Native composition ownership includes both domain superclasses and published
 class members supplied by that domain. A facade that publishes input entities
 through aliases retains its authored identity and nested declarations.
@@ -3309,6 +3376,12 @@ restoring handlers or invoking the displaced terminating action; the process
 owner first cancels and reaps its child. Direct termination outside that
 containment retains the previous native signal action. A checkpoint publication
 failure remains visible without replacing the command's first failure.
+
+The native profile owner prepares its configured output directory before starting
+the operation or registering signal checkpoints. A planning rejection can occur
+before generation creates any report artifacts; it must still leave the same
+immutable profile and readable report. Directory preparation errors fail before
+the profiled operation, not during finalization after its original failure.
 
 The complete invocation, including profile publication and child cleanup, keeps
 the operator's 60-second budget. Reserve termination time inside that budget;
