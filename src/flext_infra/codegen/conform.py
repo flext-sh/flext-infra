@@ -1,4 +1,7 @@
-"""Explicit conformance observation and repair composition.
+"""Explicit generation, conformance observation and repair composition.
+
+The generation executor remains private. Its public operation is inherited through
+the owning Generate subfacade; conformance retains its distinct request contract.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,16 +11,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_cli import u
+
+from flext_infra import c, m, p, r, t
+from flext_infra import workspace as workspace_services
+from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceNativeReference,
-)
 
 
 class FlextInfraCodegenConform:
     """Observe or repair declarations before the shared projection publication."""
+
+    class Generate(FlextInfraCodegenConformExecute):
+        """Expose the existing generation operation through its owning MRO."""
 
     @classmethod
     def execute_request(
@@ -45,7 +51,9 @@ class FlextInfraCodegenConform:
             return r[p.Infra.CodegenResult].from_failure(bound)
         executor = bound.value
         if admitted.mode is c.Infra.CodegenConformMode.CHECK:
-            with FlextInfraWorkspaceNativeReference.compilation_scope():
+            with (
+                workspace_services.FlextInfraWorkspaceNativeReference.compilation_scope()
+            ):
                 return executor.check_managed(admitted)
         governed = cls._migrate_governed_declarations(executor, admitted)
         if governed.failure:
@@ -77,7 +85,7 @@ class FlextInfraCodegenConform:
             planning issue, otherwise the migration failure.
 
         """
-        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        inputs = generation.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[bool].from_failure(inputs)
         contract = executor.surface_contract(request.what, codegen=inputs.value.spec)
@@ -97,21 +105,21 @@ class FlextInfraCodegenConform:
             Success after publishing every selected target's migration.
 
         """
-        targets = u.Infra.repository_operation_targets(request.root, request.scope)
+        targets = generation.repository_operation_targets(request.root, request.scope)
         if targets.failure:
             return r[bool].from_failure(targets)
         kind = request.declaration_kind
         files: list[m.Infra.CodegenFilePlan] = []
         for target in targets.value:
             if target.managed is False or not (
-                u.Infra.workspace_manifest_path(target.root).is_file()
+                generation.workspace_manifest_path(target.root).is_file()
                 or (
                     request.declaration_kind is not None
                     and target.root.resolve() == request.root.resolve()
                 )
             ):
                 continue
-            inputs = u.Infra.load_codegen_inputs(target.root)
+            inputs = generation.load_codegen_inputs(target.root)
             if inputs.failure:
                 return r[bool].from_failure(inputs)
             planned = (
@@ -126,7 +134,14 @@ class FlextInfraCodegenConform:
             if planned.failure:
                 return r[bool].from_failure(planned)
             files.extend(planned.value)
-        return u.Infra.publish_codegen_plans(request.root, files).map(lambda _: True)
+        ports = executor.state.ports
+        if ports is None:
+            return r[bool].fail(
+                "conformance requires facade-wired file publication"
+            )
+        return ports.file_publisher.publish_codegen_plans(request.root, files).map(
+            lambda _: True
+        )
 
     @staticmethod
     def _seed_declared_beads_identity(
@@ -197,7 +212,9 @@ class FlextInfraCodegenConform:
         root = request.root.expanduser().resolve()
         workspace = executor.state.initial_workspace
         if workspace is None:
-            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+            workspace_result = (
+                workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(root)
+            )
             if workspace_result.failure:
                 return r[bool].from_failure(workspace_result)
             workspace = workspace_result.value

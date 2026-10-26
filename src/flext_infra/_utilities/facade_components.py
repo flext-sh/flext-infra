@@ -1,4 +1,4 @@
-"""Facade component relocation: a family class read as a namespace moves to its letter.
+"""Facade component calls use their identity-proven composed public receiver.
 
 Every facade letter, and every namespace class nested in it, composes family
 component classes by MRO. A consumer that reads a member through the component
@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
 from importlib.metadata import packages_distributions
@@ -19,13 +20,26 @@ from pathlib import Path
 
 from flext_infra import c, config, p, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-    FlextInfraUtilitiesCodemodNativeUtilities,
-    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesPyproject,
+)
+from flext_infra._utilities._codemod.codemod_native_package_utilities import (
+    FlextInfraUtilitiesCodemodNativePackageUtilities,
+)
+from flext_infra._utilities._codemod.codemod_native_utilities import (
+    FlextInfraUtilitiesCodemodNativeUtilities,
+)
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities.workspace_snapshot import (
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
+from flext_infra._utilities._semantic_cutover.declaration_payload import (
+    FlextInfraUtilitiesDeclarationPayload,
 )
 
 
@@ -40,7 +54,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         A facade letter, or a namespace class nested in it, composes family
         component classes by MRO (``class Infra(FlextInfraConstantsPytest)``).
-        Each public member a lineage component declares yields the exact
+        Each public method a lineage component declares yields the exact
         ``Component.member`` text under ``letter`` or ``letter.Namespace``
         when the namespace binds the identical object; a reference two
         namespaces would both claim is ambiguous and never relocates.
@@ -50,19 +64,14 @@ class FlextInfraUtilitiesFacadeComponents:
             ``letter[.Namespace]`` target.
 
         """
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
-        letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         claims: dict[str, set[t.StrPair]] = {}
-        for root in FlextInfraUtilitiesFacadeMembers.facade_member_lineage(
-            package, letters, source_project=source_project
-        ):
-            for holder, target in cls._facade_namespace_holders(
-                root, letters, source_project=source_project
-            ):
-                for reference in cls._composed_references(
-                    root, letters, holder, source_project=source_project
-                ):
-                    claims.setdefault(reference, set()).add((root, target))
+        for (base, member), targets in cls._component_claims(
+            project, source_project=source_project
+        ).items():
+            reference = f"{base.get_name()}.{member}"
+            claims.setdefault(reference, set()).update(
+                (root, target) for root, target, _holder in targets
+            )
         references: dict[t.StrPair, set[str]] = {}
         for reference, targets in claims.items():
             if len(targets) == 1:
@@ -73,7 +82,7 @@ class FlextInfraUtilitiesFacadeComponents:
     def _facade_namespace_holders(
         root: str, letters: t.StrSequence, *, source_project: p.Infra.RopeProject
     ) -> t.SequenceOf[tuple[p.Infra.RopeClassObject, str]]:
-        """List each facade letter of ``root`` and every namespace class it nests.
+        """List each facade letter and its recursively nested public namespaces.
 
         Returns:
             Each holder class with its ``letter[.Namespace]`` reference text.
@@ -86,17 +95,41 @@ class FlextInfraUtilitiesFacadeComponents:
         for letter, facade in FlextInfraUtilitiesFacadeMembers.facade_source_classes(
             root, letters, source_project=source_project
         ).items():
-            holders.append((facade, letter))
-            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(facade):
-                message = f"facade namespace has no native scope: {root}.{letter}"
-                raise ValueError(message)
-            for nested in facade.get_scope().get_scopes():
-                if nested.get_kind() == "Class":
+            pending = [(facade, letter)]
+            while pending:
+                holder, target = pending.pop()
+                holders.append((holder, target))
+                if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(holder):
+                    message = f"facade namespace has no native scope: {root}.{target}"
+                    raise ValueError(message)
+                for nested in holder.get_scope().get_scopes():
+                    if nested.get_kind() != "Class":
+                        continue
                     value = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
-                        nested.pyobject, f"{root}.{letter}"
+                        nested.pyobject, f"{root}.{target}"
                     )
-                    holders.append((value, f"{letter}.{value.get_name()}"))
+                    if not value.get_name().startswith("_"):
+                        pending.append((value, f"{target}.{value.get_name()}"))
         return tuple(holders)
+
+    @staticmethod
+    def _component_ancestors(
+        holder: p.Infra.RopeClassObject,
+    ) -> t.VariadicTuple[p.Infra.RopeClassObject]:
+        """Traverse native ancestry without electing a second method order."""
+        pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(holder))
+        seen: set[p.Infra.RopeClassObject] = set()
+        ancestors: list[p.Infra.RopeClassObject] = []
+        while pending:
+            base = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                pending.pop(), "facade component ancestry"
+            )
+            if base in seen:
+                continue
+            seen.add(base)
+            ancestors.append(base)
+            pending.extend(FlextInfraUtilitiesDeclarationPayload.direct_bases(base))
+        return tuple(ancestors)
 
     @classmethod
     def _composed_references(
@@ -107,7 +140,7 @@ class FlextInfraUtilitiesFacadeComponents:
         *,
         source_project: p.Infra.RopeProject,
     ) -> t.StrSequence:
-        """Reference each member a component base of ``holder`` composes into it.
+        """Reference each method a component ancestor composes into ``holder``.
 
         A base is a component when ``root`` declares it and it is not itself a
         facade letter of ``root``; its public member counts when the holder
@@ -117,6 +150,23 @@ class FlextInfraUtilitiesFacadeComponents:
             The exact ``Component.member`` texts.
 
         """
+        return tuple(
+            f"{base.get_name()}.{member}"
+            for base, member in cls._composed_methods(
+                root, letters, holder, source_project=source_project
+            )
+        )
+
+    @classmethod
+    def _composed_methods(
+        cls,
+        root: str,
+        letters: t.StrSequence,
+        holder: p.Infra.RopeClassObject,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> t.SequenceOf[t.Pair[p.Infra.RopeClassObject, str]]:
+        """Keep component receivers only when their effective method is identical."""
         members = FlextInfraUtilitiesFacadeMembers
         facades = tuple(
             members.facade_source_classes(
@@ -127,10 +177,9 @@ class FlextInfraUtilitiesFacadeComponents:
             holder, source_project=source_project
         )
         return tuple(
-            f"{base.get_name()}.{member}"
-            for candidate in FlextInfraUtilitiesDeclarationPayload.direct_bases(holder)
-            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base := candidate)
-            and (module := base.get_module()) is not None
+            (base, member)
+            for base in cls._component_ancestors(holder)
+            if (module := base.get_module()) is not None
             and (module.get_name() == root or module.get_name().startswith(f"{root}."))
             and base not in facades
             for member, binding in members.facade_source_members(
@@ -139,6 +188,7 @@ class FlextInfraUtilitiesFacadeComponents:
             if members.declared_by_package(
                 base, member, root, source_project=source_project
             )
+            and FlextInfraUtilitiesRopeRuntimeTypes.py_function(binding.get_object())
             and member in holder_members
             and FlextInfraUtilitiesRopeRuntimeModules.same_name(
                 holder_members[member], binding
@@ -146,12 +196,119 @@ class FlextInfraUtilitiesFacadeComponents:
         )
 
     @classmethod
+    def _component_claims(
+        cls, project: Path, *, source_project: p.Infra.RopeProject
+    ) -> t.MappingKV[
+        t.Pair[p.Infra.RopeClassObject, str],
+        t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]],
+    ]:
+        """Retain native receiver identities while discovering public composition."""
+        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
+        claims: dict[
+            t.Pair[p.Infra.RopeClassObject, str],
+            list[t.Triple[str, str, p.Infra.RopeClassObject]],
+        ] = {}
+        for root in FlextInfraUtilitiesFacadeMembers.facade_member_lineage(
+            package, letters, source_project=source_project
+        ):
+            for holder, target in cls._facade_namespace_holders(
+                root, letters, source_project=source_project
+            ):
+                for identity in cls._composed_methods(
+                    root, letters, holder, source_project=source_project
+                ):
+                    claims.setdefault(identity, []).append((root, target, holder))
+        return claims
+
+    @staticmethod
+    def _component_facade(value: p.Infra.RopeClassObject) -> bool:
+        """Recognize a sibling facade backed by its native private child domain."""
+        module = value.get_module()
+        resource = None if module is None else module.get_resource()
+        return (
+            resource is not None
+            and not resource.is_folder()
+            and resource.parent.has_child(f"_{Path(resource.real_path).stem}")
+        )
+
+    @classmethod
+    def _component_calls(
+        cls,
+        module: p.Infra.RopePyModule,
+        claims: t.MappingKV[
+            t.Pair[p.Infra.RopeClassObject, str],
+            t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]],
+        ],
+    ) -> t.SequenceOf[t.Triple[ast.Attribute, str, str]]:
+        """Prove both the imported component and its lexical facade receiver."""
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            message = f"component consumer has no native module tree: {module.get_name()}"
+            raise TypeError(message)
+        bases = {
+            id(node)
+            for declaration in ast.walk(tree)
+            if isinstance(declaration, ast.ClassDef)
+            for base in declaration.bases
+            for node in ast.walk(base)
+        }
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        references: list[t.Triple[ast.Attribute, str, str]] = []
+        for call in ast.walk(tree):
+            if not isinstance(call, ast.Call) or not isinstance(
+                reference := call.func, ast.Attribute
+            ) or id(reference) in bases:
+                continue
+            offset = runtime.source_offset(module.source_code, reference)
+            scope = module.get_source_binding_index().context_at(offset).environment
+            receiver = runtime.resolve_symbol(scope, reference.value)
+            if receiver is None or not types.abstract_class(
+                component := receiver.get_object()
+            ) or cls._component_facade(component):
+                continue
+            targets = claims.get((component, reference.attr), ())
+            if not targets:
+                continue
+            original = runtime.resolve_symbol(scope, reference)
+            if original is None or not types.py_function(original.get_object()):
+                continue
+            destinations: set[str] = set()
+            for _root, target, holder in targets:
+                public = runtime.resolve_symbol(
+                    scope, ast.parse(target, mode="eval").body
+                )
+                if public is None or public.get_object() is not holder:
+                    continue
+                destination = f"{target}.{reference.attr}"
+                actual = runtime.resolve_symbol(
+                    scope, ast.parse(destination, mode="eval").body
+                )
+                if actual is not None and runtime.same_name(original, actual):
+                    destinations.add(destination)
+            if len(destinations) > 1:
+                message = (
+                    "component method has competing bound facades: "
+                    f"{module.get_name()}:{ast.unparse(reference)}: "
+                    f"{sorted(destinations)}"
+                )
+                raise ValueError(message)
+            if destinations:
+                text = ast.get_source_segment(module.source_code, reference)
+                if text is None:
+                    message = "component method has no native source segment"
+                    raise ValueError(message)
+                references.append((reference, text, next(iter(destinations))))
+        return tuple(references)
+
+    @classmethod
     def codemod_facade_component_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> t.MappingKV[str, t.JsonMapping]:
         """Render the one rule relocating every component reference to its namespace.
 
-        ``Component.member`` becomes ``letter.Namespace.member`` where the
+        ``Component.method(...)`` becomes ``letter.Namespace.method(...)`` where the
         component is bound by a module-level import, the letter is bound by a
         module-level import of the package that composes the namespace (the
         own package for own components, any lineage package for upstream
@@ -201,6 +358,16 @@ class FlextInfraUtilitiesFacadeComponents:
                 "rule": {
                     "all": [
                         {"kind": "attribute"},
+                        {"inside": {"kind": "call", "field": "function"}},
+                        {
+                            "not": {
+                                "inside": {
+                                    "kind": "class_definition",
+                                    "field": "superclasses",
+                                    "stopBy": "end",
+                                }
+                            }
+                        },
                         {"pattern": "$REF"},
                         {"pattern": "$COMPONENT.$MEMBER"},
                         {

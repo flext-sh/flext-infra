@@ -361,6 +361,13 @@ map must not remove gates from that operation. Pytest's existing typed runner ow
 its process deadline. The Make projection passes that policy once, without an
 additional outer timeout or independent profiling-report location.
 
+The existing `refactor apply-renames` package-bound mapping also covers bare
+imported class references. Native qualified-name metadata authenticates each use;
+the native workspace authenticates the destination before planning. Import and
+declaration tokens and string payloads are not renamed. The existing publisher
+adds the public receiver import and removes the unused private import. A competing
+lexical receiver binding rejects the candidate rather than capturing another name.
+
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
 callable, or module and its intended name. `consumer_roots` is an optional JSON
@@ -667,6 +674,11 @@ planned project view. Local scope, value shadowing, module-as-base, cyclic route
 and unknown bindings retain their native failure; spelling alone never proves
 that a base can be dropped. No private import or live-disk replacement may bypass
 that public source provenance.
+The upstream import and the locally published facade letter must have distinct
+bindings. Reassigning an imported letter to the local class makes that export a
+variable rather than a type alias for static consumers. Treat the local publication
+as an occupied name and use the existing package-qualified upstream import alias;
+preserve the public letter, class identity and declaration-time base references.
 The runtime-base inventory retains its exact native declaring module by reference
 through binding lookup. A native module display name is not an import path:
 search-root election may shorten it or collide with another package. Captured
@@ -674,6 +686,11 @@ providers are elected by exact resource identity in the supplied source mapping;
 their planned bytes form the declaration and its binding together. Reopening a
 provider by a reconstructed name, replacing planned bytes with original source,
 or accepting ambiguous resource ownership is forbidden.
+The inventory owns provider election for both lexical and runtime-base consumers.
+Cached native modules retain identity only when their source matches the captured
+bytes; resource equality alone does not authenticate a module cache entry. Derived
+text receives a provider built from that capture, and explicit mismatched providers
+remain errors. Both consumers pass the same request and elected provider explicitly.
 Provider publication reads the completed source-binding inventory, including
 declared lazy exports and assignments after class declarations, before using
 native import inference. An explicit unknown source value is an error, not
@@ -726,6 +743,16 @@ must not introduce a new import root during the recursive projection pass.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
+
+Generation, modernization, lint repair and read-only checks consume the same
+import planner. The planner elects the nearest lazy publisher from the captured
+exports and resolves inherited facade members through their originating
+declarations. A facade's construction dependencies retain their upstream owners;
+rewriting a consumer must not introduce a runtime cycle or change a referenced
+binding. Imports, facade projections and lazy exports form one candidate before
+publication. Unsupported or ambiguous bindings fail with their original cause.
+Services receive this capability through a typed functional port; native syntax
+and analysis objects remain inside the owning facade families.
 
 ## Namespace migration
 
@@ -839,6 +866,9 @@ The generation CLI reports repository, planned-file and written-file counts from
 its returned typed publication receipt. A successful repeated invocation with
 zero written files proves that receipt's generated population required no effect;
 exit status alone does not prove convergence.
+Planning diagnostics without an exception remain failures. Publishing admitted
+sibling outputs does not turn such a plan into success, and read-only conformance
+retains the same planning failure even when its generated files are current.
 
 Direnv confines its isolated Mise configuration directories to the native
 activation subprocess. The activated shell retains the host's native shim
@@ -1944,6 +1974,9 @@ A separately parsed AST has no native node-identity context and must not replace
 that lookup. Every declared base must resolve; an omitted native superclass is
 an error, not permission to drop a base. Same-name class publications inside the
 namespace remain authored bindings and do not change header lookup semantics.
+Upstream import collision checks use that same declaration-time binding for
+every nested class header. A preceding enclosing-class binding still reserves
+its name; an already imported alias for the same captured owner does not.
 After completeness validation, each returned superclass is paired in declaration
 order with its AST base and admitted by the strict native-class guard before any
 ancestor traversal. A rejection names that exact expression, position, physical
@@ -2726,6 +2759,24 @@ The local service-import law is
 authoritative: a conflicting named-import candidate requires explicit contract
 resolution rather than silently substituting an import or inventing undeclared exports.
 
+## Import normalization
+
+The import-law utility owns one source planner for generation, modification,
+lint repair and verification. It consumes the existing workspace snapshot and
+proposed source cohort through a functional port; native source-engine objects
+remain inside the utility boundary. Applying operations publish its typed file
+plans through their existing journal. Verification reports the same pending
+changes without publishing them, and no operation invokes another public verb.
+
+Concrete class imports use the nearest package that actually publishes that
+source identity. Application modules consume their local facade when its native
+MRO includes the imported provider and the consumed member paths resolve through
+that composition. Declaration families, facade construction, bootstrap inputs and
+runtime dependencies that would introduce a cycle retain their original provider.
+Import aliases keep their lexical binding. Unknown origins, conflicting owners
+and incompatible member paths fail before publication; a matching letter or
+directory name never proves identity.
+
 ## Codemod scanner contract
 
 Source-file discovery uses one pruned traversal per selected project, without a
@@ -2899,6 +2950,16 @@ transitive dependencies remain available; this boundary does not promise lazy
 resolution per subcommand or measured startup gains. It does not combine native
 processes or replace their interpreter and outcome receipts.
 
+The generate and conform command declarations belong to the codegen handler
+family inherited by the public API. Their request models and caller-bound
+handlers supply the existing CLI result-route contract directly. The CLI
+formats the typed receipt only at its output boundary; API callers retain the
+original receipt and the caller's settings, context and injected ports.
+The shared CLI result-route factory receives the framework-validated request
+instance without serializing or revalidating it. Failure metadata and causes
+retain their original Result boundary, and no success marker replaces the
+operation's receipt before formatting.
+
 The infrastructure CLI profiler starts before importing its public CLI facade.
 Each completed invocation retains a uniquely named raw profile beside the latest
 profile through that same publisher. It also retains the previous completed
@@ -2986,6 +3047,32 @@ functions. Native before/after execution and current profiling must establish
 the performance result without reducing scope or raising deadlines.
 
 ## Workspace snapshot and analysis engine
+
+Recursive component facades use the existing family declaration renderer and
+native C3 ordering. Each private component domain publishes through its sibling
+module and the child package's generated initializer. Discovery follows the
+declared facade family and source ownership, including nested domains; it does
+not maintain a separate directory or class catalog. Existing authored
+declarations retain their identity and behavior.
+Native composition ownership includes both domain superclasses and published
+class members supplied by that domain. A facade that publishes input entities
+through aliases retains its authored identity and nested declarations.
+
+Component-call correction follows the same native family composition through
+all ancestor components and nested namespaces. It rewrites a direct component
+method call only when the bound public facade resolves the identical callable.
+Class construction, base expressions and entity/type references retain their
+existing declarations. Consumers without a bound facade and calls within the
+owning private family require the separate semantic receiver cutover; textual
+class-name replacement does not authorize those rewrites.
+
+The component planner receives typed file plans and the repository snapshot.
+It retains original physical witnesses, additions and retirements through each
+fresh candidate view, and returns file plans to the same atomic publisher.
+Domain discovery uses the snapshot's repository ownership inventory, so nested
+members retain their own generation pass while remaining native import providers.
+Dependent child initializers and the root family facade belong to that same
+candidate before runtime acceptance.
 
 | Infra declaration | FLEXT architectural declaration |
 | --- | --- |
@@ -3088,6 +3175,20 @@ the same source to find receiver references.
 Tooling derived from planned Python sources uses that same injected view for
 first-party namespace discovery as well as runtime bases. It must not reopen
 physical workspace metadata while deriving the planned artifact.
+The lazy-initializer orchestrator binds its existing planning, rendering, source-view
+and snapshot owners directly. Its first-party namespace phase likewise binds the
+consumed utilities directly and loads runtime detector and dependency services only
+when their operations need them. Neither initializer planning nor source-view
+namespace discovery composes the generated root utility facade that it may need to
+repair. Publication remains with the same conformance publisher; these dependency
+boundaries introduce no alternate generator or initializer writer.
+Conformance binds source-planning capabilities through the existing Codegen domain
+facade, never through the generated root utility aggregate or a mirrored `u` facade.
+That domain composes the existing capability owners by MRO; public orchestrators do
+not flatten their private helper methods into another implementation. Runtime-only
+workspace, dependency and validation services remain lazily selected from their
+existing package exports when their operations are exercised. These bindings retain
+the same planner, source snapshot, admission guards and injected publisher.
 Native project construction belongs with the existing source-project factories;
 module queries inherit that capability through the runtime facade. Catalog
 utility rules use the declared provider-rule owner directly, without a second
@@ -3096,11 +3197,16 @@ catalog reader.
 Current state (2026-10-26): the one-project-per-repository contract is accepted in
 ADR-028 Decision 17. Module-level identity reuse is partially implemented; nested class
 qualnames, publication refresh, and the remaining consumers of source-base analysis are
-still in the `flext-1engx.15` cutover. Managed conformance currently retains a source
-engine per distinct planned view in some repository paths, while the provider pass uses
-the repository workspace engine. That split violates the accepted target until each
-repository invocation has one shared project with proven provider invalidation and
-member-scoped bindings. This status is not a performance or convergence receipt.
+still in the `flext-1engx.15` cutover. Generation retains a separate repository
+snapshot through its lazy-provider and managed passes; nested inventory membership
+does not enlarge that repository's native source election. Managed source views
+without declared effects reuse that repository's engine and authenticated reads.
+Scoped lazy planning indexes that repository's own inventory; the outer declared
+repository loop owns the nested checkouts rather than indexing them again for
+each ancestor's initializer plan.
+Effectful candidate views still open a distinct overlay, so the complete target
+remains unmet until provider invalidation updates the one bound project safely.
+This status is not a performance or convergence receipt.
 
 ### Profiling a root verb
 

@@ -1,4 +1,4 @@
-"""Canonical FLEXT import-law enforcement engine.
+"""Refactor transport for the canonical import-law utility capability.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,106 +6,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.refactor import (
-    FlextInfraImportNormalizationPlacementMixin,
-    FlextInfraImportNormalizationRoutesMixin,
-)
+from flext_infra import u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from pathlib import Path
+
+    from flext_infra import m, p, t
 
 
-class FlextInfraImportNormalization(
-    FlextInfraImportNormalizationRoutesMixin,
-    FlextInfraImportNormalizationPlacementMixin,
-):
-    """Rewrite one module's imports into the FLEXT import law.
+class FlextInfraImportNormalization:
+    """Delegate refactor consumers to the shared source import owner."""
 
-    The law (operator-ruling-2026-10-08-import-law), applied to every module
-    of a namespace (the source package or an internal tier such as
-    ``tests``) except the generated package initializers:
-
-    1. Every import lives at module level; ``try/except ImportError`` guards
-       become plain imports.
-    2. Imports follow the tooling layer order (settings, config, c, t, p, m,
-       u, other, base, services, api, cli): a reverse import read only in
-       annotations moves under ``if TYPE_CHECKING:``; a reverse import read
-       at runtime keeps its place and its finding, for manual repair.
-    3. A root alias (facade and operational letters, ``config``,
-       ``settings``, names the namespace root re-exports) binds through the
-       module's own namespace root; facade modules keep the letters they
-       declare; family packages and runtime facade dependencies retain their
-       external providers, and settings/config modules keep their own law.
-    4. A concrete object binds through the nearest package ``__init__`` that
-       publishes it lazily.
-    5. A root alias the module reads but binds nowhere is imported from its
-       namespace root; an alias imported from the module's own root that the
-       module also defines is dropped.
-
-    ``make mod`` runs it over every governed file; the ``make fix`` lint
-    recipe ``normalize-imports`` runs it over each file Ruff reports for
-    ``import-outside-top-level``, so both verbs converge on one fixed point.
-    """
-
-    @classmethod
-    def plan_files(
-        cls,
-        project_root: Path,
-        files: t.SequenceOf[Path],
-        *,
-        sources: t.MappingKV[Path, str],
-        rope_project: p.Infra.RopeProject,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Plan import rewrites against the working sources.
-
-        Returns:
-            One plan per rewritten file, or the first planning failure.
-
-        """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        snapshot = u.Infra.snapshot_project(rope_project, sources)
-        import_graph, _modules = u.Infra.snapshot_import_graph(snapshot)
-        plans: list[m.Infra.CodegenFilePlan] = []
-        for path in files:
-            if not path.is_relative_to(project_root):
-                return result_type.fail(
-                    f"import declaration is outside its selected project: {path}"
-                )
-            source = sources[path]
-            if source.startswith(c.Infra.AUTOGEN_HEADER):
-                continue
-            normalized = cls._normalize_source(
-                location=(project_root, path),
-                source=source,
-                inputs=(import_graph, sources, snapshot),
-            )
-            if normalized is None or normalized == source:
-                continue
-            before = u.Infra.codegen_target_snapshot(path)
-            if before.failure:
-                return result_type.from_failure(before)
-            plans.append(
-                m.Infra.CodegenFilePlan(
-                    project=project_root,
-                    path=path,
-                    before=before.value,
-                    desired_content=normalized.encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.value.mode
-                    if before.value.content is not None
-                    else config.Infra.codegen.modes.file_default,
-                    owner="import-normalization",
-                )
-            )
-        return result_type.ok(tuple(plans))
-
-    @classmethod
+    @staticmethod
     def normalize_source(
-        cls,
         *,
         project_root: Path,
         file_path: Path,
@@ -113,242 +28,40 @@ class FlextInfraImportNormalization(
         import_graph: t.MappingKV[str, frozenset[str]] | None = None,
         sources: t.MappingKV[Path, str] | None = None,
     ) -> str | None:
-        """Return the canonical form of one module, or ``None`` when unchanged.
+        """Return the shared utility's canonical module imports.
 
         Returns:
-            The rewritten source, or ``None`` when the module is out of scope
-            or already canonical.
+            Canonical source, or no change at the fixed point.
 
         """
-        return cls._normalize_source(
-            location=(project_root, file_path),
+        return u.Infra.normalize_import_source(
+            project_root=project_root,
+            file_path=file_path,
             source=source,
-            inputs=(import_graph, sources, None),
+            import_graph=import_graph,
+            sources=sources,
         )
-
-    @classmethod
-    def _normalize_source(
-        cls,
-        *,
-        location: t.Pair[Path, Path],
-        source: str,
-        inputs: t.Triple[
-            t.MappingKV[str, frozenset[str]] | None,
-            t.MappingKV[Path, str] | None,
-            p.Infra.RopeProject | None,
-        ],
-    ) -> str | None:
-        """Normalize against the caller's existing native inventory when supplied.
-
-        Returns:
-            The canonical source, or None at the fixed point.
-
-        Raises:
-            ValueError: If the namespace has no owned package initializer.
-
-        """
-        project_root, file_path = location
-        import_graph, sources, _ = inputs
-        if file_path.name == c.Infra.INIT_PY:
-            return None
-        if (
-            located := u.Infra.import_namespace(
-                project_root, file_path, sources=sources
-            )
-        ) is None:
-            return None
-        namespace_dir, module = located
-        root_exports = u.Infra.import_lazy_exports(
-            project_root, namespace_dir.name, sources=sources
-        )
-        if root_exports is None:
-            msg = f"{namespace_dir} is a namespace without an owned package init"
-            raise ValueError(msg)
-        if import_graph is None:
-            import_graph, _modules = u.Infra.project_import_graph(project_root)
-        facade_dependencies = u.Infra.import_facade_dependencies(
-            module,
-            root_exports,
-            import_graph,
-        )
-        current = u.Infra.unalias_own_package_imports(
-            package=namespace_dir.name, source=source
-        )
-        for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
-            tree = ast.parse(current, filename=str(file_path))
-            state = m.Infra.ImportLawPass(
-                scope=m.Infra.ImportLawScope(
-                    project_root=project_root.resolve(),
-                    file_path=file_path,
-                    namespace_dir=namespace_dir,
-                    module=module,
-                    layer=u.Infra.module_import_layer(module),
-                    own_exports=cls._declared_exports(tree),
-                    facade_dependencies=facade_dependencies,
-                    family_letter=cls.family_letter(namespace_dir, file_path),
-                    direct_imports=u.Infra.import_direct_module(
-                        namespace_dir,
-                        file_path,
-                    )
-                    or u.Infra.import_bootstrap_dependency(
-                        namespace_dir.name,
-                        module,
-                        import_graph,
-                    ),
-                ),
-                tree=tree,
-                parents=cls._parent_map(tree),
-                bindings=cls._module_bindings(tree),
-                root_exports=root_exports,
-            )
-            updated = cls._one_pass(
-                state, current, sources=sources, rope_project=inputs[2]
-            )
-            if updated is None:
-                break
-            current = updated
-        return current if current != source else None
-
-    @classmethod
-    def _one_pass(
-        cls,
-        state: m.Infra.ImportLawPass,
-        source: str,
-        *,
-        sources: t.MappingKV[Path, str] | None = None,
-        rope_project: p.Infra.RopeProject | None = None,
-    ) -> str | None:
-        """Apply the first rewrite category that changes the module.
-
-        Every category's edits are computed against the text they mutate, so
-        categories never share a pass; the caller re-parses between passes.
-
-        Returns:
-            The rewritten source, or ``None`` when every category is a no-op.
-
-        Raises:
-            ValueError: If one category plans overlapping edits.
-
-        """
-        lines = source.splitlines()
-        cls._validate_import_boundary(state)
-        builders = (
-            lambda: cls._relative_import_edits(state, lines),
-            lambda: cls._guard_edits(state.tree, lines),
-            lambda: cls._placement_edits(state, lines),
-            lambda: cls._root_alias_binding_edits(state, lines),
-            lambda: cls._route_edits(
-                state, lines, sources=sources, rope_project=rope_project
-            ),
-            lambda: cls._layer_order_edits(state, lines),
-        )
-        for build in builders:
-            edits = build()
-            if not edits:
-                continue
-            applied = cls._apply_edits(source, edits)
-            if applied is None:
-                msg = f"{state.scope.file_path}: overlapping import-law edits {edits}"
-                raise ValueError(msg)
-            if applied != source:
-                return applied
-        return None
-
-    @classmethod
-    def _validate_import_boundary(cls, state: m.Infra.ImportLawPass) -> None:
-        """Reject forbidden dependencies before hoisting, deferral or routing.
-
-        Raises:
-            ValueError: If a layer-zero module imports its own namespace or a
-                family binds its own facade, including TYPE_CHECKING imports.
-
-        """
-        scope = state.scope
-        role = u.Infra.import_module_role(scope.module)
-        for node in cls._iter_imports(state.tree):
-            if isinstance(node, ast.ImportFrom) and node.level:
-                continue  # The next pass validates the absolute rewrite.
-            for alias in node.names:
-                target = (
-                    node.module or ""
-                    if isinstance(node, ast.ImportFrom)
-                    else alias.name
-                )
-                if target.split(".")[0] != scope.namespace:
-                    continue
-                if role == "layer0":
-                    msg = (
-                        f"{scope.file_path}: layer-zero module imports its own "
-                        f"namespace: {target}"
-                    )
-                    raise ValueError(msg)
-                if role != "family" or scope.family_letter is None:
-                    continue
-                provider = (
-                    state.root_exports.get(alias.name, "")
-                    if isinstance(node, ast.ImportFrom) and target == scope.namespace
-                    else target
-                )
-                family = u.Infra.facade_families()[scope.family_letter]
-                if provider not in {
-                    f"{scope.namespace}.{family.module}",
-                    f"{scope.namespace}.{scope.family_letter}",
-                } and not (
-                    target == scope.namespace and alias.name == scope.family_letter
-                ):
-                    continue
-                if (
-                    isinstance(node, ast.ImportFrom)
-                    and target == scope.namespace
-                    and cls._enclosing_scope(node, state.parents) is None
-                    and any(
-                        isinstance(statement, c.Infra.AST_ASSIGNMENT_TYPES)
-                        and (alias.asname or alias.name)
-                        in cls._module_bindings(
-                            ast.Module(body=[statement], type_ignores=[]),
-                        )
-                        for statement in state.tree.body
-                    )
-                ):
-                    # The existing binding repair removes this redundant import.
-                    continue
-                msg = (
-                    f"{scope.file_path}: family imports its own facade: "
-                    f"{target}.{alias.name}"
-                )
-                raise ValueError(msg)
 
     @staticmethod
-    def _declared_exports(tree: ast.Module) -> frozenset[str]:
-        """Return the names one module declares in its literal ``__all__``.
+    def plan_files(
+        project_root: Path,
+        files: t.SequenceOf[Path],
+        *,
+        sources: t.MappingKV[Path, str],
+        snapshot: p.Infra.WorkspaceSnapshot,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Return import plans from the injected source epoch.
 
         Returns:
-            The resulting ``frozenset[str]``.
+            Typed source import plans, retaining original file authority.
 
         """
-        for node in tree.body:
-            target = (
-                node.targets[0]
-                if isinstance(node, ast.Assign) and len(node.targets) == 1
-                else node.target
-                if isinstance(node, ast.AnnAssign)
-                else None
-            )
-            value = (
-                node.value if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES) else None
-            )
-            if (
-                isinstance(target, ast.Name)
-                and target.id == "__all__"
-                and isinstance(value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
-            ):
-                return frozenset(
-                    element.value
-                    for element in value.elts
-                    if isinstance(element, ast.Constant)
-                    and isinstance(element.value, str)
-                )
-        return frozenset()
+        return u.Infra.plan_import_normalization(
+            project_root,
+            files,
+            sources=sources,
+            snapshot=snapshot,
+        )
 
 
 __all__: list[str] = ["FlextInfraImportNormalization"]

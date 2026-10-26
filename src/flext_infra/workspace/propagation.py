@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, s, u
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 

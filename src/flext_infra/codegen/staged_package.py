@@ -62,6 +62,7 @@ class FlextInfraStagedPackage:
                 workspaces=options.workspaces,
                 modes=options.modes,
                 inputs=options.inputs,
+                declared_files=options.declared_files,
             ),
         )
         if planned.failure:

@@ -13,20 +13,80 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, t
 from flext_infra._config_make_contract import FlextInfraMakeContract
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenFacades,
-    FlextInfraUtilitiesCodegenFilePlan,
-    FlextInfraUtilitiesGitignore,
+from flext_infra._utilities._git.gitignore import FlextInfraUtilitiesGitignore
+from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
+)
+from flext_infra._utilities._rope.rope_class_move import (
+    FlextInfraUtilitiesRopeClassMove,
+)
+from flext_infra._utilities._rope.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
+)
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._semantic_cutover.facade_owners import (
+    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+)
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
+from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
+from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
+from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
+from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
+from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
+from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
+from flext_infra._utilities.workspace_inventory import (
+    FlextInfraUtilitiesWorkspaceInventory,
+)
+from flext_infra._utilities.workspace_manifest import (
+    FlextInfraUtilitiesWorkspaceManifest,
+)
+from flext_infra._utilities.workspace_snapshot import (
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 
 
 class FlextInfraUtilitiesCodegen(
+    FlextInfraUtilitiesBase,
     FlextInfraMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesGitignore,
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesPyprojectConform,
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesRepository,
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeClassMove,
+    FlextInfraUtilitiesRopeModulePatch,
+    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+    FlextInfraUtilitiesVersioning,
+    FlextInfraUtilitiesWorkspaceInventory,
+    FlextInfraUtilitiesWorkspaceManifest,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 ):
-    """Compose all codegen utility concerns for ``u.Infra``."""
+    """Compose the source helpers consumed by the generation operation."""
 
     if TYPE_CHECKING:
 

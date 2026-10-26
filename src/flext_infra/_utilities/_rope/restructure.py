@@ -17,7 +17,7 @@ from rope.refactor.wildcards import DefaultWildcard
 from typing_extensions import TypeForm
 
 from flext_infra import m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraRopeRestructure(Restructure):

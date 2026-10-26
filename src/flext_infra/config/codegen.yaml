@@ -2454,6 +2454,7 @@ Infra:
           ownership:
             owner: codegen
             policy: merge
+            mode: 384 # 0600: operator overrides may contain credentials.
         .vscode/settings.json:
           profiles: [ workspace, standalone ]
           ownership:

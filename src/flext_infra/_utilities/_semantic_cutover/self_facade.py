@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
@@ -19,7 +20,6 @@ from flext_infra._utilities._semantic_cutover.facade_bases import (
 )
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from pathlib import Path

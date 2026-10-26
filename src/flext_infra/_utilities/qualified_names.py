@@ -9,11 +9,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import (
     MetadataWrapper,
     QualifiedName,
     QualifiedNameProvider,
     QualifiedNameSource,
+    ScopeProvider,
 )
 
 from flext_infra import c, t
@@ -26,6 +29,72 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesQualifiedNames:
     """Resolve lazy LibCST qualified-name metadata through its public visitor API."""
+
+    @classmethod
+    def retarget_imported_names(
+        cls, source: str, owner: str, paths: t.Pair[str, str]
+    ) -> str:
+        """Rewire proven imported names to an authenticated public member.
+
+        Returns:
+            Source with native import management and no lexical capture.
+
+        """
+        old, new = paths
+        wrapper = MetadataWrapper(cst.parse_module(source))
+        scopes = wrapper.resolve(ScopeProvider)
+        context = CodemodContext(wrapper=wrapper)
+        receiver = new.split(".")[0]
+        identity = f"{owner}.{old}"
+
+        class Rewrite(cst.CSTTransformer):
+            METADATA_DEPENDENCIES = (
+                QualifiedNameProvider,
+                ScopeProvider,
+            )
+
+            @override
+            def leave_Name(
+                self,
+                original_node: t.Infra.Cst.Name,
+                updated_node: t.Infra.Cst.Name,
+            ) -> t.Infra.Cst.BaseExpression:
+                names = tuple(
+                    self.get_metadata(QualifiedNameProvider, original_node, ())
+                )
+                if not any(
+                    name.source is QualifiedNameSource.IMPORT and name.name == identity
+                    for name in names
+                ):
+                    return updated_node
+                if len(names) != 1:
+                    msg = f"ambiguous imported reference: {original_node.value}"
+                    raise ValueError(msg)
+                scope = scopes[original_node]
+                if scope is None:
+                    msg = "imported reference has no lexical scope"
+                    raise ValueError(msg)
+                for assignment in scope[receiver]:
+                    qualified = assignment.get_qualified_names_for(receiver)
+                    if not qualified or any(
+                        name.source is not QualifiedNameSource.IMPORT
+                        or name.name != f"{owner}.{receiver}"
+                        for name in qualified
+                    ):
+                        msg = f"public import receiver is shadowed: {receiver}"
+                        raise ValueError(msg)
+                RemoveImportsVisitor.remove_unused_import_by_node(
+                    context,
+                    original_node,
+                )
+                AddImportsVisitor.add_needed_import(context, owner, receiver)
+                return cst.parse_expression(new)
+
+        updated = wrapper.visit(Rewrite())
+        if updated.deep_equals(wrapper.module):
+            return source
+        updated = AddImportsVisitor(context).transform_module(updated)
+        return RemoveImportsVisitor(context).transform_module(updated).code
 
     @staticmethod
     def lexical_root(node: t.Infra.Cst.CSTNode) -> t.Infra.Cst.CSTNode:

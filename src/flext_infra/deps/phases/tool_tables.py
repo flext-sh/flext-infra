@@ -13,9 +13,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, t, u
-from flext_infra.deps import FlextInfraExtraPathsManager
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_cli import u
+
+from flext_infra import c, deps, m, p, t, workspace
+from flext_infra._utilities._docs.docs_scope_projects import (
+    FlextInfraUtilitiesDocsScopeProjectsMixin,
+)
+from flext_infra._utilities._pyproject.toml_phases import (
+    FlextInfraUtilitiesPyprojectTomlPhases,
+)
+from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraToolTablesPhase:
@@ -84,7 +94,7 @@ class FlextInfraToolTablesPhase:
             if len(parts) > 1 and parts[0].isidentifier()
         }
         return sorted({
-            *u.Infra.discover_first_party_namespaces(
+            *FlextInfraUtilitiesRopeSource.discover_first_party_namespaces(
                 path, source_project=source_project
             ),
             *planned_packages,
@@ -125,26 +135,28 @@ class FlextInfraToolTablesPhase:
         if source_project is not None:
             return sorted({
                 namespace.replace("-", "_")
-                for project in u.Infra.discover_project_roots(
-                    project_dir, source_project=source_project
-                )
+                for project in (
+                    FlextInfraUtilitiesProjectDiscovery.discover_project_roots
+                )(project_dir, source_project=source_project)
                 if project != project_dir
                 for namespace in (
-                    u.Infra.project_package_name(
+                    FlextInfraUtilitiesPyproject.project_package_name(
                         project, source_project=source_project
                     ),
                 )
                 if namespace and namespace.replace("-", "_").isidentifier()
             })
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
             project_dir,
             allow_unprovisioned_members=True,
         )
-        if workspace.failure:
-            raise ValueError(workspace.error)
-        if workspace.value.repository.role != c.Infra.MakeProfile.WORKSPACE:
+        if observed.failure:
+            raise ValueError(observed.error)
+        if observed.value.repository.role != c.Infra.MakeProfile.WORKSPACE:
             return ()
-        discovered = u.Infra.discover_projects(project_dir)
+        discovered = FlextInfraUtilitiesDocsScopeProjectsMixin.discover_projects(
+            project_dir
+        )
         if discovered.failure:
             # A real discovery error (malformed pyproject, IO) must never
             # silently generate root Ruff settings with an empty child-package
@@ -188,13 +200,15 @@ class FlextInfraToolTablesPhase:
 
         """
         policy = self._tool_config.tools.mypy
-        payload = u.Infra.native_tool_configuration(self._tool_config, c.Infra.MYPY)
+        payload = FlextInfraUtilitiesNativeTooling.native_tool_configuration(
+            self._tool_config, c.Infra.MYPY
+        )
         payload[c.Infra.PYTHON_VERSION_UNDERSCORE] = (
             self._codegen.toolchain.python_version
         )
         payload["mypy_path"] = list(mypy_search_paths)
         # One exclusion owner: the codegen artifact registry, as Mypy's regex.
-        payload["exclude"] = u.Infra.native_exclude_regex(
+        payload["exclude"] = FlextInfraUtilitiesNativeTooling.native_exclude_regex(
             self._codegen.analyzer_exclude_globs
         )
         if policy.ruling_disable_error_codes:
@@ -202,7 +216,7 @@ class FlextInfraToolTablesPhase:
         payload["overrides"] = [
             {
                 "module": list(entry.modules),
-                **u.Infra.configuration_pairs(entry.settings),
+                **FlextInfraUtilitiesNativeTooling.configuration_pairs(entry.settings),
             }
             for entry in policy.overrides
         ]
@@ -216,7 +230,9 @@ class FlextInfraToolTablesPhase:
 
         """
         policy = self._tool_config.tools.pytest
-        payload = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYTEST)
+        payload = FlextInfraUtilitiesNativeTooling.native_tool_configuration(
+            self._tool_config, c.Infra.PYTEST
+        )
         options = u.Cli.toml_mapping_ensure_table(payload, c.Infra.INI_OPTIONS)
         options[c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS] = str(policy.slow_timeout_seconds)
         options[c.Infra.MARKERS] = list(policy.standard_markers)
@@ -228,7 +244,7 @@ class FlextInfraToolTablesPhase:
         # defaults and any elected project-specific norecursedirs policy.
         options["addopts"] = list(
             dict.fromkeys((
-                *u.Infra.native_tool_strings(
+                *FlextInfraUtilitiesNativeTooling.native_tool_strings(
                     self._tool_config, "pytest.ini_options", "addopts"
                 ),
                 *(
@@ -251,9 +267,11 @@ class FlextInfraToolTablesPhase:
             The complete Vulture table with only participating roots.
 
         """
-        payload = u.Infra.native_tool_configuration(self._tool_config, "vulture")
+        payload = FlextInfraUtilitiesNativeTooling.native_tool_configuration(
+            self._tool_config, "vulture"
+        )
         excluded = self.excluded_roots(path)
-        paths = u.Infra.native_tool_strings(
+        paths = FlextInfraUtilitiesNativeTooling.native_tool_strings(
             self._tool_config,
             "vulture",
             "paths",
@@ -270,7 +288,9 @@ class FlextInfraToolTablesPhase:
             The complete Deptry table with first-party classification.
 
         """
-        payload = u.Infra.native_tool_configuration(self._tool_config, c.Infra.DEPTRY)
+        payload = FlextInfraUtilitiesNativeTooling.native_tool_configuration(
+            self._tool_config, c.Infra.DEPTRY
+        )
         payload[c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE] = list(
             self.deptry_first_party_namespaces(
                 path=path,
@@ -296,7 +316,11 @@ class FlextInfraToolTablesPhase:
         """
         return frozenset(
             Path(path).parts[0]
-            for path in u.Infra.repository_nonparticipant_paths(project_dir.resolve())
+            for path in (
+                FlextInfraUtilitiesProjectDiscovery.repository_nonparticipant_paths(
+                    project_dir.resolve()
+                )
+            )
         )
 
     def _phases(
@@ -326,7 +350,9 @@ class FlextInfraToolTablesPhase:
             )
         )
         native_roots = {
-            root: u.Infra.native_tool_configuration(self._tool_config, root)
+            root: FlextInfraUtilitiesNativeTooling.native_tool_configuration(
+                self._tool_config, root
+            )
             for root in sorted({table.partition(".")[0] for table in tables})
         }
         native_phases: list[m.Infra.DepsToml.PhaseConfig] = []
@@ -363,13 +389,13 @@ class FlextInfraToolTablesPhase:
 
         """
         elected_mypy_paths = (
-            FlextInfraExtraPathsManager(repository_root=path.parent).mypy_search_paths(
-                project_dir=path.parent
-            )
+            deps.FlextInfraExtraPathsManager(
+                repository_root=path.parent
+            ).mypy_search_paths(project_dir=path.parent)
             if mypy_search_paths is None
             else mypy_search_paths
         )
-        return u.Infra.apply_toml_phases(
+        return FlextInfraUtilitiesPyprojectTomlPhases.apply_toml_phases(
             payload,
             *self._phases(
                 path=path.parent,

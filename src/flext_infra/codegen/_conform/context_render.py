@@ -10,10 +10,15 @@ from collections.abc import Mapping
 from functools import partial
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.codegen import FlextInfraCodegenConformPyprojectPolicy
-from flext_infra.deps import FlextInfraEnsurePackagingPhase
+from flext_cli import u
+
+from flext_infra import c, config, m, p, r, t
+from flext_infra import check as validation_services
+from flext_infra import deps as dependency_services
+from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra.codegen._conform.pyproject_policy import (
+    FlextInfraCodegenConformPyprojectPolicy,
+)
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -88,7 +93,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resulting ``p.Result[str]``.
 
         """
-        return u.Infra.resolve_integration_branch(
+        return generation.resolve_integration_branch(
             target.root,
             policy_branch=codegen.branch_policy.integration_branch,
             declared=(
@@ -119,7 +124,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             render_inputs.workspace,
             render_inputs.codegen,
         )
-        flext_line = u.Infra.flext_integration_line_for_checkout(
+        flext_line = generation.flext_integration_line_for_checkout(
             codegen=codegen, repository_root=target.root, workspace=workspace
         )
         if flext_line.failure:
@@ -137,10 +142,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 },
             )
         toolchain = codegen.toolchain
-        return u.Infra.pyproject_conform(
+        return generation.pyproject_conform(
             source,
             workspace=workspace,
-            required_dev_dependencies=u.Infra.project_development_requirements(
+            required_dev_dependencies=generation.project_development_requirements(
                 codegen.scaffold.project,
                 distribution=target.repository.distribution,
                 kind=target.repository.kind,
@@ -151,7 +156,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 override_dependencies=tuple(toolchain.uv_override_dependencies),
                 environments=tuple(toolchain.uv_environments),
             ),
-            options=u.Infra.PyprojectConformOptions(
+            options=generation.PyprojectConformOptions(
                 flext_line=flext_line.value,
             ),
         )
@@ -248,13 +253,17 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             codegen,
         )
         try:
-            delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
-                tooling.tools.ruff.lint.rule_owners,
-                check_gates=codegen.make.check_gates_default,
-                repair_gates=(
-                    *codegen.make.check_gates_fixable,
-                    *codegen.make.fmt_gates,
-                ),
+            delegated_rules = (
+                validation_services.FlextInfraGateRegistry
+                .default()
+                .delegated_lint_rules(
+                    tooling.tools.ruff.lint.rule_owners,
+                    check_gates=codegen.make.check_gates_default,
+                    repair_gates=(
+                        *codegen.make.check_gates_fixable,
+                        *codegen.make.fmt_gates,
+                    ),
+                )
             )
         except ValueError as exc:
             return r[m.Infra.MakeRenderContext].fail(str(exc), exception=exc)
@@ -304,14 +313,14 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resulting ``p.Result[m.Infra.ProjectSpec]``.
 
         """
-        metadata = u.Infra.read_project_metadata_result(repository_root)
+        metadata = generation.read_project_metadata_result(repository_root)
         if metadata.failure:
             return r[m.Infra.ProjectSpec].from_failure(metadata)
         pep621 = metadata.value.project
         package_name = metadata.value.package_name
         class_stem = metadata.value.class_stem
-        alias = u.Infra.package_alias(package_name=package_name)
-        identity = u.Infra.project_notice_identity(
+        alias = generation.package_alias(package_name=package_name)
+        identity = generation.project_notice_identity(
             repository_root,
             None,
             codegen.scaffold.project,
@@ -327,7 +336,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         homepage = pep621.urls.homepage or repository.url.removesuffix(c.GIT_DIR_NAME)
         documentation = pep621.urls.documentation or homepage
         runtime_names = {
-            name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
+            name for item in pep621.dependencies if (name := generation.dep_name(item))
         }
         candidates = tuple(
             base
@@ -380,7 +389,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         if (repository_root / c.PYPROJECT_FILENAME).is_file():
-            return u.Infra.current_workspace_version(repository_root)
+            return generation.current_workspace_version(repository_root)
         return r[str].ok(config.Infra.initial_project_version)
 
     def _resolved_render_project(
@@ -437,7 +446,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         result_type = r[m.Infra.ProjectSpec]
-        identity = u.Infra.project_notice_identity(
+        identity = generation.project_notice_identity(
             render_inputs.target.root,
             project,
             render_inputs.codegen.scaffold.project,
@@ -471,7 +480,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         result_type = r[t.Triple[m.Infra.ProviderIdentitySpec, str, t.Pair[str, str]]]
-        repository_provider = u.Infra.repository_provider(
+        repository_provider = generation.repository_provider(
             render_inputs.target.repository,
         )
         if repository_provider.failure:
@@ -483,7 +492,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         # consumes (the infrastructure dependency's own source), never from
         # the consumer's organization or branch: a repository in another org
         # otherwise renders a mixed family and uv rejects conflicting URLs.
-        flext_line = u.Infra.flext_integration_line_for_checkout(
+        flext_line = generation.flext_integration_line_for_checkout(
             codegen=render_inputs.codegen,
             repository_root=render_inputs.target.root,
             workspace=render_inputs.workspace,
@@ -526,7 +535,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         if declared.failure:
             return result_type.from_failure(declared)
         project_dependencies, declared_dev = declared.value
-        composed_dev = u.Infra.project_development_requirements(
+        composed_dev = generation.project_development_requirements(
             codegen.scaffold.project,
             distribution=repository.distribution,
             kind=repository.kind,
@@ -605,7 +614,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 tooling_runtime=tooling_runtime,
                 scaffold=codegen.scaffold,
-                gitignore_sections=u.Infra.gitignore_sections(
+                gitignore_sections=generation.gitignore_sections(
                     codegen,
                     profile=profile,
                     # The declared distribution is the project identity: a
@@ -631,12 +640,18 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     *packaged_data_paths.directories,
                 ),
                 project_declaration_resource=(
-                    FlextInfraEnsurePackagingPhase.declaration_resource(
+                    (
+                        dependency_services.FlextInfraEnsurePackagingPhase
+                        .declaration_resource
+                    )(
                         package=repository.package,
                     )
                 ),
                 packaged_data_excludes=(
-                    FlextInfraEnsurePackagingPhase.resolve_data_excludes(
+                    (
+                        dependency_services.FlextInfraEnsurePackagingPhase
+                        .resolve_data_excludes
+                    )(
                         repository_root,
                         packaged_data_paths,
                         project.packaged_data_excludes,
@@ -649,7 +664,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 # Carry only the validated
                 # project declaration; conform owns no inferred Hatch hook.
                 hatch_build_hook_path=project.hatch_build_hook_path,
-                uv_cache_key_files=FlextInfraEnsurePackagingPhase.uv_cache_key_files(
+                uv_cache_key_files=(
+                    dependency_services.FlextInfraEnsurePackagingPhase
+                    .uv_cache_key_files
+                )(
                     project.hatch_build_hook_path,
                 ),
                 class_stem=project.class_stem,
@@ -661,7 +679,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 # Scaffolded facades extend the class each upstream letter names
                 # in the __all__ that declares it, never the letter itself.
                 upstream_facades=(
-                    u.Infra.facade_classes(
+                    generation.facade_classes(
                         project.upstream,
                         source_root=repository_root,
                     )
@@ -720,10 +738,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             t.Pair[t.VariadicTuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr]]
         ]
         if (repository_root / c.PYPROJECT_FILENAME).is_file():
-            metadata = u.Infra.read_project_metadata_result(repository_root)
+            metadata = generation.read_project_metadata_result(repository_root)
             if metadata.failure:
                 return result_type.from_failure(metadata)
-            payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
+            payload = generation.pyproject_payload(
+                repository_root / c.PYPROJECT_FILENAME
+            )
             groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
             runtime = r[t.VariadicTuple[t.NonEmptyStr]].create_from_callable(
                 partial(
@@ -740,7 +760,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                         *t.Infra.STR_SEQ_ADAPTER.validate_python(
                             groups.get(c.Infra.DEV, ()),
                         ),
-                        *u.Infra.canonical_dev_dependencies_from_payload(payload),
+                        *generation.canonical_dev_dependencies_from_payload(payload),
                     ),
                 ),
             )
@@ -806,7 +826,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """
         if profile is c.Infra.MakeProfile.WORKSPACE:
             return m.Infra.PackagedDataSelection()
-        return FlextInfraEnsurePackagingPhase.resolve_data_paths(
+        return dependency_services.FlextInfraEnsurePackagingPhase.resolve_data_paths(
             repository_root,
             project.package_name,
             project.packaged_data_paths,

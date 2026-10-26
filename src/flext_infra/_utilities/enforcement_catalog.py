@@ -11,10 +11,10 @@ from collections import Counter
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import (
+from flext_infra._utilities._codemod.codemod_rules import (
     FlextInfraUtilitiesCodemodRules,
-    FlextInfraUtilitiesNativeTooling,
 )
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesEnforcementCatalog:

@@ -21,18 +21,34 @@ from pathlib import Path
 from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodNativeUtilities,
-    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
+)
+from flext_infra._utilities._codemod.codemod_native_utilities import (
+    FlextInfraUtilitiesCodemodNativeUtilities,
+)
+from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._rope._analysis.importstate import (
     FlextInfraUtilitiesRopeAnalysisImportState,
-    FlextInfraUtilitiesRopeCore,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope.rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
+from flext_infra._utilities._rope.source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._semantic_cutover.declaration_payload import (
+    FlextInfraUtilitiesDeclarationPayload,
 )
 
 

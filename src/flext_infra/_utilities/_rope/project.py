@@ -20,31 +20,34 @@ from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder
 
 from flext_infra import c, config, m, p, t
-from flext_infra._utilities._rope import FlextInfraRopeNativeProject
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.native_project import FlextInfraRopeNativeProject
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     """Native Rope project whose reads see planned sources before the disk."""
 
     class OverlayFiles:
-        """Read-only filesystem view: planned bytes overlay the live tree.
+        """Read-only filesystem view: planned bytes overlay authenticated captures.
 
         A planned ``None`` hides a live file; directories holding planned
-        files exist even before publication creates them.
+        files exist even before publication creates them. Rope providers and
+        source planning reuse the same first-read bytes and physical witness;
+        a later disk edit remains a publication conflict.
         """
 
-        def __init__(self, overlay: Mapping[Path, bytes | None]) -> None:
+        def __init__(self, plans: tuple[m.Infra.CodegenFilePlan, ...]) -> None:
             self._physical: dict[str, Path] = {}
+            self._states = {Path(realpath(plan.path)): plan.before for plan in plans}
             self._files = {
-                Path(realpath(path)): content
-                for path, content in overlay.items()
-                if content is not None
+                Path(realpath(plan.path)): plan.desired_content
+                for plan in plans
+                if plan.desired_content is not None
             }
             self._hidden = frozenset(
-                Path(realpath(path))
-                for path, content in overlay.items()
-                if content is None
+                Path(realpath(plan.path))
+                for plan in plans
+                if plan.desired_content is None
             )
             self._directories = frozenset(
                 parent for path in self._files for parent in path.parents
@@ -101,6 +104,11 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             resolved = self._resolved(path)
             if resolved in self._files:
                 return True
+            if resolved in self._states:
+                return (
+                    resolved not in self._hidden
+                    and self._states[resolved].content is not None
+                )
             return resolved not in self._hidden and resolved.is_file()
 
         def isdir(self, path: str) -> bool:
@@ -130,7 +138,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             return sorted(names)
 
         def read(self, path: str) -> bytes:
-            """Read planned bytes, else the live file.
+            """Read planned bytes, else the first authenticated physical capture.
 
             Returns:
                 The file bytes.
@@ -144,7 +152,32 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 return self._files[resolved]
             if resolved in self._hidden:
                 raise FileNotFoundError(path)
-            return resolved.read_bytes()
+            content = self.source_state(resolved).content
+            if content is None:
+                raise FileNotFoundError(path)
+            return content
+
+        def source_state(
+            self, path: Path, *, required: bool = True
+        ) -> m.Cli.AtomicFileState:
+            """Retain the physical witness shared by source reads and publication.
+
+            Returns:
+                The first observed physical state, including declared plan inputs.
+
+            Raises:
+                FileNotFoundError: A required source was absent in this view.
+
+            """
+            resolved = self._resolved(str(path))
+            if resolved not in self._states:
+                self._states[resolved] = u.Cli.atomic_read_binary_file_state(
+                    resolved, required=required
+                ).unwrap()
+            observed = self._states[resolved]
+            if required and observed.content is None:
+                raise FileNotFoundError(path)
+            return observed
 
         def children(self, path: str) -> tuple[Path, ...]:
             """Return the direct child paths of a directory.
@@ -183,14 +216,18 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             msg = f"Resource <{resource.path}> is absent from the overlaid view"
             raise ResourceNotFoundError(msg)
 
-    @staticmethod
-    def source_state(path: Path, *, required: bool = True) -> m.Cli.AtomicFileState:
-        """Observe the live destination state used as a publication guard.
+    def source_state(
+        self, path: Path, *, required: bool = True
+    ) -> m.Cli.AtomicFileState:
+        """Observe the source view's physical publication witness.
 
         Returns:
-            The live physical state of the file.
+            The captured physical state for an overlay, or the live project state.
 
         """
+        files = self.fscommands
+        if isinstance(files, self.OverlayFiles):
+            return files.source_state(path, required=required)
         return u.Cli.atomic_read_binary_file_state(path, required=required).unwrap()
 
     def source_query(
@@ -383,9 +420,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             ):
                 msg = f"Rope virtual source root lacks a planned file: {folder}"
                 raise ValueError(msg)
-        files = cls.OverlayFiles({
-            plan.path: plan.desired_content for plan in declared_files
-        })
+        files = cls.OverlayFiles(declared_files)
         return cls._from_files(
             str(root),
             files,

@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_infra import c, config, m, u
 from flext_infra.gates import FlextInfraGate
 from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
-from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -302,7 +301,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         owned = {issue.code: recipes[issue.code] for issue in issues}
         if c.Infra.LintFixRecipe.NORMALIZE_IMPORTS in owned.values():
             source = (
-                FlextInfraImportNormalization.normalize_source(
+                u.Infra.normalize_import_source(
                     project_root=project_dir,
                     file_path=path,
                     source=source,

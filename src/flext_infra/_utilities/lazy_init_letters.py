@@ -19,8 +19,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesPythonModel,
-    FlextInfraUtilitiesRopeRuntime,
 )
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesLazyInitLetters:

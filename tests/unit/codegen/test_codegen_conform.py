@@ -278,6 +278,53 @@ class TestsFlextInfraCodegenConform:
         tm.that(capsys.readouterr().out, lacks="[OK]")
 
     @pytest.mark.parametrize(
+        ("operation", "mode"),
+        [
+            ("generate", c.Infra.CodegenConformMode.APPLY),
+            ("conform", c.Infra.CodegenConformMode.APPLY),
+            ("conform", c.Infra.CodegenConformMode.CHECK),
+        ],
+    )
+    def test_public_generation_rejects_diagnostics_without_an_exception(
+        self,
+        tmp_path: Path,
+        conformed_template: Path,
+        mode: c.Infra.CodegenConformMode,
+        operation: str,
+    ) -> None:
+        """A rejected Make declaration fails even beside admitted projections."""
+        root, _request, _published, _original = self._lifecycle_fixture(
+            tmp_path,
+            "declaration-diagnostic",
+            conformed_template,
+        )
+        (root / "custom.mk").write_text(
+            "UNDECLARED_PUBLIC_VARIABLE := invalid\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=mode,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+        )
+        tm.ok(bool(plan.files))
+        tm.ok(bool(plan.issues))
+        tm.that(plan.exception, eq=None)
+
+        result = (
+            infra.codegen_generate(request)
+            if operation == "generate"
+            else infra.codegen_conform(request)
+        )
+
+        tm.ok(result.failure)
+        tm.that(result.error, has="custom.mk")
+        tm.that(result.error, has="declares a variable")
+
+    @pytest.mark.parametrize(
         "scenario", ["concurrent-edit", "lazy-failure", "docs-failure"]
     )
     def test_public_apply_fails_without_overwriting_live_state(

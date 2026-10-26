@@ -95,13 +95,13 @@ class TestsFlextInfraRefactorImportNormalization(
             ),
         }
         frozen = dict(working)
-        with u.Infra.open_project(project) as rope:
+        with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
             analysis = tm.ok(
-                refactor.FlextInfraImportNormalization.plan_files(
+                u.Infra.plan_import_normalization(
                     project,
                     (target,),
                     sources=working,
-                    rope_project=rope,
+                    snapshot=snapshot,
                 )
             )
         tm.that(analysis, length=1)

@@ -1,8 +1,8 @@
 """Lazy-init package planning over one repository run (``u.Infra``).
 
 Each package publishes what its direct modules declare in ``__all__`` plus
-its direct child packages; the facade root withholds private children and
-nested exports; root namespaces inherit their facade letters.
+its child packages; elected private domains retain their owning facade boundary
+at every depth; root namespaces inherit their facade letters.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -18,6 +18,7 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
 from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra._utilities.lazy_init_letters import FlextInfraUtilitiesLazyInitLetters
 from flext_infra._utilities.lazy_init_render import FlextInfraUtilitiesLazyInitRender
@@ -532,8 +533,9 @@ class FlextInfraUtilitiesLazyInitPlan:
         propagates what modules declare in ``__all__`` (generator law p.1-2),
         and a package object reached by attribute is banned (ADR-028), so
         consumers import a child's names from the child package. Non-public
-        tiers (tests, examples, scripts) propagate nothing; the facade root
-        withholds private ``_x`` children.
+        tiers (tests, examples, scripts) propagate nothing. Private ``_x``
+        domains with an elected sibling MRO facade retain that boundary at every
+        nesting level. Ordinary child packages retain their declared propagation.
 
         Returns:
             The sorted names of the merged child packages.
@@ -562,7 +564,15 @@ class FlextInfraUtilitiesLazyInitPlan:
                 continue
             merged.append(child)
             leaf = child.rsplit(".", maxsplit=1)[-1]
-            if not publish or (facade_root and leaf.startswith("_")):
+            if not publish or (
+                leaf.startswith("_")
+                and (
+                    facade_root
+                    or FlextInfraUtilitiesCodegenFacades.family_subfacade_owners(
+                        run.model.source_project, child_dir
+                    )
+                )
+            ):
                 continue
             plan = run.plans.get(child_dir)
             for name, (module_name, attr) in (

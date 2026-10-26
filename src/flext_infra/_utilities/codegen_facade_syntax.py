@@ -45,8 +45,8 @@ from libcst.metadata import (
 )
 
 from flext_infra import c, config, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenNamespace,
+from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 

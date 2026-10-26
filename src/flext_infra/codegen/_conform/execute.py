@@ -11,10 +11,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenPreconditions
+from flext_cli import u
+
+from flext_infra import c, m, p, r, t
+from flext_infra import workspace as workspace_services
+from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
@@ -35,7 +38,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
         """
         root = request.root.expanduser().resolve()
-        identity = u.Infra.exact_worktree_root(root)
+        identity = generation.exact_worktree_root(root)
         if identity.failure:
             return r[FlextInfraCodegenConformExecute].from_failure(identity)
         generation_root = (
@@ -54,11 +57,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             request.what is c.Infra.CodegenConformSurface.ALL
             and not (root / c.PYPROJECT_FILENAME).exists()
         ):
-            inputs = u.Infra.load_codegen_inputs(root)
+            inputs = generation.load_codegen_inputs(root)
             if inputs.failure:
                 return r[FlextInfraCodegenConformExecute].from_failure(inputs)
-            observed = FlextInfraWorkspaceDetector.load_workspace_spec(
-                root, inputs=inputs.value
+            observed = (
+                workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(
+                    root, inputs=inputs.value
+                )
             )
             if observed.failure:
                 return r[FlextInfraCodegenConformExecute].from_failure(observed)
@@ -175,15 +180,29 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         plan: m.Infra.CodegenPlan,
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Compare the normalized plan with the tree.
+        """Compare the injected publisher's normalized plan with the tree.
+
+        Check and apply consume the same publication capability; neither resolves
+        a utility implementation inside the executor.
 
         Returns:
             The plan when nothing is pending, or the stale destinations.
 
         """
         result_type = r[p.Infra.CodegenResult]
-        changes = self._docs_plans(request, plan).flat_map(
-            lambda docs: u.Infra.normalized_codegen_changes((*plan.files, *docs))
+        if plan.issues or plan.exception is not None:
+            return result_type.fail(
+                "\n".join(issue.formatted for issue in plan.issues)
+                or "generation planning failed",
+                exception=plan.exception,
+            )
+        ports = self.state.ports
+        if ports is None:
+            return result_type.fail(
+                "conformance requires facade-wired file publication"
+            )
+        changes = self._admitted_plans(request, plan).flat_map(
+            ports.file_publisher.normalized_codegen_changes
         )
         if changes.failure:
             return result_type.from_failure(changes)
@@ -234,16 +253,22 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     ) -> p.Result[p.Infra.CodegenResult]:
         """Publish the plan and its docs once, then run the follow-ups.
 
-        A planning failure retained beside valid plans fails the request after
-        its valid siblings are published.
+        Every planning diagnostic and cold-import failure rejects the cohort
+        before the first destination effect. Check and apply share candidate
+        admission and the existing guarded publication owner.
 
         Returns:
             The plan and written paths, or the first failure.
 
         """
         result_type = r[p.Infra.CodegenResult]
-        published = self._docs_plans(request, plan).flat_map(
-            lambda docs: u.Infra.publish_codegen_plans(root, (*plan.files, *docs))
+        ports = self.state.ports
+        if ports is None:
+            return result_type.fail(
+                "conformance requires facade-wired file publication"
+            )
+        published = self._admitted_plans(request, plan).flat_map(
+            lambda files: ports.file_publisher.publish_codegen_plans(root, files)
         )
         if published.failure:
             return result_type.from_failure(published)
@@ -251,7 +276,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             completed = operation(published.value)
             if completed.failure:
                 return result_type.from_failure(completed)
-        if plan.exception is not None:
+        if plan.issues or plan.exception is not None:
             return result_type.fail(
                 "\n".join(issue.formatted for issue in plan.issues)
                 or "generation planning failed",
@@ -262,6 +287,69 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             written_files=published.value,
         )
         return result_type.ok(payload)
+
+    def _admitted_plans(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        plan: m.Infra.CodegenPlan,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Validate the normalized dependency cohort before accepting any effects.
+
+        The native preview materializes original file declarations, including
+        retirements. Its existing cold-import owner must accept that exact source
+        view before the shared publisher may verify and write its destinations.
+
+        Returns:
+            The normalized plans, or the original planning or admission failure.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        if plan.issues or plan.exception is not None:
+            return result_type.fail(
+                "\n".join(issue.formatted for issue in plan.issues)
+                or "generation planning failed",
+                exception=plan.exception,
+            )
+        ports = self.state.ports
+        if ports is None:
+            return result_type.fail("conformance requires facade-wired candidate admission")
+        docs = self._docs_plans(request, plan)
+        if docs.failure:
+            return result_type.from_failure(docs)
+        files = (*plan.files, *docs.value)
+        changes = ports.file_publisher.normalized_codegen_changes(files)
+        if changes.failure:
+            return result_type.from_failure(changes)
+        normalized = {change.path: change for change in changes.value}
+        files = tuple(
+            file.model_copy(update={
+                "desired_content": normalized[file.path].desired_content,
+                "desired_mode": normalized[file.path].desired_mode,
+            })
+            for file in files
+        )
+        if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
+            return result_type.ok(files)
+        root = request.root.expanduser().resolve()
+        preview = ports.source_preview.preview_sources(
+            root,
+            {
+                file.path: file.desired_content.decode(c.DEFAULT_ENCODING)
+                if file.desired_content is not None
+                else None
+                for file in files
+            },
+            lambda candidate, _paths: ports.candidate_validator(root, candidate),
+            options=m.Infra.CodegenSourcePreviewOptions(
+                declared_files=files,
+                inputs=tuple(file.before for file in files),
+            ),
+        ).flat_map(lambda outcome: outcome)
+        if preview.failure:
+            return result_type.from_failure(preview)
+        if not preview.value:
+            return result_type.fail("native candidate admission returned no acceptance")
+        return result_type.ok(files)
 
     def _docs_plans(
         self,

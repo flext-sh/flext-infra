@@ -21,11 +21,13 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra._utilities import (
-    FlextInfraUtilitiesPrivateImportFacades,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
+from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
+from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope.source_bases_inventory_collector import (
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 

@@ -10,7 +10,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from flext_infra import c, m, p, s, t, u
+from flext_infra import c, m, p, s, t
+from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -18,7 +19,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
 
     This is the only orchestrator for Make/toolchain/source conformance.
     Rendering stays in flext-cli; Git-source TOML policy and attached detection
-    are composed from their separately owned u.Infra/workspace services.
+    are composed from their source-owned Codegen and workspace services.
     """
 
     state: Annotated[
@@ -141,11 +142,14 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                 target.project.package_name if target.project is not None else ""
             )
             roots.append(
-                (declared_name or u.Infra.project_package_name(target.root), Path()),
+                (declared_name or generation.project_package_name(target.root), Path()),
             )
         if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
             roots.extend(
-                (u.Infra.project_package_name(target.root / member.path), member.path)
+                (
+                    generation.project_package_name(target.root / member.path),
+                    member.path,
+                )
                 for member in workspace.subprojects
                 if member.package
             )

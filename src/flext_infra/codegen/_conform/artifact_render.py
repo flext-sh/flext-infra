@@ -10,9 +10,14 @@ from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenConformContextRender
-from flext_infra.deps import FlextInfraPyprojectModernizer
+from flext_cli import u
+
+from flext_infra import c, config, m, p, r, t
+from flext_infra import deps as dependency_services
+from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen as generation
+from flext_infra.codegen._conform.context_render import (
+    FlextInfraCodegenConformContextRender,
+)
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 
@@ -57,7 +62,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             A result containing the rendered artifact or an error.
 
         """
-        source = u.Infra.codegen_artifact_source(codegen, entry)
+        source = generation.codegen_artifact_source(codegen, entry)
         if entry.source_kind == "resource":
             if entry.source_package is None:
                 return r[str].fail(
@@ -153,7 +158,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             raise ValueError(msg)
         policy = tool_config.tools.ruff.lint.flake8_type_checking
         # The one runtime-base derivation of generation, over the final sources.
-        runtime_bases = u.Infra.runtime_evaluated_base_classes(
+        runtime_bases = generation.runtime_evaluated_base_classes(
             root,
             sources,
             policy.runtime_evaluated_roots,
@@ -175,7 +180,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return tooling
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
         runtime["runtime-evaluated-base-classes"] = list(runtime_bases)
-        return FlextInfraPyprojectModernizer.tooling_context_from_payload(
+        return (
+            dependency_services.FlextInfraPyprojectModernizer
+            .tooling_context_from_payload
+        )(
             payload,
             project_kind=tooling.project_kind,
             tool_config=tool_config,
@@ -200,7 +208,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 return r[t.VariadicTuple[str]].fail(
                     "planned pyproject is not valid TOML",
                 )
-            return u.Infra.direct_source_names(document)
+            return generation.direct_source_names(document)
         if render_inputs.planned_direct_sources is not None:
             return r[t.VariadicTuple[str]].ok(render_inputs.planned_direct_sources)
         document = u.Cli.toml_read_document(
@@ -208,7 +216,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if document.failure:
             return r[t.VariadicTuple[str]].from_failure(document)
-        return u.Infra.direct_source_names(document.value)
+        return generation.direct_source_names(document.value)
 
     @classmethod
     def compose_project_artifact(
@@ -263,16 +271,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         if render_inputs is None:
-            resolved = u.Infra.load_project_managed_artifacts(repository_root)
+            resolved = generation.load_project_managed_artifacts(repository_root)
             if resolved.failure:
                 return r[str].from_failure(resolved)
             artifacts = resolved.value.artifacts
         else:
             artifacts = render_inputs.managed_artifacts.resolution.artifacts
-        suffix = u.Infra.gitignore_runtime_suffix(config.Infra.codegen)
+        suffix = generation.gitignore_runtime_suffix(config.Infra.codegen)
         if suffix.failure:
             return r[str].from_failure(suffix)
-        return u.Infra.preserve_project_gitignore_blocks(
+        return generation.preserve_project_gitignore_blocks(
             rendered,
             repository_root,
             artifacts.Gitignore.preserved_blocks,
@@ -295,14 +303,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if state.failure:
             return r[str].from_failure(state)
         if state.value.content is None:
-            return u.Infra.overlay_preserved(rendered, None)
+            return generation.overlay_preserved(rendered, None)
         return (
-            u.Infra
+            generation
             .recover_live_pyproject_text(
                 state.value.content.decode(c.DEFAULT_ENCODING),
             )
-            .flat_map(u.Infra.pyproject_regeneration_source)
-            .flat_map(lambda live_text: u.Infra.overlay_preserved(rendered, live_text))
+            .flat_map(generation.pyproject_regeneration_source)
+            .flat_map(
+                lambda live_text: generation.overlay_preserved(rendered, live_text)
+            )
         )
 
     @classmethod
@@ -331,7 +341,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if conformed.failure:
                 return conformed
             composed_rendered = conformed.value
-        formatted = u.Infra.format_toml_source(
+        formatted = generation.format_toml_source(
             composed_rendered,
             path=live_path,
             toolchain_root=(
@@ -368,9 +378,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         if render_inputs is None:
-            snapshot = u.Infra.snapshot_committed_project_managed_artifacts(
+            snapshot = generation.snapshot_committed_project_managed_artifacts(
                 repository_root,
-                read_committed_directory=u.Infra.git_committed_directory_blobs,
+                read_committed_directory=generation.git_committed_directory_blobs,
             )
             if snapshot.failure:
                 return r[str].from_failure(snapshot)
@@ -378,12 +388,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         else:
             resolved_artifacts = render_inputs.managed_artifacts
         return (
-            u.Infra.compose_mise_toml_from_snapshot(
+            generation.compose_mise_toml_from_snapshot(
                 resolved_artifacts.sources,
                 rendered,
             )
             if resolved_artifacts.sources
-            else u.Infra.compose_mise_toml_from_resolution(
+            else generation.compose_mise_toml_from_resolution(
                 resolved_artifacts.resolution,
                 rendered,
             )
@@ -455,12 +465,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         result_type = r[m.Infra.ReleasePolicySpec]
-        owner = u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=root))
+        owner = generation.git_repository_root(m.Infra.GitRepoRequest(repo_root=root))
         if owner.failure:
             return result_type.from_failure(owner)
         workspace = owner.value.repository_root.resolve()
         if workspace != root.resolve():
-            members = u.Infra.git_submodule_declarations(workspace)
+            members = generation.git_submodule_declarations(workspace)
             if members.failure:
                 return result_type.from_failure(members)
             if not any(
@@ -539,7 +549,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if rendered.failure or rendered.value.strip():
             return rendered
         template = u.Cli.files_read_text(
-            u.Infra.codegen_artifact_source(render_inputs.codegen, entry)
+            generation.codegen_artifact_source(render_inputs.codegen, entry)
         )
         if template.failure:
             return r[str].from_failure(template)
@@ -645,7 +655,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
             return r[p.Model].ok(
                 m.Infra.GitignoreRenderSpec(
-                    gitignore_sections=u.Infra.gitignore_sections(
+                    gitignore_sections=generation.gitignore_sections(
                         codegen,
                         profile=target.make_profile,
                         # The declared distribution is the project identity; a
@@ -684,7 +694,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return r[p.Model].ok(
                 m.Infra.QltyRenderSpec(
                     generated_projection_patterns=tuple(
-                        u.Infra.generated_projection_patterns(
+                        generation.generated_projection_patterns(
                             target.root, (target.root,)
                         )
                     ),
@@ -734,7 +744,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 )
             markdown = tooling.document.tools.markdown
             spec = m.Infra.MarkdownLintRenderSpec(
-                native_config=u.Infra.markdown_native_configuration(
+                native_config=generation.markdown_native_configuration(
                     markdown, codegen.markdown_exclude_globs
                 ),
                 exclude=codegen.markdown_exclude_globs,
@@ -955,20 +965,20 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         result_type = r[m.Infra.CiSuperprojectCheckoutSpec]
         root = repository_root.resolve()
-        runtime = u.Infra.runtime_owner_root(root)
+        runtime = generation.runtime_owner_root(root)
         if runtime.failure:
             return result_type.from_failure(runtime)
         workspace_root = runtime.value.resolve()
         if workspace_root == root:
             return None
-        origin = u.Infra.git_remote_url(
+        origin = generation.git_remote_url(
             m.Infra.GitRemoteUrlRequest(repo_root=workspace_root),
         )
         if origin.failure:
             return result_type.from_failure(origin)
         return result_type.create_from_callable(
             lambda: m.Infra.CiSuperprojectCheckoutSpec(
-                repository=u.Infra.git_remote_identity(origin.value.text),
+                repository=generation.git_remote_identity(origin.value.text),
                 ref=branch,
                 path=root.relative_to(workspace_root).as_posix(),
             ),
@@ -1049,14 +1059,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         pytest = config.Infra.tooling.tools.pytest
         order = (
-            u.Infra.workspace_dependency_order(target.root, workspace.subprojects)
+            generation.workspace_dependency_order(target.root, workspace.subprojects)
             if target.make_profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
                 bootstrap_report_shell_literal=(
-                    u.Infra.bootstrap_operation_report_shell_literal()
+                    generation.bootstrap_operation_report_shell_literal()
                 ),
                 bootstrap_report_relative_path=(
                     c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH

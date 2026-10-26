@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
@@ -222,8 +222,8 @@ class FlextInfraUtilitiesBase:
         for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
         if kind == c.Infra.MergeConflictControl.SEPARATOR
     )
-    _MERGE_CONFLICT_PREFIX_BYTES: tuple[
-        tuple[bytes, c.Infra.MergeConflictControl], ...
+    _MERGE_CONFLICT_PREFIX_BYTES: ClassVar[
+        tuple[tuple[bytes, c.Infra.MergeConflictControl], ...]
     ] = tuple(
         (
             token.encode(c.Infra.MERGE_CONFLICT_ENCODING),
@@ -232,12 +232,12 @@ class FlextInfraUtilitiesBase:
         for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
         if kind != c.Infra.MergeConflictControl.SEPARATOR
     )
-    _MERGE_CONFLICT_PREFIX_STR: tuple[tuple[str, c.Infra.MergeConflictControl], ...] = (
-        tuple(
-            (token, kind)
-            for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
-            if kind != c.Infra.MergeConflictControl.SEPARATOR
-        )
+    _MERGE_CONFLICT_PREFIX_STR: ClassVar[
+        tuple[tuple[str, c.Infra.MergeConflictControl], ...]
+    ] = tuple(
+        (token, kind)
+        for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+        if kind != c.Infra.MergeConflictControl.SEPARATOR
     )
 
     @classmethod

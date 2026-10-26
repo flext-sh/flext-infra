@@ -11,11 +11,10 @@ from json import dumps
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, p, r, u
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
+from flext_cli import u
+
+from flext_infra import c, config, m, p, r
+from flext_infra import workspace as workspace_services
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
@@ -35,7 +34,11 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[bool]
-        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        context = (
+            workspace_services.FlextInfraWorkspaceDetector.resolution_context(
+                repository_root
+            )
+        )
         if context.failure:
             return result_type.from_failure(context)
         lock_path = context.value.lock_path
@@ -113,7 +116,10 @@ class FlextInfraCodegenPreconditions:
         item = pinned[0]
         if item.source.editable is not None:
             return result_type.ok(value=True)
-        origin = FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
+        origin = (
+            workspace_services.FlextInfraWorkspaceEnvironmentProvenance
+            .locked_origin_verdict
+        )(
             distribution_name, item, direct_url
         )
         if origin.failure:

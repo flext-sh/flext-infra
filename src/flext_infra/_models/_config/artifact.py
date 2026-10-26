@@ -15,7 +15,7 @@ from typing import Annotated, ClassVar, Literal, Self
 import flext_core
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -1432,6 +1432,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
+        ports: Annotated[
+            t.Port[p.Infra.CodegenConformPorts] | None,
+            m.Field(
+                exclude=True,
+                description="Caller-bound capabilities shared by repository phases",
+            ),
+        ] = None
         provider_plans: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan] | None,
             m.Field(

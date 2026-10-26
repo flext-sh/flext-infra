@@ -17,7 +17,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, config, m, t
-from flext_infra._utilities._docs_scope_state import (
+from flext_infra._utilities._docs._docs_scope_state import (
     FlextInfraUtilitiesDocsScopeStateMixin,
 )
 from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes

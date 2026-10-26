@@ -11,7 +11,8 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 from flext_infra import c, m, p, t, u
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraRenameSymbols:
@@ -512,7 +513,7 @@ class FlextInfraRenameSymbols:
             The resulting ``p.Infra.RopePyName | None``.
 
         """
-        parts = owner.split(".")
+        parts = (*owner.split("."), *suffix.split("."))
         module = parts[0]
         for end in range(2, len(parts) + 1):
             candidate = ".".join(parts[:end])
@@ -526,7 +527,7 @@ class FlextInfraRenameSymbols:
             )
         )
         binding: p.Infra.RopePyName | None = None
-        for attribute in (*attributes, *suffix.split(".")):
+        for attribute in attributes:
             if attribute not in value.get_attributes():
                 return None
             binding = value.get_attribute(attribute)
@@ -998,6 +999,13 @@ class FlextInfraRenameSymbols:
                 if cls.resolve_member(project, owner, new_suffix) is None:
                     continue
                 accepted = True
+                cls._plan_imported_names(
+                    project,
+                    (owner, old_suffix, new_suffix),
+                    corpus[0],
+                    (ordered_paths, resources),
+                    plan[0],
+                )
                 if not elected:
                     continue
                 changes = u.Infra.restructure_changes(
@@ -1017,6 +1025,40 @@ class FlextInfraRenameSymbols:
                         planned=plan[0],
                     )
         return accepted
+
+    @classmethod
+    def _plan_imported_names(
+        cls,
+        project: p.Infra.RopeProject,
+        identity: t.Triple[str, str, str],
+        sources: t.MappingKV[Path, str],
+        inventory: t.Pair[t.SequenceOf[Path], t.MappingKV[Path, t.Infra.RopeResource]],
+        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
+    ) -> None:
+        """Extend the existing campaign to bare imports of its native source owner."""
+        owner, old, new = identity
+        expected = cls.resolve_member(project, owner, old)
+        if expected is None or not u.Infra.py_class(expected.get_object()):
+            return
+        module, _ = expected.get_definition_location()
+        resource = module.get_resource() if module is not None else None
+        if resource is None:
+            return
+        declaring_root = u.Infra.project_root(Path(resource.real_path))
+        for path in inventory[0]:
+            source = sources[path]
+            if old.rsplit(".", 1)[-1] not in source:
+                continue
+            if u.Infra.project_root(path) != declaring_root:
+                continue
+            current = u.Infra.content_change(
+                inventory[1][path], source, planned.get(path, ())
+            ).new_contents
+            updated = FlextInfraUtilitiesQualifiedNames.retarget_imported_names(
+                current, owner, (old, new)
+            )
+            if updated != current:
+                planned[path] = list(cls._content_rewrites(source, updated))
 
     @classmethod
     def _plan_declaration_owner(

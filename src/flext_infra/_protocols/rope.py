@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from flext_infra import m
     from flext_infra._protocols.base import FlextInfraProtocolsBase
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
+    from flext_infra._protocols.workspace_snapshot import (
+        FlextInfraProtocolsWorkspaceSnapshot,
+    )
 
 
 @runtime_checkable
@@ -284,6 +287,11 @@ class FlextInfraProtocolsRope(Protocol):
     @runtime_checkable
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
+
+        @property
+        def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
+            """Return the generic source epoch already owned by this session."""
+            ...
 
         @classmethod
         def open_workspace(

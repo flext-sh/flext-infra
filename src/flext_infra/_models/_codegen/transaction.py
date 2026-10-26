@@ -20,7 +20,11 @@ class FlextInfraModelsCodegenTransactionModels:
     """Source candidate models for the codegen pipeline."""
 
     class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
-        """Composition scopes and file modes of one source preview."""
+        """Composition scopes, observed file plans and modes of one source preview.
+
+        Generation admission retains the original declarations so the staged
+        candidate and publication describe the same updates and retirements.
+        """
 
         workspaces: tuple[Path, ...] = m.Field(
             default=(), description="Explicit composition scopes of the staged view"
@@ -32,6 +36,9 @@ class FlextInfraModelsCodegenTransactionModels:
         inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             description="Original source observations materialized in the view",
+        )
+        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+            default=(), description="Original declarations of the candidate effects"
         )
 
     class StageSourceOptions(FlextInfraModelsBase.FrozenArbitrary):

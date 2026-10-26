@@ -11,14 +11,16 @@ from typing import TYPE_CHECKING
 from flext_infra import c, services
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import p, t
 
 
 class FlextInfraCliRouteService:
     """Resolve one group's CLI route table on demand, never all of them."""
 
     @classmethod
-    def route_table_for(cls, group: str) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    def route_table_for(
+        cls, group: str, *, command: str | None = None
+    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
         """Return the routes for one command group, importing only its owner.
 
         Returns:
@@ -33,7 +35,7 @@ class FlextInfraCliRouteService:
             c.Infra.CLI_GROUP_CODEGEN,
             c.Infra.CLI_GROUP_DEPS,
         }:
-            return cls._codegen_family_routes(group)
+            return cls._codegen_family_routes(group, command=command)
         if group in {
             c.Infra.CLI_GROUP_DOCS,
             c.Infra.CLI_GROUP_MAINTENANCE,
@@ -50,7 +52,9 @@ class FlextInfraCliRouteService:
     @staticmethod
     def _codegen_family_routes(
         group: str,
-    ) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+        *,
+        command: str | None = None,
+    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
         """Return the check, codegen or deps routes from the codegen owner.
 
         Returns:
@@ -60,13 +64,13 @@ class FlextInfraCliRouteService:
         if group == c.Infra.CLI_GROUP_CHECK:
             return services.FlextInfraCodegenRoutes.check_routes()
         if group == c.Infra.CLI_GROUP_CODEGEN:
-            return services.FlextInfraCodegenRoutes.codegen_routes()
+            return services.FlextInfraCodegenRoutes.codegen_routes(command=command)
         return services.FlextInfraCodegenRoutes.deps_routes()
 
     @staticmethod
     def _workspace_family_routes(
         group: str,
-    ) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
         """Return the release or workspace routes from the workspace owner.
 
         Returns:

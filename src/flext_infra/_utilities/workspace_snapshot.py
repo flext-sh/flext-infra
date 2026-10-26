@@ -21,16 +21,16 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
-)
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
-from flext_infra._utilities._rope_analysis.sourcescan import (
+from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
+from flext_infra._utilities._rope.project import FlextInfraRopeProject
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesWorkspaceSnapshot:
@@ -106,7 +106,11 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         root: Path,
         members: t.SequenceOf[Path],
     ) -> Generator[p.Infra.WorkspaceSnapshot]:
-        """Open the run snapshot: one engine project, every fact on first query.
+        """Open one repository engine with explicit nested inventory ownership.
+
+        ``members`` separates nested checkout inventories. Only ``root`` elects
+        the native project's source roots, so sibling internal packages cannot
+        replace this repository's bindings.
 
         Yields:
             The snapshot every stage of the run reads.
@@ -114,7 +118,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         """
         root = root.resolve()
         member_roots = tuple(dict.fromkeys(member.resolve() for member in members))
-        with cls.workspace_overlay_project(root, member_roots) as project:
+        with cls.workspace_overlay_project(root, (root,)) as project:
             yield m.Infra.WorkspaceSnapshot(
                 workspace_root=root,
                 members=member_roots,
@@ -323,14 +327,11 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         if member is None:
             msg = f"workspace file lies outside every member: {path}"
             raise ValueError(msg)
-        read = u.Cli.atomic_read_binary_file_state(path, required=True)
-        if read.failure or read.value.content is None:
-            msg = read.error or f"workspace file is absent: {path}"
-            raise OSError(msg)
-        raw = read.value.content
+        state = snapshot.engine.source_state(path, required=True)
+        raw = snapshot.engine.source_bytes(path)
         source = m.Infra.WorkspaceSnapshotSource(
             path=path,
-            state=read.value,
+            state=state,
             digest=hashlib.sha256(raw).hexdigest(),
             module=cls._module_name(snapshot, path, member),
             member=member,

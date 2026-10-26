@@ -15,9 +15,21 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, d, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
-from flext_infra.deps.phases import FlextInfraToolTablesPhase
+from flext_cli import u
+
+from flext_infra import c, d, m, p, r, t
+from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
+)
+from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
+from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from flext_infra._utilities.lazy_init_plan import FlextInfraUtilitiesLazyInitPlan
+from flext_infra._utilities.lazy_init_render import FlextInfraUtilitiesLazyInitRender
+from flext_infra._utilities.workspace_snapshot import (
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
+from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
+from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 
 class FlextInfraCodegenLazyInit(
@@ -52,7 +64,7 @@ class FlextInfraCodegenLazyInit(
         changed = tuple(
             str(plan.path)
             for plan in planned.value
-            if u.Infra.codegen_file_requires_effect(plan)
+            if FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect(plan)
         )
         if changed:
             return r[bool].fail(
@@ -111,8 +123,11 @@ class FlextInfraCodegenLazyInit(
                     message.SCOPE_OUTSIDE.format(workspace=workspace, root=invalid)
                 )
             indexes = {
-                root: u.Infra.index_rope_workspace(
-                    shared, root, project=None if view is shared.engine else view
+                root: FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
+                    shared,
+                    root,
+                    project=None if view is shared.engine else view,
+                    project_roots=(root,) if scoped else None,
                 )
                 for root in roots
             }
@@ -122,7 +137,7 @@ class FlextInfraCodegenLazyInit(
             by_path: dict[Path, m.Infra.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
-                    u.Infra.lazy_init_run(
+                    FlextInfraUtilitiesLazyInitPlan.lazy_init_run(
                         view,
                         indexes[root],
                         root=root,
@@ -141,7 +156,12 @@ class FlextInfraCodegenLazyInit(
         files = tuple(by_path[path] for path in sorted(by_path))
         u.Cli.info(
             message.PLAN_SUMMARY.format(
-                effects=sum(map(u.Infra.codegen_file_requires_effect, files))
+                effects=sum(
+                    map(
+                        FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect,
+                        files,
+                    )
+                )
             )
         )
         return result_type.ok(files)
@@ -162,7 +182,7 @@ class FlextInfraCodegenLazyInit(
         if not self.module:
             return result_type.ok(dict.fromkeys(indexes))
         found = {
-            root: u.Infra.lazy_init_target_dirs(
+            root: FlextInfraUtilitiesLazyInitPlan.lazy_init_target_dirs(
                 index, root, module=self.module, scoped=scoped
             )
             for root, index in indexes.items()
@@ -188,14 +208,16 @@ class FlextInfraCodegenLazyInit(
             The repository's initializer file plans, or the first failure.
 
         """
-        plans = u.Infra.lazy_init_plan_root(run, target)
+        plans = FlextInfraUtilitiesLazyInitPlan.lazy_init_plan_root(run, target)
         if plans.failure:
             return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(plans)
         owners = {
-            u.Infra.lazy_init_project_root(run.model, plan.context.pkg_dir)
+            FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
+                run.model, plan.context.pkg_dir
+            )
             for plan in plans.value
         }
-        return u.Infra.lazy_init_file_plans(
+        return FlextInfraUtilitiesLazyInitPlan.lazy_init_file_plans(
             run,
             plans.value,
             first_party={
@@ -224,7 +246,7 @@ class FlextInfraCodegenLazyInit(
         if snapshot is not None:
             yield snapshot
             return
-        with u.Infra.workspace_snapshot(
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_snapshot(
             workspace, tuple(dict.fromkeys((workspace, *roots)))
         ) as scoped:
             yield scoped
@@ -250,7 +272,7 @@ class FlextInfraCodegenLazyInit(
                 raise ValueError(c.Infra.LazyInitMessage.VIEW_OUTSIDE)
             yield source_project
             return
-        with u.Infra.facade_source_project(
+        with FlextInfraUtilitiesCodegenFacades.facade_source_project(
             workspace,
             project_roots=tuple(
                 root for root in roots if root.is_relative_to(workspace)

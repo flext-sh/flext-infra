@@ -56,8 +56,8 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         observed = cls._observe_environment(repository_root, (repository,))
         if observed.failure:
             return result.from_failure(observed)
-        installed = cls._member_installation(
-            repository,
+        installed = cls.distribution_installation(
+            repository.distribution,
             metadata_paths=tuple(str(path) for path in observed.value.metadata_paths),
             environment_root=observed.value.prefix,
         )
@@ -89,54 +89,6 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             lock_state=lock_state,
             environment_root=observed.value.prefix,
         )
-
-    @staticmethod
-    def _member_installation(
-        repository: m.Infra.RepositoryRef,
-        *,
-        metadata_paths: t.StrSequence,
-        environment_root: Path,
-    ) -> p.Result[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]:
-        """Read the member's unique installed distribution and native PEP 610 record.
-
-        Returns:
-            The distribution, original receipt bytes and validated URL declaration.
-
-        """
-        result = r[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]
-        matches = u.installed_distributions(
-            name=repository.distribution,
-            path=metadata_paths,
-        )
-        if len(matches) != 1:
-            return result.fail(
-                "member declaration needs one installed distribution: "
-                f"{repository.distribution}",
-            )
-        distribution = matches[0]
-        if (
-            not Path(str(distribution.locate_file("")))
-            .resolve()
-            .is_relative_to(
-                environment_root.resolve(),
-            )
-        ):
-            return result.fail(
-                "member distribution is outside the owned environment: "
-                f"{repository.distribution}",
-            )
-        raw = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
-        if raw is None:
-            return result.fail(
-                "member declaration lacks PEP 610 provenance: "
-                f"{repository.distribution}",
-            )
-        receipt = r[m.Infra.DirectUrlReceipt].create_from_callable(
-            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
-        )
-        if receipt.failure:
-            return result.from_failure(receipt)
-        return result.ok((distribution, raw, receipt.value))
 
     @staticmethod
     def _member_locked_environment(

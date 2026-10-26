@@ -149,6 +149,49 @@ class TestsFlextInfraRopeSnapshot:
         tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
 
     @staticmethod
+    def test_source_view_retains_native_provider_epoch_and_rejects_live_edit(
+        tmp_path: Path,
+    ) -> None:
+        """Rope and source planning share one capture; CAS preserves a later edit."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        original = b"class Original: pass\n"
+        changed = b"class Concurrent: pass\n"
+        source.write_bytes(original)
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            project = snapshot.engine
+            resource = u.Infra.require_file_resource(
+                project.get_resource(source.relative_to(root).as_posix()),
+                source,
+            )
+            provider = project.get_pymodule(resource, force_errors=True)
+            if not u.Infra.source_module(provider):
+                message = f"Native source has no Rope module: {source}"
+                raise TypeError(message)
+            before = project.source_state(source)
+            tm.that(provider.source_code, eq=original.decode())
+            source.write_bytes(changed)
+
+            tm.that(project.source_bytes(source), eq=original)
+            tm.that(resource.read(), eq=provider.source_code)
+            tm.that(project.source_state(source), eq=before)
+            captured = u.Infra.workspace_source(snapshot, source)
+            tm.that(captured.text, eq=provider.source_code)
+            tm.that(captured.state, eq=before)
+            plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=project.source_state(source),
+                desired_content=original + b"# generated projection\n",
+                desired_mode=before.mode,
+            )
+            tm.fail(
+                u.Infra.publish_codegen_plans(root, (plan,)),
+                has=f"atomic source changed: {source}",
+            )
+            tm.that(source.read_bytes(), eq=changed)
+
+    @staticmethod
     @pytest.mark.parametrize("declared", [False, True])
     def test_lazy_planning_reads_both_overlay_routes(
         tmp_path: Path, *, declared: bool

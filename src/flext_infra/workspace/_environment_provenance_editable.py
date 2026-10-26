@@ -6,15 +6,61 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from importlib.metadata import Distribution
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import c, m, p, r, t, u
+from flext_cli import u
+
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
     """Bind editable receipts and path files to declared package sources."""
+
+    @staticmethod
+    def distribution_installation(
+        distribution_name: str,
+        *,
+        metadata_paths: t.StrSequence,
+        environment_root: Path,
+    ) -> p.Result[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]:
+        """Authenticate one installed distribution and its native PEP 610 record.
+
+        Returns:
+            The distribution, original receipt and validated source declaration.
+
+        """
+        result = r[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]
+        matches = u.installed_distributions(
+            name=distribution_name,
+            path=metadata_paths,
+        )
+        if len(matches) != 1:
+            return result.fail(
+                "member declaration needs one installed distribution: "
+                f"{distribution_name}",
+            )
+        if not Path(str(matches[0].locate_file(""))).resolve().is_relative_to(
+            environment_root.resolve(),
+        ):
+            return result.fail(
+                "member distribution is outside the owned environment: "
+                f"{distribution_name}",
+            )
+        distribution = matches[0]
+        raw = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+        if raw is None:
+            return result.fail(
+                f"member declaration lacks PEP 610 provenance: {distribution_name}",
+            )
+        receipt = r[m.Infra.DirectUrlReceipt].create_from_callable(
+            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
+        )
+        if receipt.failure:
+            return result.from_failure(receipt)
+        return result.ok((distribution, raw, receipt.value))
 
     @classmethod
     def _validate_direct_url(
@@ -138,6 +184,8 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
             The complete deduplicated package declarations, including namespace roots.
 
         """
+        from flext_infra import u
+
         result = r[t.VariadicTuple[t.Pair[str, Path | None]]]
         package_name = u.Infra.project_package_name(expected_root)
         payload = u.Infra.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
@@ -248,6 +296,8 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
             Every package exposed by this entry, preserving complete coverage checks.
 
         """
+        from flext_infra import u
+
         result = r[frozenset[t.Pair[str, Path | None]]]
         if not Path(entry).is_absolute():
             return result.fail(

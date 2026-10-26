@@ -14,12 +14,6 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
-    from flext_infra.validate._pytest_runner import (
-        FlextInfraPytestRunnerBase,
-        FlextInfraPytestRunnerCommand,
-        FlextInfraPytestRunnerExecution,
-        FlextInfraPytestRunnerReports,
-    )
     from flext_infra.validate._skill_rule_runner import FlextInfraSkillRuleRunnerMixin
     from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
     from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
@@ -48,10 +42,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPytestDiagXmlMixin",
     "FlextInfraPytestRunner",
-    "FlextInfraPytestRunnerBase",
-    "FlextInfraPytestRunnerCommand",
-    "FlextInfraPytestRunnerExecution",
-    "FlextInfraPytestRunnerReports",
     "FlextInfraSkillRuleRunnerMixin",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
@@ -74,10 +64,6 @@ install_lazy_exports(
         "FlextInfraPytestDiagExtractor": ".pytest_diag",
         "FlextInfraPytestDiagXmlMixin": "._pytest_diag_xml",
         "FlextInfraPytestRunner": ".pytest_runner",
-        "FlextInfraPytestRunnerBase": "._pytest_runner.base",
-        "FlextInfraPytestRunnerCommand": "._pytest_runner.command",
-        "FlextInfraPytestRunnerExecution": "._pytest_runner.execution",
-        "FlextInfraPytestRunnerReports": "._pytest_runner.reports",
         "FlextInfraSkillRuleRunnerMixin": "._skill_rule_runner",
         "FlextInfraSkillValidator": ".skill_validator",
         "FlextInfraStubSupplyChain": ".stub_chain",

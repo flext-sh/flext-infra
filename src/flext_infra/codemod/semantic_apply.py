@@ -22,7 +22,6 @@ from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_sources import FlextInfraRenameSources
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
-from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 from flext_infra.workspace import FlextInfraRopeWorkspace
 
@@ -1275,7 +1274,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         for phase in phases:
             planned = u.Infra.plan_semantic_cutover(
                 phase,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=rope_workspace,
                 sources=working,
             )
@@ -1318,7 +1317,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 phase,
                 u.Infra.plan_semantic_cutover(
                     phase,
-                    import_normalizer=FlextInfraImportNormalization.normalize_source,
+                    import_normalizer=u.Infra.normalize_import_source,
                     rope_workspace=rope_workspace,
                     sources=sources,
                 ),
@@ -1506,7 +1505,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             phase_sources = cls._semantic_phase_sources(root, phase, working)
             planned = u.Infra.plan_semantic_cutover(
                 phase,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=rope_workspace,
                 sources=phase_sources,
                 findings=preflight.entries,
@@ -1520,7 +1519,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     phase,
                     u.Infra.plan_semantic_cutover(
                         phase,
-                        import_normalizer=FlextInfraImportNormalization.normalize_source,
+                        import_normalizer=u.Infra.normalize_import_source,
                         rope_workspace=rope_workspace,
                         sources={path: working[path] for path in phase_sources},
                         findings=preflight.entries,
@@ -1838,7 +1837,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 phase,
                 u.Infra.plan_semantic_cutover(
                     phase,
-                    import_normalizer=FlextInfraImportNormalization.normalize_source,
+                    import_normalizer=u.Infra.normalize_import_source,
                     rope_workspace=rope_workspace,
                     sources=working,
                     findings=preflight.entries,

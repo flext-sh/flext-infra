@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraRuntimeEvaluatedBaseClasses:
@@ -115,7 +115,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 {
                     tmp_path / "src" / "child_consumer" / "models.py": (
                         "import relative_child_provider\n"
-                        "class Consumer(relative_child_provider.runtime.Contract): pass\n"
+                        "class Consumer(relative_child_provider.runtime.Contract): "
+                        "pass\n"
                     ),
                 },
                 u.Tests.runtime_evaluated_roots(),
@@ -860,3 +861,80 @@ class TestsFlextInfraLazyAliasOrdering:
                 },
                 u.Tests.runtime_evaluated_roots(),
             )
+
+
+class TestsFlextInfraCapturedSourceProvider:
+    """Authenticate captured sources against warmed native providers."""
+
+    @pytest.mark.parametrize(
+        "advance_source", [False, True], ids=["matching", "changed"]
+    )
+    @staticmethod
+    def test_warmed_project_authenticates_the_current_captured_source(
+        tmp_path: Path,
+        *,
+        advance_source: bool,
+    ) -> None:
+        """Cached native identity is reusable only for the exact captured bytes."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, package_name="provider_probe"
+        )
+        path = package / "models.py"
+        original_source = (
+            "class Root: pass\n"
+            "class Previous(Root): pass\n"
+            "class Consumer(Previous): pass\n"
+        )
+        path.write_text(original_source, encoding="utf-8")
+        with (
+            closing(u.Infra.init_rope_project(root)) as original,
+            closing(u.Infra.snapshot_project(original, {})) as project,
+        ):
+            resource = u.Infra.require_file_resource(
+                project.get_resource(path.relative_to(root).as_posix()), path
+            )
+            native = u.Infra.resolve_pymodule(project, resource)
+            class_name = "Current" if advance_source else "Previous"
+            captured = original_source.replace("Previous", class_name)
+            if advance_source:
+                path.write_text(captured, encoding="utf-8")
+            tm.that(resource.read(), eq=captured)
+            tm.ok(project.get_pymodule(resource, force_errors=True) is native)
+            tm.that(native.source_code, eq=original_source)
+            request = m.Infra.SourceBindingInventoryRequest(
+                project=project,
+                module="provider_probe.models",
+                path=path,
+                source=captured,
+            )
+            provider = u.Infra.source_provider(request)
+            tm.that(provider.source_code, eq=captured)
+            tm.that(tm.not_none(provider.get_resource()).real_path, eq=str(path))
+            tm.that(provider is native, eq=not advance_source)
+            if advance_source:
+                with pytest.raises(
+                    ValueError, match="Provider does not match captured source"
+                ):
+                    u.Infra.source_provider(request, provider=native)
+            else:
+                tm.ok(u.Infra.source_provider(request, provider=native) is native)
+                tm.ok(
+                    provider.get_attributes()["Root"].get_object()
+                    is native.get_attributes()["Root"].get_object()
+                )
+            tm.that(
+                u.Infra.runtime_evaluated_base_classes(
+                    root,
+                    {path: captured},
+                    ("provider_probe.models.Root",),
+                    source_project=project,
+                ),
+                eq=tuple(
+                    sorted((
+                        "provider_probe.models.Root",
+                        f"provider_probe.models.{class_name}",
+                    ))
+                ),
+            )
+            tm.ok(project.get_pymodule(resource, force_errors=True) is native)
+            tm.that(native.source_code, eq=original_source)

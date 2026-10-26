@@ -13,18 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codegen._conform import (
-        FlextInfraCodegenConformArtifactRender,
-        FlextInfraCodegenConformBootstrap,
-        FlextInfraCodegenConformContextRender,
-        FlextInfraCodegenConformEditor,
-        FlextInfraCodegenConformExecute,
-        FlextInfraCodegenConformExistingPlan,
-        FlextInfraCodegenConformFilePlans,
-        FlextInfraCodegenConformPlan,
-        FlextInfraCodegenConformPyprojectPolicy,
-        FlextInfraCodegenConformScaffoldPlan,
-    )
     from flext_infra.codegen._consolidator_steps import (
         FlextInfraCodegenConsolidatorStepsMixin,
     )
@@ -64,16 +52,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
-    "FlextInfraCodegenConformArtifactRender",
-    "FlextInfraCodegenConformBootstrap",
-    "FlextInfraCodegenConformContextRender",
-    "FlextInfraCodegenConformEditor",
-    "FlextInfraCodegenConformExecute",
-    "FlextInfraCodegenConformExistingPlan",
-    "FlextInfraCodegenConformFilePlans",
-    "FlextInfraCodegenConformPlan",
-    "FlextInfraCodegenConformPyprojectPolicy",
-    "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
     "FlextInfraCodegenConsolidatorStepsMixin",
     "FlextInfraCodegenExecutionBase",
@@ -104,16 +82,6 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraCodegenCensus": ".census",
         "FlextInfraCodegenConform": ".conform",
-        "FlextInfraCodegenConformArtifactRender": "._conform.artifact_render",
-        "FlextInfraCodegenConformBootstrap": "._conform.bootstrap",
-        "FlextInfraCodegenConformContextRender": "._conform.context_render",
-        "FlextInfraCodegenConformEditor": "._conform.editor",
-        "FlextInfraCodegenConformExecute": "._conform.execute",
-        "FlextInfraCodegenConformExistingPlan": "._conform.existing_plan",
-        "FlextInfraCodegenConformFilePlans": "._conform.file_plans",
-        "FlextInfraCodegenConformPlan": "._conform.plan",
-        "FlextInfraCodegenConformPyprojectPolicy": "._conform.pyproject_policy",
-        "FlextInfraCodegenConformScaffoldPlan": "._conform.scaffold_plan",
         "FlextInfraCodegenConsolidator": ".consolidator",
         "FlextInfraCodegenConsolidatorStepsMixin": "._consolidator_steps",
         "FlextInfraCodegenExecutionBase": "._execution",

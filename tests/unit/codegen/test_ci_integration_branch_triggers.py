@@ -217,7 +217,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(
             tuple(step["run"] for step in approval),
             eq=tuple(
-                f"{codegen.make.ci.variable}={codegen.make.ci.value} {step.make_command}"
+                f"{codegen.make.ci.variable}={codegen.make.ci.value} "
+                f"{step.make_command}"
                 for step in codegen.make.workflow
                 if "ci" in step.contexts
             ),

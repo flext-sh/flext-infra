@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -174,8 +175,10 @@ class FlextInfraModelsCodegenPipelineModels:
     class CodegenConformPorts(m.ContractModel):
         """Collaborators the complete conform crosses into, wired by the facade.
 
-        Docs rendering is another service family; the composition root binds
-        its implementation once and conform only consumes this port.
+        The composition root binds document planning and guarded file publication
+        once. The same staged candidate must pass the native cold-import validator
+        before either check accepts it or apply publishes it. Conform retains those
+        capabilities by reference rather than assembling utility implementations.
         """
 
         docs_planner: Annotated[
@@ -183,6 +186,31 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(
                 exclude=True,
                 description="Builds the docs planner for one conform scope",
+            ),
+        ]
+        file_publisher: Annotated[
+            t.Port[p.Infra.CodegenFilePublisher],
+            m.Field(
+                exclude=True,
+                description="Shared guarded normalization and publication owner",
+            ),
+        ]
+        source_preview: Annotated[
+            t.Port[p.Infra.SourcePreview],
+            m.Field(exclude=True, description="Native staged source-view owner"),
+        ]
+        candidate_validator: Annotated[
+            t.Port[Callable[[Path, Path], p.Result[bool]]],
+            m.Field(
+                exclude=True,
+                description="Native cold-import admission in the source runtime",
+            ),
+        ]
+        imports_planner: Annotated[
+            t.Port[p.Infra.SourceImportPlanner],
+            m.Field(
+                exclude=True,
+                description="Shared import planner over the authenticated source candidate",
             ),
         ]
 

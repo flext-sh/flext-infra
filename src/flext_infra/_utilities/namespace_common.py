@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesRefactorNamespaceCommon:

@@ -14,9 +14,11 @@ from typing import override
 import libcst as cst
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesQualifiedNames,
+from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities._rope.pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
+)
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (

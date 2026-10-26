@@ -16,8 +16,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
-    FlextInfraUtilitiesRopeAnalysis,
 )
+from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from flext_infra import p

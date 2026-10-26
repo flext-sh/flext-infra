@@ -386,11 +386,21 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
     @runtime_checkable
     class RopeSourceMemberResolver(Protocol):
-        """Member lookup bound to one native project and captured source view."""
+        """Member lookup and class ordering bound to one captured source view."""
 
         def __call__(
             self, qualified: str | m.Infra.SourceClassReference, /
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
+
+        def class_order(
+            self, declarations: t.SequenceOf[m.Infra.SourceClassReference]
+        ) -> t.StrTuple: ...
+
+        def class_reaches(
+            self,
+            declarations: t.SequenceOf[m.Infra.SourceClassReference],
+            anchors: t.SequenceOf[m.Infra.SourceClassReference],
+        ) -> t.VariadicTuple[frozenset[str]]: ...
 
     @runtime_checkable
     class RopeSemanticModule(RopeNamedObject, Protocol):
