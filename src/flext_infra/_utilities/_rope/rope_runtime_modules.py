@@ -78,13 +78,18 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         """
         supplier = cls.source_import_binding(binding)
-        if (
-            supplier is None
-            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
-            or len(supplier.assignments) != 1
+        if supplier is None or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(
+            supplier
         ):
             return None
-        assignment = supplier.assignments[0]
+        # Method-body writes join the same binding without a type hint; only
+        # the declared AnnAssign carries the annotation this contract resolves.
+        assignments = [
+            assignment for assignment in supplier.assignments if assignment.type_hint
+        ]
+        if len(assignments) != 1:
+            return None
+        assignment = assignments[0]
         assigned = assignment.ast_node
         annotation = assignment.type_hint
         module, _line = cls.definition_location(supplier)

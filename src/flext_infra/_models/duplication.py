@@ -66,6 +66,20 @@ class FlextInfraModelsDuplication:
                 ),
             ),
         ] = True
+        comparison_roots: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "External comparison checkout roots joined into this "
+                    "project's scan scope, analogous to mod consumer_roots. A "
+                    "clone stays a finding of THIS project only when one side "
+                    "remains under the invoking project root; clones wholly "
+                    "inside an external root belong to that root's owner. An "
+                    "absent root degrades: it is skipped and recorded in the "
+                    "gate output, like a standalone fleet checkout"
+                ),
+            ),
+        ] = ()
 
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""

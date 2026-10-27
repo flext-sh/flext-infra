@@ -504,6 +504,15 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     JSCPD_REPORT_DIRNAME: ClassVar[str] = ".reports/jscpd"
     JSCPD_CONFIG_FILENAME: ClassVar[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: ClassVar[str] = "jscpd-report.json"
+    JSCPD_REPORTERS: ClassVar[t.StrSequence] = (
+        "json",
+        "sarif",
+    )
+    (
+        "Native jscpd 5.x reporters: JSON feeds the typed evidence pipeline; "
+        "SARIF feeds the coordinated multi-session review surface. Both are "
+        "written beside each other in the shared report directory."
+    )
     JSCPD_FORMAT_EXTENSIONS: ClassVar[t.MappingKV[str, t.StrSequence]] = (
         MappingProxyType({"django": ("j2",)})
     )

@@ -295,7 +295,61 @@ class FlextInfraUtilitiesFacadeMembers:
                 value, source_project=source_project
             ):
                 return c.Infra.FacadeMemberKind.TYPE
+        if (
+            FlextInfraUtilitiesFacadeMembers._typing_assigned_value(
+                value, source_project=source_project
+            )
+            # A prova Annotated estrita (operando classe + metadata) vale
+            # também quando a resolução por anotação não se aplica.
+            or FlextInfraUtilitiesFacadeMembers._annotated_class_value(
+                value, source_project=source_project
+            )
+        ):
+            return c.Infra.FacadeMemberKind.TYPE
         return None
+
+    @staticmethod
+    def _typing_assigned_value(
+        value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+    ) -> bool:
+        """Prove a plain assignment subscribes a native ``typing`` constructor.
+
+        Atribuições simples de fornecedores externos ao snapshot (sem
+        ``AnnAssign``) carregam o subscrito no valor declarado; a identidade
+        do construtor contra ``typing``/``typing_extensions`` nativos prova a
+        classificação TYPE sem mapa de nomes nem inferência.
+
+        Returns:
+            Whether the declared subscrito constructor is proven native.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        supplier = runtime.class_assignment_binding(
+            runtime.source_import_binding(value), classes_only=False
+        )
+        if (
+            supplier is None
+            or not types.assigned_name(supplier)
+            or len(supplier.assignments) != 1
+        ):
+            return False
+        expression = supplier.assignments[0].ast_node
+        if not isinstance(expression, ast.Subscript):
+            return False
+        module, _line = runtime.definition_location(supplier)
+        if not types.source_module(module):
+            return False
+        scope = runtime.scope_at(
+            module, runtime.source_offset(module.source_code, expression)
+        )
+        constructor = runtime.resolve_symbol(scope, expression.value)
+        return any(
+            runtime.same_name(
+                runtime.qualified_name(source_project, identity), constructor
+            )
+            for identity in ("typing.Literal", "typing_extensions.Literal")
+        )
 
     @staticmethod
     def _annotated_class_value(
@@ -499,19 +553,28 @@ class FlextInfraUtilitiesFacadeMembers:
         Returns:
             The sorted public member names the letter owns.
 
+        Raises:
+            ValueError: If the member's owner cannot be determined.
+
         """
         module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
             source_project.get_module(library)
         )
-        return tuple(
-            sorted(
-                name
-                for name, binding in module.get_attributes().items()
-                if not name.startswith("_")
-                and cls.facade_member_owner(binding, source_project=source_project)
-                == letter
-            )
-        )
+        owned: list[str] = []
+        for name, binding in module.get_attributes().items():
+            if name.startswith("_"):
+                continue
+            try:
+                if (
+                    cls.facade_member_owner(binding, source_project=source_project)
+                    != letter
+                ):
+                    continue
+            except ValueError as failure:
+                failure.add_note(f"library-member-owner: {library}.{name}")
+                raise
+            owned.append(name)
+        return tuple(sorted(owned))
 
     @staticmethod
     def specialized_aliases(
