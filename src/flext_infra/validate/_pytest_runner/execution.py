@@ -346,8 +346,7 @@ class FlextInfraPytestRunnerExecution(
 
         """
         return m.Cli.ProcessDeadline(
-            expires_at_monotonic=self.started_at_monotonic
-            + self.run_timeout_seconds,
+            expires_at_monotonic=self.started_at_monotonic + self.run_timeout_seconds,
             termination_grace_seconds=self.termination_grace_seconds,
         )
 

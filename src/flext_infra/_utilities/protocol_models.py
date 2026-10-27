@@ -289,6 +289,7 @@ class FlextInfraUtilitiesProtocolModels:
             """
             selected: set[str] = set()
             facade = self.facades["p"]
+            member_cache: dict[str, p.Infra.RopePyName | None] = {}
             for entry in self.workspace.modules():
                 resource = self.workspace.resource(entry.file_path)
                 if resource is None:
