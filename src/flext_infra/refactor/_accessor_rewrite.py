@@ -54,14 +54,10 @@ class FlextInfraAccessorMigrationRewriteMixin(
         resource = u.Infra.resolve_resource_from_path(rope_project, py_file)
         if resource is None:
             return source, ()
-        declared = self._expression_catalog()
+        declared = self.migration_rules()
         updated_source, renamed = self._rename_symbol_tokens(
             source,
-            rules=tuple(
-                rule
-                for rule in (*self._AUTOMATED_RULES, *declared)
-                if rule.operation == "rename"
-            ),
+            rules=tuple(rule for rule in declared if rule.operation == "rename"),
             file_path=py_file,
             resolver=resolver,
         )

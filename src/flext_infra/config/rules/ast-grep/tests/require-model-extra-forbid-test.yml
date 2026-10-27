@@ -1,0 +1,24 @@
+id: require-model-extra-forbid
+valid:
+  - |
+    class Order(m.FrozenModel):
+        total: int
+  - |
+    class Order(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+  - |
+    class Order(BaseModel, extra="forbid"):
+        total: int
+  - |
+    class ScopeMixin(m.BaseModel):
+        projects: t.StrSequence = ()
+  - |
+    class ManagedModel(BaseModel):
+        model_config = ConfigDict(validate_assignment=True)
+invalid:
+  - |
+    class Order(BaseModel):
+        total: int
+  - |
+    class Order(pydantic.BaseModel):
+        model_config = ConfigDict(frozen=True)

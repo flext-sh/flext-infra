@@ -14,15 +14,14 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
 
-    class BanditFinding(m.ContractModel):
+    class BanditFinding(m.ExternalContractModel):
         """Required fields consumed from one native Bandit finding."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
 
         filename: Annotated[t.NonEmptyStr, m.Field(description="Audited source path")]
         line_number: Annotated[
@@ -35,18 +34,14 @@ class FlextInfraModelsCheck:
             m.Field(description="Native security diagnostic"),
         ]
 
-    class BanditScanError(m.ContractModel):
+    class BanditScanError(m.ExternalContractModel):
         """A source file Bandit could not audit."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
 
         filename: Annotated[t.NonEmptyStr, m.Field(description="Unaudited source path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Native scan failure")]
 
-    class BanditReport(m.ContractModel):
+    class BanditReport(m.ExternalContractModel):
         """Required Bandit JSON arrays, including a clean pair of empty arrays."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
 
         results: Annotated[
             t.SequenceOf[FlextInfraModelsCheck.BanditFinding],
@@ -71,6 +66,30 @@ class FlextInfraModelsCheck:
             bool,
             m.Field(description="Stop check gates after the first failure"),
         ] = c.Infra.CHECK_FAIL_FAST_DEFAULT
+        gate_set: Annotated[
+            c.Infra.CheckGateSet,
+            m.Field(
+                alias="gate-set",
+                description=(
+                    "Gate inventory resolved at runtime when --gates is empty: "
+                    "check (CI or local partition), fix, or fmt"
+                ),
+            ),
+        ] = c.Infra.CheckGateSet.CHECK
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(description="Primary source admission or complete checker phase"),
+        ] = c.Infra.CheckPhase.COMPLETE
+        scope: Annotated[
+            c.Infra.CodegenConformScope,
+            m.Field(
+                description=(
+                    "Omitted-project selection: self checks the invoked "
+                    "repository; all adds every governed workspace member, "
+                    "and multi-root tools run once over their union"
+                ),
+            ),
+        ] = c.Infra.CodegenConformScope.SELF
         reports_dir: Annotated[
             str,
             m.Field(
@@ -119,7 +138,11 @@ class FlextInfraModelsCheck:
             return (self.repository_root / reports_dir).resolve()
 
     class CheckProjectTarget(m.ArbitraryTypesModel):
-        """Resolved project target for workspace gate execution."""
+        """Resolved target and its original pre-gate Git identity, when captured.
+
+        Coverage planning never invents source identity. Global currentness
+        requires the producer's identity for each actual target, including root.
+        """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             frozen=True,
@@ -132,6 +155,10 @@ class FlextInfraModelsCheck:
             t.StrSequence,
             m.Field(description="Requested gates elected for this project's inputs"),
         ] = ()
+        source_identity: Annotated[
+            FlextInfraModelsGitIdentity.GitIdentityReport | None,
+            m.Field(description="Original exact repository identity before gates"),
+        ] = None
 
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
@@ -358,7 +385,10 @@ class FlextInfraModelsCheck:
 
         project_dir: Path = m.Field(description="Project whose gate was executed")
         verdict: bool = m.Field(description="Acceptance decided by the caller")
-        outcome: c.Infra.ToolOutcome = m.Field(description="Native tool outcome")
+        outcome: c.Infra.ToolOutcome | None = m.Field(
+            default=None,
+            description="Declared native tool outcome; absent derives it from findings",
+        )
         issues: t.VariadicTuple[Issue] = m.Field(
             description="Complete native diagnostics",
         )
@@ -645,8 +675,21 @@ class FlextInfraModelsCheck:
             }
 
     class CheckReportSummary(m.ContractModel):
-        """Invocation-owned execution facts retained by the published SARIF."""
+        """Invocation-owned execution facts retained by the published SARIF.
 
+        Global admission requires the producer's unfiltered topology and full
+        applicable gate plan, not merely completion of the requested subset.
+        Missing global coverage is unknown, never implicit whole-workspace proof.
+        """
+
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(
+                description=(
+                    "Original checker phase; primary is never complete check proof"
+                )
+            ),
+        ] = c.Infra.CheckPhase.COMPLETE
         requested_gates: Annotated[
             t.StrSequence,
             m.Field(
@@ -654,6 +697,14 @@ class FlextInfraModelsCheck:
                 description="Resolved gate inventory requested before execution",
             ),
         ]
+        pending_gates: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Requested gates whose project applicability is still pending"
+                ),
+            ),
+        ] = ()
         targets: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget],
             m.Field(description="Canonical project roots selected for this invocation"),
@@ -666,6 +717,16 @@ class FlextInfraModelsCheck:
             t.VariadicTuple[Path],
             m.Field(description="File selection; empty means full-project execution"),
         ]
+        global_targets: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget] | None,
+            m.Field(
+                min_length=1,
+                description=(
+                    "Producer's unfiltered canonical global project and gate plan; "
+                    "absent for legacy, filtered or applicability-pending reports"
+                ),
+            ),
+        ] = None
 
         @m.computed_field
         @property
@@ -673,6 +734,7 @@ class FlextInfraModelsCheck:
             """Every selected target executed its exact applicable inventory."""
             return (
                 bool(self.targets)
+                and not self.pending_gates
                 and len(self.targets) == len(self.results)
                 and len({target.path for target in self.targets}) == len(self.targets)
                 and all(

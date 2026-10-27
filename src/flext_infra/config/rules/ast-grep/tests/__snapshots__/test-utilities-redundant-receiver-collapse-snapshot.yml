@@ -1,11 +1,8 @@
 id: test-utilities-redundant-receiver-collapse
 snapshots:
-  ? |
-    from tests import u, u as test_u
-
-    value = test_u.Tests.codegen_file_text(plan)
-  : fixed: |
-      from tests import u, u as test_u
+  "from tests importu as test_u\n\nvalue = test_u.Tests.codegen_file_text(plan)\n":
+    fixed: |
+      from tests importu as test_u
 
       value = u.Tests.codegen_file_text(plan)
     labels:
@@ -13,12 +10,12 @@ snapshots:
       style: primary
       start: 42
       end: 78
-    - source: from tests import u, u as test_u
+    - source: from tests importu as test_u
       style: secondary
       start: 0
       end: 32
     - source: |
-        from tests import u, u as test_u
+        from tests importu as test_u
 
         value = test_u.Tests.codegen_file_text(plan)
       style: secondary

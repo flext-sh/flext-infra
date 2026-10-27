@@ -15,16 +15,27 @@
 #           stopBy: end
 #           has: { matches: tm-imported-from-flext, stopBy: end }
 
-# tm imported from a flext facade (or the generated tests facade) in the
-# module. Gate for every tm-emitting fix: rewriting to `tm.*` is only
-# F821-safe when tm is actually in scope. Member tests bind `tm` through the
-# generated tests package (`from tests import c, tm`), so the accepted module
-# roots are the flext roots and `tests` — the same pair the public test
-# facade guards accept.
+# `tm` bound to the flext-tests matchers in the module. Gate for every
+# tm-emitting fix: rewriting to `tm.*` is only correct when `tm` is that
+# binding. It is imported under its own name from `flext_tests` or from the
+# generated `tests` facade that re-exports it (`from tests import c, tm`);
+# `from x import tm as other` binds no `tm`, and `from x import y as tm`
+# binds another object.
 id: tm-imported-from-flext
 language: Python
 rule:
   kind: import_from_statement
-  has:
-    pattern: tm
-    stopBy: end
+  all:
+    - has:
+        field: module_name
+        any:
+          - regex: "^(?:flext_tests|tests)$"
+          # A tests module's package-relative import of its own facade.
+          - kind: relative_import
+    - has:
+        kind: dotted_name
+        regex: "^tm$"
+        not:
+          inside:
+            kind: import_from_statement
+            field: module_name

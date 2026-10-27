@@ -18,7 +18,11 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
+from flext_infra.workspace import (
+    FlextInfraBindingService,
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceFlextEditable,
+)
 from flext_infra.workspace._environment_provenance_editable import (
     FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
 )
@@ -52,8 +56,8 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         observed = cls._observe_environment(repository_root, (repository,))
         if observed.failure:
             return result.from_failure(observed)
-        installed = cls._member_installation(
-            repository,
+        installed = cls.distribution_installation(
+            repository.distribution,
             metadata_paths=tuple(str(path) for path in observed.value.metadata_paths),
             environment_root=observed.value.prefix,
         )
@@ -85,54 +89,6 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             lock_state=lock_state,
             environment_root=observed.value.prefix,
         )
-
-    @staticmethod
-    def _member_installation(
-        repository: m.Infra.RepositoryRef,
-        *,
-        metadata_paths: t.StrSequence,
-        environment_root: Path,
-    ) -> p.Result[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]:
-        """Read the member's unique installed distribution and native PEP 610 record.
-
-        Returns:
-            The distribution, original receipt bytes and validated URL declaration.
-
-        """
-        result = r[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]
-        matches = u.installed_distributions(
-            name=repository.distribution,
-            path=metadata_paths,
-        )
-        if len(matches) != 1:
-            return result.fail(
-                "member declaration needs one installed distribution: "
-                f"{repository.distribution}",
-            )
-        distribution = matches[0]
-        if (
-            not Path(str(distribution.locate_file("")))
-            .resolve()
-            .is_relative_to(
-                environment_root.resolve(),
-            )
-        ):
-            return result.fail(
-                "member distribution is outside the owned environment: "
-                f"{repository.distribution}",
-            )
-        raw = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
-        if raw is None:
-            return result.fail(
-                "member declaration lacks PEP 610 provenance: "
-                f"{repository.distribution}",
-            )
-        receipt = r[m.Infra.DirectUrlReceipt].create_from_callable(
-            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
-        )
-        if receipt.failure:
-            return result.from_failure(receipt)
-        return result.ok((distribution, raw, receipt.value))
 
     @staticmethod
     def _member_locked_environment(
@@ -308,15 +264,17 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         if producer.failure:
             return result.from_failure(producer)
         document, name, _payload = producer.value
-        force_include = u.Cli.toml_table_path(
+        extra_metadata = u.Cli.toml_table_path(
             document,
-            ("tool", "hatch", "build", "targets", "wheel", "force-include"),
+            ("tool", "hatch", "build", "targets", "wheel", "extra-metadata"),
         )
+        metadata_dir = resource.parent
         if (
             u.Infra.dep_name(name) != u.Infra.dep_name(repository.distribution)
-            or force_include is None
-            or u.Cli.toml_value(force_include, c.PYPROJECT_FILENAME)
-            != resource.as_posix()
+            or extra_metadata is None
+            or u.Cli.toml_value(extra_metadata, c.PYPROJECT_FILENAME) != resource.name
+            or metadata_dir.name != c.Infra.WHEEL_EXTRA_METADATA_DIR
+            or not metadata_dir.parent.name.endswith(c.Infra.DIST_INFO_SUFFIX)
         ):
             return result.fail(
                 "packaged declaration differs from its producer build contract: "
@@ -848,6 +806,20 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 distribution,
                 observation=observation,
                 repository=repository,
+            )
+        # A local `make setup FLEXT=<path>` receipt names the only editable
+        # FLEXT installs this environment admits; CI never honours it.
+        admitted = FlextInfraWorkspaceFlextEditable.admitted_sources(
+            context.runtime_root,
+        )
+        if admitted.failure:
+            return r[bool].from_failure(admitted)
+        if item.name in admitted.value:
+            return cls._workspace_origin_verdict(
+                item.name,
+                distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
+                admitted.value[item.name],
+                editable=True,
             )
         origin = cls.locked_origin_verdict(
             item.name,

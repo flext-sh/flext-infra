@@ -10,11 +10,8 @@ snapshots:
       style: secondary
       start: 8
       end: 14
-  ? |
-    class TestsHandlerDiscovery:
-        def test_discovers(self) -> None:
-            command = FlextHandlers._CreateCommand()
-  : labels:
+  "class TestsHandlerDiscovery:\n    def test_discovers(self) -> None:\n        command = FlextHandlers._CreateCommand()\n":
+    labels:
     - source: FlextHandlers._CreateCommand
       style: primary
       start: 85
@@ -43,15 +40,15 @@ snapshots:
       style: secondary
       start: 13
       end: 26
-    - source: '"flext_core._lazy_parts"'
+    - source: "\"flext_core._lazy_parts\""
       style: secondary
       start: 27
       end: 51
-    - source: '"flext_core._lazy_parts"'
+    - source: "\"flext_core._lazy_parts\""
       style: secondary
       start: 27
       end: 51
-  service._cache = {}:
+  "service._cache = {}":
     labels:
     - source: service._cache
       style: primary
@@ -71,7 +68,7 @@ snapshots:
       style: secondary
       start: 16
       end: 22
-  tm.that(runner._invocations, eq=1):
+  "tm.that(runner._invocations, eq=1)":
     labels:
     - source: runner._invocations
       style: primary
@@ -101,11 +98,11 @@ snapshots:
       style: secondary
       start: 10
       end: 33
-    - source: '"flext_core._typings.base"'
+    - source: "\"flext_core._typings.base\""
       style: secondary
       start: 34
       end: 60
-    - source: '"flext_core._typings.base"'
+    - source: "\"flext_core._typings.base\""
       style: secondary
       start: 34
       end: 60

@@ -14,10 +14,11 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import m
 
 
 class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
@@ -36,13 +37,16 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         @override
         def leave_ImportFrom(
             self,
-            original_node: cst.ImportFrom,
-            updated_node: cst.ImportFrom,
-        ) -> cst.BaseSmallStatement | cst.FlattenSentinel[cst.BaseSmallStatement]:
+            original_node: t.Infra.Cst.ImportFrom,
+            updated_node: t.Infra.Cst.ImportFrom,
+        ) -> (
+            t.Infra.Cst.BaseSmallStatement
+            | t.Infra.Cst.FlattenSentinel[t.Infra.Cst.BaseSmallStatement]
+        ):
 
             if original_node.relative or isinstance(
                 updated_node.names,
-                cst.ImportStar,
+                c.Infra.Cst.ImportStar,
             ):
                 return updated_node
             dotted_name = FlextInfraUtilitiesQualifiedNames.dotted_name
@@ -52,7 +56,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                 for item in updated_node.names
             ):
                 return updated_node
-            statements: list[cst.BaseSmallStatement] = []
+            statements: list[t.Infra.Cst.BaseSmallStatement] = []
             for imported in updated_node.names:
                 name = dotted_name(imported.name)
                 if name is None:
@@ -104,9 +108,9 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         @override
         def leave_Name(
             self,
-            original_node: cst.Name,
-            updated_node: cst.Name,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.Name,
+            updated_node: t.Infra.Cst.Name,
+        ) -> t.Infra.Cst.BaseExpression:
             """Replace only names bound to one authenticated private identity.
 
             Returns:
@@ -147,7 +151,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
             # the target path. Rewriting the base there appends the nested
             # segment a second time and yields `m.Metadata.Metadata`.
             if (
-                isinstance(parent, cst.Attribute)
+                isinstance(parent, c.Infra.Cst.Attribute)
                 and parent.value is original_node
                 and target.startswith(f"{original_node.value}.")
                 and target.endswith(f".{parent.attr.value}")
@@ -158,9 +162,9 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         @override
         def leave_ImportFrom(
             self,
-            original_node: cst.ImportFrom,
-            updated_node: cst.ImportFrom,
-        ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+            original_node: t.Infra.Cst.ImportFrom,
+            updated_node: t.Infra.Cst.ImportFrom,
+        ) -> t.Infra.Cst.BaseSmallStatement | t.Infra.Cst.RemovalSentinel:
             """Remove cross-owner private bindings replaced by public facades.
 
             Returns:
@@ -180,7 +184,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                 for alias, package in self.plan.public_imports.items()
                 if package == module_name
             }
-            if isinstance(updated_node.names, cst.ImportStar) or (
+            if isinstance(updated_node.names, c.Infra.Cst.ImportStar) or (
                 not removed and not canonical
             ):
                 return updated_node
@@ -212,7 +216,9 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
             self.inserted = False
 
         @override
-        def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
+        def leave_If(
+            self, original_node: t.Infra.Cst.If, updated_node: t.Infra.Cst.If
+        ) -> t.Infra.Cst.If:
             """Populate the first explicit ``TYPE_CHECKING`` block.
 
             Returns:
@@ -224,11 +230,11 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
             """
             if (
                 self.inserted
-                or not isinstance(original_node.test, cst.Name)
+                or not isinstance(original_node.test, c.Infra.Cst.Name)
                 or original_node.test.value != "TYPE_CHECKING"
             ):
                 return updated_node
-            if not isinstance(updated_node.body, cst.IndentedBlock):
+            if not isinstance(updated_node.body, c.Infra.Cst.IndentedBlock):
                 msg = "TYPE_CHECKING boundary must use an indented block"
                 raise TypeError(msg)
             grouped: MutableMapping[str, list[str]] = {}
@@ -252,10 +258,12 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
 
         def __init__(self) -> None:
             self.removed = False
-            self.type_guards: set[cst.If] = set()
+            self.type_guards: set[t.Infra.Cst.If] = set()
 
         @override
-        def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
+        def leave_If(
+            self, original_node: t.Infra.Cst.If, updated_node: t.Infra.Cst.If
+        ) -> t.Infra.Cst.If:
             if any(
                 name.name == "typing.TYPE_CHECKING"
                 for name in self.get_metadata(
@@ -267,8 +275,11 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
 
         def _prune(
             self,
-            statements: t.SequenceOf[cst.BaseStatement],
-        ) -> t.Pair[t.VariadicTuple[cst.BaseStatement], t.VariadicTuple[cst.EmptyLine]]:
+            statements: t.SequenceOf[t.Infra.Cst.BaseStatement],
+        ) -> t.Pair[
+            t.VariadicTuple[t.Infra.Cst.BaseStatement],
+            t.VariadicTuple[t.Infra.Cst.EmptyLine],
+        ]:
             """Return retained statements and any trailing preserved comments.
 
             Returns:
@@ -278,17 +289,19 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                 TypeError: If a statement cannot carry preserved leading lines.
 
             """
-            retained: list[cst.BaseStatement] = []
-            pending: list[cst.EmptyLine] = []
+            retained: list[t.Infra.Cst.BaseStatement] = []
+            pending: list[t.Infra.Cst.EmptyLine] = []
             for statement in statements:
                 if (
-                    isinstance(statement, cst.If)
+                    isinstance(statement, c.Infra.Cst.If)
                     and statement in self.type_guards
                     and statement.orelse is None
-                    and isinstance(statement.body, cst.IndentedBlock)
+                    and isinstance(statement.body, c.Infra.Cst.IndentedBlock)
                     and all(
-                        isinstance(line, cst.SimpleStatementLine)
-                        and all(isinstance(item, cst.Pass) for item in line.body)
+                        isinstance(line, c.Infra.Cst.SimpleStatementLine)
+                        and all(
+                            isinstance(item, c.Infra.Cst.Pass) for item in line.body
+                        )
                         for line in statement.body.body
                     )
                 ):
@@ -298,7 +311,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                     if header.comment is not None:
                         pending.append(cst.EmptyLine(comment=header.comment))
                     for line in statement.body.body:
-                        if isinstance(line, cst.SimpleStatementLine):
+                        if isinstance(line, c.Infra.Cst.SimpleStatementLine):
                             pending.extend(line.leading_lines)
                             if line.trailing_whitespace.comment is not None:
                                 pending.append(
@@ -311,7 +324,11 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
                 replacement = statement
                 if pending:
                     if not isinstance(
-                        statement, (cst.SimpleStatementLine, cst.BaseCompoundStatement)
+                        statement,
+                        (
+                            c.Infra.Cst.SimpleStatementLine,
+                            c.Infra.Cst.BaseCompoundStatement,
+                        ),
                     ):
                         msg = "statement cannot preserve exhausted guard comments"
                         raise TypeError(msg)
@@ -324,8 +341,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
 
         @override
         def leave_Module(
-            self, original_node: cst.Module, updated_node: cst.Module
-        ) -> cst.Module:
+            self, original_node: t.Infra.Cst.Module, updated_node: t.Infra.Cst.Module
+        ) -> t.Infra.Cst.Module:
             del original_node
             body, footer = self._prune(updated_node.body)
             return updated_node.with_changes(
@@ -334,8 +351,10 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
 
         @override
         def leave_IndentedBlock(
-            self, original_node: cst.IndentedBlock, updated_node: cst.IndentedBlock
-        ) -> cst.IndentedBlock:
+            self,
+            original_node: t.Infra.Cst.IndentedBlock,
+            updated_node: t.Infra.Cst.IndentedBlock,
+        ) -> t.Infra.Cst.IndentedBlock:
             del original_node
             body, footer = self._prune(updated_node.body)
             return updated_node.with_changes(

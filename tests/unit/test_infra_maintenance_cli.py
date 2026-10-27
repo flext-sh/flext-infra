@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import t, tm
 
 
@@ -18,7 +18,7 @@ class TestsFlextInfraInfraMaintenanceCli:
         args = ["maintenance"]
         if argv is not None:
             args.extend(argv)
-        return main(args)
+        return FlextInfraCli.infra_main(args)
 
     def test_maintenance_rejects_apply_flag(self) -> None:
         """Test maintenance rejects apply flag."""

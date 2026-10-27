@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import cli
+from flext_cli import u
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 
 
 class FlextInfraMain:
@@ -16,8 +16,8 @@ class FlextInfraMain:
 
     @staticmethod
     def run() -> None:
-        """Load and execute the sole facade-backed CLI."""
-        cli.exit(main())
+        """Run the sole facade-backed CLI as the whole process."""
+        u.Cli.process_main(FlextInfraCli.infra_main)
 
 
 if __name__ == "__main__":

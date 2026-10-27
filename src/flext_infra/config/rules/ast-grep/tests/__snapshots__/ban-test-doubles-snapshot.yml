@@ -1,11 +1,8 @@
 id: ban-test-doubles
 snapshots:
-  ? |
-    def test_context() -> None:
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(Service, "run", lambda: True)
-  : labels:
-    - source: 'mp.setattr(Service, "run", lambda: True)'
+  "def test_context() -> None:\n    with pytest.MonkeyPatch.context() as mp:\n        mp.setattr(Service, \"run\", lambda: True)\n":
+    labels:
+    - source: "mp.setattr(Service, \"run\", lambda: True)"
       style: primary
       start: 81
       end: 121
@@ -15,11 +12,9 @@ snapshots:
       style: secondary
       start: 32
       end: 121
-  ? |
-    def test_internal(monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(Service, "run", lambda: True)
-  : labels:
-    - source: 'monkeypatch.setattr(Service, "run", lambda: True)'
+  "def test_internal(monkeypatch: pytest.MonkeyPatch) -> None:\n    monkeypatch.setattr(Service, \"run\", lambda: True)\n":
+    labels:
+    - source: "monkeypatch.setattr(Service, \"run\", lambda: True)"
       style: primary
       start: 64
       end: 113
@@ -31,10 +26,8 @@ snapshots:
       style: secondary
       start: 64
       end: 75
-  ? |
-    def test_items(monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setitem(registry, "key", value)
-  : labels:
+  "def test_items(monkeypatch: pytest.MonkeyPatch) -> None:\n    monkeypatch.setitem(registry, \"key\", value)\n":
+    labels:
     - source: monkeypatch.setitem(registry, "key", value)
       style: primary
       start: 61
@@ -47,10 +40,8 @@ snapshots:
       style: secondary
       start: 61
       end: 72
-  ? |
-    def test_runner(mocker) -> None:
-        run(mocker)
-  : labels:
+  "def test_runner(mocker) -> None:\n    run(mocker)\n":
+    labels:
     - source: mocker
       style: primary
       start: 16
@@ -81,7 +72,7 @@ snapshots:
       style: primary
       start: 0
       end: 37
-  from unittest import TestCase, mock:
+  "from unittest import TestCase, mock":
     labels:
     - source: from unittest import TestCase, mock
       style: primary
@@ -99,27 +90,20 @@ snapshots:
       style: primary
       start: 0
       end: 35
-  ? |
-    from unittest.mock import MagicMock
-    service = MagicMock()
-  : labels:
+  "from unittest.mock import MagicMock\nservice = MagicMock()\n":
+    labels:
     - source: from unittest.mock import MagicMock
       style: primary
       start: 0
       end: 35
-  ? |
-    from unittest.mock import patch
-    handle = patch.object(Service, "run")
-  : labels:
+  "from unittest.mock import patch\nhandle = patch.object(Service, \"run\")\n":
+    labels:
     - source: from unittest.mock import patch
       style: primary
       start: 0
       end: 31
-  ? |
-    from unittest.mock import patch
-    with patch("flext_core.runtime.run"):
-        pass
-  : labels:
+  "from unittest.mock import patch\nwith patch(\"flext_core.runtime.run\"):\n    pass\n":
+    labels:
     - source: from unittest.mock import patch
       style: primary
       start: 0
@@ -134,7 +118,7 @@ snapshots:
       style: secondary
       start: 9
       end: 19
-  handle = unittest.mock.patch.dict(os.environ, {}):
+  "handle = unittest.mock.patch.dict(os.environ, {})":
     labels:
     - source: unittest.mock.patch.dict(os.environ, {})
       style: primary

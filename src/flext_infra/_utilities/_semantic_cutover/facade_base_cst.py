@@ -6,14 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import override
 
 import libcst as cst
 
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
@@ -38,7 +36,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             self.depth = 0
 
         @override
-        def visit_ClassDef(self, node: cst.ClassDef) -> bool:
+        def visit_ClassDef(self, node: t.Infra.Cst.ClassDef) -> bool:
             del node
             self.depth += 1
             return True
@@ -46,16 +44,16 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         @override
         def leave_ClassDef(
             self,
-            original_node: cst.ClassDef,
-            updated_node: cst.ClassDef,
-        ) -> cst.ClassDef:
+            original_node: t.Infra.Cst.ClassDef,
+            updated_node: t.Infra.Cst.ClassDef,
+        ) -> t.Infra.Cst.ClassDef:
             self.depth -= 1
             if self.depth or original_node.name.value != self.facade:
                 return updated_node
             return updated_node.with_changes(
                 bases=[
                     base.with_changes(value=cst.Name(self.owner))
-                    if isinstance(base.value, cst.Name)
+                    if isinstance(base.value, c.Infra.Cst.Name)
                     and base.value.value == self.local
                     else base
                     for base in updated_node.bases
@@ -63,7 +61,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             )
 
         @override
-        def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        def visit_FunctionDef(self, node: t.Infra.Cst.FunctionDef) -> bool:
             del node
             self.depth += 1
             return True
@@ -71,9 +69,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         @override
         def leave_FunctionDef(
             self,
-            original_node: cst.FunctionDef,
-            updated_node: cst.FunctionDef,
-        ) -> cst.FunctionDef:
+            original_node: t.Infra.Cst.FunctionDef,
+            updated_node: t.Infra.Cst.FunctionDef,
+        ) -> t.Infra.Cst.FunctionDef:
             del original_node
             self.depth -= 1
             return updated_node
@@ -81,9 +79,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         @override
         def leave_Name(
             self,
-            original_node: cst.Name,
-            updated_node: cst.Name,
-        ) -> cst.Name:
+            original_node: t.Infra.Cst.Name,
+            updated_node: t.Infra.Cst.Name,
+        ) -> t.Infra.Cst.Name:
             # A private import alias is never rebound, so every read of it is
             # the parent class; the letter itself keeps its deferred reads.
             if (
@@ -97,15 +95,15 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         @override
         def leave_ImportFrom(
             self,
-            original_node: cst.ImportFrom,
-            updated_node: cst.ImportFrom,
-        ) -> cst.ImportFrom | cst.RemovalSentinel:
+            original_node: t.Infra.Cst.ImportFrom,
+            updated_node: t.Infra.Cst.ImportFrom,
+        ) -> t.Infra.Cst.ImportFrom | t.Infra.Cst.RemovalSentinel:
 
             if (
                 self.depth
                 or original_node.relative
-                or isinstance(original_node.names, cst.ImportStar)
-                or isinstance(updated_node.names, cst.ImportStar)
+                or isinstance(original_node.names, c.Infra.Cst.ImportStar)
+                or isinstance(updated_node.names, c.Infra.Cst.ImportStar)
                 or FlextInfraUtilitiesQualifiedNames.dotted_name(
                     original_node.module,
                 )
@@ -124,20 +122,20 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
 
         def _retained_aliases(
             self,
-            original_node: cst.ImportFrom,
-            updated_node: cst.ImportFrom,
-        ) -> list[cst.ImportAlias]:
+            original_node: t.Infra.Cst.ImportFrom,
+            updated_node: t.Infra.Cst.ImportFrom,
+        ) -> list[t.Infra.Cst.ImportAlias]:
             """Keep unrelated aliases and the owner-bound replacement.
 
             Returns:
                 The aliases retained in the rewritten ``from`` import.
 
             """
-            retained: list[cst.ImportAlias] = []
+            retained: list[t.Infra.Cst.ImportAlias] = []
             if isinstance(
                 original_node.names,
-                cst.ImportStar,
-            ) or isinstance(updated_node.names, cst.ImportStar):
+                c.Infra.Cst.ImportStar,
+            ) or isinstance(updated_node.names, c.Infra.Cst.ImportStar):
                 return []
             for original, updated in zip(
                 original_node.names,
@@ -150,7 +148,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
                         original.asname.name,
                     )
                     if original.asname is not None
-                    and isinstance(original.asname.name, cst.Name)
+                    and isinstance(original.asname.name, c.Infra.Cst.Name)
                     else name
                 )
                 if name != self.imported or bound != self.local:
@@ -167,17 +165,17 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         @override
         def leave_AnnAssign(
             self,
-            original_node: cst.AnnAssign,
-            updated_node: cst.AnnAssign,
-        ) -> cst.AnnAssign | cst.Assign:
+            original_node: t.Infra.Cst.AnnAssign,
+            updated_node: t.Infra.Cst.AnnAssign,
+        ) -> t.Infra.Cst.AnnAssign | t.Infra.Cst.Assign:
             # An annotated rebind declares a variable; the letter must stay the
             # implicit alias of its facade class for annotations to resolve.
             if (
                 self.depth
-                or not isinstance(original_node.target, cst.Name)
+                or not isinstance(original_node.target, c.Infra.Cst.Name)
                 or original_node.target.value
                 != (self.local if self.local_rebound else self.imported)
-                or not isinstance(original_node.value, cst.Name)
+                or not isinstance(original_node.value, c.Infra.Cst.Name)
                 or original_node.value.value != self.facade
             ):
                 return updated_node

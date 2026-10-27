@@ -256,8 +256,9 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(
             u.Tests.generated_init(domain),
-            has=['"RecordOwner": "._records.owner"', '"_records": "._records"'],
+            has='"RecordOwner": "._records.owner"',
         )
+        tm.that(u.Tests.generated_init(domain), lacks='"_records": "._records"')
         tm.that(u.Tests.generated_init(package), lacks=["RecordOwner", "_runtime"])
         tm.that(
             u.Tests.run_lazy_init_probe(
@@ -300,15 +301,16 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(
             u.Tests.run_lazy_init_probe(
                 f"import {package.name} as public\n"
-                f"from {package.name} import _runtime as facade\n"
+                f"from {package.name}._runtime import RecordOwner as private_owner\n"
+                f"from {package.name}._runtime import RuntimeFacade\n"
                 f"from {package.name}._runtime._records.owner "
                 "import RecordOwner as implementation\n"
                 f"from {package.name}.records import RecordOwner as declared\n"
-                "print(facade.RecordOwner is implementation)\n"
+                "print(private_owner is implementation)\n"
                 "print(public.RecordOwner is declared)\n"
-                "print(public.RecordOwner is not facade.RecordOwner)\n"
+                "print(public.RecordOwner is not private_owner)\n"
                 "print(public.RecordOwner.marker)\n"
-                "print(implementation in facade.RuntimeFacade.__mro__)\n",
+                "print(implementation in RuntimeFacade.__mro__)\n",
                 python_paths=(str(package.parent),),
                 cwd=repository,
             ),

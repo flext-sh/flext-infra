@@ -1,16 +1,13 @@
 id: declare-single-class-export
 snapshots:
-  ? |
-    class Declaration(Parent):
-        class Payload:
-            value: str
-  : fixed: |-
+  "class Declaration(Parent):\n    class Payload:\n        value: str\n":
+    fixed: |-
       class Declaration(Parent):
           class Payload:
               value: str
-
-
-
+      
+      
+      
       __all__: list[str] = ["Declaration"]
     labels:
     - source: |
@@ -38,17 +35,14 @@ snapshots:
       style: secondary
       start: 0
       end: 64
-  ? |
-    from __future__ import annotations
-    class Declaration:
-        value: str
-  : fixed: |-
+  "from __future__ import annotations\nclass Declaration:\n    value: str\n":
+    fixed: |-
       from __future__ import annotations
       class Declaration:
           value: str
-
-
-
+      
+      
+      
       __all__: list[str] = ["Declaration"]
     labels:
     - source: |
@@ -75,21 +69,16 @@ snapshots:
       style: secondary
       start: 35
       end: 68
-  ? |
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from dependency import Payload
-    class Declaration:
-        value: Payload
-  : fixed: |-
+  "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from dependency import Payload\nclass Declaration:\n    value: Payload\n":
+    fixed: |-
       from typing import TYPE_CHECKING
       if TYPE_CHECKING:
           from dependency import Payload
       class Declaration:
           value: Payload
-
-
-
+      
+      
+      
       __all__: list[str] = ["Declaration"]
     labels:
     - source: |

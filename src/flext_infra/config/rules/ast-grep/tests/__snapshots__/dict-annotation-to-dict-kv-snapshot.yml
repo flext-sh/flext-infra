@@ -1,0 +1,183 @@
+id: dict-annotation-to-dict-kv
+snapshots:
+  "from flext_core import t\nclass Owner:\n    def method(self, value: dict[str, int] | None = None) -> None: ...\n":
+    fixed: |
+      from flext_core import t
+      class Owner:
+          def method(self, value: t.DictKV[str, int] | None = None) -> None: ...
+    labels:
+    - source: dict[str, int]
+      style: primary
+      start: 66
+      end: 80
+    - source: "value: dict[str, int] | None = None"
+      style: secondary
+      start: 59
+      end: 94
+    - source: dict[str, int] | None
+      style: secondary
+      start: 66
+      end: 87
+    - source: dict
+      style: secondary
+      start: 66
+      end: 70
+    - source: "def method(self, value: dict[str, int] | None = None) -> None: ..."
+      style: secondary
+      start: 42
+      end: 108
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        class Owner:
+            def method(self, value: dict[str, int] | None = None) -> None: ...
+      style: secondary
+      start: 0
+      end: 109
+  "from flext_core import t\ndef f() -> None:\n    acc: dict[str, int] = {}\n":
+    fixed: |
+      from flext_core import t
+      def f() -> None:
+          acc: t.DictKV[str, int] = {}
+    labels:
+    - source: dict[str, int]
+      style: primary
+      start: 51
+      end: 65
+    - source: "acc: dict[str, int] = {}"
+      style: secondary
+      start: 46
+      end: 70
+    - source: dict[str, int]
+      style: secondary
+      start: 51
+      end: 65
+    - source: dict
+      style: secondary
+      start: 51
+      end: 55
+    - source: |-
+        def f() -> None:
+            acc: dict[str, int] = {}
+      style: secondary
+      start: 25
+      end: 70
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        def f() -> None:
+            acc: dict[str, int] = {}
+      style: secondary
+      start: 0
+      end: 71
+  "from flext_core import t\ndef f() -> dict[str, int]: ...\n":
+    fixed: |
+      from flext_core import t
+      def f() -> t.DictKV[str, int]: ...
+    labels:
+    - source: dict[str, int]
+      style: primary
+      start: 36
+      end: 50
+    - source: "def f() -> dict[str, int]: ..."
+      style: secondary
+      start: 25
+      end: 55
+    - source: dict[str, int]
+      style: secondary
+      start: 36
+      end: 50
+    - source: dict
+      style: secondary
+      start: 36
+      end: 40
+    - source: "def f() -> dict[str, int]: ..."
+      style: secondary
+      start: 25
+      end: 55
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        def f() -> dict[str, int]: ...
+      style: secondary
+      start: 0
+      end: 56
+  "from flext_core import t\ndef f() -> dict[str, t.JsonValue]: ...\n":
+    fixed: |
+      from flext_core import t
+      def f() -> t.DictKV[str, t.JsonValue]: ...
+    labels:
+    - source: dict[str, t.JsonValue]
+      style: primary
+      start: 36
+      end: 58
+    - source: "def f() -> dict[str, t.JsonValue]: ..."
+      style: secondary
+      start: 25
+      end: 63
+    - source: dict[str, t.JsonValue]
+      style: secondary
+      start: 36
+      end: 58
+    - source: dict
+      style: secondary
+      start: 36
+      end: 40
+    - source: "def f() -> dict[str, t.JsonValue]: ..."
+      style: secondary
+      start: 25
+      end: 63
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        def f() -> dict[str, t.JsonValue]: ...
+      style: secondary
+      start: 0
+      end: 64
+  "from flext_core import t\ndef f(x: dict[str, int]) -> None: ...\n":
+    fixed: |
+      from flext_core import t
+      def f(x: t.DictKV[str, int]) -> None: ...
+    labels:
+    - source: dict[str, int]
+      style: primary
+      start: 34
+      end: 48
+    - source: "x: dict[str, int]"
+      style: secondary
+      start: 31
+      end: 48
+    - source: dict[str, int]
+      style: secondary
+      start: 34
+      end: 48
+    - source: dict
+      style: secondary
+      start: 34
+      end: 38
+    - source: "def f(x: dict[str, int]) -> None: ..."
+      style: secondary
+      start: 25
+      end: 62
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        def f(x: dict[str, int]) -> None: ...
+      style: secondary
+      start: 0
+      end: 63

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
@@ -20,8 +20,7 @@ from flext_infra._models import (
     FlextInfraModelsDeps,
     FlextInfraModelsDuplication,
 )
-from flext_infra._models.validate import FlextInfraModelsCore
-from flext_infra._protocols import FlextInfraProtocolsDeps
+from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsDeps
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
@@ -193,8 +192,28 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ] = None
         runtime_dependency_collector: Annotated[
-            FlextInfraProtocolsDeps.RuntimeDependencyCollector | None,
+            t.Port[FlextInfraProtocolsDeps.RuntimeDependencyCollector] | None,
             m.Field(description="Explicit composition-owned target supplier collector"),
+        ] = None
+        scope_facts: Annotated[
+            t.Port[FlextInfraProtocolsCheck.GitScopeFacts] | None,
+            m.Field(
+                description=(
+                    "Invocation-owned Git scope facts shared by applicability "
+                    "and every gate; absent means each query reads Git"
+                ),
+                exclude=True,
+            ),
+        ] = None
+        signal_wave: Annotated[
+            t.Port[p.Cli.SignalWave] | None,
+            m.Field(
+                description=(
+                    "Signal wave of the concurrent stage running this gate; "
+                    "absent on the main thread"
+                ),
+                exclude=True,
+            ),
         ] = None
         ruff_args: Annotated[
             t.StrSequence,
@@ -214,10 +233,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.VariadicTuple[Path],
             m.Field(description="Complete sealed source-plan inventory for admission"),
         ] = ()
-        candidate_runtime_report: Annotated[
-            FlextInfraModelsCore.ValidationReport | None,
-            m.Field(description="Census observed by the authenticated sealed runtime"),
-        ] = None
         check_progress: Annotated[
             Callable[[Path, FlextInfraModelsCheck.ProjectResult], None] | None,
             m.Field(
@@ -469,6 +484,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateExecutionIntent(m.ContractModel):
         """Producer-owned operation coverage, independent of local argv paths."""
 
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(
+                description="Original checker evidence phase, never inferred from gates"
+            ),
+        ] = c.Infra.CheckPhase.COMPLETE
         requested_gates: Annotated[
             t.StrTuple, m.Field(description="Requested native checker gates")
         ] = ()
@@ -481,6 +502,14 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         def _validate_producer(self) -> Self:
             if bool(self.requested_gates) == (self.test_selection is not None):
                 msg = "original operation must declare exactly one producer intent"
+                raise ValueError(msg)
+            if (
+                self.test_selection is not None
+                and self.phase == c.Infra.CheckPhase.PRIMARY
+            ):
+                msg = (
+                    "primary source admission is a checker intent, never a test result"
+                )
                 raise ValueError(msg)
             return self
 
@@ -655,12 +684,24 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateCaptureRequest(m.ContractModel):
         """Capture the original read-only checker invocation exactly once."""
 
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(
+                description="Primary source admission or complete check acceptance"
+            ),
+        ] = c.Infra.CheckPhase.COMPLETE
         repository_root: Annotated[
             Path, m.Field(description="Actual root selected by the public Make verb")
         ]
         gates: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved native checker gate inventory")
-        ]
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Explicit native checker gate inventory; omitted resolves "
+                    "the runtime check partition from the typed Make spec"
+                ),
+            ),
+        ] = None
         report_output: Annotated[
             Path | None,
             m.Field(description="Invocation-owned typed checker summary destination"),
@@ -769,6 +810,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 or gates != covered_gates
             ):
                 msg = "covered_gates and command evidence must match one-to-one"
+                raise ValueError(msg)
+            if any(
+                item.intent.phase == c.Infra.CheckPhase.PRIMARY
+                for item in self.commands
+            ):
+                msg = "primary source admission cannot attest complete stage acceptance"
                 raise ValueError(msg)
             return self
 

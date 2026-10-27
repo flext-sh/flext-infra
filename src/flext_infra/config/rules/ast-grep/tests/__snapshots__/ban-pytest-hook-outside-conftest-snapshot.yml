@@ -1,0 +1,138 @@
+id: ban-pytest-hook-outside-conftest
+snapshots:
+  "@fixture\ndef workspace(tmp_path: Path) -> Path:\n    return tmp_path\n":
+    labels:
+    - source: |-
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: primary
+      start: 9
+      end: 67
+    - source: |
+        @fixture
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: secondary
+      start: 0
+      end: 68
+    - source: |-
+        @fixture
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: secondary
+      start: 0
+      end: 67
+    - source: "@fixture"
+      style: secondary
+      start: 0
+      end: 8
+    - source: |-
+        @fixture
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: secondary
+      start: 0
+      end: 67
+  "@pytest.fixture\ndef workspace(tmp_path: Path) -> Path:\n    return tmp_path\n":
+    labels:
+    - source: |-
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: primary
+      start: 16
+      end: 74
+    - source: |
+        @pytest.fixture
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: secondary
+      start: 0
+      end: 75
+    - source: |-
+        @pytest.fixture
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: secondary
+      start: 0
+      end: 74
+    - source: "@pytest.fixture"
+      style: secondary
+      start: 0
+      end: 15
+    - source: |-
+        @pytest.fixture
+        def workspace(tmp_path: Path) -> Path:
+            return tmp_path
+      style: secondary
+      start: 0
+      end: 74
+  "@pytest.fixture(scope=\"module\")\ndef matrix() -> list[str]:\n    return []\n":
+    labels:
+    - source: |-
+        def matrix() -> list[str]:
+            return []
+      style: primary
+      start: 32
+      end: 72
+    - source: |
+        @pytest.fixture(scope="module")
+        def matrix() -> list[str]:
+            return []
+      style: secondary
+      start: 0
+      end: 73
+    - source: |-
+        @pytest.fixture(scope="module")
+        def matrix() -> list[str]:
+            return []
+      style: secondary
+      start: 0
+      end: 72
+    - source: "@pytest.fixture(scope=\"module\")"
+      style: secondary
+      start: 0
+      end: 31
+    - source: |-
+        @pytest.fixture(scope="module")
+        def matrix() -> list[str]:
+            return []
+      style: secondary
+      start: 0
+      end: 72
+  "def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:\n    return None\n":
+    labels:
+    - source: |-
+        def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+            return None
+      style: primary
+      start: 0
+      end: 84
+    - source: |
+        def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+            return None
+      style: secondary
+      start: 0
+      end: 85
+    - source: pytest_collection_modifyitems
+      style: secondary
+      start: 4
+      end: 33
+  "pytest_plugins = [\"tests.fixtures.git\"]\n":
+    labels:
+    - source: pytest_plugins = ["tests.fixtures.git"]
+      style: primary
+      start: 0
+      end: 39
+    - source: |
+        pytest_plugins = ["tests.fixtures.git"]
+      style: secondary
+      start: 0
+      end: 40
+    - source: pytest_plugins
+      style: secondary
+      start: 0
+      end: 14
+    - source: pytest_plugins = ["tests.fixtures.git"]
+      style: secondary
+      start: 0
+      end: 39

@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, get_type_hints, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 
@@ -323,6 +323,101 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(passed=True, violations=(), summary=summary),
         )
+
+    @staticmethod
+    def require_complete_models(module: t.RegistryModule) -> None:
+        """Fail when a pydantic class reachable from the exports cannot build.
+
+        The walk starts at the module's declared exports (the facades and the
+        settings, config and service classes it publishes) and follows the
+        classes nested in each FLEXT class through its MRO, so the scope is
+        derived from the public surface, never from a list. The ``m.*``
+        presets defer model builds to first use, so a class still pending
+        after import is expected; each one the probed package defines is
+        built here through the canonical type adapter, exactly as its first
+        use would. An annotation that stays unresolved (a ``TYPE_CHECKING``-
+        only type, a misspelled name) still fails that build, and pydantic's
+        own error escapes unchanged naming the unresolved name. Inherited
+        classes belong to their own package's probe.
+
+        """
+        package = module.__name__.partition(".")[0]
+        pending: t.MutableSequenceOf[type] = [
+            value
+            for name in getattr(module, c.Infra.DUNDER_ALL, ())
+            if isinstance(value := getattr(module, name), type)
+        ]
+        seen: set[type] = set()
+        incomplete: t.MutableSequenceOf[type] = []
+        while pending:
+            klass = pending.pop()
+            if klass in seen or not klass.__module__.startswith(c.Infra.PKG_ROOT):
+                continue
+            seen.add(klass)
+            if vars(klass).get("__pydantic_complete__") is False:
+                incomplete.append(klass)
+            pending.extend(
+                member
+                for base in klass.__mro__
+                for member in vars(base).values()
+                if isinstance(member, type)
+            )
+        owned = sorted(
+            (
+                klass
+                for klass in incomplete
+                if klass.__module__.partition(".")[0] == package
+            ),
+            key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
+        )
+        for klass in owned:
+            u.type_adapter(klass)
+        FlextInfraValidateFreshImport._require_schema_fields(package, seen)
+
+    @staticmethod
+    def _require_schema_fields(package: str, classes: t.IterableOf[type]) -> None:
+        """Fail on the first field that only builds by ``arbitrary_types_allowed``.
+
+        Every model of the probed package that sets or inherits the flag has
+        each field type built without it, through the canonical type adapter.
+        A field type without a schema raises pydantic's own schema-generation
+        error, which escapes unchanged with a note naming the model and field;
+        its owner type (a ``t.Port`` or a validated ``t`` alias) is the fix.
+
+        Raises:
+            c.PydanticSchemaGenerationError: For the first such field.
+
+        """
+        models = sorted(
+            (
+                klass
+                for klass in classes
+                if klass.__module__.partition(".")[0] == package
+                and "__pydantic_fields__" in vars(klass)
+                and getattr(klass, "model_config", {}).get("arbitrary_types_allowed")
+            ),
+            key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
+        )
+        for klass in models:
+            fields: t.MappingKV[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
+            # A deferred model keeps its field annotations as forward
+            # references; the stdlib evaluator resolves them in the model's
+            # own module and class namespace, as pydantic does on build, and
+            # pydantic's own field split drops the field-level metadata.
+            hints = get_type_hints(klass, include_extras=True)
+            for name, info in fields.items():
+                if info.annotation is None:
+                    continue
+                field_type = m.FieldInfo.from_annotation(hints[name]).annotation
+                try:
+                    u.type_adapter(field_type)
+                except c.PydanticSchemaGenerationError as exc:
+                    exc.add_note(
+                        f"{klass.__module__}.{klass.__qualname__}.{name} needs "
+                        "arbitrary_types_allowed: declare its type through t.Port "
+                        "or a validated t alias"
+                    )
+                    raise
 
     def execute_probe(
         self,

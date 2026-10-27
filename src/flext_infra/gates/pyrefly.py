@@ -125,13 +125,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         json_file = self._native_report_path(project_dir, ctx)
         if not u.Cli.process_succeeded(result.outcome) and not json_file.exists():
             return False, (
-                self._command_error_issue(
-                    result,
-                    tool=c.Infra.PYREFLY,
-                    file=str(json_file),
-                    line=0,
-                    column=0,
-                ),
+                self._command_error_issue(result, c.Infra.PYREFLY, str(json_file)),
             )
         validated: p.Result[m.Infra.PyreflyReport] = u.validate_value(
             m.Infra.PyreflyReport,

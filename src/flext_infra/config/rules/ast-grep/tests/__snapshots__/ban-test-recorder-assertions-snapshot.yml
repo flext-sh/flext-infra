@@ -10,10 +10,8 @@ snapshots:
       style: secondary
       start: 14
       end: 27
-  ? |
-    entries = stub.plan_requests
-    tm.that(entries, empty=True)
-  : labels:
+  "entries = stub.plan_requests\ntm.that(entries, empty=True)\n":
+    labels:
     - source: stub.plan_requests
       style: primary
       start: 10
@@ -22,7 +20,7 @@ snapshots:
       style: secondary
       start: 15
       end: 28
-  tm.that(ldap_client.connect_calls, eq=1):
+  "tm.that(ldap_client.connect_calls, eq=1)":
     labels:
     - source: ldap_client.connect_calls
       style: primary
@@ -32,7 +30,7 @@ snapshots:
       style: secondary
       start: 20
       end: 33
-  tm.that(len(client.search_calls), eq=3):
+  "tm.that(len(client.search_calls), eq=3)":
     labels:
     - source: client.search_calls
       style: primary

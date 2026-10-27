@@ -9,11 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import codegen
-from flext_infra.refactor import (
-    FlextInfraAccessorMigrationOrchestrator,
-    FlextInfraRefactorCensus,
-)
+from flext_infra import codegen, refactor
 
 if TYPE_CHECKING:
     from flext_infra import m, p
@@ -46,7 +42,7 @@ class FlextInfraPreviewWiring:
             The resulting ``p.Result[m.Infra.WorkspaceReport]``.
 
         """
-        return FlextInfraRefactorCensus(
+        return refactor.FlextInfraRefactorCensus(
             workspace_factory=self.rope_workspace,
             repository_root=request.repository_root,
             selected_projects=request.projects,
@@ -68,7 +64,7 @@ class FlextInfraPreviewWiring:
             The resulting ``p.Result[m.Infra.AccessorMigrationReport]``.
 
         """
-        return FlextInfraAccessorMigrationOrchestrator.execute_payload(
+        return refactor.FlextInfraAccessorMigrationOrchestrator.execute_payload(
             request,
             source_preview=self.source_preview(request.repository_root),
         )

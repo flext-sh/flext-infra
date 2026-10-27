@@ -1,0 +1,25 @@
+id: require-uppercase-constant-name
+valid:
+  - |
+    class FlextDemoConstants:
+        DEFAULT_TIMEOUT: ClassVar[int] = 30
+        MAX_ITEMS = 10
+  - |
+    class FlextDemoConstants:
+        class Status(StrEnum):
+            active = "active"
+  - |
+    class FlextDemoConstants:
+        Status = FlextCoreConstants.Status
+        model_config = ConfigDict(frozen=True)
+  - |
+    class FlextDemoConstants:
+        _cache = 1
+invalid:
+  - |
+    class FlextDemoConstants:
+        default_timeout: ClassVar[int] = 30
+  - |
+    class FlextDemoConstants:
+        class Demo:
+            MaxItems = 10

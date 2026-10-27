@@ -1,11 +1,7 @@
 id: ban-test-source-text-assertion
 snapshots:
-  ? |
-    SOURCE = Path(__file__).parents[2].joinpath("src", "cli.py").read_text()
-
-    def test_cli() -> None:
-        tm.that(SOURCE, has="def main")
-  : labels:
+  "SOURCE = Path(__file__).parents[2].joinpath(\"src\", \"cli.py\").read_text()\n\ndef test_cli() -> None:\n    tm.that(SOURCE, has=\"def main\")\n":
+    labels:
     - source: tm.that(SOURCE, has="def main")
       style: primary
       start: 102
@@ -32,7 +28,7 @@ snapshots:
       end: 72
     - source: |
         SOURCE = Path(__file__).parents[2].joinpath("src", "cli.py").read_text()
-
+        
         def test_cli() -> None:
             tm.that(SOURCE, has="def main")
       style: secondary
@@ -46,9 +42,8 @@ snapshots:
       style: secondary
       start: 109
       end: 133
-  ? |
-    assert "def main" in Path(__file__).with_name("cli.py").read_text()
-  : labels:
+  "assert \"def main\" in Path(__file__).with_name(\"cli.py\").read_text()\n":
+    labels:
     - source: assert "def main" in Path(__file__).with_name("cli.py").read_text()
       style: primary
       start: 0
@@ -57,14 +52,12 @@ snapshots:
       style: secondary
       start: 21
       end: 67
-    - source: '"def main" in Path(__file__).with_name("cli.py").read_text()'
+    - source: "\"def main\" in Path(__file__).with_name(\"cli.py\").read_text()"
       style: secondary
       start: 7
       end: 67
-  ? |
-    from ai_hub import cli
-    assert "class AiHubCli" in inspect.getsource(cli)
-  : labels:
+  "from ai_hub import cli\nassert \"class AiHubCli\" in inspect.getsource(cli)\n":
+    labels:
     - source: assert "class AiHubCli" in inspect.getsource(cli)
       style: primary
       start: 23
@@ -73,14 +66,12 @@ snapshots:
       style: secondary
       start: 50
       end: 72
-    - source: '"class AiHubCli" in inspect.getsource(cli)'
+    - source: "\"class AiHubCli\" in inspect.getsource(cli)"
       style: secondary
       start: 30
       end: 72
-  ? |
-    source = Path("src/ai_hub/api.py").read_text()
-    assert "class AiHub" in source
-  : labels:
+  "source = Path(\"src/ai_hub/api.py\").read_text()\nassert \"class AiHub\" in source\n":
+    labels:
     - source: assert "class AiHub" in source
       style: primary
       start: 47
@@ -111,11 +102,11 @@ snapshots:
       style: secondary
       start: 71
       end: 77
-    - source: '"class AiHub" in source'
+    - source: "\"class AiHub\" in source"
       style: secondary
       start: 54
       end: 77
-  tm.that(Path("cli.py").read_text(), eq=expected):
+  "tm.that(Path(\"cli.py\").read_text(), eq=expected)":
     labels:
     - source: tm.that(Path("cli.py").read_text(), eq=expected)
       style: primary

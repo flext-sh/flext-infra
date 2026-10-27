@@ -1,0 +1,18 @@
+# `t.TypeForm` is the facade's PEP 695 alias of the PEP 747 special form, valid
+# in annotations only. Mypy recognizes the special form only through its own
+# name binding, never as a class attribute, and the alias is a TypeAliasType at
+# runtime: calling it is a defect. A type expression reaches a `TypeForm[T]`
+# parameter through the real special form, `typing_extensions.TypeForm(X)`
+# (typing_extensions is a stdlib backport allowed everywhere, operator decision
+# 2026-10-24); measured green on mypy, pyright and pyrefly for class-scoped
+# aliases (`t.JsonDict`), subscripted aliases and lambda returns.
+id: ban-typeform-alias-call
+language: python
+severity: error
+rule:
+  pattern: t.TypeForm($FORM)
+message: Call the PEP 747 special form `TypeForm($FORM)`, never the annotation alias `t.TypeForm`.
+note: >-
+  Where: this call. Why: `t.TypeForm` is a type alias (annotations only); mypy
+  rejects calling it and it is not callable at runtime. How: import
+  `from typing_extensions import TypeForm` and call `TypeForm($FORM)`.

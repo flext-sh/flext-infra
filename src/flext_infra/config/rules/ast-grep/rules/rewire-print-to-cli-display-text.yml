@@ -98,3 +98,5 @@ message: >-
   u.Cli.print.
 # A logger binding does not establish diagnostic intent for another call.
 # Stdout/result printing is not part of the semantic logging factory cutover.
+metadata:
+  enforce: [ENFORCE-027]

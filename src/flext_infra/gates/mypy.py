@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
@@ -34,7 +33,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         self,
         repository_root: Path,
         *,
-        runner: p.Cli.CommandRunner | None = None,
+        runner: p.Cli.CommandRunner = u.Cli,
     ) -> None:
         """Keep one effective resource policy for each admitted analysis."""
         super().__init__(repository_root, runner=runner)
@@ -215,35 +214,15 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> None:
         """Account for every submitted target from Mypy's native build trace.
 
+        The trace itself is read by ``u.Infra.mypy_build_sources``.
+
         Raises:
-            TypeError: If Mypy native source path is not a string.
-            ValueError: If Mypy native build trace contains no selected sources; or if
-                Mypy native build trace lacks completion evidence; or if Malformed Mypy
-                native source entry; or if Mypy native report did not account for
-                target; or if Mypy native report contains an unsubmitted source.
+            ValueError: If Mypy native report did not account for a target; or if
+                Mypy native report contains an unsubmitted source.
 
         """
         del ctx
-        source_lines = (
-            line for line in result.stderr.splitlines() if "Found source:" in line
-        )
-        sources: list[Path] = []
-        for line in source_lines:
-            match = re.search(r"Found source:\s+BuildSource\(path=(.+?), module=", line)
-            if match is None:
-                msg = f"Malformed Mypy native source entry: {line}"
-                raise ValueError(msg)
-            raw_path = ast.literal_eval(match.group(1))
-            if not isinstance(raw_path, str):
-                msg = f"Mypy native source path is not a string: {line}"
-                raise TypeError(msg)
-            sources.append((project_dir / raw_path).resolve())
-        if not sources:
-            msg = "Mypy native build trace contains no selected sources"
-            raise ValueError(msg)
-        if not any("Build finished in " in line for line in result.stderr.splitlines()):
-            msg = "Mypy native build trace lacks completion evidence"
-            raise ValueError(msg)
+        sources = u.Infra.mypy_build_sources(result.stderr, project_dir)
         submitted = tuple((project_dir / target).resolve() for target in targets)
         for target in submitted:
             if not any(
@@ -262,14 +241,17 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     @staticmethod
     @override
-    def _runner_deadline(timeout: int) -> p.Cli.ProcessDeadline:
+    def _runner_limits(
+        timeout: int,
+    ) -> t.Pair[int | None, p.Cli.ProcessDeadline | None]:
         """Leave the child's analysis and forced-kill windows uninterrupted.
 
         Returns:
-            A deadline whose soft boundary follows the inner forced-kill window.
+            No plain timeout, and a deadline whose soft boundary follows the
+            inner forced-kill window.
 
         """
-        return u.Infra.mypy_runner_deadline(timeout)
+        return None, u.Infra.mypy_runner_deadline(timeout)
 
     @override
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:

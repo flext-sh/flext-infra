@@ -1,0 +1,35 @@
+id: declare-empty-all-single-class
+valid:
+  - |
+    class Declaration:
+        pass
+    __all__: list[str] = ["Declaration"]
+  - |
+    class Declaration:
+        pass
+    alias = Declaration
+    __all__ = ()
+  - |
+    class First:
+        pass
+    class Second:
+        pass
+    __all__ = ()
+  - |
+    @decorator
+    class Declaration:
+        pass
+    __all__ = ()
+  - |
+    def helper():
+        return None
+    __all__ = ()
+invalid:
+  - |
+    class Declaration:
+        pass
+    __all__ = ()
+  - |
+    __all__ = []
+    class Declaration:
+        value: str

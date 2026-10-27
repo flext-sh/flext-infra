@@ -120,6 +120,18 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         """
         context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project_root))
         lock = context.lock_path.read_text(encoding="utf-8")
+        # The runtime workspace declares the identity of itself and of every
+        # composed member once; a local lock source is one of those checkouts.
+        workspace = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(context.runtime_root),
+        )
+        repositories = {
+            context.runtime_root.resolve(): workspace.repository,
+            **{
+                (context.runtime_root / member.path).resolve(): member
+                for member in workspace.subprojects
+            },
+        }
         sources: t.MutableMappingKV[str, t.Triple[str, str, str]] = {}
         for package in TestsFlextInfraUtilitiesTomlMixin.toml_tables_at(
             lock, "package"
@@ -137,9 +149,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             local = source.get("editable", source.get("directory"))
             if isinstance(local, str):
                 directory = (context.lock_path.parent / local).resolve()
-                repository = tm.ok(
-                    FlextInfraWorkspaceDetector.load_workspace_spec(directory),
-                ).repository
+                repository = repositories[directory]
                 tm.that(repository.distribution, eq=package.get("name"))
                 head = tm.ok(
                     u.Cli.capture(
@@ -172,6 +182,43 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             head,
         )
         return tuple(sources.values())
+
+    @staticmethod
+    def _commit_origins(
+        databases: t.SequenceOf[Path],
+        commits: t.StrSequence,
+    ) -> t.MappingKV[str, Path]:
+        """Map each commit to the first local Git database that holds it.
+
+        One batched object query per database replaces one process per
+        commit and database; a directory that is no Git database answers
+        nothing.
+
+        Returns:
+            The holding database of every commit found locally.
+
+        """
+        origins: t.MutableMappingKV[str, Path] = {}
+        for database in databases:
+            pending = tuple(sha for sha in commits if sha not in origins)
+            if not pending:
+                break
+            probe = tm.ok(
+                u.Cli.run_raw(
+                    [c.Infra.GIT, "cat-file", "--batch-check"],
+                    cwd=database,
+                    options=m.Cli.ProcessOptions(
+                        input_data="".join(f"{sha}^{{commit}}\n" for sha in pending),
+                    ),
+                ),
+            )
+            if not u.Cli.process_succeeded(probe.outcome):
+                continue
+            for line in probe.stdout.splitlines():
+                oid, _, kind = line.partition(" ")
+                if kind.startswith("commit ") and oid in pending:
+                    origins.setdefault(oid, database)
+        return origins
 
     @staticmethod
     def build_git_mirrors(
@@ -210,34 +257,18 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         workspace = tm.ok(
             FlextInfraWorkspaceDetector.load_workspace_spec(context.runtime_root),
         )
-        databases = (
-            project_root,
-            context.runtime_root,
-            *(context.runtime_root / member.path for member in workspace.subprojects),
-            *sorted(cache.glob("git-v*/db/*")),
-        )
-        # One batched object query per database replaces one process per
-        # source and database; the first database holding a commit owns it.
-        origins: t.MutableMappingKV[str, Path] = {}
-        for database in databases:
-            pending = tuple(sha for _, _, sha in sources if sha not in origins)
-            if not pending:
-                break
-            probe = tm.ok(
-                u.Cli.run_raw(
-                    [c.Infra.GIT, "cat-file", "--batch-check"],
-                    cwd=database,
-                    options=m.Cli.ProcessOptions(
-                        input_data="".join(f"{sha}^{{commit}}\n" for sha in pending),
-                    ),
+        origins = TestsFlextInfraUtilitiesHermeticGitMixin._commit_origins(
+            (
+                project_root,
+                context.runtime_root,
+                *(
+                    context.runtime_root / member.path
+                    for member in workspace.subprojects
                 ),
-            )
-            if not u.Cli.process_succeeded(probe.outcome):
-                continue
-            for line in probe.stdout.splitlines():
-                oid, _, kind = line.partition(" ")
-                if kind.startswith("commit ") and oid in pending:
-                    origins.setdefault(oid, database)
+                *sorted(cache.glob("git-v*/db/*")),
+            ),
+            tuple(sha for _, _, sha in sources),
+        )
         mirrored: list[str] = []
         for url, rev, sha in sources:
             origin = origins.get(sha)
@@ -312,6 +343,30 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             )
             environment[f"GIT_CONFIG_VALUE_{index}"] = f"https://{host}/"
         return environment
+
+    @staticmethod
+    def route_declared_origins(
+        environment: t.StrMapping,
+        origins: t.MappingKV[str, Path],
+    ) -> t.StrMapping:
+        """Serve each declared repository identity from its local bare origin.
+
+        Git applies the longest matching ``insteadOf`` prefix, so an exact
+        declared URL routes to its bare origin while every other identity on
+        the same host keeps the mirror route. A fixture's forge is then the
+        origin it publishes to, and live remote queries read that origin.
+
+        Returns:
+            The hermetic environment extended with one route per origin.
+
+        """
+        start = int(environment["GIT_CONFIG_COUNT"])
+        routed = dict(environment)
+        for index, (declared, bare) in enumerate(sorted(origins.items()), start):
+            routed[f"GIT_CONFIG_KEY_{index}"] = f"url.{bare.as_uri()}.insteadOf"
+            routed[f"GIT_CONFIG_VALUE_{index}"] = declared
+        routed["GIT_CONFIG_COUNT"] = str(start + len(origins))
+        return routed
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesHermeticGitMixin"]

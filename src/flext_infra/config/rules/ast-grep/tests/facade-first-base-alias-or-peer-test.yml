@@ -1,0 +1,24 @@
+id: facade-first-base-alias-or-peer
+# The facade class is the one its module declares in __all__; the facade-module
+# and family-peer- file scopes narrow findings only in a native stage.
+valid:
+  - |
+    class FlextMeltanoModels(m):
+        pass
+    __all__ = ["FlextMeltanoModels"]
+  - |
+    class Payload(m.ArbitraryTypesModel):
+        pass
+  # A class the module does not declare is no facade.
+  - |
+    class FlextMeltanoModels(FlextResult):
+        pass
+invalid:
+  - |
+    class FlextMeltanoModels(FlextResult):
+        pass
+    __all__ = ["FlextMeltanoModels"]
+  - |
+    class FlextMeltanoModels(FlextCliModels):
+        pass
+    __all__ = ["FlextMeltanoModels"]

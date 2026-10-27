@@ -85,11 +85,20 @@ class FlextInfraConfigModelsMake(
         integrity: Annotated[
             bool, m.Field(description="Include this check in quick runtime integrity")
         ] = False
+        stage: Annotated[
+            FlextInfraConstantsConfig.GateStage,
+            m.Field(
+                description=(
+                    "Earliest approval stage the check's cost admits; a "
+                    "repository-owned validator runs locally and at pre-push"
+                ),
+            ),
+        ] = FlextInfraConstantsConfig.GateStage.PUSH
         timeout_seconds: Annotated[
             int, m.Field(gt=0, description="Native module check wall-time limit")
         ] = c.Infra.TIMEOUT_DEFAULT
 
-    class RuffCacheSpec(FlextInfraExternalCacheDirectorySpec[str]):
+    class RuffCacheSpec(FlextInfraExternalCacheDirectorySpec.Directory[str]):
         """External Ruff cache with the declared default environment keys."""
 
         data_home_environment_variable: Annotated[
@@ -119,33 +128,34 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ] = "N"
-        local_check_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+        pre_commit_value: Annotated[
+            t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Local-only gates excluded from CI. Local check and "
-                    "pre-push retain the complete active gate set."
+                    "Token the generated commit hook passes to its check row: "
+                    "check then runs only the commit-stage gates "
+                    "(MakeSpec.pre_commit_check_gates) and no other validator."
                 ),
             ),
         ]
 
         @m.model_validator(mode="after")
-        def _validate_local_check_gates(self) -> Self:
-            """Every locally owned gate must be in the allowed check vocabulary.
+        def _validate_distinct_tokens(self) -> Self:
+            """Each declared context token selects exactly one check partition.
 
             Returns:
                 The resulting ``Self``.
 
             Raises:
-                ValueError: If make.ci.local_check_gates contains unknown gates.
+                ValueError: If two context tokens share one value.
 
             """
-            allowed = set(c.Infra.CANONICAL_GATE_IDS)
-            unknown = sorted(set(self.local_check_gates) - allowed)
-            if unknown:
+            tokens = (self.value, self.local_value, self.pre_commit_value)
+            if len(set(tokens)) != len(tokens):
                 msg = (
-                    "make.ci.local_check_gates contains unknown gates: "
-                    f"{', '.join(unknown)}"
+                    f"make.ci tokens must be distinct: value={self.value}, "
+                    f"local_value={self.local_value}, "
+                    f"pre_commit_value={self.pre_commit_value}"
                 )
                 raise ValueError(msg)
             return self
@@ -182,14 +192,47 @@ class FlextInfraConfigModelsMake(
             ),
         ] = tuple(FlextInfraConstantsConfig.MakeProfile)
 
-    class MakeLifecycleStepSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One public command in the declared runtime acceptance sequence."""
+    class MakeOperationSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One typed public operation and its distinct checker evidence phase."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public Make verb")]
-        scope: Annotated[
-            Literal["root", "each"],
-            m.Field(description="Run once at the root or in every eligible repository"),
-        ]
+        phase: Annotated[
+            c.Infra.CheckPhase,
+            m.Field(description="Checker evidence phase; other verbs are complete"),
+        ] = c.Infra.CheckPhase.COMPLETE
+
+        @m.computed_field
+        @property
+        def make_command(self) -> str:
+            """Canonical Make transport for this typed workflow operation."""
+            return f"make {self.verb}" + (
+                f" CHECK_PHASE={self.phase}"
+                if self.phase == c.Infra.CheckPhase.PRIMARY
+                else ""
+            )
+
+        @m.model_validator(mode="after")
+        def _validate_phase(self) -> Self:
+            """Keep source-admission semantics on the checker alone.
+
+            Returns:
+                The validated operation.
+
+            Raises:
+                ValueError: If another verb claims primary checker evidence.
+
+            """
+            if (
+                self.phase == c.Infra.CheckPhase.PRIMARY
+                and self.verb != c.Infra.VERB_CHECK
+            ):
+                msg = "only check declares primary workflow evidence"
+                raise ValueError(msg)
+            return self
+
+    class MakeLifecycleStepSpec(MakeOperationSpec):
+        """One public command in the declared runtime acceptance sequence."""
+
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci"]],
             m.Field(
@@ -197,10 +240,29 @@ class FlextInfraConfigModelsMake(
             ),
         ]
 
-    class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeWorkflowRequirementSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """An earlier phase required in explicitly declared execution contexts."""
+
+        step: Annotated[
+            t.NonEmptyStr, m.Field(description="Required workflow identity")
+        ]
+        contexts: Annotated[
+            t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
+            m.Field(
+                min_length=1, description="Contexts requiring the prior green phase"
+            ),
+        ]
+
+    class MakeWorkflowStepSpec(MakeOperationSpec):
         """One canonical workflow step."""
 
-        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
+        identity: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z_][A-Za-z0-9_-]*$",
+                description="Unique dependency identity, never a new Make verb",
+            ),
+        ]
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
             m.Field(
@@ -208,6 +270,15 @@ class FlextInfraConfigModelsMake(
                 description="Execution contexts consuming this single workflow row",
             ),
         ]
+        requires: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeWorkflowRequirementSpec],
+            m.Field(
+                description=(
+                    "Earlier workflow identities whose green result admits this step "
+                    "in the declared dependency contexts"
+                ),
+            ),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_contexts(self) -> Self:
@@ -305,7 +376,7 @@ class FlextInfraConfigModelsMake(
             return self
 
     class MypyCacheSpec(
-        FlextInfraExternalCacheDirectorySpec[
+        FlextInfraExternalCacheDirectorySpec.Directory[
             FlextInfraConstantsConfig.MypyCacheEnvironment
         ],
         FlextInfraConfigModelsContract.ConfigContract,
@@ -505,7 +576,7 @@ class FlextInfraConfigModelsMake(
                 return self
 
         class TestmonCacheSpec(
-            FlextInfraExternalCacheDirectorySpec[
+            FlextInfraExternalCacheDirectorySpec.Directory[
                 FlextInfraConstantsConfig.PytestCacheEnvironment
             ],
             FlextInfraConfigModelsContract.ConfigContract,
@@ -639,23 +710,6 @@ class FlextInfraConfigModelsMake(
                         raise ValueError(msg)
                 return self
 
-        class CodemodRulesCacheSpec(
-            FlextInfraExternalCacheDirectorySpec,
-            FlextInfraConfigModelsContract.ConfigContract,
-        ):
-            """Content-keyed parsed codemod rule catalogs shared by every process."""
-
-            data_home_environment_variable: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="XDG persistent cache-home variable"),
-            ] = m.Field()
-            user_home_environment_variable: Annotated[
-                t.NonEmptyStr,
-                m.Field(
-                    description="User home variable for the XDG default",
-                ),
-            ] = m.Field()
-
         examples_timeout_seconds: Annotated[
             int,
             m.Field(gt=0, le=120, description="Workspace examples process deadline"),
@@ -690,21 +744,16 @@ class FlextInfraConfigModelsMake(
             Literal[True],
             m.Field(
                 default=True,
-                description="Mandatory projected approval hook; host owns installation",
+                description=(
+                    "Mandatory projected commit hook; local make setup installs it"
+                ),
             ),
         ] = True
-        pre_commit_check_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description="Canonical check gates required by the commit hook",
-            ),
-        ] = ()
         pre_push: Annotated[
             bool,
             m.Field(
                 default=False,
-                description="Generate and install the pre-push git-hook stage",
+                description="Generate the pre-push stage; local make setup installs it",
             ),
         ] = False
         workflow: Annotated[
@@ -717,12 +766,6 @@ class FlextInfraConfigModelsMake(
                 min_length=1, description="Ordered public runtime acceptance steps"
             ),
         ]
-        lifecycle_observed_files: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1, description="Relative files observed around each step"
-            ),
-        ]
         ci: Annotated[
             FlextInfraConfigModelsMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
@@ -731,6 +774,17 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description="Inherited selectors excluded from native project execution"
+            ),
+        ]
+        github_credential_command: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Declared local GitHub credential command: selected once, "
+                    "outside CI, when the caller exports no GitHub token and "
+                    "its executable is installed; its failure stops the verb"
+                ),
             ),
         ]
         setup_timeout_seconds: Annotated[
@@ -763,6 +817,15 @@ class FlextInfraConfigModelsMake(
             Path,
             m.Field(description="Repository-relative canonical modification profile"),
         ]
+        check_profile_path: Annotated[
+            Path,
+            m.Field(
+                description=(
+                    "Repository-relative profile of the check route; the "
+                    "captured checker profiles beside its gate receipts"
+                )
+            ),
+        ]
         check_report_output_environment_variable: Annotated[
             str,
             m.Field(
@@ -778,10 +841,6 @@ class FlextInfraConfigModelsMake(
                     " testmon cache (#1001 delta)"
                 ),
             ),
-        ]
-        codemod_rules_cache: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec.CodemodRulesCacheSpec,
-            m.Field(description="Content-keyed parsed codemod rule catalog cache"),
         ]
         mypy_cache: Annotated[
             FlextInfraConfigModelsMake.MypyCacheSpec,
@@ -844,6 +903,16 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ] = ()
+        check_prerequisite_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Requested gates that must finish across every selected "
+                    "repository before the remaining gates execute"
+                ),
+            ),
+        ]
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
@@ -868,6 +937,17 @@ class FlextInfraConfigModelsMake(
                 msg = (
                     "make project_check_gates shadow built-in gates: "
                     f"{', '.join(shadowed)}"
+                )
+                raise ValueError(msg)
+            prerequisites = self.check_prerequisite_gates
+            if len(set(prerequisites)) != len(prerequisites):
+                msg = "make check_prerequisite_gates must be unique"
+                raise ValueError(msg)
+            unknown = set(prerequisites).difference(self.check_gates_allowed)
+            if unknown:
+                msg = (
+                    "make check_prerequisite_gates name unknown gates: "
+                    f"{', '.join(sorted(unknown))}"
                 )
                 raise ValueError(msg)
             return self
@@ -929,6 +1009,7 @@ class FlextInfraConfigModelsMake(
             # valid configuration and `flext_infra.config` could not be built at
             # all. The serialized set no longer exists; the guard has no object.
             self._validate_workflow(declared, admissible)
+            self._validate_workflow_requirements()
             self._validate_docs_policy()
             return self
 
@@ -947,8 +1028,9 @@ class FlextInfraConfigModelsMake(
 
             """
             workflow_verbs = tuple(step.verb for step in self.workflow)
-            if len(set(workflow_verbs)) != len(workflow_verbs):
-                msg = "make workflow verbs must be unique"
+            identities = tuple(step.identity for step in self.workflow)
+            if len(set(identities)) != len(identities):
+                msg = "make workflow phase identities must be unique"
                 raise ValueError(msg)
             unknown_workflow = set(workflow_verbs) - declared
             if unknown_workflow:
@@ -964,10 +1046,6 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(sorted(unknown_lifecycle))}"
                 )
                 raise ValueError(msg)
-            for path in self.lifecycle_observed_files:
-                if Path(path).is_absolute() or ".." in Path(path).parts:
-                    msg = f"make lifecycle observed file escapes its repository: {path}"
-                    raise ValueError(msg)
             # Optional data inputs do not narrow a common handler's operation.
             partial_workflow = sorted(
                 f"{verb.name}(profiles="
@@ -985,15 +1063,26 @@ class FlextInfraConfigModelsMake(
                     f"{required_profiles!r}"
                 )
                 raise ValueError(msg)
-            approval = self.approval_verbs
-            milestones = (c.Infra.VERB_CHECK, c.Infra.VERB_TEST)
+            approval = tuple(step for step in self.workflow if "ci" in step.contexts)
+            milestones = (
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+            )
             if (
-                approval[:1] != ("setup",)
-                or approval[-1:] != (c.Infra.VERB_TEST,)
-                or tuple(verb for verb in approval if verb in milestones) != milestones
+                not approval
+                or approval[0].verb != "setup"
+                or tuple(
+                    (step.verb, step.phase)
+                    for step in approval
+                    if step.verb in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
+                )
+                != milestones
             ):
                 msg = (
-                    "CI requires setup followed by the check and complete tests owners"
+                    "CI requires setup followed by primary check, native tests "
+                    "and complete check followed by final incremental tests"
                 )
                 raise ValueError(msg)
             hook = tuple(
@@ -1001,6 +1090,105 @@ class FlextInfraConfigModelsMake(
             )
             if hook != (c.Infra.VERB_CHECK,):
                 msg = "the pre-commit hook requires only the check operation"
+                raise ValueError(msg)
+
+        def _validate_workflow_requirements(self) -> None:
+            """Validate the declared phase dependency topology and contexts.
+
+            Raises:
+                ValueError: If a required phase is not earlier or does not run
+                    in the declared dependency contexts.
+
+            """
+            for index, step in enumerate(self.workflow):
+                earlier = {
+                    prior.identity: set(prior.contexts)
+                    for prior in self.workflow[:index]
+                }
+                for required in step.requires:
+                    if required.step not in earlier:
+                        msg = (
+                            f"make workflow step {step.identity} "
+                            f"requires {required.step}, which must precede it"
+                        )
+                        raise ValueError(msg)
+                    if not set(required.contexts) <= (
+                        set(step.contexts) & earlier[required.step]
+                    ):
+                        msg = (
+                            f"make workflow step {step.identity} "
+                            f"requires {required.step} "
+                            "in unavailable dependency contexts"
+                        )
+                        raise ValueError(msg)
+            for step in self.workflow:
+                if step.verb == c.Infra.VERB_TEST:
+                    self._validate_test_admission(step)
+            self._validate_admission_requirements()
+
+        def _validate_test_admission(
+            self, tests: FlextInfraConfigModelsMake.MakeWorkflowStepSpec
+        ) -> None:
+            """Require primary evidence in every context of each test invocation.
+
+            Raises:
+                ValueError: If any test context lacks a declared primary dependency.
+
+            """
+            primary = {
+                step.identity
+                for step in self.workflow
+                if step.verb == c.Infra.VERB_CHECK
+                and step.phase == c.Infra.CheckPhase.PRIMARY
+            }
+            covered = {
+                context
+                for required in tests.requires
+                if required.step in primary
+                for context in required.contexts
+            }
+            if covered != set(tests.contexts):
+                msg = (
+                    "tests require fresh global primary check evidence: "
+                    "every tests context must require the primary check phase"
+                )
+                raise ValueError(msg)
+
+        def _validate_admission_requirements(self) -> None:
+            """Keep initial source, behavioral and complete acceptance distinct.
+
+            Raises:
+                ValueError: If tests lack global primary admission or complete
+                    check lacks prior behavioral admission outside the commit hook.
+
+            """
+            tests = next(
+                step for step in self.workflow if step.verb == c.Infra.VERB_TEST
+            )
+            complete = next(
+                step
+                for step in self.workflow
+                if step.verb == c.Infra.VERB_CHECK
+                and step.phase == c.Infra.CheckPhase.COMPLETE
+            )
+            if not any(
+                required.step == tests.identity
+                and set(required.contexts) == set(complete.contexts) - {"pre_commit"}
+                for required in complete.requires
+            ):
+                msg = "complete check requires native tests outside the commit hook"
+                raise ValueError(msg)
+            final_tests = next(
+                step
+                for step in reversed(self.workflow)
+                if step.verb == c.Infra.VERB_TEST
+            )
+            if not any(
+                required.step == complete.identity
+                and set(required.contexts) == set(final_tests.contexts)
+                for required in final_tests.requires
+            ):
+                msg = "final native tests require complete check acceptance"
                 raise ValueError(msg)
 
         def _validate_docs_policy(self) -> None:
@@ -1024,6 +1212,7 @@ class FlextInfraConfigModelsMake(
                 ("docs.reports_dir", self.docs.reports_dir),
                 ("generation_profile_path", self.generation_profile_path),
                 ("modification_profile_path", self.modification_profile_path),
+                ("check_profile_path", self.check_profile_path),
             ):
                 if path.is_absolute() or ".." in path.parts or not path.parts:
                     msg = f"make {name} must be nonempty and repository-relative"
@@ -1085,15 +1274,54 @@ class FlextInfraConfigModelsMake(
 
         @m.computed_field
         @property
-        def check_gates_ci(self) -> t.VariadicTuple[str]:
-            """Preserve the CI partition within the same active default universe.
+        def check_gate_stages(
+            self,
+        ) -> Mapping[str, FlextInfraConstantsConfig.GateStage]:
+            """Earliest approval stage of every active gate.
+
+            Built-in stages come from their registry rows; a repository-owned
+            gate carries its own declared stage.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The stage of each gate in ``check_gates_default``.
 
             """
-            local = frozenset(self.ci.local_check_gates)
-            return tuple(gate for gate in self.check_gates_default if gate not in local)
+            return {
+                **c.Infra.GATE_STAGES,
+                **{gate.name: gate.stage for gate in self.project_check_gates},
+            }
+
+        @m.computed_field
+        @property
+        def check_gates_ci(self) -> t.VariadicTuple[str]:
+            """CI runs the commit-stage and CI-stage gates (gate-budget law).
+
+            Returns:
+                The active gates, in default order, CI admits.
+
+            """
+            stages = self.check_gate_stages
+            return tuple(
+                gate
+                for gate in self.check_gates_default
+                if stages[gate] != FlextInfraConstantsConfig.GateStage.PUSH
+            )
+
+        @m.computed_field
+        @property
+        def pre_commit_check_gates(self) -> t.VariadicTuple[str]:
+            """The commit hook runs only the fast commit-stage gates.
+
+            Returns:
+                The active gates, in default order, the commit hook admits.
+
+            """
+            stages = self.check_gate_stages
+            return tuple(
+                gate
+                for gate in self.check_gates_default
+                if stages[gate] == FlextInfraConstantsConfig.GateStage.COMMIT
+            )
 
         @m.computed_field
         @property

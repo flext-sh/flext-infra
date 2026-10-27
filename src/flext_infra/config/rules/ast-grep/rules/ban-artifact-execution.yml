@@ -1,0 +1,39 @@
+# Artifact roots come from codegen.exclusions.scenario_data_roots through the
+# native producer. Read/materialize data freely; never load it as executable
+# modules or pytest plugins. Static imports use the test-import DAG owner.
+id: ban-artifact-execution
+language: Python
+severity: error
+rule:
+  any:
+    - all:
+        - kind: call
+        - has:
+            field: function
+            regex: '(^|\.)(import_module|__import__|run_module|run_path|spec_from_file_location|SourceFileLoader|SourcelessFileLoader)$'
+        - has:
+            field: arguments
+            has:
+              stopBy: end
+              kind: string
+              matches: artifact-root-reference
+    - all:
+        - any:
+            - kind: assignment
+            - kind: augmented_assignment
+        - has:
+            field: left
+            regex: '^pytest_plugins$'
+        - has:
+            field: right
+            any:
+              - all:
+                  - kind: string
+                  - matches: artifact-root-reference
+              - has:
+                  stopBy: end
+                  kind: string
+                  matches: artifact-root-reference
+message: >-
+  Artifact roots contain data only. Move executable support into the Tests
+  facades or conftest.py before importing, loading, or registering it.

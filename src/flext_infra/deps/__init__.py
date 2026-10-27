@@ -13,18 +13,11 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.deps import _modernizer as _modernizer, phases as phases
     from flext_infra.deps._detection_runners import (
         FlextInfraDependencyDetectionRunnersMixin,
     )
     from flext_infra.deps._detector_runtime_steps import (
         FlextInfraDependencyDetectorRuntimeSteps,
-    )
-    from flext_infra.deps._modernizer import (
-        FlextInfraPyprojectModernizerBase,
-        FlextInfraPyprojectModernizerDocument,
-        FlextInfraPyprojectModernizerRun,
-        FlextInfraPyprojectModernizerTooling,
     )
     from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -34,15 +27,19 @@ if TYPE_CHECKING:
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.phases import (
+    from flext_infra.deps.phases.consolidate_groups import (
         FlextInfraConsolidateGroupsPhase,
-        FlextInfraEnsurePackagingPhase,
-        FlextInfraEnsurePyreflyConfigPhase,
-        FlextInfraEnsurePyrightConfigPhase,
-        FlextInfraEnsureRuffConfigPhase,
-        FlextInfraInjectCommentsPhase,
-        FlextInfraToolTablesPhase,
     )
+    from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+    from flext_infra.deps.phases.ensure_pyrefly import (
+        FlextInfraEnsurePyreflyConfigPhase,
+    )
+    from flext_infra.deps.phases.ensure_pyright import (
+        FlextInfraEnsurePyrightConfigPhase,
+    )
+    from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+    from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 
 __all__: tuple[str, ...] = (
@@ -61,14 +58,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraInjectCommentsPhase",
     "FlextInfraLockIntegrityVerifier",
     "FlextInfraPyprojectModernizer",
-    "FlextInfraPyprojectModernizerBase",
-    "FlextInfraPyprojectModernizerDocument",
-    "FlextInfraPyprojectModernizerRun",
-    "FlextInfraPyprojectModernizerTooling",
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraToolTablesPhase",
-    "_modernizer",
-    "phases",
 )
 
 install_lazy_exports(
@@ -90,14 +81,8 @@ install_lazy_exports(
         "FlextInfraInjectCommentsPhase": ".phases.inject_comments",
         "FlextInfraLockIntegrityVerifier": ".lock_integrity",
         "FlextInfraPyprojectModernizer": ".modernizer",
-        "FlextInfraPyprojectModernizerBase": "._modernizer.base",
-        "FlextInfraPyprojectModernizerDocument": "._modernizer.document",
-        "FlextInfraPyprojectModernizerRun": "._modernizer.run",
-        "FlextInfraPyprojectModernizerTooling": "._modernizer.tooling",
         "FlextInfraRuntimeDevDependencyDetector": ".detector",
         "FlextInfraToolTablesPhase": ".phases.tool_tables",
-        "_modernizer": "._modernizer",
-        "phases": ".phases",
     }),
     public_exports=__all__,
 )

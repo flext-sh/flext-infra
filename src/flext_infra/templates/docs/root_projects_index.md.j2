@@ -1,0 +1,15 @@
+{% filter markdown_wrap(line_width) -%}
+# Workspace Module Pages
+
+{{ generated_header }}
+
+Each project renders one page per public module, driven by docstrings.
+
+{% if not entries -%}
+_No projects discovered._
+{% else -%}
+{% for entry in entries -%}
+- [{{ entry.name }}]({{ entry.name }}/modules/index.md) — `{{ entry.module_count }}` modules
+{% endfor -%}
+{% endif -%}
+{% endfilter -%}

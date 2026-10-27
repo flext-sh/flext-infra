@@ -10,8 +10,8 @@ from functools import partial
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenConformBootstrap
-from flext_infra.deps.phases import FlextInfraEnsurePackagingPhase
+from flext_infra.codegen._conform.bootstrap import FlextInfraCodegenConformBootstrap
+from flext_infra.deps import phases as dependency_phases
 
 
 class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
@@ -173,17 +173,18 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         state, delta, legacy = captured.value
         if delta.project is not None:
             project = delta.project
-            selected = FlextInfraEnsurePackagingPhase.resolve_data_paths(
+            selected = (
+                dependency_phases.FlextInfraEnsurePackagingPhase.resolve_data_paths
+            )(
                 root,
                 project.package_name,
                 project.packaged_data_paths,
             )
-            FlextInfraEnsurePackagingPhase.resolve_data_excludes(
+            dependency_phases.FlextInfraEnsurePackagingPhase.resolve_data_excludes(
                 root,
                 selected,
                 project.packaged_data_excludes,
             )
-            FlextInfraEnsurePackagingPhase.config_resource(root, project.package_name)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -577,8 +578,20 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         planned: list[m.Infra.CodegenFilePlan] = []
-        for destination in destinations:
-            path = root / Path(destination)
+        # A retired directory retires each file under it; the generated
+        # marker (or declared evidence) below still guards every removal.
+        candidates = (
+            (destination, path)
+            for destination in destinations
+            for path in (
+                sorted(
+                    item for item in (root / destination).rglob("*") if item.is_file()
+                )
+                if (root / destination).is_dir()
+                else ((root / destination),)
+            )
+        )
+        for destination, path in candidates:
             if not path.is_file():
                 continue
             current = u.Cli.files_read_text(path)

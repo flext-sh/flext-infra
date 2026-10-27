@@ -1,9 +1,7 @@
 id: result-failure-rebind
 snapshots:
-  ? |
-    if loaded.failure:
-        return r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-  : fixed: |
+  "if loaded.failure:\n    return r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)\n":
+    fixed: |
       if loaded.failure:
           return r[m.Sample.Config].from_failure(loaded)
     labels:
@@ -17,10 +15,8 @@ snapshots:
       style: secondary
       start: 0
       end: 90
-  ? |
-    if loaded.failure:
-        return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-  : fixed: |
+  "if loaded.failure:\n    return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)\n":
+    fixed: |
       if loaded.failure:
           return r[p.Sample.Config].from_failure(loaded)
     labels:
@@ -34,10 +30,8 @@ snapshots:
       style: secondary
       start: 0
       end: 90
-  ? |
-    if result.failure:
-        return r[str].fail(result.error or "read failed")
-  : fixed: |
+  "if result.failure:\n    return r[str].fail(result.error or \"read failed\")\n":
+    fixed: |
       if result.failure:
           return r[str].from_failure(result)
     labels:

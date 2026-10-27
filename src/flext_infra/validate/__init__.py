@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
     from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
-    from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
@@ -43,7 +42,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPytestDiagXmlMixin",
     "FlextInfraPytestRunner",
-    "FlextInfraRuntimeCensusValidator",
     "FlextInfraSkillRuleRunnerMixin",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
@@ -66,7 +64,6 @@ install_lazy_exports(
         "FlextInfraPytestDiagExtractor": ".pytest_diag",
         "FlextInfraPytestDiagXmlMixin": "._pytest_diag_xml",
         "FlextInfraPytestRunner": ".pytest_runner",
-        "FlextInfraRuntimeCensusValidator": ".runtime_census",
         "FlextInfraSkillRuleRunnerMixin": "._skill_rule_runner",
         "FlextInfraSkillValidator": ".skill_validator",
         "FlextInfraStubSupplyChain": ".stub_chain",

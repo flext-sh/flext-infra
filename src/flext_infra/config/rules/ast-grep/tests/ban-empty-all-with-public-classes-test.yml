@@ -1,0 +1,36 @@
+id: ban-empty-all-with-public-classes
+valid:
+  - |
+    class First:
+        pass
+    class Second:
+        pass
+    __all__ = ["First", "Second"]
+  - |
+    class Declaration:
+        pass
+    __all__ = ()
+  - |
+    class _First:
+        pass
+    class _Second:
+        pass
+    __all__ = ()
+invalid:
+  - |
+    class First:
+        pass
+    class Second:
+        pass
+    __all__ = ()
+  - |
+    @decorator
+    class Declaration:
+        pass
+    __all__ = []
+  - |
+    class _Private:
+        pass
+    class Public:
+        pass
+    __all__ = ()

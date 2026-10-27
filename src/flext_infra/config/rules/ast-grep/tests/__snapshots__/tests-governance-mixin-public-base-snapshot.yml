@@ -1,10 +1,7 @@
 id: tests-governance-mixin-public-base
 snapshots:
-  ? |
-    from flext_tests.utilities import ModuleGovernanceMixin
-    class TestsGov(ModuleGovernanceMixin):
-        pass
-  : fixed: |
+  "from flext_tests.utilities import ModuleGovernanceMixin\nclass TestsGov(ModuleGovernanceMixin):\n    pass\n":
+    fixed: |
       from flext_tests.utilities import ModuleGovernanceMixin
       class TestsGov(FlextTestsModuleGovernanceMixin):
           pass

@@ -9,14 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConformExecute
-from tests import c, m, p, t, tm, u
+from flext_infra.codegen import FlextInfraCodegenConform
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
@@ -60,7 +59,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConformExecute(
+        service = FlextInfraCodegenConform.Generate(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,
@@ -108,7 +107,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(
-            FlextInfraCodegenConformExecute(
+            FlextInfraCodegenConform.Generate(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -158,25 +157,6 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(selected.read_text(encoding="utf-8"), eq='value = "scope_after"\n')
         tm.that(sentinel.read_text(encoding="utf-8"), eq=original)
 
-    @staticmethod
-    def _recorded_activation_env(tmp_path: Path) -> t.Pair[t.StrMapping, Path]:
-        """Record the local-context activation instead of entering a host shell.
-
-        ``make upg`` is a local verb (CI forbids resolution), so its lifecycle
-        activates through ``direnv exec``. A dry run still executes that ``+``
-        line; real direnv would load the fixture's ``.envrc`` and resolve tools
-        through host Mise shims. The recorded invocation proves the activation
-        contract (``direnv exec <root> ... _activated-<verb>``) without
-        depending on host state.
-
-        Returns:
-            The PATH overlay and the invocation log of the recorded direnv.
-
-        """
-        bin_dir = tmp_path / "recorded-bin"
-        log = u.Tests.cli_shim(bin_dir, c.Infra.CLI_DIRENV)
-        return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}, log
-
     def test_pre_commit_displays_the_canonical_contract(self, tmp_path: Path) -> None:
         """The real Make consumer exposes the configured CI validation contract."""
         root = self._render_root_makefile(tmp_path)
@@ -194,26 +174,24 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(result.exit_code, eq=0)
         tm.that(result.stdout, has=contract.description)
 
-    def test_verify_clean_projection_uses_the_public_git_service(
+    def test_check_projection_runs_one_public_process(
         self,
         tmp_path: Path,
     ) -> None:
-        """The rendered recipe retains audits and propagates the public CLI exit."""
+        """The rendered check recipe is one unmasked public CLI invocation."""
         root = self._render_root_makefile(tmp_path)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        recipe = rendered.split("\n_builtin-verify-clean:", 1)[1].split(
-            "\n_builtin-docs:",
-            1,
-        )[0]
-        tm.that(recipe, has=["codegen conform", "docs audit"])
+        recipe = rendered.split(
+            "\n_builtin_check_all: _builtin_require_environment\n", 1
+        )[1].split("\n\n", 1)[0]
         tm.that(
-            recipe.splitlines()[-1],
+            recipe,
             eq=f"\t@$(PROJECT_FLEXT_INFRA) {c.Infra.CLI_GROUP_WORKSPACE} "
-            'verify-clean --repo-root "$(PROJECT_ROOT)"',
+            f'{c.Infra.VERB_CHECK} --repository-root "$(PROJECT_ROOT)"',
         )
-        tm.that(recipe, lacks=["diff --exit-code", "||", "\t-", "\t@-"])
+        tm.that(rendered, lacks=["verify-clean --repo-root", "capture-gate"])
 
     def test_normal_test_verbs_admit_only_incremental_execution(
         self,
@@ -360,182 +338,6 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             has=f"{c.Infra.CLI_GROUP_WORKSPACE} propagate",
         )
 
-    def test_repository_root_upg_profiles_canonical_modernization(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Generated upg renders the exact lock-upgrade and modernizer invocation.
-
-        ``upg`` bootstraps Mise (network) and then dispatches its lifecycle; the
-        dry run enters that lifecycle directly, and its recursive ``+``
-        activation re-enters the checkout through ``direnv exec``.
-        """
-        repository_root, activations, execution = self._run_upg_lifecycle(
-            tmp_path,
-        )
-
-        tm.that(
-            u.Cli.process_succeeded(execution.outcome),
-            eq=True,
-            msg=execution.stdout + execution.stderr,
-        )
-        rendered = execution.stdout + execution.stderr
-        tm.that(rendered, has="deps modernize")
-        tm.that(rendered, has="--apply --rewrite-constraints")
-        tm.that(rendered, has="lock --project")
-        tm.that(rendered, has="--upgrade --refresh")
-        tm.that(
-            activations.read_text(encoding="utf-8"),
-            has=f"exec {repository_root} ",
-        )
-
-    def test_repository_root_upg_locks_tools_from_the_rendered_manifest(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """One ``make upg`` lifecycle relocks the tools between gen's halves.
-
-        The render half of ``gen`` writes the tool manifests of the upgraded
-        generator; the single ``_upg_lifecycle`` re-resolves mise.lock from
-        that rendered manifest (``mise lock --bump``) and installs it before
-        gen's activation half demands the pinned Mise release, then checks
-        uv.lock before post-upg.
-        """
-        _, activations, execution = self._run_upg_lifecycle(
-            tmp_path,
-        )
-        tm.that(
-            activations.read_text(encoding="utf-8"),
-            has=["_activated-gen", "_upg_activated"],
-        )
-        tm.that(
-            u.Cli.process_succeeded(execution.outcome),
-            eq=True,
-            msg=execution.stdout + execution.stderr,
-        )
-        steps = execution.stdout.splitlines()
-        expected_steps = (
-            "--upgrade --refresh",
-            "lock --bump",
-            "install --locked --yes",
-            "deps modernize",
-            "_builtin-gen",
-            "_activated-gen",
-        )
-        for needle in expected_steps:
-            tm.that(
-                execution.stdout,
-                has=needle,
-                msg=execution.stdout + execution.stderr,
-            )
-        positions = [
-            next(i for i, step in enumerate(steps) if needle in step)
-            for needle in expected_steps
-        ]
-        tm.that(positions, eq=sorted(positions))
-        # uv.lock resolves twice (flext-5kqsx): the upgrade selects the newest
-        # generator, and the relock resolves the pyproject that generator's
-        # render half projected, so a requirement only the upgraded generator
-        # declares reaches the lock in the same run. The check follows the
-        # final resolution and precedes the tool relock.
-        locks = [i for i, step in enumerate(steps) if "lock --project" in step]
-        tm.that(len(locks), eq=2)
-        upgrade_lock, final_lock = locks
-        tm.that(steps[upgrade_lock], has="--upgrade")
-        tm.that(steps[final_lock], lacks="--upgrade")
-        rendered = next(i for i, s in enumerate(steps) if "_builtin-gen" in s)
-        lock_check = max(i for i, s in enumerate(steps) if "lock --check" in s)
-        tool_lock = next(i for i, s in enumerate(steps) if "lock --bump" in s)
-        # C19: the upgraded Mise is relocked and installed before the
-        # resolution renders; the 5kqsx double resolution keeps the upgraded
-        # generator's lock before the render and the final relock after it.
-        tm.ok(tool_lock < rendered)
-        tm.ok(upgrade_lock < rendered < final_lock < lock_check)
-        tm.that(execution.stdout + execution.stderr, has="_upg_activated")
-
-    @staticmethod
-    def _publish_on_gen(root: Path, published: str) -> None:
-        """Declare a gen producer that publishes *published* as the Makefile.
-
-        The ``+`` prefix runs it under ``--dry-run`` as conform runs for real:
-        the producer half of ``gen`` rewrites the Makefile that ``upg`` parsed.
-        """
-        (root / "published.mk").write_text(published, encoding="utf-8")
-        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
-            ".PHONY: _custom-gen\n"
-            "_custom-gen:\n"
-            '\t+@cp "$(PROJECT_ROOT)/published.mk" "$(SELF_MAKEFILE)"\n',
-            encoding="utf-8",
-        )
-
-    def test_upg_hands_off_to_the_published_generation(self, tmp_path: Path) -> None:
-        """A Makefile published by gen is finished by a fresh `make upg` on it.
-
-        Premise (F1, ai-hub consumer proof 2026-10-09): an upgrade re-entered
-        `$(SELF_MAKE) _builtin_require_mise` after gen had published a newer
-        Makefile that no longer defined it. The next generation here defines
-        none of this generation's private targets, only the public `upg`.
-        """
-        root = self._render_root_makefile(tmp_path)
-        self._publish_on_gen(
-            root,
-            ".PHONY: upg\n"
-            "upg:\n"
-            "\t+@printf 'next-generation upg handoff=%s\\n' \"$(UPG_HANDOFF)\"\n",
-        )
-
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=root,
-            ),
-        )
-
-        output = execution.stdout + execution.stderr
-        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True, msg=output)
-        tm.that(output, has="next-generation upg handoff=Y")
-        tm.that(output, lacks=["No rule to make target", "_upg_activated"])
-
-    def test_upg_handoff_fails_loud_when_gen_is_not_a_fixed_point(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """A second publication inside the hand-off stops instead of recursing."""
-        root = self._render_root_makefile(tmp_path)
-        current = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        self._publish_on_gen(root, current + "\n# republished\n")
-
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle", "UPG_HANDOFF=Y"],
-                cwd=root,
-            ),
-        )
-
-        tm.fail(u.Cli.process_succeeded(execution.outcome))
-        tm.that(execution.stderr, has="gen is not a fixed point")
-
-    def test_upg_names_no_private_target_after_gen_publishes(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """After gen publishes, the lifecycle re-enters only `upg` or its converge."""
-        root = self._render_root_makefile(tmp_path)
-        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        lifecycle = rendered.split("\n_upg_lifecycle: _builtin_setup_submodules\n", 1)[
-            1
-        ]
-        after_publish = lifecycle.split("$(call RUN_PUBLIC_PRODUCE,gen)\n", 1)[1]
-        recipe = after_publish.split("\n\n", 1)[0]
-        reentries = {
-            line.split("$(SELF_MAKE)", 1)[1].split()[0].rstrip(";")
-            for line in recipe.splitlines()
-            if "$(SELF_MAKE)" in line
-        }
-        tm.that(reentries, eq={"_upg_converge"})
-        tm.that(recipe, has='-f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y')
-        tm.that(recipe, has='"$(SELF_MAKEFILE_DIGEST)"')
-
     @staticmethod
     def _render_root_makefile(tmp_path: Path) -> Path:
         """Render base/Makefile.j2 from a typed workspace fixture.
@@ -560,7 +362,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan: m.Infra.CodegenPlan = tm.ok(
-            FlextInfraCodegenConformExecute(
+            FlextInfraCodegenConform.Generate(
                 repository_root=repository_root,
                 state=m.Infra.CodegenConformState(
                     repository_root=repository_root,
@@ -580,31 +382,3 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         return repository_root
-
-    @classmethod
-    def _run_upg_lifecycle(
-        cls,
-        tmp_path: Path,
-    ) -> t.Triple[Path, Path, p.Cli.CommandOutput]:
-        """Render the workspace root and dry-run the canonical ``upg`` lifecycle.
-
-        Every ``upg`` recipe assertion shares the same premise: a rendered
-        workspace Makefile whose ``_upg_lifecycle`` re-enters through the
-        recorded direnv activation. Running the isolated dry run once keeps the
-        two tests on a single owner.
-
-        Returns:
-            The repository root, the recorded activation log, and the dry-run
-            output.
-
-        """
-        repository_root = cls._render_root_makefile(tmp_path)
-        env, activations = cls._recorded_activation_env(tmp_path)
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=repository_root,
-                env=env,
-            ),
-        )
-        return repository_root, activations, execution

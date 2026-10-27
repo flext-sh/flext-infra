@@ -1,0 +1,19 @@
+id: require-settings-base
+valid:
+  - |
+    class FlextDemoSettings(FlextSettings):
+        timeout: int = 30
+  - |
+    class FlextDemoModels(m.BaseModel):
+        total: int
+  - |
+    class FlextDemoSettingsModels:
+        class DemoSettings(m.BaseSettings):
+            timeout: int = 30
+invalid:
+  - |
+    class FlextDemoSettings(BaseSettings):
+        timeout: int = 30
+  - |
+    class DemoSettings(pydantic.BaseModel):
+        timeout: int = 30

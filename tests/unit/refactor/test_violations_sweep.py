@@ -100,7 +100,8 @@ class TestsFlextInfraRefactorViolationsSweep(
                     + 1,
                 },
             })
-        plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace))
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         inventory = tuple(
             (project.name, rule.id)
             for project in u.Infra.governed_project_roots(mod_workspace)

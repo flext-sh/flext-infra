@@ -27,7 +27,7 @@ import operator
 import textwrap
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import ClassVar
 
 from flext_infra import c, m, p, r, t, u
 
@@ -190,7 +190,7 @@ class FlextInfraExtractDuplicatePhase:
         if not path.is_file():
             return None
         source = path.read_text(encoding=c.DEFAULT_ENCODING)
-        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
             return None
         updated = cls.plan_source(source, spans)
         if updated is None or updated == source:
@@ -310,13 +310,12 @@ class FlextInfraExtractDuplicatePhase:
         """
         best: tuple[ast.stmt, ...] | None = None
         for node in ast.walk(tree):
-            raw = getattr(node, "body", None)
+            raw: t.SequenceOf[ast.AST] | None = getattr(node, "body", None)
             if not isinstance(raw, list) or not raw:
                 continue
-            body = cast("list[ast.AST]", raw)
-            if not all(isinstance(child, ast.stmt) for child in body):
+            statements = [child for child in raw if isinstance(child, ast.stmt)]
+            if len(statements) != len(raw):
                 continue
-            statements = cast("list[ast.stmt]", body)
             for index, first in enumerate(statements):
                 if first.lineno != start:
                     continue
@@ -461,10 +460,7 @@ class FlextInfraExtractDuplicatePhase:
         """
         current = parents.get(owner)
         while current is not None:
-            if isinstance(
-                current,
-                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
-            ):
+            if isinstance(current, c.Infra.AST_DEFINITION_TYPES):
                 return False
             current = parents.get(current)
         return True
@@ -484,7 +480,7 @@ class FlextInfraExtractDuplicatePhase:
         chain: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
         current = parents.get(node)
         while current is not None:
-            if isinstance(current, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(current, c.Infra.AST_FUNCTION_TYPES):
                 chain.append(current)
             current = parents.get(current)
         return tuple(chain)
@@ -730,9 +726,10 @@ class FlextInfraExtractDuplicatePhase:
         if not members:
             return owner.end_lineno or owner.lineno
         first = members[0]
-        decorators = cast(
-            "t.SequenceOf[ast.stmt]",
-            getattr(first, "decorator_list", ()),
+        decorators = (
+            first.decorator_list
+            if isinstance(first, c.Infra.AST_DEFINITION_TYPES)
+            else ()
         )
         return min([first.lineno, *(item.lineno for item in decorators)]) - 1
 
@@ -845,13 +842,10 @@ class FlextInfraExtractDuplicatePhase:
     ) -> None:
         """Accumulate top-level bindings without descending into definitions."""
         for statement in statements:
-            if isinstance(
-                statement,
-                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
-            ):
+            if isinstance(statement, c.Infra.AST_DEFINITION_TYPES):
                 bound.add(statement.name)
                 continue
-            if isinstance(statement, (ast.Import, ast.ImportFrom)):
+            if isinstance(statement, c.Infra.AST_IMPORT_TYPES):
                 bound.update(
                     (alias.asname or alias.name).split(".")[0]
                     for alias in statement.names
@@ -871,13 +865,13 @@ class FlextInfraExtractDuplicatePhase:
         """
         bodies: list[tuple[ast.stmt, ...]] = []
         for child in ast.iter_child_nodes(statement):
-            raw = getattr(child, "body", None)
+            raw: t.SequenceOf[ast.AST] | None = getattr(child, "body", None)
             if not isinstance(raw, list) or not raw:
                 continue
-            candidate = cast("list[ast.AST]", raw)
-            if not all(isinstance(item, ast.stmt) for item in candidate):
+            candidate = tuple(item for item in raw if isinstance(item, ast.stmt))
+            if len(candidate) != len(raw):
                 continue
-            bodies.append(tuple(cast("list[ast.stmt]", candidate)))
+            bodies.append(candidate)
         return tuple(bodies)
 
     @staticmethod
@@ -895,7 +889,7 @@ class FlextInfraExtractDuplicatePhase:
             statement, (ast.AnnAssign, ast.AugAssign, ast.For, ast.AsyncFor)
         ):
             targets = [statement.target]
-        elif isinstance(statement, (ast.With, ast.AsyncWith)):
+        elif isinstance(statement, c.Infra.AST_WITH_TYPES):
             targets = [
                 item.optional_vars
                 for item in statement.items

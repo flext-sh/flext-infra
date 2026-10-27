@@ -1,0 +1,26 @@
+id: ban-enclosing-family-field-reference
+snapshots:
+  "class FlextInfraModelsDepsToml:\n    class DepsToml:\n        class PhaseConfig(m.ContractModel):\n            operations: Annotated[\n                t.SequenceOf[\n                    Annotated[\n                        FlextInfraModelsDepsToml.DepsToml.SetOp\n                        | FlextInfraModelsDepsToml.DepsToml.ListOp,\n                        m.Field(discriminator=\"kind\"),\n                    ]\n                ],\n                m.Field(description=\"Declarative TOML operations\"),\n            ] = ()\n":
+    labels:
+    - source: FlextInfraModelsDepsToml.DepsToml.SetOp
+      style: primary
+      start: 216
+      end: 255
+  "class FlextModelsEnforcementBase:\n    class Report(Base):\n        violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()\n":
+    labels:
+    - source: FlextModelsEnforcementBase.Violation
+      style: primary
+      start: 91
+      end: 127
+  "class FlextModelsHandler:\n    class HandlerRuntimeState(Base):\n        execution_context: FlextModelsHandler.ExecutionContext\n":
+    labels:
+    - source: FlextModelsHandler.ExecutionContext
+      style: primary
+      start: 90
+      end: 125
+  "class FlextModelsHandler:\n    class HandlerRuntimeState(Base):\n        stack: Annotated[\n            MutableSequence[FlextModelsHandler.ExecutionContext],\n            Field(description=\"Stack.\"),\n        ]\n":
+    labels:
+    - source: FlextModelsHandler.ExecutionContext
+      style: primary
+      start: 117
+      end: 152

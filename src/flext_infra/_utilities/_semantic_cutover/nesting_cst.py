@@ -19,13 +19,17 @@ from libcst.metadata import (
 )
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeCore,
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeStructure,
 )
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNestingOwner,
     FlextInfraUtilitiesSemanticCutoverNestingReferences,
@@ -206,7 +210,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             end = module.lines.get_line_start(region.end.line) + region.end.column
             code = (
                 node.decorators[0]
-                if isinstance(node, cst.FunctionDef | cst.ClassDef) and node.decorators
+                if isinstance(node, c.Infra.CST_DEFINITION_TYPES) and node.decorators
                 else node
             )
             code_start = module.lines.get_line_start(positions[code].start.line)
@@ -289,7 +293,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         declaration = next(
             item
             for item in wrapper.module.body
-            if isinstance(item, cst.ClassDef)
+            if isinstance(item, c.Infra.Cst.ClassDef)
             and positions[item].start.line == node.lineno
         )
         member = declaration.body.body[0]
@@ -587,7 +591,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             if Path(resource.real_path).name == "conftest.py"
             else frozenset(definitions),
             composition=not any(
-                isinstance(node, cst.ClassDef) and node.name.value == owner_name
+                isinstance(node, c.Infra.Cst.ClassDef) and node.name.value == owner_name
                 for node in wrapper.module.body
             ),
         )
@@ -626,7 +630,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             and isinstance(node.value, ast.Call)
             and isinstance(node.value.func, ast.Attribute)
             and node.value.func.attr == "publish"
-            and isinstance(node.value.func.value, ast.Name | ast.Attribute)
+            and isinstance(node.value.func.value, c.Infra.AST_NAME_REFERENCE_TYPES)
             for node in owner.body
         ):
             return source
@@ -674,7 +678,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                     )
                 ):
                     bindings[node.name] = node.name
-            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            elif isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 if original_bindings is not None and node.name not in original_bindings:
                     continue
                 if cls._pytest_function_publication(
@@ -682,7 +686,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 ):
                     bindings[node.name] = f"{node.name}.__func__"
                     registrations = True
-            elif isinstance(node, ast.Assign | ast.AnnAssign):
+            elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
                 for name in cls._pytest_metadata_names(node, original_bindings):
                     bindings[name] = name
                     metadata.append(name)
@@ -759,7 +763,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     ) -> str:
         project, resource = native
         if any(
-            isinstance(node, ast.Assign | ast.AnnAssign)
+            isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in (

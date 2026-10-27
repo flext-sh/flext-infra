@@ -572,7 +572,7 @@ class TestsFlextInfraLintRecipes:
         lines = {
             node.name: node.lineno
             for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES)
         }
         return TestsFlextInfraLintRecipes._apply(
             source,

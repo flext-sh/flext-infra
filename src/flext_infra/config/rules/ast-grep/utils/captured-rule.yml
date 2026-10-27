@@ -1,0 +1,5 @@
+id: captured-rule
+language: python
+arguments: [BODY]
+rule:
+  matches: BODY

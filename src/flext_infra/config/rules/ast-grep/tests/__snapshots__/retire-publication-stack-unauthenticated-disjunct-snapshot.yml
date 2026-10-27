@@ -1,9 +1,7 @@
 id: retire-publication-stack-unauthenticated-disjunct
 snapshots:
-  ? |
-    if not source_project.authenticated_sources or not root.is_relative_to(base):
-        fail()
-  : fixed: |
+  "if not source_project.authenticated_sources or not root.is_relative_to(base):\n    fail()\n":
+    fixed: |
       if not root.is_relative_to(base):
           fail()
     labels:

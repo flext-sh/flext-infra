@@ -9,9 +9,9 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_cli import FlextCli
+from flext_cli import FlextCli, u
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, t
 from flext_infra.services import FlextInfraCliRouteService
 
 if TYPE_CHECKING:
@@ -77,9 +77,11 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
         )
         return list(normalized)
 
-    def register_group_commands(self, group: str, app: p.Cli.Application) -> None:
+    def register_group_commands(
+        self, group: str, app: p.Cli.Application, *, command: str | None = None
+    ) -> None:
         """Register one group's command routes."""
-        self.register_result_routes(app, self.route_table_for(group))
+        self.register_result_routes(app, self.route_table_for(group, command=command))
 
     def run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute one registered flext-cli command group.
@@ -92,8 +94,12 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
             name=f"{self.app_name} {group}",
             help_text=c.Infra.CLI_GROUP_DESCRIPTIONS[group],
         )
-        self.register_group_commands(group, app)
         normalized_args = self.normalize_group_args(args)
+        self.register_group_commands(
+            group,
+            app,
+            command=normalized_args[0] if normalized_args else None,
+        )
         if not normalized_args:
             _ = self.execute_app(
                 app,

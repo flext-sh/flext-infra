@@ -1,8 +1,7 @@
 id: ban-test-production-ast
 snapshots:
-  ? |
-    assert ast.dump(ast.parse(Path("cli.py").read_text()))
-  : labels:
+  "assert ast.dump(ast.parse(Path(\"cli.py\").read_text()))\n":
+    labels:
     - source: ast.dump(ast.parse(Path("cli.py").read_text()))
       style: primary
       start: 7
@@ -61,10 +60,8 @@ snapshots:
       style: secondary
       start: 8
       end: 47
-  ? |
-    from ai_hub import cli
-    ast.parse(inspect.getsource(cli))
-  : labels:
+  "from ai_hub import cli\nast.parse(inspect.getsource(cli))\n":
+    labels:
     - source: ast.parse(inspect.getsource(cli))
       style: primary
       start: 23
@@ -81,10 +78,8 @@ snapshots:
       style: secondary
       start: 32
       end: 56
-  ? |
-    source = Path("src/ai_hub/cli.py").read_text()
-    ast.parse(source)
-  : labels:
+  "source = Path(\"src/ai_hub/cli.py\").read_text()\nast.parse(source)\n":
+    labels:
     - source: ast.parse(source)
       style: primary
       start: 47
@@ -119,9 +114,8 @@ snapshots:
       style: secondary
       start: 56
       end: 64
-  ? |
-    tree = ast.parse(Path("src/ai_hub/cli.py").read_text())
-  : labels:
+  "tree = ast.parse(Path(\"src/ai_hub/cli.py\").read_text())\n":
+    labels:
     - source: ast.parse(Path("src/ai_hub/cli.py").read_text())
       style: primary
       start: 7

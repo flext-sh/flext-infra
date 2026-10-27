@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
+from flext_infra import c, deps as dependency_services, m, p, r, t, u
+from flext_infra.codegen._conform.existing_plan import (
     FlextInfraCodegenConformExistingPlan,
-    FlextInfraCodegenLazyInit,
 )
-from flext_infra.deps import FlextInfraPyprojectModernizer
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
@@ -50,7 +49,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         selected_destinations = (
             None
             if contract.destinations is None
-            else codegen.templates.required_destinations(contract.destinations)
+            else u.Cli.dag_closure(
+                codegen.templates.artifact_requirements, contract.destinations
+            ).unwrap()
         )
         # New and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
@@ -89,7 +90,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 or entry.destination in required_data_destinations
             )
         )
-        modernizer = FlextInfraPyprojectModernizer(
+        modernizer = dependency_services.FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,
             managed_artifacts=u.Infra.empty_snapshot().resolution,
@@ -113,7 +114,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             project_name=target.repository.distribution,
             package_name=project.package_name,
             path=root / c.PYPROJECT_FILENAME,
-            scaffold_project=codegen.scaffold.project,
+            codegen=codegen,
             runtime_dependency_overlay=project.runtime_dependency_overlay,
             declared_project_dependencies=(),
             topology=m.Infra.PyprojectDeclaredTopology(

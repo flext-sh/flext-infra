@@ -13,8 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.services import _codegen as _codegen
-    from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
     from flext_infra.services.candidate_bootstrap import (
         FlextInfraCandidateBootstrapService,
     )
@@ -39,13 +37,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraCliRouteService",
     "FlextInfraCodegenHandlers",
     "FlextInfraCodegenRoutes",
-    "FlextInfraCodegenVscodeMixin",
     "FlextInfraModHandlers",
     "FlextInfraRefactorRoutes",
     "FlextInfraValidationCommandRoutes",
     "FlextInfraValidationRoutes",
     "FlextInfraWorkspaceRoutes",
-    "_codegen",
 )
 
 install_lazy_exports(
@@ -58,13 +54,11 @@ install_lazy_exports(
         "FlextInfraCliRouteService": ".cli_routes",
         "FlextInfraCodegenHandlers": ".codegen",
         "FlextInfraCodegenRoutes": ".cli_routes_codegen",
-        "FlextInfraCodegenVscodeMixin": "._codegen.vscode",
         "FlextInfraModHandlers": ".mod",
         "FlextInfraRefactorRoutes": ".cli_routes_refactor",
         "FlextInfraValidationCommandRoutes": ".cli_routes_validate_commands",
         "FlextInfraValidationRoutes": ".cli_routes_validate",
         "FlextInfraWorkspaceRoutes": ".cli_routes_workspace",
-        "_codegen": "._codegen",
     }),
     public_exports=__all__,
 )

@@ -19,8 +19,8 @@ from flext_infra._models import (
     FlextInfraModelsWorkspace,
 )
 from flext_infra._models._config import (
+    FlextInfraConfigModelsArtifact,
     FlextInfraConfigModelsRepository,
-    FlextInfraConfigModelsScaffold,
 )
 
 GitSourceUrlPrefixField = Annotated[
@@ -46,12 +46,23 @@ class FlextInfraModelsDeps(
 ):
     """Models for dependency detection and modernization reporting."""
 
-    class ProjectPackagingDeclaration(m.ContractModel):
+    class RequirementsProvenance(m.ImmutableValueModel):
+        """Workspace provenance consulted while canonicalizing requirement lines."""
+
+        declared_sources: t.StrMapping = m.Field(
+            description="Declared member Git origins"
+        )
+        candidate_sources: t.StrMapping = m.Field(
+            description="Selected candidate Git origins"
+        )
+        native_sources: t.StrSequence = m.Field(
+            default=(), description="Names with explicit native UV source declarations"
+        )
+
+    class ProjectPackagingDeclaration(m.ExternalContractModel):
         """Native packaging facts retained independently of Python export health."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="ignore",
-            frozen=True,
             populate_by_name=True,
         )
         uv_package: Annotated[
@@ -73,7 +84,7 @@ class FlextInfraModelsDeps(
         """One TOML ingress retaining metadata and its native packaging declaration."""
 
         metadata: Annotated[
-            p.ProjectMetadata,
+            t.Port[p.ProjectMetadata],
             m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
         ]
         packaging: Annotated[
@@ -131,6 +142,16 @@ class FlextInfraModelsDeps(
                 description=(
                     "Canonical unimported requirements whose installed console "
                     "scripts the project's own files invoke"
+                ),
+            ),
+        ]
+        loaded_plugins: Annotated[
+            t.StrTuple,
+            m.Field(
+                description=(
+                    "Canonical unimported requirements whose installed "
+                    "distribution registers a pytest plugin entry point, "
+                    "which pytest autoloads"
                 ),
             ),
         ]
@@ -312,7 +333,7 @@ class FlextInfraModelsDeps(
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict[str, t.JsonValue])
         document: Annotated[
-            t.Cli.TomlDocument | None,
+            t.Port[t.Cli.TomlDocument] | None,
             m.Field(
                 default=None,
                 exclude=True,
@@ -393,14 +414,6 @@ class FlextInfraModelsDeps(
                 ),
             ),
         ] = ()
-        project_declaration_resource: Annotated[
-            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
-            m.Field(
-                description=(
-                    "Declared producer metadata source and wheel resource destination"
-                ),
-            ),
-        ] = None
         hatch_build_hook_path: Annotated[
             Path | None,
             m.Field(description="Declared project-relative Hatch build hook module"),
@@ -598,9 +611,9 @@ class FlextInfraModelsDeps(
             FlextInfraModelsDeps.PyprojectDeclaredTopology,
             m.Field(description="Declared repository topology"),
         ]
-        scaffold_project: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldProjectSpec,
-            m.Field(description="Scaffold project specification"),
+        codegen: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
+            m.Field(description="Elected effective target codegen policy"),
         ]
         runtime_dependency_overlay: Annotated[
             t.StrSequence,

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, main
+from flext_infra import FlextInfraCli, config
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import c, m, tm, u
@@ -496,7 +496,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         root = mod_workspace
         self._prepare(root, makefile=self._makefile(), local_rule=True)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 c.Infra.CLI_GROUP_REFACTOR,
                 c.Infra.VIOLATIONS_SWEEP_ROUTE_NAME,
                 "--repository-root",
@@ -567,7 +567,7 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
             )
         )
         tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_REFACTOR,
             "ast",
             "--apply",
@@ -676,7 +676,8 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
             tm.ok(
                 u.Cli.atomic_write_text_file(root / "changed.py", "marker = dict()\n")
             )
-        plan = tm.ok(u.Infra.codemod_rule_plan(root))
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         focus = next(rule.id for rule in plan.rules if rule.id != "sweep-growth")
         result = FlextInfraRefactorViolationsSweep(
             repository_root=root,

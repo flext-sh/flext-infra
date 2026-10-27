@@ -27,9 +27,8 @@
 - Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayloadMixin`,
   `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
   `FlextInfraGitLanes`, `FlextInfraGitService`, `FlextInfraModels`,
-  `FlextInfraPreviewWiring` (+19 more)
-- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `docs`, `gates`,
-  `maintenance`, `refactor` (+5 more)
+  `FlextInfraPreviewWiring` (+18 more)
+- Exported module shortcuts: _none_
 - Generated module pages: `14`
 
 ## Next Pages

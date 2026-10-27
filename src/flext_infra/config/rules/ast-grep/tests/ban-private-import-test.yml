@@ -1,6 +1,10 @@
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml): its own
+# private modules are importable inside it; another package's are not.
 id: ban-private-import
 valid:
   - from flext_core import c, m, t, u
+  - from ai_hub._models import AiHubModels
+  - import ai_hub._utilities.guards
   - from .repo import git_capture
   - from ._utilities.client import FlextApiClient
   - from .._models.base import FlextModelsBase as m

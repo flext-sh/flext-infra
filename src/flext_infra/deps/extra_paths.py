@@ -287,29 +287,6 @@ class FlextInfraExtraPathsManager(
         """
         return tuple(f"{directory}/**/*.py*" for directory in env_dirs)
 
-    def resolve_transitive_dependency_names(
-        self,
-        direct_names: t.StrSequence,
-    ) -> t.StrSequence:
-        """Return the transitive workspace path-dependency closure of direct_names.
-
-        Returns:
-            The transitive workspace path-dependency closure of direct_names.
-
-        """
-
-        def dependencies(name: str) -> t.StrSequence:
-            dep_pyproject = self.root / name / c.PYPROJECT_FILENAME
-            if not dep_pyproject.exists():
-                return ()
-            dep_payload = u.Infra.pyproject_payload(dep_pyproject)
-            return u.Infra.local_dependency_names_from_payload(
-                dep_payload,
-                workspace_project_names=tuple(self._workspace_project_names),
-            )
-
-        return u.Infra.dependency_order(direct_names, dependencies=dependencies)
-
     def sync_doc(
         self,
         doc: t.Cli.TomlDocument,

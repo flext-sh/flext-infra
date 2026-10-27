@@ -149,7 +149,7 @@ class FlextInfraModelsRefactor(
         """Declared search scope and hierarchy policy for one semantic rename."""
 
         resources: Annotated[
-            t.SequenceOf[t.Infra.RopeResource],
+            t.SequenceOf[t.Port[t.Infra.RopeResource]],
             m.Field(description="Resources included in the semantic rename scope"),
         ]
         in_hierarchy: Annotated[
@@ -674,6 +674,14 @@ class FlextInfraModelsRefactor(
     class CensusOptions(m.ContractModel):
         """Declared census filters and report destinations."""
 
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit external consumer checkout roots for this census",
+        )
+        source_plan_output: Path | None = m.Field(
+            default=None,
+            description="Destination for the same authenticated SemanticSourcePlan",
+        )
         json_output: Annotated[
             str | None, m.Field(description="Path to write JSON report")
         ] = None
@@ -778,23 +786,6 @@ class FlextInfraModelsRefactor(
             MutableSet[str],
             m.Field(description="Imported symbol names"),
         ] = m.Field(default_factory=set[str])
-
-    class MethodInfo(m.ArbitraryTypesModel):
-        """Metadata about a method used for ordering inside classes."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Method name")]
-        category: Annotated[str, m.Field(description="Method category classification")]
-        node: Annotated[
-            t.Infra.RopePyObject | None,
-            m.Field(
-                description="Node representation from Rope or PyObject",
-                exclude=True,
-            ),
-        ]
-        decorators: Annotated[
-            t.StrSequence,
-            m.Field(description="Decorator names applied to this method"),
-        ] = m.Field(default_factory=tuple)
 
     class ProjectClassification(FlextInfraModelsBase.FrozenArbitrary):
         """Result of classifying a project by kind and family chains."""
@@ -963,6 +954,33 @@ class FlextInfraModelsRefactor(
             m.Field(description="Files rewritten in apply mode"),
         ] = 0
         applied: Annotated[bool, m.Field(description="Whether changes were applied")]
+        published_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True,
+                description="Authenticated states of the acknowledged published paths",
+            ),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_published_states(self) -> Self:
+            """Require one actual state per acknowledged published file.
+
+            Returns:
+                The report with a complete, unique publication inventory.
+
+            Raises:
+                ValueError: If publication counts and states disagree.
+
+            """
+            paths = {state.path for state in self.published_states}
+            if len(paths) != len(self.published_states) or (
+                len(paths) != self.files_changed
+                or (not self.applied and self.published_states)
+            ):
+                msg = "rename publication states disagree with acknowledged files"
+                raise ValueError(msg)
+            return self
 
     # -- Namespace Enforcer Models ---------------------------------------------
 
@@ -1016,17 +1034,27 @@ class FlextInfraModelsRefactor(
                 ),
             ),
         ] = False
+        bootstrap_dependency: Annotated[
+            bool,
+            m.Field(
+                description="Whether the captured root graph bootstraps this module"
+            ),
+        ] = False
 
         @m.computed_field
         @property
         def namespace(self) -> str:
-            """Top-level package name of the owning namespace.
+            """Qualified publishing package derived from the explicit module facts.
 
             Returns:
                 The namespace package name.
 
             """
-            return self.namespace_dir.name
+            depth = len(self.file_path.relative_to(self.namespace_dir).parts) - (
+                self.file_path.name == c.Infra.INIT_PY
+            )
+            parts = self.module.split(".")
+            return ".".join(parts[: len(parts) - depth])
 
     class ImportLawPass(FlextInfraModelsBase.FrozenArbitrary):
         """One parsed module and the facts one import-law pass reads from it."""
@@ -1048,6 +1076,18 @@ class FlextInfraModelsRefactor(
             t.StrMapping,
             m.Field(description="Names the namespace root publishes lazily"),
         ]
+        sources: Annotated[
+            t.MappingKV[Path, str] | None,
+            m.Field(description="Captured sources used by this normalization pass"),
+        ] = None
+        source_project: Annotated[
+            t.Port[t.Infra.RopeProject] | None,
+            m.Field(description="Native source view owning this pass"),
+        ] = None
+        deferred_class_lines: Annotated[
+            frozenset[int],
+            m.Field(description="Class declarations with proven ordinary construction"),
+        ] = frozenset()
 
 
 __all__: list[str] = ["FlextInfraModelsRefactor"]

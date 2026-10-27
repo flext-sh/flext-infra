@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
@@ -81,51 +80,6 @@ class FlextInfraModelsCodemod:
                     raise ValueError(msg)
             return tuple(indexed.values())
 
-    class CodemodSourceEpoch(FlextInfraModelsBase.FrozenArbitrary):
-        """One shared authenticated text view for an immutable capture operation."""
-
-        snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot = m.Field(
-            description="Authenticated binding snapshot defining this source epoch"
-        )
-        sources: t.Port[MappingProxyType[Path, str]] = m.Field(
-            description="Immutable decoded text for every present captured input"
-        )
-        contents: t.Port[MappingProxyType[Path, bytes]] = m.Field(
-            description="Immutable original bytes for every present captured input"
-        )
-
-        @m.model_validator(mode="after")
-        def _validate_sources(self) -> Self:
-            expected = {
-                state.path
-                for state in self.snapshot.states
-                if state.content is not None
-            }
-            if set(self.sources) != expected or set(self.contents) != expected:
-                msg = "source epoch must contain every present captured input"
-                raise ValueError(msg)
-            for state in self.snapshot.states:
-                if state.content is not None and (
-                    self.contents[state.path] != state.content
-                    or self.sources[state.path].encode("utf-8") != state.content
-                ):
-                    msg = f"source epoch differs from authenticated bytes: {state.path}"
-                    raise ValueError(msg)
-            return self
-
-    class CodemodBindingProject(m.ArbitraryTypesModel):
-        """One selected project's lexical roots within a shared input capture."""
-
-        root: Annotated[Path, m.Field(description="Native project resolution root")]
-        source_paths: Annotated[
-            tuple[Path, ...],
-            m.Field(description="Authenticated consumer paths requiring admission"),
-        ]
-        modules: Annotated[
-            t.StrSequence,
-            m.Field(description="Symbol owners elected by this project's findings"),
-        ]
-
     class AstGrepDiagnostic(m.FlexibleModel):
         """Required native RuleMatch fields, with zero-based source coordinates.
 
@@ -193,25 +147,6 @@ class FlextInfraModelsCodemod:
                 ge=0,
                 validation_alias=m.AliasPath("range", "byteOffset", "end"),
                 description="Exclusive UTF-8 byte offset",
-            ),
-        ]
-        captures: Annotated[
-            t.JsonMapping,
-            m.Field(
-                validation_alias=m.AliasPath("metaVariables", "single"),
-                default_factory=lambda: MappingProxyType[str, t.JsonValue]({}),
-                description=(
-                    "Captured single metavariables; ast-grep omits the payload "
-                    "for a match that captures none"
-                ),
-            ),
-        ]
-        transformed: Annotated[
-            t.JsonMapping,
-            m.Field(
-                validation_alias=m.AliasPath("metaVariables", "transformed"),
-                default_factory=lambda: MappingProxyType[str, t.JsonValue]({}),
-                description="Metavariables the rule derived through transform",
             ),
         ]
 

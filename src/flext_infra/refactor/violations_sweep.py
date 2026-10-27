@@ -231,7 +231,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
             if self.rules is not None
             else None
         )
-        focused = u.Infra.codemod_rule_plan(self.repository_root, rule_ids=rule_ids)
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            focused = u.Infra.codemod_rule_plan(snapshot, rule_ids=rule_ids)
         if focused.failure:
             return result.from_failure(focused)
         verbs = (
@@ -284,7 +285,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         repair_failure: p.Result[bool] | None = None
         inventory = initial.plan if initial is not None else None
         if inventory is None:
-            catalog = u.Infra.codemod_rule_plan(root)
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                catalog = u.Infra.codemod_rule_plan(snapshot)
             inventory = catalog.value if catalog.success else None
         for verb in verbs:
             blocked = repair_failure is not None
@@ -594,7 +596,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
                 tuple[m.Infra.GitSubmoduleDeclaration, ...],
             ]
         ]
-        planned = u.Infra.codemod_rule_plan(root)
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            planned = u.Infra.codemod_rule_plan(snapshot)
         if planned.failure:
             return result.from_failure(planned)
         targets = u.Infra.ast_grep_scan_targets(root)
@@ -808,7 +811,9 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         for target in targets:
             path = root / target
             paths.update(
-                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
+                u.Infra.iter_directory_python_files(path, repository_root=root)
+                if path.is_dir()
+                else (path,)
             )
         return paths, (str(text_paths.error),) if text_paths.failure else ()
 
@@ -828,7 +833,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         verified = u.Cli.atomic_verify_binary_file_states(states)
         if verified.failure:
             return r[bool].from_failure(verified)
-        observed_plan = u.Infra.codemod_rule_plan(root)
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            observed_plan = u.Infra.codemod_rule_plan(snapshot)
         if observed_plan.failure:
             return r[bool].from_failure(observed_plan)
         if plan != observed_plan.value or targets != u.Infra.ast_grep_scan_targets(

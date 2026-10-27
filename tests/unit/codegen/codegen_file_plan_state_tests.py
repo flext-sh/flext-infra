@@ -166,6 +166,27 @@ class TestsFlextInfraCodegenFilePlanState:
         tm.that(target.exists(), eq=False)
 
     @staticmethod
+    def test_retirement_removes_only_the_parents_it_emptied(tmp_path: Path) -> None:
+        """Deleted projections leave no empty parent; shared parents remain."""
+        kept = tmp_path / "retired" / "kept.txt"
+        target = tmp_path / "retired" / "emptied" / "deep" / "generated.txt"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"generated\n")
+        kept.write_bytes(b"authored\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        plan = m.Infra.CodegenFilePlan(
+            project=tmp_path,
+            path=target,
+            before=before,
+            desired_content=None,
+            desired_mode=None,
+        )
+        tm.ok(u.Infra.publish_codegen_plans(tmp_path, (plan,)))
+        tm.that((tmp_path / "retired" / "emptied").exists(), eq=False)
+        tm.that(kept.read_bytes(), eq=b"authored\n")
+        tm.that(tmp_path.is_dir(), eq=True)
+
+    @staticmethod
     @pytest.mark.parametrize("name", ["py.typed", "typings.py", "protocols.py"])
     def test_legitimate_typing_surfaces_remain_publishable(
         tmp_path: Path,

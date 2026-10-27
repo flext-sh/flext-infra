@@ -1,17 +1,12 @@
 id: remove-cli-process-deadline-timeout-exit-code
 snapshots:
-  ? |
-    m.Cli.ProcessDeadline(
-        expires_at_monotonic=expires_at,
-        termination_grace_seconds=grace,
-        timeout_exit_code=124,
-    )
-  : fixed: |+
+  "m.Cli.ProcessDeadline(\n    expires_at_monotonic=expires_at,\n    termination_grace_seconds=grace,\n    timeout_exit_code=124,\n)\n":
+    fixed: |+
       m.Cli.ProcessDeadline(
           expires_at_monotonic=expires_at,
           termination_grace_seconds=grace,
       )
-
+      
     labels:
     - source: |-
         m.Cli.ProcessDeadline(

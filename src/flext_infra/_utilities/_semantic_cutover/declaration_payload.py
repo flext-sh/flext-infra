@@ -10,19 +10,26 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeCore,
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeStructure,
 )
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
-class FlextInfraUtilitiesDeclarationPayload:
+class FlextInfraUtilitiesDeclarationPayload(
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+):
     """Identify inherited declarations without parsing or spelling heuristics."""
 
     @staticmethod
@@ -56,6 +63,93 @@ class FlextInfraUtilitiesDeclarationPayload:
             if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(current):
                 pending.extend(cls.direct_bases(current))
         return found
+
+    @classmethod
+    def utility_behavior_provider(
+        cls, project: p.Infra.RopeProject, owner: p.Infra.RopePyObject
+    ) -> bool:
+        """Prove stateless utility behavior without reclassifying class entities.
+
+        Returns:
+            Whether native ancestry, descriptors and storage establish behavior.
+
+        """
+        if not cls.py_class(owner):
+            return False
+        ancestry = cls.class_ancestry(owner)
+        entities = tuple(
+            cls.identity_name(project, identity).get_object()
+            for identity in ("enum.Enum", "typing.Protocol", "pydantic.BaseModel")
+        )
+        if any(ancestor in entities for ancestor in ancestry):
+            return False
+        methods = tuple(
+            value
+            for attribute in owner.get_attributes().values()
+            if cls.py_function(value := attribute.get_object())
+        )
+        return (
+            bool(methods)
+            and all(
+                method.get_kind() in {"classmethod", "staticmethod"}
+                for method in methods
+            )
+            and all(
+                not cls.py_class(ancestor)
+                or cls.utility_namespace_declaration(project, ancestor)
+                for ancestor in ancestry
+            )
+        )
+
+    @classmethod
+    def utility_namespace_declaration(
+        cls, project: p.Infra.RopeProject, owner: p.Infra.RopeSourceClass
+    ) -> bool:
+        """Validate native utility storage for rendering and semantic migration.
+
+        Returns:
+            Whether the declaration contains only admissible class storage.
+
+        Raises:
+            TypeError: The native utility declaration is not a class syntax tree.
+
+        """
+        node = owner.get_ast()
+        if not isinstance(node, ast.ClassDef):
+            message = "utility provider has no native class syntax tree"
+            raise TypeError(message)
+        return not node.decorator_list and not any(
+            isinstance(member, ast.AnnAssign)
+            and not cls._declares_class_storage(project, owner.get_scope(), member)
+            for member in node.body
+        )
+
+    @classmethod
+    def _declares_class_storage(
+        cls,
+        project: p.Infra.RopeProject,
+        scope: p.Infra.RopeScope,
+        member: ast.AnnAssign,
+    ) -> bool:
+        """Authenticate ClassVar and initialized Final through native identities.
+
+        Returns:
+            Whether the annotation proves class storage for this declaration.
+
+        """
+        annotation = member.annotation
+        qualifier = cls.resolve_symbol(
+            scope,
+            annotation.value if isinstance(annotation, ast.Subscript) else annotation,
+        )
+        return cls.same_name(
+            cls.qualified_name(project, "ClassVar", module_name="typing"), qualifier
+        ) or (
+            member.value is not None
+            and cls.same_name(
+                cls.qualified_name(project, "Final", module_name="typing"), qualifier
+            )
+        )
 
     @classmethod
     def _header_argument_span(
@@ -315,6 +409,34 @@ class FlextInfraUtilitiesDeclarationPayload:
             The bound model declaration, or ``None`` for a different contract.
 
         """
+        binding = cls.payload_body(project, path, qualified_name)
+        if binding is None:
+            return None
+        ancestry = cls.class_ancestry(binding.get_object())
+        base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
+        settings = cls.identity_name(
+            project, c.Infra.PYDANTIC_SETTINGS_IDENTITY
+        ).get_object()
+        if base not in ancestry or settings in ancestry:
+            return None
+        return binding
+
+    @classmethod
+    def payload_body(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        qualified_name: str,
+    ) -> p.Infra.RopePyName | None:
+        """Admit a class whose body declares only data, ancestry aside.
+
+        Settings, class decorators and behavioral methods reject it;
+        validators, serializers and computed fields keep their identity.
+
+        Returns:
+            The class binding, or ``None`` when its body holds behavior.
+
+        """
         resolved = cls._class_binding(project, path, qualified_name)
         if resolved is None:
             return None
@@ -322,13 +444,6 @@ class FlextInfraUtilitiesDeclarationPayload:
         value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), qualified_name
         )
-        ancestry = cls.class_ancestry(value)
-        base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
-        settings = cls.identity_name(
-            project, c.Infra.PYDANTIC_SETTINGS_IDENTITY
-        ).get_object()
-        if base not in ancestry or settings in ancestry:
-            return None
         scope = value.get_scope()
         statements = cls._admitted_payload_statements(module, value, scope)
         if statements is None:
@@ -408,13 +523,17 @@ class FlextInfraUtilitiesDeclarationPayload:
             path,
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        *enclosing, name = qualified_name.split(".")
         owner = module.get_attributes()
-        binding: p.Infra.RopePyName | None = None
-        for name in qualified_name.split("."):
-            binding = owner.get(name)
-            if binding is None:
+        # Only an enclosing class's members are read: concluding the inherited
+        # attributes of the resolved class itself is the costliest Rope step
+        # and nothing below needs it.
+        for segment in enclosing:
+            enclosing_binding = owner.get(segment)
+            if enclosing_binding is None:
                 return None
-            owner = binding.get_object().get_attributes()
+            owner = enclosing_binding.get_object().get_attributes()
+        binding = owner.get(name)
         if binding is None:
             return None
         value = binding.get_object()
@@ -457,6 +576,32 @@ class FlextInfraUtilitiesDeclarationPayload:
             )
             else None
         )
+
+    @classmethod
+    def model_ancestry_declaration(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        qualified_name: str,
+    ) -> p.Infra.RopePyName | None:
+        """Identify a class whose native ancestry reaches the model base.
+
+        Unlike ``payload_declaration`` any class body qualifies: a namespace
+        that inherits a model in any position of its ancestry is itself a model.
+
+        Returns:
+            The native class binding, or ``None`` when no ancestor is the model base.
+
+        """
+        resolved = cls._class_binding(project, path, qualified_name)
+        if resolved is None:
+            return None
+        _module, binding = resolved
+        value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            binding.get_object(), qualified_name
+        )
+        base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
+        return binding if base in cls.class_ancestry(value) else None
 
     @classmethod
     def _payload_body(

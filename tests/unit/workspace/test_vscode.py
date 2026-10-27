@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.services import FlextInfraCodegenVscodeMixin
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 
 
@@ -45,12 +45,12 @@ class TestsFlextInfraCodegenVscode:
             + "\n",
         )
 
-        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
+        result = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
         tm.fail("python.analysis.typeCheckingMode" in doc)
         tm.fail("python.analysis.diagnosticSeverityOverrides" in doc)
-        declared = FlextInfraCodegenVscodeMixin.vscode_settings(
+        declared = FlextInfraCodegenConform.Generate.vscode_settings(
             config.Infra.codegen.vscode
         )
         interpreter = "python.defaultInterpreterPath"
@@ -83,7 +83,7 @@ class TestsFlextInfraCodegenVscode:
             + "\n",
         )
 
-        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
+        result = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
 
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
@@ -91,7 +91,7 @@ class TestsFlextInfraCodegenVscode:
         tm.fail("python.analysis.diagnosticSeverityOverrides" in doc)
         tm.that(
             doc["python.languageServer"],
-            eq=FlextInfraCodegenVscodeMixin.vscode_settings(
+            eq=FlextInfraCodegenConform.Generate.vscode_settings(
                 config.Infra.codegen.vscode
             )["python.languageServer"],
         )
@@ -101,10 +101,10 @@ class TestsFlextInfraCodegenVscode:
         project_root = tmp_path / "project"
         project_root.mkdir()
 
-        first = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
+        first = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
         tm.ok(first)
         self._write_settings(project_root, first.value)
-        second = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
+        second = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
         tm.ok(second)
         tm.that(second.value, eq=first.value)
 
@@ -128,10 +128,10 @@ class TestsFlextInfraCodegenVscode:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
+        result = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
         standalone_root = tmp_path / "standalone"
         standalone_root.mkdir()
-        standalone = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+        standalone = FlextInfraCodegenConform.Generate.render_vscode_settings(
             standalone_root
         )
 
@@ -142,7 +142,7 @@ class TestsFlextInfraCodegenVscode:
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
         tm.that(
             doc[search_paths_key],
-            eq=FlextInfraCodegenVscodeMixin.vscode_settings(
+            eq=FlextInfraCodegenConform.Generate.vscode_settings(
                 config.Infra.codegen.vscode
             )[search_paths_key],
         )
@@ -156,7 +156,7 @@ class TestsFlextInfraCodegenVscode:
         project_root.mkdir()
         self._write_settings(project_root, "{ invalid json")
 
-        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
+        result = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
 
         tm.fail(result)
         tm.that(result.error, none=False)
@@ -175,7 +175,7 @@ class TestsFlextInfraCodegenVscode:
             update={"artifacts": (*config.Infra.codegen.artifacts, directory, file)}
         )
         rendered = tm.ok(
-            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 tmp_path, codegen=elected
             )
         )
@@ -194,7 +194,7 @@ class TestsFlextInfraCodegenVscode:
         self._write_settings(tmp_path, rendered)
         tm.that(
             tm.ok(
-                FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                FlextInfraCodegenConform.Generate.render_vscode_settings(
                     tmp_path, codegen=elected
                 )
             ),
@@ -214,7 +214,9 @@ class TestsFlextInfraCodegenVscode:
             for language, keys in retired.items()
         }
         self._write_settings(tmp_path, tm.ok(u.Cli.json_dumps(settings)))
-        rendered = tm.ok(FlextInfraCodegenVscodeMixin.render_vscode_settings(tmp_path))
+        rendered = tm.ok(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(tmp_path)
+        )
         document = u.Tests.json_payload(rendered)
         for language, keys in retired.items():
             preferences = u.Tests.toml_mapping(document[language])
@@ -238,7 +240,7 @@ class TestsFlextInfraCodegenVscode:
             "settings": (*config.Infra.codegen.vscode.settings, *values.items()),
         })
         rendered = tm.ok(
-            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 tmp_path, spec=specification
             )
         )
@@ -249,7 +251,7 @@ class TestsFlextInfraCodegenVscode:
         nested = u.Tests.toml_mapping(document["operator.nested"])
         tm.that(list(nested), eq=sorted(nested))
         tm.that(
-            FlextInfraCodegenVscodeMixin.vscode_settings(specification)[
+            FlextInfraCodegenConform.Generate.vscode_settings(specification)[
                 "operator.items"
             ],
             eq=values["operator.items"],
@@ -267,7 +269,7 @@ class TestsFlextInfraCodegenVscode:
             "stripped_keys": (*config.Infra.codegen.vscode.stripped_keys, key),
         })
         rendered = tm.ok(
-            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 tmp_path, spec=specification
             )
         )
@@ -293,7 +295,7 @@ class TestsFlextInfraCodegenVscode:
             },
         })
         rendered = tm.ok(
-            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 tmp_path, spec=specification
             )
         )
@@ -321,7 +323,7 @@ class TestsFlextInfraCodegenVscode:
             },
         })
         rendered = tm.ok(
-            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
                 tmp_path, spec=specification
             )
         )

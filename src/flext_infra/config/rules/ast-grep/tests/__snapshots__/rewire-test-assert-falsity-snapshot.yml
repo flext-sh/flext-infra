@@ -1,10 +1,7 @@
 id: rewire-test-assert-falsity
 snapshots:
-  ? |
-    from flext_tests import tm
-    def check():
-        assert not verdict()
-  : fixed: |
+  "from flext_tests import tm\ndef check():\n    assert not verdict()\n":
+    fixed: |
       from flext_tests import tm
       def check():
           if verdict():
@@ -25,10 +22,8 @@ snapshots:
       style: secondary
       start: 0
       end: 65
-  ? |
-    from tests import tm
-    assert not any(item.dirty for item in items)
-  : fixed: |
+  "from tests import tm\nassert not any(item.dirty for item in items)\n":
+    fixed: |
       from tests import tm
       if any(item.dirty for item in items):
           tm.reject()
@@ -47,10 +42,8 @@ snapshots:
       style: secondary
       start: 0
       end: 66
-  ? |
-    from tests import tm
-    assert not path.exists()
-  : fixed: |
+  "from tests import tm\nassert not path.exists()\n":
+    fixed: |
       from tests import tm
       if path.exists():
           tm.reject()

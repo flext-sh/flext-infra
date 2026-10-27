@@ -1,0 +1,89 @@
+# A facade class composes its family through MRO. Its first base is the family
+# letter it extends or a Pattern-B peer facade class of the same family
+# (`class FlextMeltanoModels(FlextCliModels)`), never an arbitrary concrete
+# FLEXT class (ENFORCE-047); with several bases, a family letter is never
+# listed after another base, because the C3 linearization must reach the family
+# first (ENFORCE-049). flext-core enforced both only at runtime through
+# beartype; the engine now decides them statically.
+#
+# Nothing is listed: the class the module declares in its own __all__
+# (declared-in-module-all) inside a facade module (file scope facade-module)
+# is the facade; the family-peer- groups derive the admitted peer suffix from
+# the facade-family declarations of each module's own family, and the
+# family- groups derive the family letters.
+id: facade-first-base-alias-or-peer
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-047]
+  scope:
+    in: [facade-module]
+    partition:
+      variable: BASE
+      holds: true
+      matching: false
+      selectors: family-peer-
+      pattern: "{raw}"
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        pattern: $NAME
+    - matches: declared-in-module-all
+    - has:
+        field: superclasses
+        has:
+          kind: identifier
+          nthChild: 1
+          pattern: $BASE
+constraints:
+  BASE:
+    regex: "^(?:Tests)?Flext[A-Z]"
+message: >-
+  Facade class `$NAME` extends the concrete class `$BASE`: a facade's first base
+  is its family letter or a peer facade class of the same family.
+note: >-
+  Where: this class. Why: a facade composes its family by MRO; an arbitrary
+  concrete base imports behavior outside the family chain. How: extend the
+  family letter, or the parent package's facade class of this family.
+---
+id: facade-alias-first-base
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-049]
+  scope:
+    in: [facade-module]
+    partition:
+      variable: LETTER
+      holds: true
+      selectors: facade-family-
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        pattern: $NAME
+    - matches: declared-in-module-all
+    - has:
+        field: superclasses
+        has:
+          kind: identifier
+          pattern: $LETTER
+          not:
+            nthChild: 1
+message: >-
+  Facade class `$NAME` lists its family letter `$LETTER` after another base:
+  the family letter must be the first base.
+note: >-
+  Where: this class. Why: C3 linearization reaches the bases in order, so the
+  family must come first. How: move `$LETTER` to the first base position.

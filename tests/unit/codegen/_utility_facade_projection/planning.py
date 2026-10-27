@@ -22,6 +22,39 @@ from tests.unit.codegen._utility_facade_projection.publication import (
 class UtilityFacadePlanning(UtilityFacadePublication):
     """Exercise source election, future owners and projection planning."""
 
+    @pytest.mark.parametrize(
+        "exports",
+        [
+            "__all__ = ['c']\n",
+            "_PUBLIC_EXPORTS = ['c']\n__all__ = tuple(_PUBLIC_EXPORTS)\n",
+            "",
+        ],
+    )
+    def test_facade_election_uses_candidate_source_epoch(
+        self, tmp_path: Path, exports: str
+    ) -> None:
+        """A candidate singleton cannot inherit its original class publication."""
+        root, package = u.Tests.demo_lazy_init_workspace(tmp_path)
+        facade = package / c.Infra.CONSTANTS_PY
+        original = "class Owner:\n    __all__ = ['c']\nc = Owner\n" + exports
+        self._write(facade, original)
+        for candidate, expected in (
+            (None, facade),
+            ({facade: original.replace("c = Owner\n", "c = Owner()\n")}, None),
+            (None, facade),
+        ):
+            with u.Infra.facade_source_project(root, planned_sources=candidate) as (
+                project,
+                sources,
+            ):
+                tm.that(
+                    u.Infra.facade_module_path(
+                        package, "c", project=project, sources=sources
+                    ),
+                    eq=expected,
+                )
+        tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+
     def _future_exposure_sources(
         self, tmp_path: Path, scope: str
     ) -> tuple[
@@ -284,7 +317,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             package_name="flext_sample",
         )
         conflicted = (
-            c.Infra.AUTOGEN_HEADERS[0] + "\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
+            c.Infra.AUTOGEN_HEADER + "\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         )
         self._write(package / "__init__.py", conflicted)
         self._write(
@@ -851,7 +884,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         self._write(package / "utilities.py", original)
         conflicted = (
-            c.Infra.AUTOGEN_HEADERS[0] + "\n" if generated else ""
+            c.Infra.AUTOGEN_HEADER + "\n" if generated else ""
         ) + "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         initializer = package / c.Infra.INIT_PY
         self._write(initializer, conflicted)
@@ -900,3 +933,178 @@ class UtilityFacadePlanning(UtilityFacadePublication):
 
         with pytest.raises(ValueError, match="unsupported utility facade base"):
             u.Infra.render_utility_facade(package)
+
+    def test_nested_namespace_owner_is_never_also_composed_whole(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An owner composed through its nested namespace class stays nested only.
+
+        Premise: ``Owner.Sample`` already carries the owner's contribution to
+        the ``Sample`` namespace; composing ``Owner`` whole beside it duplicates
+        the owner in the MRO. A projection that carries both is repaired.
+        """
+        _, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / family.directory / "nested_owner.py",
+            "class NestedOwner:\n"
+            "    class Sample:\n        value = 'nested'\n"
+            "__all__ = ['NestedOwner']\n",
+        )
+        facade = package / c.Infra.CONSTANTS_PY
+        self._write(
+            facade,
+            f"from flext_sample.{family.directory}.nested_owner import NestedOwner\n"
+            "class Facade:\n"
+            "    class Sample(NestedOwner, NestedOwner.Sample):\n        pass\n"
+            "c = Facade\n__all__ = ['Facade', 'c']\n",
+        )
+        rendered = self._render_and_execute_constants_consumer(
+            package,
+            facade,
+            expected_stdout="nested",
+        )
+        tm.that(rendered, has="class Sample(NestedOwner.Sample)")
+        tm.that(u.Infra.render_utility_facade(package, family="c"), eq=rendered)
+
+    @pytest.mark.parametrize("owner_name", ["FlextSampleTypes", "CompleteTypeOwner"])
+    def test_type_facade_imports_its_owner_through_the_family_package(
+        self,
+        tmp_path: Path,
+        owner_name: str,
+    ) -> None:
+        """The projected type facade keeps its private owner alias.
+
+        Premise: the owner is imported through the family package's lazy
+        exports; a per-module import was rewritten to the package form and
+        lost its ``as`` alias, leaving a class that inherits its own name.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
+        owners = package / family.directory
+        self._write(
+            owners / "sample.py",
+            '"""Sample type owner."""\n\n'
+            f"class {owner_name}:\n"
+            "    class Sample:\n        type Name = str\n\n"
+            f"t = {owner_name}\n\n"
+            f"__all__: list[str] = [{owner_name!r}, 't']\n",
+        )
+        self._write(
+            owners / c.Infra.INIT_PY,
+            f"from flext_sample._typings.sample import {owner_name}, t\n"
+            f"__all__ = [{owner_name!r}, 't']\n",
+        )
+        facade = package / c.Infra.TYPINGS_PY
+        self._write(
+            facade,
+            '"""Sample public types."""\n\n'
+            + (
+                "class FlextSampleTypes:\n    pass\n\n"
+                if owner_name == "FlextSampleTypes"
+                else f"from flext_sample.{family.directory} "
+                f"import {owner_name} as LocalOwner\n\n"
+                "class FlextSampleTypes(LocalOwner):\n    pass\n\n"
+            )
+            + "t = FlextSampleTypes\n\n"
+            "__all__: list[str] = ['FlextSampleTypes', 't']\n",
+        )
+        with u.Infra.facade_source_project(root) as (project, sources):
+            rendered = u.Infra.render_type_facade(
+                package, facade, dict(sources), project=project
+            )
+        tm.that(
+            rendered,
+            has=(
+                f"from flext_sample.{family.directory} import "
+                + (
+                    "FlextSampleTypes as _FlextSampleTypes"
+                    if owner_name == "FlextSampleTypes"
+                    else owner_name
+                )
+            ),
+        )
+        tm.that(
+            rendered,
+            has="class FlextSampleTypes("
+            + ("_FlextSampleTypes" if owner_name == "FlextSampleTypes" else owner_name)
+            + ")",
+        )
+        self._write(facade, rendered)
+        with u.Infra.facade_source_project(root) as (project, sources):
+            tm.that(
+                u.Infra.render_type_facade(
+                    package, facade, dict(sources), project=project
+                ),
+                eq=rendered,
+            )
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from flext_sample.typings import t\n"
+                        f"from flext_sample._typings import {owner_name}\n"
+                        f"assert t.__bases__ == ({owner_name},)\n"
+                        "print(t.Sample.Name.__value__.__name__)\n"
+                    ),
+                ),
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="str")
+
+    @pytest.mark.parametrize(
+        ("bases", "exports"),
+        [
+            ("LocalOwner, UnknownExtraBase", "'PublicTypes', 't'"),
+            ("UnknownExtraBase", "'PublicTypes', 't'"),
+            ("str", "'PublicTypes', 't'"),
+            ("LocalOwner", "'PublicTypes', 't', 'UnknownExport'"),
+        ],
+    )
+    def test_complete_type_owner_rejects_unknown_facade_contracts(
+        self, tmp_path: Path, bases: str, exports: str
+    ) -> None:
+        """Distinct owner names never admit discarded bases or public exports."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
+        owners = package / family.directory
+        self._write(
+            owners / "base.py",
+            "class CompleteTypeOwner:\n    pass\n"
+            "t = CompleteTypeOwner\n__all__ = ['CompleteTypeOwner', 't']\n",
+        )
+        self._write(
+            owners / c.Infra.INIT_PY,
+            "from .base import CompleteTypeOwner, t\n"
+            "__all__ = ['CompleteTypeOwner', 't']\n",
+        )
+        facade = package / c.Infra.TYPINGS_PY
+        self._write(
+            facade,
+            '"""Public type facade."""\n'
+            f"from {package.name}.{family.directory} "
+            "import CompleteTypeOwner as LocalOwner\n"
+            f"class PublicTypes({bases}):\n    pass\n"
+            f"t = PublicTypes\n__all__ = [{exports}]\n",
+        )
+        with (
+            u.Infra.facade_source_project(root) as (project, sources),
+            pytest.raises(ValueError, match=r"facade bases|facade base origin|exports"),
+        ):
+            u.Infra.render_type_facade(package, facade, sources, project=project)

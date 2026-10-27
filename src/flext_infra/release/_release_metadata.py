@@ -8,9 +8,6 @@ from __future__ import annotations
 
 from pathlib import PurePosixPath
 
-from packaging.requirements import InvalidRequirement, Requirement
-from packaging.utils import canonicalize_name
-
 from flext_infra import c, m, p, r, t, u
 from flext_infra.release import FlextInfraReleaseSourceMixin
 
@@ -56,7 +53,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             if not isinstance(requirement, str):
                 rendered.append(requirement)
                 continue
-            pinned = cls._pinned_requirement(requirement, versions)
+            pinned = u.Infra.release_pinned_requirement(requirement, versions)
             if pinned.failure:
                 return r[bool].from_failure(pinned)
             text, has_direct_url = pinned.value
@@ -99,43 +96,6 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         if strings.failure:
             return result_type.from_failure(strings)
         return result_type.ok(strings.value)
-
-    @classmethod
-    def _pinned_requirement(
-        cls,
-        requirement: str,
-        versions: t.StrMapping,
-    ) -> p.Result[t.Pair[str, bool]]:
-        """Render one requirement, pinning internal dependencies to their versions.
-
-        Args:
-            requirement: The unpinned requirement string.
-            versions: Internal distribution versions declared by their repos.
-
-        Returns:
-            The rendered requirement text with whether it retains a direct
-            reference, or a failure when the requirement is unparseable or
-            an internal dependency version is unknown to this release.
-
-        """
-        result_type = r[t.Pair[str, bool]]
-        try:
-            parsed = Requirement(requirement)
-        except InvalidRequirement as exc:
-            return result_type.fail_op("parse release requirement", exc)
-        name = canonicalize_name(parsed.name)
-        if not name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
-            return result_type.ok((requirement.strip(), parsed.url is not None))
-        if name not in versions:
-            return result_type.fail(
-                f"internal dependency version unknown to this release: {name}",
-            )
-        pin = cls._release_specifier(versions[name])
-        if pin.failure:
-            return result_type.from_failure(pin)
-        extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
-        marker = f"; {parsed.marker}" if parsed.marker is not None else ""
-        return result_type.ok((f"{parsed.name}{extras}{pin.value}{marker}", False))
 
     @classmethod
     def _release_pyproject(
@@ -375,18 +335,21 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         wheel: t.Cli.TomlTable,
         sdist: t.Cli.TomlTable,
     ) -> p.Result[t.StrSequence]:
-        """Prove the sdist retains every forced wheel source.
+        """Prove the sdist retains every forced and extra-metadata wheel source.
+
+        A wheel built from the sdist reads both tables' sources from the sdist
+        tree, so each one must ride in it under its own path.
 
         Returns:
-            The resulting forced wheel source keys.
+            The resulting forced and extra-metadata wheel source keys.
 
         """
-        wheel_forced = u.Cli.toml_table_child(wheel, "force-include")
         sdist_forced = u.Cli.toml_table_child(sdist, "force-include")
-        sources = (
-            tuple(str(source) for source in wheel_forced)
-            if wheel_forced is not None
-            else ()
+        sources = tuple(
+            str(source)
+            for key in ("force-include", "extra-metadata")
+            if (table := u.Cli.toml_table_child(wheel, key)) is not None
+            for source in table
         )
         retained: t.StrMapping = {}
         if sdist_forced is not None:
@@ -400,7 +363,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             retained = parsed.value
         if retained != {source: source for source in sources}:
             return r[t.StrSequence].fail(
-                "Hatch sdist must retain every forced wheel source",
+                "Hatch sdist must retain every forced and extra-metadata wheel source",
             )
         return r[t.StrSequence].ok(sources)
 

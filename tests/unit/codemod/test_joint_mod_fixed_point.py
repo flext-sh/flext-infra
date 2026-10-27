@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main, u
+from flext_infra import FlextInfraCli, u
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm
 
@@ -27,7 +27,7 @@ class TestsFlextInfraJointModFixedPoint:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -214,7 +214,7 @@ class TestsFlextInfraJointModFixedPoint:
             for source in (sample, unrelated)
         )
 
-        result = main([
+        result = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -262,7 +262,7 @@ class TestsFlextInfraJointModFixedPoint:
         tm.ok(u.Cli.atomic_write_text_file(unrelated, "marker = dict()\n"))
         before = (source.read_bytes(), unrelated.read_bytes())
 
-        result = main([
+        result = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",

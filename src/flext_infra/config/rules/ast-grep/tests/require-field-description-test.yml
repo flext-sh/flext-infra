@@ -1,0 +1,17 @@
+id: require-field-description
+valid:
+  - |
+    class Order(m.FrozenModel):
+        total: Annotated[int, m.Field(description="Order total")]
+        label: str = m.Field(default="", description="Display label")
+  - |
+    class Order(m.FrozenModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        _cache: dict = {}
+invalid:
+  - |
+    class Order(m.FrozenModel):
+        total: int
+  - |
+    class Order(m.FrozenModel):
+        label: Annotated[str, m.Field(min_length=1)] = "x"

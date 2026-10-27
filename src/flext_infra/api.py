@@ -7,33 +7,29 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
 
+from flext_cli import u
+
+import flext_infra
 from flext_infra import (
     FlextInfraConformWiring,
-    FlextInfraGitService,
     FlextInfraPreviewWiring,
+    c,
+    check,
+    codegen,
+    codemod,
     m,
     r,
+    release,
     s,
+    services,
     t,
-    u,
+    validate,
+    workspace,
 )
-from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.codegen import (
-    FlextInfraCodegenCensus,
-    FlextInfraCodegenConformExecute,
-    FlextInfraCodegenFixer,
-)
-from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraModTextGateEngine
-from flext_infra.release import FlextInfraReleaseOrchestrator
-from flext_infra.services import (
-    FlextInfraCandidateBootstrapService,
-    FlextInfraCodegenHandlers,
-    FlextInfraModHandlers,
-)
-from flext_infra.validate import FlextInfraNamespaceValidator
-from flext_infra.workspace import FlextInfraRopeWorkspace, FlextInfraWorkspaceDetector
+from flext_infra.services import FlextInfraCodegenHandlers, FlextInfraModHandlers
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -62,27 +58,27 @@ class FlextInfra(
             The resulting ``p.Result[bool]``.
 
         """
-        identity = u.Infra.exact_worktree_root(
+        identity = flext_infra.u.Infra.exact_worktree_root(
             request.repository_root.expanduser().absolute(),
         )
         if identity.failure:
             return r[bool].from_failure(identity)
         source_root = identity.value.repo_root
-        inputs = u.Infra.load_codegen_inputs(source_root)
+        inputs = flext_infra.u.Infra.load_codegen_inputs(source_root)
         if inputs.failure:
             return r[bool].from_failure(inputs)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
             source_root,
             inputs=inputs.value,
         )
-        if workspace.failure:
-            return r[bool].from_failure(workspace)
-        return FlextInfraCandidateBootstrapService(
-            planner=FlextInfraCodegenConformExecute(
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        return services.FlextInfraCandidateBootstrapService(
+            planner=codegen.FlextInfraCodegenConform.Generate(
                 repository_root=source_root,
                 state=m.Infra.CodegenConformState(repository_root=source_root),
             ),
-        ).execute(source_root, workspace.value, request)
+        ).execute(source_root, observed.value, request)
 
     def rope_workspace(
         self,
@@ -101,7 +97,7 @@ class FlextInfra(
         resolved_root = (
             self.repository_root if repository_root is None else repository_root
         )
-        return FlextInfraRopeWorkspace.open_workspace(
+        return workspace.FlextInfraRopeWorkspace.open_workspace(
             resolved_root, rope_repository_root=rope_repository_root
         )
 
@@ -113,7 +109,7 @@ class FlextInfra(
             The resulting ``p.Result[bool]``.
 
         """
-        return FlextInfraWorkspaceChecker(
+        return check.FlextInfraWorkspaceChecker(
             repository_root=request.repository_root,
         ).execute_payload(request)
 
@@ -125,7 +121,7 @@ class FlextInfra(
             p.Result[bool]: the integrity verdict of the declared subset.
 
         """
-        return FlextInfraWorkspaceChecker(
+        return check.FlextInfraWorkspaceChecker(
             repository_root=request.repository_root
         ).execute_integrity(request)
 
@@ -139,7 +135,7 @@ class FlextInfra(
             p.Result[m.Infra.CheckReportSummary]: the collected check report.
 
         """
-        return FlextInfraWorkspaceChecker(
+        return check.FlextInfraWorkspaceChecker(
             repository_root=request.repository_root
         ).execute_report(request)
 
@@ -151,7 +147,7 @@ class FlextInfra(
             The resulting ``p.Result[str]``.
 
         """
-        return FlextInfraCodegenCensus(
+        return codegen.FlextInfraCodegenCensus(
             repository_root=request.repository_root,
             apply_changes=request.apply,
             check_only=request.check_only,
@@ -167,7 +163,7 @@ class FlextInfra(
             The resulting ``p.Result[str]``.
 
         """
-        return FlextInfraCodegenFixer(
+        return codegen.FlextInfraCodegenFixer(
             repository_root=request.repository_root,
             apply_changes=request.apply,
             check_only=request.check_only,
@@ -186,7 +182,7 @@ class FlextInfra(
         """
         ownership = request.ownership
         if request.checkpoint_ref is not None:
-            selected = FlextInfraGitService.lane_ownership(
+            selected = flext_infra.FlextInfraGitService.lane_ownership(
                 m.Infra.GitLaneOwnershipRequest(
                     repo_root=request.root,
                     checkpoint_ref=request.checkpoint_ref,
@@ -195,7 +191,7 @@ class FlextInfra(
             if selected.failure:
                 return r[bool].from_failure(selected)
             ownership = selected.value
-        return FlextInfraReleaseOrchestrator(
+        return release.FlextInfraReleaseOrchestrator(
             repository_root=request.repository_root,
             apply_changes=request.apply_changes,
             check_only=request.check_only,
@@ -247,7 +243,7 @@ class FlextInfra(
             The resulting ``p.Result[m.Infra.ApplyRenamesReport]``.
 
         """
-        return FlextInfraApplyRenames().run(request)
+        return codemod.FlextInfraApplyRenames().run(request)
 
     @staticmethod
     def validate_namespace(
@@ -259,9 +255,76 @@ class FlextInfra(
             The resulting ``p.Result[m.Infra.ValidationReport]``.
 
         """
-        return FlextInfraNamespaceValidator(
+        return validate.FlextInfraNamespaceValidator(
             repository_root=request.repository_root,
         ).build_report()
+
+    @override
+    def mod(
+        self,
+        request: p.Infra.ModRequest,
+        progress: p.Infra.ModProgress,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Compose repository codemod runs in the declared dependency order.
+
+        Returns:
+            The first repository failure, or acceptance of every governed run.
+
+        """
+        root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
+            request.repository_root
+        )
+        governed = frozenset(flext_infra.u.Infra.governed_project_roots(root))
+        if governed == {root}:
+            return FlextInfraModHandlers.mod(self, request, progress)
+        inputs = flext_infra.u.Infra.load_codegen_inputs(root)
+        if inputs.failure:
+            return r[t.Cli.ResultValue].from_failure(inputs)
+        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+            root, inputs=inputs.value
+        )
+        if observed.failure:
+            return r[t.Cli.ResultValue].from_failure(observed)
+        references = tuple(
+            repository
+            for repository in (
+                observed.value.repository,
+                *observed.value.subprojects,
+            )
+            if (root / repository.path).resolve() in governed
+        )
+        by_root = {
+            (root / repository.path).resolve(): repository for repository in references
+        }
+        if len(by_root) != len(references) or frozenset(by_root) != governed:
+            return r[t.Cli.ResultValue].fail(
+                "mod workspace declarations differ from governed repositories: "
+                f"duplicate_paths={len(references) - len(by_root)}; "
+                f"missing={tuple(sorted(governed.difference(by_root)))}"
+            )
+        ordered = flext_infra.u.Infra.workspace_dependency_order(root, references)
+        by_distribution = {
+            repository.distribution: repository_root
+            for repository_root, repository in by_root.items()
+        }
+        for distribution in ordered:
+            repository_root = by_distribution[distribution]
+            progress.emit(f"mod: repository {distribution} root={repository_root}")
+            child_request = (
+                request
+                if repository_root == root
+                else m.Infra.ModCommand(
+                    repository_root=repository_root,
+                    apply=request.apply,
+                    check=request.check,
+                    dry_run_mode=request.dry_run_mode,
+                    consumer_roots=request.consumer_roots,
+                )
+            )
+            completed = FlextInfraModHandlers.mod(self, child_request, progress)
+            if completed.failure:
+                return completed
+        return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod
     def mod_text(request: m.Infra.ModTextCommand) -> p.Result[t.Cli.ResultValue]:
@@ -271,8 +334,10 @@ class FlextInfra(
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        return FlextInfraModTextGateEngine.run(root, apply=request.apply)
+        root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
+            request.repository_root
+        )
+        return codemod.FlextInfraModTextGateEngine.run(root, apply=request.apply)
 
     @staticmethod
     def mod_text_candidate(
@@ -284,23 +349,27 @@ class FlextInfra(
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        source_root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(source_root)
-        if workspace.failure:
-            return r[t.Cli.ResultValue].from_failure(workspace)
-        targets = workspace.value.candidate_bootstrap_targets
+        source_root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
+            request.repository_root
+        )
+        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+            source_root
+        )
+        if observed.failure:
+            return r[t.Cli.ResultValue].from_failure(observed)
+        targets = observed.value.candidate_bootstrap_targets
         if len(targets) != 1:
             return r[t.Cli.ResultValue].fail(
                 "mod-text-candidate requires exactly one candidate_bootstrap_target",
             )
         # Non-strict: a missing declared worktree is graded by the exact-root
         # owner's typed failure instead of escaping as FileNotFoundError.
-        identity = u.Infra.exact_worktree_root(
+        identity = flext_infra.u.Infra.exact_worktree_root(
             (source_root / targets[0].path).resolve(),
         )
         if identity.failure:
             return r[t.Cli.ResultValue].from_failure(identity)
-        return FlextInfraModTextGateEngine.run(
+        return codemod.FlextInfraModTextGateEngine.run(
             identity.value.repo_root,
             apply=request.apply,
         )
@@ -320,12 +389,12 @@ class FlextInfra(
             The captured inputs with their elected runtime, or the first failure.
 
         """
-        captured = u.Infra.load_codegen_inputs(root)
+        captured = flext_infra.u.Infra.load_codegen_inputs(root)
         if captured.failure:
             return r[
                 t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
             ].from_failure(captured)
-        runtime = FlextInfraWorkspaceDetector.resolution_context(resolved)
+        runtime = workspace.FlextInfraWorkspaceDetector.resolution_context(resolved)
         if runtime.failure:
             return r[
                 t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
@@ -349,17 +418,17 @@ class FlextInfra(
             The workspace spec with its conform target, or the first failure.
 
         """
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
             root,
             inputs=captured,
         )
-        if workspace.failure:
+        if observed.failure:
             return r[
                 t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
-            ].from_failure(workspace)
-        target = FlextInfraWorkspaceDetector.conform_target(
+            ].from_failure(observed)
+        target = workspace.FlextInfraWorkspaceDetector.conform_target(
             root,
-            workspace.value,
+            observed.value,
             inputs=captured,
         )
         if target.failure:
@@ -367,8 +436,88 @@ class FlextInfra(
                 t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
             ].from_failure(target)
         return r[t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]].ok(
-            (workspace.value, target.value),
+            (observed.value, target.value),
         )
+
+    @staticmethod
+    def workspace_tests(
+        request: m.Infra.WorkspaceTestsRequest,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> p.Result[int]:
+        """Require original global primary source proof before native test engines.
+
+        Ordinary test failures retain their original first status while every
+        selected repository is reached. Interruptions and infrastructure errors
+        stop dispatch with their native status; configuration failures escape.
+        Admission, discovery and member execution share this operation's clock.
+        FULL executes incremental then complete suites in each project context.
+
+        Returns:
+            The first failing native test status, or zero after every success.
+
+        """
+        started_at_monotonic = monotonic()
+        context = FlextInfra.project_context(request.repository_root).unwrap()
+        if context.identity is None or context.runtime is None:
+            return r[int].fail(f"tests require a project context: {context.cwd}")
+        root = context.identity.repo_root
+        workspace_root = context.runtime.runtime_root
+        admitted = flext_infra.u.Infra.git_require_green_check_receipt(
+            workspace_root,
+            flext_infra.u.Infra.load_codegen_inputs(workspace_root).unwrap().spec.make,
+            phase=c.Infra.CheckPhase.PRIMARY,
+            plan_global_targets=check.FlextInfraWorkspaceChecker(
+                repository_root=workspace_root,
+            ).plan_global_targets,
+        )
+        if admitted.failure:
+            return r[int].from_failure(admitted)
+        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+            workspace_root,
+        ).unwrap()
+        governed = frozenset(flext_infra.u.Infra.governed_project_roots(workspace_root))
+        references = tuple(
+            repository
+            for repository in (observed.repository, *observed.subprojects)
+            if (workspace_root / repository.path).resolve() in governed
+        )
+        ordered = flext_infra.u.Infra.workspace_dependency_order(
+            workspace_root, references
+        )
+        by_distribution = {
+            repository.distribution: (workspace_root / repository.path).resolve()
+            for repository in references
+        }
+        if frozenset(by_distribution.values()) != governed:
+            return r[int].fail(
+                "tests workspace declarations differ from governed roots"
+            )
+        status = 0
+        for distribution in ordered:
+            selected = by_distribution[distribution]
+            if request.scope == c.Infra.CodegenConformScope.SELF and selected != root:
+                continue
+            u.Cli.info(f"tests: repository {distribution} root={selected}")
+            project = (
+                context
+                if selected == root
+                else FlextInfra.project_context(selected).unwrap()
+            )
+            outcome = validate.FlextInfraPytestRunner.execute_project_context(
+                project,
+                started_at_monotonic=started_at_monotonic,
+                execution_mode=execution_mode,
+            )
+            u.Cli.info(f"tests: repository {distribution} exit={outcome}")
+            if outcome:
+                if outcome != c.Infra.Pytest.ExitCode.TESTS_FAILED:
+                    return r[int].ok(outcome)
+                if not status:
+                    status = outcome
+        return r[int].ok(status)
 
     @staticmethod
     def project_context(cwd: Path) -> p.Result[m.Infra.WorkspaceProjectContext]:
@@ -383,7 +532,9 @@ class FlextInfra(
             return r[m.Infra.WorkspaceProjectContext].fail(
                 f"project context cwd is not a directory: {resolved}",
             )
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
+        identity = flext_infra.u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=resolved)
+        )
         if identity.failure:
             return r[m.Infra.WorkspaceProjectContext].ok(
                 m.Infra.WorkspaceProjectContext(cwd=resolved),

@@ -1,0 +1,56 @@
+# The captured $NAME is a name the enclosing module publishes in its own
+# __all__: a literal sequence of strings, or the generated
+# `__all__ = tuple(<NAME>)` form that publishes another module-level literal.
+# A consuming rule binds the candidate name as $NAME before matching this.
+id: declared-in-module-all
+language: python
+rule:
+  inside:
+    kind: module
+    stopBy: end
+    any:
+      - has:
+          kind: expression_statement
+          has:
+            kind: assignment
+            all:
+              - has:
+                  field: left
+                  regex: "^__all__$"
+              - has:
+                  field: right
+                  has:
+                    stopBy: end
+                    kind: string_content
+                    pattern: $NAME
+      - all:
+          - has:
+              kind: expression_statement
+              has:
+                kind: assignment
+                all:
+                  - has:
+                      field: left
+                      regex: "^__all__$"
+                  - has:
+                      field: right
+                      kind: call
+                      has:
+                        field: arguments
+                        has:
+                          kind: identifier
+                          pattern: $PUBLISHED
+          - has:
+              kind: expression_statement
+              has:
+                kind: assignment
+                all:
+                  - has:
+                      field: left
+                      pattern: $PUBLISHED
+                  - has:
+                      field: right
+                      has:
+                        stopBy: end
+                        kind: string_content
+                        pattern: $NAME

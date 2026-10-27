@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from enum import IntEnum, StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
@@ -20,12 +21,7 @@ class FlextInfraConstantsCodegenLazy:
     MAX_ALIAS_LENGTH: ClassVar[int] = 2
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: ClassVar[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
-    "Header prepended to every auto-generated ``__init__.py`` file."
-    AUTOGEN_HEADERS: ClassVar[t.Pair[str, str]] = (
-        AUTOGEN_HEADER,
-        "# @generated AUTO-GENERATED FILE — Regenerate with: make gen",
-    )
-    "Current and former generated initializer headers accepted during migration."
+    "Header opening every generator projection; it identifies generated files."
     GENERATED_EXPORT_SIDECAR_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$",
     )
@@ -136,6 +132,43 @@ class FlextInfraConstantsCodegenLazy:
         })
     )
     "Mapping of test-only aliases to flext-tests runtime targets."
+    LAZY_INIT_FIXTURES_DIR: ClassVar[str] = "_fixtures"
+    "Package name whose modules are governed fixture publication owners."
+    LAZY_INIT_CONSTANTS_MARKER: ClassVar[str] = "Constants"
+    "Class-name marker of the facade class whose bases declare facade parents."
+
+    @unique
+    class LazyInitScore(IntEnum):
+        """Publication score weights electing between two export routes."""
+
+        FACADE_ALIAS = 100
+        FAMILY_SUFFIX = 25
+        FOREIGN_ALIAS = -40
+        FOREIGN_FAMILY = -20
+        PUBLISHED = 20
+        DECLARED = 15
+        SELF_NAMED = 3
+        GOVERNED = 10
+        BARE_ALIAS = -80
+
+    @unique
+    class LazyInitMessage(StrEnum):
+        """Lazy-init planning diagnostics, rendered with ``str.format``."""
+
+        WORKSPACE_NOT_DIR = "lazy-init workspace is not a directory: {workspace}"
+        SCOPE_OUTSIDE = (
+            "lazy-init repository scope is missing or outside {workspace}: {root}"
+        )
+        TARGET_AMBIGUOUS = "lazy-init target module is ambiguous: {module}"
+        TARGET_NOT_FOUND = "lazy-init target module not found: {module}"
+        CONFLICTING_PLANS = "conflicting lazy-init plans for {path}"
+        PLAN_SUMMARY = "Lazy-init plan: {effects} effects"
+        PUBLICATION_OWNED_BY_CONFORM = (
+            "lazy-init publication is owned by codegen conform; "
+            "conform must publish plan_files()"
+        )
+        DRIFT = "init drift detected in {count} generated artifacts: {paths}"
+        VIEW_OUTSIDE = "lazy-init consumer is outside its injected source view"
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenLazy"]

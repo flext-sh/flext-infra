@@ -12,6 +12,7 @@ from flext_core import FlextRuntime
 
 import flext_infra
 from flext_infra import c, check, m, p, r, t, u, workspace
+from flext_infra.docs import FlextInfraDocAuditor, FlextInfraDocValidator
 
 
 class FlextInfraWorkspaceRoutes:
@@ -35,6 +36,41 @@ class FlextInfraWorkspaceRoutes:
         for repository in selected.value:
             u.Cli.emit_raw(f"{repository.path}\n")
         return r[int].ok(len(selected.value))
+
+    @staticmethod
+    def _tests(
+        params: m.Infra.WorkspaceTestsRequest,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> p.Cli.ErasedCommandResult:
+        """Preserve the first native test status at the CLI boundary.
+
+        Returns:
+            The successful native test result or its unchanged failure.
+
+        """
+        completed = flext_infra.infra.workspace_tests(
+            params, execution_mode=execution_mode
+        )
+        if completed.failure:
+            return r[int].from_failure(completed)
+        if completed.value:
+            u.Cli.framework_exit(completed.value)
+        return completed
+
+    @classmethod
+    def _tests_full(
+        cls, params: m.Infra.WorkspaceTestsRequest
+    ) -> p.Cli.ErasedCommandResult:
+        """Run incremental then complete native suites through the same boundary.
+
+        Returns:
+            The native result, preserving the first failing status.
+
+        """
+        return cls._tests(params, execution_mode=c.Infra.PytestExecutionMode.FULL)
 
     @staticmethod
     def _detect_workspace(
@@ -63,13 +99,83 @@ class FlextInfraWorkspaceRoutes:
             return encoded.error or "command payload serialization failed"
         return encoded.value
 
-    @staticmethod
+    @classmethod
     def _capture_gate(
+        cls,
         params: m.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Retain the original checker process and return its unchanged status."""
         root = params.repository_root.expanduser().resolve()
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
+        u.Cli.framework_exit(cls._captured_gate_status(params, inputs))
+
+    @classmethod
+    def _check(
+        cls,
+        params: m.Infra.GateCaptureRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Run every read-only validation of the check verb in one process.
+
+        The captured checker completes its declared global prerequisites before
+        other gates. The projection verdict, lane census (outside CI), and
+        documentation follow; a dirty or changing tree is never a check
+        condition. The commit hook token selects only commit-stage gates. The
+        first failure stops the verb with its original status or cause.
+
+        Returns:
+            True once every validation passed, or the first failure.
+
+        """
+        root = params.repository_root.expanduser().resolve()
+        inputs = u.Infra.load_codegen_inputs(root).unwrap()
+        make = inputs.spec.make
+        token = u.Infra.env_value(make.ci.variable)
+        complete = (
+            params.phase == c.Infra.CheckPhase.COMPLETE
+            and token != make.ci.pre_commit_value
+        )
+        status = cls._captured_gate_status(params, inputs)
+        if status:
+            u.Cli.framework_exit(status)
+        if complete:
+            conformed = flext_infra.infra.codegen_conform(
+                m.Infra.CodegenConformRequest(
+                    root=root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.CHECK,
+                )
+            )
+            if conformed.failure:
+                return r[bool].from_failure(conformed)
+        if not complete:
+            return r[bool].ok(value=True)
+        if token != make.ci.value:
+            lanes = flext_infra.FlextInfraGitService.verify_lanes(
+                m.Infra.GitLaneVerificationRequest(repo_root=root)
+            )
+            if lanes.failure:
+                return r[bool].from_failure(lanes)
+        for service in (FlextInfraDocValidator, FlextInfraDocAuditor):
+            documented = service(
+                repository_root=root,
+                output_dir=make.docs.reports_dir,
+                selected_projects=(Path().as_posix(),),
+            ).execute()
+            if documented.failure:
+                return r[bool].from_failure(documented)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _captured_gate_status(
+        params: m.Infra.GateCaptureRequest,
+        inputs: m.Infra.CodegenInputs,
+    ) -> int:
+        """Capture the original checker once and return its unchanged status.
+
+        Returns:
+            The checker process's raw return code.
+
+        """
         report_output = u.Infra.env_value(
             inputs.spec.make.check_report_output_environment_variable
         )
@@ -91,7 +197,7 @@ class FlextInfraWorkspaceRoutes:
                 ),
             ),
         ).unwrap()
-        u.Cli.framework_exit(captured.process.raw_return_code)
+        return captured.process.raw_return_code
 
     @staticmethod
     def release_routes() -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
@@ -101,19 +207,22 @@ class FlextInfraWorkspaceRoutes:
             The ordered release command routes.
 
         """
-        return (
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.VERB_RUN,
-                help_text="Run release orchestration CLI flow",
-                model_cls=m.Infra.ReleaseRunCommand,
-                handler=flext_infra.infra.release_run,
-                success_message="Release completed successfully",
+        return u.Infra.result_routes((
+            (
+                c.Infra.VERB_RUN,
+                "Run release orchestration CLI flow",
+                m.Infra.ReleaseRunCommand,
+                flext_infra.infra.release_run,
+                "Release completed successfully",
             ),
-        )
+        ))
 
     @classmethod
     def workspace_routes(cls) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
         """Build the workspace group's native model and handler bindings.
+
+        The two routes that format their JSON payload stay explicit; every
+        other route is one data row of the shared route-table builder.
 
         Returns:
             The ordered workspace command routes.
@@ -128,128 +237,122 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
-                name="capture-gate",
-                help_text="Execute the original checker once and publish its receipt",
-                model_cls=m.Infra.GateCaptureRequest,
-                handler=cls._capture_gate,
-            ),
-            m.Cli.ResultCommandRoute(
-                name="validate-lifecycle",
-                help_text="Validate the root and governed member lifecycles serially",
-                model_cls=m.Infra.WorkspaceRequest,
-                handler=workspace.FlextInfraWorkspaceLifecycle.execute_request,
-                success_message="workspace serial lifecycle validated",
-            ),
-            m.Cli.ResultCommandRoute(
                 name="lane-ownership",
                 help_text="Authenticate a retained and integrated Git checkpoint",
                 model_cls=m.Infra.GitLaneOwnershipRequest,
                 handler=flext_infra.FlextInfraGitService.lane_ownership,
                 success_formatter=cls._payload_json_formatter,
             ),
-            m.Cli.ResultCommandRoute(
-                name="verify-lane",
-                help_text=(
-                    "Verify stash absence and declared live integration ancestry "
-                    "without effects"
+            *u.Infra.result_routes((
+                (
+                    c.Infra.VERB_TEST,
+                    "Run persistent incremental tests after global source admission",
+                    m.Infra.WorkspaceTestsRequest,
+                    cls._tests,
+                    None,
                 ),
-                model_cls=m.Infra.GitLaneVerificationRequest,
-                handler=flext_infra.FlextInfraGitService.verify_lane,
-                success_message="lane stash and live integration ancestry verified",
-            ),
-            m.Cli.ResultCommandRoute(
-                name="verify-lanes",
-                help_text="Read-only lane inventory, ownership census, and refusals",
-                model_cls=m.Infra.GitLaneVerificationRequest,
-                handler=flext_infra.FlextInfraGitService.verify_lanes,
-                success_message="lane inventory verified",
-            ),
-            m.Cli.ResultCommandRoute(
-                name="identity",
-                help_text="Report canonical Git checkout identity",
-                model_cls=m.Infra.GitRepoRequest,
-                handler=u.Infra.git_identity,
-                success_message="workspace Git identity resolved",
-            ),
-            m.Cli.ResultCommandRoute(
-                name="verify-clean",
-                help_text=(
-                    "Report staged, unstaged, and untracked changes without "
-                    "rejecting WIP or requiring recovery cleanup"
+                (
+                    c.Infra.VERB_TEST_FULL,
+                    "Run incremental then full tests with the same persistent database",
+                    m.Infra.WorkspaceTestsRequest,
+                    cls._tests_full,
+                    None,
                 ),
-                model_cls=m.Infra.GitStatusRequest,
-                handler=flext_infra.FlextInfraGitService.verify_clean,
-                success_message=(
-                    "workspace Git status reported; existing work preserved"
+                (
+                    "capture-gate",
+                    "Execute the original checker once and publish its receipt",
+                    m.Infra.GateCaptureRequest,
+                    cls._capture_gate,
+                    None,
                 ),
-            ),
-            m.Cli.ResultCommandRoute(
-                name="editable-members",
-                help_text=(
-                    "List declared members with authenticated installed editables"
+                (
+                    c.Infra.VERB_CHECK,
+                    "Run every read-only validation of the check verb in one process",
+                    m.Infra.GateCaptureRequest,
+                    cls._check,
+                    "check verb validations passed",
                 ),
-                model_cls=m.Infra.WorkspaceRequest,
-                handler=cls._editable_members,
-            ),
-            m.Cli.ResultCommandRoute(
-                name="verify-environment",
-                help_text="Verify live workspace editable provenance",
-                model_cls=m.Infra.WorkspaceRequest,
-                handler=(
-                    workspace.FlextInfraWorkspaceEnvironmentProvenance.execute_request
-                ),
-                success_message="workspace editable provenance verified",
-            ),
-            m.Cli.ResultCommandRoute(
-                name="verify-lock",
-                help_text="Verify the committed uv.lock carries every referenced "
-                "package",
-                model_cls=m.Infra.WorkspaceRequest,
-                handler=workspace.FlextInfraWorkspaceLockCompleteness.execute_request,
-                success_message="lock completeness verified",
-            ),
-            *(
-                m.Cli.ResultCommandRoute(
-                    name=route_name,
-                    help_text=help_text,
-                    model_cls=model_cls,
-                    handler=handler,
-                )
-                for route_name, help_text, model_cls, handler in (
+                (
+                    "verify-lane",
                     (
-                        "detect",
-                        "Detect workspace or standalone mode",
-                        workspace.FlextInfraWorkspaceDetector,
-                        cls._detect_workspace,
+                        "Verify stash absence and declared live integration ancestry "
+                        "without effects"
                     ),
+                    m.Infra.GitLaneVerificationRequest,
+                    flext_infra.FlextInfraGitService.verify_lane,
+                    "lane stash and live integration ancestry verified",
+                ),
+                (
+                    "verify-lanes",
+                    "Read-only lane inventory, ownership census, and refusals",
+                    m.Infra.GitLaneVerificationRequest,
+                    flext_infra.FlextInfraGitService.verify_lanes,
+                    "lane inventory verified",
+                ),
+                (
+                    "identity",
+                    "Report canonical Git checkout identity",
+                    m.Infra.GitRepoRequest,
+                    u.Infra.git_identity,
+                    "workspace Git identity resolved",
+                ),
+                (
+                    "editable-members",
+                    "List declared members with authenticated installed editables",
+                    m.Infra.WorkspaceRequest,
+                    cls._editable_members,
+                    None,
+                ),
+                (
+                    c.Infra.FLEXT_EDITABLE_ROUTE_NAME,
                     (
-                        "propagate",
-                        "Publish this workspace's flext-infra to every member",
-                        workspace.FlextInfraWorkspacePropagation,
-                        flext_infra.infra.workspace_propagate,
+                        "Install and record setup's FLEXT editable selection; without "
+                        "--flext-root remove the receipt"
                     ),
+                    m.Infra.FlextEditableRequest,
+                    workspace.FlextInfraWorkspaceFlextEditable.execute_request,
+                    None,
+                ),
+                (
+                    "verify-environment",
+                    "Verify live workspace editable provenance",
+                    m.Infra.WorkspaceRequest,
+                    workspace.FlextInfraWorkspaceEnvironmentProvenance.execute_request,
+                    "workspace editable provenance verified",
+                ),
+                (
+                    "verify-lock",
+                    "Verify the committed uv.lock carries every referenced package",
+                    m.Infra.WorkspaceRequest,
+                    workspace.FlextInfraWorkspaceLockCompleteness.execute_request,
+                    "lock completeness verified",
+                ),
+                (
+                    "detect",
+                    "Detect workspace or standalone mode",
+                    workspace.FlextInfraWorkspaceDetector,
+                    cls._detect_workspace,
+                    None,
+                ),
+                (
+                    "propagate",
+                    "Publish this workspace's flext-infra to every member",
+                    workspace.FlextInfraWorkspacePropagation,
+                    flext_infra.infra.workspace_propagate,
+                    None,
+                ),
+                (
+                    c.Infra.FLEET_GAPS_ROUTE_NAME,
                     (
-                        c.Infra.FLEET_ROUTE_NAME,
-                        (
-                            "Run one mutating verb in every governed member "
-                            "in dependency order and publish its receipts"
-                        ),
-                        workspace.FlextInfraWorkspaceFleetVerbs,
-                        workspace.FlextInfraWorkspaceFleetVerbs.execute_command,
+                        "Report every declared repository's hygiene gaps (dirty paths, "
+                        "open PRs, unmerged branches, violation counts, standards "
+                        "presence) and publish the receipt"
                     ),
-                    (
-                        c.Infra.FLEET_GAPS_ROUTE_NAME,
-                        (
-                            "Report every declared repository's hygiene gaps "
-                            "(dirty paths, open PRs, unmerged branches, "
-                            "violation counts, standards presence) and publish "
-                            "the receipt"
-                        ),
-                        workspace.FlextInfraWorkspaceFleetGaps,
-                        workspace.FlextInfraWorkspaceFleetGaps.execute_command,
-                    ),
-                )
-            ),
+                    workspace.FlextInfraWorkspaceFleetGaps,
+                    workspace.FlextInfraWorkspaceFleetGaps.execute_command,
+                    None,
+                ),
+            )),
         )
 
 

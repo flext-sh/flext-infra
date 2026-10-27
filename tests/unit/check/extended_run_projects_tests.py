@@ -27,7 +27,9 @@ class TestsFlextInfraRunProjects:
         (project / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
 
-        result = checker.run_projects(["p1"], [], reports_dir=tmp_path / "reports")
+        result = checker.run_projects(
+            ["p1"], [], u.Tests.gate_context(tmp_path, tmp_path / "reports")
+        )
 
         tm.fail(result, has="at least one quality gate is required")
 
@@ -37,7 +39,7 @@ class TestsFlextInfraRunProjects:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"],
             ["invalid_gate"],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.fail(result)
@@ -49,7 +51,7 @@ class TestsFlextInfraRunProjects:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1", "nonexistent"],
             ["lint"],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.fail(result, has=str(tmp_path / "nonexistent" / c.PYPROJECT_FILENAME))
@@ -61,7 +63,7 @@ class TestsFlextInfraRunProjects:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             [],
             ["lint"],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.fail(result, has="selected no projects")
@@ -83,7 +85,7 @@ class TestsFlextInfraRunProjects:
         result = checker.run_projects(
             ["p1"],
             ["lint"],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)
@@ -106,8 +108,7 @@ class TestsFlextInfraRunProjects:
         result = checker.run_projects(
             ["p1", "p2", "p3"],
             ["lint"],
-            reports_dir=tmp_path / "reports",
-            fail_fast=True,
+            u.Tests.gate_context(tmp_path, tmp_path / "reports", fail_fast=True),
         )
 
         tm.ok(result)
@@ -128,7 +129,7 @@ class TestsFlextInfraRunProjects:
         result = checker.run_projects(
             ["p1", "p2"],
             ["lint"],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)

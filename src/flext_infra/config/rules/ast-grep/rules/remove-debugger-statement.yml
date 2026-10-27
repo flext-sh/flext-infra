@@ -32,6 +32,8 @@ rule:
 fix: ""
 message: >-
   A debugger entry point must never reach a committed source tree.
+metadata:
+  enforce: [ENFORCE-028]
 ---
 id: remove-pdb-set-trace-statement
 language: python
@@ -47,3 +49,5 @@ fix: ""
 message: >-
   A debugger entry point must never reach a committed source tree. The now
   unused `import pdb` is removed by Ruff F401.
+metadata:
+  enforce: [ENFORCE-028]

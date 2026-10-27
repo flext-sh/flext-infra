@@ -1,0 +1,30 @@
+{% import "_macros.md.j2" as mk -%}
+{% filter markdown_wrap(line_width) -%}
+# {{ name }} {{ text.DOCUMENTATION }}
+
+{{ generated_header }}
+
+- {{ text.VERSION }}: `{{ version }}`
+- {{ text.PROJECT_CLASS }}: `{{ project_class }}`
+- {{ text.PACKAGE }}: `{{ package_name }}`
+- {{ text.DESCRIPTION }}: {{ description }}
+
+{{ text.PORTAL_BODY }}
+
+## {{ text.START_HERE }}
+
+- [{{ text.GUIDES }}](guides/README.md)
+- [{{ text.API_REFERENCE }}](api-reference/README.md)
+- [{{ text.GENERATED_OVERVIEW }}](api-reference/generated/overview.md)
+- [{{ text.GENERATED_MODULE_INDEX }}](api-reference/generated/modules/index.md)
+
+## {{ text.PUBLIC_SURFACE_SUMMARY }}
+
+{{ mk.public_surface(package_name) }}
+
+{{ mk.collection_rules(text, links) }}
+
+{{ mk.quality_gates(text, links) }}
+
+{{ mk.governance(text, links) }}
+{% endfilter -%}

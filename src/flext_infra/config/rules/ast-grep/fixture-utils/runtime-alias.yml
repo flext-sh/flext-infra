@@ -1,0 +1,20 @@
+# Fixture value of the generated `runtime-alias` utility: an imported name
+# that is a runtime alias of the fixture package its import statement names.
+id: runtime-alias
+language: Python
+rule:
+  any:
+    - regex: "^(?:c|d|e|h|m|p|r|s|t|u|x)$"
+      inside:
+        kind: import_from_statement
+        stopBy: end
+        has:
+          field: module_name
+          regex: "^(?:ai_hub|flext_cli|flext_core|flext_meltano)(?:\\.|$)"
+    - regex: "^(?:c|d|e|h|m|p|r|s|t|tm|u|x)$"
+      inside:
+        kind: import_from_statement
+        stopBy: end
+        has:
+          field: module_name
+          regex: "^flext_tests(?:\\.|$)"

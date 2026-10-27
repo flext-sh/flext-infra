@@ -1,21 +1,14 @@
 id: rewire-test-monkeypatch-cwd-generator-import
 snapshots:
-  ? |
-    from __future__ import annotations
-
-    import pytest
-
-    @pytest.fixture(autouse=True)
-    def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.chdir(tmp_path)
-  : fixed: |
+  "from __future__ import annotations\n\nimport pytest\n\n@pytest.fixture(autouse=True)\ndef isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:\n    monkeypatch.chdir(tmp_path)\n":
+    fixed: |
       from __future__ import annotations
-
+      
       from collections.abc import Generator
-
-
+      
+      
       import pytest
-
+      
       @pytest.fixture(autouse=True)
       def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
           monkeypatch.chdir(tmp_path)
@@ -30,9 +23,9 @@ snapshots:
       end: 186
     - source: |
         from __future__ import annotations
-
+        
         import pytest
-
+        
         @pytest.fixture(autouse=True)
         def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             monkeypatch.chdir(tmp_path)

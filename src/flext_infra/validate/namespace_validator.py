@@ -1,8 +1,9 @@
 """Project namespace validation through the one rule engine.
 
-The namespace laws are rule data (the ast-grep rule catalog and its project
-context predicates); this service reports one project's findings of that
-catalog in the declared namespace scope. It owns no rule.
+The namespace laws are rule data (the ast-grep rule catalog and the
+project's generated utilities and file scopes); this service reports one
+project's findings of that catalog in the declared namespace scope. It owns
+no rule.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

@@ -1,0 +1,49 @@
+id: ban-enclosing-family-field-reference
+valid:
+  - |
+    class FlextModelsHandler:
+        class HandlerRuntimeState(Base):
+            execution_context: FlextModelsHandlerContext.ExecutionContext
+  - |
+    class FlextModelsHandler:
+        class HandlerRuntimeState(Base):
+            def current(self) -> FlextModelsHandler.HandlerRuntimeState:
+                return self
+  - |
+    class FlextModelsOther:
+        class Report(Base):
+            violations: tuple[FlextModelsHandler.Violation, ...] = ()
+  - |
+    class Infra:
+        class Report(Base):
+            facade: m.Infra.Report | None = None
+invalid:
+  - |
+    class FlextInfraModelsDepsToml:
+        class DepsToml:
+            class PhaseConfig(m.ContractModel):
+                operations: Annotated[
+                    t.SequenceOf[
+                        Annotated[
+                            FlextInfraModelsDepsToml.DepsToml.SetOp
+                            | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                            m.Field(discriminator="kind"),
+                        ]
+                    ],
+                    m.Field(description="Declarative TOML operations"),
+                ] = ()
+  - |
+    class FlextModelsHandler:
+        class HandlerRuntimeState(Base):
+            execution_context: FlextModelsHandler.ExecutionContext
+  - |
+    class FlextModelsEnforcementBase:
+        class Report(Base):
+            violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
+  - |
+    class FlextModelsHandler:
+        class HandlerRuntimeState(Base):
+            stack: Annotated[
+                MutableSequence[FlextModelsHandler.ExecutionContext],
+                Field(description="Stack."),
+            ]

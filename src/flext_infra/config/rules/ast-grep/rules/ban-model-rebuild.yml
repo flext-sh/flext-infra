@@ -28,3 +28,5 @@ message: >-
   dependency order and reference earlier siblings by bare name, export the
   symbol through its facade, break the import cycle at its owner, or hoist the
   model out of the function scope. A strict fleet never calls `model_rebuild`.
+metadata:
+  enforce: [ENFORCE-041]

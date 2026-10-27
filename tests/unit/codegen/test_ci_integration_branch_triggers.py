@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, m
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, t, tm, u
 
 
@@ -69,7 +69,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     def _trigger_section(rendered: str) -> str:
-        return rendered.split("c.ParserBooleanToken.ON:", maxsplit=1)[1].split(
+        return rendered.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers",
             maxsplit=1,
         )[0]
@@ -96,15 +96,38 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         for branch in self.baseline_branches:
             tm.that(self._branch_count(triggers, branch), eq=2)
 
-    def test_pull_request_title_edits_revalidate_release_metadata(self) -> None:
-        """GitHub dispatches the workflow when release-plan's PR title changes."""
-        workflow = tm.ok(u.Cli.yaml_parse(self.render_ci(repository_branch="develop")))
-        events = u.Cli.json_as_mapping(workflow[c.ParserBooleanToken.ON])
-        pull_request = u.Cli.json_as_mapping(events["pull_request"])
-        activities = u.Cli.json_as_sequence(pull_request["types"])
-        tm.that(activities, empty=False)
-
-        tm.that(activities, has="edited")
+    def test_title_edits_revalidate_only_the_release_plan_workflow(self) -> None:
+        """A PR title edit re-runs the release guard and never cancels CI."""
+        ci = tm.ok(u.Cli.yaml_parse(self.render_ci(repository_branch="develop")))
+        ci_events = u.Cli.json_as_mapping(ci[c.ParserBooleanToken.ON])
+        ci_activities = u.Cli.json_as_sequence(
+            u.Cli.json_as_mapping(ci_events["pull_request"])["types"],
+        )
+        tm.that(ci_activities, empty=False)
+        tm.that(ci_activities, lacks="edited")
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist="release-plan-consumer",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="develop",
+            ci_trigger_branches=(),
+        )
+        guard = tm.ok(
+            u.Cli.yaml_parse(
+                tm.ok(
+                    u.Cli.template_render(
+                        self.ci_template.with_name("release-plan.yml.j2"),
+                        spec,
+                    ),
+                ),
+            ),
+        )
+        guard_events = u.Cli.json_as_mapping(guard[c.ParserBooleanToken.ON])
+        tm.that(
+            u.Cli.json_as_sequence(
+                u.Cli.json_as_mapping(guard_events["pull_request"])["types"],
+            ),
+            has="edited",
+        )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -146,7 +169,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_workflow_projection_uses_only_manifest_workflows() -> None:
         """Scoped recovery retains every non-workflow destination."""
         codegen = config.Infra.codegen
-        contract = FlextInfraCodegenConformExecute.surface_contract(
+        contract = FlextInfraCodegenConform.Generate.surface_contract(
             c.Infra.CodegenConformSurface.WORKFLOWS,
             codegen=codegen,
         )
@@ -194,8 +217,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(
             tuple(step["run"] for step in approval),
             eq=tuple(
-                f"{codegen.make.ci.variable}={codegen.make.ci.value} make {verb}"
-                for verb in codegen.make.approval_verbs
+                f"{codegen.make.ci.variable}={codegen.make.ci.value} "
+                f"{step.make_command}"
+                for step in codegen.make.workflow
+                if "ci" in step.contexts
             ),
         )
         # Quoted diagnostics may recommend a local resolver without executing it.
@@ -214,15 +239,19 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 m.Infra.MakeWorkflowRenderSpec(dist=spec.dist, make=codegen.make),
             ),
         )
-        tm.that(hook, has="make pre-commit")
-        tm.that(hook, lacks=["make fmt", "make fix"])
+        tm.that(
+            hook,
+            has=f"{codegen.make.ci.variable}={codegen.make.ci.pre_commit_value} make "
+            f"check",
+        )
+        tm.that(hook, lacks=["make pre-commit", "make fmt", "make fix"])
         tm.that(
             tuple(
                 step.verb
                 for step in codegen.make.workflow
                 if "pre_commit" in step.contexts
             ),
-            eq=(c.Infra.VERB_CHECK, c.Infra.VERB_TEST),
+            eq=(c.Infra.VERB_CHECK,),
         )
 
     @staticmethod
@@ -247,7 +276,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 f"@{spec.github_actions['upload-artifact'].version}"
             )
         )
-        tm.that(upload["if"], eq="${{ always() }}")
+        tm.that(upload["if"], has="steps.approval-check.outcome")
+        tm.that(upload["if"], lacks="always()")
         inputs = u.Cli.json_as_mapping(upload["with"])
         tm.that(inputs["if-no-files-found"], eq="error")
         tm.that(inputs["include-hidden-files"], eq=True)
@@ -301,8 +331,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(rendered, lacks=["continue-on-error"])
 
     @staticmethod
-    def test_tool_cache_keeps_new_generations_after_completed_failures() -> None:
-        """A rendered cache contract restores progress and never overwrites it."""
+    def test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss() -> None:
+        """One immutable entry per lock state, written only when the key missed."""
         spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,
@@ -319,14 +349,14 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(primary_key, empty=False)
         tm.that(prefixes_text, empty=False)
         prefixes = prefixes_text.splitlines()
-        tm.that(len(prefixes), eq=2)
+        tm.that(len(prefixes), eq=1)
         tm.ok(primary_key.startswith(prefixes[0]))
-        tm.ok(prefixes[0].startswith(prefixes[1]))
-        tm.ok(prefixes[0] != prefixes[1])
-        tm.that(prefixes[1], has=spec.python_version)
+        tm.ok(primary_key != prefixes[0])
+        tm.that(prefixes[0], has=spec.python_version)
+        tm.that(primary_key, has="hashFiles(")
         tm.that(
             primary_key,
-            has=["${{ github.run_id }}", "${{ github.run_attempt }}"],
+            lacks=["${{ github.run_id }}", "${{ github.run_attempt }}"],
         )
         tm.that(
             save_inputs["key"],
@@ -338,12 +368,13 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 "always()",
                 "!cancelled()",
                 "steps.tool-cache.outcome == 'success'",
+                "steps.tool-cache.outputs.cache-hit != 'true'",
                 "steps.tool-cache.outputs.cache-primary-key != ''",
                 "github.event_name == 'workflow_dispatch'",
                 "github.event.pull_request.head.repo.full_name == github.repository",
             ],
         )
-        tm.that(save["if"], lacks=["cache-hit", "success()"])
+        tm.that(save["if"], lacks="success()")
         tm.that(save_inputs["path"], eq=restore_inputs["path"])
         cache_action = spec.github_actions["cache"]
         tm.that(

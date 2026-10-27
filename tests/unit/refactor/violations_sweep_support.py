@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import config, main
+from flext_infra import FlextInfraCli, config
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -120,7 +120,7 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_REFACTOR,
             c.Infra.VIOLATIONS_SWEEP_ROUTE_NAME,
             "--repository-root",

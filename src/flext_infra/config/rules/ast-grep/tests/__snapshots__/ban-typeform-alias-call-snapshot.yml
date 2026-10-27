@@ -1,0 +1,14 @@
+id: ban-typeform-alias-call
+snapshots:
+  "adapter = u.type_adapter(t.TypeForm(t.JsonDict))\n":
+    labels:
+    - source: t.TypeForm(t.JsonDict)
+      style: primary
+      start: 25
+      end: 47
+  "factory = u.empty(contract_factory=lambda: t.TypeForm(t.SequenceOf[Item]))\n":
+    labels:
+    - source: t.TypeForm(t.SequenceOf[Item])
+      style: primary
+      start: 43
+      end: 73

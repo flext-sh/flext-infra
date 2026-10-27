@@ -13,7 +13,6 @@ from flext_infra.validate import (
     FlextInfraCProfileReport,
     FlextInfraInventoryService,
     FlextInfraPytestDiagExtractor,
-    FlextInfraRuntimeCensusValidator,
     FlextInfraSkillValidator,
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
@@ -64,12 +63,6 @@ class FlextInfraValidationCommandRoutes:
                     "Generate scripts inventory",
                     FlextInfraInventoryService,
                     FlextInfraInventoryService.execute,
-                ),
-                (
-                    "runtime-census",
-                    "Post-import Beartype enforcement census for flext_* modules",
-                    FlextInfraRuntimeCensusValidator,
-                    FlextInfraRuntimeCensusValidator.execute,
                 ),
                 (
                     "pytest-diag",

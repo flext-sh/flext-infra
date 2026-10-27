@@ -8,15 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import libcst as cst
-
 from flext_infra import c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesQualifiedNames,
-    FlextInfraUtilitiesRopeCore,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -188,7 +190,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
     @classmethod
     def _imported_module(
         cls,
-        node: cst.ImportFrom,
+        node: t.Infra.Cst.ImportFrom,
         *,
         module_name: str,
         is_package_init: bool,

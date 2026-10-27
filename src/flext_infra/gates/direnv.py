@@ -86,12 +86,15 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 message=content.error or f"cannot read {envrc}",
                 severity="ERROR",
             )
-            return self._build_check_gate_execution(
-                project_dir,
-                passed=False,
-                issues=(issue,),
-                evidence=self._publish_raw_receipt(ctx, issue.message),
-                started=started,
+            return self._build_gate_execution(
+                m.Infra.GateExecutionParams(
+                    project_dir=project_dir,
+                    verdict=False,
+                    issues=(issue,),
+                    raw_output=issue.message,
+                    started=started,
+                ),
+                ctx,
             )
         violations = self._contract_boundary().envrc_contract_violations(
             content.value,
@@ -132,14 +135,15 @@ class FlextInfraDirenvGate(FlextInfraGate):
                     ),
                 )
         if issues:
-            return self._build_check_gate_execution(
-                project_dir,
-                passed=False,
-                issues=issues,
-                evidence=self._publish_raw_receipt(
-                    ctx, "\n".join(issue.message for issue in issues)
+            return self._build_gate_execution(
+                m.Infra.GateExecutionParams(
+                    project_dir=project_dir,
+                    verdict=False,
+                    issues=tuple(issues),
+                    raw_output="\n".join(issue.message for issue in issues),
+                    started=started,
                 ),
-                started=started,
+                ctx,
             )
         return super().check(project_dir, ctx)
 

@@ -1,6 +1,6 @@
 id: remove-refactor-validation-selector
 snapshots:
-  service.refactor_file(path, gates=("lint",)):
+  "service.refactor_file(path, gates=(\"lint\",))":
     fixed: service.refactor_file(path, )
     labels:
     - source: gates=("lint",)
@@ -15,7 +15,7 @@ snapshots:
       style: secondary
       start: 0
       end: 44
-  service.refactor_project(project, dry_run=False, apply_safety=False):
+  "service.refactor_project(project, dry_run=False, apply_safety=False)":
     fixed: service.refactor_project(project, dry_run=False, )
     labels:
     - source: apply_safety=False

@@ -28,6 +28,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         path: Path,
         format_source: bool = True,
         topology: m.Infra.PyprojectDeclaredTopology,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply.
 
@@ -39,7 +40,9 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
             One canonical pyproject using the same phases as workspace apply.
 
         """
-        conformed = self._conformed_document_state(source, path=path, topology=topology)
+        conformed = self._conformed_document_state(
+            source, path=path, topology=topology, codegen=codegen
+        )
         if conformed.failure:
             return r[str].from_failure(conformed)
         state, changes = conformed.value
@@ -59,6 +62,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         *,
         path: Path,
         topology: m.Infra.PyprojectDeclaredTopology,
+        codegen: m.Infra.CodegenConfigSpec,
         tool_config: m.Infra.ToolConfigDocument | None = None,
     ) -> p.Result[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]:
         """Read and apply canonical phases before a consumer chooses rendering.
@@ -77,6 +81,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
                 state.value.payload
             ),
             topology=topology,
+            codegen=codegen,
             tool_config=tool_config,
         )
         return result_type.ok((state.value, changes))
@@ -269,7 +274,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
             c.Infra.DEPENDENCY_GROUPS: {
                 c.Infra.DEV: list(
                     u.Infra.project_development_requirements(
-                        request.scaffold_project,
+                        request.codegen.scaffold.project,
                         distribution=request.project_name,
                         kind=declaration.value.spec.kind,
                         declared=live_dev,
@@ -284,6 +289,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(seed)),
             path=request.path,
             topology=request.topology,
+            codegen=request.codegen,
             tool_config=tool_config,
         )
         if conformed.failure:

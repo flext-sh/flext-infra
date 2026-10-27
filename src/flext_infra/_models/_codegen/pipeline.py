@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -69,7 +70,7 @@ class FlextInfraModelsCodegenPipelineModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
         )
-        exception: BaseException | None = m.Field(
+        exception: t.Port[BaseException] | None = m.Field(
             default=None,
             exclude=True,
             description="First native target planning cause",
@@ -125,13 +126,13 @@ class FlextInfraModelsCodegenPipelineModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
         )
-        exception: BaseException | None = m.Field(
+        exception: t.Port[BaseException] | None = m.Field(
             default=None,
             exclude=True,
             description="First native target failure carried into publication",
         )
         request: Annotated[
-            p.Infra.CodegenGenerateRequest,
+            t.Port[p.Infra.CodegenGenerateRequest],
             m.Field(description="Validated public request"),
         ]
         repositories: Annotated[
@@ -174,8 +175,10 @@ class FlextInfraModelsCodegenPipelineModels:
     class CodegenConformPorts(m.ContractModel):
         """Collaborators the complete conform crosses into, wired by the facade.
 
-        Docs rendering is another service family; the composition root binds
-        its implementation once and conform only consumes this port.
+        The composition root binds document planning and guarded file publication
+        once. The same staged candidate must pass the native cold-import validator
+        before either check accepts it or apply publishes it. Conform retains those
+        capabilities by reference rather than assembling utility implementations.
         """
 
         docs_planner: Annotated[
@@ -185,11 +188,45 @@ class FlextInfraModelsCodegenPipelineModels:
                 description="Builds the docs planner for one conform scope",
             ),
         ]
+        file_publisher: Annotated[
+            t.Port[p.Infra.CodegenFilePublisher],
+            m.Field(
+                exclude=True,
+                description="Shared guarded normalization and publication owner",
+            ),
+        ]
+        source_preview: Annotated[
+            t.Port[p.Infra.SourcePreview],
+            m.Field(exclude=True, description="Native staged source-view owner"),
+        ]
+        candidate_validator: Annotated[
+            t.Port[Callable[[Path, Path, t.VariadicTuple[Path]], p.Result[bool]]],
+            m.Field(
+                exclude=True,
+                description="Native cold-import admission in the source runtime",
+            ),
+        ]
+        imports_planner: Annotated[
+            t.Port[p.Infra.SourceImportPlanner],
+            m.Field(
+                exclude=True,
+                description=(
+                    "Shared import planner over the authenticated source candidate"
+                ),
+            ),
+        ]
+        component_planner: Annotated[
+            t.Port[p.Infra.SourceComponentPlanner],
+            m.Field(
+                exclude=True,
+                description="Shared recursive facade composition planner",
+            ),
+        ]
 
     class CodegenConformState(m.ArbitraryTypesModel):
         """Mutable request-local data owned by one projection invocation."""
 
-        request: p.Infra.CodegenGenerateRequest | None = m.Field(
+        request: t.Port[p.Infra.CodegenGenerateRequest] | None = m.Field(
             default=None,
             exclude=True,
             description="Validated projection request retained by reference",
@@ -230,7 +267,7 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Native file planning failures retained by this invocation",
         )
-        planning_exception: BaseException | None = m.Field(
+        planning_exception: t.Port[BaseException] | None = m.Field(
             default=None,
             exclude=True,
             description="First native file planning cause",
@@ -239,6 +276,13 @@ class FlextInfraModelsCodegenPipelineModels:
             default=None,
             exclude=True,
             description="Actual planner before effects",
+        )
+        snapshot: t.Port[p.Infra.WorkspaceSnapshot] | None = m.Field(
+            default=None,
+            exclude=True,
+            description=(
+                "The run's one workspace snapshot; present while repositories plan"
+            ),
         )
         _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
             m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])

@@ -1,9 +1,7 @@
 id: ban-class-wrong-facade-layer
 snapshots:
-  ? |
-    class FlextFooUtilities:
-        pass
-  : labels:
+  "class FlextFooUtilities:\n    pass\n":
+    labels:
     - source: |-
         class FlextFooUtilities:
             pass
@@ -24,10 +22,8 @@ snapshots:
       style: secondary
       start: 6
       end: 23
-  ? |
-    class Item(m.ContractModel):
-        pass
-  : labels:
+  "class Item(m.ContractModel):\n    pass\n":
+    labels:
     - source: |-
         class Item(m.ContractModel):
             pass
@@ -52,10 +48,8 @@ snapshots:
       style: secondary
       start: 6
       end: 10
-  ? |
-    class Status(StrEnum):
-        A = "a"
-  : labels:
+  "class Status(StrEnum):\n    A = \"a\"\n":
+    labels:
     - source: |-
         class Status(StrEnum):
             A = "a"

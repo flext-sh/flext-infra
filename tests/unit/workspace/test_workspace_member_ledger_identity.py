@@ -124,60 +124,55 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         self,
         tmp_path: Path,
     ) -> None:
-        """A member's commands survive composition without importing its topology."""
+        """A member's commands survive composition without importing its topology.
+
+        The member declares its commands in its own ``Infra.codegen.repository``
+        layer; the parent's reference carries them beside the member's Git
+        coordinates, while the parent's own repository stays command-free.
+        """
         member, parent = self._attach_member_to_workspace(tmp_path)
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
         verb = m.Infra.MakeVerbSpec(name="charts", description="Render charts")
         dispatch = m.Infra.ScriptDispatchSpec(
             dispatcher="scripts/dispatch.py",
             roots=("scripts",),
         )
-        declared = observed.repository.model_copy(
-            update={
+        u.Tests.WorktreeFixture.override_repository_declaration(
+            member,
+            {
                 "examples_module": "examples.member_runtime",
-                "extra_verbs": (verb,),
-                "script_dispatch": dispatch,
-                "editable": False,
+                "extra_verbs": [{"name": verb.name, "description": verb.description}],
+                "script_dispatch": {
+                    "dispatcher": dispatch.dispatcher,
+                    "roots": list(dispatch.roots),
+                },
             },
-        )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=declared.name,
-            repository=declared,
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                member / "config/workspace.yaml",
-                manifest.model_dump(mode="json"),
-            ),
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(parent))
 
         reference = workspace.subprojects[0]
         tm.that(reference.path, eq=Path("apps/member"))
-        tm.ok(reference.editable)
-        tm.that(reference.examples_module, eq=declared.examples_module)
+        tm.that(reference.editable, eq=True)
+        tm.that(reference.examples_module, eq="examples.member_runtime")
         tm.that(reference.extra_verbs, eq=(verb,))
         tm.that(reference.script_dispatch, eq=dispatch)
         tm.that(workspace.repository.extra_verbs, empty=True)
 
-    def test_parent_rejects_invalid_member_command_manifest(
+    def test_parent_rejects_invalid_member_command_declaration(
         self,
         tmp_path: Path,
     ) -> None:
-        """Selected command metadata must pass the manifest's typed contract."""
+        """Selected command metadata must pass the declaration's typed contract."""
         member, parent = self._attach_member_to_workspace(tmp_path)
-        member_manifest = member / "config/workspace.yaml"
-        member_manifest.parent.mkdir(parents=True, exist_ok=True)
-        member_manifest.write_text(
-            "version: parent-must-not-parse-member-manifest\n",
-            encoding="utf-8",
+        u.Tests.WorktreeFixture.override_repository_declaration(
+            member,
+            {"extra_verbs": "not-a-command-sequence"},
         )
 
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(parent)
-        tm.ok(workspace.failure)
-        tm.that(str(workspace.error), has="workspace manifest model validation")
+        tm.fail(
+            FlextInfraWorkspaceDetector.load_workspace_spec(parent),
+            has="validation error for RepositoryDeltaSpec",
+        )
 
     def test_submodule_self_load_accepts_an_independent_ledger(
         self,

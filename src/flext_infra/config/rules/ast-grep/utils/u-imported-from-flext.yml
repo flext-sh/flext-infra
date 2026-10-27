@@ -2,12 +2,12 @@
 # facade is bound as the plain name ``u`` in the same module.
 #
 # Two binding forms qualify, and both are audited here because both bind the
-# name: the absolute import from a public FLEXT package
-# (``from flext_core import u``), and the package-relative import a FLEXT
-# package uses on itself (``from ... import u``, ``from . import u``). The
-# relative form is how every module inside flext-infra reaches its own facade,
-# so a guard that recognised only the absolute form silently refused to repair
-# the whole interior of every FLEXT package.
+# name: an absolute import from a package that the generated ``facade-package``
+# fact authenticates, and the package-relative import a facade package uses on
+# itself (``from ... import u``, ``from . import u``). Package identity comes
+# from the shared export owner, not from a FLEXT spelling convention: a
+# consumer such as ``ai_hub`` publishes the same utilities boundary. The
+# relative form keeps that boundary available while a package composes itself.
 #
 # ``import flext_infra.u`` and ``from x import u as util`` still do not bind
 # ``u`` and stay excluded: the emitted text is a fixed ``u.``, so an aliased or
@@ -26,7 +26,7 @@ rule:
     - any:
         - has:
             field: module_name
-            regex: "^(?:flext(?:_[a-z0-9_]+)?|tests)$"
+            matches: facade-package
         - has:
             kind: relative_import
     - not:

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import FlextRuntime
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -26,11 +26,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         tool_config: m.Infra.ToolConfigDocument,
         *,
-        codegen: m.Infra.CodegenConfigSpec | None = None,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
         """Initialize the phase with the canonical tool configuration."""
         self._tool_config = tool_config
-        self._codegen = config.Infra.codegen if codegen is None else codegen
+        self._codegen = codegen
 
     def _report_private_usage_for_env(
         self,

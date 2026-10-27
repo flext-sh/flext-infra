@@ -1,0 +1,14 @@
+id: add-facade-module-typings-alias
+valid:
+  - |
+    class FlextDemoTypes:
+        pass
+    t = FlextDemoTypes
+    __all__: list[str] = ["FlextDemoTypes", "t"]
+  - |
+    __all__: list[str] = ["load"]
+invalid:
+  - |
+    class FlextDemoTypes:
+        pass
+    __all__: list[str] = ["FlextDemoTypes"]

@@ -1,0 +1,72 @@
+id: rewire-libcst-annotation-to-typings
+snapshots:
+  "import libcst as cst\ndef leaf(node: cst.CSTNode) -> str: ...\n":
+    fixed: |
+      import libcst as cst
+      def leaf(node: t.Infra.Cst.CSTNode) -> str: ...
+    labels:
+    - source: cst.CSTNode
+      style: primary
+      start: 36
+      end: 47
+    - source: cst.CSTNode
+      style: secondary
+      start: 36
+      end: 47
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        def leaf(node: cst.CSTNode) -> str: ...
+      style: secondary
+      start: 0
+      end: 61
+  "import libcst as cst\ndef leaf(node: cst.Name | None) -> cst.BaseExpression: ...\n":
+    fixed: |
+      import libcst as cst
+      def leaf(node: t.Infra.Cst.Name | None) -> cst.BaseExpression: ...
+    labels:
+    - source: cst.Name
+      style: primary
+      start: 36
+      end: 44
+    - source: cst.Name | None
+      style: secondary
+      start: 36
+      end: 51
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        def leaf(node: cst.Name | None) -> cst.BaseExpression: ...
+      style: secondary
+      start: 0
+      end: 80

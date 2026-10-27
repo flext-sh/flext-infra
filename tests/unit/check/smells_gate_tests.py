@@ -16,25 +16,25 @@ from flext_infra.gates.smells import FlextInfraSmellsGate
 from tests import c, m, t, tm, u
 
 
-@pytest.fixture
-def smells_project(tmp_path: Path) -> Path:
-    """One declared project inside ``tmp_path`` for qlty to scan.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    name = f"smells-{tmp_path.name}"
-    return u.Tests.mk_project(
-        tmp_path,
-        name,
-        pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
-        with_src=True,
-    )
-
-
 class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
+
+    @staticmethod
+    @pytest.fixture
+    def smells_project(tmp_path: Path) -> Path:
+        """One declared project inside ``tmp_path`` for qlty to scan.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        name = f"smells-{tmp_path.name}"
+        return u.Tests.mk_project(
+            tmp_path,
+            name,
+            pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
 
     @staticmethod
     def _detector_config(root: Path) -> m.ConfigDocument:
@@ -300,12 +300,12 @@ class TestsFlextInfraSmellsGate:
         tm.fail(any("{" in message for message in messages))
         tm.ok(all(" Fix: " in message for message in messages))
 
-    def test_qlty_scan_does_not_run_runtime_census(
+    def test_qlty_scan_runs_without_project_metadata(
         self,
         tmp_path: Path,
         smells_project: Path,
     ) -> None:
-        """Qlty owns this gate even when census project metadata is unavailable."""
+        """Qlty owns this gate even when the project manifest is unavailable."""
         self._configure(tmp_path)
         (smells_project / c.PYPROJECT_FILENAME).unlink()
 
@@ -340,7 +340,7 @@ class TestsFlextInfraSmellsGate:
             }).run_projects(
                 [smells_project.name],
                 [c.Infra.SMELLS],
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
         execution = projects[0].gates[c.Infra.SMELLS]

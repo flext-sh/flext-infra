@@ -1,0 +1,39 @@
+# An import is a declared dependency: an import statement guarded by
+# `except ImportError` / `except ModuleNotFoundError` turns a missing
+# dependency into a silent alternate path. Declare the dependency and let the
+# import fail loudly. (Dynamic `importlib` probes are ban-dynamic-import's.)
+id: ban-import-error-fallback
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  kind: identifier
+  regex: "^(?:ImportError|ModuleNotFoundError)$"
+  pattern: $ERROR
+  inside:
+    kind: except_clause
+    stopBy:
+      kind: block
+    inside:
+      kind: try_statement
+      has:
+        field: body
+        has:
+          any:
+            - kind: import_statement
+            - kind: import_from_statement
+message: >-
+  `except $ERROR` around an import turns a missing dependency into an
+  alternate path: declare the dependency and let the import fail.
+  Detection only: the alternate path's behaviour is removed by its owner.
+metadata:
+  enforce: [ENFORCE-015]

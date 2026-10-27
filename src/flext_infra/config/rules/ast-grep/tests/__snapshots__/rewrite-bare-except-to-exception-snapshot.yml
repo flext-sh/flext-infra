@@ -1,12 +1,7 @@
 id: rewrite-bare-except-to-exception
 snapshots:
-  ? |
-    try:
-        risky()
-    except:
-        logger.warning("boom")
-        raise
-  : fixed: |
+  "try:\n    risky()\nexcept:\n    logger.warning(\"boom\")\n    raise\n":
+    fixed: |
       try:
           risky()
       except Exception:
@@ -20,12 +15,8 @@ snapshots:
       style: primary
       start: 17
       end: 61
-  ? |
-    try:
-        risky()
-    except:
-        pass
-  : fixed: |
+  "try:\n    risky()\nexcept:\n    pass\n":
+    fixed: |
       try:
           risky()
       except Exception:
@@ -37,14 +28,8 @@ snapshots:
       style: primary
       start: 17
       end: 33
-  ? |
-    try:
-        risky()
-    except:
-        pass
-    finally:
-        done()
-  : fixed: |
+  "try:\n    risky()\nexcept:\n    pass\nfinally:\n    done()\n":
+    fixed: |
       try:
           risky()
       except Exception:

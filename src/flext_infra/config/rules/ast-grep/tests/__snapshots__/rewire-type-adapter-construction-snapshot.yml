@@ -1,14 +1,68 @@
 id: rewire-type-adapter-construction
 snapshots:
-  ? |
-    from flext_cli import t
-    from flext_core import u
-
-    ADAPTER = t.TypeAdapter(t.StrMapping)
-  : fixed: |
+  "from . import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
+    fixed: |
+      from . import m, u
+      
+      ADAPTER = u.type_adapter(int)
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 30
+      end: 48
+    - source: m
+      style: secondary
+      start: 30
+      end: 31
+    - source: m
+      style: secondary
+      start: 30
+      end: 31
+    - source: from . import m, u
+      style: secondary
+      start: 0
+      end: 18
+    - source: |
+        from . import m, u
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 49
+  "from ai_hub import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
+    fixed: |
+      from ai_hub import m, u
+      
+      ADAPTER = u.type_adapter(int)
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 35
+      end: 53
+    - source: m
+      style: secondary
+      start: 35
+      end: 36
+    - source: m
+      style: secondary
+      start: 35
+      end: 36
+    - source: from ai_hub import m, u
+      style: secondary
+      start: 0
+      end: 23
+    - source: |
+        from ai_hub import m, u
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 54
+  "from flext_cli import t\nfrom flext_core import u\n\nADAPTER = t.TypeAdapter(t.StrMapping)\n":
+    fixed: |
       from flext_cli import t
       from flext_core import u
-
+      
       ADAPTER = u.type_adapter(t.StrMapping)
     labels:
     - source: t.TypeAdapter(t.StrMapping)
@@ -30,18 +84,15 @@ snapshots:
     - source: |
         from flext_cli import t
         from flext_core import u
-
+        
         ADAPTER = t.TypeAdapter(t.StrMapping)
       style: secondary
       start: 0
       end: 88
-  ? |
-    from flext_core import m, u
-
-    ADAPTER = m.TypeAdapter(int)
-  : fixed: |
+  "from flext_core import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
+    fixed: |
       from flext_core import m, u
-
+      
       ADAPTER = u.type_adapter(int)
     labels:
     - source: m.TypeAdapter(int)
@@ -62,22 +113,17 @@ snapshots:
       end: 27
     - source: |
         from flext_core import m, u
-
+        
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
       end: 58
-  ? |
-    from pydantic import TypeAdapter
-
-    from flext_core import u
-
-    ADAPTER = TypeAdapter(int)
-  : fixed: |
+  "from pydantic import TypeAdapter\n\nfrom flext_core import u\n\nADAPTER = TypeAdapter(int)\n":
+    fixed: |
       from pydantic import TypeAdapter
-
+      
       from flext_core import u
-
+      
       ADAPTER = u.type_adapter(int)
     labels:
     - source: TypeAdapter(int)
@@ -94,9 +140,9 @@ snapshots:
       end: 32
     - source: |
         from pydantic import TypeAdapter
-
+        
         from flext_core import u
-
+        
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0
@@ -107,10 +153,39 @@ snapshots:
       end: 58
     - source: |
         from pydantic import TypeAdapter
-
+        
         from flext_core import u
-
+        
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0
       end: 87
+  "from tests import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
+    fixed: |
+      from tests import m, u
+      
+      ADAPTER = u.type_adapter(int)
+    labels:
+    - source: m.TypeAdapter(int)
+      style: primary
+      start: 34
+      end: 52
+    - source: m
+      style: secondary
+      start: 34
+      end: 35
+    - source: m
+      style: secondary
+      start: 34
+      end: 35
+    - source: from tests import m, u
+      style: secondary
+      start: 0
+      end: 22
+    - source: |
+        from tests import m, u
+        
+        ADAPTER = m.TypeAdapter(int)
+      style: secondary
+      start: 0
+      end: 53

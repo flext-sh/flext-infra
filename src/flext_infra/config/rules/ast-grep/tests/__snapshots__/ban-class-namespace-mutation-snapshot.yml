@@ -1,0 +1,126 @@
+id: ban-class-namespace-mutation
+snapshots:
+  "class Holder:\n    value = 1\n\nHolder.value = 2\n":
+    labels:
+    - source: Holder.value = 2
+      style: primary
+      start: 29
+      end: 45
+    - source: Holder
+      style: secondary
+      start: 29
+      end: 35
+    - source: Holder.value
+      style: secondary
+      start: 29
+      end: 41
+    - source: Holder
+      style: secondary
+      start: 6
+      end: 12
+    - source: |-
+        class Holder:
+            value = 1
+      style: secondary
+      start: 0
+      end: 27
+    - source: |
+        class Holder:
+            value = 1
+        
+        Holder.value = 2
+      style: secondary
+      start: 0
+      end: 46
+  "from flext_core import FlextSettings\n\ndef patch() -> None:\n    FlextSettings.instance = None\n":
+    labels:
+    - source: FlextSettings.instance = None
+      style: primary
+      start: 63
+      end: 92
+    - source: FlextSettings
+      style: secondary
+      start: 63
+      end: 76
+    - source: FlextSettings.instance
+      style: secondary
+      start: 63
+      end: 85
+    - source: FlextSettings
+      style: secondary
+      start: 23
+      end: 36
+    - source: from flext_core import FlextSettings
+      style: secondary
+      start: 0
+      end: 36
+    - source: |
+        from flext_core import FlextSettings
+        
+        def patch() -> None:
+            FlextSettings.instance = None
+      style: secondary
+      start: 0
+      end: 93
+  "from pkg import Owner as Alias\n\nAlias.counter += 1\n":
+    labels:
+    - source: Alias.counter += 1
+      style: primary
+      start: 32
+      end: 50
+    - source: Alias
+      style: secondary
+      start: 32
+      end: 37
+    - source: Alias.counter
+      style: secondary
+      start: 32
+      end: 45
+    - source: Alias
+      style: secondary
+      start: 25
+      end: 30
+    - source: Owner as Alias
+      style: secondary
+      start: 16
+      end: 30
+    - source: from pkg import Owner as Alias
+      style: secondary
+      start: 0
+      end: 30
+    - source: |
+        from pkg import Owner as Alias
+        
+        Alias.counter += 1
+      style: secondary
+      start: 0
+      end: 51
+  "import os\n\nos.environ = {}\n":
+    labels:
+    - source: os.environ = {}
+      style: primary
+      start: 11
+      end: 26
+    - source: os
+      style: secondary
+      start: 11
+      end: 13
+    - source: os.environ
+      style: secondary
+      start: 11
+      end: 21
+    - source: os
+      style: secondary
+      start: 7
+      end: 9
+    - source: import os
+      style: secondary
+      start: 0
+      end: 9
+    - source: |
+        import os
+        
+        os.environ = {}
+      style: secondary
+      start: 0
+      end: 27

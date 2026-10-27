@@ -8,15 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, deps as dependency_services, m, p, r, t, u
 from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
-from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.services._codegen.vscode import FlextInfraCodegenVscodeMixin
 
 
-class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
+class FlextInfraCodegenConformEditor(
+    FlextInfraCodegenConformArtifactRender,
+    FlextInfraCodegenVscodeMixin,
+):
     """Compose existing editor, analyzer and Git-ignore owners into one plan."""
 
     @staticmethod
@@ -59,7 +61,7 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
             return result_type.fail(
                 f"editor projection requires {c.PYPROJECT_FILENAME}"
             )
-        manifest = FlextInfraEnsurePyrightConfigPhase(
+        manifest = dependency_services.FlextInfraEnsurePyrightConfigPhase(
             tool_config, codegen=codegen
         ).render_source(
             captured.content.decode(c.DEFAULT_ENCODING),
@@ -104,7 +106,7 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         )
         if manifest.failure:
             return result_type.from_failure(manifest)
-        settings = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+        settings = self.render_vscode_settings(
             target.root, spec=codegen.vscode, codegen=codegen
         )
         if settings.failure:

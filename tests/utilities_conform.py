@@ -60,7 +60,10 @@ class TestsFlextInfraUtilitiesConform:
                 *delegated,
                 *ruff_cfg.lint.ruling_disabled_rules,
                 *u.Infra.native_tool_setting(
-                    config.Infra.tooling, "ruff.lint", "ignore", TypeForm(t.StrSequence)
+                    config.Infra.tooling,
+                    "ruff.lint",
+                    "ignore",
+                    TypeForm(t.StrSequence),
                 ),
             }),
         )
@@ -105,8 +108,8 @@ class TestsFlextInfraUtilitiesConform:
         """
         request = TestsFlextInfraUtilitiesConform.conform_request(root, what=what)
         return (
-            codegen
-            .FlextInfraCodegenConformExecute(
+            codegen.FlextInfraCodegenConform
+            .Generate(
                 repository_root=root if executor_root is None else executor_root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root if executor_root is None else executor_root,

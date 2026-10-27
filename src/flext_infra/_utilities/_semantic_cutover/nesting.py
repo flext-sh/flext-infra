@@ -19,13 +19,21 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPrivateImportFacades,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope_analysis import FlextInfraUtilitiesRopeAnalysisExports
+from flext_infra._utilities._rope._analysis.exports import (
+    FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -211,7 +219,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if not isinstance(target, ast.Name) or value is None:
                 continue
             if target.id == "__all__":
-                if not isinstance(value, ast.List | ast.Tuple) or any(
+                if not isinstance(value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES) or any(
                     not isinstance(item, ast.Constant)
                     or not isinstance(item.value, str)
                     or item.value not in attributes
@@ -294,7 +302,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ),
         )
         for node in ast.walk(tree):
-            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if not isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 continue
             for decorator in node.decorator_list:
                 expression = (
@@ -530,7 +538,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         composition = (test_module or file_path.name == "conftest.py") and (
             len(classes) != 1
             or any(
-                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                isinstance(node, c.Infra.AST_FUNCTION_TYPES)
                 and cls._pytest_name_matches(node.name, pytest_patterns[2])
                 for node in tree.body
             )
@@ -646,7 +654,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         unowned = tuple(
             f"{type(node).__name__}@{node.lineno}"
             for node in tree.body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and cls._loose_value_name(node, strict=True) is None
             and not cls._canonical_metadata_rebind(project, file_path, tree, node)
         )
@@ -687,8 +695,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             family is not None
             and family != utility_family
             and any(
-                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                and node.name in loose
+                isinstance(node, c.Infra.AST_FUNCTION_TYPES) and node.name in loose
                 for node in tree.body
             )
         ):
@@ -706,7 +713,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         function_patterns: t.StrSequence,
     ) -> bool:
         if suite is None or not any(
-            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            isinstance(node, c.Infra.AST_FUNCTION_TYPES)
             and cls._pytest_name_matches(node.name, function_patterns)
             for node in tree.body
         ):
@@ -728,7 +735,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     for name in cls._scope_bindings(node)
                 )
                 or (
-                    isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                    isinstance(node, c.Infra.AST_FUNCTION_TYPES)
                     and (
                         node.name
                         in {
@@ -830,7 +837,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         """
         if not isinstance(node, ast.If) or node.orelse or not node.body:
             return False
-        if not all(isinstance(item, ast.Import | ast.ImportFrom) for item in node.body):
+        if not all(isinstance(item, c.Infra.AST_IMPORT_TYPES) for item in node.body):
             return False
         guarded_name = (
             node.test.id
@@ -844,7 +851,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             guarded_name in cls._scope_bindings(statement)
             for statement in tree.body
             if statement is not node
-            and not isinstance(statement, ast.Import | ast.ImportFrom)
+            and not isinstance(statement, c.Infra.AST_IMPORT_TYPES)
         ):
             return False
         for statement in tree.body:
@@ -1122,13 +1129,13 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
         """
         if any(
-            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
+            isinstance(node, c.Infra.AST_CALLABLE_TYPES)
             and declaration in ast.walk(node)
             for node in ast.walk(tree)
         ):
             return False
         if any(
-            isinstance(member, ast.Assign | ast.AnnAssign)
+            isinstance(member, c.Infra.AST_ASSIGNMENT_TYPES)
             and isinstance(member.value, ast.Constant)
             and member.value.value is False
             and any(
@@ -1143,7 +1150,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         ):
             return False
         return bool(declaration.bases or declaration.decorator_list) or any(
-            isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
+            isinstance(member, c.Infra.AST_FUNCTION_TYPES)
             and (
                 member.name in {"__init__", "__new__"}
                 or cls._pytest_name_matches(member.name, function_patterns)
@@ -1372,7 +1379,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 outside = tuple(
                     type(node).__name__
                     for node in final_tree.body
-                    if not isinstance(node, ast.Import | ast.ImportFrom | ast.ClassDef)
+                    if not isinstance(node, c.Infra.AST_IMPORT_OR_CLASS_TYPES)
                     and not cls._type_checking_import_block(node, final_tree)
                     and not cls._canonical_main_guard(project, path, final_tree, node)
                     and not cls._canonical_metadata_rebind(
@@ -1384,7 +1391,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         and isinstance(node.value.value, str)
                     )
                     and not (
-                        isinstance(node, ast.Assign | ast.AnnAssign)
+                        isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
                         and cls._loose_value_name(node, strict=True) in canonical
                     )
                 )
@@ -1629,7 +1636,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _facade_namespace_child_cst(
         site: m.Infra.FacadeNamespaceSite,
         child: ast.ClassDef,
-    ) -> cst.ClassDef:
+    ) -> t.Infra.Cst.ClassDef:
         """Extract one facade child's concrete-syntax node.
 
         Returns:
@@ -1643,22 +1650,23 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         facade_cst = next(
             node
             for node in parsed.body
-            if isinstance(node, cst.ClassDef) and node.name.value == site.facade.name
+            if isinstance(node, c.Infra.Cst.ClassDef)
+            and node.name.value == site.facade.name
         )
-        if not isinstance(facade_cst.body, cst.IndentedBlock):
+        if not isinstance(facade_cst.body, c.Infra.Cst.IndentedBlock):
             msg = "namespace facade requires an indented declaration"
             raise TypeError(msg)
         return next(
             node
             for node in facade_cst.body.body
-            if isinstance(node, cst.ClassDef) and node.name.value == child.name
+            if isinstance(node, c.Infra.Cst.ClassDef) and node.name.value == child.name
         )
 
     @staticmethod
     def _facade_namespace_child_module(
         tree: ast.Module,
         child: ast.ClassDef,
-        child_cst: cst.ClassDef,
+        child_cst: t.Infra.Cst.ClassDef,
     ) -> str:
         """Render one relocated child module with the imports it still uses.
 
@@ -1670,7 +1678,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         imports = [
             node
             for node in tree.body
-            if isinstance(node, ast.Import | ast.ImportFrom)
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES)
             and any(
                 (alias.asname or alias.name.partition(".")[0]) in used
                 for alias in node.names

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import c, r, tm, u
 
@@ -69,7 +69,12 @@ class TestsFlextInfraWorkspaceChecker:
         tmp_path: Path,
     ) -> None:
         """Test that check run fails when a workspace has no projects."""
-        exit_code = main(["check", "run", "--repository-root", str(tmp_path)])
+        exit_code = FlextInfraCli.infra_main([
+            "check",
+            "run",
+            "--repository-root",
+            str(tmp_path),
+        ])
         tm.that(exit_code, eq=1)
 
     @staticmethod
@@ -101,7 +106,7 @@ class TestsFlextInfraWorkspaceChecker:
         tm.ok(init_result)
         tm.ok(add_result)
 
-        implicit_exit_code = main([
+        implicit_exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -110,7 +115,7 @@ class TestsFlextInfraWorkspaceChecker:
             "lint",
         ])
         tm.that(implicit_exit_code, eq=1)
-        selected_exit_code = main([
+        selected_exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -173,7 +178,9 @@ class TestsFlextInfraWorkspaceChecker:
         )
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         reports_dir = tmp_path / "reports"
-        result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
+        result = checker.run_projects(
+            ["p1"], ["lint"], u.Tests.gate_context(tmp_path, reports_dir)
+        )
         tm.ok(result)
         tm.ok(reports_dir.exists())
 

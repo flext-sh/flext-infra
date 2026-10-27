@@ -1,8 +1,7 @@
 id: require-service-facade-layers
 snapshots:
-  ? |
-    __all__: list[str] = ["c"]
-  : labels:
+  "__all__: list[str] = [\"c\"]\n":
+    labels:
     - source: __all__
       style: primary
       start: 0
@@ -12,11 +11,11 @@ snapshots:
       style: secondary
       start: 0
       end: 27
-    - source: '__all__: list[str] = ["c"]'
+    - source: "__all__: list[str] = [\"c\"]"
       style: secondary
       start: 0
       end: 26
-    - source: '__all__: list[str] = ["c"]'
+    - source: "__all__: list[str] = [\"c\"]"
       style: secondary
       start: 0
       end: 26

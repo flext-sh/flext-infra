@@ -1,0 +1,30 @@
+id: ban-import-error-fallback
+valid:
+  - "import yaml"
+  - |
+    try:
+        run()
+    except ValueError:
+        raise
+  - |
+    try:
+        run()
+    except OSError:
+        error = ImportError("x")
+        raise error
+  - |
+    try:
+        repo = Repo(path)
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(path) from exc
+invalid:
+  - |
+    try:
+        import yaml
+    except ImportError:
+        yaml = None
+  - |
+    try:
+        import tomllib
+    except (ModuleNotFoundError, OSError):
+        tomllib = None

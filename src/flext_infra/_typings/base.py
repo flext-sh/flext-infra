@@ -37,6 +37,10 @@ class FlextInfraTypesBase:
 
     type DocumentationLanguage = t.DocumentationLanguage
     "Supported project-local documentation presentation languages."
+    type PythonMemberKind = Literal["alias", "attribute", "class", "function"]
+    "How a module binds one top-level name: imported, assigned, or defined."
+    type AstModule = _ast.Module
+    "The one stdlib syntax tree of one exact module source in a generation run."
 
     type Path = pathlib.Path
     "Unconstrained native filesystem path, independent of existence and kind."
@@ -248,7 +252,17 @@ class FlextInfraTypesBase:
     projection. Rule ownership never permits a blanket mask.
     """
 
-    type LifecycleContext = Literal["local", "ci"]
+    type EnforcementId = Annotated[
+        str,
+        t.StringConstraints(pattern=r"^ENFORCE-\d{3}$"),
+    ]
+    "Stable identity of one enforcement law (ENFORCE-NNN)."
+    type EnforcementIds = t.SequenceOf[EnforcementId]
+    """Law ids one owner declaration claims, in declared order.
+
+    Order and repetition are kept so the derived catalog can reject a claim
+    an owner repeats.
+    """
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."

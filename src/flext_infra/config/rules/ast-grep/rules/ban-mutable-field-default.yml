@@ -1,0 +1,57 @@
+# A model field default is shared by the class: a non-empty list, dict or set
+# literal (assigned directly or through `Field(default=...)`) is one mutable
+# object every instance starts from. Use `default_factory` with the canonical
+# empty value, or an immutable default.
+id: ban-mutable-field-default
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+utils:
+  non-empty-mutable-literal:
+    any:
+      - kind: list
+      - kind: dictionary
+      - kind: set
+    not:
+      regex: "^[\\[{]\\s*[\\]}]$"
+rule:
+  matches: model-field-assignment
+  has:
+    field: left
+    pattern: $NAME
+  any:
+    - has:
+        field: right
+        matches: non-empty-mutable-literal
+    - has:
+        field: right
+        kind: call
+        has:
+          field: arguments
+          has:
+            kind: keyword_argument
+            all:
+              - has:
+                  field: name
+                  regex: "^default$"
+              - has:
+                  field: value
+                  matches: non-empty-mutable-literal
+message: >-
+  Model field `$NAME` defaults to a shared mutable literal: use
+  `m.Field(default_factory=...)` or an immutable default.
+  Detection only: the default and its annotation change type together.
+metadata:
+  enforce: [ENFORCE-106]

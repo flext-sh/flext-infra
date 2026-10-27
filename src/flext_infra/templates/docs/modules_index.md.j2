@@ -1,0 +1,16 @@
+{% import "_macros.md.j2" as mk -%}
+{% filter markdown_wrap(line_width) -%}
+# {{ name }} {{ text.MODULE_INDEX }}
+
+{{ generated_header }}
+
+{{ text.MODULES_BODY }}
+
+{% if not modules -%}
+{{ text.NO_MODULES }}
+{% else -%}
+{% for module in modules -%}
+- [{{ module.name }}]({{ module.path }})
+{% endfor -%}
+{% endif -%}
+{% endfilter -%}

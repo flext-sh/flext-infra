@@ -10,8 +10,8 @@ from contextlib import closing
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -79,8 +79,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             message = f"unsupported semantic cutover phase: {phase}"
             raise ValueError(message)
         root = rope_workspace.repository_root
-        rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
-        selected = tuple(finding for finding in findings if finding.rule_id == rule_id)
+        selected = cls._phase_findings(phase, findings)
         if (
             phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING
             or phase is c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
@@ -130,10 +129,35 @@ class FlextInfraUtilitiesSemanticCutoverBase(
 
         """
         phase = c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
-        rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
-        selected = tuple(finding for finding in findings if finding.rule_id == rule_id)
         return cls._plan_source_project_phase(
-            phase, rope_workspace, sources, selected, dependency_codegen
+            phase,
+            rope_workspace,
+            sources,
+            cls._phase_findings(phase, findings),
+            dependency_codegen,
+        )
+
+    @staticmethod
+    def _phase_findings[FindingT: m.Infra.ModOccurrence](
+        phase: c.Infra.SemanticCutoverPhase,
+        findings: t.SequenceOf[FindingT],
+    ) -> t.VariadicTuple[FindingT]:
+        """Select the findings of the rule family a phase repairs.
+
+        A generated rule carries its project qualifier after the shape
+        (``<shape>--<package>``); the phase names the shape, so every
+        project's rendering of that family is selected.
+
+        Returns:
+            The findings whose rule family is the phase's rule.
+
+        """
+        rule_ids = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase, ())
+        return tuple(
+            finding
+            for finding in findings
+            if finding.rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
+            in rule_ids
         )
 
     @classmethod
@@ -250,7 +274,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 cls._plan_private_imports(root, sources, selected)
             ),
             c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
-                root, sources, selected
+                rope_workspace, sources, selected
             ),
             c.Infra.SemanticCutoverPhase.MODEL_FIELDS: lambda: cls._plan_model_fields(
                 sources

@@ -1,0 +1,29 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+"""Pytest bootstrap for {{ package_name }} local package resolution.
+
+Rendered from flext-infra ``templates/project/base/conftest.py.j2``: change the
+template or the shared ``install_local_packages`` owner, then run ``make gen``.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from flext_tests import install_local_packages
+
+
+class {{ class_stem }}PytestBootstrap:
+    """Bind this checkout's local tiers through the shared bootstrap owner."""
+
+    @staticmethod
+    def main() -> None:
+        """Install this checkout's local tier packages before collection."""
+        install_local_packages(Path(__file__).resolve().parent)
+
+
+{{ class_stem }}PytestBootstrap.main()
+
+__all__: list[str] = ["{{ class_stem }}PytestBootstrap"]

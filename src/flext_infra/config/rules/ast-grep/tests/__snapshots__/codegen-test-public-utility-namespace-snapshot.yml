@@ -1,16 +1,34 @@
 id: codegen-test-public-utility-namespace
 snapshots:
-  tests.utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci:
-    fixed: u.CodegenTestSupport.Ci
-    labels:
-    - source: tests.utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
-      style: primary
-      start: 0
-      end: 62
-  utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci:
-    fixed: u.CodegenTestSupport.Ci
+  "from tests import u, utilities\nutilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci\n":
+    fixed: |
+      from tests import u, utilities
+      u.CodegenTestSupport.Ci
     labels:
     - source: utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
       style: primary
+      start: 31
+      end: 87
+    - source: |
+        from tests import u, utilities
+        utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
+      style: secondary
       start: 0
-      end: 56
+      end: 88
+  "import tests.utilities\nfrom tests import u\ntests.utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci\n":
+    fixed: |
+      import tests.utilities
+      from tests import u
+      u.CodegenTestSupport.Ci
+    labels:
+    - source: tests.utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
+      style: primary
+      start: 43
+      end: 105
+    - source: |
+        import tests.utilities
+        from tests import u
+        tests.utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
+      style: secondary
+      start: 0
+      end: 106

@@ -1,17 +1,13 @@
 id: fstring-fail-missing-exception
 snapshots:
-  ? |
-    try:
-        read()
-    except OSError as error:
-        return r[str].fail(f"read failed: {error}")
-  : fixed: |
+  "try:\n    read()\nexcept OSError as error:\n    return r[str].fail(f\"read failed: {error}\")\n":
+    fixed: |
       try:
           read()
       except OSError as error:
           return r[str].fail(f"read failed: {error}", exception=error)
     labels:
-    - source: 'r[str].fail(f"read failed: {error}")'
+    - source: "r[str].fail(f\"read failed: {error}\")"
       style: primary
       start: 52
       end: 88
@@ -19,11 +15,11 @@ snapshots:
       style: secondary
       start: 80
       end: 85
-    - source: '{error}'
+    - source: "{error}"
       style: secondary
       start: 79
       end: 86
-    - source: '{error}'
+    - source: "{error}"
       style: secondary
       start: 79
       end: 86
@@ -45,14 +41,8 @@ snapshots:
       style: secondary
       start: 16
       end: 88
-  ? |
-    try:
-        read()
-    except OSError as exc:
-        return r[str].fail(
-            f"read failed: {exc}",
-        )
-  : fixed: |
+  "try:\n    read()\nexcept OSError as exc:\n    return r[str].fail(\n        f\"read failed: {exc}\",\n    )\n":
+    fixed: |
       try:
           read()
       except OSError as exc:
@@ -69,11 +59,11 @@ snapshots:
       style: secondary
       start: 87
       end: 90
-    - source: '{exc}'
+    - source: "{exc}"
       style: secondary
       start: 86
       end: 91
-    - source: '{exc}'
+    - source: "{exc}"
       style: secondary
       start: 86
       end: 91
@@ -97,18 +87,14 @@ snapshots:
       style: secondary
       start: 16
       end: 99
-  ? |
-    try:
-        read()
-    except OSError as exc:
-        return r[str].fail(f"read failed: {exc}")
-  : fixed: |
+  "try:\n    read()\nexcept OSError as exc:\n    return r[str].fail(f\"read failed: {exc}\")\n":
+    fixed: |
       try:
           read()
       except OSError as exc:
           return r[str].fail(f"read failed: {exc}", exception=exc)
     labels:
-    - source: 'r[str].fail(f"read failed: {exc}")'
+    - source: "r[str].fail(f\"read failed: {exc}\")"
       style: primary
       start: 50
       end: 84
@@ -116,11 +102,11 @@ snapshots:
       style: secondary
       start: 78
       end: 81
-    - source: '{exc}'
+    - source: "{exc}"
       style: secondary
       start: 77
       end: 82
-    - source: '{exc}'
+    - source: "{exc}"
       style: secondary
       start: 77
       end: 82

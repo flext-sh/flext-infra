@@ -1,11 +1,7 @@
 id: require-project-class-stem
 snapshots:
-  ? |
-    class FlextFooConstants:
-        pass
-    class Second:
-        pass
-  : labels:
+  "class FlextFooConstants:\n    pass\nclass Second:\n    pass\n":
+    labels:
     - source: |-
         class FlextFooConstants:
             pass
@@ -24,10 +20,8 @@ snapshots:
       style: secondary
       start: 6
       end: 23
-  ? |
-    class Helper:
-        pass
-  : labels:
+  "class Helper:\n    pass\n":
+    labels:
     - source: |-
         class Helper:
             pass

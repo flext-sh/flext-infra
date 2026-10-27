@@ -1,6 +1,6 @@
 id: recursive-type-alias
 snapshots:
-  type ModuleGlobalValue = JsonValue | Callable[..., ModuleGlobalValue] | None:
+  "type ModuleGlobalValue = JsonValue | Callable[..., ModuleGlobalValue] | None":
     labels:
     - source: type ModuleGlobalValue = JsonValue | Callable[..., ModuleGlobalValue] | None
       style: primary
@@ -14,7 +14,7 @@ snapshots:
       style: secondary
       start: 37
       end: 69
-  type Nested = str | list[Nested]:
+  "type Nested = str | list[Nested]":
     labels:
     - source: type Nested = str | list[Nested]
       style: primary
@@ -28,9 +28,11 @@ snapshots:
       style: secondary
       start: 20
       end: 32
-  type TomlValue = Primitives | list[FlextTestsMakeTypesMixin.TomlValue] | dict[str, FlextTestsMakeTypesMixin.TomlValue]:
+  "type TomlValue = Primitives | list[FlextTestsMakeTypesMixin.TomlValue] | dict[str, FlextTestsMakeTypesMixin.TomlValue]":
     labels:
-    - source: type TomlValue = Primitives | list[FlextTestsMakeTypesMixin.TomlValue] | dict[str, FlextTestsMakeTypesMixin.TomlValue]
+    - source: >-
+        type TomlValue = Primitives | list[FlextTestsMakeTypesMixin.TomlValue] |
+        dict[str, FlextTestsMakeTypesMixin.TomlValue]
       style: primary
       start: 0
       end: 118
@@ -42,7 +44,7 @@ snapshots:
       style: secondary
       start: 30
       end: 70
-  type TomlValue = Primitives | list[TomlValue] | dict[str, TomlValue]:
+  "type TomlValue = Primitives | list[TomlValue] | dict[str, TomlValue]":
     labels:
     - source: type TomlValue = Primitives | list[TomlValue] | dict[str, TomlValue]
       style: primary
@@ -56,7 +58,7 @@ snapshots:
       style: secondary
       start: 30
       end: 45
-  type YamlValue = YamlScalar | list[YamlValue] | Mapping[str, YamlValue]:
+  "type YamlValue = YamlScalar | list[YamlValue] | Mapping[str, YamlValue]":
     labels:
     - source: type YamlValue = YamlScalar | list[YamlValue] | Mapping[str, YamlValue]
       style: primary

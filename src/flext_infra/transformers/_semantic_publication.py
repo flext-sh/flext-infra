@@ -44,7 +44,7 @@ class FlextInfraSemanticPublication:
             return r[tuple[Path, ...]].from_failure(composed)
         if not publish:
             return cls._pending_paths(composed.value)
-        if selected.validator is not None:
+        if selected.validator is not None or selected.plan_validator is not None:
             accepted = cls._accepted_candidate(
                 composed.value, repository_root, selected
             )
@@ -65,12 +65,33 @@ class FlextInfraSemanticPublication:
             validator failure.
 
         """
-        validator = options.validator
-        if validator is None:
+        if options.validator is None and options.plan_validator is None:
             return r[bool].ok(value=True)
         changes = u.Infra.normalized_codegen_changes(plans)
         if changes.failure:
             return r[bool].from_failure(changes)
+        if options.plan_validator is not None:
+            return options.plan_validator(changes.value)
+        return FlextInfraSemanticPublication._previewed_acceptance(
+            changes.value, repository_root, options
+        )
+
+    @staticmethod
+    def _previewed_acceptance(
+        changes: t.VariadicTuple[m.Cli.FileChange],
+        repository_root: Path,
+        options: m.Infra.SemanticPublicationOptions,
+    ) -> p.Result[bool]:
+        """Run the view-root validator on the previewed candidate tree.
+
+        Returns:
+            Acceptance of the previewed candidate, or the first preview or
+            validator failure.
+
+        """
+        validator = options.validator
+        if validator is None:
+            return r[bool].ok(value=True)
         workspaces = tuple(
             dict.fromkeys(
                 u.Infra.import_project_roots(root)[0].resolve()
@@ -93,14 +114,14 @@ class FlextInfraSemanticPublication:
                 change.path: None
                 if change.desired_content is None
                 else change.desired_content.decode(c.DEFAULT_ENCODING)
-                for change in changes.value
+                for change in changes
             },
             lambda view_root, _paths: validator(view_root / relative),
             options=m.Infra.CodegenSourcePreviewOptions(
                 workspaces=workspaces if len(workspaces) > 1 else (),
                 modes={
                     change.path: change.desired_mode
-                    for change in changes.value
+                    for change in changes
                     if change.desired_mode is not None
                 },
             ),
@@ -162,7 +183,7 @@ class FlextInfraSemanticPublication:
                 plan.path.resolve() not in template_sources
                 and plan.before.content is not None
                 and plan.before.content.decode(c.DEFAULT_ENCODING).startswith(
-                    c.Infra.AUTOGEN_HEADERS,
+                    c.Infra.AUTOGEN_HEADER,
                 )
             ):
                 return result_type.fail(

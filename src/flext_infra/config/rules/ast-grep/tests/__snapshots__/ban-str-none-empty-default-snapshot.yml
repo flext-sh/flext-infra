@@ -1,0 +1,56 @@
+id: ban-str-none-empty-default
+snapshots:
+  "class Order(m.FrozenModel):\n    label: Annotated[str | None, m.Field(description=\"x\")] = ''\n":
+    labels:
+    - source: "label: Annotated[str | None, m.Field(description=\"x\")] = ''"
+      style: primary
+      start: 32
+      end: 91
+    - source: label
+      style: secondary
+      start: 32
+      end: 37
+    - source: Annotated[str | None, m.Field(description="x")]
+      style: secondary
+      start: 39
+      end: 86
+    - source: "''"
+      style: secondary
+      start: 89
+      end: 91
+  "class Order(m.FrozenModel):\n    label: str | None = \"\"\n":
+    labels:
+    - source: "label: str | None = \"\""
+      style: primary
+      start: 32
+      end: 54
+    - source: label
+      style: secondary
+      start: 32
+      end: 37
+    - source: str | None
+      style: secondary
+      start: 39
+      end: 49
+    - source: "\"\""
+      style: secondary
+      start: 52
+      end: 54
+  "class Order(m.FrozenModel):\n    label: str | None = m.Field(default=\"\", description=\"x\")\n":
+    labels:
+    - source: "label: str | None = m.Field(default=\"\", description=\"x\")"
+      style: primary
+      start: 32
+      end: 88
+    - source: label
+      style: secondary
+      start: 32
+      end: 37
+    - source: str | None
+      style: secondary
+      start: 39
+      end: 49
+    - source: m.Field(default="", description="x")
+      style: secondary
+      start: 52
+      end: 88

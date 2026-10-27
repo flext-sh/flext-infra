@@ -1,11 +1,7 @@
 id: ban-runtime-alias-rebind
 snapshots:
-  ? |
-    class FlextFooConstants:
-        pass
-    c = FlextFooConstants
-    __all__ = ["FlextFooConstants"]
-  : labels:
+  "class FlextFooConstants:\n    pass\nc = FlextFooConstants\n__all__ = [\"FlextFooConstants\"]\n":
+    labels:
     - source: c = FlextFooConstants
       style: primary
       start: 34
@@ -26,17 +22,12 @@ snapshots:
       style: secondary
       start: 34
       end: 55
-  ? |
-    class FlextFooConstants:
-        pass
-    c = FlextFooConstants
-    c = FlextFooConstants
-    __all__ = ["FlextFooConstants", "c"]
-  : labels:
+  "class FlextFooConstants:\n    pass\nc = FlextFooConstants\nc = FlextFooConstants\n__all__ = [\"FlextFooConstants\", \"c\"]\n":
+    labels:
     - source: c = FlextFooConstants
       style: primary
-      start: 34
-      end: 55
+      start: 56
+      end: 77
     - source: |
         class FlextFooConstants:
             pass
@@ -48,19 +39,26 @@ snapshots:
       end: 115
     - source: c
       style: secondary
+      start: 56
+      end: 57
+    - source: c = FlextFooConstants
+      style: secondary
+      start: 56
+      end: 77
+    - source: c
+      style: secondary
       start: 34
       end: 35
     - source: c = FlextFooConstants
       style: secondary
       start: 34
       end: 55
-  ? |
-    from flext_cli import p
-    class FlextFooProtocols(p):
-        pass
-    p = FlextFooProtocols
-    __all__ = ["FlextFooProtocols", "p"]
-  : labels:
+    - source: c = FlextFooConstants
+      style: secondary
+      start: 34
+      end: 55
+  "from flext_cli import p\nclass FlextFooProtocols(p):\n    pass\np = FlextFooProtocols\n__all__ = [\"FlextFooProtocols\", \"p\"]\n":
+    labels:
     - source: p = FlextFooProtocols
       style: primary
       start: 61
@@ -94,11 +92,8 @@ snapshots:
       style: secondary
       start: 0
       end: 23
-  ? |
-    from flext_core import FlextConstants
-    c = FlextConstants
-    __all__ = ["c"]
-  : labels:
+  "from flext_core import FlextConstants\nc = FlextConstants\n__all__ = [\"c\"]\n":
+    labels:
     - source: c = FlextConstants
       style: primary
       start: 38
@@ -114,17 +109,16 @@ snapshots:
       style: secondary
       start: 38
       end: 39
+    - source: FlextConstants
+      style: secondary
+      start: 42
+      end: 56
     - source: c = FlextConstants
       style: secondary
       start: 38
       end: 56
-  ? |
-    from flext_core import FlextService as s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  : labels:
+  "from flext_core import FlextService as s\nclass FlextFooServiceBase(s):\n    pass\ns = FlextFooServiceBase\n__all__ = [\"FlextFooServiceBase\", \"s\"]\n":
+    labels:
     - source: s = FlextFooServiceBase
       style: primary
       start: 80
@@ -158,13 +152,8 @@ snapshots:
       style: secondary
       start: 0
       end: 40
-  ? |
-    from flext_core import FlextSettings, FlextService as s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  : labels:
+  "from flext_core import FlextSettings, FlextService as s\nclass FlextFooServiceBase(s):\n    pass\ns = FlextFooServiceBase\n__all__ = [\"FlextFooServiceBase\", \"s\"]\n":
+    labels:
     - source: s = FlextFooServiceBase
       style: primary
       start: 95
@@ -198,13 +187,8 @@ snapshots:
       style: secondary
       start: 0
       end: 55
-  ? |
-    from flext_core import FlextSettings, s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  : labels:
+  "from flext_core import FlextSettings, s\nclass FlextFooServiceBase(s):\n    pass\ns = FlextFooServiceBase\n__all__ = [\"FlextFooServiceBase\", \"s\"]\n":
+    labels:
     - source: s = FlextFooServiceBase
       style: primary
       start: 79
@@ -238,13 +222,8 @@ snapshots:
       style: secondary
       start: 0
       end: 39
-  ? |
-    from flext_core import s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  : labels:
+  "from flext_core import s\nclass FlextFooServiceBase(s):\n    pass\ns = FlextFooServiceBase\n__all__ = [\"FlextFooServiceBase\", \"s\"]\n":
+    labels:
     - source: s = FlextFooServiceBase
       style: primary
       start: 64

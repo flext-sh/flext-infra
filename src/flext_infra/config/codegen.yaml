@@ -31,8 +31,17 @@ Infra:
     # pair and its lock publisher/converger retired with mise self-management
     # — the pinned release is the [tools] entry mise.lock provisions).
     retired_projections:
+    # The former full-managed JSON template had no generated banner. Its exact
+    # context-width declaration identifies the retired native-import competitor.
+    - path: .markdownlint.json
+      evidence: '"heading_line_length": 200'
     - .github/scripts/install-git-hooks.sh
     - .github/scripts/flext-law-loop.sh
+    # The unread per-id projection of generated ast-grep utilities and rules
+    # (make mod renders them in memory): a retired directory removes every
+    # generated-marker file under it, never an authored one.
+    - config/rules/ast-grep/utils
+    - config/rules/ast-grep/rules/generated
     # Superseded resolver manifests are marked generated. Their uv-produced locks
     # identify the synthetic virtual root; never retire a different native source.
     - .flext/uv/local/pyproject.toml
@@ -65,7 +74,7 @@ Infra:
     - path: mise.version
       evidence: "2026.10.3"
     # The prettier projections retired with the npm-free toolchain
-    # (ADR-025: rumdl fmt formats markdown from .markdownlint.json). Neither
+    # (ADR-025: rumdl fmt formats markdown from .rumdl.toml). Neither
     # carried a generated marker, so each declares the rendered bytes that
     # prove machine provenance.
     - path: .prettierrc
@@ -88,18 +97,108 @@ Infra:
     # threads per level (paths, then gates per path); mypy keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.
     lint_snapshot_workers: 4
-    # Independent read-only per-repository work of one fleet run (generation
-    # planning, lazy-init analysis) runs in worker processes whose count derives
-    # from the process CPU count bounded by physical memory over this per-worker
-    # budget; every publication stays serial inside the single generation lease.
-    # Opt-in generation profiling uses make.generation_profile_path;
-    # settings.Infra.profile owns activation for each invocation.
-    fleet_worker_memory_gb: 2
 
     # Per-module scc code-LOC ceiling, enforced by the loc-cap gate. This key
     # is its only declaration; guidance references the key, never its value.
     loc_cap:
       max_lines: 1000
+
+    # Project SSOT facts rendered as native ast-grep utilities: each producer
+    # is a u.Infra function mapping a project root to {utility id: native
+    # rule}; rules reference them natively (constraints: VAR: {matches: <id>}).
+    # make mod renders utilities and rules in memory and stages them for its
+    # native cascade; nothing is projected into repositories.
+    ast_grep:
+      producers:
+        - codemod_own_package_utilities
+        - codemod_stdlib_module_utilities
+        - codemod_runtime_package_utilities
+        - codemod_generated_module_utilities
+        - codemod_package_export_utilities
+        - codemod_facade_family_package_utilities
+        - codemod_facade_package_utilities
+        - codemod_alias_utilities
+        - codemod_imported_export_utilities
+        - codemod_compose_module_utilities
+        - codemod_requested_utilities
+      # Project file sets a catalog rule scopes itself to through
+      # metadata.scope ({in: [...], not-in: [...]}); the native stage writes
+      # them into that rule's files/ignores.
+      scopes:
+        - codemod_file_scopes
+        - codemod_layout_scopes
+        - codemod_declaration_scopes
+        - codemod_implementation_scopes
+      # Generated native rule documents: each renderer receives the typed
+      # model of its producer and returns {rule id: native rule document}
+      # (the header stage owns import-header, the catalog stage the rest).
+      renderers:
+        - name: codemod_import_header_rules
+          facts: codemod_package_export_facts
+          shapes: [import-header]
+        - name: codemod_module_member_rules
+          facts: codemod_package_export_facts
+          shapes: [module-member]
+        # One rule for the constants facade: an inline isinstance set equal to
+        # a tuple-of-classes constant is rewired to it (one rewriter each).
+        - name: codemod_type_set_rules
+          shapes: [type-set]
+        # One rule failing and rewiring every read of a compat-marked constant
+        # to the new owner its warnings.deprecated marker names.
+        - name: codemod_compat_rules
+          shapes: [compat-read]
+        # Layer-zero import boundary rendered from the import-law classifier:
+        # a settings/config module imports neither its own root facade nor
+        # its own modules.
+        - name: codemod_layer_zero_rules
+          shapes:
+            - ban-settings-config-own-facade-import
+            - ban-settings-config-own-module-import
+        # Facade boundary (ADR-028): a library import outside the c/t/p/m/u
+        # families; stdlib, own and FLEXT facade packages are derived.
+        - name: codemod_external_import_rules
+          shapes: [ban-external-import-outside-facade-family]
+        # Typings boundary (ADR-028): a library type named inline outside the
+        # typings family; the library set is derived like the import boundary.
+        - name: codemod_library_type_rules
+          shapes: [ban-library-type-reference-outside-typings]
+        # One rule failing a real os.environ/os.getenv read; the project's
+        # layer-zero files and isolated entrypoints are ignored by path.
+        - name: codemod_ambient_environ_rules
+          shapes: [ban-ambient-environ-read]
+        # One rule relocating every foreign facade reference to its owner
+        # letter (one rewriter per owner), from the facade-member census.
+        - name: codemod_facade_member_rules
+          shapes: [relocate-facade-member]
+        # One rule per facade namespace relocating a family class read as a
+        # namespace (`Component.member`) to its letter, from the facade MRO.
+        - name: codemod_facade_component_rules
+          shapes: [relocate-facade-component]
+        # Facade boundary (ADR-028): a facade member named after a library is
+        # read only inside the families; the library set is derived.
+        - name: codemod_library_member_name_rules
+          shapes: [ban-library-named-facade-member]
+        # The duplicate retirement and wrong-layer guidance, one document per
+        # declaring letter scoped to that letter's family files.
+        - name: codemod_facade_member_ownership_rules
+          shapes: [retire-foreign-facade-member, facade-member-wrong-layer]
+        # The catalog rules partitioned per file group (metadata.scope
+        # .partition), rendered per project instead of elected as authored.
+        # Its shapes are those catalog declarations themselves.
+        - name: codemod_partitioned_rules
+          facts: codemod_scope_facts
+          shapes_from: codemod_partitioned_shapes
+        # One rule dropping a bare runtime facade alias used as a class base
+        # outside the facade families and api.py.
+        - name: codemod_facade_alias_base_rules
+          shapes: [ban-facade-alias-base]
+        # The import-layer direction law: one document per importing layer,
+        # plus the settings-layer bounds, from each module's resolved layer.
+        - name: codemod_reverse_import_rules
+          shapes:
+            - ban-reverse-runtime-import
+            - ban-reverse-runtime-import-settings
+            - ban-runtime-protocols-in-settings
 
     # SINGLE SSOT for every filesystem mode the codegen pipeline emits. Call
     # sites read these rows through config.Infra.codegen.modes; octal mode
@@ -143,18 +242,27 @@ Infra:
       dependency_cooldown_days: 10
       uv_link_mode: copy
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
-      # Global compatibility exceptions become [tool.uv] constraint-dependencies
-      # in every project, including projects using the dependency transitively.
-      # Keep reasons here; an empty list removes constraints from all projections.
-      # Dependency compatibility is resolved from the declared project graph;
-      # upstream packages own any bounds their public contracts require.
-      uv_constraint_dependencies: []
+      # Security floors become [tool.uv] constraint-dependencies in every
+      # project, including projects that use the package only transitively.
+      # Operator decision 2026-10-24 (bead flext-y9dqj, "cooldown via
+      # constraint floors"): exclude-newer stays banned; each floor below is
+      # the first release fixing an open Dependabot advisory, reviewed by hand.
+      # Raise a floor only for a reviewed advisory and remove it once every
+      # direct dependent requires the fixed release; an empty list removes
+      # the key from all projections.
+      uv_constraint_dependencies:
+      - pillow>=13.0.0
+      - certifi>=2026.10.19
+      - setuptools>=84.1.0
+      - virtualenv>=21.14.13
+      - filelock>=4.2.1
+      - uv>=0.13.4
       # Explicit resolver-wide SDK source election. Repository/local declarations
       # of the same normalized name and marker take precedence at rendering.
       # The integrated fork preserves region coverage and resolves opaque source
       # bindings lazily; stale transitive metadata must not select an older source.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@ff1c992a100ae983baa79188a6a970c2858734de
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@8414232e12b6328ba812bf49fe465fde65774dfd
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -173,7 +281,7 @@ Infra:
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
-      # the pyright wrapper, qlty, jscpd, waza). A project that needs more
+      # the pyright wrapper, qlty, jscpd, waza, prek). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -273,6 +381,16 @@ Infra:
           binary: waza
           arguments: [ --version ]
           pattern: "^waza version {version}$"
+      # The Git hook runner: local make setup installs the pre-commit and
+      # pre-push hooks, which run the projected .pre-commit-config.yaml through
+      # this release (never a host-global pre-commit).
+      - name: prek
+        selector: aqua:j178/prek
+        version: latest
+        version_probe:
+          binary: prek
+          arguments: [ --version ]
+          pattern: "^prek {version}$"
       # Pins layered over the tools table by the override files.
       tool_version_pins: {}
       # False keeps Python resolution and installation on precompiled builds:
@@ -417,6 +535,12 @@ Infra:
       # The one versioned line this fleet integrates on (SSOT — no fallback
       # probe list; the model probes exactly this line against live Git).
       integration_branch: "0.12.0-dev"
+      # WIP preservation namespaces: a push whose every remote ref falls inside
+      # one runs no gate matrix at pre-push (rendered into validate-git-hook.sh).
+      preservation_ref_namespaces:
+      - refs/heads/preserve/
+      - refs/heads/wip/sweep-preserve/
+      - refs/ai-hub/wip/
     # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
     # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
     # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
@@ -481,6 +605,10 @@ Infra:
       check_report_output_environment_variable: FLEXT_CHECK_REPORT_OUTPUT
       generation_profile_path: .reports/codegen/gen.pstats
       modification_profile_path: .reports/refactor/mod.pstats
+      check_profile_path: .reports/check/route.pstats
+      # Whole-composition prerequisites precede every other check gate.
+      # A partial inventory or any diagnostic prevents subsequent phases.
+      check_prerequisite_gates: [lint, pyrefly]
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -562,15 +690,6 @@ Infra:
       # environments resolve different installed views never share a cache.
       # Distinct project names keep their module namespaces in separate
       # directories.
-      # Parsed codemod rule catalogs (u.Infra.codemod_rule_plan). Each entry is
-      # keyed by the sha256 of the provider, its rule files' paths and text, and
-      # the parser's own source, so a catalog is parsed once and re-parsed only
-      # when a rule or the parser changes.
-      codemod_rules_cache:
-        data_home_environment_variable: XDG_CACHE_HOME
-        user_home_environment_variable: HOME
-        home_cache_directory: .cache
-        external_storage_directory: flext/infra/codemod-rules
       mypy_cache:
         cache_environment_variable: MYPY_CACHE_DIR
         data_home_environment_variable: XDG_CACHE_HOME
@@ -580,6 +699,12 @@ Infra:
       ruff_cache:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
+      # The local GitHub credential (memory github-credential-declared-sources,
+      # operator 2026-10-01): the caller's exported token, else this command
+      # when it is installed, else anonymous. Each source is selected once
+      # before any effect; a selected command that fails or prints nothing
+      # stops the network verbs, never degrading to anonymous. CI never runs it.
+      github_credential_command: [ gh, auth, token ]
       native_environment_unset:
         - MISE_PYTHON_UV_VENV_AUTO
         - UV_PROJECT
@@ -603,30 +728,31 @@ Infra:
         # Other pre-push verbs use this token to preserve local test behavior;
         # pre-push check unsets CI so it runs every active check gate.
         local_value: N
-        # direnv proves the developer's own activation (`direnv exec` needs the
-        # `direnv allow` that setup grants only outside CI), so it is local-only:
-        # under CI=Y the checkout's .envrc is never allowed and the smoke can
-        # only report "blocked".
+        # pre_commit_value: the generated commit hook passes this token to its
+        # check row, which then runs only the commit-stage (fast) gates.
+        pre_commit_value: C
         # Gate baseline of the 0.12 line (tracker memory
-        # operator-ruling-2026-10-09-gate-baseline-0122). Every gate
-        # blocks in every context that runs it; there is no informative gate.
-        # local_check_gates is the only declared partition: CI=Y runs
-        # MakeSpec.check_gates_ci, its strict complement (pyrefly included, so
-        # CI is never blind to types); CI=N runs MakeSpec.check_gates_local;
-        # an unset CI (a developer's make check and the pre-push hook) runs
-        # every active gate. The whole-program checkers mypy and pyright, the
-        # project's own codemod rule set and smells never run in CI or at
-        # pre-commit (tracker memory operator-ruling-2026-10-01-precommit-fast-only);
-        # they block at pre-push. Mypy stays bounded by MYPY_MEMORY_LIMIT_MB
-        # and the project-owned tools.mypy.timeout_seconds budget.
-        # direnv proves the developer's own activation, so it is local-only.
-        local_check_gates: [ mypy, pyright, codemod, smells, direnv ]
+        # operator-ruling-2026-10-09-gate-baseline-0122). Every gate blocks in
+        # every context that runs it; there is no informative gate. No gate
+        # list lives here: each registry row (c.Infra.GATE_TOOLS_BY_KIND) and
+        # each project_check_gates entry declares its GateStage, and every
+        # partition derives from it (gate-budget law; tracker memory
+        # operator-ruling-2026-10-01-precommit-fast-only):
+        # - pre_commit_value runs MakeSpec.pre_commit_check_gates, the fast
+        #   commit-stage lint/format/markdown gates only;
+        # - CI=Y runs MakeSpec.check_gates_ci, the commit and CI stages
+        #   (pyrefly included, so CI is never blind to types);
+        # - CI=N and an unset CI (a developer's make check and the pre-push
+        #   hook) run every active gate: the whole-program checkers mypy and
+        #   pyright, the codemod rule set, smells and the project's own
+        #   validators block there. Mypy stays bounded by MYPY_MEMORY_LIMIT_MB
+        #   and the project-owned tools.mypy.timeout_seconds budget.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
-        # Tests execute the complete applicable population once in every context.
-        # Pre-commit uses only the CI check partition and never runs tests.
-        # The pre-push hook runs every pre_push row below. make setup installs
-        # both hooks locally with prek and installs none under CI=Y.
+        # Tests discover the complete global population and execute Testmon's
+        # incremental selection. Pre-commit never runs tests. The pre-push hook
+        # runs every pre_push row below. Local make setup installs both hooks through the
+        # declared prek runner; CI=Y installs none.
       pre_commit: true
       pre_push: true
       # Public refactor violations-sweep default; custom sequences use verbs below.
@@ -638,28 +764,59 @@ Infra:
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
       workflow:
-      - { verb: setup, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local, ci ] }
-      - { verb: fix, contexts: [ local ] }
-      - { verb: fmt, contexts: [ local ] }
-      - { verb: check, contexts: [ local, ci, pre_push, pre_commit ] }
-      - { verb: tests, contexts: [ local, ci, pre_push ] }
+      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      # Initial behavioral admission requires global source evidence, not full check.
+      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      - identity: tests-primary
+        verb: tests
+        contexts: [ local, ci, pre_push ]
+        requires:
+        - { step: check-primary, contexts: [ local, ci, pre_push ] }
+      # CI never generates: check's `codegen conform --mode check` is the
+      # read-only projection verdict of the LOCKED generator, so a stale or
+      # skewed projection fails there, while CI generation would run the
+      # local codemod cascade and verify only its own output.
+      - { identity: gen, verb: gen, contexts: [ local ], requires: [ { step: tests-primary, contexts: [ local ] } ] }
+      - { identity: fmt, verb: fmt, contexts: [ local ], requires: [ { step: gen, contexts: [ local ] } ] }
+      - { identity: fix, verb: fix, contexts: [ local ], requires: [ { step: fmt, contexts: [ local ] } ] }
+      - { identity: mod, verb: mod, contexts: [ local ], requires: [ { step: fix, contexts: [ local ] } ] }
+      - identity: check-primary-refresh
+        verb: check
+        phase: primary
+        contexts: [ local ]
+        requires:
+        - { step: mod, contexts: [ local ] }
+      - identity: check
+        verb: check
+        contexts: [ local, ci, pre_push, pre_commit ]
+        requires:
+        - { step: tests-primary, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary-refresh, contexts: [ local ] }
+      - identity: tests
+        verb: tests
+        contexts: [ local, ci, pre_push ]
+        requires:
+        - { step: check, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary, contexts: [ ci, pre_push ] }
+        - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
-      - { verb: help, scope: root, contexts: [ local, ci ] }
-      - { verb: setup, scope: root, contexts: [ local, ci ] }
-      - { verb: gen, scope: root, contexts: [ local, ci ] }
-      - { verb: mod, scope: root, contexts: [ local, ci ] }
-      - { verb: gen, scope: root, contexts: [ local, ci ] }
-      - { verb: fix, scope: root, contexts: [ local, ci ] }
-      - { verb: fmt, scope: root, contexts: [ local, ci ] }
+      - { verb: help, contexts: [ local, ci ] }
+      - { verb: setup, contexts: [ local, ci ] }
+      - { verb: check, phase: primary, contexts: [ local, ci ] }
+      - { verb: tests, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local, ci ] }
+      - { verb: fmt, contexts: [ local, ci ] }
+      - { verb: fix, contexts: [ local, ci ] }
+      - { verb: mod, contexts: [ local, ci ] }
       # Consecutive generation proves convergence on unchanged declarations.
-      - { verb: gen, scope: root, contexts: [ local, ci ] }
-      - { verb: gen, scope: root, contexts: [ local, ci ] }
-      - { verb: check, scope: each, contexts: [ local, ci ] }
-      - { verb: tests, scope: each, contexts: [ local, ci ] }
-      - { verb: build, scope: each, contexts: [ local, ci ] }
-      lifecycle_observed_files: [ Makefile, pyproject.toml, uv.lock, mise.lock ]
+      - { verb: gen, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local, ci ] }
+      - { verb: check, phase: primary, contexts: [ local, ci ] }
+      - { verb: check, contexts: [ local, ci ] }
+      - { verb: tests, contexts: [ local, ci ] }
+      - { verb: build, contexts: [ local, ci ] }
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -705,7 +862,8 @@ Infra:
       # lookup appends local entries and resolves first match.
       verbs:
       - name: setup
-        description: Install the declared frozen locks, synchronize the physical environment and configure local integrations.
+        description: Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).
+        arguments: [ FLEXT ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen
@@ -719,8 +877,11 @@ Infra:
         description: Format authored content through the configured formatters.
       - name: check
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
+        arguments: [ CHECK_PHASE ]
       - name: tests
-        description: Execute the complete applicable suite once with the persistent testmon database.
+        description: Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
+      - name: tests-full
+        description: Execute incremental tests followed by the complete population of each governed repository using the same persistent external database.
       - name: help
         description: Discover the declared public interface without effects.
       - name: build
@@ -826,6 +987,11 @@ Infra:
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    # pytest-testmon's default cwd datafile and its SQLite WAL/SHM siblings.
+    # The canonical test verbs pin the database outside the checkout
+    # (make.testmon_cache) and the pytest plugin refuses an in-tree one, so an
+    # in-tree copy is a stray raw run that must never become tracked.
+    - { name: ".testmondata*", is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .planning, vscode_exclude: false, watch_exclude: false }
     - { name: skill-create-output, vscode_exclude: false, watch_exclude: false }
     - { name: .debug-journal.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
@@ -847,6 +1013,36 @@ Infra:
       docs:
       - crg-reports
       - site
+      markdown:
+      # CLAUDE.md aliases the instruction document; do not format through a symlink.
+      # AGENTS.md contains authored content and remains checked.
+      - CLAUDE.md
+      # Fully generated provider pointer owned by generate-workspace-config.
+      - GEMINI.md
+      # ZCode session plans are machine-local scratch, not authored documentation.
+      - .zcode/**
+      # Release-please owns these release notes (operator authorization 2026-10-03).
+      - CHANGELOG.md
+      # External emitters own these table, API and project catalog projections.
+      - docs/knowledge-index.md
+      - docs/architecture/communities/index.md
+      - docs/architecture/crg-reports/**
+      - docs/api-reference/generated/**
+      - docs/projects/generated/**
+      # Frozen historical evidence; formatting must not rewrite the source record.
+      - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
+      - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
+      - docs/plans/2026-09-22-rope-generator-stabilization/02-achados-codegen.md
+      - docs/plans/2026-09-23-handoff-mypy-stabilization-e-integracao.md
+      - docs/plans/2026-09-25-v8-flext-service-base/05-phases.md
+      - docs/plans/2026-09-25-v8-flext-service-base/07-sessions-guide.md
+      - docs/standards/consumption-law.md
+      # Repository coordinates; publication rebases these to the actual docs root.
+      # The README and curated API mirrors are copied, but not separate site pages.
+      docs_publish:
+      - docs/README.md
+      - docs/API/**
+      docs_copy: []
       pyproject_scan:
       - .claude.disabled
       - context_test
@@ -896,6 +1092,12 @@ Infra:
       - _parts
       helper_modules:
       - _cov.py
+      # Complete artifact trees (ADR-028): roots and all descendants are data,
+      # including Python scenarios consumed as data by test engines. Executable
+      # test support belongs in the Tests facades and conftest.py outside these
+      # roots. flext-tests derives its fixture-tree location from this owner.
+      scenario_data_roots:
+      - tests/fixtures
     vscode:
       # Ordered key/value pairs accept every extension setting and JSON value.
       # Layer composition appends pairs; the final occurrence replaces the whole value.
@@ -966,7 +1168,6 @@ Infra:
       - [ruff.importStrategy, fromEnvironment]
       - [ruff.lint.preview, true]
       - [pyrefly.lspPath, '${workspaceFolder}/.venv/bin/pyrefly']
-      - [markdownlint.configFile, .markdownlint.json]
       - [shellcheck.useWorkspaceRootAsCwd, true]
       - [shellcheck.useRepositoryRootAsCwd, true]
       - [git.autoRepositoryDetection, subFolders]
@@ -1253,6 +1454,7 @@ Infra:
         - types-grpcio
         - types-jsonschema>=4.26.0.20260518
         - types-ldap3>=2.9.13.20260827
+        - types-networkx
         - msgpack-types
         - types-protobuf>=7.35.1.20260827
         - types-psutil>=7.2.2.20260827
@@ -1413,7 +1615,7 @@ Infra:
         - "!README.md"
         - "!AGENTS.md"
         - "!codex.md"
-        - "!.markdownlint.json"
+        - "!.rumdl.toml"
         - "!.markdownlintignore"
         - "!.shellcheckrc"
       - name: "Git configuration"
@@ -1946,14 +2148,14 @@ Infra:
           ownership:
             owner: codegen
             policy: full
-        .markdownlint.json:
-          source: base/markdownlint.json.j2
+        .markdownlintignore:
+          source: base/markdownlintignore.j2
           profiles: [ workspace, standalone ]
           ownership:
             owner: codegen
             policy: full
-        .markdownlintignore:
-          source: base/markdownlintignore.j2
+        .rumdl.toml:
+          source: base/markdown.toml.j2
           profiles: [ workspace, standalone ]
           ownership:
             owner: codegen
@@ -1996,6 +2198,15 @@ Infra:
         # requires explicit dispatch and successful exact-candidate canonical CI.
         .github/workflows/release.yml:
           source: base/.github/workflows/release.yml.j2
+          requires_release_protocol: true
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        # The pull-request title guard owns `edited` in its own workflow, so a
+        # title edit never cancels CI (ci.yml listens to no edits).
+        .github/workflows/release-plan.yml:
+          source: base/.github/workflows/release-plan.yml.j2
           requires_release_protocol: true
           profiles: [ workspace, standalone ]
           ownership:
@@ -2048,6 +2259,9 @@ Infra:
         pyproject.toml:
           source: base/pyproject.toml.j2
           profiles: [ workspace, standalone ]
+          # Its managed tool tables are the projection of the typed tooling
+          # policy: no ignore_errors, unapproved Ruff ignore or relaxed strictness.
+          enforce: [ ENFORCE-020 ]
           # CUSTOM vs MANAGED (humans read comments; this block is the owner):
           #   conflict_sections = MANAGED tables (template wins on make gen)
           #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
@@ -2067,6 +2281,12 @@ Infra:
             - tool.uv.constraint-dependencies
             - tool.uv.override-dependencies
             - tool.uv.workspace.members
+            # Build targets and uv cache keys derive entirely from the packaging
+            # declarations (ensure_packaging + template): a retired entry such as
+            # a force-included package copy must leave on the next gen instead of
+            # surviving as live CUSTOM state.
+            - tool.uv.cache-keys
+            - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
             - tool.mypy
@@ -2222,11 +2442,21 @@ Infra:
           source: base/tests/test_api.py.j2
           profiles: [ workspace, standalone ]
           ownership: null
+        # Every repository's pytest bootstrap is one projection of this template:
+        # the shared flext-tests install_local_packages owner is bound the same way
+        # fleet-wide, so hand copies and inline reimplementations cannot drift.
+        conftest.py:
+          source: base/conftest.py.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
         .envrc.local:
           profiles: [ workspace, standalone ]
           ownership:
             owner: codegen
             policy: merge
+            mode: 384 # 0600: operator overrides may contain credentials.
         .vscode/settings.json:
           profiles: [ workspace, standalone ]
           ownership:

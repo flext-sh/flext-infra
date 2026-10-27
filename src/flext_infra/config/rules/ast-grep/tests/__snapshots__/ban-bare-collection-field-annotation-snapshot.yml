@@ -1,0 +1,30 @@
+id: ban-bare-collection-field-annotation
+snapshots:
+  "class Order(m.FrozenModel):\n    items: list[str]\n":
+    labels:
+    - source: list
+      style: primary
+      start: 39
+      end: 43
+    - source: "items: list[str]"
+      style: secondary
+      start: 32
+      end: 48
+    - source: list[str]
+      style: secondary
+      start: 39
+      end: 48
+  "class Order(m.FrozenModel):\n    tags: Annotated[set[str] | None, m.Field(description=\"x\")] = None\n":
+    labels:
+    - source: set
+      style: primary
+      start: 48
+      end: 51
+    - source: "tags: Annotated[set[str] | None, m.Field(description=\"x\")] = None"
+      style: secondary
+      start: 32
+      end: 97
+    - source: Annotated[set[str] | None, m.Field(description="x")]
+      style: secondary
+      start: 38
+      end: 90

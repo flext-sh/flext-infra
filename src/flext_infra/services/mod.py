@@ -9,16 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
-from flext_infra.codemod import (
-    FlextInfraAccessorRenamePhase,
-    FlextInfraApplyRenames,
-    FlextInfraCodemodBatchApply,
-    FlextInfraCodemodSemanticApply,
-    FlextInfraDuplicateApplyPhase,
-    FlextInfraImportNormalizationPhase,
-    FlextInfraNamespaceRelocationPhase,
-)
+from flext_cli import u
+
+import flext_infra
+from flext_infra import c, codemod, m, r, t
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -117,8 +111,10 @@ class FlextInfraModHandlers:
             The executor's result, preserving its first failure.
 
         """
-        root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        selected = u.Infra.load_refactor_csv_campaigns(root)
+        root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
+            request.repository_root
+        )
+        selected = flext_infra.u.Infra.load_refactor_csv_campaigns(root)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
         campaigns_config = selected.value
@@ -127,7 +123,7 @@ class FlextInfraModHandlers:
             configured = FlextInfraModHandlers._semantic_decisions_request(
                 root, campaigns_config.semantic_decisions, rename_plan, request
             )
-            published = FlextInfraCodemodSemanticApply.publish_rename_plan(
+            published = codemod.FlextInfraCodemodSemanticApply.publish_rename_plan(
                 configured[0], self.rope_workspace
             )
             if published.failure:
@@ -154,10 +150,10 @@ class FlextInfraModHandlers:
             )
             for declared in campaigns_config.campaigns
         )
-        structural_root = u.Infra.import_project_roots(root)[0].resolve()
+        structural_root = flext_infra.u.Infra.import_project_roots(root)[0].resolve()
         source_preview = self.source_preview(structural_root)
         with self.rope_workspace(root, structural_root) as rope:
-            return FlextInfraCodemodBatchApply(
+            return codemod.FlextInfraCodemodBatchApply(
                 workspace_factory=self.rope_workspace,
                 source_preview=source_preview,
                 repository_root=root,
@@ -166,15 +162,15 @@ class FlextInfraModHandlers:
                 apply_changes=request.apply,
                 check_only=request.check,
                 dry_run=request.dry_run_mode,
-                rename_runner=FlextInfraApplyRenames(),
+                rename_runner=codemod.FlextInfraApplyRenames(),
                 progress=progress,
                 rope=rope,
                 rename_inputs=campaigns,
                 phase_callbacks=(
-                    FlextInfraImportNormalizationPhase(),
-                    FlextInfraNamespaceRelocationPhase(),
-                    FlextInfraDuplicateApplyPhase(),
-                    FlextInfraAccessorRenamePhase(),
+                    codemod.FlextInfraImportNormalizationPhase(),
+                    codemod.FlextInfraNamespaceRelocationPhase(),
+                    codemod.FlextInfraDuplicateApplyPhase(),
+                    codemod.FlextInfraAccessorRenamePhase(),
                 ),
             ).execute()
 

@@ -33,25 +33,52 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         return tm.ok(u.Cli.files_read_text(path))
 
     @staticmethod
-    def _spent_runner(project: Path) -> FlextInfraPytestRunner:
-        """Build the real runner whose derived stop instant has already passed.
+    def _spent_runner(project: Path, *, serial: bool) -> FlextInfraPytestRunner:
+        """Build the real slow-phase runner whose stop instant has already passed.
 
-        The entrypoint clock is placed so pytest stops dispatch at a durable
-        testmon batch checkpoint, never through the deadline SIGTERM. The
-        reserve is the aggregate termination grace, independent of dispatch.
+        An ordinary phase stops at the instant no child may start (its stop
+        reserve is the termination grace itself), so only a phase carrying
+        slow items keeps a drain reserve beyond the grace. The entrypoint
+        clock spends exactly that reserve: selection still starts, and pytest
+        stops dispatch at a durable testmon batch checkpoint, never through the
+        deadline SIGTERM.
 
         Returns:
             The resulting ``FlextInfraPytestRunner``.
 
         """
         policy = config.Infra.tooling.tools.pytest
-        runner = u.Tests.PytestRunner.runner_for(project)
+        reserve = (
+            policy.slow_serial_suite_stop_reserve_seconds
+            if serial
+            else policy.slow_suite_stop_reserve_seconds
+        )
+        runner = u.Tests.PytestRunner.runner_for(project, slow_phase=True)
         return runner.model_copy(
             update={
                 "started_at_monotonic": time.monotonic()
                 - policy.run_timeout_seconds
-                + policy.termination_grace_seconds,
+                + reserve,
             },
+        )
+
+    @staticmethod
+    def _slow_module(test_names: t.StrSequence) -> str:
+        """Render one slow-marked module exercising the fixture package.
+
+        Returns:
+            The module source the slow phase selects.
+
+        """
+        marker = config.Infra.tooling.tools.pytest.slow_marker
+        return (
+            "import pytest\n"
+            "from runner_sample import answer\n\n"
+            f"pytestmark = pytest.mark.{marker}\n\n"
+            + "".join(
+                f"def {name}() -> None:\n    assert answer() == 42\n\n"
+                for name in test_names
+            )
         )
 
     def _published_run(
@@ -183,14 +210,17 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         batch_size = self._testmon_batch_size()
         target = config.Infra.codegen.make.testmon_cache.target_directory
         (cached_runner_project / target / "test_budget.py").write_text(
-            "from runner_sample import answer\n\n"
-            + "".join(
-                f"def test_budget_{index}() -> None:\n    assert answer() == 42\n\n"
-                for index in range(batch_size * workers * (2 if distributed else 1) + 1)
+            self._slow_module(
+                tuple(
+                    f"test_budget_{index}"
+                    for index in range(
+                        batch_size * workers * (2 if distributed else 1) + 1,
+                    )
+                ),
             ),
             encoding="utf-8",
         )
-        runner = self._spent_runner(cached_runner_project)
+        runner = self._spent_runner(cached_runner_project, serial=not distributed)
         tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.INTERRUPTED.value)
 
         bounded, selected, executed = self._published_run(
@@ -239,12 +269,17 @@ class TestsFlextInfraPytestRunnerSuiteStop:
     ) -> None:
         """A stop requested on the last selected test's teardown ends nothing.
 
-        The fixture project owns one test, so the serial dispatch applies and
-        the stop request lands after the whole selection executed and passed:
-        the accounting is complete and the run is green although pytest still
-        reports its interrupt.
+        The slow phase selects one slow test, so the serial dispatch applies
+        and the stop request lands after the whole selection executed and
+        passed: the accounting is complete and the run is green although
+        pytest still reports its interrupt.
         """
-        runner = self._spent_runner(cached_runner_project)
+        target = config.Infra.codegen.make.testmon_cache.target_directory
+        (cached_runner_project / target / "test_last_selected.py").write_text(
+            self._slow_module(("test_last_selected",)),
+            encoding="utf-8",
+        )
+        runner = self._spent_runner(cached_runner_project, serial=True)
 
         tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
 

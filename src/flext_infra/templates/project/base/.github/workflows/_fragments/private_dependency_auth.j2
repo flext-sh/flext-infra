@@ -3,14 +3,25 @@
       # The declared App authenticates only its selected private repositories.
       # Native Git process configuration reaches dependency clones without
       # credential files, global URL rewrites, or changes to SDK token aliases.
+      # The credential exists wherever the repository's secrets reach the run
+      # (push, dispatch and same-repository pull requests). Where they do not
+      # (a fork pull request), the private dependency cannot resolve: record
+      # NOT EXECUTED with its reason and fail, never continue unauthenticated.
+      - name: Resolve the private-dependency credential
+        id: private_dependency_credential
+        shell: bash
+        env:
+          PRIVATE_DEPENDENCY_APP_ID: {% raw %}${{ secrets.{% endraw %}{{ private_dependency_auth.app_id_secret }}{% raw %} }}{% endraw %}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRIVATE_DEPENDENCY_APP_ID}" ]; then
+            printf '%s\n' 'NOT EXECUTED: private-dependency authentication; secret {{ private_dependency_auth.app_id_secret }} is not available to this run' >> "${GITHUB_STEP_SUMMARY}"
+            echo "::error::NOT EXECUTED: secret {{ private_dependency_auth.app_id_secret }} is unavailable, so private dependencies {{ private_dependency_auth.repositories | join(",") }} cannot resolve"
+            exit 1
+          fi
+
       - name: Mint the private-dependency installation token
         id: private_dependency_token
-        # Push and workflow_dispatch both build the dependency tree; the
-        # dispatch form is how the fleet re-runs a consumer's CI after
-        # advancing a private member pin (merge-admin 2026-10-07, cosmos-main
-        # evidence: the mint skipped on dispatch and the private dep clone
-        # failed without credential).
-        if: {% raw %}${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}{% endraw %}
         uses: {{ github_actions["create-github-app-token"].repository }}@{{ github_actions["create-github-app-token"].version }}
         with:
           client-id: {% raw %}${{ secrets.{% endraw %}{{ private_dependency_auth.app_id_secret }}{% raw %} }}{% endraw %}
@@ -20,7 +31,6 @@
           permission-contents: read
 
       - name: Authenticate git for private dependencies
-        if: {% raw %}${{ steps.private_dependency_token.outputs.token != '' }}{% endraw %}
         shell: bash
         env:
           PRIVATE_DEPENDENCY_TOKEN: {% raw %}${{ steps.private_dependency_token.outputs.token }}{% endraw %}

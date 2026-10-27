@@ -3,11 +3,6 @@
 id: rewire-test-assert-truth
 language: Python
 severity: error
-metadata:
-  context:
-    COND:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -48,11 +43,6 @@ message: Preserve native conditional evaluation and fail through tm.reject.
 id: rewire-test-assert-falsity
 language: Python
 severity: error
-metadata:
-  context:
-    COND:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"

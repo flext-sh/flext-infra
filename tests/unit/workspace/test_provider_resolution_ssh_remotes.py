@@ -60,8 +60,12 @@ class TestsFlextInfraProviderResolutionAcceptsSshRemotes:
 
         tm.that(spec.repository.name, eq="alias-origin")
 
-    def test_foreign_organization_is_still_rejected(self, tmp_path: Path) -> None:
-        """Accepting SSH must not make the organization stop discriminating."""
+    def test_organization_not_alias_names_the_provider(self, tmp_path: Path) -> None:
+        """Accepting SSH must not make the organization stop discriminating.
+
+        No provider catalog exists: the live origin's owner is the provider
+        identity, so an SSH Host alias never stands in for the owner.
+        """
         root = u.Tests.WorktreeFixture.self_named_project(
             tmp_path / "foreign-origin",
             "foreign-origin",
@@ -71,4 +75,6 @@ class TestsFlextInfraProviderResolutionAcceptsSshRemotes:
             "git@github-alias:organization-nobody-declares/foreign-origin.git",
         )
 
-        tm.fail(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(spec.repository.provider, eq="organization-nobody-declares")

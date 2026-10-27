@@ -264,9 +264,12 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             u.Cli.JSON_MAPPING_ADAPTER.validate_python(step).get("run")
             for step in steps
         ]
-        for verb in spec.make.approval_verbs:
+        for step in spec.make.workflow:
+            if "ci" not in step.contexts:
+                continue
             tm.that(
-                f"{spec.make.ci.variable}={spec.make.ci.value} make {verb}" in commands
+                f"{spec.make.ci.variable}={spec.make.ci.value} {step.make_command}"
+                in commands
             )
 
     def test_version_admits_detached_candidate_without_moving_its_sha(

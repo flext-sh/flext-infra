@@ -8,9 +8,19 @@ valid:
   - "r = FlextResult"
   - "s = FlextService"
   - "config = FlextInfraConfig.fetch_global()"
+  # A name the module publishes in its own __all__ is its facade alias.
+  - |
+    tm = FlextTestsMatchers
+    __all__ = ["FlextTestsMatchers", "tm"]
+  - |
+    tm = FlextTestsMatchers
+    _PUBLIC_EXPORTS = ("FlextTestsMatchers", "tm")
+    __all__ = tuple(_PUBLIC_EXPORTS)
 invalid:
   - "OldService = NewService"
   - "LegacyClient = CanonicalClient"
-  # Syntactic match; the engine admits it only when `tm` is absent from the
-  # module's __all__.
+  # Absent from the module's __all__, the alias keeps an old name alive.
   - "tm = FlextTestsMatchers"
+  - |
+    tm = FlextTestsMatchers
+    __all__ = ["FlextTestsMatchers"]

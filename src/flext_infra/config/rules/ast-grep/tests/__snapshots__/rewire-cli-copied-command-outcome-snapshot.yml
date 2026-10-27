@@ -1,7 +1,9 @@
 id: rewire-cli-copied-command-outcome
 snapshots:
-  m.Cli.CommandBytesOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.exit_code):
-    fixed: m.Cli.CommandBytesOutput(stdout=source.stdout, stderr=source.stderr, outcome=source.outcome)
+  "m.Cli.CommandBytesOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.exit_code)":
+    fixed: >-
+      m.Cli.CommandBytesOutput(stdout=source.stdout, stderr=source.stderr,
+      outcome=source.outcome)
     labels:
     - source: exit_code=source.exit_code
       style: primary
@@ -15,12 +17,16 @@ snapshots:
       style: secondary
       start: 79
       end: 95
-    - source: m.Cli.CommandBytesOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.exit_code)
+    - source: >-
+        m.Cli.CommandBytesOutput(stdout=source.stdout, stderr=source.stderr,
+        exit_code=source.exit_code)
       style: secondary
       start: 0
       end: 96
-  m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.exit_code):
-    fixed: m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, outcome=source.outcome)
+  "m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.exit_code)":
+    fixed: >-
+      m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr,
+      outcome=source.outcome)
     labels:
     - source: exit_code=source.exit_code
       style: primary
@@ -34,12 +40,16 @@ snapshots:
       style: secondary
       start: 74
       end: 90
-    - source: m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.exit_code)
+    - source: >-
+        m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr,
+        exit_code=source.exit_code)
       style: secondary
       start: 0
       end: 91
-  m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.outcome.raw_return_code):
-    fixed: m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, outcome=source.outcome)
+  "m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.outcome.raw_return_code)":
+    fixed: >-
+      m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr,
+      outcome=source.outcome)
     labels:
     - source: exit_code=source.outcome.raw_return_code
       style: primary
@@ -53,7 +63,9 @@ snapshots:
       style: secondary
       start: 74
       end: 104
-    - source: m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.outcome.raw_return_code)
+    - source: >-
+        m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr,
+        exit_code=source.outcome.raw_return_code)
       style: secondary
       start: 0
       end: 105

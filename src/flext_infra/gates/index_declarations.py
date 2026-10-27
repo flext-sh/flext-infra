@@ -61,18 +61,16 @@ class FlextInfraIndexDeclarationsGate(FlextInfraGate):
         if errors.failure:
             return self._build_project_error_gate_result(
                 project_dir,
-                ctx=ctx,
-                passed=False,
-                errors=[errors.error or "index-declarations scan failed"],
-                started=started,
+                [errors.error or "index-declarations scan failed"],
+                ctx,
+                started,
             )
         defects = errors.unwrap()
         return self._build_project_error_gate_result(
             project_dir,
-            ctx=ctx,
-            passed=not defects,
-            errors=list(defects),
-            started=started,
+            list(defects),
+            ctx,
+            started,
         )
 
     @staticmethod

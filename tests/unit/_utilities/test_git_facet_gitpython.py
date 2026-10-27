@@ -11,7 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, FlextInfraWorktreeService, m, main, t
+from flext_infra import (
+    FlextInfraCli,
+    FlextInfraGitService,
+    FlextInfraWorktreeService,
+    m,
+    t,
+)
 from tests import c, tm, u
 
 
@@ -177,7 +183,12 @@ class TestsFlextInfraGitFacet:
         repository, _, _ = self._lane_repository(tmp_path)
         before = self._lane_bytes(repository)
         tm.that(
-            main(["workspace", "verify-lane", "--repo-root", str(repository)]),
+            FlextInfraCli.infra_main([
+                "workspace",
+                "verify-lane",
+                "--repo-root",
+                str(repository),
+            ]),
             eq=0,
         )
         tm.that(self._lane_bytes(repository), eq=before)
@@ -194,7 +205,7 @@ class TestsFlextInfraGitFacet:
         u.Tests.git_run(repository, "update-ref", "refs/stash", "HEAD")
         before = self._lane_bytes(repository)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lane",
                 "--repo-root",
@@ -240,7 +251,7 @@ class TestsFlextInfraGitFacet:
         argv = ["workspace", "verify-lane", "--repo-root", str(repository)]
         if boundary == "moved":
             argv.extend(("--expected-tip", tip))
-        tm.that(main(argv), eq=1)
+        tm.that(FlextInfraCli.infra_main(argv), eq=1)
         output = capsys.readouterr()
         diagnostic = {
             "stale": "stale integration cache",
@@ -271,13 +282,18 @@ class TestsFlextInfraGitFacet:
         repository, _, _ = self._lane_repository(tmp_path)
         u.Tests.git_run(repository, "branch", "foreign-candidate")
         tm.that(
-            main(["workspace", "verify-lane", "--repo-root", str(repository)]),
+            FlextInfraCli.infra_main([
+                "workspace",
+                "verify-lane",
+                "--repo-root",
+                str(repository),
+            ]),
             eq=0,
         )
         _ = capsys.readouterr()
         before = self._lane_bytes(repository)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lane",
                 "--repo-root",
@@ -345,7 +361,7 @@ class TestsFlextInfraGitFacet:
         before = self._lane_bytes(repository)
         lane_before = self._lane_bytes(lane)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lane",
                 "--repo-root",
@@ -406,7 +422,7 @@ class TestsFlextInfraGitFacet:
             u.Tests.git_run(repository, "add", "--", changed.name)
         before = self._lane_bytes(repository)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lane",
                 "--repo-root",
@@ -437,7 +453,12 @@ class TestsFlextInfraGitFacet:
         u.Tests.git_run(repository, "remote", "set-url", "origin", str(empty_remote))
         before = self._lane_bytes(repository)
         tm.that(
-            main(["workspace", "verify-lane", "--repo-root", str(repository)]),
+            FlextInfraCli.infra_main([
+                "workspace",
+                "verify-lane",
+                "--repo-root",
+                str(repository),
+            ]),
             eq=1,
         )
         output = capsys.readouterr()

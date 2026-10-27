@@ -2,6 +2,12 @@ id: ban-flext-infra-library-import
 valid:
   - from flext_infra import u
   - import ropey
+  - import libcstx
+  - from griffelike import Module
 invalid:
   - import rope
   - from rope.base.project import Project
+  - import libcst
+  - import libcst.matchers as matchers
+  - import griffe
+  - from griffe import Module

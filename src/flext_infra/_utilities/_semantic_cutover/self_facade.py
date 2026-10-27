@@ -11,15 +11,18 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
 from flext_infra._utilities._semantic_cutover.facade_bases import (
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
 )
+from flext_infra._utilities._semantic_cutover.own_mro import (
+    FlextInfraUtilitiesSemanticCutoverOwnMro,
+)
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,6 +32,7 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesSemanticCutoverSelfFacade(
     FlextInfraUtilitiesSemanticCutoverEdits,
+    FlextInfraUtilitiesSemanticCutoverOwnMro,
 ):
     """Reuse declared behavior discovery without delaying imports."""
 
@@ -121,6 +125,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         )
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+            mro_source, mro_changes = cls.rewrite_own_method_mro_calls(source)
             elected = frozenset(
                 (node.module, alias.name)
                 for node in ast.parse(source, filename=str(path)).body
@@ -141,7 +146,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                 if alias.name == c.Infra.FacadeFamily.U
             )
             if not (elected or eligible):
-                return source, ()
+                return mro_source, mro_changes
             modules = behavior.behavior_source_modules(sources, typing_directory)
             ownership = behavior.behavior_utility_owners(
                 modules,
@@ -152,7 +157,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
             updated, changes = behavior.rewrite_behavior_consumer(
                 m.Infra.SemanticBehaviorRewriteRequest(
                     path=path,
-                    source=source,
+                    source=mro_source,
                     modules=modules,
                     ownership=ownership,
                     utility_imports=elected,
@@ -174,14 +179,10 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                         f"{path}"
                     )
                     raise ValueError(msg)
-            return updated, changes
+            return updated, (*mro_changes, *changes)
 
         return cls._semantic_edits(
-            tuple(
-                item
-                for item in cls._editable_sources(sources)
-                if item[0] in selected or item[0] in declarations
-            ),
+            cls._editable_sources(sources),
             rewrite,
         )
 

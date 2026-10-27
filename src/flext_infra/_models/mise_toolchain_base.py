@@ -9,16 +9,19 @@ from __future__ import annotations
 from flext_cli import m
 
 
-class FlextInfraModelsMiseToolchainBase(m.ContractModel):
-    """Immutable coercing preset shared by schema-loaded configuration records."""
+class FlextInfraModelsMiseToolchainBase:
+    """Models namespace owning the preset of schema-loaded configuration records."""
 
-    # Rendered payloads are byte contracts; preserve their final newline.
-    model_config = m.ConfigDict(
-        strict=False,
-        frozen=True,
-        extra="ignore",
-        str_strip_whitespace=False,
-    )
+    class SchemaRecord(m.ContractModel):
+        """Immutable coercing preset shared by schema-loaded configuration records."""
+
+        # Rendered payloads are byte contracts; preserve their final newline.
+        model_config = m.ConfigDict(
+            strict=False,
+            frozen=True,
+            extra="ignore",
+            str_strip_whitespace=False,
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsMiseToolchainBase"]

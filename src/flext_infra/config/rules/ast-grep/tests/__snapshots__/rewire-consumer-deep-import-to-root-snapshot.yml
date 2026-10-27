@@ -14,11 +14,8 @@ snapshots:
       style: primary
       start: 0
       end: 72
-  ? |
-    from flext_meltano.services.consumer_bases.tap_service_base import (
-        FlextMeltanoTapServiceBase,
-    )
-  : fixed: |
+  "from flext_meltano.services.consumer_bases.tap_service_base import (\n    FlextMeltanoTapServiceBase,\n)\n":
+    fixed: |
       from flext_meltano import FlextMeltanoTapServiceBase
     labels:
     - source: |-

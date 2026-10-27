@@ -142,25 +142,7 @@ class FlextInfraPytestClock:
 
         def __call__(self, signum: int, frame: FrameType | None) -> None:
             """Capture once, then preserve the original native signal action."""
-            if next(self._attempt, False) and (
-                self.profile not in FlextInfraPytestClock._publishing
-            ):
-                capture = FlextInfraPytestClock.FailureCapture()
-                with capture:
-                    if frame is not None:
-                        traceback.print_stack(frame)
-                    # The default SIGTERM action ends the process after this
-                    # capture, so it is the final artifact and closes active
-                    # frames; a previous action that may continue keeps them
-                    # active as a completed-entry checkpoint.
-                    FlextInfraPytestClock.publish_profile(
-                        self.profile,
-                        self.output,
-                        partial=self.previous != signal.SIG_DFL,
-                        immutable_output=self.immutable_output,
-                        previous_output=self.previous_output,
-                    )
-                self._failure = capture.failure
+            self._capture(frame, partial=self.previous != signal.SIG_DFL)
             handler: Callable[[int, FrameType | None], None] = self
             if signal.getsignal(signum) is handler:
                 signal.signal(signum, self.previous)
@@ -170,6 +152,29 @@ class FlextInfraPytestClock:
                 self._surface_failure(primary)
                 raise
             self._surface_failure(None)
+
+        def on_operator_signal(self, signum: int, frame: FrameType | None) -> None:
+            """Checkpoint while the process owner retains cancellation and reaping."""
+            del signum
+            self._capture(frame, partial=True)
+
+        def _capture(self, frame: FrameType | None, *, partial: bool) -> None:
+            """Retain the first checkpoint failure for surfacing after cleanup."""
+            if next(self._attempt, False) and (
+                self.profile not in FlextInfraPytestClock._publishing
+            ):
+                capture = FlextInfraPytestClock.FailureCapture()
+                with capture:
+                    if frame is not None:
+                        traceback.print_stack(frame)
+                    FlextInfraPytestClock.publish_profile(
+                        self.profile,
+                        self.output,
+                        partial=partial,
+                        immutable_output=self.immutable_output,
+                        previous_output=self.previous_output,
+                    )
+                self._failure = capture.failure
 
         def _invoke_previous(self, signum: int, frame: FrameType | None) -> None:
             """Run the previous native action, or re-raise the default signal."""
@@ -227,6 +232,7 @@ class FlextInfraPytestClock:
             and FlextInfraPytestClock._threads[current] == get_ident()
         ):
             return operation()
+        output.parent.mkdir(parents=True, exist_ok=True)
         immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
         previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
         profiler = FlextInfraPytestClock.create_profiler()

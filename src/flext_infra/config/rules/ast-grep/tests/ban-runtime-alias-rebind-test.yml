@@ -1,13 +1,21 @@
-# Shape only: the engine admits a finding when the captured alias is a
-# runtime alias of the own package (and, for an undeclared binding, not in
-# the module's __all__) — so every module-level binding is a syntactic match.
-# The ENFORCE-046 Pattern-A consumer admission (an imported letter rebound to
-# the consumer-named class the module defines) cannot be asserted here: this
-# suite is shape-only, and the undeclared branch flags every binding. It is
-# proven by the semantic engine scans: a consumer facade with the letter shape
-# scans clean, a peer rebind stays a finding.
+# The captured alias is one of the fixture project's runtime aliases
+# (fixture-utils/local-alias.yml); an undeclared binding is one absent from
+# the module's own __all__ (utils/declared-in-module-all.yml).
 id: ban-runtime-alias-rebind
 valid:
+  # ENFORCE-046 Pattern-A: an imported letter rebound to the consumer-named
+  # class the module defines and declares.
+  - |
+    from flext_core import FlextModels, m
+    class AiHubModels(FlextModels):
+        pass
+    m = AiHubModels
+    __all__ = ["AiHubModels", "m"]
+  # A name that is no runtime alias of the project is out of scope.
+  - |
+    class FlextFooConstants:
+        pass
+    limit = FlextFooConstants
   - |
     from flext_core import c
     __all__ = ["c"]

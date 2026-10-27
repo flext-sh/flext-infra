@@ -1,9 +1,7 @@
 id: pydantic-model-config-configdict-classvar
 snapshots:
-  ? |
-    class Model:
-        model_config = ConfigDict(str_strip_whitespace=True)
-  : fixed: |
+  "class Model:\n    model_config = ConfigDict(str_strip_whitespace=True)\n":
+    fixed: |
       class Model:
           model_config: ClassVar[ConfigDict] = ConfigDict(str_strip_whitespace=True)
     labels:

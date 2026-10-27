@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 
@@ -59,7 +59,7 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
                 node,
             )
             if value is not None and not (
-                isinstance(value, ast.List | ast.Tuple)
+                isinstance(value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
                 and all(
                     isinstance(element, ast.Constant) and isinstance(element.value, str)
                     for element in value.elts
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
             value = FlextInfraUtilitiesCompatibilityAliasValidation._dunder_all_value(
                 node,
             )
-            if isinstance(value, ast.List | ast.Tuple) and any(
+            if isinstance(value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES) and any(
                 isinstance(element, ast.Constant) and element.value in exported_aliases
                 for element in value.elts
             ):

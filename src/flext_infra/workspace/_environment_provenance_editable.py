@@ -6,15 +6,68 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from importlib.metadata import Distribution
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import c, m, p, r, t, u
+from flext_cli import u
+
+from flext_infra import c, m, p, r, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
-class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
+class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin(
+    FlextInfraUtilitiesDiscovery,
+):
     """Bind editable receipts and path files to declared package sources."""
+
+    @staticmethod
+    def distribution_installation(
+        distribution_name: str,
+        *,
+        metadata_paths: t.StrSequence,
+        environment_root: Path,
+    ) -> p.Result[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]:
+        """Authenticate one installed distribution and its native PEP 610 record.
+
+        Returns:
+            The distribution, original receipt and validated source declaration.
+
+        """
+        result = r[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]
+        matches = u.installed_distributions(
+            name=distribution_name,
+            path=metadata_paths,
+        )
+        if len(matches) != 1:
+            return result.fail(
+                "member declaration needs one installed distribution: "
+                f"{distribution_name}",
+            )
+        if (
+            not Path(str(matches[0].locate_file("")))
+            .resolve()
+            .is_relative_to(
+                environment_root.resolve(),
+            )
+        ):
+            return result.fail(
+                "member distribution is outside the owned environment: "
+                f"{distribution_name}",
+            )
+        distribution = matches[0]
+        raw = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+        if raw is None:
+            return result.fail(
+                f"member declaration lacks PEP 610 provenance: {distribution_name}",
+            )
+        receipt = r[m.Infra.DirectUrlReceipt].create_from_callable(
+            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
+        )
+        if receipt.failure:
+            return result.from_failure(receipt)
+        return result.ok((distribution, raw, receipt.value))
 
     @classmethod
     def _validate_direct_url(
@@ -139,8 +192,8 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
 
         """
         result = r[t.VariadicTuple[t.Pair[str, Path | None]]]
-        package_name = u.Infra.project_package_name(expected_root)
-        payload = u.Infra.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
+        package_name = cls.project_package_name(expected_root)
+        payload = cls.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
         wheel: t.JsonMapping = payload
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             child = u.Cli.toml_mapping_child(wheel, key)
@@ -235,8 +288,9 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
                 packages.append((".".join(destination_path.parts), target.value))
         return result.ok(tuple(packages))
 
-    @staticmethod
+    @classmethod
     def _editable_pth_source(
+        cls,
         distribution: str,
         entry: str,
         expected_root: Path,
@@ -271,7 +325,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditableMixin:
             for name, target in packages
             if (
                 (
-                    package := u.Infra.declared_package_dir(
+                    package := cls.declared_package_dir(
                         name,
                         search_paths=(str(actual_source),),
                     )

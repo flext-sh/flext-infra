@@ -130,7 +130,7 @@ class TestsFlextInfraRootArtifactOwnership:
         before = conform_support.TestsFlextInfraConformSupport.project_tree(root)
 
         plan = tm.ok(
-            codegen.FlextInfraCodegenConformExecute(
+            codegen.FlextInfraCodegenConform.Generate(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -196,7 +196,7 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                codegen.FlextInfraCodegenConformExecute(
+                codegen.FlextInfraCodegenConform.Generate(
                     repository_root=root,
                     state=m.Infra.CodegenConformState(
                         repository_root=root,

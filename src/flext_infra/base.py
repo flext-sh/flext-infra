@@ -10,7 +10,8 @@ from typing import Self, override
 
 from flext_core import FlextService
 
-from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, t, u
+from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 
 class FlextInfraServiceBase[TDomainResult](
@@ -52,7 +53,9 @@ class FlextInfraServiceBase[TDomainResult](
         """
         if self.project_filter is None:
             return projects
-        selected = set(u.Infra.normalize_cli_values(self.project_filter))
+        selected = set(
+            FlextInfraUtilitiesBase.normalize_cli_values(self.project_filter)
+        )
         return [project for project in projects if project.name in selected]
 
     @staticmethod

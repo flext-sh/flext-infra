@@ -66,6 +66,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         rope_repository_root: Path | None = None,
         source_project: p.Infra.RopeProject | None = None,
         workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+        snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> Self:
         """Create one ready-to-use Rope workspace session.
 
@@ -94,7 +95,10 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
                 msg = "Rope source project does not match the declared workspace root"
                 raise ValueError(msg)
             workspace._rope_project = source_project
+            workspace._view_project = source_project
             workspace._owns_rope_project = False
+        if snapshot is not None:
+            workspace._snapshot = snapshot
         if workspace_index is not None:
             if source_project is None:
                 msg = "Rope structural index reuse requires its source project"
@@ -216,7 +220,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         current_pkg = package_entry.package_name if package_entry is not None else ""
         init_resource = self.resource(init_path)
         generated_init = init_resource is not None and init_resource.read().startswith(
-            c.Infra.AUTOGEN_HEADERS,
+            c.Infra.AUTOGEN_HEADER,
         )
         context = m.Infra.LazyInitPackageContext(
             pkg_dir=resolved_dir,
@@ -350,6 +354,11 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             if self._owns_rope_project:
                 self._rope_project.close()
             self._rope_project = None
+        self._view_project = None
+        if self._snapshot_scope is not None:
+            self._snapshot_scope.close()
+            self._snapshot_scope = None
+            self._snapshot = None
         self._workspace_index = None
         self._codegen_projects = None
         self._project_layout_cache.clear()

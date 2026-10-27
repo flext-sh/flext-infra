@@ -18,7 +18,6 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
-    FlextInfraCodegenConformExecute,
     FlextInfraCodegenMakeBootstrap,
     FlextInfraCodegenMiseToolchainProof,
 )
@@ -45,7 +44,7 @@ def _assert_conform_check_reaches_fixed_point(root: Path) -> None:
     tm.that(fixed_point.value.written_files, eq=())
 
 
-class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecute):
+class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform.Generate):
     """Exercise native planning failures without replacing owners."""
 
     __test__ = False
@@ -55,6 +54,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecut
     def plan_repository_task(
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
+        snapshot: p.Infra.WorkspaceSnapshot,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Exercise a native cause with no preconstructed diagnostic fields.
 
@@ -67,7 +67,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecut
                 repository=task.repository.name,
                 exception=_LIFECYCLE_EXCEPTION,
             )
-        return super().plan_repository_task(task)
+        return super().plan_repository_task(task, snapshot)
 
     @override
     def plan(
@@ -277,6 +277,53 @@ class TestsFlextInfraCodegenConform:
         tm.that(capsys.readouterr().out, lacks="[OK]")
 
     @pytest.mark.parametrize(
+        ("operation", "mode"),
+        [
+            ("generate", c.Infra.CodegenConformMode.APPLY),
+            ("conform", c.Infra.CodegenConformMode.APPLY),
+            ("conform", c.Infra.CodegenConformMode.CHECK),
+        ],
+    )
+    def test_public_generation_rejects_diagnostics_without_an_exception(
+        self,
+        tmp_path: Path,
+        conformed_template: Path,
+        mode: c.Infra.CodegenConformMode,
+        operation: str,
+    ) -> None:
+        """A rejected Make declaration fails even beside admitted projections."""
+        root, _request, _published, _original = self._lifecycle_fixture(
+            tmp_path,
+            "declaration-diagnostic",
+            conformed_template,
+        )
+        (root / "custom.mk").write_text(
+            "UNDECLARED_PUBLIC_VARIABLE := invalid\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=mode,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
+        )
+        tm.ok(bool(plan.files))
+        tm.ok(bool(plan.issues))
+        tm.that(plan.exception, eq=None)
+
+        result = (
+            infra.codegen_generate(request)
+            if operation == "generate"
+            else infra.codegen_conform(request)
+        )
+
+        tm.ok(result.failure)
+        tm.that(result.error, has="custom.mk")
+        tm.that(result.error, has="declares a variable")
+
+    @pytest.mark.parametrize(
         "scenario", ["concurrent-edit", "lazy-failure", "docs-failure"]
     )
     def test_public_apply_fails_without_overwriting_live_state(
@@ -308,7 +355,7 @@ class TestsFlextInfraCodegenConform:
             tm.fail(published.read_bytes() == original)
             return
         planned = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
         )
         target = next(file for file in planned.files if file.path == published)
         foreign = original + b"# concurrent edit\n"
@@ -551,7 +598,7 @@ class TestsFlextInfraCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
         )
         editor_settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(
             settings_path.read_text(encoding=c.DEFAULT_ENCODING),
@@ -848,7 +895,7 @@ class TestsFlextInfraCodegenConform:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         initial_plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files

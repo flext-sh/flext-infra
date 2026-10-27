@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, m, main
+from flext_infra import FlextInfraCli, config, m
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests import c, tm, u
 
@@ -64,7 +64,7 @@ class TestsFlextInfraCheckReportContract:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",

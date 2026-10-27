@@ -31,16 +31,27 @@
 #
 # Genericity: no document names a package. The imported module's root is
 # captured as $MODULE (or the dotted path as $PATH for the plain-import form)
-# and the engine admits the finding only when that root is the scanned
-# project's own package (context own-package, read from the project's
-# declared package name) — the same guard ban-private-import and the
-# namespace law use. A letter imported from another package (`from
+# and constrained natively by the project's generated `own-package` utility
+# (its declared package and internal tiers) — the same guard
+# ban-private-import and the namespace law use. A letter imported from
+# another package (`from
 # flext_core import m` inside ai-hub's `_models/base.py`) is a legitimate
 # cross-package facade binding and never matches.
 #
-# Detection-only: the repair rebinds the consumer to the private submodule
-# that owns the declaration, which the import relocation phases author from
-# the live dependency graph.
+# Detection-only: the repair rebinds the consumer to the declaring sibling
+# class through its family package — the nearest generated lazy export, e.g.
+# `from flext_infra._utilities import FlextInfraUtilitiesPytest` — never a
+# private module path below it. A different family is read through the own
+# root namespace (`from flext_infra import c, t, p, m`, earlier layers only).
+#
+# The upstream package's SAME letter (`from flext_cli import u` inside
+# flext_infra's `_utilities/**`) is the canonical form (operator ruling
+# 2026-10-25 for epic flext-1engx, tracker memory key
+# operator-ruling-2026-10-25-upstream-letter-canonical):
+# the own letter's facade class composes the upstream letter's class by MRO,
+# so the upstream letter is the producer tree's only route to the inherited
+# members while its own letter is still being assembled. No document here
+# matches it: every own-letter document constrains the module to own-package.
 
 id: ban-constants-own-letter-import
 language: python
@@ -51,16 +62,13 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The constants producer tree never binds its own package's c letter from
     the own package root; sibling declarations are imported through their
-    private submodules.
-  context:
-    MODULE:
-      is: own-package
-    PATH:
-      is: own-package
+    family package (the nearest generated lazy export), never a
+    private module path.
 rule:
   any:
     - matches: root-imported-name
@@ -85,10 +93,15 @@ rule:
 constraints:
   NAME:
     regex: "^c$"
+  MODULE:
+    matches: own-package
+  PATH:
+    matches: own-package
 message: >-
   The constants producer binds its own letter from the own-package root: `c`
   is the facade this tree is still assembling. Import the sibling declaration
-  through its private submodule instead.
+  through its family package (the nearest
+  generated lazy export) instead, never a private module path.
 ---
 id: ban-typings-own-letter-import
 language: python
@@ -99,16 +112,12 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The typings producer tree never binds its own package's t letter from the
     own package root; sibling declarations are imported through their private
     submodules.
-  context:
-    MODULE:
-      is: own-package
-    PATH:
-      is: own-package
 rule:
   any:
     - matches: root-imported-name
@@ -133,10 +142,15 @@ rule:
 constraints:
   NAME:
     regex: "^t$"
+  MODULE:
+    matches: own-package
+  PATH:
+    matches: own-package
 message: >-
   The typings producer binds its own letter from the own-package root: `t`
   is the facade this tree is still assembling. Import the sibling declaration
-  through its private submodule instead.
+  through its family package (the nearest
+  generated lazy export) instead, never a private module path.
 ---
 id: ban-models-own-letter-import
 language: python
@@ -147,16 +161,12 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The models producer tree never binds its own package's m letter from the
     own package root; sibling declarations are imported through their private
     submodules.
-  context:
-    MODULE:
-      is: own-package
-    PATH:
-      is: own-package
 rule:
   any:
     - matches: root-imported-name
@@ -181,10 +191,15 @@ rule:
 constraints:
   NAME:
     regex: "^m$"
+  MODULE:
+    matches: own-package
+  PATH:
+    matches: own-package
 message: >-
   The models producer binds its own letter from the own-package root: `m`
   is the facade this tree is still assembling. Import the sibling declaration
-  through its private submodule instead.
+  through its family package (the nearest
+  generated lazy export) instead, never a private module path.
 ---
 id: ban-protocols-own-letter-import
 language: python
@@ -195,16 +210,13 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The protocols producer tree never binds its own package's p letter from
     the own package root; sibling declarations are imported through their
-    private submodules.
-  context:
-    MODULE:
-      is: own-package
-    PATH:
-      is: own-package
+    family package (the nearest generated lazy export), never a
+    private module path.
 rule:
   any:
     - matches: root-imported-name
@@ -229,10 +241,15 @@ rule:
 constraints:
   NAME:
     regex: "^p$"
+  MODULE:
+    matches: own-package
+  PATH:
+    matches: own-package
 message: >-
   The protocols producer binds its own letter from the own-package root: `p`
   is the facade this tree is still assembling. Import the sibling declaration
-  through its private submodule instead.
+  through its family package (the nearest
+  generated lazy export) instead, never a private module path.
 ---
 id: ban-utilities-own-letter-import
 language: python
@@ -243,17 +260,17 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The utilities producer tree never binds its own package's u letter from
     the own package root; sibling declarations are imported through their
-    private submodules. The declared facade exports prove the producer family;
+    family package (the nearest generated lazy export), never a
+    private module path. The declared facade exports prove the producer family;
     a consumer directory named _utilities does not establish that identity.
-  context:
-    MODULE:
-      is: own-package
-    FAMILY:
-      is: file-family
+  # The u family's files, derived from the declared facade exports.
+  scope:
+    in: [facade-family-u]
 rule:
   any:
     - matches: root-imported-name
@@ -278,16 +295,13 @@ rule:
 constraints:
   NAME:
     regex: "^u$"
-transform:
-  FAMILY:
-    replace:
-      source: $MODULE
-      replace: "^.*$"
-      by: u
+  MODULE:
+    matches: own-package
 message: >-
   The utilities producer binds its own letter from the own-package root: `u`
   is the facade this tree is still assembling. Import the sibling declaration
-  through its private submodule instead.
+  through its family package (the nearest
+  generated lazy export) instead, never a private module path.
 ---
 id: ban-config-own-letter-import
 language: python
@@ -303,12 +317,8 @@ metadata:
   description: >-
     The config producer modules never bind their own package's config letter
     from the own package root; sibling declarations are imported through
-    their private submodules.
-  context:
-    MODULE:
-      is: own-package
-    PATH:
-      is: own-package
+    their family package (the nearest generated lazy export), never a
+    private module path.
 rule:
   any:
     - matches: root-imported-name
@@ -333,10 +343,15 @@ rule:
 constraints:
   NAME:
     regex: "^config$"
+  MODULE:
+    matches: own-package
+  PATH:
+    matches: own-package
 message: >-
   The config producer binds its own letter from the own-package root:
   `config` is the facade this tree is still assembling. Import the sibling
-  declaration through its private submodule instead.
+  declaration through its family package (the nearest
+  generated lazy export) instead, never a private module path.
 ---
 id: ban-settings-own-letter-import
 language: python
@@ -352,12 +367,8 @@ metadata:
   description: >-
     The settings producer modules never bind their own package's settings
     letter from the own package root; sibling declarations are imported
-    through their private submodules.
-  context:
-    MODULE:
-      is: own-package
-    PATH:
-      is: own-package
+    through their family package (the nearest generated lazy export), never a
+    private module path.
 rule:
   any:
     - matches: root-imported-name
@@ -382,7 +393,63 @@ rule:
 constraints:
   NAME:
     regex: "^settings$"
+  MODULE:
+    matches: own-package
+  PATH:
+    matches: own-package
 message: >-
   The settings producer binds its own letter from the own-package root:
   `settings` is the facade this tree is still assembling. Import the sibling
-  declaration through its private submodule instead.
+  declaration through its family package (the nearest
+  generated lazy export) instead, never a private module path.
+---
+# A facade letter read through its package module object: `import flext_cli`
+# then `flext_cli.u.Cli.field_default(...)`, or `import flext_core` then
+# `flext_core.u.config_merge(...)`. A letter is a lazy export of its package
+# root; reaching it through the module object defers the binding to call time,
+# a lazy import the import law forbids for every package, own or upstream.
+#
+# The repair depends on where the module sits, and the import laws above own
+# each target: inside the letter's own family the own letter is the facade
+# under assembly, so the member comes from its declaring sibling class through
+# the family package (ENFORCE-051); everywhere else the letter is imported
+# from its package root (`from flext_core import u`) and read directly.
+#
+# One document for every package and letter: $PACKAGE is the own package or a
+# facade package (both generated utilities) and $NAME a single-letter alias.
+# Detection-only: the repair target depends on the module's family.
+id: ban-letter-module-object
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-051]
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    A module never reads a facade letter through its package module object;
+    it imports the letter from the package root, or, inside the letter's own
+    family, the declaring sibling class through the family package.
+constraints:
+  PACKAGE:
+    any:
+      - matches: own-package
+      - matches: facade-package
+  NAME:
+    regex: "^[a-z]$"
+rule:
+  kind: attribute
+  all:
+    - has:
+        field: object
+        kind: identifier
+        pattern: $PACKAGE
+    - has:
+        field: attribute
+        pattern: $NAME
+message: >-
+  Letter `$NAME` read through the package module object `$PACKAGE`: import it
+  from the package root (`from $PACKAGE import $NAME`), or inside its own
+  family import the declaring sibling class through the family package.

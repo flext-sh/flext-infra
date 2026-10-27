@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -50,6 +51,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         changes = FlextInfraToolTablesPhase(
             tool_config or config.Infra.tooling,
+            codegen=config.Infra.codegen,
         ).apply_payload(payload, path=project_dir / c.PYPROJECT_FILENAME)
         return payload, changes
 
@@ -65,6 +67,16 @@ class TestsFlextInfraDepsModernizerToolTables:
         for segment in path:
             table = u.Tests.toml_mapping(table[segment])
         return table
+
+    def test_mypy_exclude_skips_complete_artifact_trees(self, tmp_path: Path) -> None:
+        """Mypy excludes root artifacts and every descendant."""
+        payload, _ = self._applied(tmp_path)
+        exclude = re.compile(str(self._table(payload, "mypy")["exclude"]))
+        for root in config.Infra.codegen.exclusions.scenario_data_roots:
+            tm.that(exclude.match(f"{root}/scenario/module.py"), none=False)
+            tm.that(exclude.match(f"{root}/module.py"), none=False)
+            tm.that(exclude.match(f"{root}/"), none=False)
+        tm.that(exclude.match("tests/unit/test_behavior.py"), none=True)
 
     def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:
         """Render toolchain Python plus config-owned plugins and overrides."""
@@ -112,7 +124,9 @@ class TestsFlextInfraDepsModernizerToolTables:
                 u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             ),
         )
-        changes = FlextInfraToolTablesPhase(config.Infra.tooling).apply_payload(
+        changes = FlextInfraToolTablesPhase(
+            config.Infra.tooling, codegen=config.Infra.codegen
+        ).apply_payload(
             second,
             path=tmp_path / "flext-sample" / c.PYPROJECT_FILENAME,
         )
@@ -464,7 +478,9 @@ class TestsFlextInfraDepsModernizerToolTables:
         project_dir = tmp_path / "flext-sample"
         for namespace in (*namespaces, "unshipped", "flext_core"):
             (project_dir / namespace).mkdir()
-        phase = FlextInfraToolTablesPhase(config.Infra.tooling)
+        phase = FlextInfraToolTablesPhase(
+            config.Infra.tooling, codegen=config.Infra.codegen
+        )
         phase.apply_payload(
             payload,
             path=project_dir / c.PYPROJECT_FILENAME,
@@ -507,7 +523,9 @@ class TestsFlextInfraDepsModernizerToolTables:
     def test_tables_are_idempotent(self, tmp_path: Path) -> None:
         """A second application over the converged payload changes nothing."""
         payload, first = self._applied(tmp_path)
-        second = FlextInfraToolTablesPhase(config.Infra.tooling).apply_payload(
+        second = FlextInfraToolTablesPhase(
+            config.Infra.tooling, codegen=config.Infra.codegen
+        ).apply_payload(
             payload,
             path=tmp_path / "flext-sample" / c.PYPROJECT_FILENAME,
         )
@@ -525,6 +543,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             skip_check=True,
         )
         root_path = tmp_path / c.PYPROJECT_FILENAME
+        root_codegen = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec
         root_topology = m.Infra.PyprojectDeclaredTopology(project_kind="platform")
         member_topology = m.Infra.PyprojectDeclaredTopology()
         root_first: str = tm.ok(
@@ -532,16 +551,19 @@ class TestsFlextInfraDepsModernizerToolTables:
                 '[project]\nname = "arbitrary-root"\n',
                 path=root_path,
                 topology=root_topology,
+                codegen=root_codegen,
             ),
         )
         member_path = tmp_path / "arbitrary-member" / c.PYPROJECT_FILENAME
         member_path.parent.mkdir()
+        member_codegen = tm.ok(u.Infra.load_codegen_inputs(member_path.parent)).spec
         member_first: str = tm.ok(
             modernizer.conform_source(
                 '[project]\nname = "arbitrary-member"\n'
                 'dependencies = ["flext-core", "flext-cli", "flext-ldap"]\n',
                 path=member_path,
                 topology=member_topology,
+                codegen=member_codegen,
             ),
         )
         tm.that(
@@ -550,6 +572,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                     root_first,
                     path=root_path,
                     topology=root_topology,
+                    codegen=root_codegen,
                 ),
             ),
             eq=root_first,
@@ -560,6 +583,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                     member_first,
                     path=member_path,
                     topology=member_topology,
+                    codegen=member_codegen,
                 ),
             ),
             eq=member_first,
@@ -638,7 +662,10 @@ class TestsFlextInfraDepsModernizerToolTables:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload('[project]\nname = "flext-sample"\n'),
         )
-        FlextInfraToolTablesPhase(config.Infra.tooling).apply_payload(
+        FlextInfraToolTablesPhase(
+            config.Infra.tooling,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec,
+        ).apply_payload(
             payload,
             path=project_dir / c.PYPROJECT_FILENAME,
         )
@@ -658,6 +685,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         FlextInfraEnsureRuffConfigPhase(
             config.Infra.tooling,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec,
         ).apply_payload(
             payload,
             path=project_dir / c.PYPROJECT_FILENAME,

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections import deque
 from collections.abc import Callable
 from os.path import commonpath
 from pathlib import Path
@@ -61,6 +62,7 @@ class FlextInfraStagedPackage:
                 workspaces=options.workspaces,
                 modes=options.modes,
                 inputs=options.inputs,
+                declared_files=options.declared_files,
             ),
         )
         if planned.failure:
@@ -273,29 +275,26 @@ class FlextInfraStagedPackage:
         if containing.failure:
             return result_type.from_failure(containing)
         workspace = containing.value
-        errors: t.VariadicTuple[type[Exception]] = (OSError, *c.EXC_BROAD_RUNTIME)
-        try:
-            with u.Infra.facade_source_project(
-                workspace,
-                declared_files=options.declared_files,
-                planned_sources=updates,
-                project_roots=tuple(
-                    dict.fromkeys(
-                        file.project
-                        for file in options.declared_files
-                        if file.project.is_relative_to(workspace)
-                    )
-                ),
-            ) as (source_project, _):
-                return cls._source_plan_project(
-                    workspace,
-                    updates,
-                    options,
-                    modes.value,
-                    source_project,
+        # No broad catch: the first exception escapes with its traceback.
+        with u.Infra.facade_source_project(
+            workspace,
+            declared_files=options.declared_files,
+            planned_sources=updates,
+            project_roots=tuple(
+                dict.fromkeys(
+                    file.project
+                    for file in options.declared_files
+                    if file.project.is_relative_to(workspace)
                 )
-        except errors as exc:
-            return result_type.fail(str(exc), exception=exc)
+            ),
+        ) as (source_project, _):
+            return cls._source_plan_project(
+                workspace,
+                updates,
+                options,
+                modes.value,
+                source_project,
+            )
 
     @classmethod
     def _source_plan_project(
@@ -321,7 +320,11 @@ class FlextInfraStagedPackage:
             return r[m.Infra.StageSourcePlan].from_failure(discovered)
         normalized, layouts = discovered.value
         closure = cls._source_closure(
-            workspace, normalized, options.inputs, layouts, source_project
+            workspace,
+            normalized,
+            options.inputs,
+            layouts,
+            (source_project, options.snapshot),
         )
         if closure.failure:
             return r[m.Infra.StageSourcePlan].from_failure(closure)
@@ -511,7 +514,7 @@ class FlextInfraStagedPackage:
         normalized: t.MappingKV[Path, str | None],
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
         layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
-        source_project: p.Infra.RopeProject,
+        view: t.Pair[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
     ) -> p.Result[
         t.Pair[
             list[m.Infra.RopeProjectLayout],
@@ -526,12 +529,13 @@ class FlextInfraStagedPackage:
             inputs: Original observations, never replaced by a fresh read; the
                 layouts of their workspace Python sources join the closure.
             layouts: Retained provider layouts keyed by package name.
-            source_project: The Rope view of the workspace.
+            view: The Rope view of the workspace and the optional run snapshot.
 
         Returns:
             The elected layouts with the file states of their sources.
 
         """
+        source_project, snapshot = view
         result_type = r[
             t.Pair[
                 list[m.Infra.RopeProjectLayout],
@@ -547,7 +551,9 @@ class FlextInfraStagedPackage:
             provider: m.Infra.RopeProjectLayout,
             owned: t.MappingKV[Path, str | None] | None,
         ) -> p.Result[tuple[str, ...]]:
-            return cls._layout_states(provider, states, source_project, updates=owned)
+            return cls._layout_states(
+                provider, states, (source_project, snapshot), updates=owned
+            )
 
         roots: list[t.Pair[m.Infra.RopeProjectLayout, bool]] = []
         for path in normalized:
@@ -704,14 +710,18 @@ class FlextInfraStagedPackage:
 
         """
         result_type = r[m.Infra.RopeProjectLayout]
-        local = max(
+        owners: dict[Path, m.Infra.RopeProjectLayout] = {}
+        for layout in layouts.values():
+            owners.setdefault(layout.project_root, layout)
+        # The nearest enclosing project root owns the source: walk its ancestors
+        # once instead of testing containment against every provider layout.
+        local = next(
             (
-                layout
-                for layout in layouts.values()
-                if path.is_relative_to(layout.project_root)
+                owners[ancestor]
+                for ancestor in (path, *path.parents)
+                if ancestor in owners
             ),
-            key=lambda layout: len(layout.project_root.parts),
-            default=None,
+            None,
         )
         if local is None:
             return result_type.fail(f"preview source has no project layout: {path}")
@@ -883,35 +893,42 @@ class FlextInfraStagedPackage:
 
         """
         tree = ast.parse(content.decode(c.DEFAULT_ENCODING), filename=str(path))
-        excluded = (
-            {
-                id(child)
-                for guard in ast.walk(tree)
-                if isinstance(guard, ast.If)
-                and (
-                    (
-                        isinstance(guard.test, ast.Name)
-                        and guard.test.id == "TYPE_CHECKING"
-                    )
-                    or (
-                        isinstance(guard.test, ast.Attribute)
-                        and guard.test.attr == "TYPE_CHECKING"
-                    )
-                )
-                for statement in guard.body
-                for child in ast.walk(statement)
-            }
-            if runtime_only
-            else set[int]()
-        )
+        # Import statements live only in statement containers, so the breadth-first
+        # traversal never descends into expressions; a type-only guard skips its
+        # body in the same pass instead of a second subtree walk.
         modules: list[str] = []
-        for node in ast.walk(tree):
-            if id(node) in excluded:
-                continue
+        pending: deque[ast.AST] = deque([tree])
+        while pending:
+            node = pending.popleft()
             if isinstance(node, ast.ImportFrom) and not node.level and node.module:
                 modules.append(node.module)
             elif isinstance(node, ast.Import):
                 modules.extend(alias.name for alias in node.names)
+            type_only = (
+                runtime_only
+                and isinstance(node, ast.If)
+                and (
+                    (
+                        isinstance(node.test, ast.Name)
+                        and node.test.id == "TYPE_CHECKING"
+                    )
+                    or (
+                        isinstance(node.test, ast.Attribute)
+                        and node.test.attr == "TYPE_CHECKING"
+                    )
+                )
+            )
+            guarded = (
+                {id(statement) for statement in node.body}
+                if type_only and isinstance(node, ast.If)
+                else set[int]()
+            )
+            pending.extend(
+                child
+                for child in ast.iter_child_nodes(node)
+                if id(child) not in guarded
+                and isinstance(child, (ast.stmt, ast.excepthandler, ast.match_case))
+            )
         return tuple(modules)
 
     @classmethod
@@ -919,7 +936,7 @@ class FlextInfraStagedPackage:
         cls,
         layout: m.Infra.RopeProjectLayout,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-        source_project: p.Infra.RopeProject,
+        view: t.Pair[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
         *,
         updates: t.MappingKV[Path, str | None] | None = None,
     ) -> p.Result[tuple[str, ...]]:
@@ -931,13 +948,15 @@ class FlextInfraStagedPackage:
         Args:
             layout: The provider layout whose sources are read.
             states: File states extended by each source.
-            source_project: The Rope view of the workspace.
+            view: The Rope view of the workspace and the optional run snapshot
+                whose reads and import edges serve the sources it already read.
             updates: Desired sources keyed by live path; None retires an artifact.
 
         Returns:
             The imports of the layout's sources.
 
         """
+        source_project, snapshot = view
         paths = cls._source_paths(layout, source_project, governed=bool(updates))
         if paths.failure:
             return r[tuple[str, ...]].from_failure(paths)
@@ -952,21 +971,64 @@ class FlextInfraStagedPackage:
                 continue
             state = states.get(path)
             if state is None:
-                state = source_project.source_state(
-                    path, required=updates is None or path not in updates
+                state = cls._source_state(
+                    path, source_project, snapshot, updates=updates
                 )
                 states[path] = state
             content = state.content
+            rewritten = updates is not None and path in updates
             if updates is not None and path in updates:
                 desired = updates[path]
                 content = (
                     None if desired is None else desired.encode(c.DEFAULT_ENCODING)
                 )
-            if path.suffix in {c.Infra.EXT_PYTHON, ".pyi"} and content is not None:
-                modules.extend(
-                    cls._runtime_imports(path, content, runtime_only=not updates)
-                )
+            if path.suffix not in {c.Infra.EXT_PYTHON, ".pyi"} or content is None:
+                continue
+            if snapshot is not None and not rewritten and cls._read_by(snapshot, path):
+                # The run already parsed this unchanged source once: its edges
+                # serve every layout that reads it, instead of a second parse.
+                runtime, typing = u.Infra.workspace_module_imports(snapshot, path)
+                modules.extend((*runtime, *typing) if updates else runtime)
+                continue
+            modules.extend(
+                cls._runtime_imports(path, content, runtime_only=not updates)
+            )
         return r[tuple[str, ...]].ok(tuple(modules))
+
+    @staticmethod
+    def _source_state(
+        path: Path,
+        source_project: p.Infra.RopeProject,
+        snapshot: p.Infra.WorkspaceSnapshot | None,
+        *,
+        updates: t.MappingKV[Path, str | None] | None,
+    ) -> m.Cli.AtomicFileState:
+        """Read one candidate source once: the run's read, or the project's.
+
+        Returns:
+            The authenticated state of the source.
+
+        """
+        required = updates is None or path not in updates
+        if (
+            snapshot is not None
+            and required
+            and FlextInfraStagedPackage._read_by(snapshot, path)
+        ):
+            return u.Infra.workspace_source(snapshot, path).state
+        return source_project.source_state(path, required=required)
+
+    @staticmethod
+    def _read_by(snapshot: p.Infra.WorkspaceSnapshot, path: Path) -> bool:
+        """Whether a Python source lies in a member the run snapshot reads.
+
+        Returns:
+            True when the snapshot owns the authenticated read of ``path``.
+
+        """
+        return path.suffix == c.Infra.EXT_PYTHON and not frozenset(
+            snapshot.members
+        ).isdisjoint(path.parents)
 
     @classmethod
     def _closure(

@@ -392,7 +392,9 @@ class TestsFlextInfraIntegrationInfraIntegration:
     @pytest.mark.integration
     def test_markdown_fix_reports_residual_after_repair(tmp_path: Path) -> None:
         """A valid repair survives while an unfixable finding fails the invocation."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-fmt-contract")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-fmt-contract", markdown_config=""
+        )
         document = project_dir / "README.md"
         document.write_text("not a heading   \n", encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)
@@ -419,16 +421,16 @@ class TestsFlextInfraIntegrationInfraIntegration:
     def test_markdown_check_retains_normalization_finding(tmp_path: Path) -> None:
         """A native MD013 normalization diagnostic remains visible to callers."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-normalization")
-        (project_dir / ".markdownlint.json").write_text(
-            tm.ok(
-                u.Cli.json_dumps({
-                    "default": False,
+        (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping({
+                    "global": {"enable": ["MD013"]},
                     "MD013": {
                         "line_length": 60,
                         "reflow": True,
                         "reflow-mode": "normalize",
                     },
-                }),
+                })
             ),
             encoding="utf-8",
         )

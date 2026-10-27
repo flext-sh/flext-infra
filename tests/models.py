@@ -24,5 +24,4 @@ class TestsFlextInfraModels(FlextTestsModels, FlextInfraModels):
 
 
 m = TestsFlextInfraModels
-
 __all__: list[str] = ["TestsFlextInfraModels", "m"]

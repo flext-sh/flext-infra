@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, main
+from flext_infra import FlextInfraCli, infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
@@ -57,7 +57,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         broken: bool,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Real census gates see both cutovers and retain unrelated failures."""
+        """Migrate legacy scenario inputs before exercising the public consumer."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.provision_checkout(root)
         notice = u.Infra.copyright_notice(root)
@@ -133,12 +133,14 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             str(package.parent),
         )
         if entry == "pipeline":
-            output = tm.ok(u.Cli.run_raw(command))
-            tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
-            for path, source in sources.items():
-                tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
             tm.that(
-                main(["refactor", "mod", "--repository-root", str(root), "--apply"]),
+                FlextInfraCli.infra_main([
+                    "refactor",
+                    "mod",
+                    "--repository-root",
+                    str(root),
+                    "--apply",
+                ]),
                 eq=0,
             )
         else:
@@ -162,9 +164,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             for path, source in sources.items():
                 tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         else:
-            published = consumer.read_text(encoding=c.DEFAULT_ENCODING)
-            tm.that(published, has="u.scalar_mapping_adapter()")
-            tm.that(published, has="constant = c.JOINT_VALUE")
             output = tm.ok(u.Cli.run_raw(command))
             tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         if entry == "noop":

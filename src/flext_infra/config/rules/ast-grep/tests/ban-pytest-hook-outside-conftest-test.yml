@@ -1,0 +1,34 @@
+# Snippets carry no path: every case below stands for an ordinary module
+# (tests/unit/..., src/..., scripts/...). conftest.py and tests/fixtures/**
+# are the rule's ignores and are proven by the repository census.
+id: ban-pytest-hook-outside-conftest
+valid:
+  - |
+    class TestsFlextFooService:
+        @pytest.fixture
+        def workspace(self, tmp_path: Path) -> Path:
+            return tmp_path
+  - |
+    class TestsFlextFooService:
+        def test_runs(self, workspace: Path) -> None:
+            tm.that(workspace.exists(), eq=True)
+  - |
+    plugins = ["tests.fixtures.git"]
+invalid:
+  - |
+    @pytest.fixture
+    def workspace(tmp_path: Path) -> Path:
+        return tmp_path
+  - |
+    @pytest.fixture(scope="module")
+    def matrix() -> list[str]:
+        return []
+  - |
+    @fixture
+    def workspace(tmp_path: Path) -> Path:
+        return tmp_path
+  - |
+    def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+        return None
+  - |
+    pytest_plugins = ["tests.fixtures.git"]

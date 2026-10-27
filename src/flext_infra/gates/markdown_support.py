@@ -2,8 +2,8 @@
 
 ``markdown`` (``rumdl check``) and ``markdown-format`` (``rumdl fmt``) drive
 the same tool over the same governed markdown surface with the same generated
-configuration, so the file collection, the ignore-projection reader, and the
-rumdl invocation contract live here exactly once.
+configuration, so typed file eligibility and the rumdl invocation contract live
+here exactly once. Generated ignore files are outputs, never policy inputs.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,20 +12,68 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import m, p, t
 
 
 class FlextInfraMarkdownGateBase(FlextInfraGate):
     """Share file selection, configuration, and the rumdl invocation."""
 
+    # Relative flavor and exclusion patterns belong to each configuration root.
+    # Union dispatch remains available, but distinct roots cannot share a run.
+    union_capable: ClassVar[bool] = True
+
     @staticmethod
-    def collect_markdown_files(project_dir: Path) -> list[Path]:
+    @override
+    def union_group_key(project_dir: Path) -> str:
+        """Keep native relative-pattern semantics rooted in each repository.
+
+        A project without the generated configuration runs alone, so its own
+        failure stays attributed to it.
+
+        Returns:
+            The configuration fingerprint shared by one union group.
+
+        """
+        config_path = project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME
+        if not config_path.is_file():
+            return f"absent:{project_dir.resolve()}"
+        return "\0".join((
+            project_dir.resolve().as_posix(),
+            config_path.read_text(c.DEFAULT_ENCODING),
+        ))
+
+    @override
+    def _union_targets(
+        self,
+        project_dirs: t.SequenceOf[Path],
+        ctx: m.Infra.GateContext,
+        *,
+        repair: bool,
+    ) -> t.StrSequence:
+        """Collect each project's files through its effective typed scope.
+
+        Returns:
+            Every project's governed Markdown files as absolute paths.
+
+        """
+        del repair
+        return tuple(
+            path.resolve().as_posix()
+            for project_dir in project_dirs
+            for path in self.collect_markdown_files(project_dir, ctx.scope_facts)
+        )
+
+    @staticmethod
+    def collect_markdown_files(
+        project_dir: Path,
+        scope_facts: p.Infra.GitScopeFacts | None,
+    ) -> list[Path]:
         """Collect the governed markdown surface shared by both markdown gates.
 
         The walker is git-scope aware, so generated/untracked trees (``.venv``,
@@ -37,41 +85,14 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
             The resulting ``list[Path]``.
 
         """
-        markdown_files: list[Path] = []
-        for path in u.Infra.iter_matching_files(project_dir, includes=["*.md"]):
-            relative_parts = path.relative_to(project_dir).parts
-            if any(
-                part in config.Infra.codegen.check_excluded_dirs
-                for part in relative_parts
-            ):
-                continue
-            if (
-                len(relative_parts) > 1
-                and relative_parts[0] == ".github"
-                and relative_parts[1] in c.Infra.GITHUB_AGENT_PROJECTION_DIRS
-            ):
-                continue
-            markdown_files.append(path)
-        return markdown_files
-
-    @staticmethod
-    def read_ignore_patterns(project_dir: Path, ignore_filename: str) -> t.StrSequence:
-        """Read non-comment patterns from a generated markdown ignore projection.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        ignore_path = project_dir / ignore_filename
-        if not ignore_path.is_file():
-            return ()
-        patterns: list[str] = []
-        for line in ignore_path.read_text(c.DEFAULT_ENCODING).splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            patterns.append(stripped)
-        return tuple(patterns)
+        inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
+        return list(
+            u.Infra.scope_excluded_paths(
+                project_dir.resolve(),
+                u.Infra.governed_scope_files(project_dir, ["*.md"], scope_facts),
+                inputs.spec.markdown_exclude_globs,
+            )
+        )
 
     @staticmethod
     @override
@@ -92,31 +113,10 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        config_path = project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME
-        if not config_path.is_file():
-            return ["--no-config"]
+        config_path = project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME
+        # An absent explicit config is a native tool error, never a request for
+        # defaults. Keeping it native preserves attributed check/repair reports.
         return ["--config", str(config_path.resolve())]
-
-    def _resolve_exclude_args(self, project_dir: Path) -> t.StrSequence:
-        """Build ``--exclude`` from .markdownlintignore patterns.
-
-        ``rumdl`` only applies ignore patterns when scanning directories,
-        not when files are passed explicitly on the command line. The gates
-        collect files explicitly, so the generated ignore projection is read
-        once and its patterns are forwarded via ``--exclude`` to replicate
-        standard tool behavior.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        patterns = self.read_ignore_patterns(
-            project_dir,
-            c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
-        )
-        if not patterns:
-            return ()
-        return ["--exclude", ",".join(patterns)]
 
     def _rumdl_command(
         self,
@@ -142,19 +142,18 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
             "text",
             "--deny-config-warnings",
             *self._resolve_config_args(project_dir),
-            *self._resolve_exclude_args(project_dir),
             *targets,
         )
 
     @override
-    def selected_for(self, project_dir: Path) -> bool:
+    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
         """Only a project with governed Markdown selects a Markdown gate.
 
         Returns:
             The resulting ``bool``.
 
         """
-        return bool(self.collect_markdown_files(project_dir))
+        return bool(self.collect_markdown_files(project_dir, ctx.scope_facts))
 
     @override
     def _get_check_dirs(
@@ -168,10 +167,9 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
             The governed Markdown paths relative to their repository.
 
         """
-        del ctx
         return [
             str(path.relative_to(project_dir))
-            for path in self.collect_markdown_files(project_dir)
+            for path in self.collect_markdown_files(project_dir, ctx.scope_facts)
         ]
 
 

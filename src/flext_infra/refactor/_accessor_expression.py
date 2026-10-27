@@ -7,10 +7,9 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, u
+from flext_infra import m, u
 from flext_infra.refactor._accessor_origin import FlextInfraAccessorOriginResolver
 
 if TYPE_CHECKING:
@@ -21,25 +20,6 @@ if TYPE_CHECKING:
 
 class FlextInfraAccessorMigrationExpressionMixin:
     """Plan field normalization from the typed semantic migration catalog."""
-
-    @staticmethod
-    def _expression_catalog() -> t.SequenceOf[m.Infra.AccessorMigrationRule]:
-        """Load and strictly validate the declared migration rules.
-
-        Returns:
-            The configuration-owned semantic rules.
-
-        """
-        return u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Yaml.safe_load(
-                (
-                    type(config).ssot_config_dir().parent
-                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                    / "accessor-migrations.yaml"
-                ).read_text(encoding=c.DEFAULT_ENCODING)
-            ),
-            strict=True,
-        )
 
     @classmethod
     def _normalize_field_accessors(

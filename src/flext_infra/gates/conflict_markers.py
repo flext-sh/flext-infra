@@ -119,14 +119,15 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
                         ),
                     )
         raw = f"checked={len(paths)} findings={len(issues)}"
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=not issues,
-            issues=tuple(issues),
-            evidence=self._publish_raw_receipt(
-                ctx, "\n".join((raw, *(issue.formatted for issue in issues)))
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=not issues,
+                issues=tuple(issues),
+                raw_output="\n".join((raw, *(issue.formatted for issue in issues))),
+                started=started,
             ),
-            started=started,
+            ctx,
         )
 
 

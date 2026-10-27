@@ -9,13 +9,9 @@ files:
 constraints:
   VALUE:
     regex: '^(["\x27])TOOL_ERROR(["\x27])$'
-metadata:
-  context:
-    OUTCOME:
-      - is: resolved-symbol
-        arg: flext_infra._constants.check FlextInfraConstantsCheck.ToolOutcome.ERROR
-      - is: same-binding
-        arg: c.Infra.ToolOutcome.ERROR
+  # The canonical outcome member, through the constants facade or its owner.
+  OUTCOME:
+    regex: '^(?:c\.Infra|FlextInfraConstantsCheck)\.ToolOutcome\.ERROR$'
 rule:
   pattern: $OUTCOME == $VALUE
 fix: $OUTCOME == c.Infra.ToolOutcome.ERROR
@@ -29,16 +25,17 @@ files:
 constraints:
   VALUE:
     regex: '^(["\x27])TOOL_ERROR(["\x27])$'
-metadata:
-  context:
-    VALUE:
-      is: executable-occurrence
 rule:
   all:
     - kind: string
     - pattern: $VALUE
     - inside:
         kind: comparison_operator
+    # An executable comparison: never type payload.
+    - not:
+        inside:
+          kind: type
+          stopBy: end
 message: >-
   This executable legacy comparison has no proven enum-consumer contract.
   Preserve it until its owner establishes one; no fixer is inferred from the

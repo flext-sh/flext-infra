@@ -3,11 +3,11 @@
 Every project's wheel gets an explicit ``[tool.hatch.build.targets.wheel]``
 with the primary ``src/<pkg>`` plus every project-declared additional package.
 Project-declared standalone modules under ``src/<module>.py`` and root data
-paths declared by the project are validated and mapped into the package.
-Directories use the same Hatch selection rules in both archives; explicit files
-are included individually. The source
-distribution is bounded to the package source and those validated data roots,
-preventing caches and ignored workspace state from entering release artifacts.
+paths declared by the project are validated and mapped into the package through
+``sources`` remapping, never force-included at the package location. The producer
+declaration ships as wheel ``extra-metadata`` inside the distribution metadata.
+The source distribution is bounded to the package source and those validated data
+roots, preventing caches and ignored workspace state from entering release artifacts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -25,45 +25,35 @@ class FlextInfraEnsurePackagingPhase:
     """Ensure bounded Hatch wheel and source-distribution targets."""
 
     @staticmethod
-    def declaration_resource(
-        *,
-        package_name: str,
-        package: bool,
-    ) -> t.Pair[str, str] | None:
-        """Derive the metadata resource from the declared packaging identity.
+    def declaration_resource(*, package: bool) -> t.Pair[str, str] | None:
+        """Derive the producer declaration carried as wheel distribution metadata.
+
+        Hatch writes ``extra-metadata`` under ``<dist>.dist-info/extra_metadata/``
+        in standard and editable wheels alike, so the declaration never creates a
+        directory at the import package's installed location.
 
         Returns:
-            The source and installed destination, or no resource for a non-package.
+            The source and ``extra_metadata`` destination, or no resource for a
+            non-package.
 
         """
-        return (
-            (c.PYPROJECT_FILENAME, f"{package_name}/{c.PYPROJECT_FILENAME}")
-            if package
-            else None
-        )
+        return (c.PYPROJECT_FILENAME, c.PYPROJECT_FILENAME) if package else None
 
     @staticmethod
-    def config_resource(
-        project_dir: Path,
-        package_name: str,
-        planned_files: t.StrSequence = (),
-    ) -> t.Pair[str, str] | None:
-        """Elect package-owned defaults for standard and editable wheels.
+    def uv_cache_key_files(hatch_build_hook_path: Path | None) -> t.StrSequence:
+        """Derive the uv editable-build cache keys from the declared build hook.
+
+        Editable installs read package sources and config live, so only a
+        declared Hatch hook changes the built artifact beyond uv's ordinary
+        project inputs.
 
         Returns:
-            The existing or planned config directory and installed destination.
+            The ordered cache-key files, empty without a declared hook.
 
         """
-        source = Path(c.Infra.DEFAULT_SRC_DIR) / package_name / c.CONFIG_DIR_NAME
-        if not (project_dir / source).is_dir() and not any(
-            Path(planned).is_relative_to(source) for planned in planned_files
-        ):
-            return None
-        if (project_dir / source).exists():
-            FlextInfraEnsurePackagingPhase._validate_data_tree(
-                project_dir.resolve(), project_dir / source, frozenset()
-            )
-        return source.as_posix(), f"{package_name}/{c.CONFIG_DIR_NAME}"
+        if hatch_build_hook_path is None:
+            return ()
+        return (*c.Infra.UV_PROJECT_CACHE_KEY_FILES, hatch_build_hook_path.as_posix())
 
     @staticmethod
     def _validate_data_tree(
@@ -227,9 +217,15 @@ class FlextInfraEnsurePackagingPhase:
         data: m.Infra.PackagedDataSelection,
         data_excludes: t.StrSequence,
         topology: m.Infra.PyprojectDeclaredTopology,
-        package_config_resource: t.Pair[str, str] | None,
+        project_declaration_resource: t.Pair[str, str] | None,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
+
+        Package sources, their ``config/`` defaults and declared data reach the
+        wheel through ordinary selection and ``sources`` remapping only. Nothing
+        is force-included at an import package's location, because Hatch copies
+        forced files into editable wheels and would install a stale namespace
+        portion beside the editable source.
 
         Returns:
             The resulting ``m.Infra.DepsToml.PhaseConfig``.
@@ -238,7 +234,6 @@ class FlextInfraEnsurePackagingPhase:
         root_modules = topology.root_modules
         root_packages = topology.root_packages
         repository_namespace_packages = topology.repository_namespace_packages
-        project_declaration_resource = topology.project_declaration_resource
         package_path = f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
         package_paths = (
             package_path,
@@ -247,44 +242,25 @@ class FlextInfraEnsurePackagingPhase:
         module_paths = tuple(
             f"{c.Infra.DEFAULT_SRC_DIR}/{module}.py" for module in root_modules
         )
-        selected_directories = (
+        data_paths = (*data.files, *data.directories)
+        selected_paths = (
             *package_paths,
-            *data.directories,
+            *data_paths,
             *repository_namespace_packages,
         )
         toml = m.Infra.DepsToml
-        wheel_excludes = (
-            *(f"/{item}" for item in data_excludes),
-            *((f"/{package_config_resource[0]}",) if package_config_resource else ()),
+        data_exclude_patterns = tuple(f"/{item}" for item in data_excludes)
+        force_include = tuple(
+            (module_path, f"{module}.py")
+            for module_path, module in zip(module_paths, root_modules, strict=True)
         )
-        force_include = (
-            (
-                (project_declaration_resource,)
-                if project_declaration_resource is not None
-                else ()
-            )
-            + (
-                (package_config_resource,)
-                if package_config_resource is not None
-                else ()
-            )
-            + tuple(
-                (data_dir, f"{package_name}/{data_dir}")
-                for data_dir in data.files
-                if (
-                    project_declaration_resource is None
-                    or data_dir != project_declaration_resource[0]
-                )
-            )
-            + tuple(
-                (module_path, f"{module}.py")
-                for module_path, module in zip(module_paths, root_modules, strict=True)
-            )
+        extra_metadata = (
+            (project_declaration_resource,)
+            if project_declaration_resource is not None
+            else ()
         )
         sdist_force_include = tuple(
-            (source, source)
-            for source, destination in force_include
-            if (source, destination) != package_config_resource
+            (source, source) for source, _destination in extra_metadata + force_include
         ) + (
             (
                 (
@@ -295,30 +271,51 @@ class FlextInfraEnsurePackagingPhase:
             if topology.hatch_build_hook_path is not None
             else ()
         )
+        hook_path = topology.hatch_build_hook_path
         return toml.PhaseConfig(
             name="packaging",
-            table_path=("hatch", "build", "targets"),
+            table_path=("hatch",),
+            # The SSOT declares tool.hatch.build generator-owned: the declared
+            # topology replaces the whole table, never merges into live state.
+            operations=(toml.RemoveOp(key="build"),),
             nested_tables=(
+                (
+                    toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("build", "hooks", "custom"),
+                        operations=(
+                            toml.SetOp(key="path", value=hook_path.as_posix()),
+                        ),
+                    )
+                    if hook_path is not None
+                    else toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("build",),
+                        operations=(),
+                    )
+                ),
                 toml.PhaseConfig(
                     name="packaging",
                     root_path=(),
-                    table_path=("wheel",),
+                    table_path=("build", "targets", "wheel"),
                     operations=(
                         toml.ListOp(
                             key="only-include",
-                            values=selected_directories,
-                            strategy=c.Infra.TomlMergeMode.MERGE,
+                            values=selected_paths,
+                            strategy=c.Infra.TomlMergeMode.REPLACE,
                         ),
                         toml.RemoveOp(key="packages"),
                         *(
                             (
                                 toml.ListOp(
                                     key="exclude",
-                                    values=wheel_excludes,
-                                    strategy=c.Infra.TomlMergeMode.MERGE,
+                                    values=data_exclude_patterns,
+                                    strategy=c.Infra.TomlMergeMode.REPLACE,
                                 ),
                             )
-                            if wheel_excludes
+                            if data_exclude_patterns
                             else ()
                         ),
                     ),
@@ -326,7 +323,7 @@ class FlextInfraEnsurePackagingPhase:
                 toml.PhaseConfig(
                     name="packaging",
                     root_path=(),
-                    table_path=("wheel", "sources"),
+                    table_path=("build", "targets", "wheel", "sources"),
                     operations=tuple(
                         toml.SetOp(key=source, value=destination)
                         for source, destination in (
@@ -336,8 +333,8 @@ class FlextInfraEnsurePackagingPhase:
                                 strict=True,
                             ),
                             *(
-                                (directory, f"{package_name}/{directory}")
-                                for directory in data.directories
+                                (data_path, f"{package_name}/{data_path}")
+                                for data_path in data_paths
                             ),
                             *(
                                 (namespace, namespace)
@@ -349,23 +346,23 @@ class FlextInfraEnsurePackagingPhase:
                 toml.PhaseConfig(
                     name="packaging",
                     root_path=(),
-                    table_path=("sdist",),
+                    table_path=("build", "targets", "sdist"),
                     operations=(
                         toml.ListOp(
                             key="only-include",
-                            values=selected_directories,
-                            strategy=c.Infra.TomlMergeMode.MERGE,
+                            values=selected_paths,
+                            strategy=c.Infra.TomlMergeMode.REPLACE,
                         ),
                         toml.RemoveOp(key="packages"),
                         *(
                             (
                                 toml.ListOp(
                                     key="exclude",
-                                    values=tuple(f"/{item}" for item in data_excludes),
-                                    strategy=c.Infra.TomlMergeMode.MERGE,
+                                    values=data_exclude_patterns,
+                                    strategy=c.Infra.TomlMergeMode.REPLACE,
                                 ),
                             )
-                            if data_excludes
+                            if data_exclude_patterns
                             else ()
                         ),
                     ),
@@ -374,7 +371,7 @@ class FlextInfraEnsurePackagingPhase:
                     toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("sdist", "force-include"),
+                        table_path=("build", "targets", "sdist", "force-include"),
                         operations=tuple(
                             toml.SetOp(key=source, value=source)
                             for source, _destination in sdist_force_include
@@ -384,7 +381,7 @@ class FlextInfraEnsurePackagingPhase:
                     else toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("sdist",),
+                        table_path=("build", "targets", "sdist"),
                         operations=(),
                     )
                 ),
@@ -392,7 +389,7 @@ class FlextInfraEnsurePackagingPhase:
                     toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("wheel", "force-include"),
+                        table_path=("build", "targets", "wheel", "force-include"),
                         operations=tuple(
                             toml.SetOp(key=key, value=value)
                             for key, value in force_include
@@ -402,7 +399,25 @@ class FlextInfraEnsurePackagingPhase:
                     else toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("wheel",),
+                        table_path=("build", "targets", "wheel"),
+                        operations=(),
+                    )
+                ),
+                (
+                    toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("build", "targets", "wheel", "extra-metadata"),
+                        operations=tuple(
+                            toml.SetOp(key=key, value=value)
+                            for key, value in extra_metadata
+                        ),
+                    )
+                    if extra_metadata
+                    else toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("build", "targets", "wheel"),
                         operations=(),
                     )
                 ),
@@ -517,16 +532,49 @@ class FlextInfraEnsurePackagingPhase:
             data_paths,
             topology.packaged_data_excludes,
         )
+        # The pyproject ownership SSOT decides which packaging tables the
+        # generator owns; this phase replaces exactly those, like make gen.
+        owned = frozenset(u.Infra.pyproject_managed_file().unwrap().managed_tool_tables)
+        cache_keys = self.uv_cache_key_files(topology.hatch_build_hook_path)
+        toml = m.Infra.DepsToml
         return u.Infra.apply_toml_phases(
             payload,
-            self._phase(
-                package_name=package_name,
-                data=data_paths,
-                data_excludes=data_excludes,
-                topology=topology,
-                package_config_resource=self.config_resource(
-                    project_dir, package_name, topology.planned_data_files
-                ),
+            *(
+                (
+                    self._phase(
+                        package_name=package_name,
+                        data=data_paths,
+                        data_excludes=data_excludes,
+                        topology=topology,
+                        project_declaration_resource=self.declaration_resource(
+                            package=u.Infra.project_package_participation(
+                                m.Infra.ProjectPackagingDeclaration.model_validate(
+                                    payload,
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+                if c.Infra.HATCH_BUILD_TABLE in owned
+                else ()
+            ),
+            *(
+                (
+                    toml.PhaseConfig(
+                        name="packaging",
+                        table_path=("uv",),
+                        operations=(
+                            toml.SetOp(
+                                key="cache-keys",
+                                value=[{"file": item} for item in cache_keys],
+                            )
+                            if cache_keys
+                            else toml.RemoveOp(key="cache-keys"),
+                        ),
+                    ),
+                )
+                if c.Infra.UV_CACHE_KEYS_TABLE in owned
+                else ()
             ),
         )
 

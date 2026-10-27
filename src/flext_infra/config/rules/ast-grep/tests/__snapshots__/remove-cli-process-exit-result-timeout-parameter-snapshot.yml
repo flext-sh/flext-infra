@@ -1,44 +1,6 @@
 id: remove-cli-process-exit-result-timeout-parameter
 snapshots:
-  ? |
-    def _process_exit_result(
-        cmd: t.StrSequence,
-        return_code: int | None,
-        received_signals: list[int],
-        diagnostics: t.VariadicTuple[str],
-        *,
-        timed_out: bool,
-        legacy_timeout: bool,
-        legacy_timeout_seconds: int | None,
-        timeout_exit_code: int,
-    ) -> p.Result[p.Cli.ProcessOutcome]:
-        """Preserve a primary exit while surfacing additive diagnostics."""
-        if legacy_timeout and timed_out:
-            failure = f"timeout {legacy_timeout_seconds}s: {shlex.join(list(cmd))}"
-            if diagnostics:
-                failure = f"{failure}; {'; '.join(diagnostics)}"
-            return r[p.Cli.ProcessOutcome].fail(failure)
-        if received_signals:
-            primary_exit = -abs(received_signals[0])
-        elif timed_out:
-            primary_exit = timeout_exit_code
-        elif return_code is None:
-            primary_exit = None
-        else:
-            primary_exit = return_code
-        if diagnostics:
-            return r[p.Cli.ProcessOutcome].fail("; ".join(diagnostics))
-        if primary_exit is None:
-            return r[p.Cli.ProcessOutcome].fail(
-                "root process did not expose an exit status"
-            )
-        return r[p.Cli.ProcessOutcome].ok(
-            m.Cli.ProcessOutcome(
-                raw_return_code=primary_exit,
-                timed_out=timed_out,
-                forwarded_signal=(received_signals[0] if received_signals else None),
-            )
-        )
+  ? "def _process_exit_result(\n    cmd: t.StrSequence,\n    return_code: int | None,\n    received_signals: list[int],\n    diagnostics: t.VariadicTuple[str],\n    *,\n    timed_out: bool,\n    legacy_timeout: bool,\n    legacy_timeout_seconds: int | None,\n    timeout_exit_code: int,\n) -> p.Result[p.Cli.ProcessOutcome]:\n    \"\"\"Preserve a primary exit while surfacing additive diagnostics.\"\"\"\n    if legacy_timeout and timed_out:\n        failure = f\"timeout {legacy_timeout_seconds}s: {shlex.join(list(cmd))}\"\n        if diagnostics:\n            failure = f\"{failure}; {'; '.join(diagnostics)}\"\n        return r[p.Cli.ProcessOutcome].fail(failure)\n    if received_signals:\n        primary_exit = -abs(received_signals[0])\n    elif timed_out:\n        primary_exit = timeout_exit_code\n    elif return_code is None:\n        primary_exit = None\n    else:\n        primary_exit = return_code\n    if diagnostics:\n        return r[p.Cli.ProcessOutcome].fail(\"; \".join(diagnostics))\n    if primary_exit is None:\n        return r[p.Cli.ProcessOutcome].fail(\n            \"root process did not expose an exit status\"\n        )\n    return r[p.Cli.ProcessOutcome].ok(\n        m.Cli.ProcessOutcome(\n            raw_return_code=primary_exit,\n            timed_out=timed_out,\n            forwarded_signal=(received_signals[0] if received_signals else None),\n        )\n    )\n"
   : fixed: |+
       def _process_exit_result(
           return_code: int | None,
@@ -67,7 +29,7 @@ snapshots:
                   forwarded_signal=(received_signals[0] if received_signals else None),
               )
           )
-
+      
     labels:
     - source: |-
         def _process_exit_result(

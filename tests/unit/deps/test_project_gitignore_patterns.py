@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, m, u
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, t, tm
 
 
@@ -158,7 +158,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             ),
         )
         planned = tm.ok(
-            FlextInfraCodegenConformExecute.compose_project_artifact(
+            FlextInfraCodegenConform.Generate.compose_project_artifact(
                 root,
                 c.Infra.GITIGNORE,
                 template,

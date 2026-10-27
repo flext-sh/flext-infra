@@ -1,0 +1,8 @@
+id: ban-pragma-no-cover
+valid:
+  - "# coverage is measured"
+  - "marker = 'pragma: no cover'"
+  - "def unreachable():  # TODO pragma: no cover\n    raise RuntimeError"
+invalid:
+  - "def unreachable():  # pragma: no cover\n    raise RuntimeError"
+  - "if TYPE_CHECKING:  # pragma:no cover\n    pass"

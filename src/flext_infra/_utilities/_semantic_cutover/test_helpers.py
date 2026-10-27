@@ -14,9 +14,11 @@ from typing import override
 import libcst as cst
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesQualifiedNames,
+from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities._rope.pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
+)
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -43,7 +45,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 self.names = frozenset({name})
 
             @override
-            def leave_Assign[N: (cst.Assign, cst.AnnAssign)](
+            def leave_Assign[N: (t.Infra.Cst.Assign, t.Infra.Cst.AnnAssign)](
                 self,
                 original_node: N,
                 updated_node: N,
@@ -57,15 +59,15 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             @override
             def leave_AnnAssign(
                 self,
-                original_node: cst.AnnAssign,
-                updated_node: cst.AnnAssign,
-            ) -> cst.AnnAssign:
+                original_node: t.Infra.Cst.AnnAssign,
+                updated_node: t.Infra.Cst.AnnAssign,
+            ) -> t.Infra.Cst.AnnAssign:
                 return self.leave_Assign(original_node, updated_node)
 
         editable = {
             path.resolve(): source
             for path, source in sources.items()
-            if not source.startswith(c.Infra.AUTOGEN_HEADERS)
+            if not source.startswith(c.Infra.AUTOGEN_HEADER)
         }
         candidates = tuple(
             path
@@ -153,12 +155,12 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         for declaration in declarations:
             name = declaration.name
             if not any(
-                isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                isinstance(member, c.Infra.AST_FUNCTION_TYPES)
                 for member in ast.walk(declaration)
             ) or any(
                 member.name.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
                 for member in ast.walk(declaration)
-                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                if isinstance(member, c.Infra.AST_FUNCTION_TYPES)
             ):
                 continue
             find_offset = (
@@ -257,7 +259,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             candidate
             for candidate, source in sources.items()
             if candidate.parent in path.parents
-            and not source.startswith(c.Infra.AUTOGEN_HEADERS)
+            and not source.startswith(c.Infra.AUTOGEN_HEADER)
             and (policy := workspace.convention(candidate).module_policy).expected_alias
             == "u"
             and policy.project_prefix == prefix

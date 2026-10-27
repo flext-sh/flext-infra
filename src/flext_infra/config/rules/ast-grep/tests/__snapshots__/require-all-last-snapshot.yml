@@ -1,9 +1,7 @@
 id: require-all-last
 snapshots:
-  ? |
-    __all__ = ["value"]
-    value = 1
-  : labels:
+  "__all__ = [\"value\"]\nvalue = 1\n":
+    labels:
     - source: __all__ = ["value"]
       style: primary
       start: 0
@@ -26,21 +24,16 @@ snapshots:
       style: secondary
       start: 20
       end: 29
-  ? |
-    __all__: list[str] = ["Example"]
-
-
-    class Example:
-        """Example."""
-  : labels:
-    - source: '__all__: list[str] = ["Example"]'
+  "__all__: list[str] = [\"Example\"]\n\n\nclass Example:\n    \"\"\"Example.\"\"\"\n":
+    labels:
+    - source: "__all__: list[str] = [\"Example\"]"
       style: primary
       start: 0
       end: 32
     - source: |
         __all__: list[str] = ["Example"]
-
-
+        
+        
         class Example:
             """Example."""
       style: secondary
@@ -50,7 +43,7 @@ snapshots:
       style: secondary
       start: 0
       end: 7
-    - source: '__all__: list[str] = ["Example"]'
+    - source: "__all__: list[str] = [\"Example\"]"
       style: secondary
       start: 0
       end: 32

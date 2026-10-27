@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, services
+from flext_infra import config, m
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 
 
@@ -88,7 +89,7 @@ class TestsFlextInfraCodegenRenderPurityGolden:
             )
 
         rendered: str = tm.ok(
-            services.FlextInfraCodegenVscodeMixin.render_vscode_settings(project),
+            FlextInfraCodegenConform.Generate.render_vscode_settings(project),
         )
         settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
 

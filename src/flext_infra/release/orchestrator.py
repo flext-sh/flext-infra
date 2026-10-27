@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
 from flext_infra.release import FlextInfraReleasePlanMixin
 
 
@@ -22,7 +22,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
     """
 
     conform_collaborators: Annotated[
-        p.Infra.CodegenConformPorts | None,
+        t.Port[p.Infra.CodegenConformPorts] | None,
         m.Field(
             exclude=True,
             description=(

@@ -59,10 +59,7 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
         docstrings = {
             ast.get_docstring(node, clean=False)
             for node in ast.walk(tree)
-            if isinstance(
-                node,
-                ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-            )
+            if isinstance(node, c.Infra.AST_SCOPE_OWNER_TYPES)
         }
         return tuple(
             node.value

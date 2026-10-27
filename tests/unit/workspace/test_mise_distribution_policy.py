@@ -25,16 +25,16 @@ class TestsFlextInfraMiseDistributionPolicy:
         u.Tests.WorktreeFixture.write_python_project(root, "fixture")
         return root
 
-    def test_managed_artifacts_fleet_wins_over_divergent_pin(
+    def test_project_pin_of_packaged_tool_fails_closed(
         self,
         tmp_path: Path,
     ) -> None:
-        """A project pin diverging from a tool the fleet now owns is residue.
+        """A project selector that the packaged toolchain owns is a duplicate.
 
-        Resilient composition (operator law 2026-09-18): promoting a project
-        tool to the fleet SSOT must never block generation in any consumer.
-        The fleet version wins and the stale local declaration is reported
-        for removal instead of failing the projection.
+        One owner per tool: composing ``.mise.toml`` never picks a winner
+        between the packaged pin and a project redeclaration of the same
+        selector; it fails naming the project source so the residue is
+        removed at its owner.
         """
         root = self._workspace(tmp_path / "project")
         config_dir = root / "config"
@@ -56,6 +56,7 @@ class TestsFlextInfraMiseDistributionPolicy:
             f'[tools]\n"{selector}" = "{version}"\n',
         )
 
-        tm.ok(result)
-        tm.that(result.value, has=f'"{selector}" = "{version}"')
-        tm.that(result.value, lacks="divergent")
+        tm.fail(
+            result,
+            has=f"project Mise selector {selector!r} ({config_dir / 'tools.yaml'})",
+        )

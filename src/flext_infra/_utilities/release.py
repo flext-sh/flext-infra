@@ -13,6 +13,9 @@ from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 
 from flext_cli import u
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
+from packaging.version import InvalidVersion, Version
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
@@ -427,13 +430,11 @@ class FlextInfraUtilitiesRelease:
             # on the index or out of scope, and treating it as an edge would
             # deadlock the graph on a package this release never publishes.
             edges[name] = tuple(
-                sorted(
-                    dependency
-                    for dependency in declared.value
-                    if dependency in selected and dependency != name
-                ),
+                dependency
+                for dependency in declared.value
+                if dependency in selected and dependency != name
             )
-        return FlextInfraUtilitiesDependencies.dependency_waves(edges)
+        return u.Cli.dag_waves(edges)
 
     @staticmethod
     def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:
@@ -478,6 +479,109 @@ class FlextInfraUtilitiesRelease:
                 }),
             ),
         )
+
+    @staticmethod
+    def release_specifier(version: str) -> p.Result[str]:
+        """Return the semver-compatible range (minor line before 1.0, else major).
+
+        Returns:
+            The compatible-release specifier for the declared version.
+
+        """
+        try:
+            parsed = Version(version)
+        except InvalidVersion as exc:
+            return r[str].fail_op("parse internal dependency version", exc)
+        if parsed.major == 0:
+            return r[str].ok(f"~={version}")
+        return r[str].ok(f">={version},<{parsed.major + 1}")
+
+    @staticmethod
+    def release_identity_verdict(
+        identity: t.Pair[str | None, str], expectation: m.Infra.ArtifactExpectation
+    ) -> p.Result[bool]:
+        """Prove one artifact's core metadata ``(Name, Version)`` identity.
+
+        Returns:
+            Success when name and version match the expectation.
+
+        """
+        name, raw_version = identity
+        project, version = expectation.project, expectation.version
+        if name is None or canonicalize_name(name) != canonicalize_name(project):
+            return r[bool].fail(
+                f"artifact Name mismatch: expected {project}, found {name}"
+            )
+        try:
+            expected, actual = Version(version), Version(raw_version)
+        except InvalidVersion as exc:
+            return r[bool].fail_op("validate artifact Version", exc)
+        if actual != expected:
+            return r[bool].fail(
+                f"artifact Version mismatch: expected {expected}, found {actual}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def release_requirement_pins_verdict(
+        cls, requirements: t.StrSequence, versions: t.StrMapping
+    ) -> p.Result[bool]:
+        """Prove every internal ``Requires-Dist`` carries its declared fleet pin.
+
+        Returns:
+            Success when every internal requirement is pinned.
+
+        """
+        for text in requirements:
+            try:
+                requirement = Requirement(text)
+            except InvalidRequirement as exc:
+                return r[bool].fail_op("parse artifact requirement", exc)
+            dependency = canonicalize_name(requirement.name)
+            # A direct reference is source-declared; only fleet pins derive.
+            if requirement.url is not None or not dependency.startswith(
+                c.Infra.PKG_PREFIX_HYPHEN,
+            ):
+                continue
+            pin = (
+                cls.release_specifier(versions[dependency])
+                if dependency in versions
+                else r[str].fail(f"internal dependency version unknown: {dependency}")
+            )
+            if pin.failure or str(requirement.specifier) != pin.value:
+                return r[bool].fail(
+                    f"artifact contains unpinned FLEXT dependency: {text}",
+                )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def release_pinned_requirement(
+        cls, requirement: str, versions: t.StrMapping
+    ) -> p.Result[t.Pair[str, bool]]:
+        """Pin one requirement's internal dependency to its declared version.
+
+        Returns:
+            The rendered text and whether it keeps a direct reference.
+
+        """
+        result_type = r[t.Pair[str, bool]]
+        try:
+            parsed = Requirement(requirement)
+        except InvalidRequirement as exc:
+            return result_type.fail_op("parse release requirement", exc)
+        name = canonicalize_name(parsed.name)
+        if not name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
+            return result_type.ok((requirement.strip(), parsed.url is not None))
+        if name not in versions:
+            return result_type.fail(
+                f"internal dependency version unknown to this release: {name}",
+            )
+        pin = cls.release_specifier(versions[name])
+        if pin.failure:
+            return result_type.from_failure(pin)
+        extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
+        marker = f"; {parsed.marker}" if parsed.marker is not None else ""
+        return result_type.ok((f"{parsed.name}{extras}{pin.value}{marker}", False))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRelease"]

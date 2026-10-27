@@ -24,9 +24,6 @@ from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
     FlextInfraUtilitiesPyprojectUvSources,
 )
-from flext_infra._utilities._pyproject._requirements_provenance import (
-    FlextInfraUtilitiesPyprojectRequirementsProvenance,
-)
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
@@ -39,7 +36,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     type _ConformedProvenance = t.Triple[
         t.Cli.TomlDocument,
         str,
-        FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        m.Infra.RequirementsProvenance,
     ]
 
     class PyprojectConformOptions(m.ImmutableValueModel):
@@ -196,7 +193,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         native_sources = (
             u.Cli.toml_mapping_child(uv, "sources") if uv is not None else None
         )
-        source_context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
+        source_context = m.Infra.RequirementsProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             native_sources=(
@@ -239,7 +236,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _normalized_requirement_sources(
         cls,
         source: t.Cli.TomlDocument,
-        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]]:
         """Validate composed declarations before applying the one source context.
 
@@ -324,7 +321,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         custom_groups: _CustomGroupsPair,
-        context: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        context: m.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Tag derived occurrences after normalizing their declared origins.
 

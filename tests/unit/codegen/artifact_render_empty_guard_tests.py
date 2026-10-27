@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
 
 
@@ -79,7 +79,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
-        planned = FlextInfraCodegenConformExecute(
+        planned = FlextInfraCodegenConform.Generate(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,
@@ -300,3 +300,50 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.fail(b"import os" in tm.not_none(first.desired_content))
         tm.ok(b"import os" in tm.not_none(second.desired_content))
         tm.fail(any(plan.path.exists() for plan in plans))
+
+    @staticmethod
+    def test_normalization_reads_the_pyproject_staged_in_the_same_plan_set(
+        tmp_path: Path,
+    ) -> None:
+        """A tooling change staged with a candidate governs that candidate's repair."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        metadata = root / c.PYPROJECT_FILENAME
+        document = tm.not_none(
+            u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING))
+        )
+        document["tool"] = {"ruff": {"lint": {"select": ["UP040"]}}}
+        metadata.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
+        staged = tm.not_none(
+            u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING))
+        )
+        staged["tool"] = {
+            "ruff": {"lint": {"select": ["UP040"], "unfixable": ["UP040"]}}
+        }
+        destination = package / "facade.py"
+        candidate = (
+            b"from typing import TypeAlias\n\n\n"
+            b"class Facade:\n    Owner: TypeAlias = int\n"
+        )
+
+        def plan(content: bytes, path: Path) -> m.Infra.CodegenFilePlan:
+            return m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=tm.ok(u.Cli.atomic_read_binary_file_state(path)),
+                desired_content=content,
+                desired_mode=c.Infra.CONFIG_SPEC[1],
+            )
+
+        stale = tm.ok(
+            u.Infra.normalized_codegen_changes((plan(candidate, destination),))
+        )
+        tm.that(tm.not_none(stale[0].desired_content), has=b"type Owner = int")
+        current = tm.ok(
+            u.Infra.normalized_codegen_changes((
+                plan(u.Cli.toml_dumps(staged).encode(c.DEFAULT_ENCODING), metadata),
+                plan(candidate, destination),
+            ))
+        )
+        emitted = tm.not_none(current[1].desired_content)
+        tm.that(emitted, has=b"Owner: TypeAlias = int")
+        tm.that(emitted, lacks=b"type Owner")

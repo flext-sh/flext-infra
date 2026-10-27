@@ -13,7 +13,7 @@ from typing import cast
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import c, m, t, tm, u
 
 
@@ -86,7 +86,7 @@ class TestsFlextInfraModernizerSourceReferences:
             "--git-source-ref-to",
             new_ref,
         ]
-        tm.that(main(arguments), eq=0)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=0)
         published = project.read_text(encoding="utf-8")
         for comment in (
             "selected runtime dependency",
@@ -147,7 +147,7 @@ class TestsFlextInfraModernizerSourceReferences:
             eq="dev",
         )
         tm.that(published, has="# Authored consumer metadata")
-        tm.that(main(arguments), eq=0)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=0)
         tm.that(project.read_text(encoding="utf-8"), eq=published)
 
     @staticmethod
@@ -215,7 +215,7 @@ class TestsFlextInfraModernizerSourceReferences:
             migration.target_ref,
         ]
 
-        tm.that(main(arguments), eq=c.Cli.EXIT_CODE_SUCCESS)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=c.Cli.EXIT_CODE_SUCCESS)
 
         published = {
             project / c.PYPROJECT_FILENAME: (project / c.PYPROJECT_FILENAME).read_text(
@@ -237,7 +237,7 @@ class TestsFlextInfraModernizerSourceReferences:
             {path: path.read_text(encoding="utf-8") for path in untouched},
             eq=dict.fromkeys(untouched, original),
         )
-        tm.that(main(arguments), eq=c.Cli.EXIT_CODE_SUCCESS)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=c.Cli.EXIT_CODE_SUCCESS)
         tm.that(
             {path: path.read_text(encoding="utf-8") for path in published},
             eq=published,
@@ -250,7 +250,7 @@ class TestsFlextInfraModernizerSourceReferences:
         original = "[project]\nname='external-consumer'\nversion='1.0.0'\n"
         project.write_text(original, encoding="utf-8")
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "deps",
                 "modernize",
                 "--repository-root",

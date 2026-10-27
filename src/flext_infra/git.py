@@ -42,22 +42,6 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
         """
         return u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=self._repo()))
 
-    @classmethod
-    def verify_clean(
-        cls,
-        request: m.Infra.GitStatusRequest,
-    ) -> p.Result[m.Infra.GitStatusReport]:
-        """Report staged, unstaged, and untracked work without rejecting WIP.
-
-        Preserve recovery objects without probing them for ordinary admission.
-        Technical Git failures propagate unchanged from the status use case.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.GitStatusReport]``.
-
-        """
-        return cls(repository_root=request.repo_root).execute()
-
     @staticmethod
     def verify_lane(
         request: m.Infra.GitLaneVerificationRequest,

@@ -14,11 +14,7 @@ import pytest
 from flext_infra import FlextInfraConfig, m
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from tests import c, t, tm, u
-from tests.unit.codegen.layout_fixture import (
-    archive_root,
-    build_loose_project,
-    layout_engine,
-)
+from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
 
 
 class TestsFlextInfraCodegenLayout:
@@ -73,7 +69,9 @@ class TestsFlextInfraCodegenLayout:
         keep_count: int,
     ) -> None:
         """Prove declared files change classification without changing defaults."""
-        project = build_loose_project(tmp_path, name=distribution)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(
+            tmp_path, name=distribution
+        )
         if project.name != checkout_name:
             project = project.rename(tmp_path / checkout_name)
         candidates = tuple(f"consumer-note-{index}.fixture" for index in range(3))
@@ -85,7 +83,9 @@ class TestsFlextInfraCodegenLayout:
         # must observe the just-written project-scoped overlay) pays for a
         # fresh interpreter; halving the subprocess count keeps both reads
         # inside the default per-test budget.
-        baseline = layout_engine(project).check_project(project)
+        baseline = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            project
+        ).check_project(project)
         baseline_paths = {finding.path for finding in baseline.findings}
         tm.ok(set(candidates) <= baseline_paths)
         override = m.Infra.LayoutProjectOverrideSpec(
@@ -134,8 +134,8 @@ class TestsFlextInfraCodegenLayout:
         tmp_path: Path,
     ) -> None:
         """Check mode classifies every loose root entry without writing."""
-        project = build_loose_project(tmp_path)
-        engine = layout_engine(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(tmp_path)
 
         report = engine.check_project(project)
 
@@ -146,22 +146,25 @@ class TestsFlextInfraCodegenLayout:
         tm.that(by_path["output.log"].rule, eq="archive")
         tm.that(
             by_path["output.log"].target,
-            eq=f"{archive_root()}/{project.name}/output.log",
+            eq=f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/{project.name}/output.log",
         )
         tm.that(by_path["loose.txt"].rule, eq="review")
         gitignore = [
             finding for finding in report.findings if finding.rule == "gitignore"
         ]
         tm.ok(bool(gitignore))
-        tm.that(gitignore[0].target, eq=f"{archive_root()}/")
+        tm.that(
+            gitignore[0].target,
+            eq=f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/",
+        )
 
     @staticmethod
     def test_check_execute_fails_on_layout_findings(
         tmp_path: Path,
     ) -> None:
         """A layout finding blocks the check at every severity."""
-        build_loose_project(tmp_path)
-        engine = layout_engine(tmp_path)
+        TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(tmp_path)
 
         result = engine.execute()
 
@@ -172,15 +175,22 @@ class TestsFlextInfraCodegenLayout:
         tmp_path: Path,
     ) -> None:
         """Apply reorganizes once; a second apply performs zero operations."""
-        project = build_loose_project(tmp_path)
-        engine = layout_engine(tmp_path, apply_changes=True)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
 
         first = engine.execute()
 
         tm.ok(first)
         tm.ok((project / "docs" / "guides" / "intro.md").is_file())
         tm.ok((project / "docs" / "index.md").is_file())
-        archived = project / archive_root() / project.name / "output.log"
+        archived = (
+            project
+            / TestsFlextInfraCodegenLayoutSupport.archive_root()
+            / project.name
+            / "output.log"
+        )
         tm.ok(archived.is_file())
         tm.that(archived.read_text(encoding="utf-8"), eq="log-line\n")
         tm.fail((project / "guides").exists())
@@ -198,17 +208,25 @@ class TestsFlextInfraCodegenLayout:
         tmp_path: Path,
     ) -> None:
         """Different-content collisions preserve both sides (archive-not-delete)."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         existing = project / "docs" / "guides"
         existing.mkdir(parents=True)
         (existing / "intro.md").write_text("canonical\n", encoding="utf-8")
-        engine = layout_engine(tmp_path, apply_changes=True)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
 
         result = engine.execute()
 
         tm.ok(result)
         tm.that((existing / "intro.md").read_text(encoding="utf-8"), eq="canonical\n")
-        archived = project / archive_root() / project.name / "guides" / "intro.md"
+        archived = (
+            project
+            / TestsFlextInfraCodegenLayoutSupport.archive_root()
+            / project.name
+            / "guides"
+            / "intro.md"
+        )
         tm.ok(archived.is_file())
         tm.that(archived.read_text(encoding="utf-8"), eq="intro\n")
         tm.fail((project / "guides").exists())
@@ -230,7 +248,9 @@ class TestsFlextInfraCodegenLayout:
         )
         (profiles / "profiles.yml").write_text("profile: 1\n", encoding="utf-8")
         u.Tests.declare_workspace_projects(tmp_path, (project.name,))
-        engine = layout_engine(tmp_path, apply_changes=True)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
 
         result = engine.execute()
 
@@ -238,14 +258,19 @@ class TestsFlextInfraCodegenLayout:
         tm.ok((project / "profiles.yml").is_file())
         tm.fail((project / "profiles").exists())
         tm.that(
-            (project / archive_root() / project.name / "profiles").is_dir(),
+            (
+                project
+                / TestsFlextInfraCodegenLayoutSupport.archive_root()
+                / project.name
+                / "profiles"
+            ).is_dir(),
             eq=True,
         )
 
     @staticmethod
     def test_gate_reports_violations_as_blocking_errors(tmp_path: Path) -> None:
         """Every layout finding fails the gate and is reported at error severity."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         gate = FlextInfraLayoutGate(tmp_path)
         ctx = m.Infra.GateContext(
             repository_root=tmp_path,
@@ -288,12 +313,12 @@ class TestsFlextInfraCodegenLayout:
     @staticmethod
     def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:
         """data/ is skipped; external-docs/ is allowed as reference corpus."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         (project / "data").mkdir()
         (project / "data" / "proposal").mkdir()
         (project / "external-docs").mkdir()
         (project / "external-docs" / "note.md").write_text("ext\n", encoding="utf-8")
-        engine = layout_engine(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(tmp_path)
 
         report = engine.check_project(project)
 
@@ -304,11 +329,11 @@ class TestsFlextInfraCodegenLayout:
     @staticmethod
     def test_infrastructure_root_is_canonical(tmp_path: Path) -> None:
         """Pulumi and Ansible share the canonical root infrastructure directory."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         infrastructure = project / "infra"
         infrastructure.mkdir()
         (infrastructure / "Pulumi.yaml").write_text("name: fixture\n", encoding="utf-8")
-        engine = layout_engine(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(tmp_path)
 
         report = engine.check_project(project)
 
@@ -331,7 +356,7 @@ class TestsFlextInfraCodegenLayout:
         # how an actual undeclared repository shows up on disk.
         (tmp_path / undeclared_name / "marker.txt").write_text("x", encoding="utf-8")
         u.Tests.declare_workspace_projects(tmp_path, (declared_name,))
-        engine = layout_engine(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(tmp_path)
 
         report = engine.check_project(tmp_path)
 
@@ -344,17 +369,24 @@ class TestsFlextInfraCodegenLayout:
         tmp_path: Path,
     ) -> None:
         """Root move_docs_files collide with docs/ -> archive root, keep docs."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         docs = project / "docs"
         docs.mkdir(parents=True, exist_ok=True)
         (docs / "index.md").write_text("canonical-index\n", encoding="utf-8")
-        engine = layout_engine(tmp_path, apply_changes=True)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
 
         result = engine.execute()
 
         tm.ok(result)
         tm.that((docs / "index.md").read_text(encoding="utf-8"), eq="canonical-index\n")
-        archived = project / archive_root() / project.name / "index.md"
+        archived = (
+            project
+            / TestsFlextInfraCodegenLayoutSupport.archive_root()
+            / project.name
+            / "index.md"
+        )
         tm.ok(archived.is_file())
         tm.that(archived.read_text(encoding="utf-8"), eq="index\n")
         tm.fail((project / "index.md").exists())

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, config, m, main, workspace
+from flext_infra import FlextInfraCli, FlextInfraGitService, config, m, workspace
 from tests import c, tm, u
 
 
@@ -56,7 +56,7 @@ class TestsFlextInfraGitLaneHygiene:
         tm.that(report.findings, eq=())
         tm.that(report.integration_branch, eq=request.declared)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lanes",
                 "--repo-root",
@@ -124,7 +124,7 @@ class TestsFlextInfraGitLaneHygiene:
             expected.add((kind.TEMP_WORKTREE, str(merged)))
         tm.that({(entry.kind, entry.ref) for entry in report.violations}, eq=expected)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lanes",
                 "--repo-root",
@@ -224,7 +224,7 @@ class TestsFlextInfraGitLaneHygiene:
         tm.that(receipt.publication.remote_name, eq=request.remote)
         _ = capsys.readouterr()
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "lane-ownership",
                 "--repo-root",

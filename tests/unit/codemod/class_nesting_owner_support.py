@@ -129,7 +129,7 @@ __all__: list[str] = ["LIMIT", "write"]
         for node in ast.parse(source).body:
             if isinstance(node, ast.ClassDef | ast.FunctionDef):
                 names.append(node.name)
-            elif isinstance(node, ast.Assign | ast.AnnAssign):
+            elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
                 targets = (
                     node.targets if isinstance(node, ast.Assign) else [node.target]
                 )

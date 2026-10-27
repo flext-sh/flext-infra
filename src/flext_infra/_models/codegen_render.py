@@ -165,6 +165,17 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = ""
+        custom_post_steps: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Verbatim project-owned workflow steps injected after the "
+                    "approval verbs (failure diagnostics), read from the "
+                    "project's own custom-post-steps file; empty when absent"
+                ),
+            ),
+        ] = ""
         private_submodules: Annotated[
             FlextInfraConfigModelsProvider.CiPrivateSubmodulesSpec | None,
             m.Field(
@@ -206,6 +217,17 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = False
+        superproject: Annotated[
+            FlextInfraConfigModelsProvider.CiSuperprojectCheckoutSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Containing workspace an attached member's CI checks out to "
+                    "install the frozen root lock; None for a workspace root or "
+                    "a standalone repository, whose CI checks out itself"
+                ),
+            ),
+        ] = None
 
         @m.model_validator(mode="after")
         def require_elected_release_commands(self) -> Self:
@@ -235,6 +257,14 @@ class FlextInfraModelsCodegenRender:
         make: Annotated[
             FlextInfraConfigModelsMake.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
+        ]
+
+    class GitHookRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input consumed by the generated Git hook validator."""
+
+        preservation_ref_namespaces: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Remote ref prefixes exempt from the pre-push matrix"),
         ]
 
     class DistroDockerRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -324,7 +354,7 @@ class FlextInfraModelsCodegenRender:
         link_mode: Annotated[str, m.Field(description="uv installation link mode")]
         constraint_dependencies: Annotated[
             t.VariadicTuple[str],
-            m.Field(description="Declared constraints; the uv pin is never kept"),
+            m.Field(description="Declared constraints, projected as declared"),
         ]
         override_dependencies: Annotated[
             t.VariadicTuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride],
@@ -351,9 +381,9 @@ class FlextInfraModelsCodegenRender:
             strict=True,
         )
 
-        rules: Annotated[
-            t.JsonMapping,
-            m.Field(description="Elected native Markdown rules."),
+        native_config: Annotated[
+            str,
+            m.Field(description="Native Markdown TOML derived from the shared policy."),
         ]
         exclude: Annotated[
             t.StrTuple,
@@ -369,12 +399,12 @@ class FlextInfraModelsCodegenRender:
             strict=True,
         )
 
-        generated_source_globs: Annotated[
+        generated_projection_patterns: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
-                    "Tracked generated-source trees excluded from the smells "
-                    "scan, derived from the codegen artifact key."
+                    "Generated projection surface excluded from the smells "
+                    "scan, from the one generated-projection owner."
                 ),
             ),
         ] = ()
@@ -434,10 +464,14 @@ class FlextInfraModelsCodegenRender:
         site_url: t.NonEmptyStr = m.Field(description="Published site URL.")
         repo_url: t.NonEmptyStr = m.Field(description="Source repository URL.")
         repo_name: t.NonEmptyStr = m.Field(description="Source repository name.")
-        exclude_docs_block: str = m.Field(description="Rendered docs exclusions.")
-        exclude_plugin_block: str = m.Field(description="Rendered plugin exclusions.")
-        mkdocstrings_paths_block: str = m.Field(
-            description="Rendered mkdocstrings source paths.",
+        exclude_docs: t.StrSequence = m.Field(
+            description="Gitignore-style docs exclusions."
+        )
+        exclude_plugin_patterns: t.StrSequence = m.Field(
+            description="Translated physical-copy exclusion regular expressions.",
+        )
+        mkdocstrings_paths: t.StrSequence = m.Field(
+            description="mkdocstrings source paths.",
         )
         documentation_language: t.Infra.DocumentationLanguage = m.Field(
             default="en", description="Project-local generated documentation language"
@@ -496,9 +530,14 @@ class FlextInfraModelsCodegenRender:
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
         runtime_import_lines: t.NonEmptyStr = m.Field(
+            description="Isort-ordered runtime imports of the lazy helpers.",
+        )
+        eager_binding_lines: str = m.Field(
+            default_factory=str,
             description=(
-                "Isort-ordered runtime imports: the lazy helpers plus any "
-                "eager or wildcard reexports."
+                "Runtime-only eager dunder bindings emitted after the lazy "
+                "installer, so the bound submodule may consume the package's "
+                "own facades while its static contract stays in TYPE_CHECKING."
             ),
         )
         type_checking_lines: str = m.Field(

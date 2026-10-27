@@ -1,24 +1,23 @@
 # A class-only source module declares its own publication before lazy-init
-# propagates it. The existing project context proves the canonical class stem.
+# propagates it. The class-stem- file groups prove the canonical class stem.
 # Multi-class modules, explicit exports, loose behavior and module bindings
 # require their existing semantic ownership phase; this rule never elects them.
 #
-# Test-suite modules publish nothing (ban-test-suite-module-all): they are
-# pytest collection targets, never import sources, so this rule must not ask
-# them for the `__all__` that rule deletes. The ignores mirror its suite scope.
+# The law is the same in every tier (ADR-028 p.6): a test-suite module is one
+# Tests<Stem> class plus its `__all__`, exactly like src; only conftest.py and
+# tests/fixtures/** carry the tests-tier delta, and that delta concerns pytest
+# fixtures and hooks, not publication. No path is exempt from this rule.
 id: declare-single-class-export
 language: python
 severity: error
-ignores:
-  - "tests/unit/**/*.py"
-  - "tests/integration/**/*.py"
-  - "tests/e2e/**/*.py"
-  - "tests/performance/**/*.py"
-  - "tests/benchmark/**/*.py"
 metadata:
-  context:
-    NAME:
-      is: class-stem
+  enforce: [ENFORCE-050]
+  scope:
+    partition:
+      variable: NAME
+      holds: true
+      selectors: class-stem-
+      pattern: "^(?:{alternatives})"
 utils:
   import:
     any:

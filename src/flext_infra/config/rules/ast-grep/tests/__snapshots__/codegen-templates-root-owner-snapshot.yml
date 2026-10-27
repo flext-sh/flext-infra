@@ -1,11 +1,7 @@
 id: codegen-templates-root-owner
 snapshots:
-  ? |
-    from flext_infra import u
-    templates_root = (
-        self._package_root() / "templates" / codegen.templates.root
-    ).resolve()
-  : fixed: |
+  "from flext_infra import u\ntemplates_root = (\n    self._package_root() / \"templates\" / codegen.templates.root\n).resolve()\n":
+    fixed: |
       from flext_infra import u
       templates_root = u.Infra.codegen_templates_root(codegen)
     labels:

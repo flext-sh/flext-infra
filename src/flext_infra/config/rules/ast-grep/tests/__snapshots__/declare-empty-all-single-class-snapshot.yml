@@ -1,0 +1,94 @@
+id: declare-empty-all-single-class
+snapshots:
+  "__all__ = []\nclass Declaration:\n    value: str\n":
+    fixed: |
+      __all__: list[str] = ["Declaration"]
+      class Declaration:
+          value: str
+    labels:
+    - source: __all__ = []
+      style: primary
+      start: 0
+      end: 12
+    - source: |
+        __all__ = []
+        class Declaration:
+            value: str
+      style: secondary
+      start: 0
+      end: 47
+    - source: __all__
+      style: secondary
+      start: 0
+      end: 7
+    - source: "[]"
+      style: secondary
+      start: 10
+      end: 12
+    - source: __all__ = []
+      style: secondary
+      start: 0
+      end: 12
+    - source: Declaration
+      style: secondary
+      start: 19
+      end: 30
+    - source: |-
+        class Declaration:
+            value: str
+      style: secondary
+      start: 13
+      end: 46
+    - source: |
+        __all__ = []
+        class Declaration:
+            value: str
+      style: secondary
+      start: 0
+      end: 47
+  "class Declaration:\n    pass\n__all__ = ()\n":
+    fixed: |
+      class Declaration:
+          pass
+      __all__: list[str] = ["Declaration"]
+    labels:
+    - source: __all__ = ()
+      style: primary
+      start: 28
+      end: 40
+    - source: |
+        class Declaration:
+            pass
+        __all__ = ()
+      style: secondary
+      start: 0
+      end: 41
+    - source: __all__
+      style: secondary
+      start: 28
+      end: 35
+    - source: ()
+      style: secondary
+      start: 38
+      end: 40
+    - source: __all__ = ()
+      style: secondary
+      start: 28
+      end: 40
+    - source: Declaration
+      style: secondary
+      start: 6
+      end: 17
+    - source: |-
+        class Declaration:
+            pass
+      style: secondary
+      start: 0
+      end: 27
+    - source: |
+        class Declaration:
+            pass
+        __all__ = ()
+      style: secondary
+      start: 0
+      end: 41

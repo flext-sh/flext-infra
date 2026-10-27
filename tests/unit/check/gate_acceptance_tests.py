@@ -295,7 +295,7 @@ class TestsFlextInfraGateAcceptance:
             check.FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 (project.name,),
                 requested,
-                fail_fast=fail_fast,
+                u.Tests.gate_context(tmp_path, fail_fast=fail_fast),
             ),
         )
         tm.that(len(results), eq=1)
@@ -432,6 +432,7 @@ class TestsFlextInfraGateAcceptance:
             tmp_path,
             "markdown-repair",
             pyproject='[project]\nname = "markdown-repair"\nversion = "0.1.0"\n',
+            markdown_config="",
         )
         source = project / "README.md"
         source.write_text(

@@ -97,7 +97,10 @@ class TestsFlextInfraDepsModernizerPyright:
                 }
             }
         )
-        phase = FlextInfraEnsurePyrightConfigPhase(selected)
+        phase = FlextInfraEnsurePyrightConfigPhase(
+            selected,
+            codegen=config.Infra.codegen,
+        )
         context = m.Infra.PyprojectAnalyzerContext(is_root=False)
         rendered = tm.ok(
             phase.render_source("[project]\nname='fixture'\n", context=context)
@@ -129,7 +132,10 @@ class TestsFlextInfraDepsModernizerPyright:
             "venv='old-environment'\nvenvPath='../old-checkout'\n"
             "typeCheckingMode='off'\n"
         )
-        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
+        phase = FlextInfraEnsurePyrightConfigPhase(
+            tool_config_document,
+            codegen=config.Infra.codegen,
+        )
         context = m.Infra.PyprojectAnalyzerContext(is_root=False)
         first = tm.ok(phase.render_source(source, context=context))
         second = tm.ok(phase.render_source(first, context=context))
@@ -158,7 +164,10 @@ class TestsFlextInfraDepsModernizerPyright:
 
         """
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
-        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
+        phase = FlextInfraEnsurePyrightConfigPhase(
+            tool_config_document,
+            codegen=config.Infra.codegen,
+        )
         changes = [phase.apply_payload(payload, context=context) for _ in range(2)]
         tm.that(changes[0], empty=False)
         tm.that(changes[1], empty=True)
@@ -506,6 +515,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.ok(rules.source_dir in roots)
         declared = FlextInfraEnsurePyrightConfigPhase(
             selected,
+            codegen=config.Infra.codegen,
         ).environment_payloads_for_dirs(("infra", rules.source_dir))
         tm.that([entry["root"] for entry in declared], eq=roots)
 
@@ -577,6 +587,7 @@ class TestsFlextInfraDepsModernizerPyright:
                     declared_python_dirs=(rules.source_dir, rules.test_like_dirs[0]),
                     declared_python_dirs_are_complete=True,
                 ),
+                codegen=tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec,
             ),
         )
 
@@ -682,7 +693,7 @@ class TestsFlextInfraDepsModernizerPyright:
             project_name=project_name,
             package_name=package_name,
             path=project_dir / c.PYPROJECT_FILENAME,
-            scaffold_project=config.Infra.codegen.scaffold.project,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec,
             runtime_dependency_overlay=(),
             declared_project_dependencies=(),
             topology=topology,
@@ -729,6 +740,7 @@ class TestsFlextInfraDepsModernizerPyright:
                 path=project_dir / c.PYPROJECT_FILENAME,
                 format_source=False,
                 topology=topology,
+                codegen=request.codegen,
             ),
         )
         tm.that(
@@ -763,6 +775,7 @@ class TestsFlextInfraDepsModernizerPyright:
                     path=project_dir / c.PYPROJECT_FILENAME,
                     format_source=False,
                     topology=topology,
+                    codegen=request.codegen,
                 )
             ),
             eq=first,
@@ -869,7 +882,10 @@ class TestsFlextInfraDepsModernizerPyright:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({
             "tool": {"pyright": pyright}
         })
-        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
+        phase = FlextInfraEnsurePyrightConfigPhase(
+            tool_config_document,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec,
+        )
         tm.that(
             phase.apply_payload(
                 payload,

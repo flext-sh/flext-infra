@@ -6,10 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import datetime as dt
 from pathlib import Path
 
-import flext_tests
 import pytest
 
 from flext_infra.codemod import FlextInfraModGateEngine
@@ -140,13 +138,4 @@ class TestsFlextInfraSourceIntrospectionBoundary:
         )
         tm.that(len(findings), eq=expected_findings)
         tm.that(tuple(entry.actionable for entry in findings), lacks=True)
-        authenticated = tuple(
-            state.path for finding in findings for state in finding.binding_states
-        )
-        tm.that(
-            authenticated,
-            lacks=Path(flext_tests.__file__).resolve(),
-        )
-        if "from datetime import" in consumer:
-            tm.that(authenticated, has=Path(dt.__file__).resolve())
         tm.that(source.read_text(encoding="utf-8"), eq=consumer)

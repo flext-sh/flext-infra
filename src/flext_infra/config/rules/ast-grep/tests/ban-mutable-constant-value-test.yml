@@ -1,0 +1,26 @@
+id: ban-mutable-constant-value
+valid:
+  - |
+    class FlextDemoConstants:
+        NAMES: ClassVar[tuple[str, ...]] = ("a", "b")
+        KINDS = frozenset({"x"})
+        TABLE = MappingProxyType({"a": 1})
+  - |
+    class FlextDemoConstants:
+        def build(self):
+            items = []
+            return items
+invalid:
+  - |
+    class FlextDemoConstants:
+        NAMES: ClassVar[list[str]] = ["a", "b"]
+  - |
+    class FlextDemoConstants:
+        TABLE = {"a": 1}
+  - |
+    class FlextDemoConstants:
+        class Demo:
+            KINDS = set()
+  - |
+    class FlextDemoConstants:
+        SQUARES = [value * value for value in range(3)]

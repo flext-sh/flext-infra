@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import override
 
 from flext_cli import cli
@@ -32,13 +33,15 @@ class FlextInfraCodemodSnapshotRefresh(FlextInfraServiceBase[t.Cli.ResultValue])
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        planned = u.Infra.codemod_rule_plan(self.repository_root)
-        if planned.failure:
-            return r[t.Cli.ResultValue].from_failure(planned)
-        rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
+        resources: set[Path] = set()
+        for project in u.Infra.governed_project_roots(self.repository_root):
+            planned = u.Infra.codemod_compose_rule_plan(project, {project: None})
+            if planned.failure:
+                return r[t.Cli.ResultValue].from_failure(planned)
+            resources.update(u.Infra.codemod_fixture_resources(planned.value))
         refreshed = FlextInfraModGateEngine.refresh_rule_snapshots(
             self.repository_root,
-            rules,
+            tuple(sorted(resources)),
             apply=not self.effective_dry_run,
         )
         if refreshed.failure:

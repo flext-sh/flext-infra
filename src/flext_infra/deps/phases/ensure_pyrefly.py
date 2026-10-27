@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from typing_extensions import TypeForm
-
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra.deps import FlextInfraExtraPathsManager
@@ -19,9 +17,15 @@ if TYPE_CHECKING:
 class FlextInfraEnsurePyreflyConfigPhase:
     """Ensure standard Pyrefly configuration for max-strict typing."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(
+        self,
+        tool_config: m.Infra.ToolConfigDocument,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> None:
         """Store tool configuration used when enforcing pyrefly project settings."""
         self._tool_config = tool_config
+        self._codegen = codegen
 
     def _phase(
         self,
@@ -79,20 +83,18 @@ class FlextInfraEnsurePyreflyConfigPhase:
             )
         options = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYREFLY)
         options.update({
-            c.Infra.PYTHON_VERSION_HYPHEN: (
-                config.Infra.codegen.toolchain.python_version
-            ),
+            c.Infra.PYTHON_VERSION_HYPHEN: self._codegen.toolchain.python_version,
             # Import search order is semantic and stays with the path owner.
             c.Infra.SEARCH_PATH: list[t.JsonValue](expected_search),
             c.Infra.PROJECT_INCLUDES: list[t.JsonValue](sorted(expected_includes)),
             c.Infra.PROJECT_EXCLUDES: list[t.JsonValue](
                 u.Infra.pyrefly_project_excludes(
-                    u.Infra.native_tool_setting(
+                    u.Infra.native_tool_strings(
                         self._tool_config,
                         c.Infra.PYREFLY,
                         c.Infra.PROJECT_EXCLUDES,
-                        TypeForm(t.StrSequence),
-                    )
+                    ),
+                    codegen=self._codegen,
                 )
             ),
         })

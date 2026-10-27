@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codemod, infra, refactor, transformers, workspace
+from flext_infra import codemod, infra, transformers, workspace
 from tests import c, m, p, r, t, tm, u
 
 
@@ -539,7 +539,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             "    return DeclaredService.execute()\n"
         )
         warmed = tm.not_none(
-            refactor.FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=mod_workspace,
                 file_path=consumer_path,
                 source=original_source,
@@ -574,7 +574,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 mod_workspace
             )
             normalized = tm.not_none(
-                refactor.FlextInfraImportNormalization.normalize_source(
+                u.Infra.normalize_import_source(
                     project_root=candidate_root,
                     file_path=candidate_consumer,
                     source=candidate,
@@ -582,7 +582,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             )
             tm.that(normalized, eq=warmed)
             tm.that(
-                refactor.FlextInfraImportNormalization.normalize_source(
+                u.Infra.normalize_import_source(
                     project_root=candidate_root,
                     file_path=candidate_consumer,
                     source=normalized,
@@ -596,11 +596,8 @@ class TestsFlextInfraSemanticPublicationTransactions:
                         "-c",
                         (
                             "from pathlib import Path\n"
-                            "from flext_infra.refactor import (\n"
-                            "    FlextInfraImportNormalization,\n"
-                            ")\n"
-                            "normalized = FlextInfraImportNormalization"
-                            ".normalize_source(\n"
+                            "from flext_infra import u\n"
+                            "normalized = u.Infra.normalize_import_source(\n"
                             f"    project_root=Path({str(candidate_root)!r}),\n"
                             f"    file_path=Path({str(candidate_consumer)!r}),\n"
                             f"    source={candidate!r},\n"

@@ -13,7 +13,7 @@ from time import monotonic
 
 import pytest
 
-from flext_infra import config, main, validate
+from flext_infra import FlextInfraCli, config, validate
 from tests import c, m, tm, u
 
 
@@ -448,7 +448,9 @@ class TestsFlextInfraCProfileReport:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """The public CLI exposes the report owner's actual profile option."""
-        tm.that(main(["validate", "cprofile-report", "--help"]), eq=0)
+        tm.that(
+            FlextInfraCli.infra_main(["validate", "cprofile-report", "--help"]), eq=0
+        )
         tm.that(capsys.readouterr().out, has="--profile")
 
     @staticmethod

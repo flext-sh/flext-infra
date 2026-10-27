@@ -12,8 +12,8 @@
 #
 # A name the module declares in its own __all__ is a published facade alias
 # (generator law: the owner of a letter is the module that declares it), so
-# the engine admits the finding only when $OLD is absent from the module's
-# __all__ (context predicate module-export). No alias name is listed here.
+# the rule matches only when $NAME is absent from the module's own __all__
+# (catalog utility declared-in-module-all). No alias name is listed here.
 #
 # Detection-only: the correct replacement is to rename at the owner and
 # update every consumer in the same cutover.
@@ -22,30 +22,30 @@ id: ban-compat-alias
 language: Python
 severity: error
 metadata:
-  context:
-    OLD:
-      not: module-export
+  enforce: [ENFORCE-010, ENFORCE-066]
 rule:
   all:
-    - pattern: $OLD = $NEW
+    - pattern: $NAME = $NEW
     - inside:
         kind: expression_statement
         inside:
           kind: module
+    - not:
+        matches: declared-in-module-all
 constraints:
-  OLD:
+  NAME:
     kind: identifier
     regex: "^[A-Za-z][A-Za-z0-9_]+$"
   NEW:
     kind: identifier
     regex: '^[A-Za-z]\w*$'
 message: >-
-  Backward-compatibility alias `$OLD = $NEW` at module level is banned.
+  Backward-compatibility alias `$NAME = $NEW` at module level is banned.
   Rename at the owner and migrate every consumer in the same cutover —
   no old+new coexistence.
 note: >-
   Migration: keep only the canonical name ($NEW), delete the alias, update
-  all importers of $OLD in the same change, and let pyrefly/mypy pinpoint
+  all importers of $NAME in the same change, and let pyrefly/mypy pinpoint
   any missed consumer. A name the module publishes in its __all__ is its
   declared facade alias, not a compatibility name.
 files:

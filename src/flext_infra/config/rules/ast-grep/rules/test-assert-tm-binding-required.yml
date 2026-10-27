@@ -9,13 +9,15 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
-metadata:
-  context:
-    CONDITION:
-      not: emitted-symbol
-      arg: tm flext_tests tm
 rule:
   all:
+    - inside:
+        kind: module
+        stopBy: end
+        not:
+          has:
+            matches: tm-imported-from-flext
+            stopBy: end
     - pattern: assert $CONDITION
     - not:
         any:

@@ -1,7 +1,8 @@
 id: rewire-test-assert-message
 snapshots:
-  assert self.value is not None, "A value is required":
-    fixed: |-
+  "from flext_tests import tm\nassert self.value is not None, \"A value is required\"\n":
+    fixed: |
+      from flext_tests import tm
       if self.value is not None:
           pass
       else:
@@ -9,14 +10,25 @@ snapshots:
     labels:
     - source: assert self.value is not None, "A value is required"
       style: primary
+      start: 27
+      end: 79
+    - source: from flext_tests import tm
+      style: secondary
       start: 0
-      end: 52
+      end: 26
+    - source: |
+        from flext_tests import tm
+        assert self.value is not None, "A value is required"
+      style: secondary
+      start: 0
+      end: 80
     - source: self.value is not None
       style: secondary
-      start: 7
-      end: 29
-  assert value is None, "No value is expected":
-    fixed: |-
+      start: 34
+      end: 56
+  "from tests import tm\nassert value is None, \"No value is expected\"\n":
+    fixed: |
+      from tests import tm
       if value is None:
           pass
       else:
@@ -24,9 +36,19 @@ snapshots:
     labels:
     - source: assert value is None, "No value is expected"
       style: primary
+      start: 21
+      end: 65
+    - source: from tests import tm
+      style: secondary
       start: 0
-      end: 44
+      end: 20
+    - source: |
+        from tests import tm
+        assert value is None, "No value is expected"
+      style: secondary
+      start: 0
+      end: 66
     - source: value is None
       style: secondary
-      start: 7
-      end: 20
+      start: 28
+      end: 41

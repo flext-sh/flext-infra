@@ -30,6 +30,36 @@ class TestsFlextInfraApplyRenames:
     """Campaigns change declared sources, preserve drivers, and prove convergence."""
 
     @staticmethod
+    def test_imported_model_reference_keeps_lexical_bindings() -> None:
+        """Native metadata rewires imported reads without rewriting local names."""
+        fixture = Path(__file__).parents[2] / "fixtures" / "imported_model_reference.py"
+        source = fixture.read_text(encoding=c.DEFAULT_ENCODING)
+        rewritten = u.Infra.retarget_imported_names(
+            source, "flext_infra", ("models.FlextInfraModels", "m")
+        )
+        tm.that(rewritten, contains="return m.Infra.WorkspaceTestsRequest.__name__")
+        tm.that(rewritten, contains="return ImportedModels")
+        tm.that(rewritten, contains="from flext_infra import m")
+        tm.that(rewritten, lacks="from flext_infra.models import")
+        tm.that(
+            u.Infra.retarget_imported_names(
+                rewritten, "flext_infra", ("models.FlextInfraModels", "m")
+            ),
+            eq=rewritten,
+        )
+
+    @staticmethod
+    def test_imported_model_reference_rejects_receiver_collision() -> None:
+        """A locally bound public receiver rejects the complete rewrite."""
+        fixture = Path(__file__).parents[2] / "fixtures" / "imported_model_collision.py"
+        with pytest.raises(ValueError, match="public import receiver is shadowed"):
+            u.Infra.retarget_imported_names(
+                fixture.read_text(encoding=c.DEFAULT_ENCODING),
+                "flext_infra",
+                ("models.FlextInfraModels", "m"),
+            )
+
+    @staticmethod
     @pytest.fixture
     def campaign_runtime(mod_workspace: Path) -> None:
         """Every publication consumes its checkout's independently owned runtime."""
@@ -503,7 +533,10 @@ class TestsFlextInfraApplyRenames:
             eq=[ast.dump(node) for node in original_method.body],
         )
         for plan in plans:
-            plan.file_path.write_text(plan.original_source, encoding="utf-8")
+            if plan.original_source is None:
+                plan.file_path.unlink()
+            else:
+                plan.file_path.write_text(plan.original_source, encoding="utf-8")
         tm.that(definer.read_text(), eq=source)
 
     @staticmethod
@@ -873,7 +906,7 @@ class TestsFlextInfraApplyRenames:
         authored = mod_workspace / 'untracked "space"\nname.md'
         authored.write_text("campaign_token", encoding="utf-8")
         projected = mod_workspace / "generated.py"
-        generated = f'{c.Infra.AUTOGEN_HEADERS[0]}\n"""campaign_token"""\n'
+        generated = f'{c.Infra.AUTOGEN_HEADER}\n"""campaign_token"""\n'
         projected.write_text(generated, encoding="utf-8")
         report = tm.ok(
             FlextInfraApplyRenames.run(self._request(mod_workspace, apply=True)),

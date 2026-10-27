@@ -1,6 +1,6 @@
 id: ban-broad-annotation
 snapshots:
-  'def run(values: Any) -> None: ...':
+  "def run(values: Any) -> None: ...":
     labels:
     - source: Any
       style: primary
@@ -10,7 +10,7 @@ snapshots:
       style: secondary
       start: 16
       end: 19
-  'def run(values: str) -> Optional[str]: ...':
+  "def run(values: str) -> Optional[str]: ...":
     labels:
     - source: Optional
       style: primary
@@ -20,7 +20,7 @@ snapshots:
       style: secondary
       start: 24
       end: 37
-  'value: object = None':
+  "value: object = None":
     labels:
     - source: object
       style: primary
@@ -30,7 +30,7 @@ snapshots:
       style: secondary
       start: 7
       end: 13
-  'values: dict[str, str] = {}':
+  "values: dict[str, str] = {}":
     labels:
     - source: dict
       style: primary

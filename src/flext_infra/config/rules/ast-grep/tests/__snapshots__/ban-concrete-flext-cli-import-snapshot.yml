@@ -14,7 +14,7 @@ snapshots:
       style: secondary
       start: 22
       end: 39
-  from flext_cli import m, FlextCliModels as M:
+  "from flext_cli import m, FlextCliModels as M":
     labels:
     - source: from flext_cli import m, FlextCliModels as M
       style: primary

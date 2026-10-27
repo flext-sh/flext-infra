@@ -23,6 +23,102 @@ class TestsFlextInfraPyrightPublicContract:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize("partially_generated", [False, True])
+    def test_generated_facade_letter_remains_a_type_alias(
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+        *,
+        partially_generated: bool,
+    ) -> None:
+        """Upstream imports cannot share the locally published type-alias binding."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        framework = package.parent / "framework"
+        framework.mkdir()
+        (framework / "__init__.py").write_text(
+            "class FrameworkProtocols:\n"
+            "    class Sample:\n"
+            "        class Item:\n"
+            "            label: str\n"
+            "p = FrameworkProtocols\n"
+            "__all__ = ['FrameworkProtocols', 'p']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        owners = package / "_protocols"
+        owners.mkdir()
+        (owners / "base.py").write_text(
+            "from typing import Protocol\n"
+            "class SampleProtocolsBase(Protocol):\n"
+            "    def status(self) -> str: ...\n"
+            "__all__ = ['SampleProtocolsBase']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (owners / "__init__.py").write_text(
+            "from .base import SampleProtocolsBase\n"
+            "__all__ = ['SampleProtocolsBase']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        facade = package / "protocols.py"
+        inherited = "framework_p" if partially_generated else "p"
+        facade.write_text(
+            "from framework import p\n"
+            + (
+                "from framework import p as framework_p\n"
+                if partially_generated
+                else ""
+            )
+            + f"class SampleProtocols({inherited}):\n"
+            f"    class Sample({inherited}.Sample):\n"
+            "        pass\n"
+            "p = SampleProtocols\n"
+            "__all__ = ['SampleProtocols', 'p']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.facade_source_project(root) as (project, sources):
+            generated = tm.not_none(
+                u.Infra.render_utility_facade(
+                    package, family="p", project=project, sources=sources
+                )
+            )
+        facade.write_text(generated, encoding=c.DEFAULT_ENCODING)
+        (package.parent / "consumer.py").write_text(
+            f"from {package.name}.protocols import p\n"
+            "def identity(value: p.Sample.Item) -> p.Sample.Item:\n"
+            "    return value\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
+        FlextInfraEnsurePyrightConfigPhase(
+            tool_config_document,
+            codegen=tm.ok(u.Infra.load_codegen_inputs(root)).spec,
+        ).apply_payload(
+            payload,
+            context=m.Infra.PyprojectAnalyzerContext(
+                is_root=False,
+                project_dir=root,
+                declared_python_dirs=(package.parent.relative_to(root).as_posix(),),
+                declared_python_dirs_are_complete=True,
+            ),
+        )
+        (root / c.PYPROJECT_FILENAME).write_text(
+            u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        result = FlextInfraPyrightGate(root).check(
+            root,
+            m.Infra.GateContext(repository_root=root, reports_dir=root / ".reports"),
+        )
+        tm.that(result.result.passed, eq=True, msg=result.raw_output)
+        tm.that(result.issues, eq=(), msg=result.raw_output)
+        with u.Infra.facade_source_project(root) as (project, sources):
+            tm.that(
+                u.Infra.render_utility_facade(
+                    package, family="p", project=project, sources=sources
+                ),
+                eq=generated,
+            )
+
+    @staticmethod
+    @pytest.mark.slow
     @pytest.mark.parametrize("selected", ["first", "second", "workspace"])
     def test_homonymous_test_facades_resolve_in_their_own_project(
         tmp_path: Path,
@@ -64,7 +160,10 @@ class TestsFlextInfraPyrightPublicContract:
             )
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
             payload["project"] = {"name": name, "version": "0.1.0"}
-            FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(
+                tool_config_document,
+                codegen=u.Infra.load_codegen_inputs(root).unwrap().spec,
+            ).apply_payload(
                 payload,
                 context=m.Infra.PyprojectAnalyzerContext(
                     is_root=False,
@@ -84,7 +183,10 @@ class TestsFlextInfraPyrightPublicContract:
             u.Tests.write_project_beads_config(tmp_path, selected)
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
             payload["project"] = {"name": selected, "version": "0.1.0"}
-            FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(
+                tool_config_document,
+                codegen=u.Infra.load_codegen_inputs(project).unwrap().spec,
+            ).apply_payload(
                 payload,
                 context=m.Infra.PyprojectAnalyzerContext(
                     is_root=True, repository_root=project
@@ -167,7 +269,10 @@ class TestsFlextInfraPyrightPublicContract:
             encoding="utf-8",
         )
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
-        FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+        FlextInfraEnsurePyrightConfigPhase(
+            tool_config_document,
+            codegen=u.Infra.load_codegen_inputs(tmp_path).unwrap().spec,
+        ).apply_payload(
             payload,
             context=m.Infra.PyprojectAnalyzerContext(
                 is_root=False,

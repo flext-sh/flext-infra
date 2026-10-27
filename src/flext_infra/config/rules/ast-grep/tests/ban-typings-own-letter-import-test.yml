@@ -1,10 +1,13 @@
-# Shape only: the engine admits a finding when the imported module's root is
-# the scanned project's own package (context own-package). The law is per
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml): only an
+# import whose root is that own package matches. The law is per
 # letter: this producer tree bans only its own letter `t` — a different
 # letter from the own root is facade assembly (consumption-law.md:52) and
 # stays legal.
 id: ban-typings-own-letter-import
 valid:
+  # Another package's letter is a cross-package facade binding.
+  - |
+    from flext_core import t
   - |
     from ai_hub import textra as t
   # A different letter from the own root is legal facade assembly.

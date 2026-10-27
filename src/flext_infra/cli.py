@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra import c, t
+from flext_infra import FlextInfraPytestClock, c, settings, t
 from flext_infra.services import FlextInfraCliDispatchService
 
 
@@ -26,16 +26,27 @@ class FlextInfraCli(FlextInfraCliDispatchService):
         cli_args = list(args) if args is not None else sys.argv[1:]
         return FlextInfraCli().main([c.Infra.CLI_GROUP_DOCS, *cli_args])
 
+    @staticmethod
+    def infra_main(args: t.StrSequence | None = None) -> int:
+        """Run the canonical flext-infra CLI (console script ``flext-infra``).
 
-def main(args: t.StrSequence | None = None) -> int:
-    """Run the canonical flext-infra CLI.
+        Returns:
+            The resulting ``int``.
 
-    Returns:
-        The resulting ``int``.
+        Raises:
+            ValueError: If FLEXT_INFRA_PROFILE requires FLEXT_INFRA_PROFILE_OUTPUT.
 
-    """
-    cli_args = list(args) if args is not None else sys.argv[1:]
-    return FlextInfraCli().main(cli_args)
+        """
+        cli_args = list(args) if args is not None else sys.argv[1:]
+        if not settings.Infra.profile:
+            return FlextInfraCli().main(cli_args)
+        output = settings.Infra.profile_output
+        if output is None:
+            msg = "FLEXT_INFRA_PROFILE requires FLEXT_INFRA_PROFILE_OUTPUT"
+            raise ValueError(msg)
+        return FlextInfraPytestClock.profile_command(
+            lambda: FlextInfraCli().main(cli_args), output
+        )
 
 
-__all__: list[str] = ["FlextInfraCli", "main"]
+__all__: list[str] = ["FlextInfraCli"]

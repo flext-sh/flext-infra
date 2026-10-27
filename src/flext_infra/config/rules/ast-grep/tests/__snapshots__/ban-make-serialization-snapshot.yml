@@ -1,18 +1,15 @@
 id: ban-make-serialization
 snapshots:
-  ? |
-    class MakeSerializationSpec(BaseModel):
-        pass
-  : labels:
+  "class MakeSerializationSpec(BaseModel):\n    pass\n":
+    labels:
     - source: |-
         class MakeSerializationSpec(BaseModel):
             pass
       style: primary
       start: 0
       end: 48
-  ? |
-    u.Infra.serialization_lock_execute(paths, timeout)
-  : labels:
+  "u.Infra.serialization_lock_execute(paths, timeout)\n":
+    labels:
     - source: u.Infra.serialization_lock_execute(paths, timeout)
       style: primary
       start: 0

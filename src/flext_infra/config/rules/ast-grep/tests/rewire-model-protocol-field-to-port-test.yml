@@ -1,0 +1,70 @@
+id: rewire-model-protocol-field-to-port
+# `valid` MUST NOT match: already-ported fields (the flext-tests 0081aaa6
+# shape), protocol class bodies, metadata calls, ClassVar, private attributes,
+# plain namespaces and enums.
+valid:
+  - |
+    class Probe(m.Value):
+        assertion_message: Annotated[
+            t.Port[p.AttributeProbe] | None,
+            m.Field(description="Original assertion message."),
+        ] = None
+  - |
+    class Scope(m.Value):
+        settings: Annotated[
+            t.MappingKV[str, t.Port[p.Tests.NativeMatchValue]] | None,
+            m.Field(description="Initial configuration values."),
+        ] = None
+  - |
+    class Reader(Protocol):
+        writer: p.Writer
+  - |
+    class Namespace:
+        writer: p.Writer
+  - |
+    class Kind(StrEnum):
+        writer: p.Writer
+  - |
+    class Holder(m.Value):
+        kinds: ClassVar[p.Registry]
+  - |
+    class Holder(m.Value):
+        value: Annotated[str, m.Field(default_factory=p.Factory, description="V.")]
+  - |
+    class Holder(m.Value):
+        _private: p.Writer
+  - |
+    class Holder(m.Value):
+        validator: Callable[[Path], p.Result[bool]] | None = None
+  - |
+    class Holder(m.Value):
+        middleware: t.SequenceOf[type[p.Middleware]] = ()
+  - |
+    class NativeProject(Project):
+        fscommands: p.Infra.RopeProjectFiles
+  - |
+    class Matcher(m.Value):
+        attrs_match: Mapping[str, Family.MatchRule[p.AttributeProbe]] | None = None
+# `invalid` MUST match: bare protocols at any depth of a model field type.
+invalid:
+  - |
+    class Probe(m.Value):
+        assertion_message: Annotated[
+            p.AttributeProbe | None,
+            m.Field(description="Original assertion message."),
+        ] = None
+  - |
+    class Scope(m.Value):
+        settings: Annotated[
+            t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+            m.Field(description="Initial configuration values."),
+        ] = None
+  - |
+    class Runner(FlextModelsBase.ArbitraryTypesModel):
+        writer: p.Writer
+  - |
+    class Runner(m.Value):
+        writers: t.SequenceOf[p.Writer] = m.Field(description="Writers.")
+  - |
+    class Runner(m.Value):
+        sink: p.Sink[str] | None = None

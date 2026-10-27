@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra, m, main
+from flext_infra import FlextInfraCli, infra, m
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import c, r, t, tm, u
 
@@ -249,7 +249,7 @@ class TestsFlextInfraRefactorMainCli:
 
     @staticmethod
     def _refactor_main(*args: str) -> int:
-        return main(["refactor", *args])
+        return FlextInfraCli.infra_main(["refactor", *args])
 
     @staticmethod
     def _write(path: Path, content: str) -> None:

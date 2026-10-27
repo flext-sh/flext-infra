@@ -150,13 +150,6 @@ class FlextInfraModelsScan:
                 description="Live source snapshot; evidence stores its input once",
             ),
         ] = None
-        binding_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True,
-                description="Live binding inputs; evidence stores their inventory once",
-            ),
-        ] = m.Field(default_factory=tuple)
         range: Annotated[
             t.JsonMapping,
             m.Field(description="Exact ast-grep source range payload"),
@@ -212,7 +205,9 @@ class FlextInfraModelsScan:
             m.Field(description="Governed roots in nearest-owner precedence"),
         ]
         authenticated: Annotated[
-            t.MutableMappingKV[str, p.Result[t.Pair[Path, m.Cli.AtomicFileState]]],
+            t.MutableMappingKV[
+                str, t.Port[p.Result[t.Pair[Path, m.Cli.AtomicFileState]]]
+            ],
             m.Field(description="One authentication per file"),
         ] = m.Field(default_factory=dict)
         repositories: Annotated[
@@ -227,14 +222,6 @@ class FlextInfraModelsScan:
             Path | None,
             m.Field(
                 description="Authenticated source input, or absent on source drift"
-            ),
-        ]
-        binding_graph: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                strict=True,
-                description="Index of this occurrence's authenticated binding graph",
             ),
         ]
         native_artifact: Annotated[
@@ -449,13 +436,6 @@ class FlextInfraModelsScan:
             FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
-        binding_graphs: Annotated[
-            tuple[tuple[Path, ...], ...],
-            m.Field(
-                description="Closed binding graphs stored once, retaining input order "
-                "and multiplicity",
-            ),
-        ]
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             min_length=1,
             description=(
@@ -513,17 +493,11 @@ class FlextInfraModelsScan:
                     msg = f"mod scan {field} totals differ from authenticated entries"
                     raise ValueError(msg)
             indexed = {state.path: state for state in self.inputs.states}
-            bindings = tuple(
-                tuple(indexed[path] for path in paths) for paths in self.binding_graphs
-            )
             entries: list[FlextInfraModelsScan.ModScanFindingReference] = []
             for entry in self.entries:
                 source = (
                     None if entry.source_path is None else indexed[entry.source_path]
                 )
-                if entry.binding_graph >= len(bindings):
-                    msg = f"mod scan binding graph is missing: {entry.binding_graph}"
-                    raise ValueError(msg)
                 if entry.native_artifact >= len(self.native_artifacts):
                     msg = (
                         f"mod scan native artifact is missing: {entry.native_artifact}"
@@ -541,7 +515,6 @@ class FlextInfraModelsScan:
                     entry.model_copy(
                         update={
                             "source_state": source,
-                            "binding_states": bindings[entry.binding_graph],
                             "native_receipt": artifact,
                         }
                     )

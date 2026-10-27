@@ -8,13 +8,16 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
 from flext_infra import c, m, t
 from flext_infra._settings import FlextInfraSettings
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 if os.name != "nt":
     import pwd
@@ -57,6 +60,42 @@ class FlextInfraUtilitiesBase:
         """
         value = FlextInfraSettings.env_lookup(name)
         return default.strip() if value is None else value.strip()
+
+    @staticmethod
+    def selected_check_gates(
+        make: m.Infra.MakeSpec,
+        gate_set: c.Infra.CheckGateSet,
+        *,
+        phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
+    ) -> t.VariadicTuple[str]:
+        """Resolve one gate inventory from the typed Make spec at runtime.
+
+        The CI token selects the check partition: its declared CI value runs
+        the CI partition, its declared pre-commit value the commit-stage
+        gates, its declared local value the local partition, and any other
+        value the complete default set.
+
+        Returns:
+            The registered gate ids of the requested inventory.
+
+        """
+        if phase == c.Infra.CheckPhase.PRIMARY:
+            return make.check_prerequisite_gates
+        match gate_set:
+            case c.Infra.CheckGateSet.FIX:
+                return make.check_gates_fixable
+            case c.Infra.CheckGateSet.FMT:
+                return make.fmt_gates
+            case c.Infra.CheckGateSet.CHECK:
+                partitions = {
+                    make.ci.value: make.check_gates_ci,
+                    make.ci.pre_commit_value: make.pre_commit_check_gates,
+                    make.ci.local_value: make.check_gates_local,
+                }
+                return partitions.get(
+                    FlextInfraUtilitiesBase.env_value(make.ci.variable),
+                    make.check_gates_default,
+                )
 
     @staticmethod
     def resolve_repository_root_or_cwd(
@@ -183,8 +222,8 @@ class FlextInfraUtilitiesBase:
         for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
         if kind == c.Infra.MergeConflictControl.SEPARATOR
     )
-    _MERGE_CONFLICT_PREFIX_BYTES: tuple[
-        tuple[bytes, c.Infra.MergeConflictControl], ...
+    _MERGE_CONFLICT_PREFIX_BYTES: ClassVar[
+        tuple[tuple[bytes, c.Infra.MergeConflictControl], ...]
     ] = tuple(
         (
             token.encode(c.Infra.MERGE_CONFLICT_ENCODING),
@@ -193,12 +232,12 @@ class FlextInfraUtilitiesBase:
         for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
         if kind != c.Infra.MergeConflictControl.SEPARATOR
     )
-    _MERGE_CONFLICT_PREFIX_STR: tuple[tuple[str, c.Infra.MergeConflictControl], ...] = (
-        tuple(
-            (token, kind)
-            for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
-            if kind != c.Infra.MergeConflictControl.SEPARATOR
-        )
+    _MERGE_CONFLICT_PREFIX_STR: ClassVar[
+        tuple[tuple[str, c.Infra.MergeConflictControl], ...]
+    ] = tuple(
+        (token, kind)
+        for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+        if kind != c.Infra.MergeConflictControl.SEPARATOR
     )
 
     @classmethod
@@ -335,52 +374,6 @@ class FlextInfraUtilitiesBase:
         return frozenset(rule_ids), frozenset(fixable_ids)
 
     @staticmethod
-    def strongly_connected_components(
-        graph: t.MappingKV[str, set[str]],
-    ) -> t.SequenceOf[t.StrSequence]:
-        """Return every strongly connected component in one directed graph.
-
-        Returns:
-            Every strongly connected component in one directed graph.
-
-        """
-        next_index = 0
-        stack: list[str] = []
-        indexes: MutableMapping[str, int] = {}
-        lowlinks: MutableMapping[str, int] = {}
-        on_stack: set[str] = set()
-        components: list[t.StrSequence] = []
-
-        def visit(node: str) -> None:
-            nonlocal next_index
-            indexes[node] = next_index
-            lowlinks[node] = next_index
-            next_index += 1
-            stack.append(node)
-            on_stack.add(node)
-            for successor in graph.get(node, set()):
-                if successor not in indexes:
-                    visit(successor)
-                    lowlinks[node] = min(lowlinks[node], lowlinks[successor])
-                elif successor in on_stack:
-                    lowlinks[node] = min(lowlinks[node], indexes[successor])
-            if lowlinks[node] != indexes[node]:
-                return
-            component: list[str] = []
-            while stack:
-                member = stack.pop()
-                on_stack.remove(member)
-                component.append(member)
-                if member == node:
-                    break
-            components.append(tuple(component))
-
-        for node in graph:
-            if node not in indexes:
-                visit(node)
-        return tuple(components)
-
-    @staticmethod
     def classify_process_exit(exit_code: int) -> str:
         """Classify a nonzero process status as timeout, signal, or failure.
 
@@ -395,6 +388,38 @@ class FlextInfraUtilitiesBase:
         if exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
             return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
         return "failure"
+
+    @staticmethod
+    def result_routes(
+        rows: t.SequenceOf[
+            tuple[
+                str,
+                str,
+                t.ModelClass[t.Cli.ModelLike],
+                p.Cli.ResultRouteHandler,
+                str | None,
+            ]
+        ],
+    ) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+        """Build a declarative CLI route table from its data rows.
+
+        Each row is ``(name, help_text, model_cls, handler, success_message)``;
+        a ``None`` success message leaves the handler's result as the output.
+
+        Returns:
+            The routes in row order.
+
+        """
+        return tuple(
+            m.Cli.ResultCommandRoute(
+                name=name,
+                help_text=help_text,
+                model_cls=model_cls,
+                handler=handler,
+                success_message=success_message,
+            )
+            for name, help_text, model_cls, handler, success_message in rows
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesBase"]

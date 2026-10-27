@@ -37,17 +37,27 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
+)
+from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope.rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+)
+from flext_infra._utilities._semantic_cutover.composition import (
+    FlextInfraUtilitiesSemanticComposition,
 )
 
 if TYPE_CHECKING:
@@ -56,8 +66,8 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
+    FlextInfraUtilitiesSemanticComposition,
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
-    FlextInfraUtilitiesSemanticCutoverEdits,
 ):
     """Rewire a facade that extends its parent's letter to the declared class."""
 
@@ -80,9 +90,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         @override
         def leave_Attribute(
             self,
-            original_node: cst.Attribute,
-            updated_node: cst.Attribute,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.Attribute,
+            updated_node: t.Infra.Cst.Attribute,
+        ) -> t.Infra.Cst.BaseExpression:
             names = self.get_metadata(QualifiedNameProvider, original_node, None)
             if names is None:
                 return updated_node
@@ -112,7 +122,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 own_class = (
                     module == self.context.full_module_name
                     and isinstance(assignment, Assignment)
-                    and isinstance(assignment.node, cst.ClassDef)
+                    and isinstance(assignment.node, c.Infra.Cst.ClassDef)
                     and assignment.node.name.value == receiver
                 )
                 if not own_class and (
@@ -137,7 +147,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         @staticmethod
         def _scoped_target(
-            node: cst.Attribute,
+            node: t.Infra.Cst.Attribute,
             scope: Scope,
             target: t.Triple[str, str, str],
         ) -> t.Triple[str, str, str]:
@@ -150,7 +160,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             module, receiver, member = target
             if (
                 receiver != c.Infra.FacadeFamily.U
-                or not isinstance(node.value, cst.Name)
+                or not isinstance(node.value, c.Infra.Cst.Name)
                 or scope[receiver]
             ):
                 return target
@@ -202,23 +212,42 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         )
         if resolved is None:
             return ()
+        return cls._class_identity_lineage(modules, resolved, project=project)
+
+    @classmethod
+    def _class_identity_lineage(
+        cls,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        identity: t.Pair[str, str],
+        *,
+        project: p.Infra.RopeProject,
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Linearize one declared class identity through its proven bases.
+
+        Returns:
+            The C3 lineage of module and class name pairs, starting at it.
+
+        A ``ValueError`` fails on a cyclic, undeclared, or inconsistent facade
+        inheritance identity, and a ``TypeError`` propagates from unsupported
+        facade inheritance identities through ``_behavior_base_identity``.
+
+        """
         cache: MutableMapping[t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]] = {}
 
         def linearize(
-            identity: t.Pair[str, str],
+            current: t.Pair[str, str],
             visiting: frozenset[t.Pair[str, str]],
         ) -> t.VariadicTuple[t.Pair[str, str]]:
-            if identity in visiting:
-                msg = f"cyclic facade inheritance identity: {identity}"
+            if current in visiting:
+                msg = f"cyclic facade inheritance identity: {current}"
                 raise ValueError(msg)
-            if identity in cache:
-                return cache[identity]
-            owner_module, owner_name = identity
-            declaration = next(
-                node
-                for node in ast.parse(modules[owner_module][0]).body
-                if isinstance(node, ast.ClassDef) and node.name == owner_name
-            )
+            if current in cache:
+                return cache[current]
+            owner_module, owner_name = current
+            declaration = cls._declared_class_node(modules[owner_module][0], owner_name)
+            if declaration is None:
+                msg = f"facade inheritance identity has no declaration: {current}"
+                raise ValueError(msg)
             bases: list[t.Pair[str, str]] = []
             for base in declaration.bases:
                 expression = base.value if isinstance(base, ast.Subscript) else base
@@ -227,19 +256,19 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 )
                 if inherited is not None:
                     bases.append(inherited)
-            cache[identity] = (
-                identity,
+            cache[current] = (
+                current,
                 *FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                     (
-                        *(linearize(base, visiting | {identity}) for base in bases),
+                        *(linearize(base, visiting | {current}) for base in bases),
                         tuple(bases),
                     ),
-                    message=f"inconsistent facade inheritance identity: {identity}",
+                    message=f"inconsistent facade inheritance identity: {current}",
                 ),
             )
-            return cache[identity]
+            return cache[current]
 
-        return linearize(resolved, frozenset())
+        return linearize(identity, frozenset())
 
     @classmethod
     def _behavior_base_identity(
@@ -279,11 +308,57 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     frozenset(),
                     project=project,
                 )
+        if isinstance(expression, ast.Attribute):
+            owner = (
+                cls._facade_declared_class(
+                    modules, module, expression.value.id, frozenset(), project=project
+                )
+                if isinstance(expression.value, ast.Name)
+                else cls._behavior_base_identity(
+                    modules, module, expression.value, project=project
+                )
+            )
+            if owner is not None:
+                # A class attribute resolves through the owner's own C3 lineage:
+                # the nested class may be declared on an inherited base.
+                for lineage_module, lineage_name in cls._class_identity_lineage(
+                    modules, owner, project=project
+                ):
+                    nested = f"{lineage_name}.{expression.attr}"
+                    if (
+                        cls._declared_class_node(modules[lineage_module][0], nested)
+                        is not None
+                    ):
+                        return lineage_module, nested
         msg = (
             "unsupported facade inheritance identity: "
             f"{module}.{ast.unparse(expression)}"
         )
         raise TypeError(msg)
+
+    @staticmethod
+    def _declared_class_node(source: str, qualified: str) -> ast.ClassDef | None:
+        """Find a module class, or a class nested in one, by its dotted name.
+
+        Returns:
+            The declaration reached through each enclosing class body, if any.
+
+        """
+        body: t.SequenceOf[ast.stmt] = ast.parse(source).body
+        declaration: ast.ClassDef | None = None
+        for name in qualified.split("."):
+            declaration = next(
+                (
+                    node
+                    for node in body
+                    if isinstance(node, ast.ClassDef) and node.name == name
+                ),
+                None,
+            )
+            if declaration is None:
+                return None
+            body = declaration.body
+        return declaration
 
     @classmethod
     def behavior_source_modules(
@@ -415,11 +490,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         """
         tree = ast.parse(source)
         names = {
-            base.id
+            root.id
             for declaration in tree.body
             if isinstance(declaration, ast.ClassDef)
             for base in declaration.bases
-            if isinstance(base, ast.Name)
+            for root in ast.walk(base)
+            if isinstance(root, ast.Name)
         }
         return tuple(
             ast.unparse(node)
@@ -459,7 +535,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     continue
                 for member in declaration.body:
                     if not isinstance(
-                        member, ast.FunctionDef | ast.AsyncFunctionDef
+                        member, c.Infra.AST_FUNCTION_TYPES
                     ) or member.name.startswith("_"):
                         continue
                     if cls._behavior_member_binding(declaration, member.name) is member:
@@ -559,13 +635,18 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         Returns:
             The effective declaring class identity, or no declaration.
 
+        Raises:
+            ValueError: If a lineage identity has no class declaration.
+
         """
         for owner_module, class_name in lineage:
-            declaration = next(
-                node
-                for node in ast.parse(modules[owner_module][0]).body
-                if isinstance(node, ast.ClassDef) and node.name == class_name
-            )
+            declaration = cls._declared_class_node(modules[owner_module][0], class_name)
+            if declaration is None:
+                msg = (
+                    "facade inheritance identity has no declaration: "
+                    f"{owner_module}.{class_name}"
+                )
+                raise ValueError(msg)
             if cls._behavior_member_binding(declaration, member) is not None:
                 return owner_module, class_name
         return None
@@ -583,11 +664,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         for node in reversed(declaration.body):
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                 if node.name == member:
                     return node
             elif (
-                isinstance(node, ast.Assign | ast.AnnAssign)
+                isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
                 and node.value is not None
                 and cls._assigns_name(node, member)
             ):
@@ -1227,8 +1308,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         if target is not None:
             obsolete.add(imported)
 
-    @staticmethod
+    @classmethod
     def _effective_declaration_node(
+        cls,
         modules: t.MappingKV[str, t.Pair[str, bool]],
         effective: t.Pair[str, str] | None,
     ) -> ast.ClassDef | None:
@@ -1238,14 +1320,20 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             The declared class node, or ``None`` when there is no effective
             declaration.
 
+        Raises:
+            ValueError: If the effective identity has no class declaration.
+
         """
         if effective is None:
             return None
-        return next(
-            node
-            for node in ast.parse(modules[effective[0]][0]).body
-            if isinstance(node, ast.ClassDef) and node.name == effective[1]
-        )
+        declaration = cls._declared_class_node(modules[effective[0]][0], effective[1])
+        if declaration is None:
+            msg = (
+                "facade inheritance identity has no declaration: "
+                f"{effective[0]}.{effective[1]}"
+            )
+            raise ValueError(msg)
+        return declaration
 
     @classmethod
     def _context_free_static_member(
@@ -1264,7 +1352,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if declaration is not None
             else None
         )
-        return isinstance(binding, ast.FunctionDef | ast.AsyncFunctionDef) and any(
+        return isinstance(binding, c.Infra.AST_FUNCTION_TYPES) and any(
             isinstance(decorator, ast.Name) and decorator.id == "staticmethod"
             for decorator in binding.decorator_list
         )
@@ -1288,6 +1376,51 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
     @classmethod
     def _plan_facade_bases(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Close distinct import-base and MRO-composition laws in one candidate.
+
+        Returns:
+            Original-to-final source edits covering declarations and consumers.
+
+        """
+        import_findings = tuple(
+            finding
+            for finding in findings
+            if finding.rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
+            == "facade-base-by-class-name"
+        )
+        imported = cls._plan_facade_import_bases(
+            workspace.repository_root, sources, import_findings
+        )
+        if imported.failure:
+            return imported
+        working = dict(sources)
+        for edit in imported.value:
+            working[edit.file_path] = edit.updated_source
+        composed = cls.plan_facade_composition(workspace, working)
+        if composed.failure:
+            return composed
+        for edit in composed.value:
+            working[edit.file_path] = edit.updated_source
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+            tuple(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=path,
+                    original_source=source,
+                    updated_source=working[path],
+                    changes=("closed facade import and composition laws",),
+                )
+                for path, source in sources.items()
+                if working[path] != source
+            )
+        )
+
+    @classmethod
+    def _plan_facade_import_bases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
@@ -1331,7 +1464,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for shape in shapes[path]:
                 tree = ast.parse(rewritten, filename=str(path))
                 local_rebound = any(
-                    isinstance(node, ast.Assign | ast.AnnAssign)
+                    isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
                     and cls._assigns_name(node, shape[2])
                     and isinstance(node.value, ast.Name)
                     and node.value.id == shape[3]
@@ -1446,7 +1579,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         rebind_line = max(
             node.lineno
             for node in tree.body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == letter
                 for target in (
@@ -1458,7 +1591,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         pending: list[ast.AST] = list(tree.body)
         while pending:
             node = pending.pop()
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 pending.extend(node.decorator_list)
                 pending.extend(node.args.defaults)
                 pending.extend(
@@ -1511,9 +1644,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         """
         names: set[str] = set()
         for node in tree.body:
-            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                 names.add(node.name)
-            elif isinstance(node, ast.ImportFrom | ast.Import):
+            elif isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 names.update(
                     imported.asname or imported.name.split(".")[0]
                     for imported in node.names

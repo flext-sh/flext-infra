@@ -73,7 +73,10 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 u.Tests.toml_strings_at(pyproject, "tool", "ruff", "lint", "unfixable"),
             ),
             eq=u.Infra.native_tool_setting(
-                config.Infra.tooling, "ruff.lint", "unfixable", TypeForm(t.StrSequence)
+                config.Infra.tooling,
+                "ruff.lint",
+                "unfixable",
+                TypeForm(t.StrSequence),
             ),
         )
         tm.that(
@@ -99,7 +102,10 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 *delegated,
                 *policy.ruling_disabled_rules,
                 *u.Infra.native_tool_setting(
-                    config.Infra.tooling, "ruff.lint", "ignore", TypeForm(t.StrSequence)
+                    config.Infra.tooling,
+                    "ruff.lint",
+                    "ignore",
+                    TypeForm(t.StrSequence),
                 ),
             }),
         )

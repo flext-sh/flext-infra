@@ -292,12 +292,14 @@ class TestsFlextInfraDepsModernizerMainExtra:
         path = tmp_path / c.PYPROJECT_FILENAME
         modernizer = FlextInfraPyprojectModernizer(repository_root=tmp_path)
         topology = m.Infra.PyprojectDeclaredTopology()
+        codegen = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec
         canonical_source = tm.ok(
             modernizer.conform_source(
                 source,
                 path=path,
                 format_source=False,
                 topology=topology,
+                codegen=codegen,
             ),
         )
         baseline = u.Infra.format_toml_source(
@@ -314,6 +316,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             canonical_source,
             path=path,
             topology=topology,
+            codegen=codegen,
         )
 
         error = tm.fail(result)

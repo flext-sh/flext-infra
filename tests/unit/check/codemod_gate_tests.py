@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.cli import main
+from flext_infra.cli import FlextInfraCli
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 from tests import c, m, t, tm, u
@@ -205,7 +205,7 @@ class TestsFlextInfraCodemodGate:
             "root.pyi": b"",
             "tests/boundary.pyi": b"invalid [\n",
             "examples/boundary.pyi": b"def load() -> bytes: ...\n",
-            "scripts/boundary.pyi": f"{c.Infra.AUTOGEN_HEADERS[0]}\n".encode(),
+            "scripts/boundary.pyi": f"{c.Infra.AUTOGEN_HEADER}\n".encode(),
             "infra/contracts/boundary.pyi": b"\xff\n",
             "src/pkg/.typecache/boundary.pyi": b"",
             f"src/pkg/{generated}/boundary.pyi": b"",
@@ -508,7 +508,7 @@ class TestsFlextInfraCodemodGate:
         sibling.write_text("second(2)\n", encoding="utf-8")
         before = (selected.read_bytes(), sibling.read_bytes())
         reports = tmp_path / "reports"
-        code = main([
+        code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -554,7 +554,7 @@ class TestsFlextInfraCodemodGate:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 [project.relative_to(tmp_path).as_posix()],
                 ["codemod"],
-                reports_dir=reports,
+                u.Tests.gate_context(tmp_path, reports),
             ),
         )
 

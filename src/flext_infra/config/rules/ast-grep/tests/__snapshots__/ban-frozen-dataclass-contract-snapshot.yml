@@ -1,10 +1,7 @@
 id: ban-frozen-dataclass-contract
 snapshots:
-  ? |
-    @dataclass(frozen=True)
-    class Point:
-        x: int
-  : labels:
+  "@dataclass(frozen=True)\nclass Point:\n    x: int\n":
+    labels:
     - source: |-
         @dataclass(frozen=True)
         class Point:
@@ -12,11 +9,35 @@ snapshots:
       style: primary
       start: 0
       end: 47
-    - source: '@dataclass(frozen=True)'
+    - source: dataclass
+      style: secondary
+      start: 1
+      end: 10
+    - source: frozen
+      style: secondary
+      start: 11
+      end: 17
+    - source: "True"
+      style: secondary
+      start: 18
+      end: 22
+    - source: frozen=True
+      style: secondary
+      start: 11
+      end: 22
+    - source: (frozen=True)
+      style: secondary
+      start: 10
+      end: 23
+    - source: dataclass(frozen=True)
+      style: secondary
+      start: 1
+      end: 23
+    - source: "@dataclass(frozen=True)"
       style: secondary
       start: 0
       end: 23
-    - source: 'x: int'
+    - source: "x: int"
       style: secondary
       start: 41
       end: 47
@@ -26,14 +47,8 @@ snapshots:
       style: secondary
       start: 24
       end: 47
-  ? |
-    from flext_core import m
-
-    @final
-    @dataclass(frozen=True)
-    class Point:
-        x: int
-  : labels:
+  "from flext_core import m\n\n@final\n@dataclass(frozen=True)\nclass Point:\n    x: int\n":
+    labels:
     - source: |-
         @final
         @dataclass(frozen=True)
@@ -42,11 +57,35 @@ snapshots:
       style: primary
       start: 26
       end: 80
-    - source: '@dataclass(frozen=True)'
+    - source: dataclass
+      style: secondary
+      start: 34
+      end: 43
+    - source: frozen
+      style: secondary
+      start: 44
+      end: 50
+    - source: "True"
+      style: secondary
+      start: 51
+      end: 55
+    - source: frozen=True
+      style: secondary
+      start: 44
+      end: 55
+    - source: (frozen=True)
+      style: secondary
+      start: 43
+      end: 56
+    - source: dataclass(frozen=True)
+      style: secondary
+      start: 34
+      end: 56
+    - source: "@dataclass(frozen=True)"
       style: secondary
       start: 33
       end: 56
-    - source: 'x: int'
+    - source: "x: int"
       style: secondary
       start: 74
       end: 80

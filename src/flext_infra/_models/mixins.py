@@ -115,8 +115,8 @@ class FlextInfraModelsMixins:
         gates: t.StrSequence = m.Field(
             default=(),
             description=(
-                "Gate names for post-transform validation; empty selects the SSOT"
-                " snapshot gates (make.check_gates_ci)."
+                "Gate names for post-transform validation; empty resolves the"
+                " requested gate set from the typed Make spec at runtime."
             ),
         )
 
@@ -236,7 +236,9 @@ class FlextInfraModelsMixins:
     class ProjectNamesListMixin(m.BaseModel):
         """Shared concrete project-name collection."""
 
-        project_names: t.StrSequence = m.Field(default_factory=tuple)
+        project_names: t.StrSequence = m.Field(
+            default_factory=tuple, description="Project names"
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsMixins"]

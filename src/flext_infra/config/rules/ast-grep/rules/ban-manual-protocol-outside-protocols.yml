@@ -24,10 +24,8 @@ ignores:
   - "**/__version__.py"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-005]
   relocation: protocol
-  context:
-    NAME:
-      is: protocol-declaration
 rule:
   all:
     - kind: class_definition
@@ -43,6 +41,8 @@ rule:
     - has:
         field: superclasses
         pattern: $BASES
+    # A declared protocol names a typing construct among its direct bases.
+    - matches: typing-base-class
 message: >-
   Protocol class outside the protocols family: declare it in protocols.py or
   the _protocols package.

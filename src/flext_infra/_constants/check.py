@@ -30,41 +30,94 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
     MARKDOWN_CODE: ClassVar[str] = "markdown-code"
     SMELLS: ClassVar[str] = "smells"
-    RUNTIME_CENSUS: ClassVar[str] = "runtime-census"
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
     DEPS: ClassVar[str] = "deps"
     RUNTIME_INTEGRITY: ClassVar[str] = "runtime-integrity"
+    ENFORCEMENT_CATALOG: ClassVar[str] = "enforcement-catalog"
 
     GATE_TOOLS_BY_KIND: ClassVar[
         t.MappingKV[
             FlextInfraConstantsConfig.GateKind,
-            t.MappingKV[str, t.Quad[str, str, bool, bool]],
+            t.MappingKV[
+                str,
+                t.Quint[str, str, bool, bool, FlextInfraConstantsConfig.GateStage],
+            ],
         ]
     ] = MappingProxyType({
         FlextInfraConstantsConfig.GateKind.EXTERNAL: MappingProxyType({
-            "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/", True, True),
+            "lint": (
+                "Ruff Linter",
+                "https://docs.astral.sh/ruff/",
+                True,
+                True,
+                FlextInfraConstantsConfig.GateStage.COMMIT,
+            ),
             "format": (
                 "Ruff Formatter",
                 "https://docs.astral.sh/ruff/formatter/",
                 False,
                 True,
+                FlextInfraConstantsConfig.GateStage.COMMIT,
             ),
-            "security": ("Bandit", "https://bandit.readthedocs.io/", False, False),
-            "markdown": ("rumdl", "https://rumdl.dev/", True, False),
-            "markdown-format": ("rumdl", "https://rumdl.dev/", False, False),
-            "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/", True, False),
+            "security": (
+                "Bandit",
+                "https://bandit.readthedocs.io/",
+                False,
+                False,
+                FlextInfraConstantsConfig.GateStage.CI,
+            ),
+            "markdown": (
+                "rumdl",
+                "https://rumdl.dev/",
+                True,
+                False,
+                FlextInfraConstantsConfig.GateStage.COMMIT,
+            ),
+            "markdown-format": (
+                "rumdl",
+                "https://rumdl.dev/",
+                False,
+                False,
+                FlextInfraConstantsConfig.GateStage.COMMIT,
+            ),
+            "markdown-code": (
+                "Ruff",
+                "https://docs.astral.sh/ruff/",
+                True,
+                False,
+                FlextInfraConstantsConfig.GateStage.COMMIT,
+            ),
             "duplication": (
                 "jscpd",
                 "https://github.com/kucherenko/jscpd",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
         }),
         FlextInfraConstantsConfig.GateKind.TYPE_CHECKER: MappingProxyType({
-            "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly", False, True),
-            "mypy": ("Mypy", "https://mypy.readthedocs.io/", False, True),
-            "pyright": ("Pyright", "https://github.com/microsoft/pyright", False, True),
+            "pyrefly": (
+                "Pyrefly",
+                "https://github.com/facebook/pyrefly",
+                False,
+                True,
+                FlextInfraConstantsConfig.GateStage.CI,
+            ),
+            "mypy": (
+                "Mypy",
+                "https://mypy.readthedocs.io/",
+                False,
+                True,
+                FlextInfraConstantsConfig.GateStage.PUSH,
+            ),
+            "pyright": (
+                "Pyright",
+                "https://github.com/microsoft/pyright",
+                False,
+                True,
+                FlextInfraConstantsConfig.GateStage.PUSH,
+            ),
         }),
         FlextInfraConstantsConfig.GateKind.INFRA: MappingProxyType({
             RUNTIME_INTEGRITY: (
@@ -72,70 +125,109 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
                 "internal://flext-infra/runtime-integrity",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.COMMIT,
             ),
-            "loc-cap": ("scc", "https://github.com/boyter/scc", False, False),
-            "runtime-census": (
-                "Flext Runtime Enforcement Census",
-                "internal://flext-infra/runtime-census",
+            "loc-cap": (
+                "scc",
+                "https://github.com/boyter/scc",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
+            ),
+            ENFORCEMENT_CATALOG: (
+                "Flext Static Enforcement Catalog",
+                "internal://flext-infra/enforcement-catalog",
+                False,
+                False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
             FRESH_IMPORT: (
                 "Flext Fresh-Process Import Gate",
                 "internal://flext-infra/fresh-import",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
             DEPS: (
                 "Flext Dependency Declaration Gate",
                 "internal://flext-infra/deps",
                 True,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
             "index-declarations": (
                 "Flext Index Declarations Gate",
                 "internal://flext-infra/index-declarations",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
             SMELLS: (
                 "Flext Code Smell Detector",
                 "internal://flext-infra/smells",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
-            "codemod": ("ast-grep", AST_GREP_DOCS_URL, False, True),
+            "codemod": (
+                "ast-grep",
+                AST_GREP_DOCS_URL,
+                False,
+                True,
+                FlextInfraConstantsConfig.GateStage.PUSH,
+            ),
             "layout": (
                 "Flext Project Layout Gate",
                 "internal://flext-infra/layout",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
             "direnv": (
                 "Flext Direnv Environment Contract Gate",
                 "internal://flext-infra/direnv",
                 False,
                 False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
         }),
     })
     """Sole gate registry; each gate is declared once under its catalog owner.
 
     Each row carries the gate's SARIF tool identity (name, URL), its
-    ``make fix`` repair policy, and whether the checker accepts one
-    declared file via the file-gate verbs.
+    ``make fix`` repair policy, whether the checker accepts one declared file
+    via the file-gate verbs, and the earliest approval stage its cost admits
+    (``GateStage``), from which every context's check partition derives.
+    """
+    GATE_ENFORCES: ClassVar[t.MappingKV[str, t.StrTuple]] = MappingProxyType({
+        "markdown-code": ("ENFORCE-021",),
+        "pyrefly": ("ENFORCE-053",),
+    })
+    """Enforcement law ids a registered gate claims as a whole.
+
+    The enforcement catalog derives from these claims beside the other owners'
+    declarations; a claim by an unregistered gate is inactive.
     """
     GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConstantsConfig.GateKind]] = (
         MappingProxyType({
             gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
         })
     )
+    GATE_STAGES: ClassVar[t.MappingKV[str, FlextInfraConstantsConfig.GateStage]] = (
+        MappingProxyType({
+            gate: tool[4]
+            for tools in GATE_TOOLS_BY_KIND.values()
+            for gate, tool in tools.items()
+        })
+    )
+    """Earliest approval stage of every built-in gate, read from its row."""
     TYPE_CHECKER_GATES: ClassVar[frozenset[str]] = frozenset(
         GATE_TOOLS_BY_KIND[FlextInfraConstantsConfig.GateKind.TYPE_CHECKER],
     )
@@ -163,6 +255,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
 
     CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
     """Run every independent quality gate unless fail-fast is requested."""
+    UNION_GATE_MIN_PROJECTS: ClassVar[int] = 2
+    """Project count from which a multi-root gate runs once over their union."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True
     """Stop mutating service workflows at the first failed project or rule."""
     NATIVE_CODE_WITNESS_MARSHAL_VERSION: ClassVar[int] = 2
@@ -176,6 +270,15 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     """Native pytest-timeout sentinel disabling per-item deadlines."""
     PYTEST_WORKER_RESTARTS_DISABLED: ClassVar[int] = 0
     """Native xdist sentinel prohibiting replacement of crashed workers."""
+    PYTEST_TESTMON_ACTIVATION_DESTS: ClassVar[tuple[str, ...]] = (
+        "testmon",
+        "testmon_noselect",
+        "testmon_nocollect",
+        "testmon_forceselect",
+    )
+    """pytest-testmon option destinations that open its SQLite datafile."""
+    PYTEST_TESTMON_DISABLE_DEST: ClassVar[str] = "no-testmon"
+    """pytest-testmon option destination that overrides every activation."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_WORKER_COLLECTION_KEY: ClassVar[str] = "flext_collection_manifest"
     """Native xdist worker-output key carrying the observed manifest as JSON."""
@@ -226,6 +329,39 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         ERROR = "error"
         WARNING = "warning"
         NOTE = "note"
+
+    @unique
+    class CheckPhase(StrEnum):
+        """Distinct source-admission and complete-check evidence partitions."""
+
+        PRIMARY = "primary"
+        COMPLETE = "complete"
+
+    @unique
+    class CheckGateSet(StrEnum):
+        """Gate inventory a Make verb asks the checker to resolve at runtime.
+
+        ``check`` resolves the CI or local partition from the declared CI
+        token, ``fix`` the repair-capable gates and ``fmt`` the formatter
+        gates, so no generated projection enumerates a gate id.
+        """
+
+        CHECK = "check"
+        FIX = "fix"
+        FMT = "fmt"
+
+    @unique
+    class EnforcementEngine(StrEnum):
+        """Owner engine whose declaration claims an enforcement law id."""
+
+        AST_GREP = "ast-grep"
+        RUFF = "ruff"
+        GATE = "gate"
+        CODEGEN = "codegen"
+
+    ACCESSOR_PREFIX_UTIL_ID: ClassVar[str] = "accessor-forbidden-prefix"
+    "Generated ast-grep util projecting tooling accessor-policy prefixes."
+    RUFF_SELECT_ALL: ClassVar[str] = "ALL"
 
     @unique
     class ToolOutcome(StrEnum):
@@ -294,6 +430,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     )
     MARKDOWN_CODE_LANGUAGE: ClassVar[str] = "python"
     "Fence language prefix (``python``, ``python3``) the embedded-code gates own."
+    MARKDOWN_CODE_DOCTEST_PROMPT: ClassVar[str] = ">>>"
+    "Interactive prompt every stdlib doctest example starts with."
     MARKDOWN_CODE_SOURCE_FORMAT: ClassVar[str] = "{}_b{}.py"
     "Temp-file name for one extracted block: sanitized doc path plus block index."
     MARKDOWN_CODE_SKIP_MARKER: ClassVar[str] = "notest"
@@ -335,20 +473,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     )
     "Smells scan arguments; the gate appends explicit targets, scanned in full."
     SMELLS_RULE_PREFIX: ClassVar[str] = "qlty:"
-    SMELLS_RULE_TAGS: ClassVar[t.MappingKV[str, str]] = MappingProxyType({
-        "boolean-logic": "smell_boolean_logic",
-        "file-complexity": "smell_file_complexity",
-        "function-complexity": "smell_function_complexity",
-        "function-parameters": "smell_function_parameters",
-        "identical-code": "smell_identical_code",
-        "nested-control-flow": "smell_nested_control_flow",
-        "return-statements": "smell_return_statements",
-        "similar-code": "smell_similar_code",
-    })
-    (
-        "qlty ruleId suffix -> flext-core enforcement tag "
-        "(texts SSOT: core ENFORCEMENT_RULES_TEXT)."
-    )
     # --- jscpd duplication gate SSOT (flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
     # rendered from this typed SSOT at scan time, never a hand-maintained file).

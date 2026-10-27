@@ -10,13 +10,14 @@ import os
 import shlex
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
@@ -97,6 +98,13 @@ class FlextInfraPytestRunnerExecution(
             )
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
+        if self.scratch_root is not None:
+            overrides.update(
+                dict.fromkeys(
+                    c.Infra.PYTEST_TEMP_ENVIRONMENT_VARIABLES,
+                    str(self.scratch_root),
+                )
+            )
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 config.Infra.tooling.tools.pytest.profile_process_directory
@@ -213,20 +221,23 @@ class FlextInfraPytestRunnerExecution(
         # For a zero-test project (no test module under the config-owned
         # roots) rc=5 is the DECLARED inventory outcome in both phases.
         owns_no_tests = (
-            outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
             and self._owns_no_tests()
         )
         # A slow phase may own no slow item, and a declared file may sit
         # entirely outside this phase's marker. Both are empty scopes. A
         # whole-suite budgeted inventory that collects nothing stays a failure.
         scope_may_be_empty = self.slow_phase or self.target_file is not None
-        accepted: set[pytest.ExitCode] = {pytest.ExitCode.OK} | (
+        accepted: set[c.Infra.PytestExitCode] = {c.Infra.PytestExitCode.OK} | (
             set()
             if complete and not scope_may_be_empty
-            else {pytest.ExitCode.NO_TESTS_COLLECTED}
+            else {c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
         )
         if owns_no_tests:
-            accepted = {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+            accepted = {
+                c.Infra.PytestExitCode.OK,
+                c.Infra.PytestExitCode.NO_TESTS_COLLECTED,
+            }
         if (
             outcome.raw_return_code not in accepted
             or outcome.timed_out
@@ -251,7 +262,7 @@ class FlextInfraPytestRunnerExecution(
             self._collection_diagnostics(report_log)
         if (
             owns_no_tests
-            and outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
         ):
             # No manifest artifact is produced for an empty declared suite.
             return m.Infra.PytestSelectionPlan(
@@ -265,7 +276,10 @@ class FlextInfraPytestRunnerExecution(
             manifest_path.read_text(encoding="utf-8"),
         )
         node_ids = manifest.node_ids
-        if outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED and node_ids:
+        if (
+            outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
+            and node_ids
+        ):
             msg = "pytest reported no collection with a nonempty manifest"
             raise RuntimeError(msg)
         if complete and not node_ids and not owns_no_tests and not scope_may_be_empty:
@@ -473,7 +487,7 @@ class FlextInfraPytestRunnerExecution(
         """
         return (
             outcome.raw_return_code
-            in {pytest.ExitCode.TESTS_FAILED, pytest.ExitCode.INTERRUPTED}
+            in {c.Infra.PytestExitCode.TESTS_FAILED, c.Infra.PytestExitCode.INTERRUPTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
             and (report_dir / "junit.xml").is_file()
@@ -526,9 +540,12 @@ class FlextInfraPytestRunnerExecution(
             and not accounting.owns_no_tests
             and not (
                 cache_hit
-                and context.execution_mode == c.Infra.PytestExecutionMode.INCREMENTAL
+                and context.execution_mode.is_incremental
                 and raw_return_code
-                in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+                in {
+                    c.Infra.PytestExitCode.OK,
+                    c.Infra.PytestExitCode.NO_TESTS_COLLECTED,
+                }
             )
         ):
             msg = "zero execution is accepted only for a verified incremental cache hit"
@@ -622,7 +639,7 @@ class FlextInfraPytestRunnerExecution(
         if (
             self.target_file is not None
             and rejected
-            and final_exit == pytest.ExitCode.NO_TESTS_COLLECTED
+            and final_exit == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
         ):
             msg = f"empty file phase has rejected evidence: {report_dir}"
             raise RuntimeError(msg)
@@ -692,7 +709,7 @@ class FlextInfraPytestRunnerExecution(
         """
         return (
             ""
-            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
+            if context.execution_mode.is_global
             else ",".join(config.Infra.tooling.tools.pytest.external_gate_markers)
         )
 
@@ -725,22 +742,126 @@ class FlextInfraPytestRunnerExecution(
 
     @override
     def execute(self) -> p.Result[int]:
-        """Execute the incremental testmon operation.
+        """Admit the global check before applicable Testmon impact selection.
+
+        Direct public callers retain the same original receipt guard as the
+        workspace composition. Slow items remain eligible without replaying
+        unchanged cases.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         """
-        return self._execute_testmon(complete=False)
+        return self.execute_global()
+
+    @classmethod
+    def execute_project_context(
+        cls,
+        context: m.Infra.WorkspaceProjectContext,
+        *,
+        started_at_monotonic: float,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> int:
+        """Execute with the exclusive scratch created by the context factory.
+
+        Caller-provided scratch and persistent Testmon storage are not owned
+        by this lifecycle. A cleanup failure retains the primary exception.
+
+        Returns:
+            The unchanged native status after releasing the owned scratch.
+
+        Raises:
+            ValueError: If the context factory returned no owned scratch.
+                Also rejects nonglobal modes or changed inputs between suites.
+
+        """
+        if execution_mode not in {
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
+            c.Infra.PytestExecutionMode.FULL,
+        }:
+            msg = f"project context requires a global pytest mode: {execution_mode}"
+            raise ValueError(msg)
+        runner = cls.from_project_context(
+            context,
+            started_at_monotonic=started_at_monotonic,
+        )
+        scratch = runner.scratch_root
+        if scratch is None:
+            msg = "project context runner requires its exclusive scratch directory"
+            raise ValueError(msg)
+        try:
+            if execution_mode == c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL:
+                return runner.execute().unwrap()
+            original_inputs = runner.testmon_input_identity()
+            incremental = runner.execute().unwrap()
+            if incremental:
+                return incremental
+            if runner.testmon_input_identity() != original_inputs:
+                msg = (
+                    "pytest runtime or declared configuration changed "
+                    "after incremental execution"
+                )
+                raise ValueError(msg)
+            complete = runner.execute_full().unwrap()
+            if not complete and runner.testmon_input_identity() != original_inputs:
+                msg = (
+                    "pytest runtime or declared configuration changed "
+                    "during full execution"
+                )
+                raise ValueError(msg)
+            return complete
+        finally:
+            primary = sys.exception()
+            try:
+                u.Cli.files_remove_directory(scratch).unwrap()
+            except BaseException as cleanup_failure:
+                if primary is None or (
+                    isinstance(primary, SystemExit)
+                    and (primary.code is None or primary.code == 0)
+                ):
+                    raise
+                primary.add_note(
+                    "pytest scratch cleanup failed:\n"
+                    + "".join(traceback.format_exception(cleanup_failure, chain=False))
+                )
 
     def execute_full(self) -> p.Result[int]:
-        """Run the complete suite once using the persistent testmon database.
+        """Run the complete suite once after global primary source admission.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         """
-        return self._execute_testmon(complete=True)
+        return self.execute_global(execution_mode=c.Infra.PytestExecutionMode.FULL)
+
+    def execute_global(
+        self,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> p.Result[int]:
+        """Select impacted global cases, retaining primary source admission.
+
+        Explicit FULL bypasses dependency selection, not the prerequisite. Both
+        operations retain the same marker inventory and testmon environment.
+
+        Returns:
+            The native status with selection, inventory and execution evidence.
+
+        Raises:
+            ValueError: If the requested mode does not own the global inventory.
+
+        """
+        if not execution_mode.is_global:
+            msg = f"global pytest operation requires a global mode: {execution_mode}"
+            raise ValueError(msg)
+        return self._execute_testmon(
+            complete=execution_mode == c.Infra.PytestExecutionMode.FULL,
+            execution_mode=execution_mode,
+        )
 
     def execute_file(self) -> p.Result[int]:
         """Run the complete declared file once through its persistent database.
@@ -757,17 +878,33 @@ class FlextInfraPytestRunnerExecution(
             raise ValueError(msg)
         return self._execute_testmon(complete=True)
 
-    def _execute_testmon(self, *, complete: bool) -> p.Result[int]:
+    def _execute_testmon(
+        self,
+        *,
+        complete: bool,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.INCREMENTAL
+        ),
+    ) -> p.Result[int]:
         """Execute one selected testmon phase without resetting shared state.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         """
+        root = u.Infra.runtime_owner_root(self.repository_root).unwrap()
+        approved = u.Infra.git_require_green_check_receipt(
+            root,
+            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
+            phase=c.Infra.CheckPhase.PRIMARY,
+            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
+                repository_root=root,
+            ).plan_global_targets(gates),
+        )
+        if approved.failure:
+            return r[int].from_failure(approved)
         execution_mode = (
-            c.Infra.PytestExecutionMode.FULL
-            if complete
-            else c.Infra.PytestExecutionMode.INCREMENTAL
+            c.Infra.PytestExecutionMode.FULL if complete else execution_mode
         )
         slow_marker = config.Infra.tooling.tools.pytest.slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
@@ -780,7 +917,7 @@ class FlextInfraPytestRunnerExecution(
                 f"{slow_marker!r}\n",
             )
             return r.ok(
-                int(pytest.ExitCode.NO_TESTS_COLLECTED)
+                int(c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
                 if self.target_file is not None
                 else 0,
             )
@@ -916,7 +1053,7 @@ class FlextInfraPytestRunnerExecution(
             self.target_file is None
             and not complete
             and outcome.raw_return_code
-            in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+            in {c.Infra.PytestExitCode.OK, c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
             and not selection
@@ -929,7 +1066,7 @@ class FlextInfraPytestRunnerExecution(
         completed_zero_tests = (
             selection_plan.owns_no_tests
             and outcome.raw_return_code
-            in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+            in {c.Infra.PytestExitCode.OK, c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
         )
@@ -1025,7 +1162,7 @@ class FlextInfraPytestRunnerExecution(
         """
         if (
             self.target_file is not None
-            and outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
         ):
             msg = f"file phase exited 5 without a completed empty scope: {report_dir}"
             raise RuntimeError(msg)

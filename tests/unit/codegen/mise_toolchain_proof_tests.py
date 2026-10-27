@@ -18,7 +18,7 @@ import pytest
 
 from flext_infra import config, m, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenConformExecute,
+    FlextInfraCodegenConform,
     FlextInfraCodegenMiseToolchainProof,
 )
 from tests import c, tm
@@ -340,7 +340,7 @@ class TestsFlextInfraMiseToolchainProof:
         retired = {
             plan.path.name
             for plan in tm.ok(
-                FlextInfraCodegenConformExecute.retired_projection_plans(
+                FlextInfraCodegenConform.Generate.retired_projection_plans(
                     generated,
                     c.Infra.MakeProfile.STANDALONE,
                 ),
@@ -350,7 +350,7 @@ class TestsFlextInfraMiseToolchainProof:
         preserved = {
             plan.path.name
             for plan in tm.ok(
-                FlextInfraCodegenConformExecute.retired_projection_plans(
+                FlextInfraCodegenConform.Generate.retired_projection_plans(
                     hand_owned,
                     c.Infra.MakeProfile.STANDALONE,
                 ),

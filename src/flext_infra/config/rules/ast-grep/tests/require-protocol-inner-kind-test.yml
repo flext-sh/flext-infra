@@ -1,0 +1,24 @@
+id: require-protocol-inner-kind
+valid:
+  - |
+    class FlextDemoProtocols:
+        class Demo:
+            @runtime_checkable
+            class Reader(Protocol):
+                def read(self) -> str: ...
+
+            class Base(ABC):
+                pass
+
+            class Issue(p.Model, Protocol):
+                code: str
+invalid:
+  - |
+    class FlextDemoProtocols:
+        class Order(m.FrozenModel):
+            total: int
+  - |
+    class FlextDemoProtocols:
+        class Demo:
+            class Status(StrEnum):
+                ACTIVE = "active"

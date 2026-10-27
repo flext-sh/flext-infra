@@ -1,7 +1,9 @@
 id: docs-generate-preserved-link-to-owner
 snapshots:
-  preserved = target.startswith(("http://", "https://", "#", "mailto:")):
-    fixed: preserved = FlextInfraUtilitiesDocs.docs_is_external(target) or target.startswith(c.Infra.DOCS_FRAGMENT_PREFIX)
+  "preserved = target.startswith((\"http://\", \"https://\", \"#\", \"mailto:\"))":
+    fixed: >-
+      preserved = FlextInfraUtilitiesDocs.docs_is_external(target) or
+      target.startswith(c.Infra.DOCS_FRAGMENT_PREFIX)
     labels:
     - source: target.startswith(("http://", "https://", "#", "mailto:"))
       style: primary

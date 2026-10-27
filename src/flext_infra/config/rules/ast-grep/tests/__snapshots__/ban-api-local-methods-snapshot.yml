@@ -1,11 +1,7 @@
 id: ban-api-local-methods
 snapshots:
-  ? |
-    class Facade(Service):
-        @property
-        def state(self):
-            return value
-  : labels:
+  "class Facade(Service):\n    @property\n    def state(self):\n        return value\n":
+    labels:
     - source: |-
         def state(self):
                 return value
@@ -20,11 +16,8 @@ snapshots:
       style: secondary
       start: 0
       end: 78
-  ? |
-    class Facade(Service):
-        async def execute(self):
-            return result
-  : labels:
+  "class Facade(Service):\n    async def execute(self):\n        return result\n":
+    labels:
     - source: |-
         async def execute(self):
                 return result
@@ -38,11 +31,8 @@ snapshots:
       style: secondary
       start: 0
       end: 73
-  ? |
-    class Facade(Service):
-        def __init__(self):
-            super().__init__()
-  : labels:
+  "class Facade(Service):\n    def __init__(self):\n        super().__init__()\n":
+    labels:
     - source: |-
         def __init__(self):
                 super().__init__()
@@ -56,11 +46,8 @@ snapshots:
       style: secondary
       start: 0
       end: 73
-  ? |
-    class Facade(Service):
-        def execute(self):
-            return result
-  : labels:
+  "class Facade(Service):\n    def execute(self):\n        return result\n":
+    labels:
     - source: |-
         def execute(self):
                 return result

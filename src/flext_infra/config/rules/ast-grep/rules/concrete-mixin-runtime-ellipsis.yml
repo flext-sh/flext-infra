@@ -1,7 +1,8 @@
 # Keep the historical rule identity: concrete runtime Mixin ellipses and
 # class-local typing shells are the same competing-implementation law. Only
-# declaration-shaped bodies are candidates; native identities preserve Protocol,
-# abstractmethod and overload declarations, even behind aliases or decorators.
+# declaration-shaped bodies are candidates; Protocol classes
+# (typing-base-class) and abstractmethod/overload declarations
+# (declaration-decorated) keep their declarations, even behind import aliases.
 id: concrete-mixin-runtime-ellipsis
 language: python
 severity: error
@@ -11,20 +12,6 @@ message: >-
   A concrete class supplies a competing declaration-only method. Compose the actual
   implementation and state owner; use p.* only for a genuine dependency capability,
   never a copy of sibling signatures or a TYPE_CHECKING implementation.
-metadata:
-  context:
-    NAME:
-      not: protocol-declaration
-    GUARD:
-      is: resolved-symbol
-      arg: typing TYPE_CHECKING
-    METHOD:
-      - not: declaration-decorator
-        arg: abc abstractmethod
-      - not: declaration-decorator
-        arg: typing overload
-      - not: declaration-decorator
-        arg: typing_extensions overload
 utils:
   shell-body:
     kind: block
@@ -55,6 +42,8 @@ rule:
     - has:
         field: name
         pattern: $METHOD
+    - not:
+        matches: declaration-decorated
     - has:
         field: body
         matches: shell-body
@@ -65,7 +54,9 @@ rule:
                 stopBy: end
                 has:
                   field: condition
-                  pattern: $GUARD
+                  all:
+                    - pattern: $GUARD
+                    - matches: type-checking-flag
             - inside:
                 kind: class_definition
                 stopBy:
@@ -75,6 +66,8 @@ rule:
                 has:
                   field: name
                   pattern: $NAME
+                not:
+                  matches: typing-base-class
         - all:
             - any:
                 - pattern: |
@@ -94,3 +87,5 @@ rule:
                   all:
                     - pattern: $NAME
                     - regex: "Mixin$"
+                not:
+                  matches: typing-base-class

@@ -10,10 +10,8 @@ snapshots:
       style: secondary
       start: 5
       end: 12
-  ? |
-    if TYPE_CHECKING:
-        import tomllib
-  : labels:
+  "if TYPE_CHECKING:\n    import tomllib\n":
+    labels:
     - source: import tomllib
       style: primary
       start: 22

@@ -33,7 +33,7 @@ class FlextInfraFreshImportGate(FlextInfraGate):
     requires_python_targets: ClassVar[bool] = True
 
     @override
-    def selected_for(self, project_dir: Path) -> bool:
+    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
         """Select a project that publishes an importable package layout.
 
         The canonical layout owner reads project metadata; no copied workspace
@@ -44,7 +44,7 @@ class FlextInfraFreshImportGate(FlextInfraGate):
 
         """
         return (
-            super().selected_for(project_dir)
+            super().selected_for(project_dir, ctx)
             and u.Infra.layout(project_dir) is not None
         )
 

@@ -1,0 +1,21 @@
+# A public method written directly in a class body, decorated or not. The
+# function node is the match; a decorated method keeps its decorators on the
+# enclosing decorated_definition, which callers inspect.
+id: class-body-method
+language: python
+rule:
+  kind: function_definition
+  has:
+    field: name
+    regex: "^[A-Za-z]"
+  any:
+    - inside:
+        kind: block
+        inside:
+          kind: class_definition
+    - inside:
+        kind: decorated_definition
+        inside:
+          kind: block
+          inside:
+            kind: class_definition

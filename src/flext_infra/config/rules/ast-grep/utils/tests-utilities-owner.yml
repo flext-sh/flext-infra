@@ -1,0 +1,35 @@
+# An expression naming `tests.utilities.TestsFlextInfraUtilities` through the
+# module's own import of it: `utilities.<owner>` after `from tests import
+# utilities`, or `tests.utilities.<owner>` after `import tests.utilities`.
+id: tests-utilities-owner
+language: python
+rule:
+  any:
+    - all:
+        - regex: "^utilities\\.TestsFlextInfraUtilities$"
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              stopBy: end
+              kind: import_from_statement
+              all:
+                - has:
+                    field: module_name
+                    regex: "^tests$"
+                - has:
+                    kind: dotted_name
+                    regex: "^utilities$"
+                    not:
+                      inside:
+                        kind: import_from_statement
+                        field: module_name
+    - all:
+        - regex: "^tests\\.utilities\\.TestsFlextInfraUtilities$"
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              stopBy: end
+              kind: import_statement
+              regex: "^import tests\\.utilities$"

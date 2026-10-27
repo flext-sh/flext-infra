@@ -18,10 +18,14 @@ from flext_infra.codemod import (
     FlextInfraModGateEngine,
     FlextInfraNamespaceRelocationPhase,
 )
+from flext_infra.refactor.accessor_migration import (
+    FlextInfraAccessorMigrationOrchestrator,
+)
 from tests import c, tm, u
 
-_SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
-_REPLACEMENT_NAME = c.ENFORCEMENT_ACCESSOR_RENAMES[_SOURCE_NAME][0]
+_FIRST_RENAME = FlextInfraAccessorMigrationOrchestrator.automated_rules()[0]
+_SOURCE_NAME = _FIRST_RENAME.source_name
+_REPLACEMENT_NAME = _FIRST_RENAME.replacement_name
 
 
 class _RecordingProgress:
@@ -278,7 +282,7 @@ class TestsFlextInfraCodemodLoopPhases:
         _workspace, project, _service, legacy, _foreign = _phase_fixture(tmp_path)
         source = legacy.read_text(encoding="utf-8")
         _ = legacy.write_text(
-            c.Infra.AUTOGEN_HEADERS[0] + "\n" + source,
+            c.Infra.AUTOGEN_HEADER + "\n" + source,
             encoding="utf-8",
         )
         consumer = legacy.parent / "consumer.py"

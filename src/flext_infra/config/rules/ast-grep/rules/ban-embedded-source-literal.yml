@@ -1,0 +1,56 @@
+# Operator law 2026-10-24: Python source embedded in a string literal -- one
+# string, an implicit concatenation or a triple-quoted block -- is a hidden
+# second source tree, in constants, inline code and tests alike. Source that a
+# program renders belongs in a template under `templates/` rendered through
+# u.Cli.template_*; source a test needs belongs in a real file under
+# `tests/fixtures/` (the tests-tier delta of ADR-028 p.6), materialized by a
+# fixture.
+#
+# A literal is source when it spans lines (a real newline or a `\n` escape)
+# and one of its lines starts a Python statement: `import <module>` (ending
+# the line, or followed by `,` or `as`), `from X import`, `def`, `async def`,
+# `class` or `print(`. Assignment-only text is not matched: it cannot be told
+# apart from TOML, INI or env data; prose such as "import failed: ..." is not
+# a statement. An implicit concatenation whose fragments carry three or more
+# line breaks is a file body assembled line by line and is matched in any
+# language (this absorbs the former ban-embedded-code-string shape).
+# Docstrings and bare string statements are documentation, not embedded
+# source. Detection only: the owning template or fixture file is chosen per
+# site, so no fix is offered.
+id: ban-embedded-source-literal
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  # Rule-catalog fixtures are rule data, not program source.
+  - "**/config/rules/ast-grep/tests/**"
+utils:
+  embedded-source-text:
+    all:
+      - regex: "\\\\n|\\n"
+      - regex: '(?m)(?:^|\\n|["''])[ \t]*(?:from [A-Za-z_][\w.]* import |import [A-Za-z_][\w.]*[ \t]*(?:,|as\b|\\n|$|["''])|(?:async )?def [A-Za-z_]\w*\(|class [A-Za-z_]\w*[(:]|print\()'
+rule:
+  any:
+    - all:
+        - kind: concatenated_string
+        - matches: embedded-source-text
+    # A file body assembled one line per literal (three or more line breaks
+    # across the fragments) is embedded source whatever its language; formatter
+    # splits of one message carry no line breaks and stay outside.
+    - all:
+        - kind: concatenated_string
+        - regex: '(?s)(\\n["''].*){3,}'
+    - all:
+        - kind: string
+        - not:
+            inside:
+              kind: concatenated_string
+        - matches: embedded-source-text
+  not:
+    inside:
+      kind: expression_statement
+message: >-
+  Python source embedded in a string literal: move it to a template under
+  `templates/` rendered through u.Cli.template_*, or, in tests, to a real file
+  under `tests/fixtures/` materialized by a fixture.

@@ -163,12 +163,31 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
             return r[t.StrSequence].from_failure(sub_result)
         sub_fixes, removed_ignore = sub_result.value
         all_fixes.extend(sub_fixes)
+        excludes_result: p.Result[t.StrSequence] = r[t.StrSequence].ok(())
         if removed_ignore or is_root:
-            excludes_result = self._sync_project_excludes(pyrefly)
-            if excludes_result.failure:
-                return r[t.StrSequence].from_failure(excludes_result)
-            all_fixes.extend(excludes_result.value)
-        return r[t.StrSequence].ok(all_fixes)
+            excludes_result = self._sync_declared_excludes(pyrefly, project_dir)
+        return excludes_result.map(lambda fixes: (*all_fixes, *fixes))
+
+    def _sync_declared_excludes(
+        self, pyrefly: MutableMapping[str, t.JsonValue], project_dir: Path
+    ) -> p.Result[t.StrSequence]:
+        """Resolve project-owned exclusion inputs before applying their policy.
+
+        Returns:
+            The declared exclusion changes or the original input failure.
+
+        """
+        codegen = u.Infra.load_codegen_inputs(project_dir)
+        if codegen.failure:
+            return r[t.StrSequence].from_failure(codegen)
+        tooling = u.Infra.load_tooling_inputs(project_dir)
+        if tooling.failure:
+            return r[t.StrSequence].from_failure(tooling)
+        return self._sync_project_excludes(
+            pyrefly,
+            codegen=codegen.value.spec,
+            tool_config=tooling.value.document,
+        )
 
     @staticmethod
     def _write_changed_tables(

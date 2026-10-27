@@ -16,7 +16,7 @@ from tests import c, tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, t
+    from tests import m, p, t
 
 
 class TestsFlextInfraImportDag:
@@ -61,6 +61,60 @@ class TestsFlextInfraImportDag:
             FlextInfraValidateTestImportDag().build_report(project),
         )
         tm.fail(report.passed)
+
+    @pytest.mark.parametrize(
+        ("source", "case"),
+        [
+            ("tests/unit/test_behavior.py", "absolute"),
+            ("tests/unit/test_behavior.py", "relative"),
+            ("tests/conftest.py", "plugin"),
+        ],
+    )
+    def test_artifact_imports_fail_from_every_test_layer(
+        self,
+        tmp_path: Path,
+        fixture_tree: p.Tests.FixtureTree,
+        source: str,
+        case: str,
+    ) -> None:
+        """Reject imports of artifact data from ordinary tests and conftest."""
+        scenario = fixture_tree("artifact-imports", destination=tmp_path / "scenarios")
+        project = self._project(
+            tmp_path,
+            {source: (scenario / f"{case}.py").read_text(encoding=c.DEFAULT_ENCODING)},
+        )
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project),
+        )
+        tm.fail(report.passed)
+
+    @pytest.mark.parametrize("name", ["__init__.py", "conftest.py"])
+    def test_artifact_wiring_is_rejected_without_parsing(
+        self, tmp_path: Path, name: str
+    ) -> None:
+        """Reject package and pytest wiring using only its path."""
+        project = self._project(
+            tmp_path,
+            {f"tests/fixtures/scenario/{name}": "invalid Python artifact"},
+        )
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project),
+        )
+        tm.fail(report.passed)
+
+    def test_python_artifacts_are_data_without_source_parsing(
+        self, tmp_path: Path
+    ) -> None:
+        """Ignore root and nested Python artifacts without decoding their bytes."""
+        project = self._project(tmp_path, {"src/sample/api.py": "value = 1\n"})
+        for relative in ("tests/fixtures/input.py", "tests/fixtures/scenario/input.py"):
+            artifact = project / relative
+            artifact.parent.mkdir(parents=True, exist_ok=True)
+            artifact.write_bytes(b"\xff\xfe\x00")
+        report: m.Infra.ValidationReport = tm.ok(
+            FlextInfraValidateTestImportDag().build_report(project),
+        )
+        tm.ok(report.passed)
 
     def test_forward_facets_and_type_checking_reverse_edges_pass(
         self,

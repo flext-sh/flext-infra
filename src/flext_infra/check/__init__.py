@@ -21,12 +21,16 @@ if TYPE_CHECKING:
     from flext_infra.check.workspace_check_gates import (
         FlextInfraWorkspaceCheckGatesMixin,
     )
+    from flext_infra.check.workspace_check_union import (
+        FlextInfraWorkspaceCheckUnionMixin,
+    )
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraGateRegistry",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceCheckReportsMixin",
+    "FlextInfraWorkspaceCheckUnionMixin",
     "FlextInfraWorkspaceChecker",
 )
 
@@ -37,6 +41,7 @@ install_lazy_exports(
         "FlextInfraGateRegistry": ".gate_registry",
         "FlextInfraWorkspaceCheckGatesMixin": ".workspace_check_gates",
         "FlextInfraWorkspaceCheckReportsMixin": "._workspace_check_reports",
+        "FlextInfraWorkspaceCheckUnionMixin": ".workspace_check_union",
         "FlextInfraWorkspaceChecker": ".workspace_check",
     }),
     public_exports=__all__,

@@ -1,11 +1,7 @@
 id: ban-validation-error-catch
 snapshots:
-  ? |
-    try:
-        model = Model.model_validate(raw)
-    except ValidationError as exc:
-        model = fallback
-  : labels:
+  "try:\n    model = Model.model_validate(raw)\nexcept ValidationError as exc:\n    model = fallback\n":
+    labels:
     - source: |-
         except ValidationError as exc:
             model = fallback
@@ -16,12 +12,8 @@ snapshots:
       style: secondary
       start: 50
       end: 65
-  ? |
-    try:
-        model = Model.model_validate(raw)
-    except ValidationError:
-        model = None
-  : labels:
+  "try:\n    model = Model.model_validate(raw)\nexcept ValidationError:\n    model = None\n":
+    labels:
     - source: |-
         except ValidationError:
             model = None
@@ -32,12 +24,8 @@ snapshots:
       style: secondary
       start: 50
       end: 65
-  ? |
-    try:
-        model = Model.model_validate(raw)
-    except pydantic.ValidationError:
-        pass
-  : labels:
+  "try:\n    model = Model.model_validate(raw)\nexcept pydantic.ValidationError:\n    pass\n":
+    labels:
     - source: |-
         except pydantic.ValidationError:
             pass

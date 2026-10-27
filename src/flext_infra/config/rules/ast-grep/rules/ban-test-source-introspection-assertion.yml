@@ -1,21 +1,15 @@
 # Source spelling is not an observation of the owner's runtime behavior.
-# AST elects assertion candidates; the existing Rope context proves the exact
-# inspect.getsource binding, including import aliases and lexical shadowing.
+# The call must reach inspect.getsource through the module's own import of
+# it: the qualified module, its alias, the imported name or its alias.
 # Reading generated artifacts remains legal: their bytes are product output.
 # Detection only: choosing the replacement behavior is not a text rewrite.
-# FUNCTION captures only the call occurrence. Import guards use distinct names
-# so their declaration coordinates cannot replace the semantic admission input.
+# FUNCTION captures only the call occurrence; import guards use distinct names.
 id: ban-test-source-introspection-assertion
 language: python
 severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
-metadata:
-  context:
-    FUNCTION:
-      is: resolved-symbol
-      arg: inspect getsource
 rule:
   all:
     - pattern: $FUNCTION($$$ARGS)
@@ -55,18 +49,22 @@ rule:
                     stopBy: end
                     kind: dotted_name
                     regex: '^getsource$'
-        - inside:
-            kind: module
-            stopBy: end
-            has:
-              stopBy: end
-              pattern: from inspect import $$$NAMES
-              has:
+        - all:
+            - inside:
+                kind: module
                 stopBy: end
-                kind: aliased_import
-                pattern:
-                  context: from inspect import getsource as $IMPORT_ALIAS
-                  selector: aliased_import
+                has:
+                  stopBy: end
+                  pattern: from inspect import $$$NAMES
+                  has:
+                    stopBy: end
+                    kind: aliased_import
+                    pattern:
+                      context: from inspect import getsource as $IMPORT_ALIAS
+                      selector: aliased_import
+            - has:
+                field: function
+                pattern: $IMPORT_ALIAS
     - inside:
         stopBy: end
         any:

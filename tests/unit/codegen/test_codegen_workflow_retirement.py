@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codegen, config, infra, m, main, workspace
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, codegen, config, infra, workspace
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
@@ -110,7 +110,9 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            codegen.FlextInfraCodegenConformExecute(repository_root=root).plan(request),
+            codegen.FlextInfraCodegenConform.Generate(repository_root=root).plan(
+                request
+            ),
         )
 
         workflow_paths = {root / entry.destination for entry in workflows}
@@ -152,7 +154,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.that(
-            main(
+            FlextInfraCli.infra_main(
                 [
                     "codegen",
                     "generate",

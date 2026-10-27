@@ -1,9 +1,7 @@
 id: bind-direct-registration-specialization
 snapshots:
-  ? |
-    from flext_core._typings import FlextTypesServices
-    value: FlextTypesServices.GuardInput
-  : fixed: |
+  "from flext_core._typings import FlextTypesServices\nvalue: FlextTypesServices.GuardInput\n":
+    fixed: |
       from flext_core import p
       from flext_core._typings import FlextTypesServices
       value: FlextTypesServices.GuardInput

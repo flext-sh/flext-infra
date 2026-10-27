@@ -61,7 +61,7 @@ module.operation.__code__ = original_code.replace(co_consts=tuple(
     replacement if value is original else value for value in original_code.co_consts))
 assert module.operation() is replacement
 assert original_code != module.operation.__code__
-tm.fail(native.compare(before, native.capture(selection).unwrap()))
+assert native.compare(before, native.capture(selection).unwrap()).failure
 """,
             python_paths=(str(root),),
             cwd=real_python_package,

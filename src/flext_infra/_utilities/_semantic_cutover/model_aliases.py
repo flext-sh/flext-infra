@@ -10,12 +10,16 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntime,
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -44,7 +48,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             (path, node.name)
             for path, source in sources.items()
             if path.is_relative_to(workspace.repository_root)
-            and not source.startswith(c.Infra.AUTOGEN_HEADERS)
+            and not source.startswith(c.Infra.AUTOGEN_HEADER)
             and (
                 family
                 := FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
@@ -143,7 +147,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             organizer = runtime.import_organizer(snapshot)
             for changed in consumers | {path}:
                 source = working[changed]
-                if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                if source.startswith(c.Infra.AUTOGEN_HEADER):
                     continue
                 native = organizer.organize_imports(cls._resource(snapshot, changed))
                 if native is not None:
@@ -267,7 +271,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     resources=tuple(
                         cls._resource(snapshot, item)
                         for item, source in working.items()
-                        if not source.startswith(c.Infra.AUTOGEN_HEADERS)
+                        if not source.startswith(c.Infra.AUTOGEN_HEADER)
                     ),
                     remove=False,
                 )
@@ -371,7 +375,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         end = sum(map(len, lines[: owner.end_lineno]))
         edits = [m.Infra.SourceRewrite(start=begin, end=end, text="")]
         for item in tree.body:
-            if isinstance(item, ast.Assign | ast.AnnAssign):
+            if isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES):
                 assign_targets = (
                     item.targets if isinstance(item, ast.Assign) else [item.target]
                 )
@@ -379,7 +383,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     isinstance(target, ast.Name) and target.id == "__all__"
                     for target in assign_targets
                 ):
-                    if not isinstance(item.value, ast.List | ast.Tuple) or any(
+                    if not isinstance(
+                        item.value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES
+                    ) or any(
                         not isinstance(element, ast.Constant) or element.value != name
                         for element in item.value.elts
                     ):
@@ -416,7 +422,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             path = Path(resource.real_path).resolve()
             if path not in observed:
                 source = resource.read()
-                if not source.startswith(c.Infra.AUTOGEN_HEADERS):
+                if not source.startswith(c.Infra.AUTOGEN_HEADER):
                     msg = (
                         "model alias proof requires complete workspace "
                         f"source inventory: {path}"
@@ -459,7 +465,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         imports = tuple(
             item
             for item in ast.walk(tree)
-            if isinstance(item, ast.Import | ast.ImportFrom)
+            if isinstance(item, c.Infra.AST_IMPORT_TYPES)
         )
         spellings = {name}
         for item in imports:
@@ -523,14 +529,14 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 ).find_occurrences(resource=resource)
             )
             for occurrence in occurrences:
-                if editable and not source.startswith(c.Infra.AUTOGEN_HEADERS):
+                if editable and not source.startswith(c.Infra.AUTOGEN_HEADER):
                     consumer = True
                 if occurrence.is_defined() or any(
                     item.lineno <= occurrence.lineno <= (item.end_lineno or item.lineno)
                     for item in imports
                 ):
                     continue
-                if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                if source.startswith(c.Infra.AUTOGEN_HEADER):
                     msg = (
                         "model alias has generated behavior, "
                         f"not just exports: {path}:{occurrence.lineno}"
@@ -634,7 +640,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         )
         if rewritten == source:
             return False
-        if path not in sources or source.startswith(c.Infra.AUTOGEN_HEADERS):
+        if path not in sources or source.startswith(c.Infra.AUTOGEN_HEADER):
             msg = f"model alias annotation is outside editable source inventory: {path}"
             raise ValueError(msg)
         module = runtime.build_string_module(project, rewritten, resource=resource)

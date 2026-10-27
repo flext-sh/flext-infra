@@ -1,0 +1,43 @@
+# A model field contract is read-only data: its annotation never names the
+# mutable `list` or `set` builtin, at any depth outside a call. Annotate the
+# field with `Sequence`/`t.SequenceOf[...]` or `frozenset`/`AbstractSet`
+# (`dict` annotations are ban-broad-annotation's).
+id: ban-bare-collection-field-annotation
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+rule:
+  kind: identifier
+  regex: "^(?:list|set)$"
+  pattern: $KIND
+  inside:
+    kind: type
+    stopBy: end
+    inside:
+      matches: model-field-assignment
+  not:
+    any:
+      - inside:
+          kind: attribute
+      - inside:
+          kind: call
+          stopBy:
+            kind: type
+message: >-
+  Model field annotation names mutable `$KIND`: use `t.SequenceOf[...]` for a
+  list and `frozenset[...]` for a set.
+  Detection only: consumers that mutate the container change with the annotation.
+metadata:
+  enforce: [ENFORCE-105]

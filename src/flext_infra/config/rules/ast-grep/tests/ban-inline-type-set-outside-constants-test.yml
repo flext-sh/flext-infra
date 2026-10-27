@@ -1,0 +1,10 @@
+id: ban-inline-type-set-outside-constants
+valid:
+  - isinstance(node, c.Infra.IMPORT_NODE_TYPES)
+  - isinstance(node, ast.Name)
+  - value = left | right
+invalid:
+  - isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)
+  - isinstance(node, (ast.Import, ast.ImportFrom))
+  - issubclass(kind, int | str)
+  - issubclass(kind, (int, str))

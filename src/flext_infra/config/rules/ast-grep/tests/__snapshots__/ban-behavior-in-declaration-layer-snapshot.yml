@@ -1,11 +1,7 @@
 id: ban-behavior-in-declaration-layer
 snapshots:
-  ? |
-    class Builder(m.BaseModel):
-        @classmethod
-        def build(cls) -> Builder:
-            return cls()
-  : labels:
+  "class Builder(m.BaseModel):\n    @classmethod\n    def build(cls) -> Builder:\n        return cls()\n":
+    labels:
     - source: |-
         def build(cls) -> Builder:
                 return cls()
@@ -34,11 +30,8 @@ snapshots:
       style: secondary
       start: 32
       end: 96
-  ? |
-    class Errors(m.BaseModel):
-        def record_exception(self, error: Exception) -> None:
-            self.items.append(str(error))
-  : labels:
+  "class Errors(m.BaseModel):\n    def record_exception(self, error: Exception) -> None:\n        self.items.append(str(error))\n":
+    labels:
     - source: |-
         def record_exception(self, error: Exception) -> None:
                 self.items.append(str(error))

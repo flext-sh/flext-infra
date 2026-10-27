@@ -1,0 +1,27 @@
+id: require-runtime-checkable-protocol
+valid:
+  - |
+    from typing import Protocol, runtime_checkable
+    class FlextDemoProtocols:
+        @runtime_checkable
+        class Reader(Protocol):
+            def read(self) -> str: ...
+  - |
+    from typing import Protocol, runtime_checkable
+    class FlextDemoProtocols:
+        class Demo(FlextCoreProtocols.Demo):
+            pass
+  - |
+    from typing import Protocol
+    class Reader(Protocol):
+        def read(self) -> str: ...
+invalid:
+  - |
+    from typing import Protocol, runtime_checkable
+    class FlextDemoProtocols:
+        class Reader(Protocol):
+            def read(self) -> str: ...
+  - |
+    from typing import runtime_checkable
+    class Writer(typing.Protocol[T]):
+        def write(self, value: T) -> None: ...

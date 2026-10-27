@@ -11,7 +11,7 @@ from typing import Never
 
 import pytest
 
-from flext_infra import docs, main
+from flext_infra import FlextInfraCli, docs
 from tests import c, m, tm, u
 
 
@@ -216,7 +216,15 @@ class TestsFlextInfraPresentationWorkflow:
             encoding=c.DEFAULT_ENCODING,
         )
         capsys.readouterr()
-        tm.that(main(["docs", "generate", "--repository-root", str(project)]), eq=0)
+        tm.that(
+            FlextInfraCli.infra_main([
+                "docs",
+                "generate",
+                "--repository-root",
+                str(project),
+            ]),
+            eq=0,
+        )
         captured = capsys.readouterr()
         payload = tm.ok(u.Cli.json_loads(captured.out))
         if not isinstance(payload, list):

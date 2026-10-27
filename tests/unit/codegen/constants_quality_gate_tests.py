@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import infra, main
+from flext_infra import FlextInfraCli, infra
 from flext_infra.codegen import FlextInfraCodegenQualityGate
 from tests import tm, u
 
@@ -25,7 +25,7 @@ class TestsFlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def test_dispatch_returns_int(tmp_path: Path) -> None:
         """main() dispatches constants-quality-gate command to handler."""
-        result = main([
+        result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
             "--repository-root",
@@ -36,7 +36,7 @@ class TestsFlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def test_json_format_exits_with_int(tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
-        result = main([
+        result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
             "--repository-root",
@@ -49,7 +49,7 @@ class TestsFlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def test_text_format_exits_with_int(tmp_path: Path) -> None:
         """Text mode returns an integer exit code."""
-        result = main([
+        result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
             "--repository-root",

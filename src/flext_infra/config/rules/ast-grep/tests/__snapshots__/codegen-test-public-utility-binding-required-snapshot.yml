@@ -1,8 +1,14 @@
 id: codegen-test-public-utility-binding-required
 snapshots:
-  utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci:
+  "from tests import utilities\nutilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci\n":
     labels:
     - source: utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
       style: primary
+      start: 28
+      end: 84
+    - source: |
+        from tests import utilities
+        utilities.TestsFlextInfraUtilities.CodegenTestSupport.Ci
+      style: secondary
       start: 0
-      end: 56
+      end: 85

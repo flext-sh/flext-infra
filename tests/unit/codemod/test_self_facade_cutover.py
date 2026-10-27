@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from flext_infra.codegen import FlextInfraCodegenGeneration
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
 
@@ -73,12 +72,17 @@ class TestsFlextInfraSelfFacadeCutover:
             },
             eager_dunders={},
         )
-        with u.Infra.facade_source_project(root, project_roots=(root,)) as (
-            project,
-            _,
-        ):
-            sources[context / c.Infra.INIT_PY] = (
-                FlextInfraCodegenGeneration.render_init(plan, source_project=project)
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            project = snapshot.engine
+            sources[context / c.Infra.INIT_PY] = u.Infra.lazy_init_render(
+                plan,
+                model=u.Infra.lazy_init_run(
+                    project,
+                    u.Infra.index_rope_workspace(snapshot, root),
+                    root=root,
+                    scoped=True,
+                ).model,
+                first_party=frozenset({package.name, auxiliary}),
             )
         (context / c.Infra.INIT_PY).write_text(
             sources[context / c.Infra.INIT_PY], encoding=c.DEFAULT_ENCODING
@@ -188,13 +192,15 @@ class TestsFlextInfraSelfFacadeCutover:
         declarations.mkdir()
         (declarations / c.Infra.INIT_PY).write_text("", encoding="utf-8")
         consumer = declarations / "consumer.py"
+        facade = f"{u.derive_class_stem(root.name)}Models"
         sources = {
-            package / c.Infra.INIT_PY: "from .models import Models as m\n",
+            package / c.Infra.INIT_PY: f"from .models import {facade} as m\n",
             package / c.Infra.MODELS_PY: (
+                "from typing import ClassVar\n"
                 "from flext_core import m as core_m\n"
-                "class Models(core_m):\n"
-                "    empty = None\n"
-                "__all__ = ('Models',)\n"
+                f"class {facade}(core_m):\n"
+                "    empty: ClassVar[None] = None\n"
+                f"__all__ = ('{facade}',)\n"
             ),
             consumer: (
                 f"from {package.name} import m\n"
@@ -759,12 +765,13 @@ class TestsFlextInfraSelfFacadeCutover:
         }
         for path, content in sources.items():
             path.write_text(content, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            result = u.Infra.plan_semantic_cutover(
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=expected),
+        ):
+            u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                 rope_workspace=rope,
                 sources=sources,
             )
-        tm.fail(result, has=expected)
-        tm.ok(isinstance(result.exception, ValueError))
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)

@@ -1,26 +1,22 @@
 id: ban-dead-init-module
 snapshots:
-  ? |
-    # Package shell whose projection was removed.
-  : labels:
+  "# Package shell whose projection was removed.\n":
+    labels:
     - source: |
         # Package shell whose projection was removed.
       style: primary
       start: 0
       end: 46
-  ? |
-    # Retired facade.
-    __all__ = [ ]
-  : labels:
+  "# Retired facade.\n__all__ = [ ]\n":
+    labels:
     - source: |
         # Retired facade.
         __all__ = [ ]
       style: primary
       start: 0
       end: 32
-  ? |
-    __all__ = []
-  : labels:
+  "__all__ = []\n":
+    labels:
     - source: |
         __all__ = []
       style: primary

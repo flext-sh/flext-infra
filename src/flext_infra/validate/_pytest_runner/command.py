@@ -20,10 +20,12 @@ from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command family.
 
-    One suite builder owns every flag. Incremental and complete phases share
-    the persistent testmon database. Coverage runs separately because testmon
-    refuses branch coverage through the cov plugin. Every operation shares its
-    entrypoint deadline across collection and execution.
+    One suite builder owns every flag. Global incremental and explicit FULL
+    share the same inventory scope and persistent testmon environment; only
+    FULL bypasses dependency selection. Local/slow callers retain their marker
+    partitions. Coverage runs separately because testmon refuses branch coverage
+    through the cov plugin. Every operation shares its entrypoint deadline
+    across collection and execution.
     """
 
     _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
@@ -37,7 +39,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         The budgeted incremental phase deselects the slow marker and the slow
         phase selects it: each is its own process on its own clock
         (gate-budget law). A declared file runs its slow items. The coverage
-        operation and the complete phase include slow items. One predicate
+        operation and both global modes include slow items. One predicate
         drives both the marker expression and the stop reserve, so an in-flight
         slow item always has its slow drain.
 
@@ -48,8 +50,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         return (
             self.slow_phase
             or self.target_file is not None
-            or execution_mode
-            in {c.Infra.PytestExecutionMode.COVERAGE, c.Infra.PytestExecutionMode.FULL}
+            or execution_mode.is_global
+            or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
         )
 
     def suite_stop_monotonic(
@@ -96,7 +98,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``t.StrTuple``.
 
         """
-        if self.ci_context and execution_mode != c.Infra.PytestExecutionMode.FULL:
+        if self.ci_context and not execution_mode.is_global:
             return config.Infra.tooling.tools.pytest.ci_excluded_markers
         return ()
 
@@ -118,10 +120,20 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         scope = hashlib.sha256(
             self._marker_expression(execution_mode).encode(),
         ).hexdigest()[:8]
-        toolchain = (
-            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
+        toolchain, configuration = self.testmon_input_identity()
+        return f"toolchain-{toolchain[:12]}-{configuration}-{scope}"
+
+    def testmon_input_identity(self) -> t.Pair[str, str]:
+        """Read runtime and configuration identities independently of selection.
+
+        Returns:
+            The existing installed toolchain identity and declared-input digest.
+
+        """
+        return (
+            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity(),
+            self._config_testmon_digest(),
         )
-        return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
 
     def _config_testmon_digest(self) -> str:
         """Fingerprint the project's current ``config/*.yaml`` behavior inputs.
@@ -170,7 +182,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                         *pytest.external_gate_markers,
                         *self.ci_excluded_markers(execution_mode=execution_mode),
                     )
-                    if execution_mode != c.Infra.PytestExecutionMode.FULL
+                    if not execution_mode.is_global
                     else ()
                 ),
                 *(
@@ -275,6 +287,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         )
         pytest_arguments = (
             *self._node_targets(),
+            *self._scratch_arguments(report_log),
             *testmon,
             "--collect-only",
             f"{c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION}={manifest_path}",
@@ -317,6 +330,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         A resolved plan carries the selected IDs and their manifest together.
         Workers record dependencies without selecting those IDs a second time.
+        Their ``--testmon-noselect`` freezes only the accepted selection, never
+        elects the global inventory for regular incremental execution.
         Whole-project FULL execution instead publishes its inventory from this
         suite's own collection, without an earlier selection process.
 
@@ -455,6 +470,20 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
         )
 
+    def _scratch_arguments(self, owner: Path) -> t.StrTuple:
+        """Elect a pytest-owned child of this operation's scratch directory.
+
+        Returns:
+            Native arguments isolated by their evidence owner, when provided.
+
+        """
+        if self.scratch_root is None:
+            return ()
+        return (
+            c.Infra.PYTEST_BASETEMP_ARGUMENT,
+            str(self.scratch_root / owner.stem),
+        )
+
     def _suite_argv(
         self,
         report_dir: Path,
@@ -485,6 +514,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 else ("-m", "pytest")
             ),
             *targets,
+            *self._scratch_arguments(report_dir),
             *pytest.progress_args,
             *pytest.report_args,
             *limits,

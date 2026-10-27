@@ -1,10 +1,7 @@
 id: ban-silent-suppress
 snapshots:
-  ? |
-    from contextlib import nullcontext, suppress
-    with suppress(KeyError):
-        run()
-  : labels:
+  "from contextlib import nullcontext, suppress\nwith suppress(KeyError):\n    run()\n":
+    labels:
     - source: suppress(KeyError)
       style: primary
       start: 50
@@ -28,11 +25,8 @@ snapshots:
       style: secondary
       start: 0
       end: 80
-  ? |
-    from contextlib import suppress as quiet
-    with quiet(KeyError):
-        run()
-  : labels:
+  "from contextlib import suppress as quiet\nwith quiet(KeyError):\n    run()\n":
+    labels:
     - source: quiet(KeyError)
       style: primary
       start: 46
@@ -64,20 +58,14 @@ snapshots:
       style: secondary
       start: 0
       end: 73
-  ? |
-    import contextlib
-    with contextlib.suppress(KeyError):
-        run()
-  : labels:
+  "import contextlib\nwith contextlib.suppress(KeyError):\n    run()\n":
+    labels:
     - source: contextlib.suppress(KeyError)
       style: primary
       start: 23
       end: 52
-  ? |
-    import contextlib as cl
-    with cl.suppress(OSError):
-        run()
-  : labels:
+  "import contextlib as cl\nwith cl.suppress(OSError):\n    run()\n":
+    labels:
     - source: cl.suppress(OSError)
       style: primary
       start: 29

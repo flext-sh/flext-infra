@@ -5,6 +5,7 @@ severity: error
 files:
   - "**/*.pyi"
 metadata:
+  enforce: [ENFORCE-090]
   owned_path_suffix: .pyi
 rule:
   kind: module

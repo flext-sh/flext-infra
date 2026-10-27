@@ -13,8 +13,7 @@ import pytest
 
 from flext_infra import m
 from flext_infra.codemod import FlextInfraImportNormalizationPhase
-from flext_infra.refactor import FlextInfraImportNormalization
-from tests import tm, u
+from tests import c, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
@@ -45,7 +44,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             u.Infra.import_module_role("demo_pkg._models._config.base"), eq="family"
         )
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=source
             ),
             eq=None,
@@ -70,7 +69,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
         for name in higher:
             with pytest.raises(ValueError, match="forbidden reverse namespace import"):
-                FlextInfraImportNormalization.normalize_source(
+                u.Infra.normalize_import_source(
                     project_root=project,
                     file_path=package / families[letter].directory / "declaration.py",
                     source=f"value = {name}.Value\n",
@@ -87,7 +86,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
                 has=f"if TYPE_CHECKING:\n    from demo_pkg import {name}\n",
             )
             tm.that(
-                FlextInfraImportNormalization.normalize_source(
+                u.Infra.normalize_import_source(
                     project_root=project, file_path=module, source=normalized
                 ),
                 eq=None,
@@ -155,7 +154,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="lazy-value")
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
@@ -204,7 +203,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "    return r.ok(DemoRecord)\n",
         )
 
-        second = FlextInfraImportNormalization.normalize_source(
+        second = u.Infra.normalize_import_source(
             project_root=project,
             file_path=target,
             source=first,
@@ -236,7 +235,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
 
         tm.that(normalized, has="from tests import c, r, u\n")
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
@@ -250,7 +249,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         project, _ = cls._project(tmp_path)
         tier = project / "tests"
         cls._lazy_init(tier, {"c": ".constants"})
-        result = FlextInfraImportNormalization.normalize_source(
+        result = u.Infra.normalize_import_source(
             project_root=project,
             file_path=tier / "unit" / "test_demo.py",
             source=(
@@ -300,7 +299,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="tier-value")
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
@@ -403,7 +402,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             {"e": ".unavailable_provider", "s": ".unavailable_provider"},
         )
         module = package / "handler.py"
-        normalized = FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -421,7 +420,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stdout.strip(), eq=expected)
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=module,
                 source=module.read_text(encoding="utf-8"),
@@ -448,7 +447,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "    value: str\n\n"
             "print(DemoConfig(value='validated-value').value)\n"
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -467,7 +466,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.ok(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout.strip(), eq="validated-value")
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=module,
                 source=module.read_text(encoding="utf-8"),
@@ -520,7 +519,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             f"{consumer}\n"
             "print(capture())\nprint(consume())\n"
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
+        normalized = u.Infra.normalize_import_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -539,10 +538,327 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.ok(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout.splitlines(), eq=["local-value", "provider-value"])
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=module,
                 source=module.read_text(encoding="utf-8"),
             ),
             eq=None,
         )
+
+
+class TestsFlextInfraInheritedFacadeImportNormalization(
+    TestsFlextInfraRefactorImportNormalizationSupport,
+):
+    """Inherited facade routes preserve runtime behavior and graph ownership."""
+
+    @classmethod
+    def test_planned_retirements_do_not_restore_a_discarded_import_cycle(
+        cls, tmp_path: Path
+    ) -> None:
+        """The same captured witnesses retain tombstones through both plan passes."""
+        project, package = cls._project(tmp_path)
+        retired = (package / "retired_a.py", package / "retired_b.py")
+        retired[0].write_text(
+            "from demo_pkg.retired_b import Beta\nclass Alpha(Beta):\n    pass\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        retired[1].write_text(
+            "from demo_pkg.retired_a import Alpha\nclass Beta(Alpha):\n    pass\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "_utilities" / "helper.py").write_text(
+            "class DemoHelper:\n    marker = 'retirement'\n__all__ = ['DemoHelper']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = package / "consumer.py"
+        target.write_text(
+            "from demo_pkg._utilities.helper import DemoHelper\n"
+            "value = DemoHelper.marker\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
+            captured = u.Infra.workspace_sources(snapshot)
+            sources = {path: entry.text for path, entry in captured.items()}
+            live = u.Infra.plan_import_normalization(
+                project,
+                (target,),
+                sources=sources,
+                declared_files=(),
+                snapshot=snapshot,
+            )
+            tm.that(live.failure, eq=True)
+            tm.that(live.error, has="runtime dependency cycles")
+            tombstones = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=project,
+                    path=path,
+                    before=captured[path].state,
+                    desired_content=None,
+                    desired_mode=None,
+                )
+                for path in retired
+            )
+            for path in retired:
+                del sources[path]
+            planned = tm.ok(
+                u.Infra.plan_import_normalization(
+                    project,
+                    (target,),
+                    sources=sources,
+                    declared_files=tombstones,
+                    snapshot=snapshot,
+                )
+            )
+            tm.that(planned, length=1)
+            tm.that(planned[0].before, eq=captured[target].state)
+            sources[target] = tm.not_none(planned[0].desired_content).decode(
+                c.DEFAULT_ENCODING
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_import_normalization(
+                        project,
+                        (target,),
+                        sources=sources,
+                        declared_files=tombstones,
+                        snapshot=snapshot,
+                    )
+                ),
+                eq=(),
+            )
+            for path in retired:
+                tm.that(path.read_bytes(), eq=captured[path].state.content)
+        tm.ok(u.Infra.publish_codegen_plans(project, (*tombstones, *planned)))
+        for path in retired:
+            tm.that(path.exists(), eq=False)
+        process = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    "from demo_pkg.consumer import value; assert value == 'retirement'",
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.ok(u.Cli.process_succeeded(process.outcome))
+
+    @classmethod
+    def test_inherited_facades_preserve_runtime_and_lexical_aliases(
+        cls, tmp_path: Path
+    ) -> None:
+        """Application members use local MRO without capturing shadowed names."""
+        project, package = cls._inherited_project(tmp_path)
+        target = package / "services" / "worker.py"
+        source = (
+            "from upstream_pkg import c, m, u\n"
+            "\n"
+            "def run(value: str) -> str:\n"
+            "    return u.render(m.render(c.render(value)))\n"
+            "\n"
+            "def shadow(m: str) -> str:\n"
+            "    return m\n"
+        )
+        target.write_text(source, encoding=c.DEFAULT_ENCODING)
+        normalized = cls._normalize(project, target, source)
+        tm.that(normalized, has="from demo_pkg import c, m, u")
+        tm.that(normalized, has="return m")
+        target.write_text(normalized, encoding=c.DEFAULT_ENCODING)
+        process = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg.services.worker import run, shadow; "
+                        "assert run('unchanged') == 'unchanged'; "
+                        "assert shadow('local') == 'local'"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.ok(u.Cli.process_succeeded(process.outcome))
+        tm.that(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=target, source=normalized
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    def test_inherited_facade_override_rejects_before_publication(
+        cls, tmp_path: Path
+    ) -> None:
+        """An overriding local method cannot replace the upstream consumer."""
+        project, package = cls._inherited_project(tmp_path, override_member=True)
+        target = package / "services" / "worker.py"
+        source = (
+            "from upstream_pkg import m\n"
+            "\n"
+            "def run(value: str) -> str:\n"
+            "    return m.render(value)\n"
+        )
+        target.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(ValueError, match="local facade changes consumed member"):
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=target, source=source
+            )
+        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @classmethod
+    @pytest.mark.parametrize("typing_edge", [False, True])
+    def test_lazy_publication_and_typing_edge_are_not_runtime_cycles(
+        cls, tmp_path: Path, *, typing_edge: bool
+    ) -> None:
+        """A cold lazy import remains executable after the shared batch plan."""
+        project, package = cls._project(tmp_path)
+        cls._lazy_init(package / "services", {"DemoRunner": ".worker"})
+        models = package / u.Infra.facade_families()["m"].module
+        models = models.with_suffix(".py")
+        models.write_text(
+            (
+                "from typing import TYPE_CHECKING\n"
+                "if TYPE_CHECKING:\n"
+                "    from demo_pkg.services import DemoRunner\n"
+                if typing_edge
+                else ""
+            )
+            + "class m:\n"
+            "    @staticmethod\n"
+            "    def render(value: str) -> str:\n"
+            "        return value\n"
+            "__all__ = ['m']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = package / "services" / "worker.py"
+        target.write_text(
+            f"from demo_pkg.{models.stem} import m\n"
+            "class DemoRunner:\n"
+            "    @staticmethod\n"
+            "    def run(value: str) -> str:\n"
+            "        return m.render(value)\n"
+            "__all__ = ['DemoRunner']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
+            sources = {
+                path: entry.text
+                for path, entry in u.Infra.workspace_sources(snapshot).items()
+            }
+            plans = tm.ok(
+                u.Infra.plan_import_normalization(
+                    project,
+                    (target,),
+                    sources=sources,
+                    declared_files=(),
+                    snapshot=snapshot,
+                )
+            )
+        tm.that(plans, length=1)
+        desired = tm.not_none(plans[0].desired_content).decode(c.DEFAULT_ENCODING)
+        tm.that(desired, has="from demo_pkg import m")
+        target.write_text(desired, encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=target, source=desired
+            ),
+            eq=None,
+        )
+        process = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from demo_pkg.services import DemoRunner; "
+                        "assert DemoRunner.run('cold') == 'cold'"
+                    ),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.ok(u.Cli.process_succeeded(process.outcome))
+
+    @classmethod
+    def test_planned_foreign_homonyms_do_not_expand_member_ownership(
+        cls, tmp_path: Path
+    ) -> None:
+        """Another member's incompatible facade cannot enter this batch's scope."""
+        project, package = cls._inherited_project(tmp_path)
+        other, other_package = cls._inherited_project(
+            project / "nested", override_member=True
+        )
+        target = package / "services" / "worker.py"
+        foreign = other_package / "services" / "worker.py"
+        source = "from upstream_pkg import m\nvalue = m.render('member')\n"
+        for path in (target, foreign):
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with (
+            u.Infra.workspace_snapshot(project, (project, other)) as snapshot,
+            u.Infra.workspace_snapshot(other, (other,)) as other_snapshot,
+        ):
+            sources = {
+                path: entry.text
+                for path, entry in u.Infra.workspace_sources(snapshot).items()
+            }
+            sources.update({
+                path: entry.text
+                for path, entry in u.Infra.workspace_sources(other_snapshot).items()
+            })
+            plans = tm.ok(
+                u.Infra.plan_import_normalization(
+                    project,
+                    (target, foreign),
+                    sources=sources,
+                    declared_files=(),
+                    snapshot=snapshot,
+                )
+            )
+        tm.that(tuple(plan.path for plan in plans), eq=(target,))
+        tm.that(
+            tm.not_none(plans[0].desired_content).decode(c.DEFAULT_ENCODING),
+            has="from demo_pkg import m",
+        )
+        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        tm.that(foreign.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @classmethod
+    def test_runtime_cycle_rejects_the_batch_without_publishing(
+        cls, tmp_path: Path
+    ) -> None:
+        """A cycle rejected by cold Python import also rejects the batch plan."""
+        project, package = cls._project(tmp_path)
+        target = package / "alpha.py"
+        source = "from demo_pkg.beta import Beta\nclass Alpha(Beta):\n    pass\n"
+        target.write_text(source, encoding=c.DEFAULT_ENCODING)
+        (package / "beta.py").write_text(
+            "from demo_pkg.alpha import Alpha\nclass Beta(Alpha):\n    pass\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
+            planned = u.Infra.plan_import_normalization(
+                project,
+                (target,),
+                sources={
+                    path: entry.text
+                    for path, entry in u.Infra.workspace_sources(snapshot).items()
+                },
+                declared_files=(),
+                snapshot=snapshot,
+            )
+        tm.that(planned.failure, eq=True)
+        tm.that(planned.error, has="runtime dependency cycles")
+        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        process = tm.ok(
+            u.Cli.run(
+                (sys.executable, "-c", "from demo_pkg.alpha import Alpha"),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)

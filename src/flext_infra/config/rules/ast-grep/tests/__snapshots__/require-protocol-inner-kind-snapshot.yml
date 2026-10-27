@@ -1,0 +1,56 @@
+id: require-protocol-inner-kind
+snapshots:
+  "class FlextDemoProtocols:\n    class Demo:\n        class Status(StrEnum):\n            ACTIVE = \"active\"\n":
+    labels:
+    - source: |-
+        class Status(StrEnum):
+                    ACTIVE = "active"
+      style: primary
+      start: 50
+      end: 102
+    - source: |-
+        class Demo:
+                class Status(StrEnum):
+                    ACTIVE = "active"
+      style: secondary
+      start: 30
+      end: 102
+    - source: StrEnum
+      style: secondary
+      start: 63
+      end: 70
+    - source: StrEnum
+      style: secondary
+      start: 63
+      end: 70
+    - source: Status
+      style: secondary
+      start: 56
+      end: 62
+  "class FlextDemoProtocols:\n    class Order(m.FrozenModel):\n        total: int\n":
+    labels:
+    - source: |-
+        class Order(m.FrozenModel):
+                total: int
+      style: primary
+      start: 30
+      end: 76
+    - source: |-
+        class FlextDemoProtocols:
+            class Order(m.FrozenModel):
+                total: int
+      style: secondary
+      start: 0
+      end: 76
+    - source: m.FrozenModel
+      style: secondary
+      start: 42
+      end: 55
+    - source: m.FrozenModel
+      style: secondary
+      start: 42
+      end: 55
+    - source: Order
+      style: secondary
+      start: 36
+      end: 41

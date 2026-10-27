@@ -41,6 +41,10 @@ class FlextInfraPytestRunnerBase(s[int]):
         Path,
         m.Field(description="Absolute external pytest-testmon SQLite database path."),
     ]
+    scratch_root: Annotated[
+        Path | None,
+        m.Field(description="External repository-owned native pytest scratch root."),
+    ] = None
     ci_context: Annotated[
         bool,
         m.Field(description="CI/pre-commit selection captured at the Make boundary."),
@@ -87,6 +91,73 @@ class FlextInfraPytestRunnerBase(s[int]):
         """
         value = cls._environment_value(name)
         return Path(value) if value else None
+
+    @classmethod
+    def from_project_context(
+        cls,
+        context: m.Infra.WorkspaceProjectContext,
+        *,
+        started_at_monotonic: float,
+    ) -> Self:
+        """Bind the native runner to one repository's typed policy and identity.
+
+        Returns:
+            The runner with independent persistent storage and operation clock.
+
+        Raises:
+            ValueError: If the context or external storage anchors are invalid.
+
+        """
+        if (
+            context.identity is None
+            or context.target is None
+            or context.runtime is None
+        ):
+            msg = f"pytest requires a governed project context: {context.cwd}"
+            raise ValueError(msg)
+        root = context.identity.repo_root
+        make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
+        cache = make.testmon_cache
+        scratch = make.pytest_scratch
+        home = Path(settings.env_required(scratch.user_home_environment_variable))
+        cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
+        cache_home = (
+            Path(cache_home_value)
+            if cache_home_value
+            else Path(settings.env_required(cache.user_home_environment_variable))
+            / cache.home_cache_directory
+        )
+        if not home.is_absolute() or not cache_home.is_absolute():
+            msg = "pytest home and persistent cache anchors must be absolute"
+            raise ValueError(msg)
+        scratch_base = (
+            home / scratch.home_relative_directory / scratch.state_directory_name
+        )
+        scratch_root = (
+            Path(f"{scratch_base}{root}") / scratch.namespace / u.generate_id()
+        )
+        if scratch_root.resolve().is_relative_to(
+            context.runtime.runtime_root.resolve()
+        ):
+            msg = f"pytest scratch must be outside the runtime checkout: {scratch_root}"
+            raise ValueError(msg)
+        runner = cls(
+            repository_root=root,
+            started_at_monotonic=started_at_monotonic,
+            target=cache.target_directory,
+            reports=cache.reports_directory,
+            testmon_db=(
+                cache_home
+                / cache.external_storage_directory
+                / context.target.canonical_project_name
+                / cache.database_filename
+            ),
+            scratch_root=scratch_root,
+            ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
+            profile_enabled=settings.Infra.profile,
+        )
+        scratch_root.mkdir(parents=True, exist_ok=False)
+        return runner
 
     @classmethod
     def from_environment(

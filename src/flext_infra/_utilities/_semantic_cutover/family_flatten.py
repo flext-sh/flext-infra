@@ -12,14 +12,18 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesRopeCore,
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeStructure,
 )
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyReferences,
 )
@@ -45,7 +49,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
                 path.relative_to(workspace.repository_root),
             )
             is not None
-            and not sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
+            and not sources[path].startswith(c.Infra.AUTOGEN_HEADER)
         )
         if not candidates:
             return ()
@@ -262,7 +266,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         root = Path(project.root.real_path)
         candidate_rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
         for consumer, source in sources.items():
-            if source.startswith(c.Infra.AUTOGEN_HEADERS):
+            if source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
             resource = project.get_resource(consumer.relative_to(root).as_posix())
             blocked, changes = cls._family_consumer_rewrites(
@@ -352,7 +356,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         for path, source in sources.items():
-            if source.startswith(c.Infra.AUTOGEN_HEADERS):
+            if source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
             resource = project.get_resource(path.relative_to(root).as_posix())
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)

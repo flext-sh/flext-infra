@@ -1,0 +1,26 @@
+id: require-static-utility-method
+snapshots:
+  "class FlextDemoUtilities:\n    @cache\n    def build(self, value):\n        return value\n":
+    labels:
+    - source: |-
+        def build(self, value):
+                return value
+      style: primary
+      start: 41
+      end: 85
+    - source: build
+      style: secondary
+      start: 45
+      end: 50
+  "class FlextDemoUtilities:\n    def build(self, value):\n        return value\n":
+    labels:
+    - source: |-
+        def build(self, value):
+                return value
+      style: primary
+      start: 30
+      end: 74
+    - source: build
+      style: secondary
+      start: 34
+      end: 39

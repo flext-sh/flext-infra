@@ -1,11 +1,7 @@
 id: retire-publication-stack-unauthenticated-branch
 snapshots:
-  ? |
-    if not project.authenticated_sources:
-        snapshot = fallback()
-    else:
-        snapshot = read()
-  : fixed: |
+  "if not project.authenticated_sources:\n    snapshot = fallback()\nelse:\n    snapshot = read()\n":
+    fixed: |
       snapshot = read()
     labels:
     - source: |-

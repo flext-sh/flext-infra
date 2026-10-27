@@ -4,10 +4,10 @@ Infra:
     raw-check-receipt-suffix: .raw.log
     derived-tool-roots: [deptry, mypy, pyrefly, pyright, pytest, ruff, vulture]
     derived-settings:
-      mypy: [python_version, mypy_path, overrides, disable_error_code]
+      mypy: [python_version, mypy_path, exclude, overrides, disable_error_code]
       pyrefly: [python-version]
       pyright: [pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath]
-      pytest.ini_options: [flext_slow_timeout_seconds, markers]
+      pytest.ini_options: [flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value]
       ruff: [target-version]
     # Native options are free key/value pairs, grouped by their tool table.
     # The same catalog drives modernization and every projected template.
@@ -138,8 +138,8 @@ Infra:
       - [testpaths, [tests]]
       - [minversion, "8.0"]
       - [python_classes, ["Test*"]]
-      - [filterwarnings, [error, "module::flext_core._constants.enforcement.FlextMroViolation", "once::pytest.PytestAssertRewriteWarning"]]
-      - [addopts, [--benchmark-disable, --strict-markers, --markdown-docs, --durations=10, --flext-enforce-strict]]
+      - [filterwarnings, [error, "once::pytest.PytestAssertRewriteWarning"]]
+      - [addopts, [--benchmark-disable, --strict-markers, --markdown-docs, --durations=10]]
       pyright:
       - [ pythonPlatform, Linux ]
       - [ reportCallIssue, error ]
@@ -183,7 +183,15 @@ Infra:
       ruff.lint:
       - [ select, [ ALL ] ]
       - [ ignore, [] ]
-      - [ unfixable, [ multi-value-repeated-key-literal, multi-value-repeated-key-variable, p-print, print, pytest-duplicate-parametrize-test-cases ] ]
+      # non-pep695-type-alias (UP040) stays detected but is never autofixed:
+      # its fix turns a facade class publication `Name: TypeAlias = Owner`
+      # into a PEP 695 `type` statement, replacing the class with a
+      # TypeAliasType (2026-10-25: `type Cli = FlextCliUtilitiesCli` killed the
+      # flext-infra CLI fleet-wide). Operator decision 2026-10-25, "Exceção
+      # UP040 por identidade": the lint verdict exempts exactly the
+      # authenticated publication identities (file, row, column, rule); every
+      # other UP040 finding blocks and is rewritten by its declared owner.
+      - [ unfixable, [ multi-value-repeated-key-literal, multi-value-repeated-key-variable, non-pep695-type-alias, p-print, print, pytest-duplicate-parametrize-test-cases ] ]
       - [ extend-safe-fixes, [ relative-imports, typing-only-first-party-import, camelcase-imported-as-lowercase ] ]
       - [ extend-select, [ missing-blank-line-after-last-section ] ]
       ruff.lint.flake8-tidy-imports:
@@ -233,7 +241,7 @@ Infra:
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
-          # set through the generated .markdownlint.json. Headings use
+          # set through the generated .rumdl.toml. Headings use
           # MD013.heading_line_length because no tool can reflow a heading.
           #
           # Wrapping is hand-owned, not tool-owned: rumdl's normalize reflow
@@ -247,7 +255,6 @@ Infra:
             heading_line_length: 200
             code_block_line_length: *formatting_width
             tables: false
-            reflow: false
         - [MD022, false]
         - [MD023, false]
         - [MD024, { siblings_only: true }]
@@ -261,89 +268,13 @@ Infra:
         - [MD046, false]
         - [MD050, { style: consistent }]
         - [MD051, false]
-        - [MD057, false]
         - [MD060, false]
+        native_rules:
+        - [MD013, { reflow: false }]
+        - [MD057, false]
         - [MD076, false]
-        exclude:
-        # AGENTS.md is a tool-managed projection (tracker and agent setup
-        # blocks): gating generated output is a projection defect.
-        # CLAUDE.md is its symlink and would rewrite the projection through
-        # the link.
-        - AGENTS.md
-        - CLAUDE.md
-        # GEMINI.md is the same tool-managed instruction-pointer projection
-        # (generate-workspace-config); prose-wrap always rewraps its exact
-        # rendered pointer and the law-surface validator then fails closed.
-        - GEMINI.md
-        - .kilo/**
-        - .omo/**
-        # ZCode session artifacts (plan files) are machine-local scratch,
-        # never a live docs or markdown-gate surface.
-        - .zcode/**
-        - .tmp/**
-        - .claude/**
-        - .vscode/**
-        - .serena/**
-        - .snapshots/**
-        - .benchmarks/**
-        - .hypothesis/**
-        # CHANGELOG.md files are release-please output: their bullets embed
-        # compare/commit URLs that cannot reflow under the line budget, and
-        # hand-wrapping them is overwritten by the next release render
-        # (operator authorization 2026-10-03).
-        - CHANGELOG.md
-        # Codegen-managed docs projections (make gen / docs generate): the
-        # renderer's output is canonical as emitted — a formatter rewriting
-        # them fights the codegen fixed point and the conform gate flags
-        # the drift both ways (merge-admin 2026-10-07, root evidence).
-        - docs/docs_config.json
-        - docs/architecture/architecture_config.json
-        - .mypy_cache/**
-        - .pytest_cache/**
-        - .ruff_cache/**
-        - .venv/**
-        - __pycache__/**
-        - node_modules/**
-        - .reports/**
-        - dist/**
-        - build/**
-        - htmlcov/**
-        - legado/**
-        - .github/**
-        - site/**
-        # target/ is a fully generated build tree (mise/rust-style outputs):
-        # formatting generated output is a projection defect.
-        - target/**
-        # Provider-surface projections and tracker runtime state: never a
-        # lint/format surface.
-        - .agents/**
-        - .gemini/**
-        - .beads/**
-        # Gen-emitted table projections whose emitter lives outside the
-        # codegen surface; MD058 (blank lines around tables) is upstream of
-        # the projection and cannot be repaired at the projection itself.
-        - docs/knowledge-index.md
-        - docs/architecture/communities/index.md
-        # External CRG tool output: pipe-separated rows (MD075) and long JSON
-        # lines (MD013) originate from code-review-graph, not hand-authored docs.
-        - docs/architecture/crg-reports/**
-        # Generated api-reference and project-catalog projections (make gen /
-        # docs generate): the renderer's output is canonical as emitted, so
-        # no formatter rewrites generated docs and the codegen fixed point
-        # stays stable.
-        - docs/api-reference/generated/**
-        # Historical evidence documents (plans, handoffs, frozen law text):
-        # their formatting is frozen evidence per operator law 11 —
-        # reformatting rewrites the record. Frozen as evidence, never
-        # re-rendered.
-        - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
-        - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
-        - docs/plans/2026-09-22-rope-generator-stabilization/02-achados-codegen.md
-        - docs/plans/2026-09-23-handoff-mypy-stabilization-e-integracao.md
-        - docs/plans/2026-09-25-v8-flext-service-base/05-phases.md
-        - docs/plans/2026-09-25-v8-flext-service-base/07-sessions-guide.md
-        - docs/standards/consumption-law.md
-        - docs/projects/generated/**
+        native_settings:
+        - [per-file-flavor, { 'docs/**/*.md': mkdocs }]
       ruff:
         # Ruff exits 1 on findings. Remaining findings block repair acceptance;
         # the gate verifies the repaired state through the native read-only check.
@@ -363,6 +294,18 @@ Infra:
           # check/repair contract. Projection verifies that owner's election.
           rule-owners:
             missing-trailing-comma: format
+          # Enforcement law ids each Ruff rule claims; the enforcement catalog
+          # is derived from these claims and the other owners' declarations.
+          enforce:
+            import-outside-top-level: [ENFORCE-015, ENFORCE-081]
+            empty-type-checking-block: [ENFORCE-015]
+            any-type: [ENFORCE-016]
+            non-pep585-annotation: [ENFORCE-016]
+            non-pep604-annotation-union: [ENFORCE-016]
+            deprecated-import: [ENFORCE-016]
+            non-pep695-type-alias: [ENFORCE-016]
+            print: [ENFORCE-027]
+            magic-value-comparison: [ENFORCE-097]
           # Operator law (2026-10-05 flext-p7bxt, reiterated 2026-10-18):
           # TC001-TC004 break Pydantic model resolution — the lazy facade
           # architecture requires the runtime imports these rules would move
@@ -521,20 +464,25 @@ Infra:
         # items have no per-item deadline; the runner owns the invocation wall.
         # Slow marks are a narrow integration-harness budget, not permission
         # for an unbounded test. Cases that exceed it require owner repair.
-        slow-timeout-seconds: 30
+        # Operator order operator-order-2026-10-25-make-timeout-60s-cprofile:
+        # every make verb finishes within 60s; slower runs are profiled with
+        # cProfile and cured at their owner. The slow-phase stop reserve is
+        # xdist items per worker x slow-timeout + grace = 2 x 25 + 2 = 52 s,
+        # which must stay below run-timeout-seconds.
+        slow-timeout-seconds: 25
         # Marker selection never removes the aggregate operation deadline.
         # Slow items also retain their declared per-item integration budget.
         slow-marker: slow
         # A local suite that cannot finish within run-timeout-seconds is a
         # performance defect. Collection, lease waits and every suite child
         # share the entrypoint clock, with termination grace inside this wall.
-        run-timeout-seconds: 120
+        run-timeout-seconds: 60
         termination-grace-seconds: 2
         # One failure stops the invocation. The next run starts from the
         # corrected owner instead of accumulating a backlog of unrelated
         # failures.
         max-failures: 1
-        enforcement-plugin: flext_tests_enforcement
+        enforcement-plugin: flext_tests.enforcement_plugin
         # Retain the complete selection, but expose known failures first.
         progress-args: [ --verbose, --failed-first ]
         report-args: [ -ra, --durations=25, --durations-min=0.001, --tb=short ]
@@ -593,13 +541,10 @@ Infra:
         # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
         # "error" to survive re-conform. Only module::/once:: sort after 'error'
         # ('m'/'o' > 'e'); default::/always::/ignore:: get reordered before it and
-        # lose. The entry names FlextMroViolation because FlextSmellViolation is
-        # its SUBCLASS: a filter on the child leaves the parent fatal, which is
-        # how MRO violations become errors when a regeneration drops the
-        # entry. One entry on the parent keeps
-        # both VISIBLE-but-non-fatal, matching the non-strict enforcement policy
-        # (flext-tests registers default::{category}); all other warnings stay
-        # fatal. See flext-core test_enforcement_warning_visibility.
+        # lose. flext-core's static-time enforcement is switched off (operator
+        # order 2026-10-25; it migrates to flext-infra's declarative rules), so
+        # no core enforcement warning category is filtered here; every other
+        # warning stays fatal.
         standard-markers:
         - "smoke: public-interface smoke tests"
         - "unit: unit tests"
@@ -646,6 +591,15 @@ Infra:
           provider: http
           url: http://localhost:11434/v1
           model: unclemusclez/jina-embeddings-v2-base-code
+        # Operator authorization 2026-10-25 (in-session answer "Autorizar
+        # exclusão no jscpd"): the mandated module license header repeats in
+        # every module by contract, so it is no clone to repair. jscpd matches
+        # each pattern against one token, and a docstring line is one token,
+        # so each header line has its own pattern (any year); the docstring
+        # summary and the import block that follows stay scanned.
+        ignore-patterns:
+          - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
+          - "SPDX-License-Identifier: MIT"
 
     lazy-init:
       # Canonical import layer order of the FLEXT import law
@@ -667,12 +621,19 @@ Infra:
       - services
       - api
       - cli
-      # r/e are the base tier of u (operator decision 2026-10-24): they rank
-      # with u, so u and every later layer import them at runtime; the
-      # import-cycle law keeps r/e on the u primitives that never reach back.
+      # Module ranking only: the core package's modules behind r/e (`_result`,
+      # `_exceptions`) rank with u when the engine judges a module's imports.
+      # Whether an alias is imported at runtime is not this fact: operational
+      # aliases are runtime in every module (operator ruling 2026-10-24,
+      # "r also runtime"), derived by the namespace import header producer.
       layer-aliases:
         r: u
         e: u
+      # Stdlib backports import like the standard library everywhere (operator
+      # decision 2026-10-24): the PEP 747 TypeForm special form exists only in
+      # typing_extensions on this Python line, and type checkers recognize it
+      # only through its own name binding (ADR-028).
+      stdlib-backports: [typing_extensions]
       reverse-import-mode: type_checking
       forward-import-form: absolute
     # One owner per facade member (operator order 2026-10-24): the kind of the
@@ -698,7 +659,65 @@ Infra:
       # Callables of these modules build constrained annotation types.
       type-constructor-modules:
       - pydantic.types
+    # qlty owns smell detection and its thresholds (its own defaults); this
+    # block owns the repair text the smells gate appends to a finding and the
+    # law ids it enforces, keyed by the qlty check name (the SARIF ruleId
+    # suffix).
+    smells:
+      fix-text:
+        function-parameters: >-
+          Decompose into smaller functions or pass a context/model object only
+          when it carries domain meaning; adding a params model solely to silence
+          this rule is abominable.
+        return-statements: >-
+          Refactor to a single result path; use early returns only when they
+          improve readability.
+        nested-control-flow: Extract helper functions to flatten control flow.
+        boolean-logic: Simplify boolean expressions or introduce named predicates.
+        function-complexity: >-
+          Decompose the function into smaller, single-responsibility helpers.
+        file-complexity: Split the module into focused units.
+        identical-code: Extract a shared helper or canonical constant.
+        similar-code: >-
+          Refactor to a shared abstraction or delegate to a common helper.
+      # Enforcement law ids the smells gate claims, keyed by qlty check name.
+      enforce:
+        function-parameters: [ENFORCE-071]
+        return-statements: [ENFORCE-072]
+        nested-control-flow: [ENFORCE-073]
+        boolean-logic: [ENFORCE-074]
+        function-complexity: [ENFORCE-075]
+        file-complexity: [ENFORCE-076]
+        identical-code: [ENFORCE-077]
+        similar-code: [ENFORCE-078]
+    # A public method whose name starts with one of these prefixes declares an
+    # accessor; the accessor migration reports it with the replacement guidance.
+    # The proven renames live in config/rules/rope/accessor-migrations.yaml.
+    accessor-policy:
+      forbidden-prefixes:
+        get_: fetch_/resolve_/compute_
+        set_: configure_/apply_/update_
+        is_: a noun/adjective (success, expired, connected, ...)
     mod:
       phases:
         # Component toggles for make mod (rule: toggles are data, not flags).
         import-alignment: true
+        # Native cascade: every fixable rule that is neither an owned-path rule
+        # nor a Rope relocation applies
+        # through ast-grep's own `scan --update-all` over the project's staged
+        # sgconfig (.reports/codemod/native/<stage>/sgconfig.yml), stage by
+        # stage in this order; the sequence repeats in one staged preview
+        # until no byte changes, at most pass-cap times, then publishes once.
+        pass-cap: 8
+        stages:
+        # Generated canonical import headers settle before any catalog rule.
+        - name: header
+          kind: native
+          shapes: [import-header]
+        # Every other native rule of the elected catalog.
+        - name: catalog
+          kind: native
+        # Last: prune the imports the rewrites left unused and order them.
+        - name: import-fix
+          kind: ruff
+          select: [F401, I001]

@@ -10,10 +10,9 @@ language: python
 severity: error
 files:
   - "**/*.py"
-metadata:
-  context:
-    MODULE:
-      is: own-package
+constraints:
+  MODULE:
+    matches: own-package
 rule:
   kind: call
   all:

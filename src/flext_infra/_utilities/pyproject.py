@@ -6,8 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from functools import cache, lru_cache
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
@@ -22,6 +24,8 @@ from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    _live_text_memo: ClassVar[dict[str, p.Result[str]]] = {}
 
     @classmethod
     def declared_dependency_payload(
@@ -171,17 +175,26 @@ class FlextInfraUtilitiesPyproject:
         conflict outside those sections fails loud through that utility's
         own contract. Read-only: no file is written here.
 
+        The recovery is a pure function of the text and the frozen managed
+        file declaration, so one recovery per distinct text serves every
+        reader of the process.
+
         Returns:
             Live pyproject text with merge-control lines resolved.
 
         """
+        recovered = FlextInfraUtilitiesPyproject._live_text_memo.get(raw)
+        if recovered is not None:
+            return recovered
         spec_result = FlextInfraUtilitiesManagedConflicts.pyproject_managed_file()
         if spec_result.failure:
             return r[str].from_failure(spec_result)
-        return FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
+        recovered = FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
             raw,
             conflict_sections=spec_result.value.conflict_sections,
         )
+        FlextInfraUtilitiesPyproject._live_text_memo[raw] = recovered
+        return recovered
 
     @staticmethod
     def live_pyproject_text(
@@ -479,6 +492,30 @@ class FlextInfraUtilitiesPyproject:
         if not payload:
             return {}
         return payload
+
+    @classmethod
+    def sync_document_values(
+        cls,
+        document: t.Cli.TomlDocument | t.Cli.TomlTable,
+        payload: t.JsonMapping,
+    ) -> None:
+        """Synchronize changed semantic values through the original TOML tree."""
+        for key, value in payload.items():
+            if u.Cli.toml_value(document, key) == value:
+                continue
+            child = u.Cli.toml_table_child(document, key)
+            if child is not None and isinstance(value, Mapping):
+                cls.sync_document_values(child, value)
+            elif isinstance(value, list) and all(
+                isinstance(item, str) for item in value
+            ):
+                u.Cli.toml_sync_string_list(
+                    document,
+                    key,
+                    tuple(item for item in value if isinstance(item, str)),
+                )
+            else:
+                u.Cli.toml_sync_value(document, key, value)
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:

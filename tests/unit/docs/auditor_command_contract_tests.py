@@ -234,3 +234,79 @@ class TestsFlextInfraAuditorCommandContract:
         )
         tm.fail(blocked)
         tm.that(blocked.error, eq=loaded.error)
+
+    @staticmethod
+    def test_member_guides_resolve_from_the_containing_workspace(
+        command_contract_scope: m.Infra.DocScope,
+        tmp_path: Path,
+    ) -> None:
+        """A member-scoped plan projects its containing workspace's guides.
+
+        The workspace and a standalone checkout own their guides, which are
+        never their own projections.
+        """
+        workspace_scope = command_contract_scope
+        workspace = workspace_scope.path
+        guide = workspace / "docs/guides/using-demo.md"
+        guide.parent.mkdir(parents=True)
+        u.write_file(guide, "# Using Demo\n\nWorkspace-owned guidance.\n")
+        source = tmp_path / "member-source"
+        source.mkdir()
+        u.Tests.initialize_git_repo(source)
+        source_guide = source / "docs/guides/local.md"
+        source_guide.parent.mkdir(parents=True)
+        u.write_file(source_guide, "# Local\n\nStandalone-owned guidance.\n")
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    "--quiet",
+                    str(source),
+                    "member",
+                ],
+                cwd=workspace,
+            ),
+        )
+        member = workspace / "member"
+        member_scope = m.Infra.DocScope(
+            name="member",
+            path=member,
+            report_dir=member / ".reports/docs",
+        )
+
+        attached = u.Infra.docs_project_guides_artifacts(
+            member_scope,
+            repository_root=member,
+        )
+
+        tm.ok(attached)
+        tm.that(len(attached.value), eq=1)
+        tm.that(attached.value[0][1], eq=member / "docs/guides/using-demo.md")
+        tm.that(
+            attached.value[0][2],
+            eq=u.Infra.docs_sanitize_internal_anchor_links(
+                u.Infra.docs_project_guide_content(
+                    guide.read_text(encoding=c.DEFAULT_ENCODING),
+                    member_scope.name,
+                    guide.name,
+                ),
+            ),
+        )
+        for scope, root in (
+            (workspace_scope, workspace),
+            (
+                m.Infra.DocScope(
+                    name="member-source",
+                    path=source,
+                    report_dir=source / ".reports/docs",
+                ),
+                source,
+            ),
+        ):
+            own = u.Infra.docs_project_guides_artifacts(scope, repository_root=root)
+            tm.ok(own)
+            tm.that(own.value, eq=())

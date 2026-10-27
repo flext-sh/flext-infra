@@ -55,14 +55,15 @@ class TestsFlextInfraCodegenLazyInitPrivateFacade:
         tm.that(generated_services, contains="._acl.convert")
 
     @staticmethod
-    def test_nested_package_with_own_modules_still_publishes_private_children(
+    def test_nested_package_with_own_modules_still_propagates_private_children(
         tmp_path: Path,
     ) -> None:
-        """Declaring direct exports never makes a nested package drop ``_x`` children.
+        """Direct exports never make a nested package drop ``_x`` child exports.
 
         Regression for the defect where a nested package with its own exporting
         modules dropped every private child (``owns_export_surface``). Only the
-        public facade root withholds private children.
+        public facade root withholds private children; no package publishes a
+        child package object itself.
         """
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         services_root = package_root / "services"
@@ -88,11 +89,13 @@ class TestsFlextInfraCodegenLazyInitPrivateFacade:
             has=[
                 '"FlextTestsRunner": ".runner"',
                 '"FlextTestsPlanner": "._codegen.planner"',
-                '"_codegen": "._codegen"',
             ],
         )
-        tm.that(generated_root, has='"services": ".services"')
-        tm.that(generated_root, lacks=["FlextTestsPlanner", "FlextTestsRunner"])
+        tm.that(generated_services, lacks='"_codegen": "._codegen"')
+        tm.that(
+            generated_root,
+            lacks=['"services"', "FlextTestsPlanner", "FlextTestsRunner"],
+        )
         tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
         tm.that(
             u.Tests.run_lazy_init_probe(

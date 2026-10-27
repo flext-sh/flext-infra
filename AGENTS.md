@@ -35,10 +35,13 @@ src/flext_infra/
 
 | Symbol                          | Kind  | Location                       | Role                                                       |
 | ------------------------------- | ----- | ------------------------------ | ---------------------------------------------------------- |
-| `FlextInfra`                    | class | `api.py`                       | Rope workspace / health facade                             |
+| `FlextInfra`                    | class | `api.py`                       | workspace analysis/refactoring capability and health facade |
 | `FlextInfraCli`                 | class | `cli.py`                       | CLI entry                                                  |
-| `FlextInfraCodegenLazyInit`     | class | `codegen/lazy_init.py`         | lazy-init planning of every generated `__init__.py`        |
-| `FlextInfraCodegenPythonModel`  | class | `codegen/python_model.py`      | parse-once Griffe static model shared by one run           |
+| `FlextInfraCodegenLazyInit`     | class | `codegen/lazy_init.py`         | lazy-init orchestrator over the `u.Infra.lazy_init_*` owners |
+| `FlextInfraUtilitiesLazyInitPlan` | class | `_utilities/lazy_init_plan.py` | `u.Infra` package planning, collision election, file plans |
+| `FlextInfraUtilitiesLazyInitLetters` | class | `_utilities/lazy_init_letters.py` | `u.Infra` facade-letter election (nearest declaring, then serving) |
+| `FlextInfraUtilitiesLazyInitRender` | class | `_utilities/lazy_init_render.py` | `u.Infra` Ruff fixed-point initializer rendering |
+| `FlextInfraUtilitiesPythonModel` | class | `_utilities/python_model.py`  | `u.Infra` static facts derived from the source engine's existing parse |
 | `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
 | `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | explicit conform composition over the shared projection executor, without Service inheritance |
 | `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
@@ -69,21 +72,41 @@ declares `script_dispatch`.
 
 - Rules-as-data: policy in `rules/*.yaml` + `config/*.yaml` (Pydantic); add a YAML row,
   not a detector class.
+
+### ADR-028 Decision 5: Declarative enforcement
+
+This catalog is the enforcement owner; any remaining Core declarations are migration
+inputs. Follow [FLEXT ADR-028 Decision 5](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-5)
+and track the complete owner census in Bead `flext-43iz8`.
+
 - Codegen owns facets / `py.typed` / `[MANAGED]` sections — change SSOT/templates, run
   the generator; never hand-edit output.
 - Lazy exports reject competing owners of one published name in a package. Identical
   class names in independent modules or packages are valid; declarations that are not
   published do not compete for export ownership.
-- Enforcement target is rope-semantic (ADR-005); some detectors still use AST — verify
-  before claiming AST is banned.
+- <a id="adr-028-decision-15"></a>Public contracts and facade member names follow
+  [FLEXT ADR-028 Decision 15](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-15);
+  external consumers use capability names, never implementation-library names.
+- <a id="adr-028-decision-16"></a>This subproject's CA/DI and zero-duplication/smell
+  contract is [FLEXT ADR-028 Decision 16](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-16);
+  this file creates no alternate threshold or exception.
+- <a id="adr-028-decision-17"></a>Structural analysis and refactoring follow [FLEXT ADR-028 Decisions 5 and 17–18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17): reuse the
+  repository-scoped workspace model and native refactorings when they express the
+  operation; declarative, generalized rules own the remaining source checks. Duplicate
+  parse, discovery, import-graph, and refactoring layers are migration defects, not
+  alternate owners. The active code cutover is tracked by `flext-1engx.15`; this
+  instruction does not claim it is complete.
 - Config/settings canonical pattern: ADR-005 §§1–2 and `_settings.py`/`_config.py`
   docstrings (flext-z0zkq; fleet follow-up flext-la3z5).
-- Codemod governance (ast-grep + make mod): ADR-014.
+- <a id="adr-028-decision-18"></a>Codemod authoring and application follow [FLEXT ADR-028 Decisions 17–18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-18) and the root
+  [Codemod Rules guide, One rule per law](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/codemod-rules.md#one-rule-per-law). ADR-014 continues to own
+  family shape, subject to the later accepted workspace and rule decisions.
 - Family-wrapper flattening preserves the domain prefix in every promoted name.
-  Rope identity owns rewrites in executable references and quoted type positions,
-  including generic bases and deferred annotations. Ordinary strings, `Literal`
-  values, and `Annotated` metadata retain their payloads. Using the wrapper itself
-  as an entity type preserves that wrapper instead of emitting a partial cutover.
+  Semantic rewrites use the native workspace symbol identity for executable references
+  and quoted type positions, including generic bases and deferred annotations. Ordinary
+  strings, `Literal` values, and `Annotated` metadata retain their payloads. Using the
+  wrapper itself as an entity type preserves that wrapper instead of emitting a partial
+  cutover; the implementation and its gates remain owned by `flext-1engx.15`.
 
 ## Recovering this work
 
@@ -101,8 +124,14 @@ for that task. Align documentation before worker coding, prove real runtime befo
 test changes, and leave Make integration until last. Implementation is approved;
 the documentation-only slice executes neither surface and proves no runtime result.
 
-The approved target uses one native root uv workspace and lock in local execution
-and root CI; CI checks out declared submodules and installs noneditable. Independent
+The approved target uses one native root uv workspace in local execution and root
+CI; CI checks out declared submodules and installs noneditable. Locks follow
+[ADR-030](../docs/architecture/adr/030-member-locks-composition-upg-guard.md)
+(tracker memory `operator-ruling-2026-10-25-member-locks-uv-mise-upg-guard`,
+superseding the earlier root-only lock decision): member `uv.lock` and `mise.lock`
+are kept and formed by each member, the workspace lock is their composition, only
+`make upg` writes locks behind its guard (implementation pending), and exact SHAs
+pin the dependency hierarchy. Independent
 checkouts retain their native contracts. External suppliers use native pyproject
 sources, not environment variables, persisted selection or synthetic resolvers.
 Official Mise acquisition and native locked tool provisioning precede

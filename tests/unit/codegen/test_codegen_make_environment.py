@@ -852,17 +852,17 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(policy.max_stable_generations, gt=0)
         for forced in ("PROJECT_STATE_ROOT", "PROJECT_SCRATCH", 'TMPDIR="$$test_tmp"'):
             tm.that(makefile, lacks=forced)
-        # Every gate the typed owner schedules by default reaches the runtime
-        # in ONE `check run --gates` invocation. The Make layer no longer
-        # publishes a per-gate selector, so the gate list itself is the
-        # reachability proof.
-        gates = ",".join(config.Infra.codegen.make.check_gates_default)
-        tm.that(makefile, has=f'gates="{gates}"')
-        tm.that(
-            '$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" '
-            '--gates "$$gates"' in makefile,
-            eq=True,
-        )
+        # The Make layer names no gate: each repair verb asks the checker for
+        # its gate set, which the runtime resolves from the typed Make spec.
+        tm.that(makefile, lacks="--gates")
+        for gate_set in (c.Infra.CheckGateSet.FIX, c.Infra.CheckGateSet.FMT):
+            tm.that(
+                makefile,
+                has=(
+                    "$(PROJECT_FLEXT_INFRA) check run --repository-root "
+                    f'"$(PROJECT_ROOT)" --gate-set {gate_set.value} --apply'
+                ),
+            )
         tm.fail("$(UV_RUN) actionlint" in makefile)
         tm.ok('$(UV) sync --project "$(UV_PROJECT)"' in makefile)
         tm.ok('$(UV) build --project "$(PROJECT_ROOT)"' in makefile)

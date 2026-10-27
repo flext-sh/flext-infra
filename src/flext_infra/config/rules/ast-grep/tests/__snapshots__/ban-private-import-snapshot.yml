@@ -50,7 +50,7 @@ snapshots:
       style: secondary
       start: 7
       end: 35
-  import os, flext_core._typings:
+  "import os, flext_core._typings":
     labels:
     - source: import os, flext_core._typings
       style: primary

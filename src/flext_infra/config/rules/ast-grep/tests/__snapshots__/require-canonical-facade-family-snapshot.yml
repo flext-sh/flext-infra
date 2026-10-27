@@ -1,8 +1,7 @@
 id: require-canonical-facade-family
 snapshots:
-  ? |
-    __all__ = ["c", "m"]
-  : labels:
+  "__all__ = [\"c\", \"m\"]\n":
+    labels:
     - source: __all__
       style: primary
       start: 0

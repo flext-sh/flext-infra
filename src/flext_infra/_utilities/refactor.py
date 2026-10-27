@@ -12,7 +12,6 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Generator
 from contextlib import ExitStack, contextmanager
-from itertools import chain
 from pathlib import Path
 from typing import ClassVar
 
@@ -810,29 +809,20 @@ class FlextInfraUtilitiesRefactor:
     def mod_scan_inputs[FindingT: m.Infra.ModOccurrence](
         report: m.Infra.ModOccurrenceReport[FindingT],
     ) -> m.Infra.CodemodBindingSnapshot:
-        """Union captured sources and distinct binding graphs once per operation.
+        """Union the captured finding sources once per operation.
 
         Args:
             report: Completed mod scan whose entries carry captured states.
 
         Returns:
-            One binding snapshot uniting each entry's captured source state with
-            each distinct captured binding state.
+            One snapshot of each entry's captured source state.
 
         """
-        bindings = {
-            id(entry.binding_states): entry.binding_states for entry in report.entries
-        }
         return m.Infra.CodemodBindingSnapshot(
             states=tuple(
-                chain(
-                    (
-                        entry.source_state
-                        for entry in report.entries
-                        if entry.source_state is not None
-                    ),
-                    chain.from_iterable(bindings.values()),
-                )
+                entry.source_state
+                for entry in report.entries
+                if entry.source_state is not None
             )
         )
 
@@ -887,20 +877,6 @@ class FlextInfraUtilitiesRefactor:
             repository_totals[entry.repository] += 1
             rule_totals[entry.rule_id] += 1
             class_totals[entry.classification] += 1
-        bindings = {
-            id(entry.binding_states): entry.binding_states for entry in report.entries
-        }
-        binding_paths = {
-            identity: tuple(state.path for state in states)
-            for identity, states in bindings.items()
-        }
-        graphs = {
-            paths: index
-            for index, paths in enumerate(dict.fromkeys(binding_paths.values()))
-        }
-        graph_ids = {
-            identity: graphs[paths] for identity, paths in binding_paths.items()
-        }
         artifacts = {
             artifact.path: index
             for index, artifact in enumerate(report.native_artifacts)
@@ -918,13 +894,11 @@ class FlextInfraUtilitiesRefactor:
                         if entry.source_state is not None
                         else None
                     ),
-                    binding_graph=graph_ids[id(entry.binding_states)],
                     native_artifact=artifacts[entry.native_receipt.path],
                 )
             )
         return m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
-            "binding_graphs": tuple(graphs),
             "native_artifacts": report.native_artifacts,
             "inputs": FlextInfraUtilitiesRefactor.mod_scan_inputs(report),
             c.HandlerMode.COMMAND: publication.command,

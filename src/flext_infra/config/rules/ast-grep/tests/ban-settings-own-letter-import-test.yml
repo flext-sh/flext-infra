@@ -1,10 +1,13 @@
-# Shape only: the engine admits a finding when the imported module's root is
-# the scanned project's own package (context own-package). The law is per
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml): only an
+# import whose root is that own package matches. The law is per
 # letter: this document detects its own `settings` alias. The companion
 # settings-config-boundary rule rejects ALL other own-namespace imports at
 # layer zero, even when this narrower document does not match them.
 id: ban-settings-own-letter-import
 valid:
+  # Another package's letter is a cross-package facade binding.
+  - |
+    from flext_core import settings
   - |
     from ai_hub import settingsextra as settings
   # Not the settings alias; the stronger boundary owns this finding.

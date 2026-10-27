@@ -11,8 +11,6 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from defusedxml import ElementTree as DefusedET
-
 from flext_infra import c, m, r, u
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
@@ -190,7 +188,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         if junit.stat().st_size == 0:
             msg = self._failure_detail(f"empty JUnit: {junit}", log)
             raise ValueError(msg)
-        root = DefusedET.parse(junit).getroot()
+        root = u.Infra.junit_report_root(junit)
         if root is None:
             msg = self._failure_detail(f"JUnit has no document root: {junit}", log)
             raise ValueError(msg)
@@ -476,14 +474,14 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 # A whole-target run (the declared single file) collects its
                 # inventory directly and never runs a separate selection
                 # collection, so only the inventory receipt exists.
-                if selection_plan.whole_target and selection_plan.inventory_collected
+                if self.target_file is not None and selection_plan.inventory_collected
                 else (
                     (
                         ("selection", "inventory")
                         if selection_plan.inventory_collected
                         else ("selection",)
                     )
-                    if context.execution_mode == c.Infra.PytestExecutionMode.INCREMENTAL
+                    if context.execution_mode.is_incremental
                     else ("inventory",)
                 )
             )

@@ -26,8 +26,8 @@ valid:
   - |
     import ai_hub
 invalid:
-  # These remain syntactic candidates in both tests and production. Native
-  # admission distinguishes tests/_utilities from tests/unit/_utilities.
+  # These remain syntactic candidates in both tests and production. The
+  # facade-family-u scope distinguishes tests/_utilities from tests/unit/_utilities.
   - |
     from tests import u
   - |

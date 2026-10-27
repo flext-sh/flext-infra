@@ -1,14 +1,7 @@
 id: fstring-fail-missing-exception-review
 snapshots:
-  ? |
-    try:
-        read()
-    except OSError as error:
-        return r[str].fail(
-            f"read failed: {error}",
-            error_code="READ",
-        )
-  : fixed: |
+  "try:\n    read()\nexcept OSError as error:\n    return r[str].fail(\n        f\"read failed: {error}\",\n        error_code=\"READ\",\n    )\n":
+    fixed: |
       try:
           read()
       except OSError as error:
@@ -26,11 +19,11 @@ snapshots:
       style: secondary
       start: 89
       end: 94
-    - source: '{error}'
+    - source: "{error}"
       style: secondary
       start: 88
       end: 95
-    - source: '{error}'
+    - source: "{error}"
       style: secondary
       start: 88
       end: 95
@@ -55,15 +48,8 @@ snapshots:
       style: secondary
       start: 16
       end: 130
-  ? |
-    try:
-        read()
-    except OSError as exc:
-        return r[str].fail(
-            f"read failed: {exc}",
-            error_code="READ",
-        )
-  : fixed: |
+  "try:\n    read()\nexcept OSError as exc:\n    return r[str].fail(\n        f\"read failed: {exc}\",\n        error_code=\"READ\",\n    )\n":
+    fixed: |
       try:
           read()
       except OSError as exc:
@@ -81,11 +67,11 @@ snapshots:
       style: secondary
       start: 87
       end: 90
-    - source: '{exc}'
+    - source: "{exc}"
       style: secondary
       start: 86
       end: 91
-    - source: '{exc}'
+    - source: "{exc}"
       style: secondary
       start: 86
       end: 91

@@ -11,11 +11,11 @@
 # is a later layer).
 #
 # Genericity: no document names a package, family, or letter. The imported
-# module is captured as $MOD; `own-package` admits only the scanned project's
-# own package, and `family-member` (on the same path, copied to $FAMILY)
-# admits the finding only when the importing module is neither inside the
-# family tree (the path up to its first `_` segment) nor its facade module
-# (that segment without the `_`).
+# module is captured as $MOD and constrained to the project's generated
+# `own-package` utility. The `private-family-` file scope partitions the rule
+# per private family of the project (the path up to its first `_` segment):
+# an import of that family never matches inside the family tree or in its
+# facade module (that segment without the `_`).
 #
 # Detection-only: the repair rebinds the consumer to the facade.
 
@@ -30,12 +30,17 @@ ignores:
   - "**/examples/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-068]
   ruling: operator-ruling-20261022-module-facade-config-layout
-  context:
-    MOD:
-      is: own-package
-    FAMILY:
-      not: family-member
+  scope:
+    partition:
+      variable: MOD
+      holds: false
+      selectors: private-family-
+      pattern: "^{key}(?:\\.|$)"
+constraints:
+  MOD:
+    matches: own-package
 rule:
   any:
     - all:
@@ -56,12 +61,6 @@ rule:
                 field: name
                 inside:
                   kind: import_statement
-transform:
-  FAMILY:
-    replace:
-      source: $MOD
-      replace: "(?<PATH>.+)"
-      by: "$PATH"
 message: >-
   Own-package import of a private family's internal module from outside that
   family. Internal modules are imported only by their family and its facade;

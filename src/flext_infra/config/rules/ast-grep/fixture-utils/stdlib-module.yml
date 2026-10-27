@@ -1,0 +1,6 @@
+# Fixture value of the generated `stdlib-module` utility: the standard
+# library modules the rule tests import.
+id: stdlib-module
+language: Python
+rule:
+  regex: "^(?:__future__|ast|collections|importlib|inspect|json|os|pathlib|re|subprocess|sys|typing)(?:[.\\s]|$)"

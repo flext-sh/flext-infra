@@ -1,0 +1,22 @@
+id: require-uppercase-constant-name
+snapshots:
+  "class FlextDemoConstants:\n    class Demo:\n        MaxItems = 10\n":
+    labels:
+    - source: MaxItems = 10
+      style: primary
+      start: 50
+      end: 63
+    - source: MaxItems
+      style: secondary
+      start: 50
+      end: 58
+  "class FlextDemoConstants:\n    default_timeout: ClassVar[int] = 30\n":
+    labels:
+    - source: "default_timeout: ClassVar[int] = 30"
+      style: primary
+      start: 30
+      end: 65
+    - source: default_timeout
+      style: secondary
+      start: 30
+      end: 45

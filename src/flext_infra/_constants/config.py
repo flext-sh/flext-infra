@@ -78,6 +78,22 @@ class FlextInfraConstantsConfig:
         INFRA = "infra"
 
     @unique
+    class GateStage(StrEnum):
+        """Earliest approval stage a gate's cost admits (gate-budget law).
+
+        ``COMMIT`` gates are fast external lint/format checks: they run at
+        pre-commit, in CI and at pre-push. ``CI`` gates run in CI and at
+        pre-push (tracker memory operator-ruling-2026-10-09-gate-baseline-0122
+        admits Pyrefly there). ``PUSH`` gates -- whole-program checkers,
+        code-smell audits and the project's own validators -- run only locally
+        and at pre-push.
+        """
+
+        COMMIT = "commit"
+        CI = "ci"
+        PUSH = "push"
+
+    @unique
     class GateAcceptancePolicy(StrEnum):
         """Whether evidence claims clean quality or complete diagnostic execution."""
 

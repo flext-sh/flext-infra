@@ -12,26 +12,27 @@ from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
-from flext_infra.__version__ import __version__
-
 if TYPE_CHECKING:
-    from flext_cli import d, e, h, r, x
-
-    from flext_infra import (
-        check as check,
-        codegen as codegen,
-        codemod as codemod,
-        deps as deps,
-        docs as docs,
-        gates as gates,
-        maintenance as maintenance,
-        refactor as refactor,
-        release as release,
-        services as services,
-        transformers as transformers,
-        validate as validate,
-        workspace as workspace,
+    from flext_cli import (
+        build_lazy_import_map,
+        cleanup_submodule_namespace,
+        cli,
+        core,
+        d,
+        e,
+        h,
+        install_lazy_exports,
+        lazy,
+        lazy_getattr,
+        lazy_member,
+        main,
+        merge_lazy_imports,
+        normalize_lazy_imports,
+        r,
+        resolve_lazy_members,
+        x,
     )
+
     from flext_infra.__version__ import (
         FlextInfraVersion,
         __author__,
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
         __license__,
         __title__,
         __url__,
+        __version__,
         __version_info__,
     )
     from flext_infra._base_payload import FlextInfraCommandPayloadMixin
@@ -49,12 +51,13 @@ if TYPE_CHECKING:
     from flext_infra._preview_wiring import FlextInfraPreviewWiring
     from flext_infra._pytest_clock import FlextInfraPytestClock
     from flext_infra._pytest_collection import FlextInfraPytestCollection
+    from flext_infra._pytest_entry import FlextInfraPytestEntry
     from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
     from flext_infra._settings import FlextInfraSettings, settings
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
     from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-    from flext_infra.cli import FlextInfraCli, main
+    from flext_infra.cli import FlextInfraCli
     from flext_infra.constants import FlextInfraConstants, c
     from flext_infra.git import FlextInfraGitService
     from flext_infra.git_lanes import FlextInfraGitLanes
@@ -85,6 +88,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsBase",
     "FlextInfraPytestClock",
     "FlextInfraPytestCollection",
+    "FlextInfraPytestEntry",
     "FlextInfraPytestProfile",
     "FlextInfraPytestProfileChild",
     "FlextInfraServiceBase",
@@ -101,33 +105,31 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
+    "build_lazy_import_map",
     "c",
-    "check",
-    "codegen",
-    "codemod",
+    "cleanup_submodule_namespace",
+    "cli",
     "config",
+    "core",
     "d",
-    "deps",
-    "docs",
     "e",
-    "gates",
     "h",
     "infra",
+    "install_lazy_exports",
+    "lazy",
+    "lazy_getattr",
+    "lazy_member",
     "m",
     "main",
-    "maintenance",
+    "merge_lazy_imports",
+    "normalize_lazy_imports",
     "p",
     "r",
-    "refactor",
-    "release",
+    "resolve_lazy_members",
     "s",
-    "services",
     "settings",
     "t",
-    "transformers",
     "u",
-    "validate",
-    "workspace",
     "x",
 )
 
@@ -152,6 +154,7 @@ install_lazy_exports(
         "FlextInfraProtocolsBase": ".protocols",
         "FlextInfraPytestClock": "._pytest_clock",
         "FlextInfraPytestCollection": "._pytest_collection",
+        "FlextInfraPytestEntry": "._pytest_entry",
         "FlextInfraPytestProfile": ".pytest_profile",
         "FlextInfraPytestProfileChild": "._pytest_profile_child",
         "FlextInfraServiceBase": ".base",
@@ -167,34 +170,35 @@ install_lazy_exports(
         "__title__": ".__version__",
         "__url__": ".__version__",
         "__version_info__": ".__version__",
+        "build_lazy_import_map": "flext_cli",
         "c": ".constants",
-        "check": ".check",
-        "codegen": ".codegen",
-        "codemod": ".codemod",
+        "cleanup_submodule_namespace": "flext_cli",
+        "cli": "flext_cli",
         "config": "._config",
+        "core": "flext_cli",
         "d": "flext_cli",
-        "deps": ".deps",
-        "docs": ".docs",
         "e": "flext_cli",
-        "gates": ".gates",
         "h": "flext_cli",
         "infra": ".api",
+        "install_lazy_exports": "flext_cli",
+        "lazy": "flext_cli",
+        "lazy_getattr": "flext_cli",
+        "lazy_member": "flext_cli",
         "m": ".models",
-        "main": ".cli",
-        "maintenance": ".maintenance",
+        "main": "flext_cli",
+        "merge_lazy_imports": "flext_cli",
+        "normalize_lazy_imports": "flext_cli",
         "p": ".protocols",
         "r": "flext_cli",
-        "refactor": ".refactor",
-        "release": ".release",
+        "resolve_lazy_members": "flext_cli",
         "s": ".base",
-        "services": ".services",
         "settings": "._settings",
         "t": ".typings",
-        "transformers": ".transformers",
         "u": ".utilities",
-        "validate": ".validate",
-        "workspace": ".workspace",
         "x": "flext_cli",
     }),
     public_exports=__all__,
 )
+
+if not TYPE_CHECKING:
+    from flext_infra.__version__ import __version__

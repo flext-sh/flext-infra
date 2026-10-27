@@ -1,11 +1,8 @@
 id: remove-project-managed-artifacts-private-import
 snapshots:
-  ? |
-    from flext_infra._utilities.project_managed_artifacts import (
-        FlextInfraUtilitiesProjectManagedArtifacts,
-    )
-  : fixed: |2+
-
+  "from flext_infra._utilities.project_managed_artifacts import (\n    FlextInfraUtilitiesProjectManagedArtifacts,\n)\n":
+    fixed: |+
+      
     labels:
     - source: |-
         from flext_infra._utilities.project_managed_artifacts import (
@@ -15,9 +12,11 @@ snapshots:
       start: 0
       end: 112
   from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts:
-    fixed: ''
+    fixed: ""
     labels:
-    - source: from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    - source: >-
+        from flext_infra._utilities.project_managed_artifacts import
+        FlextInfraUtilitiesProjectManagedArtifacts
       style: primary
       start: 0
       end: 103

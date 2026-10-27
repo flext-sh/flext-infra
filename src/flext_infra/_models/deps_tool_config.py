@@ -25,6 +25,51 @@ class FlextInfraModelsDepsToolConfig(
 ):
     """Models for tool configuration loaded from YAML."""
 
+    class ModStageConfig(m.ArbitraryTypesModel):
+        """One ordered stage of the native ``make mod`` cascade."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Stage identity")]
+        kind: Annotated[
+            c.Infra.ModStageKind,
+            m.Field(description="Native ast-grep apply or Ruff import repair"),
+        ]
+        shapes: Annotated[
+            t.StrTuple,
+            m.Field(
+                description=(
+                    "Generated rule shapes (id prefix before '--') a native "
+                    "stage owns; empty for the catalog stage, which owns "
+                    "every other native rule"
+                ),
+            ),
+        ] = ()
+        select: Annotated[
+            t.StrTuple,
+            m.Field(description="Ruff rule codes the ruff stage repairs"),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_kind_fields(self) -> Self:
+            """Keep each stage's fields to its kind.
+
+            Returns:
+                The validated stage.
+
+            Raises:
+                ValueError: If a native stage selects Ruff codes, or a ruff
+                    stage claims shapes or selects nothing.
+
+            """
+            if self.kind is c.Infra.ModStageKind.NATIVE and self.select:
+                msg = f"native stage {self.name} cannot select Ruff codes"
+                raise ValueError(msg)
+            if self.kind is c.Infra.ModStageKind.RUFF and (
+                self.shapes or not self.select
+            ):
+                msg = f"ruff stage {self.name} requires select and no shapes"
+                raise ValueError(msg)
+            return self
+
     class ModPhasesConfig(m.ArbitraryTypesModel):
         """Component selection for ``make mod`` phases (toggles are data)."""
 
@@ -36,6 +81,63 @@ class FlextInfraModelsDepsToolConfig(
                 description=("Run the rope-native import-alignment phase of make mod."),
             ),
         ] = True
+        pass_cap: Annotated[
+            int,
+            m.Field(
+                alias="pass-cap",
+                gt=0,
+                description=(
+                    "Most passes of the native stage sequence before the "
+                    "cascade must reach its fixed point; reaching it fails."
+                ),
+            ),
+        ]
+        stages: Annotated[
+            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ModStageConfig],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Ordered native cascade stages of make mod: ast-grep "
+                    "stages apply natively, the ruff stage repairs imports."
+                ),
+            ),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_stages(self) -> Self:
+            """Require unique stage names, one catalog stage and one ruff stage.
+
+            Returns:
+                The validated phases.
+
+            Raises:
+                ValueError: If a stage name repeats, the catalog or ruff stage
+                    is not declared exactly once, or a shape is claimed twice.
+
+            """
+            names = [stage.name for stage in self.stages]
+            if len(set(names)) != len(names):
+                msg = "make mod stage names must be unique"
+                raise ValueError(msg)
+            native = [
+                stage
+                for stage in self.stages
+                if stage.kind is c.Infra.ModStageKind.NATIVE
+            ]
+            if sum(not stage.shapes for stage in native) != 1:
+                msg = "make mod requires exactly one native catalog stage"
+                raise ValueError(msg)
+            shapes = [shape for stage in native for shape in stage.shapes]
+            if len(set(shapes)) != len(shapes):
+                msg = "make mod stage shapes must be claimed once"
+                raise ValueError(msg)
+            if (
+                sum(stage.kind is c.Infra.ModStageKind.RUFF for stage in self.stages)
+                != 1
+            ):
+                msg = "make mod requires exactly one ruff import-fix stage"
+                raise ValueError(msg)
+            return self
 
     class ModConfig(m.ArbitraryTypesModel):
         """Declarative policy for the unified modernize verb ``mod``."""
@@ -495,9 +597,19 @@ class FlextInfraModelsDepsToolConfig(
             FlextInfraModelsDuplication.JscpdSemantic,
             m.Field(description="Embedding pass host (--semantic)."),
         ]
+        ignore_patterns: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="ignore-patterns",
+                description=(
+                    "Operator-authorized code-level regexes jscpd skips "
+                    "(--ignore-pattern)."
+                ),
+            ),
+        ]
 
     class MarkdownConfig(m.ArbitraryTypesModel):
-        """Markdown lint rules and excluded non-documentation surfaces."""
+        """Markdown rules; artifact and exclusion declarations own file scope."""
 
         findings_exit_codes: Annotated[
             t.VariadicTuple[int],
@@ -508,11 +620,18 @@ class FlextInfraModelsDepsToolConfig(
         ]
         rules: Annotated[
             t.Infra.SettingsPairs,
-            m.Field(description="Ordered native Markdown rule key/value declarations."),
+            m.Field(description="Ordered rules supported by both Markdown tools."),
         ]
-        exclude: t.StrTuple = m.Field(
-            description="Glob patterns excluded from Markdown quality checks.",
-        )
+        native_rules: Annotated[
+            t.Infra.SettingsPairs,
+            m.Field(
+                description="Native Markdown rule overrides for the execution tool."
+            ),
+        ]
+        native_settings: Annotated[
+            t.Infra.SettingsPairs,
+            m.Field(description="Native Markdown configuration tables."),
+        ]
 
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
@@ -571,6 +690,19 @@ class FlextInfraModelsDepsToolConfig(
                     "and the module the core package binds it to share that "
                     "layer's rank. Same-rank imports are runtime-legal; the "
                     "import-cycle law keeps them acyclic."
+                ),
+            ),
+        ]
+        stdlib_backports: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="stdlib-backports",
+                description=(
+                    "Import roots of stdlib backports that every module may "
+                    "import like the standard library itself (operator "
+                    "decision 2026-10-24, ADR-028). The facade boundary "
+                    "derives stdlib from ``sys.stdlib_module_names`` and adds "
+                    "only these declared roots."
                 ),
             ),
         ]
@@ -637,6 +769,7 @@ class FlextInfraModelsDepsToolConfig(
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="model-declaration-modules",
+                strict=False,
                 description=(
                     "Modules of the model library whose callables declare "
                     "models (field specifiers, validators, serializers)."
@@ -647,6 +780,7 @@ class FlextInfraModelsDepsToolConfig(
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="type-constructor-modules",
+                strict=False,
                 description=(
                     "Modules of the model library whose callables build "
                     "constrained types (``constr``, ``conint``) used in "
@@ -671,6 +805,46 @@ class FlextInfraModelsDepsToolConfig(
                 msg = f"facade member kinds without owner: {sorted(missing)}"
                 raise ValueError(msg)
             return self
+
+    class SmellsConfig(m.FrozenModel):
+        """Repair guidance attached to qlty smell findings."""
+
+        fix_text: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                alias="fix-text",
+                min_length=1,
+                description=(
+                    "Repair text appended to each qlty finding, keyed by the "
+                    "qlty check name (the SARIF ruleId suffix)."
+                ),
+            ),
+        ]
+        enforce: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.Infra.EnforcementIds],
+            m.Field(
+                description=(
+                    "qlty check name -> enforcement law ids the smells gate "
+                    "claims for that check; active only for a check with "
+                    "declared repair text."
+                ),
+            ),
+        ]
+
+    class AccessorPolicyConfig(m.FrozenModel):
+        """Accessor naming policy enforced by the accessor migration."""
+
+        forbidden_prefixes: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                alias="forbidden-prefixes",
+                min_length=1,
+                description=(
+                    "Public method-name prefixes that declare an accessor, "
+                    "mapped to the domain-verb guidance that replaces them."
+                ),
+            ),
+        ]
 
     class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
@@ -728,6 +902,13 @@ class FlextInfraModelsDepsToolConfig(
         facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
             alias="facade-members",
             description="Declarative single-owner policy for facade members.",
+        )
+        smells: FlextInfraModelsDepsToolConfig.SmellsConfig = m.Field(
+            description="Repair guidance for qlty smell findings.",
+        )
+        accessor_policy: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig = m.Field(
+            alias="accessor-policy",
+            description="Accessor naming policy of the accessor migration.",
         )
 
         mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(

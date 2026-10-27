@@ -1,4 +1,4 @@
-# Shape tests only; Rope admission proves ancestry and declaration role.
+# Shape tests only; the generated declaration scopes carry ancestry and role.
 id: ban-nested-payload-outside-models
 valid:
   - |

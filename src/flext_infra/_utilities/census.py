@@ -16,14 +16,12 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesProtectedEdit,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeHelpers,
-    FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeRuntime,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProtectedEdit
+from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_helpers import FlextInfraUtilitiesRopeHelpers
+from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRefactorCensus:

@@ -182,7 +182,7 @@ def _provision_consumer_template(
         root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
     )
-    conform = codegen.FlextInfraCodegenConformExecute(
+    conform = codegen.FlextInfraCodegenConform.Generate(
         repository_root=root,
         state=m.Infra.CodegenConformState(
             repository_root=root,

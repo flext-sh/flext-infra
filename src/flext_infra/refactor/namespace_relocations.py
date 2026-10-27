@@ -69,10 +69,10 @@ class FlextInfraNamespaceRelocationCascade:
             The resulting ``t.MappingKV[str, c.Infra.CodemodRelocation]``.
 
         """
+        with u.Infra.codemod_workspace_snapshot(project_root) as snapshot:
+            rules = u.Infra.codemod_rule_plan(snapshot).unwrap().rules
         return {
-            rule.id: rule.relocation
-            for rule in u.Infra.codemod_rule_plan(project_root).unwrap().rules
-            if rule.relocation is not None
+            rule.id: rule.relocation for rule in rules if rule.relocation is not None
         }
 
     @classmethod

@@ -1,0 +1,45 @@
+id: ban-embedded-source-literal
+snapshots:
+  "SCAFFOLD: Final[str] = \"from __future__ import annotations\\n\\nclass X:\\n    pass\\n\"\n":
+    labels:
+    - source: "\"from __future__ import annotations\\n\\nclass X:\\n    pass\\n\""
+      style: primary
+      start: 23
+      end: 83
+  "code = (\n    \"from flext_cli import u\\n\"\n    \"e = {'b': ('c',)}\\n\"\n    \"print(u.Cli.dag_waves(e).error)\\n\"\n)\n":
+    labels:
+    - source: |-
+        "from flext_cli import u\n"
+            "e = {'b': ('c',)}\n"
+            "print(u.Cli.dag_waves(e).error)\n"
+      style: primary
+      start: 13
+      end: 106
+  "module = \"\"\"\nclass FlextDemo:\n    pass\n\"\"\"\n":
+    labels:
+    - source: |-
+        """
+        class FlextDemo:
+            pass
+        """
+      style: primary
+      start: 9
+      end: 42
+  "path.write_text(\"def main() -> int:\\n    return 0\\n\", encoding=\"utf-8\")\n":
+    labels:
+    - source: "\"def main() -> int:\\n    return 0\\n\""
+      style: primary
+      start: 16
+      end: 52
+  "source = \"import os\\nVALUE = os.sep\\n\"\n":
+    labels:
+    - source: "\"import os\\nVALUE = os.sep\\n\""
+      style: primary
+      start: 9
+      end: 38
+  "source = f\"value = {name!r}\\n\" f\"other = 1\\n\" f\"third = 2\\n\"":
+    labels:
+    - source: f"value = {name!r}\n" f"other = 1\n" f"third = 2\n"
+      style: primary
+      start: 9
+      end: 60

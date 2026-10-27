@@ -10,10 +10,20 @@ from collections.abc import Mapping
 from functools import partial
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.codegen import FlextInfraCodegenConformPyprojectPolicy
-from flext_infra.deps import FlextInfraEnsurePackagingPhase
+from flext_infra import (
+    c,
+    check as validation_services,
+    config,
+    deps as dependency_services,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
+from flext_infra.codegen._conform.pyproject_policy import (
+    FlextInfraCodegenConformPyprojectPolicy,
+)
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -248,7 +258,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             codegen,
         )
         try:
-            delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
+            gates = validation_services.FlextInfraGateRegistry.default()
+            delegated_rules = gates.delegated_lint_rules(
                 tooling.tools.ruff.lint.rule_owners,
                 check_gates=codegen.make.check_gates_default,
                 repair_gates=(
@@ -630,20 +641,17 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     *packaged_data_paths.files,
                     *packaged_data_paths.directories,
                 ),
-                packaged_data_files=packaged_data_paths.files,
-                package_config_resource=(
-                    FlextInfraEnsurePackagingPhase.config_resource(
-                        repository_root, project.package_name, planned_data_files
-                    )
-                ),
                 project_declaration_resource=(
-                    FlextInfraEnsurePackagingPhase.declaration_resource(
-                        package_name=project.package_name,
+                    (
+                        dependency_services.FlextInfraEnsurePackagingPhase.declaration_resource
+                    )(
                         package=repository.package,
                     )
                 ),
                 packaged_data_excludes=(
-                    FlextInfraEnsurePackagingPhase.resolve_data_excludes(
+                    (
+                        dependency_services.FlextInfraEnsurePackagingPhase.resolve_data_excludes
+                    )(
                         repository_root,
                         packaged_data_paths,
                         project.packaged_data_excludes,
@@ -656,6 +664,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 # Carry only the validated
                 # project declaration; conform owns no inferred Hatch hook.
                 hatch_build_hook_path=project.hatch_build_hook_path,
+                uv_cache_key_files=(
+                    dependency_services.FlextInfraEnsurePackagingPhase.uv_cache_key_files
+                )(
+                    project.hatch_build_hook_path,
+                ),
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,
@@ -810,7 +823,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """
         if profile is c.Infra.MakeProfile.WORKSPACE:
             return m.Infra.PackagedDataSelection()
-        return FlextInfraEnsurePackagingPhase.resolve_data_paths(
+        return dependency_services.FlextInfraEnsurePackagingPhase.resolve_data_paths(
             repository_root,
             project.package_name,
             project.packaged_data_paths,

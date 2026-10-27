@@ -2,55 +2,16 @@
 # (enforcement catalog ENFORCE-006, -012, -014 and the namespace validator's
 # import, structure and contract laws).
 #
-# Each document matches one file's syntax and asks the engine one project
-# verdict through metadata.context: the runtime import graph (import-cycle),
-# the facade's family composition (composes-family), the import-layer order
-# (later-layer, facade-module), the project's class stem (class-stem) and the
-# package's layers (package-layers, family-base). The engine builds those
-# facts from the project and its tooling configuration; no package, module
-# or alias name is listed here.
+# Each document matches one file's syntax and names the project file scopes
+# its verdict holds in under metadata.scope (the runtime import graph is the
+# ENFORCE-006 graph gate of mod and check, codemod_import_cycle_issues): the
+# facade modules, the facades whose nested namespace misses a family class
+# (incomplete-composition-), the modules of each class-stem group
+# (class-stem-), the packages lacking a layer (lacks-layer-) and the family
+# packages without base.py. The project's generated provider derives those
+# file sets from the project and its tooling configuration; no package,
+# module or alias name is listed here.
 
-# ENFORCE-006: a module-level runtime import closes a cycle of the project's
-# import graph. Imports under `if TYPE_CHECKING:` and function-local imports
-# do not run at load time and are not edges.
-id: ban-cyclic-import
-language: python
-severity: error
-files:
-  - "**/*.py"
-metadata:
-  context:
-    MODULE:
-      is: import-cycle
-      of: NAME
-rule:
-  any:
-    - kind: dotted_name
-      pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
-      inside:
-        kind: import_from_statement
-        stopBy: end
-        has:
-          field: module_name
-          pattern: $MODULE
-        inside:
-          kind: module
-    - kind: dotted_name
-      pattern: $MODULE
-      inside:
-        kind: import_statement
-        stopBy: end
-        inside:
-          kind: module
-message: >-
-  Runtime import of `$MODULE` closes an import cycle: break the cycle at the
-  module that does not own the dependency (move the import under
-  TYPE_CHECKING when only annotations need it).
----
 # ENFORCE-012: a facade's nested namespace composes, through its bases, every
 # class its family package (`_<stem>/` beside `<stem>.py`) declares in
 # __all__.
@@ -60,10 +21,12 @@ severity: error
 files:
   - "**/*.py"
 metadata:
-  context:
-    NAME:
-      - is: facade-module
-      - not: composes-family
+  enforce: [ENFORCE-012]
+  scope:
+    partition:
+      variable: NAME
+      holds: true
+      selectors: incomplete-composition-
 rule:
   kind: class_definition
   has:
@@ -88,11 +51,17 @@ severity: error
 files:
   - "src/*/__init__.py"
 metadata:
-  context:
-    NAME:
-      - is: package-root-init
-      - not: package-layers
-        arg: settings config c t p m u cli
+  enforce: [ENFORCE-014]
+  scope:
+    in:
+      - lacks-layer-settings
+      - lacks-layer-config
+      - lacks-layer-c
+      - lacks-layer-t
+      - lacks-layer-p
+      - lacks-layer-m
+      - lacks-layer-u
+      - lacks-layer-cli
 rule:
   kind: identifier
   pattern: $NAME
@@ -121,12 +90,9 @@ ignores:
   - "src/*/_*/__init__.py"
   - "src/*/_*/**/__init__.py"
 metadata:
-  context:
-    NAME:
-      - is: package-layers
-        arg: services
-      - not: package-layers
-        arg: base api
+  scope:
+    in: [lacks-layer-base, lacks-layer-api]
+    not-in: [lacks-layer-services]
 rule:
   kind: identifier
   pattern: $NAME
@@ -148,9 +114,8 @@ severity: error
 files:
   - "src/**/_*/*.py"
 metadata:
-  context:
-    NAME:
-      not: family-base
+  scope:
+    in: [family-without-base]
 rule:
   kind: identifier
   pattern: $NAME
@@ -166,199 +131,24 @@ message: >-
   The family package holding this module has no base.py: the family begins
   with its base module.
 ---
-# A runtime import reaches a later layer of the import-layer order than the
-# importing module: later layers are imported under TYPE_CHECKING only.
-# Facade letters imported from any facade package in the runtime closure
-# are layers; the other runtime aliases (r, e, x, h, d, s) stand for base.
-# A lazy export or public compose module does not exempt a reverse edge.
-# Settings and config declarations have their separate restricted boundary.
-id: ban-reverse-runtime-import
-language: python
-severity: error
-files:
-  - "**/*.py"
-ignores:
-  - "**/__init__.py"
-metadata:
-  context:
-    MODULE:
-      is: facade-package
-    NAME:
-      - not: layer-zero-file
-      - is: runtime-alias
-        of: MODULE
-      - is: later-layer
-        as: base
-    TARGET:
-      - not: layer-zero-file
-      - is: facade-package
-      - is: later-layer
-rule:
-  not:
-    matches: inside-type-checking-guard
-  any:
-    - kind: dotted_name
-      pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
-      inside:
-        kind: import_from_statement
-        stopBy: end
-        has:
-          field: module_name
-          kind: dotted_name
-          pattern: $MODULE
-          not:
-            regex: "\\."
-    - any:
-        - kind: dotted_name
-        - kind: relative_import
-      pattern: $TARGET
-      inside:
-        kind: import_from_statement
-        field: module_name
-    - kind: dotted_name
-      pattern: $TARGET
-      inside:
-        kind: import_statement
-        stopBy: end
-message: >-
-  Reverse runtime import: lazy exports and compose modules do not change
-  layer ownership. Move runtime behavior to its owning layer. TYPE_CHECKING
-  is only valid when the dependency is exclusively an annotation.
----
-# Settings and config modules may import the declaration facades through
-# `u` at runtime; later layers stay TYPE_CHECKING-only, and the protocols
-# facade is never a runtime import of a settings layer. Lazy and compose
-# routes retain the same dependency boundary.
-id: ban-reverse-runtime-import-settings
-language: python
-severity: error
-files:
-  - "**/*.py"
-metadata:
-  context:
-    MODULE:
-      is: facade-package
-    NAME:
-      - is: layer-zero-file
-      - is: runtime-alias
-        of: MODULE
-      - is: later-layer
-        arg: u
-        as: base
-    TARGET:
-      - is: layer-zero-file
-      - is: facade-package
-      - is: later-layer
-        arg: u
-rule:
-  not:
-    matches: inside-type-checking-guard
-  any:
-    - kind: dotted_name
-      pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
-      inside:
-        kind: import_from_statement
-        stopBy: end
-        has:
-          field: module_name
-          kind: dotted_name
-          pattern: $MODULE
-          not:
-            regex: "\\."
-    - any:
-        - kind: dotted_name
-        - kind: relative_import
-      pattern: $TARGET
-      inside:
-        kind: import_from_statement
-        field: module_name
-    - kind: dotted_name
-      pattern: $TARGET
-      inside:
-        kind: import_statement
-        stopBy: end
-message: >-
-  Reverse runtime import in a settings layer: only the declaration facades
-  up to `u` are runtime imports here.
----
-id: ban-runtime-protocols-in-settings
-language: python
-severity: error
-files:
-  - "**/settings.py"
-  - "**/_settings.py"
-  - "**/config.py"
-  - "**/_config.py"
-metadata:
-  context:
-    MODULE:
-      - is: layer-zero-file
-      - is: facade-package
-    TARGET:
-      - is: layer-zero-file
-      - is: facade-package
-      - is: later-layer
-        arg: t
-      - not: later-layer
-        arg: p
-rule:
-  not:
-    matches: inside-type-checking-guard
-  any:
-    - kind: dotted_name
-      regex: "^p$"
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
-      inside:
-        kind: import_from_statement
-        stopBy: end
-        has:
-          field: module_name
-          kind: dotted_name
-          pattern: $MODULE
-    - any:
-        - kind: dotted_name
-        - kind: relative_import
-      pattern: $TARGET
-      inside:
-        kind: import_from_statement
-        field: module_name
-    - kind: dotted_name
-      pattern: $TARGET
-      inside:
-        kind: import_statement
-        stopBy: end
-message: >-
-  The protocols facade is TYPE_CHECKING-only in a settings layer.
----
 # Imports of the own package keep their names: an alias renames a published
 # facade or module for one file. Under TYPE_CHECKING, binding one of the
 # project's runtime letters to its facade class is the canonical letter
 # binding (operator-ruling-2026-10-01-facade-rebind-mypy-scope): a facade that
 # rebinds its letter leaves mypy the upstream binding, so static analyzers
-# receive the class itself. The branch captures the letter as $LETTER and the
-# engine admits the finding only when it is not a runtime letter.
+# receive the class itself. The branch captures the letter as $LETTER, which
+# matches only when it is not one of the project's runtime aliases.
 id: ban-local-import-alias
 language: python
 severity: error
 files:
   - "**/*.py"
-metadata:
-  context:
-    MODULE:
-      is: own-package
-    LETTER:
-      not: local-alias
+constraints:
+  MODULE:
+    matches: own-package
+  LETTER:
+    not:
+      matches: local-alias
 rule:
   kind: aliased_import
   not:
@@ -412,9 +202,13 @@ ignores:
   - "**/__version__.py"
   - "**/conftest.py"
 metadata:
-  context:
-    NAME:
-      not: class-stem
+  scope:
+    partition:
+      variable: NAME
+      holds: true
+      matching: false
+      selectors: class-stem-
+      pattern: "^(?:{alternatives})"
 rule:
   kind: class_definition
   has:
@@ -476,6 +270,8 @@ rule:
               regex: "^__all__$"
 message: >-
   Module declares no class: nest its code in the module's facade class.
+metadata:
+  enforce: [ENFORCE-067]
 ---
 # A facade class extends the owner it specializes.
 id: require-facade-base
@@ -484,9 +280,8 @@ severity: error
 files:
   - "**/*.py"
 metadata:
-  context:
-    NAME:
-      is: facade-module
+  scope:
+    in: [facade-module]
 rule:
   kind: class_definition
   has:
@@ -508,9 +303,8 @@ severity: error
 files:
   - "**/*.py"
 metadata:
-  context:
-    NAME:
-      is: facade-module
+  scope:
+    in: [facade-module]
 rule:
   kind: class_definition
   has:
@@ -620,3 +414,5 @@ rule:
 message: >-
   Broad annotation: type through the `t` aliases and `p` protocols (no Any,
   Optional, object or dict).
+metadata:
+  enforce: [ENFORCE-016, ENFORCE-105]

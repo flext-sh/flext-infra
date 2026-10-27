@@ -1,11 +1,7 @@
 id: facade-base-by-class-name
 snapshots:
-  ? |
-    from flext_cli import m
-    class FlextMeltanoModels(m):
-        pass
-    m = FlextMeltanoModels
-  : labels:
+  "from flext_cli import m\nclass FlextMeltanoModels(m):\n    pass\nm = FlextMeltanoModels\n":
+    labels:
     - source: m = FlextMeltanoModels
       style: primary
       start: 62
@@ -72,13 +68,9 @@ snapshots:
       style: secondary
       start: 0
       end: 85
-  ? |
-    from flext_cli import t as _cli_t
-    class FlextInfraTypes(_cli_t):
-        pass
-    t: type[FlextInfraTypes] = FlextInfraTypes
-  : labels:
-    - source: 't: type[FlextInfraTypes] = FlextInfraTypes'
+  "from flext_cli import t as _cli_t\nclass FlextInfraTypes(_cli_t):\n    pass\nt: type[FlextInfraTypes] = FlextInfraTypes\n":
+    labels:
+    - source: "t: type[FlextInfraTypes] = FlextInfraTypes"
       style: primary
       start: 74
       end: 116
@@ -98,7 +90,7 @@ snapshots:
       style: secondary
       start: 0
       end: 117
-    - source: 't: type[FlextInfraTypes] = FlextInfraTypes'
+    - source: "t: type[FlextInfraTypes] = FlextInfraTypes"
       style: secondary
       start: 74
       end: 116
@@ -152,12 +144,8 @@ snapshots:
       style: secondary
       start: 0
       end: 117
-  ? |
-    from flext_core import FlextConstants as c
-    class FlextDbOracleConstants(c):
-        pass
-    c = FlextDbOracleConstants
-  : labels:
+  "from flext_core import FlextConstants as c\nclass FlextDbOracleConstants(c):\n    pass\nc = FlextDbOracleConstants\n":
+    labels:
     - source: c = FlextDbOracleConstants
       style: primary
       start: 85
@@ -228,13 +216,9 @@ snapshots:
       style: secondary
       start: 0
       end: 112
-  ? |
-    from flext_core import FlextConstants as c
-    class FlextDbOracleConstants(c):
-        pass
-    c: type[FlextDbOracleConstants] = FlextDbOracleConstants
-  : labels:
-    - source: 'c: type[FlextDbOracleConstants] = FlextDbOracleConstants'
+  "from flext_core import FlextConstants as c\nclass FlextDbOracleConstants(c):\n    pass\nc: type[FlextDbOracleConstants] = FlextDbOracleConstants\n":
+    labels:
+    - source: "c: type[FlextDbOracleConstants] = FlextDbOracleConstants"
       style: primary
       start: 85
       end: 141
@@ -254,7 +238,7 @@ snapshots:
       style: secondary
       start: 0
       end: 142
-    - source: 'c: type[FlextDbOracleConstants] = FlextDbOracleConstants'
+    - source: "c: type[FlextDbOracleConstants] = FlextDbOracleConstants"
       style: secondary
       start: 85
       end: 141
@@ -304,13 +288,8 @@ snapshots:
       style: secondary
       start: 0
       end: 142
-  ? |
-    from flext_tests import FlextTestsModels
-    from flext_infra import m
-    class TestsFlextInfraModels(FlextTestsModels, m):
-        pass
-    m = TestsFlextInfraModels
-  : labels:
+  "from flext_tests import FlextTestsModels\nfrom flext_infra import m\nclass TestsFlextInfraModels(FlextTestsModels, m):\n    pass\nm = TestsFlextInfraModels\n":
+    labels:
     - source: m = TestsFlextInfraModels
       style: primary
       start: 126

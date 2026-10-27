@@ -1,0 +1,57 @@
+# The test tier reaches its facade members through the flat `Tests` namespace
+# (`t.Tests.X`, `p.Tests.X`, ...). A `Core.Tests` path nests the test namespace
+# under a second owner class, a deprecated shape that duplicates the flat one
+# and that flext-core enforced only at runtime (ENFORCE-054). Both the
+# reference and the declaring `class Core: class Tests` shape are detected; the
+# declaration is flattened at its owner, after which every reference reads the
+# flat `Tests` path. Detection-only: the reference cannot be rewritten before
+# its declaration is flattened.
+id: ban-core-tests-namespace-reference
+language: python
+severity: error
+files:
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+  - "**/conftest.py"
+rule:
+  pattern: $FACADE.Core.Tests
+message: >-
+  `$FACADE.Core.Tests` is the deprecated nested test namespace: read the flat
+  `$FACADE.Tests` member.
+note: >-
+  Where: this reference. Why: the test tier exposes one flat `Tests` namespace
+  per facade. How: flatten the owning `class Core: class Tests` declaration and
+  read `$FACADE.Tests.<member>`.
+metadata:
+  enforce: [ENFORCE-054]
+---
+id: ban-core-tests-namespace-declaration
+language: python
+severity: error
+files:
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+  - "**/conftest.py"
+rule:
+  kind: class_definition
+  has:
+    field: name
+    regex: "^Tests$"
+  inside:
+    kind: class_definition
+    stopBy:
+      kind: class_definition
+    has:
+      field: name
+      regex: "^Core$"
+message: >-
+  `class Core: class Tests` nests the test namespace under a second owner:
+  declare `class Tests` directly in the facade class.
+note: >-
+  Where: this class. Why: the test tier exposes one flat `Tests` namespace per
+  facade (ENFORCE-054). How: move the `Tests` class one level up and read its
+  members as `<facade>.Tests.<member>`.
+metadata:
+  enforce: [ENFORCE-054]

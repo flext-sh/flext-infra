@@ -29,9 +29,8 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceEnvironmentProvenance,
     )
     from flext_infra.workspace.fleet_gaps import FlextInfraWorkspaceFleetGaps
-    from flext_infra.workspace.fleet_verbs import FlextInfraWorkspaceFleetVerbs
     from flext_infra.workspace.flext_binding import FlextInfraBindingService
-    from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
+    from flext_infra.workspace.flext_editable import FlextInfraWorkspaceFlextEditable
     from flext_infra.workspace.lock_completeness import (
         FlextInfraWorkspaceLockCompleteness,
     )
@@ -56,9 +55,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceEnvironmentProvenanceEditableMixin",
     "FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin",
     "FlextInfraWorkspaceFleetGaps",
-    "FlextInfraWorkspaceFleetVerbs",
+    "FlextInfraWorkspaceFlextEditable",
     "FlextInfraWorkspaceGovernanceMixin",
-    "FlextInfraWorkspaceLifecycle",
     "FlextInfraWorkspaceLockCompleteness",
     "FlextInfraWorkspaceNativeReference",
     "FlextInfraWorkspacePropagation",
@@ -82,9 +80,8 @@ install_lazy_exports(
             "._environment_provenance_module_source"
         ),
         "FlextInfraWorkspaceFleetGaps": ".fleet_gaps",
-        "FlextInfraWorkspaceFleetVerbs": ".fleet_verbs",
+        "FlextInfraWorkspaceFlextEditable": ".flext_editable",
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
-        "FlextInfraWorkspaceLifecycle": ".lifecycle",
         "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
         "FlextInfraWorkspaceNativeReference": ".native_reference",
         "FlextInfraWorkspacePropagation": ".propagation",

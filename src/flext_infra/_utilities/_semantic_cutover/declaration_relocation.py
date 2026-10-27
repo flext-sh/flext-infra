@@ -13,16 +13,26 @@ from textwrap import dedent, indent
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeImports,
+)
+from flext_infra._utilities._codemod.codemod_project import (
+    FlextInfraUtilitiesCodemodProject,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
-    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -125,7 +135,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     working,
                 )
             for path in sorted(sources):
-                if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
+                if sources[path].startswith(c.Infra.AUTOGEN_HEADER):
                     continue
                 policy = workspace.convention(path).module_policy
                 family = cls._source_family(path)
@@ -263,7 +273,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         proposed = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
         for path, source in sources.items():
-            if source.startswith(c.Infra.AUTOGEN_HEADERS):
+            if source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
             located = layers.import_namespace(root, path)
             if located is None:
@@ -588,7 +598,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         targets: list[t.Triple[Path, str, str]] = []
         for path, source in sources.items():
             if path.parent.parent != package or source.startswith(
-                c.Infra.AUTOGEN_HEADERS,
+                c.Infra.AUTOGEN_HEADER,
             ):
                 continue
             family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
@@ -1087,7 +1097,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     ) -> str:
         if content[0] == content[1]:
             return content[0]
-        if content[0].startswith(c.Infra.AUTOGEN_HEADERS):
+        if content[0].startswith(c.Infra.AUTOGEN_HEADER):
             msg = f"declaration-relocation: generated consumer {resource.path}"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules

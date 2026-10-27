@@ -47,7 +47,11 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
 
     @unique
     class CodegenConformScope(StrEnum):
-        """Repository selection accepted by ``codegen conform``."""
+        """Repository selection accepted by ``codegen conform`` and ``check run``.
+
+        ``check run`` accepts ``self`` (the invoked repository) and ``all``
+        (the repository plus its governed workspace members in one pass).
+        """
 
         SELF = "self"
         DECLARED = "declared_repositories"
@@ -227,6 +231,13 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     It sits beside the workflows rather than inside them: GitHub parses every
     file under ``.github/workflows`` as a workflow, and a bare step list is not
     one, so a file placed there would surface as a permanent syntax error.
+    These steps run before the approval verbs (runtimes the gates need).
+    """
+    CUSTOM_CI_POST_STEPS_FILENAME: ClassVar[str] = ".github/ci-custom-post-steps.yml"
+    """Project-owned steps injected after the approval verbs.
+
+    A ``failure()`` diagnostic only fires after the step it diagnoses, so it
+    belongs here, never in the pre-approval file.
     """
     CUSTOM_HANDLER_PREFIX: ClassVar[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: ClassVar[str] = "module_skeleton.py.j2"

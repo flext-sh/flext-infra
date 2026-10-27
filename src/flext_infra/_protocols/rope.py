@@ -20,21 +20,14 @@ if TYPE_CHECKING:
     from flext_infra import m
     from flext_infra._protocols.base import FlextInfraProtocolsBase
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
+    from flext_infra._protocols.workspace_snapshot import (
+        FlextInfraProtocolsWorkspaceSnapshot,
+    )
 
 
 @runtime_checkable
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
-
-    @runtime_checkable
-    class CodemodContextOperands(Protocol):
-        """Read-only rule operands consumed by semantic context admission."""
-
-        @property
-        def arg(self) -> t.StrSequence: ...
-
-        @property
-        def as_(self) -> t.StrSequence: ...
 
     @runtime_checkable
     class SourceRewrite(Protocol):
@@ -100,6 +93,9 @@ class FlextInfraProtocolsRope(Protocol):
         """Read-only policy consumed by the native contract planner."""
 
         @property
+        def operation(self) -> str: ...
+
+        @property
         def call_target(self) -> str | None: ...
 
         @property
@@ -145,19 +141,6 @@ class FlextInfraProtocolsRope(Protocol):
         def owner_root(self) -> Path | None: ...
 
     @runtime_checkable
-    class CodemodSourceEpoch(Protocol):
-        """Original source bytes used by native semantic snapshot construction."""
-
-        @property
-        def sources(self) -> t.MappingKV[Path, str]: ...
-
-        @property
-        def contents(self) -> t.MappingKV[Path, bytes]: ...
-
-        @property
-        def snapshot(self) -> FlextInfraProtocolsRope.SemanticSourceWitness: ...
-
-    @runtime_checkable
     class SemanticSourceState(Protocol):
         """Read-only original native file receipt carried to publication."""
 
@@ -169,15 +152,6 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def mode(self) -> int | None: ...
-
-    @runtime_checkable
-    class SemanticSourceWitness(Protocol):
-        """Original closure from the existing native source epoch."""
-
-        @property
-        def states(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
 
     @runtime_checkable
     class PrimitiveOwnerCondition(Protocol):
@@ -194,7 +168,7 @@ class FlextInfraProtocolsRope(Protocol):
         def file_path(self) -> Path: ...
 
         @property
-        def original_source(self) -> str: ...
+        def original_source(self) -> str | None: ...
 
         @property
         def updated_source(self) -> str: ...
@@ -313,6 +287,11 @@ class FlextInfraProtocolsRope(Protocol):
     @runtime_checkable
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
+
+        @property
+        def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
+            """The generic source epoch already owned by this session."""
+            ...
 
         @classmethod
         def open_workspace(

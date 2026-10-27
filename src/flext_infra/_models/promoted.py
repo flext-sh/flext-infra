@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 from flext_cli import m
 
@@ -30,47 +31,71 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
 
         model_config = m.ConfigDict(extra="forbid", frozen=True)
 
-        name: str
-        help: str
-        required: bool = False
-        default: str = ""
-        choices: t.VariadicTuple[str] = ()
+        name: Annotated[str, m.Field(description="Parameter name")]
+        help: Annotated[str, m.Field(description="Parameter help text")]
+        required: Annotated[
+            bool, m.Field(description="Whether the parameter must be supplied")
+        ] = False
+        default: Annotated[
+            str, m.Field(description="Default value applied when omitted")
+        ] = ""
+        choices: Annotated[
+            t.VariadicTuple[str],
+            m.Field(description="Accepted values; empty accepts any value"),
+        ] = ()
 
     class PromotedCommand(m.BaseModel):
         """One promoted command discovered from a flext-command header."""
 
         model_config = m.ConfigDict(extra="forbid", frozen=True)
 
-        verb: str
-        what: str
-        domain: str
-        summary: str
-        description: str
-        example: str
-        path: Path
-        mutates: bool
-        aliases: t.VariadicTuple[str]
-        params: t.VariadicTuple[FlextInfraModelsPromoted.PromotedParam]
-        rules: t.VariadicTuple[str]
+        verb: Annotated[str, m.Field(description="Command verb")]
+        what: Annotated[str, m.Field(description="Command subject the verb acts on")]
+        domain: Annotated[str, m.Field(description="Command domain grouping")]
+        summary: Annotated[str, m.Field(description="One-line command summary")]
+        description: Annotated[str, m.Field(description="Long command description")]
+        example: Annotated[str, m.Field(description="Example invocation")]
+        path: Annotated[Path, m.Field(description="Script that implements it")]
+        mutates: Annotated[
+            bool, m.Field(description="Whether the command mutates files")
+        ]
+        aliases: Annotated[
+            t.VariadicTuple[str], m.Field(description="Alternate command names")
+        ]
+        params: Annotated[
+            t.VariadicTuple[FlextInfraModelsPromoted.PromotedParam],
+            m.Field(description="Declared command parameters"),
+        ]
+        rules: Annotated[
+            t.VariadicTuple[str], m.Field(description="Rules the command applies")
+        ]
 
     class PromotedAliasTarget(m.BaseModel):
         """Resolved command alias target."""
 
         model_config = m.ConfigDict(extra="forbid", frozen=True)
 
-        verb: str
-        what: str
+        verb: Annotated[str, m.Field(description="Target command verb")]
+        what: Annotated[str, m.Field(description="Target command subject")]
 
     class PromotedWorkspaceSpec(m.BaseModel):
         """Repository facts the promoted framework consumes, resolved once."""
 
         model_config = m.ConfigDict(extra="forbid", frozen=True)
 
-        root: Path
-        scripts: Path
-        local_python: Path
-        submodule_script_roots: t.VariadicTuple[Path] = ()
-        consumer_scripts_root: Path | None = None
+        root: Annotated[Path, m.Field(description="Repository root")]
+        scripts: Annotated[Path, m.Field(description="Repository scripts root")]
+        local_python: Annotated[
+            Path, m.Field(description="Interpreter of the repository environment")
+        ]
+        submodule_script_roots: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Scripts roots of the composed submodules"),
+        ] = ()
+        consumer_scripts_root: Annotated[
+            Path | None,
+            m.Field(description="Scripts root of the consuming repository"),
+        ] = None
 
 
 __all__: list[str] = ["FlextInfraModelsPromoted"]

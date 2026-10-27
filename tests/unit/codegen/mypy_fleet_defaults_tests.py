@@ -223,6 +223,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             '[tool.mypy]\nmypy_path = ["retired-root"]\n'
         )
         path.write_text(source, encoding="utf-8")
+        codegen = u.Infra.load_codegen_inputs(tmp_path).unwrap().spec
         manager = deps.FlextInfraExtraPathsManager(repository_root=tmp_path)
         expected = manager.mypy_search_paths(project_dir=tmp_path)
         topology = m.Infra.PyprojectDeclaredTopology(
@@ -236,6 +237,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
                 path=path,
                 format_source=False,
                 topology=topology,
+                codegen=codegen,
             )
         )
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
@@ -244,7 +246,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
         mypy = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["mypy"])
         tm.that(mypy["mypy_path"], eq=list(expected))
         tm.that(
-            deps.FlextInfraToolTablesPhase(tooling).apply_payload(
+            deps.FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
                 payload, path=path, mypy_search_paths=expected
             ),
             empty=True,
@@ -264,6 +266,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
                     path=path,
                     format_source=False,
                     topology=topology,
+                    codegen=codegen,
                 )
             ),
             eq=first,

@@ -1,0 +1,6 @@
+# Fixture value of the generated `compose-module` utility: every fixture
+# facade package composes the canonical family leaves.
+id: compose-module
+language: Python
+rule:
+  regex: "^(?:ai_hub|flext_cli|flext_core|flext_meltano|flext_tests)\\.(?:constants|models|protocols|typings|utilities)$"

@@ -1,0 +1,22 @@
+id: retire-pytest-import
+valid:
+  # a bare pytest reference keeps the import
+  - |
+    import pytest
+    plugins = [pytest]
+  - |
+    from tests import u
+  - |
+    import pytest
+    @pytest.mark.slow
+    def test_value() -> None: ...
+  - |
+    import pytest
+    with pytest.raises(ValueError):
+        build()
+invalid:
+  - |
+    import pytest
+    from tests import c
+    @c.Tests.MARK.slow
+    def test_value() -> None: ...

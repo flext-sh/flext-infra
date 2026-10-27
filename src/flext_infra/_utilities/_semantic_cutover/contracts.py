@@ -12,20 +12,30 @@ from collections.abc import Iterator, Mapping
 from pathlib import Path
 
 from flext_cli import cli, u
-from rope.base.pyobjects import PyObject
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeCore,
+)
+from flext_infra._utilities._codemod.codemod_project import (
+    FlextInfraUtilitiesCodemodProject,
+)
+from flext_infra._utilities._rope._analysis.exports import (
+    FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope_analysis import FlextInfraUtilitiesRopeAnalysisExports
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -378,8 +388,7 @@ class FlextInfraUtilitiesSemanticContracts(
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
-        operation = m.Infra.RopeContractRule.model_validate(rule, from_attributes=True)
-        if operation.operation == "materialize-delegations":
+        if rule.operation == "materialize-delegations":
             return FlextInfraUtilitiesSemanticDelegations.materialize_delegations(
                 project, sources, tuple(context[1]), rule.id
             )
@@ -494,13 +503,9 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         )
         working.update((path, retirement_sources[path]) for path in working)
-        if any(
-            m.Infra.RopeContractRule.model_validate(
-                rule, from_attributes=True
-            ).operation
-            == "materialize-delegations"
-            for rule in rules
-        ) and any(working[path] != source for path, source in items):
+        if any(rule.operation == "materialize-delegations" for rule in rules) and any(
+            working[path] != source for path, source in items
+        ):
             FlextInfraUtilitiesSemanticDeclarationRelocation.preflight_semantic_import_graph(
                 workspace, sources, retirement_sources
             )
@@ -609,7 +614,7 @@ class FlextInfraUtilitiesSemanticContracts(
             if isinstance(factory, ast.Constant) and factory.value is None:
                 return False
             if rule.readonly_contract is not None and not isinstance(
-                factory, ast.Name | ast.Attribute
+                factory, c.Infra.AST_NAME_REFERENCE_TYPES
             ):
                 return False
         if rule.implementation_owner is not None:
@@ -618,12 +623,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 implementation_owners[identity] = (
                     FlextInfraUtilitiesCodemodProject.implementation_owner_modules(
                         project,
-                        m.Infra.CodemodContextCondition(
-                            variable="OWNER",
-                            predicate=c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
-                            holds=False,
-                            arg=identity,
-                        ),
+                        m.Infra.CodemodPrimitiveOwner(arg=identity),
                         sources,
                     )
                 )
@@ -1023,12 +1023,14 @@ class FlextInfraUtilitiesSemanticContracts(
                 "typing.Literal",
             )
         )
-        unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
-            "rope.base.pyobjects", "get_unknown"
-        )()
-        if not isinstance(unknown, PyObject):
-            message = "native unknown sentinel has no Rope object identity"
-            raise TypeError(message)
+        unknown = u.type_adapter(
+            TypeForm(t.Port[t.Infra.RopeNativeObject])
+        ).validate_python(
+            FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+                c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"
+            )(),
+            strict=True,
+        )
         return names, intrinsic_types, unknown
 
     @staticmethod
@@ -1177,7 +1179,7 @@ class FlextInfraUtilitiesSemanticContracts(
         identifiers = {
             ast.unparse(node)
             for node in ast.walk(tree)
-            if isinstance(node, ast.Name | ast.Attribute)
+            if isinstance(node, c.Infra.AST_NAME_REFERENCE_TYPES)
         }
         for (
             begin,
@@ -1262,7 +1264,12 @@ class FlextInfraUtilitiesSemanticContracts(
         value: p.AttributeProbe,
         unknown: t.Infra.RopeNativeObject,
     ) -> bool:
-        if not isinstance(value, PyObject):
+        if not isinstance(
+            value,
+            FlextInfraUtilitiesRopeRuntimeTypes.runtime_type(
+                c.Infra.ROPE_PYOBJECTS_MODULE, "PyObject"
+            ),
+        ):
             message = "native binding has no Rope object identity"
             raise TypeError(message)
         return (value == unknown) is True
@@ -1281,9 +1288,7 @@ class FlextInfraUtilitiesSemanticContracts(
         visited.add(key)
         parameters: set[str] = set()
         for parameter in declaration.type_params:
-            if not isinstance(
-                parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple
-            ):
+            if not isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES):
                 failure = "native alias has an unknown type parameter"
                 raise TypeError(failure)
             parameters.add(parameter.name)
@@ -1325,7 +1330,7 @@ class FlextInfraUtilitiesSemanticContracts(
         constructors: list[tuple[p.Infra.RopePyName, bool]] = [(field, False)]
         dataclass = runtime.qualified_name(project, "dataclasses.dataclass")
         for value in table.value.values:
-            if not isinstance(value, ast.Name | ast.Attribute):
+            if not isinstance(value, c.Infra.AST_NAME_REFERENCE_TYPES):
                 continue
             binding = runtime.resolve_symbol(table_scope, value)
             if binding is None:
@@ -1508,7 +1513,7 @@ class FlextInfraUtilitiesSemanticContracts(
             (
                 item
                 for item in ast.walk(holder_tree)
-                if isinstance(item, ast.Assign | ast.AnnAssign)
+                if isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES)
                 and item.lineno == location
                 and item.value is not None
                 and any(
@@ -1564,7 +1569,7 @@ class FlextInfraUtilitiesSemanticContracts(
             while isinstance(primary, ast.Attribute):
                 primary = primary.value
             if (
-                isinstance(node, ast.Name | ast.Attribute)
+                isinstance(node, c.Infra.AST_NAME_REFERENCE_TYPES)
                 and isinstance(primary, ast.Name)
                 and isinstance(primary.ctx, ast.Load)
                 and primary.id not in bound
@@ -1740,8 +1745,13 @@ class FlextInfraUtilitiesSemanticContracts(
         native_scope = runtime.scope_at(
             module, runtime.source_offset(module.source_code, member)
         )
+        # The bound member hangs off the factory's native call result, so Rope
+        # infers it statically from the call; no identifier chain can name it.
+        bound = runtime.runtime_callable("rope.base.evaluate", "eval_node")(
+            native_scope, member
+        )
         if (
-            runtime.resolve_symbol(native_scope, member) is None
+            not isinstance(bound, p.Infra.RopePyName)
             or any(keyword.arg is None for keyword in invocation.keywords)
             or any(isinstance(argument, ast.Starred) for argument in invocation.args)
         ):
@@ -1884,7 +1894,7 @@ class FlextInfraUtilitiesSemanticContracts(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         parents, _nodes, methods, result_contract = context
         assignment = parents.get(id(call))
-        if not isinstance(assignment, ast.Assign | ast.AnnAssign):
+        if not isinstance(assignment, c.Infra.AST_ASSIGNMENT_TYPES):
             if not cls._discarded_logging_emission(
                 call, parents, methods, result_contract
             ):

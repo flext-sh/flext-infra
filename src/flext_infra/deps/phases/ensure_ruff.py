@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from typing_extensions import TypeForm
-
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t, u
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
@@ -23,9 +21,12 @@ class FlextInfraEnsureRuffConfigPhase:
     def __init__(
         self,
         tool_config: m.Infra.ToolConfigDocument,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
         """Bind the shared native policy without repository exemption overlays."""
         self._tool_config = tool_config
+        self._codegen = codegen
 
     @staticmethod
     def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
@@ -93,10 +94,10 @@ class FlextInfraEnsureRuffConfigPhase:
         ruff_cfg = self._tool_config.tools.ruff
         delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_cfg.lint.rule_owners,
-            check_gates=config.Infra.codegen.make.check_gates_default,
+            check_gates=self._codegen.make.check_gates_default,
             repair_gates=(
-                *config.Infra.codegen.make.check_gates_fixable,
-                *config.Infra.codegen.make.fmt_gates,
+                *self._codegen.make.check_gates_fixable,
+                *self._codegen.make.fmt_gates,
             ),
         )
         workspace_exclusions = (
@@ -129,8 +130,10 @@ class FlextInfraEnsureRuffConfigPhase:
 
         existing_root = tuple(
             directory
-            for directory in u.Infra.native_tool_setting(
-                self._tool_config, "ruff", "src", TypeForm(t.StrSequence)
+            for directory in u.Infra.native_tool_strings(
+                self._tool_config,
+                "ruff",
+                "src",
             )
             if _present(directory)
         )
@@ -138,11 +141,10 @@ class FlextInfraEnsureRuffConfigPhase:
         existing_namespace_packages = {
             directory
             for directory in (
-                *u.Infra.native_tool_setting(
+                *u.Infra.native_tool_strings(
                     self._tool_config,
                     "ruff",
                     "namespace-packages",
-                    TypeForm(t.StrSequence),
                 ),
                 *facts.repository_namespace_packages,
             )
@@ -153,12 +155,12 @@ class FlextInfraEnsureRuffConfigPhase:
             self._tool_config, c.Infra.RUFF
         )
         ruff_options["target-version"] = (
-            "py" + config.Infra.codegen.toolchain.python_version.replace(".", "")
+            "py" + self._codegen.toolchain.python_version.replace(".", "")
         )
         ruff_options.update({
             "extend-exclude": list[t.JsonValue](
                 sorted({
-                    *config.Infra.codegen.analyzer_exclude_globs,
+                    *self._codegen.analyzer_exclude_globs,
                     *workspace_exclusions,
                 })
             ),
@@ -174,11 +176,10 @@ class FlextInfraEnsureRuffConfigPhase:
             sorted({
                 *delegated_rules,
                 *ruff_cfg.lint.ruling_disabled_rules,
-                *u.Infra.native_tool_setting(
+                *u.Infra.native_tool_strings(
                     self._tool_config,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(t.StrSequence),
                 ),
             })
         )

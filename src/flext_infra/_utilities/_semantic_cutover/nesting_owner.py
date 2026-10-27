@@ -15,9 +15,9 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_cli import u
 
-from flext_infra import p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenNamespace,
+from flext_infra import c, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             parameters = frozenset(
                 parameter.name
                 for parameter in node.type_params
-                if isinstance(parameter, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec)
+                if isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES)
             )
             if not parameters.intersection(occupied):
                 continue
@@ -213,7 +213,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             raise TypeError(msg)
         for node in ast.walk(ast.parse(provider.source_code)):
             if (
-                isinstance(node, ast.Assign | ast.AnnAssign)
+                isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
                 and node.lineno == line
                 and isinstance(node.value, ast.Constant)
                 and isinstance(node.value.value, bool)
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             for name, node in classes.items()
             if cls._pytest_name_matches(name, class_patterns)
             and any(
-                isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
+                isinstance(member, c.Infra.AST_FUNCTION_TYPES)
                 and cls._pytest_name_matches(member.name, function_patterns)
                 for member in node.body
             )
@@ -465,7 +465,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         """
         names: list[str] = []
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 names.append(node.name)
             elif isinstance(node, ast.TypeAlias):
                 names.append(node.name.id)
@@ -494,7 +494,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             if (
                 isinstance(target, ast.Name)
                 and target.id == "__all__"
-                and isinstance(value, ast.List | ast.Tuple)
+                and isinstance(value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
             ):
                 return frozenset(
                     item.value
@@ -512,13 +512,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
         """
         roots: list[ast.AST] = []
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+        if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
             roots.extend(node.decorator_list)
             roots.extend(node.args.defaults)
             roots.extend(
                 default for default in node.args.kw_defaults if default is not None
             )
-        elif isinstance(node, ast.Assign | ast.AnnAssign) and node.value is not None:
+        elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES) and node.value is not None:
             roots.append(node.value)
         return frozenset(
             name.id
@@ -561,7 +561,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         for node in tree.body:
             name = (
                 node.name
-                if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                if isinstance(node, c.Infra.AST_FUNCTION_TYPES)
                 else cls._loose_value_name(node, strict=strict)
             )
             if name is not None and name in selected:
@@ -570,7 +570,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         for node in tree.body:
             name = (
                 node.name
-                if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                if isinstance(node, c.Infra.AST_FUNCTION_TYPES)
                 else cls._loose_value_name(node, strict=strict)
             )
             if name is None or name not in selected or name in bound:

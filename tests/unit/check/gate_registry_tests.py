@@ -34,11 +34,11 @@ class TestsFlextInfraGateRegistry:
 
     @staticmethod
     def test_default_and_fixable_are_subsets_of_check_vocabulary() -> None:
-        """Default, local-only and fixable gates stay in the check vocabulary."""
+        """Default, CI, commit and fixable gates stay in the check vocabulary."""
         make = config.Infra.codegen.make
         allowed = frozenset(make.check_gates_allowed)
         tm.ok(frozenset(make.check_gates_default) <= allowed)
-        tm.ok(frozenset(make.ci.local_check_gates) <= allowed)
+        tm.ok(frozenset(make.pre_commit_check_gates) <= allowed)
         tm.ok(frozenset(make.check_gates_ci) <= allowed)
         tm.that(
             frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS)

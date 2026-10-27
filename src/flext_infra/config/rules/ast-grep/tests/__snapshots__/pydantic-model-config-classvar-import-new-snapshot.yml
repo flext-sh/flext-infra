@@ -1,15 +1,11 @@
 id: pydantic-model-config-classvar-import-new
 snapshots:
-  ? |
-    from __future__ import annotations
-
-    class Model:
-        model_config = m.ConfigDict(frozen=True)
-  : fixed: |
+  "from __future__ import annotations\n\nclass Model:\n    model_config = m.ConfigDict(frozen=True)\n":
+    fixed: |
       from __future__ import annotations
-
+      
       from typing import ClassVar
-
+      
       class Model:
           model_config = m.ConfigDict(frozen=True)
     labels:
@@ -23,7 +19,7 @@ snapshots:
       end: 93
     - source: |
         from __future__ import annotations
-
+        
         class Model:
             model_config = m.ConfigDict(frozen=True)
       style: secondary

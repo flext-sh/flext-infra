@@ -49,7 +49,7 @@ class TestsFlextInfraGateErrorReporting:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 ["p1"],
                 gates,
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
 
@@ -130,7 +130,7 @@ class TestsFlextInfraGateErrorReporting:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"],
             [c.Infra.FORMAT],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)
@@ -177,7 +177,7 @@ class TestsFlextInfraGateErrorReporting:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 [project_dir.name],
                 [c.Infra.SECURITY],
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
 
@@ -250,7 +250,7 @@ class TestsFlextInfraGateErrorReporting:
             FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 [project_dir.name],
                 [c.Infra.SECURITY],
-                reports_dir=reports_dir,
+                u.Tests.gate_context(tmp_path, reports_dir),
             ),
         )
         receipt = tm.not_none(projects[0].gates[c.Infra.SECURITY].raw_receipt)
@@ -288,7 +288,7 @@ class TestsFlextInfraGateErrorReporting:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"],
             [c.Infra.MYPY],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)
@@ -313,31 +313,26 @@ class TestsFlextInfraGateErrorReporting:
     @pytest.mark.parametrize(
         ("readme", "config_text", "expected"),
         [
-            ("# Project\n", '{"broken": [', [f"{c.Infra.RUMDL} exited with code"]),
-            ("# Project\n\n[Missing](missing.md)\n", None, ["[MD057]", "missing.md"]),
+            ("# Project\n", "[broken\n", [f"{c.Infra.RUMDL} exited with code"]),
+            ("# Project\n\n[Missing](missing.md)\n", "", ["[MD057]", "missing.md"]),
         ],
     )
     def test_workspace_checker_emits_real_markdown_failure(
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
         readme: str,
-        config_text: str | None,
+        config_text: str,
         expected: t.StrSequence,
     ) -> None:
         """Test workspace checker emits real markdown failure."""
-        project_dir = u.Tests.mk_project(tmp_path, "p1")
+        project_dir = u.Tests.mk_project(tmp_path, "p1", markdown_config=config_text)
         (project_dir / "README.md").write_text(readme, encoding="utf-8")
-        if config_text is not None:
-            (project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
-                config_text,
-                encoding="utf-8",
-            )
         u.Tests.initialize_git_repo(project_dir)
 
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"],
             [c.Infra.MARKDOWN],
-            reports_dir=tmp_path / "reports",
+            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
         )
 
         tm.ok(result)

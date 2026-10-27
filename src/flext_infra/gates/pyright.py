@@ -103,13 +103,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         del ctx
         if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
             return False, (
-                self._command_error_issue(
-                    result,
-                    tool=c.Infra.PYRIGHT,
-                    file=str(project_dir),
-                    line=0,
-                    column=0,
-                ),
+                self._command_error_issue(result, c.Infra.PYRIGHT, str(project_dir)),
             )
         validated: p.Result[m.Infra.PyrightReport] = u.validate_value(
             m.Infra.PyrightReport,

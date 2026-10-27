@@ -62,15 +62,7 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
             passed,
             ()
             if passed
-            else (
-                self._command_error_issue(
-                    result,
-                    tool=self.gate_id,
-                    file=str(project_dir),
-                    line=0,
-                    column=0,
-                ),
-            ),
+            else (self._command_error_issue(result, self.gate_id, str(project_dir)),),
         )
 
     @override

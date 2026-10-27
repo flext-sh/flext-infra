@@ -1,0 +1,30 @@
+id: ban-concrete-family-class-import
+snapshots:
+  "from flext_cli import FlextCliModels\n":
+    labels:
+    - source: FlextCliModels
+      style: primary
+      start: 22
+      end: 36
+    - source: flext_cli
+      style: secondary
+      start: 5
+      end: 14
+    - source: from flext_cli import FlextCliModels
+      style: secondary
+      start: 0
+      end: 36
+  "from flext_core import FlextResult\n":
+    labels:
+    - source: FlextResult
+      style: primary
+      start: 23
+      end: 34
+    - source: flext_core
+      style: secondary
+      start: 5
+      end: 15
+    - source: from flext_core import FlextResult
+      style: secondary
+      start: 0
+      end: 34

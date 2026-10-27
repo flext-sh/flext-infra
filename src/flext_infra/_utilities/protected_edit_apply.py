@@ -113,10 +113,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         """
         tree = ast.parse(py_file.read_text(encoding=c.DEFAULT_ENCODING))
         for node in ast.walk(tree):
-            if isinstance(
-                node,
-                ast.FunctionDef | ast.AsyncFunctionDef,
-            ) and node.name.startswith("test_"):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES) and node.name.startswith(
+                "test_"
+            ):
                 return True
             if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
                 return True

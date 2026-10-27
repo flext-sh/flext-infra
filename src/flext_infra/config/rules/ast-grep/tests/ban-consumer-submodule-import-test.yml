@@ -1,6 +1,6 @@
-# Shape only: the engine admits a finding when $MODULE belongs to another
-# facade package, $NAME is not one of its runtime aliases, and $MODULE is not
-# a canonical public family compose module (the compose-module predicate, bead
+# $MODULE belongs to another facade package (fixture-utils/facade-package.yml),
+# $NAME is not one of its runtime aliases, and $MODULE is not a canonical
+# public family compose module (fixture-utils/compose-module.yml, bead
 # flext-6e72w). The lazy defining module is exempt: every generated consumer
 # initializer imports the lazy helpers from it (contract #1362), and the
 # literal mirrors the SSOT constant `c.Infra.LAZY_BOOTSTRAP_MODULE` (flext-infra
@@ -13,8 +13,17 @@ valid:
   - import flext_cli._models
   - from flext_core.lazy import build_lazy_import_map, install_lazy_exports
   - import flext_core.lazy
-invalid:
+  # The canonical public compose leaves are the sanctioned static surface.
   - from flext_cli.models import FlextCliModels
-  - from flext_cli.models import FlextCliModels as Models
   - import flext_cli.models
-  - import flext_cli.models as models
+  # A runtime alias belongs to ENFORCE-002, not to this rule.
+  - from flext_cli.services import u
+  # A library module path is no facade package's layout.
+  - from rich.console import Console
+  # The own package's modules are its own layout.
+  - from ai_hub.services import AiHubService
+invalid:
+  - from flext_cli.services.app import FlextCliApp
+  - from flext_cli.services.app import FlextCliApp as App
+  - import flext_cli.services.app
+  - import flext_cli.services.app as app

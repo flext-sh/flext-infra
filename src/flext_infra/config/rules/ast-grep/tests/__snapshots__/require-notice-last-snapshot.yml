@@ -1,30 +1,23 @@
 id: require-notice-last
 snapshots:
-  ? |
-    """Summary line.
-
-    Copyright (c) 2026 FLEXT Team. All rights reserved.
-    SPDX-License-Identifier: MIT
-
-    Body paragraph.
-    """
-  : labels:
+  "\"\"\"Summary line.\n\nCopyright (c) 2026 FLEXT Team. All rights reserved.\nSPDX-License-Identifier: MIT\n\nBody paragraph.\n\"\"\"\n":
+    labels:
     - source: |
         Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
       style: primary
       start: 3
       end: 116
     - source: |
         """Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
         """
       style: secondary
@@ -32,10 +25,10 @@ snapshots:
       end: 120
     - source: |-
         """Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
         """
       style: secondary
@@ -43,31 +36,23 @@ snapshots:
       end: 119
     - source: |-
         """Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
         """
       style: secondary
       start: 0
       end: 119
-  ? |
-    #!/usr/bin/env python3
-    """Summary line.
-
-    Copyright (c) 2026 FLEXT Team. All rights reserved.
-    SPDX-License-Identifier: MIT
-
-    Body paragraph.
-    """
-  : labels:
+  "#!/usr/bin/env python3\n\"\"\"Summary line.\n\nCopyright (c) 2026 FLEXT Team. All rights reserved.\nSPDX-License-Identifier: MIT\n\nBody paragraph.\n\"\"\"\n":
+    labels:
     - source: |
         Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
       style: primary
       start: 26
@@ -75,10 +60,10 @@ snapshots:
     - source: |
         #!/usr/bin/env python3
         """Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
         """
       style: secondary
@@ -86,10 +71,10 @@ snapshots:
       end: 143
     - source: |-
         """Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
         """
       style: secondary
@@ -97,10 +82,10 @@ snapshots:
       end: 142
     - source: |-
         """Summary line.
-
+        
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-
+        
         Body paragraph.
         """
       style: secondary

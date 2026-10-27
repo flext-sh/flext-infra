@@ -21,32 +21,32 @@ _OWNED_CI_LINE = (
 )
 
 
-@pytest.fixture
-def symbolic_workspace(mod_workspace: Path) -> Path:
-    """Provide real Python modules consumed by the native engine and interpreter.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    tests = mod_workspace / "tests"
-    (tests / "unit" / "codegen").mkdir(parents=True)
-    (tests / "__init__.py").write_text(
-        "from tests.utilities import TestsFlextInfraUtilities as u\n",
-        encoding="utf-8",
-    )
-    (tests / "utilities.py").write_text(
-        "class TestsFlextInfraUtilities:\n"
-        "    class CodegenTestSupport:\n"
-        "        class Ci:\n"
-        "            value = 'owned'\n",
-        encoding="utf-8",
-    )
-    return mod_workspace
-
-
 class TestsFlextInfraSymbolicBindingPublication:
     """Binding evidence must survive until the guarded phase's source barrier."""
+
+    @staticmethod
+    @pytest.fixture
+    def symbolic_workspace(mod_workspace: Path) -> Path:
+        """Provide real Python modules consumed by the native engine and interpreter.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        tests = mod_workspace / "tests"
+        (tests / "unit" / "codegen").mkdir(parents=True)
+        (tests / "__init__.py").write_text(
+            "from tests.utilities import TestsFlextInfraUtilities as u\n",
+            encoding="utf-8",
+        )
+        (tests / "utilities.py").write_text(
+            "class TestsFlextInfraUtilities:\n"
+            "    class CodegenTestSupport:\n"
+            "        class Ci:\n"
+            "            value = 'owned'\n",
+            encoding="utf-8",
+        )
+        return mod_workspace
 
     @staticmethod
     @pytest.mark.slow
@@ -186,58 +186,6 @@ class TestsFlextInfraSymbolicBindingPublication:
             u.Cli.run((sys.executable, "-m", "tests.unit.codegen.consumer"), cwd=root)
         )
         tm.that(after.stdout, eq=baseline.stdout)
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_dependency_only_drift_refuses_every_candidate_before_writes(
-        symbolic_workspace: Path,
-    ) -> None:
-        """Test dependency only drift refuses every candidate before writes."""
-        root = symbolic_workspace
-        consumers = tuple(
-            root / "tests" / "unit" / "codegen" / name
-            for name in ("consumer.py", "peer.py")
-        )
-        source = (
-            "from tests import c, r, u, utilities\n" + _OWNED_CI_LINE + "print(owned)\n"
-        )
-        for path in consumers:
-            path.write_text(source, encoding="utf-8")
-        u.Tests.git_bootstrap(root, ("add", "tests"))
-        scanned = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
-        findings = tuple(
-            entry
-            for entry in scanned.entries
-            if entry.rule_id == "codegen-test-public-utility-namespace"
-        )
-        tm.that(len(findings), eq=len(consumers))
-        initializer = root / "tests" / "__init__.py"
-        tm.that(
-            all(
-                initializer in {state.path for state in entry.binding_states}
-                for entry in findings
-            ),
-            eq=True,
-        )
-        changed = (
-            "class Independent:\n"
-            "    class CodegenTestSupport:\n"
-            "        class Ci:\n"
-            "            value = 'independent'\n"
-            "u = Independent\n"
-        )
-        initializer.write_text(changed, encoding="utf-8")
-        before = tuple(path.read_bytes() for path in consumers)
-        published = FlextInfraModReplacements.publish(
-            root, FlextInfraModGateEngine.recounted(findings)
-        )
-        tm.ok(published.failure)
-        tm.that(tuple(path.read_bytes() for path in consumers), eq=before)
-        tm.that(initializer.read_text(encoding="utf-8"), eq=changed)
-        runtime = tm.ok(
-            u.Cli.run((sys.executable, "-m", "tests.unit.codegen.consumer"), cwd=root)
-        )
-        tm.that(runtime.stdout.strip(), eq="owned")
 
     @staticmethod
     @pytest.mark.slow

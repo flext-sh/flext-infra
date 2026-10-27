@@ -9,7 +9,8 @@
 # ordinary.
 #
 # The declaring modules are excluded: there the name is a definition, not a
-# consumer reference.
+# consumer reference. The receiver is narrowed before the module-wide import
+# anchor, so only concrete-class references pay for it.
 id: infra-models-class-to-facade
 language: python
 severity: error
@@ -22,6 +23,9 @@ ignores:
 rule:
   all:
     - pattern: $CLS.$ATTR
+    - has:
+        field: object
+        regex: "^FlextInfraModels[A-Z][A-Za-z0-9]*$"
     - inside:
         kind: module
         stopBy: end

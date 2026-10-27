@@ -1,0 +1,17 @@
+# An attribute bound directly in a class body (`NAME = value` or
+# `NAME: Annotation = value`), never a statement nested in a method or a
+# local scope. The constants rules scope it to the constants family files.
+id: class-body-assignment
+language: python
+rule:
+  kind: assignment
+  has:
+    field: left
+    kind: identifier
+    regex: "^[A-Za-z]"
+  inside:
+    kind: expression_statement
+    inside:
+      kind: block
+      inside:
+        kind: class_definition

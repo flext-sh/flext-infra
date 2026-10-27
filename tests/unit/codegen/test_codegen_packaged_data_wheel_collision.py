@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, m, main
-from tests import c, t, tm, u
+from flext_infra import FlextInfraCli, config
+from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 if TYPE_CHECKING:
@@ -156,7 +156,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_CODEGEN,
             "conform",
             "--root",
@@ -359,36 +359,47 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.fail("infra" in self._sdist_include(infra_git_repo))
 
     @pytest.mark.slow
-    def test_in_package_defaults_ship_once_in_standard_and_editable_manifest(
+    def test_in_package_defaults_ship_once_without_forced_package_copy(
         self,
         infra_git_repo: Path,
     ) -> None:
-        """Hatch forces the package source itself, never a competing root copy."""
+        """Package defaults ship through package selection, never a forced copy.
+
+        Hatch copies forced files into editable wheels too, so a forced copy at
+        the package location would install a stale namespace portion beside the
+        editable source; the producer declaration rides as dist-info metadata.
+        """
         self._prepare_project(infra_git_repo, package_config=True)
         tm.ok(self._package_config_path(infra_git_repo).is_dir())
 
         applied = self._conform_self(infra_git_repo)
 
         tm.that(applied, eq=0)
-        force_include = self._wheel_force_include(infra_git_repo)
-        tm.fail(FIXTURE_DISTRIBUTION_DATA_DIR in force_include)
-        tm.that(
-            FIXTURE_DISTRIBUTION_DATA_DIR in self._sdist_include(infra_git_repo),
-            eq=False,
-        )
-        # The package remains selected; defaults have one forced archive route.
         package_name = u.Tests.project_spec(FIXTURE_DISTRIBUTION).package_name
         config_source = self._package_config_path(infra_git_repo)
         destination = f"{package_name}/{c.CONFIG_DIR_NAME}"
+        force_include = self._wheel_force_include(infra_git_repo)
+        tm.fail(config_source.relative_to(infra_git_repo).as_posix() in force_include)
+        tm.fail(
+            any(
+                str(target).startswith(f"{package_name}/")
+                for target in force_include.values()
+            ),
+        )
         tm.that(
-            force_include[config_source.relative_to(infra_git_repo).as_posix()],
-            eq=destination,
+            FIXTURE_DISTRIBUTION_DATA_DIR in self._sdist_include(infra_git_repo),
+            eq=False,
         )
         wheel = self._wheel_target(infra_git_repo)
         tm.that(
             f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
             in u.Tests.toml_list(wheel["only-include"]),
             eq=True,
+        )
+        tm.fail("exclude" in wheel)
+        tm.that(
+            u.Tests.toml_mapping(wheel["extra-metadata"]).get(c.PYPROJECT_FILENAME),
+            eq=c.PYPROJECT_FILENAME,
         )
         output = infra_git_repo.parent / "package-default-artifacts"
         tm.ok(
@@ -406,11 +417,23 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             ),
         )
         with zipfile.ZipFile(next(output.glob("*.whl"))) as archive:
+            names = archive.namelist()
             for source in config_source.rglob("*.yaml"):
                 relative = source.relative_to(config_source).as_posix()
                 installed = f"{destination}/{relative}"
-                tm.that(archive.namelist().count(installed), eq=1)
+                tm.that(names.count(installed), eq=1)
                 tm.that(archive.read(installed), eq=source.read_bytes())
+            declarations = [
+                name
+                for name in names
+                if name.endswith(f".dist-info/extra_metadata/{c.PYPROJECT_FILENAME}")
+            ]
+            tm.that(len(declarations), eq=1)
+            tm.that(
+                archive.read(declarations[0]),
+                eq=(infra_git_repo / c.PYPROJECT_FILENAME).read_bytes(),
+            )
+            tm.fail(f"{package_name}/{c.PYPROJECT_FILENAME}" in names)
 
     @pytest.mark.slow
     def test_declared_file_keeps_sibling_governance_out(
@@ -427,16 +450,18 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.ok(u.Cli.atomic_write_text_file(infra_git_repo / catalog, "profiles: {}\n"))
         tm.that(self._conform_self(infra_git_repo), eq=0)
         package_name = u.Tests.project_spec(FIXTURE_DISTRIBUTION).package_name
+        # A declared data file is selected by its exact path and remapped into
+        # the package, never forced at the package location nor widened to its
+        # whole directory.
         tm.that(
-            self._wheel_force_include(infra_git_repo).get(catalog),
+            u.Tests.toml_mapping(self._wheel_target(infra_git_repo)["sources"]).get(
+                catalog,
+            ),
             eq=f"{package_name}/{catalog}",
         )
-        # A declared data file ships through the sdist force-include, never
-        # by widening the source include to its whole directory.
-        tm.that(
-            self._sdist_force_include(infra_git_repo).get(catalog),
-            eq=catalog,
-        )
+        tm.fail(catalog in self._wheel_force_include(infra_git_repo))
+        tm.ok(catalog in self._sdist_include(infra_git_repo))
+        tm.fail(catalog in self._sdist_force_include(infra_git_repo))
         tm.fail("config" in self._sdist_include(infra_git_repo))
 
     @pytest.mark.slow
@@ -686,7 +711,9 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.ok(TestsFlextInfraConformSupport.conform_in_workspace(request, workspace))
         tm.ok((root / declared_file).is_file())
         tm.that(
-            self._wheel_force_include(root).get(declared_file),
+            u.Tests.toml_mapping(self._wheel_target(root)["sources"]).get(
+                declared_file,
+            ),
             eq=f"{project.package_name}/{declared_file}",
         )
         wheel_dir = tmp_path / "scaffold-artifacts"

@@ -370,6 +370,43 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
     @runtime_checkable
+    class RopeSourceBindingContext(Protocol):
+        """Native binding environment recorded for one source position."""
+
+        @property
+        def environment(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
+    @runtime_checkable
+    class RopeSourceBindingIndex(Protocol):
+        """Native source binding index, including PEP 695 type parameters."""
+
+        def context_at(
+            self, offset: int
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingContext: ...
+
+    @runtime_checkable
+    class RopeSourceMemberResolver(Protocol):
+        """Member lookup and class ordering bound to one captured source view."""
+
+        def __call__(
+            self, qualified: str | m.Infra.SourceClassReference, /
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
+
+        def class_order(
+            self, declarations: t.SequenceOf[m.Infra.SourceClassReference]
+        ) -> t.StrTuple: ...
+
+        def class_reaches(
+            self,
+            declarations: t.SequenceOf[m.Infra.SourceClassReference],
+            anchors: t.SequenceOf[m.Infra.SourceClassReference],
+        ) -> t.VariadicTuple[frozenset[str]]: ...
+
+        def class_defers_annotations(
+            self, qualified: m.Infra.SourceClassReference
+        ) -> bool: ...
+
+    @runtime_checkable
     class RopeSemanticModule(RopeNamedObject, Protocol):
         """Module attributes shared by native builtins, packages, and source."""
 
@@ -413,6 +450,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_resource(
             self,
         ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
+
+        def get_source_binding_index(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingIndex: ...
 
     @runtime_checkable
     class RopeSourceModule(RopePyModule, Protocol):
@@ -493,7 +534,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             force_errors: bool = False,
         ) -> t.Infra.RopeNativeParsedModule: ...
 
-        def get_pycore(self) -> t.Infra.RopeNativeCore: ...
+        def get_pycore(self) -> p.AttributeProbe: ...
 
         def get_source_folders(
             self,

@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from flext_infra.gates.deps import FlextInfraDepsGate
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate
+    from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
+    from flext_infra.gates.duplication_report import FlextInfraDuplicationReportMixin
+    from flext_infra.gates.enforcement_catalog import FlextInfraEnforcementCatalogGate
     from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
     from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
     from flext_infra.gates.layout import FlextInfraLayoutGate
@@ -30,11 +33,13 @@ if TYPE_CHECKING:
     from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
     from flext_infra.gates.markdown_support import FlextInfraMarkdownGateBase
     from flext_infra.gates.mypy import FlextInfraMypyGate
+    from flext_infra.gates.project_module import FlextInfraProjectModuleGate
     from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
     from flext_infra.gates.pyright import FlextInfraPyrightGate
+    from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-    from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
+    from flext_infra.gates.runtime_integrity import FlextInfraRuntimeIntegrityGate
     from flext_infra.gates.scanner_gate import FlextInfraScannerGateMixin
     from flext_infra.gates.smells import FlextInfraSmellsGate
 
@@ -45,7 +50,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraConflictMarkersGate",
     "FlextInfraDepsGate",
     "FlextInfraDirenvGate",
+    "FlextInfraDuplicationEvidence",
     "FlextInfraDuplicationGate",
+    "FlextInfraDuplicationReportMixin",
+    "FlextInfraEnforcementCatalogGate",
     "FlextInfraFreshImportGate",
     "FlextInfraGate",
     "FlextInfraIndexDeclarationsGate",
@@ -57,11 +65,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownGate",
     "FlextInfraMarkdownGateBase",
     "FlextInfraMypyGate",
+    "FlextInfraProjectModuleGate",
     "FlextInfraPyreflyGate",
     "FlextInfraPyrightGate",
+    "FlextInfraReadonlyNamespace",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
-    "FlextInfraRuntimeCensusGate",
+    "FlextInfraRuntimeIntegrityGate",
     "FlextInfraScannerGateMixin",
     "FlextInfraSmellsGate",
 )
@@ -75,7 +85,10 @@ install_lazy_exports(
         "FlextInfraConflictMarkersGate": ".conflict_markers",
         "FlextInfraDepsGate": ".deps",
         "FlextInfraDirenvGate": ".direnv",
+        "FlextInfraDuplicationEvidence": ".duplication_evidence",
         "FlextInfraDuplicationGate": ".duplication",
+        "FlextInfraDuplicationReportMixin": ".duplication_report",
+        "FlextInfraEnforcementCatalogGate": ".enforcement_catalog",
         "FlextInfraFreshImportGate": ".fresh_import",
         "FlextInfraGate": ".base_gate",
         "FlextInfraIndexDeclarationsGate": ".index_declarations",
@@ -87,11 +100,13 @@ install_lazy_exports(
         "FlextInfraMarkdownGate": ".markdown",
         "FlextInfraMarkdownGateBase": ".markdown_support",
         "FlextInfraMypyGate": ".mypy",
+        "FlextInfraProjectModuleGate": ".project_module",
         "FlextInfraPyreflyGate": ".pyrefly",
         "FlextInfraPyrightGate": ".pyright",
+        "FlextInfraReadonlyNamespace": ".readonly_namespace",
         "FlextInfraRuffFormatGate": ".ruff_format",
         "FlextInfraRuffLintGate": ".ruff_lint",
-        "FlextInfraRuntimeCensusGate": ".runtime_census",
+        "FlextInfraRuntimeIntegrityGate": ".runtime_integrity",
         "FlextInfraScannerGateMixin": ".scanner_gate",
         "FlextInfraSmellsGate": ".smells",
     }),

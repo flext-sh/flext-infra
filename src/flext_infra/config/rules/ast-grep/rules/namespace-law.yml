@@ -2,10 +2,10 @@
 # -003, -007, -011, -014, -080, -099).
 #
 # Each document matches one file's syntax; what the project means by a name
-# is read from its own sources of truth through metadata.context, evaluated
-# by the engine (see the context predicates in the rule plan): the own
-# package (pyproject), the runtime closure (installed distributions), the
-# runtime aliases a package publishes (its generated lazy exports), the
+# is read from its own sources of truth through the project's stable
+# generated utilities (matches:) and published file scopes (metadata.scope):
+# the own package (pyproject), the runtime closure (installed distributions),
+# the runtime aliases a package publishes (its generated lazy exports), the
 # aliases the own package binds (its modules' __all__), a module's own
 # __all__, and the facade family a module belongs to (__all__ of the module
 # or of its family package's facade, over the tooling import-layer order).
@@ -16,8 +16,15 @@
 
 # ENFORCE-001: every symbol lives inside the module's facade class. A module
 # body holds that one class, its alias binding, __all__ and imports; a
-# function including an executable `main` entry point, a value binding that
-# is not an alias of a name, and any further class are loose objects.
+# function, a value binding that is not an alias of a name, and any further
+# class are loose objects. The law binds every Python file of the repository
+# (src, tests, scripts, examples, docs code). Its only exception data, each
+# with a fixture: an executable module's guarded `main()` entry point and
+# generator-emitted dunders (generator law p.11; generated `__init__.py` is
+# out of scope as a projection), plus the tests-tier delta of ADR-028 p.6 --
+# pytest fixtures, `pytest_*` hooks and `pytest_plugins`, whose placement in
+# conftest.py and tests/fixtures/** is enforced by
+# ban-pytest-hook-outside-conftest.
 # Typing location is also ban-manual-typing-alias-outside-typings's. The one
 # admitted value binding is the facade's self-typed public instance: the
 # class-nesting cutover itself keeps it at module level (it reads the owner
@@ -48,10 +55,50 @@ rule:
                 kind: decorated_definition
                 inside:
                   kind: module
+        # Exception data (generator law p.11, ADR-028 p.6). Each entry has a
+        # fixture in ban-loose-module-object-test.yml; any further entry
+        # needs the operator.
+        # 1. An executable module's `main()` entry point, admitted only when
+        #    the module carries the `if __name__ == "__main__":` guard.
+        - not:
+            all:
+              - has:
+                  field: name
+                  regex: "^main$"
+              - inside:
+                  kind: module
+                  stopBy: end
+                  has:
+                    kind: if_statement
+                    has:
+                      field: condition
+                      regex: "^__name__ == ['\"]__main__['\"]$"
+        # 2. Tests-tier delta: pytest fixtures and `pytest_*` hooks. Their
+        #    placement (conftest.py and tests/fixtures/** only) is enforced by
+        #    ban-pytest-hook-outside-conftest, so ordinary test modules stay
+        #    bound by this law.
+        - not:
+            any:
+              - has:
+                  field: name
+                  regex: "^pytest_\\w+$"
+              - inside:
+                  kind: decorated_definition
+                  has:
+                    kind: decorator
+                    regex: "^@(?:pytest\\.)?fixture(?:\\(|$)"
     - all:
         - kind: expression_statement
         - inside:
             kind: module
+        # 2. (cont.) `pytest_plugins`, the conftest global pytest reads to
+        #    load fixture modules; placement is enforced by the same rule.
+        - not:
+            has:
+              kind: assignment
+              has:
+                field: left
+                regex: "^pytest_plugins$"
         # The facade's self-typed instance: the binding reads the owner
         # class while it is being defined, so the class-nesting cutover
         # keeps it at module level; it is admitted only when the
@@ -169,8 +216,59 @@ rule:
                 regex: "(?:^|\\.)main$"
 message: >-
   Loose object at module level: nest `$NAME` inside the module's single facade
-  class (only that class, its canonical published bindings, __all__ and imports
-  live at module level; executable entry points call the owning class).
+  class. Only that class, its canonical published bindings, __all__ and imports
+  live at module level in every Python file of the repository; the sole
+  exceptions are a guarded executable `main()`, generator-emitted dunders and,
+  in conftest.py and tests/fixtures/** only, pytest fixtures and hooks.
+metadata:
+  enforce: [ENFORCE-001]
+---
+# ADR-028 p.6 tests-tier delta: tests follow the same FLEXT law as src, with
+# one extra freedom -- conftest.py and tests/fixtures/** may declare pytest
+# fixtures, `pytest_*` hooks and `pytest_plugins` at module level. This rule
+# is the placement half of that exception: the same objects anywhere else
+# (ordinary test modules, src, scripts, examples) are loose. The ignores are
+# the exception data, one entry per sanctioned location.
+id: ban-pytest-hook-outside-conftest
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/conftest.py"
+  - "**/tests/fixtures/**"
+rule:
+  any:
+    - all:
+        - kind: function_definition
+        - any:
+            - inside:
+                kind: module
+            - inside:
+                kind: decorated_definition
+                inside:
+                  kind: module
+        - any:
+            - has:
+                field: name
+                regex: "^pytest_\\w+$"
+            - inside:
+                kind: decorated_definition
+                has:
+                  kind: decorator
+                  regex: "^@(?:pytest\\.)?fixture(?:\\(|$)"
+    - all:
+        - kind: expression_statement
+        - inside:
+            kind: module
+        - has:
+            kind: assignment
+            has:
+              field: left
+              regex: "^pytest_plugins$"
+message: >-
+  Module-level pytest fixture or hook outside conftest.py and tests/fixtures/**:
+  move it there, or nest the test behavior in the module's single Tests class.
 ---
 # ENFORCE-002: a runtime alias is imported from the package root, never from
 # one of its modules (`from pkg.models import m` binds the module's own
@@ -185,22 +283,36 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-002]
   relocation: package-root-import
-  context:
-    MODULE:
-      is: facade-package
-    NAME:
-      - is: runtime-alias
-        of: MODULE
-      - not: canonical-static-publication
-        of: MODULE
+constraints:
+  MODULE:
+    matches: facade-package
+  NAME:
+    matches: runtime-alias
 rule:
   kind: dotted_name
   pattern: $NAME
   not:
-    inside:
-      kind: import_from_statement
-      field: module_name
+    any:
+      - inside:
+          kind: import_from_statement
+          field: module_name
+      # The canonical static publication: a generated initializer's
+      # TYPE_CHECKING import of an alias from a module directly below the own
+      # package root, mirroring its lazy export for the type checkers.
+      - all:
+          - matches: inside-type-checking-guard
+          - inside:
+              kind: module
+              stopBy: end
+              matches: generated-module
+          - inside:
+              kind: import_from_statement
+              has:
+                field: module_name
+                regex: "^[^.]+\\.[^.]+$"
+                matches: own-package
   inside:
     kind: import_from_statement
     has:
@@ -246,15 +358,22 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-003]
   relocation: own-package-import
-  context:
-    MODULE:
-      - not: own-package
-      - is: facade-package
-    NAME:
-      - is: local-alias
-      - not: file-family
-      - not: layer-zero-file
+  # A layer-zero module binds no own-namespace object, and a facade module
+  # composes the upstream letters by design (operator ruling 2026-10-25,
+  # tracker key operator-ruling-2026-10-25-upstream-letter-canonical): one
+  # native document, its scopes rendered as native ignores.
+  scope:
+    not-in: [layer-zero, facade-module]
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+  NAME:
+    matches: local-alias
 rule:
   kind: dotted_name
   pattern: $NAME
@@ -304,15 +423,22 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-080]
   relocation: own-package-import
-  context:
-    MODULE:
-      - not: own-package
-      - is: facade-package
-    NAME:
-      - is: local-alias
-      - not: file-family
-      - not: layer-zero-file
+  # A layer-zero module binds no own-namespace object, and a facade module
+  # composes the upstream letters by design (operator ruling 2026-10-25,
+  # tracker key operator-ruling-2026-10-25-upstream-letter-canonical): one
+  # native document, its scopes rendered as native ignores.
+  scope:
+    not-in: [layer-zero, facade-module]
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+  NAME:
+    matches: local-alias
 rule:
   kind: dotted_name
   pattern: $NAME
@@ -338,10 +464,83 @@ message: >-
   Alias `$NAME` imported from `$MODULE` inside a body: the own package
   re-exports `$NAME`; import it from there.
 ---
+# ENFORCE-003 for annotation-only imports: an `if TYPE_CHECKING:` import of
+# an alias the own package publishes, bound from another facade package.
+# Annotations never run, so the own package's letter is cycle-free in every
+# consumer module and every layer. ENFORCE-003 and ENFORCE-080 both skip
+# guarded imports, which left this shape unowned; the file scope is
+# ENFORCE-003's, unchanged.
+#
+# The facade families' declaration modules (c, t, p, m, u and their family
+# packages, base and settings composition) are out of scope by design: while
+# the own facades are being composed, binding the UPSTREAM packages' letters
+# (`from flext_cli import c, t, p, m, u`) for hierarchical composition is the
+# canonical form (operator ruling 2026-10-25 for epic flext-1engx, tracker
+# memory key operator-ruling-2026-10-25-upstream-letter-canonical), and the
+# own letter there is ENFORCE-051's cycle.
+id: ban-foreign-namespace-annotation-source
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  # Generator-contract bootstrap modules, as in ENFORCE-003
+  # (operator-ruling-2026-10-05-bootstrap-model-imports).
+  - "**/_config_models.py"
+  - "**/_settings_models.py"
+  - "**/utilities.py"
+  - "**/__init__.py"
+  - "**/_constants/**"
+  - "**/_models/**"
+  - "**/_protocols/**"
+  - "**/_typings/**"
+  - "**/_utilities/**"
+  - "**/base.py"
+  - "**/_base.py"
+  - "**/settings.py"
+  - "**/_settings.py"
+  - "**/tests/**"
+  - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-003]
+  relocation: own-package-import
+  # A layer-zero module binds no own-namespace object at all, and a facade
+  # module composes the upstream letters: one native document, its scopes
+  # rendered as native ignores.
+  scope:
+    not-in: [layer-zero, facade-module]
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+  NAME:
+    matches: local-alias
+rule:
+  kind: dotted_name
+  pattern: $NAME
+  not:
+    inside:
+      kind: import_from_statement
+      field: module_name
+  matches: inside-type-checking-guard
+  inside:
+    kind: import_from_statement
+    has:
+      field: module_name
+      kind: dotted_name
+      pattern: $MODULE
+      not:
+        regex: "\\."
+message: >-
+  Annotation import binds `$NAME` from `$MODULE`, a package that does not own
+  this project's `$NAME`: import it from the own package.
+---
 # ENFORCE-099: a consumer imports another facade package through its public
 # root or its public family compose modules: a module path below the root is
-# the owner's layout, with the family-shape exemption the compose-module
-# predicate proves — the canonical public compose leaf
+# the owner's layout, with the family-shape exemption the generated
+# compose-module utility proves — the canonical public compose leaf
 # (constants/models/protocols/typings/utilities, bead flext-6e72w) is the
 # sanctioned static surface every consumer imports the composed classes from.
 # Runtime aliases are ENFORCE-002's and private paths ban-private-import's; a
@@ -372,14 +571,18 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
-  context:
-    MODULE:
-      - not: own-package
-      - is: facade-package
-      - not: compose-module
-    NAME:
-      not: runtime-alias
-      of: MODULE
+  enforce: [ENFORCE-015]
+constraints:
+  MODULE:
+    all:
+      - not:
+          matches: own-package
+      - matches: facade-package
+      - not:
+          matches: compose-module
+  NAME:
+    not:
+      matches: runtime-alias
 rule:
   any:
     - kind: dotted_name
@@ -439,7 +642,7 @@ message: >-
 ---
 # ENFORCE-007: a runtime alias is bound only by the module that declares it
 # in __all__, exactly once, to the facade class that module defines. Each
-# branch captures its own variable, so each carries its own context. A name
+# branch captures its own variable, each constrained natively. A name
 # declared in __all__ and never bound is the type checkers'
 # unsupported-dunder-all finding. An import of the alias is a binding too:
 # mypy keeps the imported type and rejects the later assignment.
@@ -451,21 +654,12 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
-  context:
-    UNDECLARED:
-      - is: runtime-alias
-      - not: module-export
-    REBOUND:
-      is: runtime-alias
-    SHADOWED:
-      is: runtime-alias
-    ALIAS:
-      is: runtime-alias
+  enforce: [ENFORCE-007]
 rule:
   any:
-    # Bound after a module-level import of the same name. Listed first: the
-    # engine reads the captures of the first matching branch only, and the
-    # undeclared branch matches every module-level binding.
+    # Bound after a module-level import of the same name. Listed first: a
+    # match keeps the first matching branch, and the undeclared branch
+    # matches every module-level binding.
     - all:
         - kind: expression_statement
         - inside:
@@ -537,7 +731,9 @@ rule:
             has:
               field: left
               kind: identifier
-              pattern: $UNDECLARED
+              pattern: $NAME
+        - not:
+            matches: declared-in-module-all
     # Bound twice.
     - all:
         - kind: expression_statement
@@ -591,16 +787,17 @@ rule:
                   has:
                     field: name
                     pattern: $TARGET
-# A runtime alias is a public identifier; dunders are module protocol.
+# Each branch binds one of the own package's runtime aliases (the generated
+# local-alias utility); dunders are module protocol.
 constraints:
-  UNDECLARED:
-    regex: "^[^_]"
+  NAME:
+    matches: local-alias
   REBOUND:
-    regex: "^[^_]"
+    matches: local-alias
   SHADOWED:
-    regex: "^[^_]"
+    matches: local-alias
   ALIAS:
-    regex: "^[^_]"
+    matches: local-alias
 message: >-
   Runtime alias bound outside its owner: the module that declares it in
   __all__ binds it once, to the facade class it defines.
@@ -623,10 +820,19 @@ ignores:
   - "**/conftest.py"
   - "**/tests/**"
 metadata:
+  enforce: [ENFORCE-011, ENFORCE-022]
   relocation: facade-class
-  context:
-    FAMILY:
-      not: file-family
+  # One native document per family the declaration's kind selects, scoped
+  # outside that family's modules (the facade letter's own family files).
+  scope:
+    partition:
+      variable: KIND
+      holds: false
+      selectors: facade-family-
+      keys:
+        c: "^(?:Str|Int)?Enum$"
+        m: "^m\\.\\w+$"
+        u: "Utilities$"
 rule:
   kind: class_definition
   has:

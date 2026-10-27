@@ -35,7 +35,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
             sorted(
                 (path.resolve(), source)
                 for path, source in sources.items()
-                if not source.startswith(c.Infra.AUTOGEN_HEADERS)
+                if not source.startswith(c.Infra.AUTOGEN_HEADER)
             ),
         )
 

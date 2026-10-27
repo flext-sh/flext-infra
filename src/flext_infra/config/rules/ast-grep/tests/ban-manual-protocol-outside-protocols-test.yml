@@ -1,12 +1,13 @@
 id: ban-manual-protocol-outside-protocols
-# Native ast-grep fixtures validate syntactic preselection, not metadata.context.
-# The same-rule native scan in test_rule_fixture_snapshots.py verifies that
-# Service(Base) and other non-protocol candidates produce no admitted finding.
+# A declared protocol names a typing construct among its direct bases
+# (utils/typing-base-class.yml): a bare name counts only when imported from
+# typing or typing_extensions, under that name or an alias.
 valid:
   - |
     class Plain:
         pass
   - |
+    from typing import Protocol
     def build() -> type:
         class Local(Protocol):
             def run(self) -> None: ...
@@ -18,14 +19,21 @@ valid:
         @property
         def protocol(self) -> str:
             return "Protocol"
-invalid:
+  # Implementing a class is not declaring a protocol.
   - |
     class Service(Base):
         pass
+  # An unimported name is no typing construct.
   - |
     class Reader(Protocol):
         def read(self) -> str: ...
+invalid:
   - |
+    from typing import Protocol
+    class Reader(Protocol):
+        def read(self) -> str: ...
+  - |
+    from typing import Protocol, TypeVar
     class Box(Protocol[T]):
         def get(self) -> T: ...
   - |

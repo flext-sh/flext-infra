@@ -1,45 +1,6 @@
 id: rewire-cli-run-to-file-return-type
 snapshots:
-  ? |
-    def run_to_file(
-        cls,
-        cmd: t.StrSequence,
-        output_file: t.Cli.TextPath,
-        cwd: t.Cli.TextPath | None = None,
-        timeout: int | None = None,
-        env: t.StrMapping | None = None,
-        remove_env_keys: t.StrSequence = (),
-        input_data: str | bytes | None = None,
-        *,
-        live: bool = False,
-        heartbeat_seconds: float | None = None,
-        deadline: p.Cli.ProcessDeadline | None = None,
-    ) -> p.Result[int]:
-        """Stream combined bytes live and durably under one absolute deadline.
-
-        Containment owns the inherited POSIX process group or Windows Job
-        Object. Trusted project tools remain inside that boundary; deliberate
-        POSIX ``setsid()`` escape is outside this contract. The deadline covers
-        child execution, termination, reaping, stream drain, and durable flush.
-        An outer caller wall remains responsible for an OS syscall that becomes
-        uninterruptible.
-        """
-        return cls._execute_streamed_process(
-            cmd,
-            Path(output_file),
-            cwd,
-            cls._resolved_env(env, remove_env_keys),
-            input_data,
-            capture_output=False,
-            live=live,
-            heartbeat_seconds=(
-                settings.cli_process_heartbeat_seconds
-                if live and heartbeat_seconds is None
-                else heartbeat_seconds
-            ),
-            timeout=timeout,
-            deadline=deadline,
-        ).map(lambda output: output.outcome.raw_return_code)
+  ? "def run_to_file(\n    cls,\n    cmd: t.StrSequence,\n    output_file: t.Cli.TextPath,\n    cwd: t.Cli.TextPath | None = None,\n    timeout: int | None = None,\n    env: t.StrMapping | None = None,\n    remove_env_keys: t.StrSequence = (),\n    input_data: str | bytes | None = None,\n    *,\n    live: bool = False,\n    heartbeat_seconds: float | None = None,\n    deadline: p.Cli.ProcessDeadline | None = None,\n) -> p.Result[int]:\n    \"\"\"Stream combined bytes live and durably under one absolute deadline.\n\n    Containment owns the inherited POSIX process group or Windows Job\n    Object. Trusted project tools remain inside that boundary; deliberate\n    POSIX ``setsid()`` escape is outside this contract. The deadline covers\n    child execution, termination, reaping, stream drain, and durable flush.\n    An outer caller wall remains responsible for an OS syscall that becomes\n    uninterruptible.\n    \"\"\"\n    return cls._execute_streamed_process(\n        cmd,\n        Path(output_file),\n        cwd,\n        cls._resolved_env(env, remove_env_keys),\n        input_data,\n        capture_output=False,\n        live=live,\n        heartbeat_seconds=(\n            settings.cli_process_heartbeat_seconds\n            if live and heartbeat_seconds is None\n            else heartbeat_seconds\n        ),\n        timeout=timeout,\n        deadline=deadline,\n    ).map(lambda output: output.outcome.raw_return_code)\n"
   : fixed: |+
       def run_to_file(
           cls,
@@ -56,7 +17,7 @@ snapshots:
           deadline: p.Cli.ProcessDeadline | None = None,
       ) -> p.Result[p.Cli.ProcessOutcome]:
           """Stream the complete causal outcome under one absolute deadline.
-
+      
           Containment owns the inherited POSIX process group or Windows Job
           Object. Trusted project tools remain inside that boundary; deliberate
           POSIX ``setsid()`` escape is outside this contract. The deadline covers
@@ -80,7 +41,7 @@ snapshots:
               timeout=timeout,
               deadline=deadline,
           ).map(lambda output: output.outcome)
-
+      
     labels:
     - source: |-
         def run_to_file(
@@ -98,7 +59,7 @@ snapshots:
             deadline: p.Cli.ProcessDeadline | None = None,
         ) -> p.Result[int]:
             """Stream combined bytes live and durably under one absolute deadline.
-
+        
             Containment owns the inherited POSIX process group or Windows Job
             Object. Trusted project tools remain inside that boundary; deliberate
             POSIX ``setsid()`` escape is outside this contract. The deadline covers

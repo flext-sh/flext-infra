@@ -6,17 +6,40 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenConformContextRender
-from flext_infra.deps import FlextInfraPyprojectModernizer
+from flext_infra import c, config, deps as dependency_services, m, p, r, t, u
+from flext_infra.codegen._conform.context_render import (
+    FlextInfraCodegenConformContextRender,
+)
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
     """Governed artifact rendering and project overlay composition."""
+
+    _project_contexts: dict[bool, m.Infra.ProjectRenderContext] | None = m.PrivateAttr(
+        default=None
+    )
+
+    @contextmanager
+    def project_render_scope(self) -> Generator[None]:
+        """Derive each project render context once per repository templates pass.
+
+        Every artifact of one pass renders from the same repository inputs, so
+        its project context is the same derivation; the pass keeps it.
+
+        Yields:
+            Nothing; the scope is active until the pass completes.
+
+        """
+        try:
+            self._project_contexts = {}
+            yield
+        finally:
+            self._project_contexts = None
 
     @staticmethod
     def render_artifact_source(
@@ -70,9 +93,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 continue
             missing = {
                 root / destination
-                for destination in codegen.templates.required_destinations(
+                for destination in u.Cli.dag_closure(
+                    codegen.templates.artifact_requirements,
                     frozenset({entry.destination}),
-                )
+                ).unwrap()
             }.difference(paths)
             if missing:
                 return result_type.fail(
@@ -140,6 +164,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             FlextInfraToolTablesPhase.first_party_namespaces(
                 path=root,
                 planned_sources=tuple(sources),
+                source_project=source_project,
             ),
         )
         isort = u.Cli.toml_mapping_ensure_path(
@@ -151,7 +176,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return tooling
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
         runtime["runtime-evaluated-base-classes"] = list(runtime_bases)
-        return FlextInfraPyprojectModernizer.tooling_context_from_payload(
+        return (
+            dependency_services.FlextInfraPyprojectModernizer.tooling_context_from_payload
+        )(
             payload,
             project_kind=tooling.project_kind,
             tool_config=tool_config,
@@ -655,11 +682,15 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if destination == (
             f"{c.Infra.QLTY_CONFIG_DIRNAME}/{c.Infra.QLTY_CONFIG_FILENAME}"
         ):
-            # Generated source trees are tracked, so Git ignore rules no
-            # longer keep them out of the smells scan.
+            # The smells scan measures authored code: the same generated
+            # projection surface the duplication gate excludes.
             return r[p.Model].ok(
                 m.Infra.QltyRenderSpec(
-                    generated_source_globs=codegen.generated_source_globs,
+                    generated_projection_patterns=tuple(
+                        u.Infra.generated_projection_patterns(
+                            target.root, (target.root,)
+                        )
+                    ),
                 ),
             )
         if destination == c.Infra.ENVRC_FILENAME:
@@ -696,8 +727,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME:
             spec = m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
         elif destination in {
-            c.Infra.MARKDOWNLINT_CONFIG_FILENAME,
             c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
+            c.Infra.MARKDOWN_CONFIG_FILENAME,
         }:
             tooling = render_inputs.tooling_runtime
             if tooling is None or tooling.document is None:
@@ -706,8 +737,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 )
             markdown = tooling.document.tools.markdown
             spec = m.Infra.MarkdownLintRenderSpec(
-                rules=u.Infra.configuration_pairs(markdown.rules),
-                exclude=markdown.exclude,
+                native_config=u.Infra.markdown_native_configuration(
+                    markdown, codegen.markdown_exclude_globs
+                ),
+                exclude=codegen.markdown_exclude_globs,
             )
         elif destination in {
             c.Infra.MISE_TOML_FILENAME,
@@ -721,6 +754,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 if field_name in m.Infra.ToolchainSpec.model_fields
             }
             spec = m.Infra.ToolchainSpec(**toolchain_data)
+        elif destination == c.Infra.GIT_HOOK_VALIDATOR_RELPATH:
+            spec = m.Infra.GitHookRenderSpec(
+                preservation_ref_namespaces=(
+                    codegen.branch_policy.preservation_ref_namespaces
+                ),
+            )
         elif destination == c.Infra.RELEASE_GITLEAKS_CONFIG_PATH:
             # Why: the release build phase snapshots the gitleaks
             # policy from the repository; it is fleet policy owned by
@@ -838,6 +877,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         excluded = self.direct_sources(render_inputs)
         if excluded.failure:
             return r[p.Model].from_failure(excluded)
+        superproject = self._ci_superproject(repository_root, branch)
+        if superproject is not None and superproject.failure:
+            return r[p.Model].from_failure(superproject)
         return r[p.Model].ok(
             m.Infra.GithubWorkflowRenderSpec(
                 publishes_release=target.repository.publishes_release,
@@ -880,13 +922,58 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     dist,
                     codegen.checkout_submodules,
                 ),
-                custom_steps=self._custom_ci_steps(repository_root),
+                custom_steps=self._custom_ci_steps(
+                    repository_root / c.Infra.CUSTOM_CI_STEPS_FILENAME,
+                ),
+                custom_post_steps=self._custom_ci_steps(
+                    repository_root / c.Infra.CUSTOM_CI_POST_STEPS_FILENAME,
+                ),
                 private_submodules=codegen.ci_private_submodules.get(dist),
                 private_dependency_auth=codegen.ci_private_dependency_auth.get(
                     dist,
                 ),
                 system_packages=tuple(codegen.ci_system_packages.get(dist, ())),
                 packages_read=dist in codegen.ci_package_registry_read,
+                superproject=None if superproject is None else superproject.value,
+            ),
+        )
+
+    @staticmethod
+    def _ci_superproject(
+        repository_root: Path,
+        branch: str,
+    ) -> p.Result[m.Infra.CiSuperprojectCheckoutSpec] | None:
+        """Elect the containing workspace an attached member's CI checks out.
+
+        The native runtime owner decides membership: a repository elected by
+        a containing workspace tracks no lock of its own, so its CI installs
+        the workspace root lock. The member renders on its workspace's
+        integration line, so ``branch`` is the workspace ref as well.
+
+        Returns:
+            The checkout contract or the first failure for an attached member;
+            ``None`` for a workspace root or standalone repository, which
+            elects itself.
+
+        """
+        result_type = r[m.Infra.CiSuperprojectCheckoutSpec]
+        root = repository_root.resolve()
+        runtime = u.Infra.runtime_owner_root(root)
+        if runtime.failure:
+            return result_type.from_failure(runtime)
+        workspace_root = runtime.value.resolve()
+        if workspace_root == root:
+            return None
+        origin = u.Infra.git_remote_url(
+            m.Infra.GitRemoteUrlRequest(repo_root=workspace_root),
+        )
+        if origin.failure:
+            return result_type.from_failure(origin)
+        return result_type.create_from_callable(
+            lambda: m.Infra.CiSuperprojectCheckoutSpec(
+                repository=u.Infra.git_remote_identity(origin.value.text),
+                ref=branch,
+                path=root.relative_to(workspace_root).as_posix(),
             ),
         )
 
@@ -936,12 +1023,19 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         if project_context is not None:
             return r[p.Model].ok(project_context)
+        scaffold_sources = destination != c.PYPROJECT_FILENAME
+        contexts = self._project_contexts
+        derived = None if contexts is None else contexts.get(scaffold_sources)
+        if derived is not None:
+            return r[p.Model].ok(derived)
         context_result = self._project_render_context(
             render_inputs,
-            scaffold_sources=destination != c.PYPROJECT_FILENAME,
+            scaffold_sources=scaffold_sources,
         )
         if context_result.failure:
             return r[p.Model].from_failure(context_result)
+        if contexts is not None:
+            contexts[scaffold_sources] = context_result.value
         return r[p.Model].ok(context_result.value)
 
     def _makefile_render_spec(
@@ -1021,8 +1115,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
 
     @staticmethod
-    def _custom_ci_steps(repository_root: Path) -> str:
-        """Read the project-owned workflow steps, if the project declares any.
+    def _custom_ci_steps(source: Path) -> str:
+        """Read one project-owned workflow step file, if the project declares it.
 
         This is the CI counterpart of ``custom.mk``: the generator injects the
         block verbatim and never interprets it, so a project extends its own
@@ -1032,7 +1126,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The resulting ``str``.
 
         """
-        source: Path = repository_root / c.Infra.CUSTOM_CI_STEPS_FILENAME
         if not source.is_file():
             return ""
         return source.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")

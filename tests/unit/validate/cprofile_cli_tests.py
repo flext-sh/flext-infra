@@ -13,13 +13,14 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, t, tm, u
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraCProfileCli:
     """Exercise native CLI processes independently of report rendering."""
 
     @staticmethod
+    @pytest.mark.usefixtures("profiling_enabled")
     def test_cli_profiles_retain_each_run_and_measure_startup(tmp_path: Path) -> None:
         """Repeated public CLI launches preserve raw runs including CLI imports."""
         output = tmp_path / "profile.pstats"
@@ -27,14 +28,11 @@ class TestsFlextInfraCProfileCli:
         for _ in range(2):
             tm.ok(
                 u.Cli.run_checked(
-                    (
-                        sys.executable,
-                        "-m",
-                        "flext_infra._profile_entry",
-                        str(output),
-                        "--help",
-                    ),
+                    (sys.executable, "-m", "flext_infra", "--help"),
                     cwd=tmp_path,
+                    options=m.Cli.ProcessOptions(
+                        env={"FLEXT_INFRA_PROFILE_OUTPUT": str(output)}
+                    ),
                 )
             )
             profiles = sorted(tmp_path.glob("profile-*.pstats"))
@@ -58,6 +56,7 @@ class TestsFlextInfraCProfileCli:
                 tm.that(rendered.getvalue(), has="(<module>)")
 
     @staticmethod
+    @pytest.mark.usefixtures("profiling_enabled")
     @pytest.mark.parametrize(
         "arguments",
         [("--help",), ("validate", "cprofile-report", "--invalid-profile-option")],
@@ -65,9 +64,13 @@ class TestsFlextInfraCProfileCli:
     def test_profile_publication_failure_preserves_the_native_cli_status(
         tmp_path: Path, arguments: t.StrTuple
     ) -> None:
-        """A real invalid parent cannot replace a failing CLI's returned status."""
-        blocked = tmp_path / "blocked-parent"
-        blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
+        """A destination failing at publication cannot replace the CLI status.
+
+        The entrypoint admits the destination parent before the command runs;
+        a destination occupied by a directory fails only when publishing.
+        """
+        occupied = tmp_path / "occupied.pstats"
+        occupied.mkdir()
         reference = tm.ok(
             u.Cli.run_raw(
                 (sys.executable, "-m", "flext_infra", *arguments), cwd=tmp_path
@@ -75,19 +78,13 @@ class TestsFlextInfraCProfileCli:
         )
         profiled = tm.ok(
             u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-m",
-                    "flext_infra._profile_entry",
-                    str(blocked / "profile.pstats"),
-                    *arguments,
-                ),
+                (sys.executable, "-m", "flext_infra", *arguments),
                 cwd=tmp_path,
+                env={"FLEXT_INFRA_PROFILE_OUTPUT": str(occupied)},
             )
         )
         tm.that(profiled.stdout, eq=reference.stdout)
-        tm.that(profiled.stderr, has="NotADirectoryError")
-        tm.that(profiled.stderr, has=str(blocked))
+        tm.that(profiled.stderr, has="previous profile artifact is not a regular file")
         if u.Cli.process_succeeded(reference.outcome):
             tm.fail(u.Cli.process_succeeded(profiled.outcome))
         else:
@@ -96,16 +93,17 @@ class TestsFlextInfraCProfileCli:
             )
 
     @staticmethod
+    @pytest.mark.usefixtures("profiling_enabled")
     def test_profile_publication_failure_keeps_the_original_cli_exception(
         tmp_path: Path,
     ) -> None:
         """A closed native stdout raises first; a real flush failure remains a note."""
-        blocked = tmp_path / "blocked-parent"
-        blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
+        occupied = tmp_path / "occupied.pstats"
+        occupied.mkdir()
         consumer = (
             "import runpy, sys\n"
             "from flext_cli import cli\n"
-            "from flext_infra import main\n"
+            "from flext_infra import FlextInfraCli\n"
             "sys.stdout.close()\n"
             "module = sys.argv[1]\n"
             "sys.argv = sys.argv[1:]\n"
@@ -119,15 +117,9 @@ class TestsFlextInfraCProfileCli:
         )
         profiled = tm.ok(
             u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    consumer,
-                    "flext_infra._profile_entry",
-                    str(blocked / "profile.pstats"),
-                    "--help",
-                ),
+                (sys.executable, "-c", consumer, "flext_infra", "--help"),
                 cwd=tmp_path,
+                env={"FLEXT_INFRA_PROFILE_OUTPUT": str(occupied)},
             )
         )
         tm.fail(u.Cli.process_succeeded(reference.outcome))
@@ -142,10 +134,9 @@ class TestsFlextInfraCProfileCli:
             tm.that(executed.outcome.forwarded_signal, eq=None)
         tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
         primary_trace, secondary_trace = profiled.stderr.split(
-            "profile publication failed:\n", maxsplit=1
+            "profile finalization failed:\n", maxsplit=1
         )
         tm.that(primary_trace, has="ValueError: I/O operation on closed file.")
-        tm.that(primary_trace, lacks="NotADirectoryError")
-        tm.that(secondary_trace, has="NotADirectoryError")
-        tm.that(secondary_trace, has=str(blocked))
+        tm.that(primary_trace, lacks="previous profile artifact")
+        tm.that(secondary_trace, has="previous profile artifact is not a regular file")
         tm.that(secondary_trace, lacks="ValueError: I/O operation on closed file.")

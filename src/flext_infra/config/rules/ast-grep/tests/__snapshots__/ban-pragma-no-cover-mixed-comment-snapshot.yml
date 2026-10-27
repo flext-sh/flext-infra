@@ -1,0 +1,8 @@
+id: ban-pragma-no-cover-mixed-comment
+snapshots:
+  "def unreachable():  # defensive, pragma: no cover\n    raise RuntimeError":
+    labels:
+    - source: "# defensive, pragma: no cover"
+      style: primary
+      start: 20
+      end: 49

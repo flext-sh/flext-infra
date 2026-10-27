@@ -6,11 +6,19 @@ snapshots:
       style: primary
       start: 0
       end: 16
-  ? |
-    from tests import tm
-    assert left == right
-  : labels:
+    - source: assert condition
+      style: secondary
+      start: 0
+      end: 16
+  "from other_library import tm\nassert left == right\n":
+    labels:
     - source: assert left == right
       style: primary
-      start: 21
-      end: 41
+      start: 29
+      end: 49
+    - source: |
+        from other_library import tm
+        assert left == right
+      style: secondary
+      start: 0
+      end: 50

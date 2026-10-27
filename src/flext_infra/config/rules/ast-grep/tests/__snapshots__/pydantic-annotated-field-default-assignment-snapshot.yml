@@ -1,15 +1,7 @@
 id: pydantic-annotated-field-default-assignment
 snapshots:
-  ? |
-    class Spec:
-        home_cache_directory: Annotated[
-            Path,
-            m.Field(
-                default=Path(".cache"),
-                description="Cache directory below the home root",
-            ),
-        ]
-  : fixed: |
+  "class Spec:\n    home_cache_directory: Annotated[\n        Path,\n        m.Field(\n            default=Path(\".cache\"),\n            description=\"Cache directory below the home root\",\n        ),\n    ]\n":
+    fixed: |
       class Spec:
           home_cache_directory: Annotated[Path, m.Field(description="Cache directory below the home root",)] = Path(".cache")
     labels:
@@ -24,14 +16,12 @@ snapshots:
       style: primary
       start: 16
       end: 195
-  ? |
-    class Spec:
-        roots: Annotated[t.StrSequence, m.Field(default=(), description="d")]
-  : fixed: |
+  "class Spec:\n    roots: Annotated[t.StrSequence, m.Field(default=(), description=\"d\")]\n":
+    fixed: |
       class Spec:
           roots: Annotated[t.StrSequence, m.Field(description="d")] = ()
     labels:
-    - source: 'roots: Annotated[t.StrSequence, m.Field(default=(), description="d")]'
+    - source: "roots: Annotated[t.StrSequence, m.Field(default=(), description=\"d\")]"
       style: primary
       start: 16
       end: 85

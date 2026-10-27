@@ -1,0 +1,21 @@
+{% filter markdown_wrap(line_width) -%}
+# {{ site_title }} API Overview
+
+{{ generated_header }}
+
+- Version: `{{ version }}`
+- Description: {{ description }}
+- Governed projects: `{{ project_count }}`
+- Project classes: {% for entry in class_counts -%}
+`{{ entry.project_class }}`={{ entry.count }}{{ ", " if not loop.last else "" }}
+{%- else -%}
+{{ text.NONE }}
+{%- endfor %}
+
+Generated from workspace discovery, `pyproject.toml`, public exports, and docstrings.
+
+## Next Pages
+
+- [Workspace Module Pages](projects/index.md)
+- [Project Catalog](../../projects/generated/catalog.md)
+{% endfilter -%}

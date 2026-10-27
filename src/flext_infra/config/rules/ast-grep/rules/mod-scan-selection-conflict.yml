@@ -2,11 +2,20 @@ id: mod-scan-selection-conflict
 language: Python
 severity: error
 message: Scanner rule IDs and a composed plan cannot compete for selection.
-metadata:
-  context:
-    CALL:
-      is: resolved-symbol
-      arg: flext_infra.codemod.batch_gates FlextInfraModGateEngine.scan
+# The call reaches FlextInfraModGateEngine.scan: qualified, or as the
+# engine's own classmethod.
+constraints:
+  CALL:
+    any:
+      - regex: "^FlextInfraModGateEngine\\.scan$"
+      - all:
+          - regex: "^(?:cls|self)\\.scan$"
+          - inside:
+              kind: class_definition
+              stopBy: end
+              has:
+                field: name
+                regex: "^FlextInfraModGateEngine$"
 rule:
   all:
     - pattern: $CALL($$$ARGS)

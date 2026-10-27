@@ -94,7 +94,7 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             automated = tuple(change for change in changes if change.automated)
             warnings = (
                 *resolver.collect_manual_warnings(
-                    rope_project, py_file, source, rules=self._AUTOMATED_RULES
+                    rope_project, py_file, source, rules=self.automated_rules()
                 ),
                 *(change for change in changes if not change.automated),
             )

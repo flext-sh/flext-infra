@@ -1,0 +1,11 @@
+id: rewire-typings-cst-runtime-operand-to-constants
+# `valid` MUST NOT match: the typings alias in an annotation, or the runtime
+# class already read.
+valid:
+  - |
+    def leaf(node: t.Infra.Cst.Name) -> str: ...
+  - ok = isinstance(node, c.Infra.Cst.Name)
+# `invalid` MUST match: a typings alias used as a runtime operand.
+invalid:
+  - ok = isinstance(node, t.Infra.Cst.Name)
+  - ok = isinstance(node, t.Infra.Cst.List | t.Infra.Cst.Tuple)

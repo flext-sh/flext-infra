@@ -1,11 +1,7 @@
 id: rewire-test-assert-instance-message
 snapshots:
-  ? |
-    from flext_tests import tm
-    value = 1
-    def check():
-        assert isinstance(value, int), explain()
-  : fixed: |
+  "from flext_tests import tm\nvalue = 1\ndef check():\n    assert isinstance(value, int), explain()\n":
+    fixed: |
       from flext_tests import tm
       value = 1
       def check():
@@ -30,10 +26,8 @@ snapshots:
       style: secondary
       start: 0
       end: 95
-  ? |
-    from tests import tm
-    assert isinstance(value, Entry), "An entry is required"
-  : fixed: |
+  "from tests import tm\nassert isinstance(value, Entry), \"An entry is required\"\n":
+    fixed: |
       from tests import tm
       if isinstance(value, Entry):
           pass
@@ -54,11 +48,8 @@ snapshots:
       style: secondary
       start: 0
       end: 77
-  ? |
-    from tests import tm
-    if not (isinstance(value, Entry)):
-        raise AssertionError(report)
-  : fixed: |
+  "from tests import tm\nif not (isinstance(value, Entry)):\n    raise AssertionError(report)\n":
+    fixed: |
       from tests import tm
       if isinstance(value, Entry):
           pass

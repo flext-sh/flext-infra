@@ -12,10 +12,10 @@ severity: error
 files:
   - "**/*.py"
 metadata:
-  context:
-    IMPORT:
-      not: implementation-owner
-      arg: flext_cli u.Cli.process_start
+  # Only the native implementation closure of the canonical process starter
+  # imports subprocess.
+  scope:
+    not-in: ["implementation-owner-flext_cli u.Cli.process_start"]
 rule:
   all:
     - pattern: $IMPORT

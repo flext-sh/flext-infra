@@ -7,7 +7,7 @@ snapshots:
       style: primary
       start: 15
       end: 52
-  tm.that(spec.declared_repositories, has="flext-core"):
+  "tm.that(spec.declared_repositories, has=\"flext-core\")":
     fixed: tm.that(spec.subprojects, has="flext-core")
     labels:
     - source: spec.declared_repositories

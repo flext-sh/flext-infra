@@ -1,0 +1,9 @@
+id: rewire-pytest-class-constant-to-tests-constants
+valid:
+  - |
+    code = c.Tests.ExitCode.OK
+  - |
+    marker = pytest.mark
+invalid:
+  - |
+    code = pytest.ExitCode.OK

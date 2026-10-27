@@ -54,6 +54,14 @@ class FlextInfraSettingsModels:
                 "the shared profilers without changing operation, status or deadline."
             ),
         )
+        profile_output: Path | None = m.Field(
+            default=None,
+            validation_alias="FLEXT_INFRA_PROFILE_OUTPUT",
+            description=(
+                "Destination of the CLI command profile; the invoking verb declares "
+                "it (required when profiling is enabled)."
+            ),
+        )
 
         use_https: bool = m.Field(
             default=False,

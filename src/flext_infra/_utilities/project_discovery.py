@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
 from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -23,8 +24,6 @@ from flext_infra._utilities import (
 from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from flext_infra import p
 
 
@@ -32,40 +31,6 @@ class FlextInfraUtilitiesProjectDiscovery(
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 ):
     """Static helpers for discovering governed project roots in a workspace."""
-
-    @staticmethod
-    def repository_operation_targets(
-        root: Path,
-        scope: c.Infra.CodegenConformScope,
-    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]:
-        """Retain declared roots, including missing checkouts, in discovery order.
-
-        Returns:
-            The declared roots in discovery order.
-
-        """
-        resolved = root.expanduser().resolve()
-        result_type = r[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]
-        if not resolved.is_dir():
-            return result_type.fail(f"operation root does not exist: {resolved}")
-        target = m.Infra.WorkspaceOperationTarget(root=resolved)
-        if scope == c.Infra.CodegenConformScope.SELF:
-            return result_type.ok((target,))
-        if scope != c.Infra.CodegenConformScope.ALL:
-            return result_type.fail(f"operation scope must be self or all: {scope}")
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(resolved)
-        if declared.failure:
-            return result_type.from_failure(declared)
-        return result_type.ok((
-            target,
-            *(
-                m.Infra.WorkspaceOperationTarget(
-                    root=resolved / declaration.path,
-                    managed=declaration.managed,
-                )
-                for declaration in declared.value
-            ),
-        ))
 
     @staticmethod
     def repository_operation_applicability(
@@ -294,11 +259,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         refactor_config: m.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
-        """Return governed Python sources and owned stub-policy paths.
+        """Return one repository's Python sources and owned stub-policy paths.
 
         Configured roots cannot hide active Python sources. Enumerating files
         instead of passing ``.`` keeps foreign repositories, hidden histories,
-        and artifact outputs outside the rewrite inventory. Generated or retired
+        and artifact outputs outside the rewrite inventory. The workspace
+        coordinator visits declared members separately. Generated or retired
         owned typing paths remain detection inputs, never rewrite candidates.
 
         Returns:
@@ -315,11 +281,8 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         eligible = {
             path.relative_to(resolved_root).as_posix()
-            for project in cls.governed_project_roots(
-                resolved_root, source_project=source_project
-            )
             for path in cls.discover_python_files(
-                project,
+                resolved_root,
                 workspace_excluded_top_dirs=frozenset(),
                 source_project=source_project,
                 owned_path_admission=True,
@@ -518,6 +481,71 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
+    def module_name_for_provider(
+        cls,
+        module: p.Infra.RopeSemanticModule,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> str:
+        """Preserve declared source identities and native external providers.
+
+        Returns:
+            The complete import identity of the original native provider.
+
+        Raises:
+            ValueError: A project-owned provider has no declared identity.
+
+        """
+        resource = module.get_resource()
+        if resource is None or Path(resource.path).is_absolute():
+            return module.get_name()
+        path = Path(resource.real_path)
+        if resource.is_folder():
+            path /= c.Infra.INIT_PY
+        name = cls.module_name_for_file(
+            path,
+            project_root=Path(source_project.root.real_path),
+            source_project=source_project,
+        )
+        if not name:
+            message = f"Project-owned provider has no declared identity: {path}"
+            raise ValueError(message)
+        return name
+
+    @classmethod
+    def module_name_for_file(
+        cls,
+        file_path: Path,
+        *,
+        project_root: Path,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
+        """Return a file's complete declared import identity.
+
+        Returns:
+            The module identity, preserving declared namespace ancestors.
+
+        """
+        package_name = cls.package_name_for_dir(
+            file_path.parent,
+            project_root=project_root,
+            source_project=source_project,
+        )
+        if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
+            return package_name
+        if package_name:
+            return f"{package_name}.{file_path.stem}"
+        owner = cls.nearest_project_root(
+            project_root, file_path, source_project=source_project
+        )
+        return (
+            file_path.stem
+            if owner is not None
+            and file_path.parent in {owner, owner / c.Infra.DEFAULT_SRC_DIR}
+            else ""
+        )
+
+    @classmethod
     def package_name_for_dir(
         cls,
         package_dir: Path,
@@ -571,7 +599,8 @@ class FlextInfraUtilitiesProjectDiscovery(
         """Enumerate sources once without crossing project or artifact boundaries.
 
         Injected source paths stay lexical until native admission, so a selected
-        aliased scan root cannot disappear through path resolution.
+        aliased scan root cannot disappear through path resolution. Inside a
+        the native source view, the injected project owns capture and admission.
 
         Returns:
             Sorted absolute Python source and stub paths.
@@ -676,16 +705,27 @@ class FlextInfraUtilitiesProjectDiscovery(
             if artifact.source_scan_ignore
             and not (artifact.generated_source or artifact.retired_typing_root)
         ) | {c.Infra.GIT_DIR}
+        # Complete declared artifact roots are data, including direct files.
+        # Do not open or parse Python scenarios while admitting source paths.
         walk = (
             directory.walk(on_error=on_error)
             if source_project is None
             else source_project.source_walk(directory)
         )
         for parent, child_dirs, file_names in walk:
+            scenario_root = (
+                FlextInfraUtilitiesIterationDirectory.source_scan_artifact_path(
+                    directory, parent
+                )
+            )
+            if scenario_root:
+                child_dirs.clear()
+                continue
             child_dirs[:] = [
                 name
                 for name in child_dirs
-                if (
+                if not scenario_root
+                and (
                     (name not in skip_dirs and not name.startswith("."))
                     or (
                         name not in artifact_boundaries

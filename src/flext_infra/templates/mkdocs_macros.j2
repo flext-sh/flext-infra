@@ -1,15 +1,21 @@
 {# Shared mkdocs.yml macros — single source of truth for theme, plugins, validation. #}
 {# Imported by mkdocs_project.yml.j2 and mkdocs_root.yml.j2 — DO NOT INLINE THESE. #}
-{# All loop/conditional logic is pre-formatted in Python and passed as ready strings. #}
-{%- macro site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block, documentation_language, dark_mode_label, light_mode_label) -%}
+{%- macro site_components(exclude_docs, exclude_plugin_patterns, mkdocstrings_paths, documentation_language, dark_mode_label, light_mode_label) -%}
 docs_dir: docs
 site_dir: .reports/docs/site
 
-{{ exclude_docs_block }}{{ material_theme(documentation_language, dark_mode_label, light_mode_label) }}
+{{ exclude_docs_section(exclude_docs) }}
+{{ material_theme(documentation_language, dark_mode_label, light_mode_label) }}
 
-{{ plugins_block(exclude_plugin_block, mkdocstrings_paths_block) }}
+{{ plugins_block(exclude_plugin_patterns, mkdocstrings_paths) }}
 
 {{ markdown_extensions_block() }}
+{%- endmacro %}
+{#- Gitignore-style patterns (pathspec.GitIgnoreSpec): a rooted pattern excludes only the docs-dir root. -#}
+{%- macro exclude_docs_section(patterns) -%}
+exclude_docs: |
+{% for pattern in patterns | unique(case_sensitive=true) %}  {{ pattern }}
+{% endfor %}
 {%- endmacro %}
 {%- macro material_theme(documentation_language, dark_mode_label, light_mode_label) -%}
 theme:
@@ -39,16 +45,21 @@ theme:
         icon: material/weather-sunny
         name: {{ light_mode_label }}
 {%- endmacro %}
-{%- macro plugins_block(exclude_plugin_block, mkdocstrings_paths_block) -%}
+{%- macro plugins_block(exclude_plugin_patterns, mkdocstrings_paths) -%}
 {# Plugin distributions are declared by config/codegen.yaml scaffold.project.dev. #}
 plugins:
   - search
-{{ exclude_plugin_block }}  - autorefs
+{% if exclude_plugin_patterns %}  - exclude:
+      regex:
+{% for pattern in exclude_plugin_patterns %}        - {{ pattern | tojson }}
+{% endfor %}{% endif %}  - autorefs
   - section-index
   - mkdocstrings:
       handlers:
         python:
-{{ mkdocstrings_paths_block }}          docstring_style: auto
+{% if mkdocstrings_paths %}          paths:
+{% for path in mkdocstrings_paths %}            - {{ path }}
+{% endfor %}{% endif %}          docstring_style: auto
           options:
             show_root_heading: true
             show_root_full_path: false

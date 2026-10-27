@@ -1,0 +1,76 @@
+id: settings-protocol-branch-property
+snapshots:
+  "class FlextLdapProtocolsSettings:\n    class Settings(FlextLdifProtocols.Ldif.Settings, Protocol):\n        Ldap: FlextLdapProtocolsSettings.LdapSettings\n":
+    fixed: |
+      class FlextLdapProtocolsSettings:
+          class Settings(FlextLdifProtocols.Ldif.Settings, Protocol):
+              @property
+              def Ldap(self) -> FlextLdapProtocolsSettings.LdapSettings: ...
+    labels:
+    - source: "Ldap: FlextLdapProtocolsSettings.LdapSettings"
+      style: primary
+      start: 106
+      end: 151
+    - source: Settings
+      style: secondary
+      start: 44
+      end: 52
+    - source: Protocol
+      style: secondary
+      start: 87
+      end: 95
+    - source: Protocol
+      style: secondary
+      start: 87
+      end: 95
+    - source: |-
+        class Settings(FlextLdifProtocols.Ldif.Settings, Protocol):
+                Ldap: FlextLdapProtocolsSettings.LdapSettings
+      style: secondary
+      start: 38
+      end: 151
+    - source: "Ldap: FlextLdapProtocolsSettings.LdapSettings"
+      style: secondary
+      start: 106
+      end: 151
+    - source: "Ldap: FlextLdapProtocolsSettings.LdapSettings"
+      style: secondary
+      start: 106
+      end: 151
+  "class FlextLdifProtocolsBase:\n    class Settings(p.Cli.Settings, Protocol):\n        Ldif: FlextLdifProtocolsBase.LdifSettings\n":
+    fixed: |
+      class FlextLdifProtocolsBase:
+          class Settings(p.Cli.Settings, Protocol):
+              @property
+              def Ldif(self) -> FlextLdifProtocolsBase.LdifSettings: ...
+    labels:
+    - source: "Ldif: FlextLdifProtocolsBase.LdifSettings"
+      style: primary
+      start: 84
+      end: 125
+    - source: Settings
+      style: secondary
+      start: 40
+      end: 48
+    - source: Protocol
+      style: secondary
+      start: 65
+      end: 73
+    - source: Protocol
+      style: secondary
+      start: 65
+      end: 73
+    - source: |-
+        class Settings(p.Cli.Settings, Protocol):
+                Ldif: FlextLdifProtocolsBase.LdifSettings
+      style: secondary
+      start: 34
+      end: 125
+    - source: "Ldif: FlextLdifProtocolsBase.LdifSettings"
+      style: secondary
+      start: 84
+      end: 125
+    - source: "Ldif: FlextLdifProtocolsBase.LdifSettings"
+      style: secondary
+      start: 84
+      end: 125

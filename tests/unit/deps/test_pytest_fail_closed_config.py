@@ -81,7 +81,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                 'testpaths = ["architecture", "guides", "tests"]\n',
             ),
         )
-        phase = FlextInfraToolTablesPhase(tooling)
+        phase = FlextInfraToolTablesPhase(tooling, codegen=config.Infra.codegen)
         pyproject = tmp_path / "flext-sample" / c.PYPROJECT_FILENAME
 
         first_changes = phase.apply_payload(payload, path=pyproject)
@@ -109,7 +109,10 @@ class TestsFlextInfraPytestFailClosedConfig:
             list(u.Tests.strings(ini["testpaths"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    tooling, "pytest.ini_options", "testpaths", TypeForm(t.StrSequence)
+                    tooling,
+                    "pytest.ini_options",
+                    "testpaths",
+                    TypeForm(t.StrSequence),
                 )
             ),
         )

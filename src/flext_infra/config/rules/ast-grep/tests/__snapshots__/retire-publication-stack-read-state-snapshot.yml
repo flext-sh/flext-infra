@@ -1,17 +1,15 @@
 id: retire-publication-stack-read-state
 snapshots:
-  ? |
-    state = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
-  : fixed: |
+  "state = FlextInfraMiseArtifactsFiles.read_state(path, required=True)\n":
+    fixed: |
       state = u.Cli.atomic_read_binary_file_state(path, required=True)
     labels:
     - source: FlextInfraMiseArtifactsFiles.read_state(path, required=True)
       style: primary
       start: 8
       end: 68
-  ? |
-    tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=False))
-  : fixed: |
+  "tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=False))\n":
+    fixed: |
       tm.ok(u.Cli.atomic_read_binary_file_state(report, required=False))
     labels:
     - source: FlextInfraMiseArtifactsFiles.read_state(report, required=False)

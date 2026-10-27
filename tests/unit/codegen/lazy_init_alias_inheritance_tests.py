@@ -168,7 +168,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         parent = repository / c.Infra.DEFAULT_SRC_DIR / "flext_bootstrap_parent"
         parent.mkdir()
         (parent / c.Infra.INIT_PY).write_text(
-            c.Infra.AUTOGEN_HEADERS[0] + "\n__all__ = []\n",
+            c.Infra.AUTOGEN_HEADER + "\n__all__ = []\n",
             encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.write_lazy_init_namespace_module(

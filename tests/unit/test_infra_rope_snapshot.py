@@ -33,18 +33,7 @@ class TestsFlextInfraRopeSnapshot:
             consumer.write_text("from .owner import Value\n", encoding="utf-8")
             consumers.append(consumer)
             owners.append(owner)
-        states = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-            for path in consumers
-        )
-        snapshot = u.Infra.codemod_binding_snapshot(root, states)
-        tm.that(
-            {state.path for state in snapshot.states}.intersection(owners),
-            eq=set(owners),
-        )
-        with u.Infra.codemod_binding_project(
-            root, u.Infra.codemod_source_epoch(snapshot)
-        ) as (project, _sources):
+        with u.Infra.facade_source_project(root) as (project, _sources):
             for consumer, owner in zip(consumers, owners, strict=True):
                 resource = u.Infra.require_file_resource(
                     project.get_resource(consumer.relative_to(root).as_posix()),
@@ -58,22 +47,6 @@ class TestsFlextInfraRopeSnapshot:
                 ).get_definition_location()
                 supplied_resource = tm.not_none(tm.not_none(supplier).get_resource())
                 tm.that(supplied_resource.real_path, eq=str(owner))
-
-    @staticmethod
-    def test_import_snapshot_syntax_error_identifies_dependency(tmp_path: Path) -> None:
-        """The capture caller passes the transitive supplier's resource to Rope."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        owner = package / "broken_owner.py"
-        owner.write_text("Value = 1\n\ninvalid = )\n", encoding="utf-8")
-        consumer = package / "consumer.py"
-        consumer.write_text("from .broken_owner import Value\n", encoding="utf-8")
-        state = tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
-        with pytest.raises(u.Infra.rope_syntax_errors()) as rejected:
-            u.Infra.codemod_binding_snapshot(root, (state,))
-        tm.that(
-            str(rejected.value),
-            has=f"<{owner.relative_to(root).as_posix()}> line <3>",
-        )
 
     @staticmethod
     def test_native_observation_evidence_is_validated_and_independent() -> None:
@@ -174,6 +147,54 @@ class TestsFlextInfraRopeSnapshot:
             )
             tm.that(project.source_state(source), eq=original)
         tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+
+    @staticmethod
+    def test_source_view_retains_native_provider_epoch_and_rejects_live_edit(
+        tmp_path: Path,
+    ) -> None:
+        """Rope and source planning share one capture; CAS preserves a later edit.
+
+        Raises:
+            TypeError: If Native source has no Rope module.
+
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        original = b"class Original: pass\n"
+        changed = b"class Concurrent: pass\n"
+        source.write_bytes(original)
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            project = snapshot.engine
+            resource = u.Infra.require_file_resource(
+                project.get_resource(source.relative_to(root).as_posix()),
+                source,
+            )
+            provider = project.get_pymodule(resource, force_errors=True)
+            if not u.Infra.source_module(provider):
+                message = f"Native source has no Rope module: {source}"
+                raise TypeError(message)
+            before = project.source_state(source)
+            tm.that(provider.source_code, eq=original.decode())
+            source.write_bytes(changed)
+
+            tm.that(project.source_bytes(source), eq=original)
+            tm.that(resource.read(), eq=provider.source_code)
+            tm.that(project.source_state(source), eq=before)
+            captured = u.Infra.workspace_source(snapshot, source)
+            tm.that(captured.text, eq=provider.source_code)
+            tm.that(captured.state, eq=before)
+            plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=project.source_state(source),
+                desired_content=original + b"# generated projection\n",
+                desired_mode=before.mode,
+            )
+            tm.fail(
+                u.Infra.publish_codegen_plans(root, (plan,)),
+                has=f"atomic source changed: {source}",
+            )
+            tm.that(source.read_bytes(), eq=changed)
 
     @staticmethod
     @pytest.mark.parametrize("declared", [False, True])
@@ -368,6 +389,35 @@ tm.that(source.exists(), eq=False)
                 tm.that(resource.read(), eq=sources[conftest.resolve()])
             finally:
                 snapshot.close()
+
+    @staticmethod
+    def test_overlay_lists_planned_children_beside_live_entries(
+        tmp_path: Path,
+    ) -> None:
+        """Each directory lists live entries plus its planned direct children."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        nested = package / "fresh" / "deep" / "module.py"
+        sibling = package / "fresh" / "sibling.py"
+        live = tuple(sorted(child.name for child in package.iterdir()))
+        with u.Infra.facade_source_project(
+            root,
+            planned_sources={nested: "value = 1\n", sibling: "value = 2\n"},
+        ) as (project, _):
+            tm.that(
+                tuple(child.name for child in project.source_children(package)),
+                eq=tuple(sorted({*live, "fresh"})),
+            )
+            tm.that(
+                tuple(
+                    child.name for child in project.source_children(package / "fresh")
+                ),
+                eq=("deep", "sibling.py"),
+            )
+            tm.that(
+                project.source_children(package / "fresh" / "deep"),
+                eq=(nested,),
+            )
+        tm.that((package / "fresh").exists(), eq=False)
 
     @staticmethod
     def test_snapshot_admits_proposal_for_an_absent_source(tmp_path: Path) -> None:

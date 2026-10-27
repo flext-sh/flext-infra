@@ -12,12 +12,18 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesCompatibilityAliasValidation,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
+)
+from flext_infra._utilities._codemod.codemod_project import (
+    FlextInfraUtilitiesCodemodProject,
+)
+from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -149,7 +155,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         rebinds = tuple(
             node
             for node in tree.body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == "s"
                 for target in (
@@ -261,7 +267,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         pending: list[ast.AST] = list(tree.body)
         while pending:
             node = pending.pop()
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            if isinstance(node, c.Infra.AST_CALLABLE_TYPES):
                 pending.extend(node.args.defaults)
                 pending.extend(
                     default for default in node.args.kw_defaults if default is not None
@@ -550,7 +556,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         """
         names: set[str] = set()
         for node in tree.body:
-            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                 names.add(node.name)
             elif isinstance(node, ast.ImportFrom):
                 names.update(item.asname or item.name for item in node.names)

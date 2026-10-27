@@ -24,12 +24,18 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeStructure,
 )
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticConstantSources,
@@ -1181,7 +1187,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 message = f"ambiguous constant import chain: {qualified}"
                 raise ValueError(message)
             if binding.imported_name == "c" and module.source_code.startswith(
-                c.Infra.AUTOGEN_HEADERS
+                c.Infra.AUTOGEN_HEADER
             ):
                 owner = module.get_resource()
                 if owner is None:

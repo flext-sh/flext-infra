@@ -1,0 +1,37 @@
+# `str | None` says absence has meaning; defaulting it to `""` says the
+# empty string is the absent value. One of the two is wrong: annotate `str`
+# with `""`, or keep `str | None` with `None`.
+id: ban-str-none-empty-default
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+rule:
+  matches: model-field-assignment
+  all:
+    - has:
+        field: left
+        pattern: $NAME
+    - has:
+        field: type
+        regex: "^(?:Annotated\\[\\s*)?(?:str\\s*\\|\\s*None|None\\s*\\|\\s*str)(?:\\s*[,\\]]|$)"
+    - has:
+        field: right
+        regex: "^(?:\"\"|''|(?:[A-Za-z_][A-Za-z0-9_]*\\.)*Field\\(.*\\bdefault\\s*=\\s*(?:\"\"|'')\\s*[,)].*)$"
+message: >-
+  Model field `$NAME` is `str | None` with an empty-string default: annotate
+  `str` with `""`, or default to `None`.
+  Detection only: explicit None callers and None checks change meaning.
+metadata:
+  enforce: [ENFORCE-107]

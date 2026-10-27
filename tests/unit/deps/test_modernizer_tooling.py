@@ -307,6 +307,23 @@ class TestsFlextInfraDepsModernizerTooling:
         )
 
     @staticmethod
+    def test_native_markdown_render_does_not_mutate_the_shared_policy(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """Native option merging preserves the common projection's source values."""
+        policy = tool_config_document.tools.markdown
+        original = policy.model_dump(mode="json")
+        excludes = config.Infra.codegen.markdown_exclude_globs
+        first = u.Infra.markdown_native_configuration(policy, excludes)
+        second = u.Infra.markdown_native_configuration(policy, excludes)
+        tm.that(second, eq=first)
+        tm.that(policy.model_dump(mode="json"), eq=original)
+        tm.that(
+            u.Tests.toml_table_at(first, "global")["exclude"],
+            eq=list(excludes),
+        )
+
+    @staticmethod
     def test_native_tool_configuration_rejects_an_undeclared_root(
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
@@ -368,30 +385,32 @@ class TestsFlextInfraDepsModernizerTooling:
             skip_check=True,
         )
         topology = m.Infra.PyprojectDeclaredTopology()
+        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
         source = (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING)
         metadata = u.Tests.toml_table_at(source, "project")
-        entry = next(
-            item
-            for item in config.Infra.codegen.templates.entries
-            if item.destination == c.PYPROJECT_FILENAME
-        )
         source = tm.ok(
             u.Cli.template_render(
                 FlextInfraConfig.ssot_config_dir().parent
                 / "templates"
-                / config.Infra.codegen.templates.root
-                / tm.not_none(entry.source),
+                / codegen.templates.root
+                / tm.not_none(
+                    next(
+                        item
+                        for item in codegen.templates.entries
+                        if item.destination == c.PYPROJECT_FILENAME
+                    ).source
+                ),
                 m.RootModel[t.JsonDict].model_validate({
                     **project.model_dump(mode="json", exclude_computed_fields=True),
                     "dist": workspace.repository.distribution,
                     "version": metadata["version"],
-                    "scaffold": config.Infra.codegen.scaffold.model_dump(mode="json"),
+                    "scaffold": codegen.scaffold.model_dump(mode="json"),
                     "project_dependencies": metadata["dependencies"],
                     "development_dependencies": u.Tests.toml_table_at(
                         source, "dependency-groups"
                     )["dev"],
                     "python_required_version": (
-                        config.Infra.codegen.toolchain.python_required_version
+                        codegen.toolchain.python_required_version
                     ),
                     "make_profile": c.Infra.MakeProfile.STANDALONE,
                     "tooling_runtime": tm.ok(
@@ -402,7 +421,7 @@ class TestsFlextInfraDepsModernizerTooling:
                                 project_name=workspace.repository.distribution,
                                 package_name=project.package_name,
                                 path=root / c.PYPROJECT_FILENAME,
-                                scaffold_project=config.Infra.codegen.scaffold.project,
+                                codegen=codegen,
                                 topology=topology,
                                 runtime_dependency_overlay=(),
                                 declared_project_dependencies=u.Tests.strings(
@@ -415,7 +434,6 @@ class TestsFlextInfraDepsModernizerTooling:
                     "root_modules": [],
                     "repository_namespace_packages": [],
                     "packaged_data_paths": [],
-                    "packaged_data_files": [],
                     "packaged_data_excludes": [],
                     "project_declaration_resource": None,
                     "hatch_build_hook_path": "",
@@ -424,7 +442,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     "repository": "",
                     "flext_git_base_url": u.Tests.provider().base_url,
                     "flext_git_branch": "fixture-branch",
-                    "uv_link_mode": config.Infra.codegen.toolchain.uv_link_mode,
+                    "uv_link_mode": codegen.toolchain.uv_link_mode,
                 }),
             )
         )
@@ -436,7 +454,10 @@ class TestsFlextInfraDepsModernizerTooling:
         )
         source = tm.ok(
             modernizer.conform_source(
-                source, path=root / c.PYPROJECT_FILENAME, topology=topology
+                source,
+                path=root / c.PYPROJECT_FILENAME,
+                topology=topology,
+                codegen=codegen,
             )
         )
         tm.that(
@@ -452,7 +473,10 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.ok(u.Cli.yaml_dump(path, {"Infra": {"tooling": {"settings": declarations}}}))
         source = tm.ok(
             modernizer.conform_source(
-                source, path=root / c.PYPROJECT_FILENAME, topology=topology
+                source,
+                path=root / c.PYPROJECT_FILENAME,
+                topology=topology,
+                codegen=codegen,
             )
         )
         tm.that(
@@ -462,7 +486,10 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.that(
             tm.ok(
                 modernizer.conform_source(
-                    source, path=root / c.PYPROJECT_FILENAME, topology=topology
+                    source,
+                    path=root / c.PYPROJECT_FILENAME,
+                    topology=topology,
+                    codegen=codegen,
                 )
             ),
             eq=source,
@@ -473,6 +500,8 @@ class TestsFlextInfraDepsModernizerTooling:
         tool_config_document: m.Infra.ToolConfigDocument,
         project_dir: Path,
         source: str = "",
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> t.Pair[t.MutableJsonMapping, t.JsonMapping]:
         """Apply the Ruff phase twice to one named payload; return payload and ruff.
 
@@ -485,6 +514,7 @@ class TestsFlextInfraDepsModernizerTooling:
         )
         phase = deps.FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
+            codegen=codegen,
         )
         path = project_dir / c.PYPROJECT_FILENAME
         _ = phase.apply_payload(payload, path=path)
@@ -555,6 +585,7 @@ class TestsFlextInfraDepsModernizerTooling:
             encoding="utf-8",
         )
         stale_pattern = "stale-pattern.py"
+        codegen = tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec
 
         payload, ruff = self._applied(
             tool_config_document,
@@ -562,6 +593,7 @@ class TestsFlextInfraDepsModernizerTooling:
             '[lint]\nselect = ["E501"]\n'
             '[tool.ruff.lint.pylint]\nallow-dunder-method-names = ["__basse__"]\n'
             f'[tool.ruff.lint.per-file-ignores]\n"{stale_pattern}" = ["E402"]\n',
+            codegen=codegen,
         )
 
         tm.that(payload, lacks="lint")
@@ -569,7 +601,7 @@ class TestsFlextInfraDepsModernizerTooling:
         # project adds no workspace exclusions and Ruff keeps its own defaults.
         tm.that(
             ruff["extend-exclude"],
-            eq=sorted(config.Infra.codegen.analyzer_exclude_globs),
+            eq=sorted(codegen.analyzer_exclude_globs),
         )
         tm.that(ruff, lacks="exclude")
         tm.that(
@@ -580,7 +612,7 @@ class TestsFlextInfraDepsModernizerTooling:
         )
         tm.that(
             ruff["target-version"],
-            eq="py" + config.Infra.codegen.toolchain.python_version.replace(".", ""),
+            eq="py" + codegen.toolchain.python_version.replace(".", ""),
         )
         # The declared src list stays the SSOT; the projection filters it to
         # roots that exist (a retired tree must not name analyzer entries),
@@ -629,10 +661,10 @@ class TestsFlextInfraDepsModernizerTooling:
         )
         delegated = check.FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_policy.lint.rule_owners,
-            check_gates=config.Infra.codegen.make.check_gates_default,
+            check_gates=codegen.make.check_gates_default,
             repair_gates=(
-                *config.Infra.codegen.make.check_gates_fixable,
-                *config.Infra.codegen.make.fmt_gates,
+                *codegen.make.check_gates_fixable,
+                *codegen.make.fmt_gates,
             ),
         )
         tm.that(
@@ -705,6 +737,7 @@ class TestsFlextInfraDepsModernizerTooling:
             tool_config_document,
             repository_root,
             'dependencies = ["flext-core>=0.1.0"]\n',
+            codegen=tm.ok(u.Infra.load_codegen_inputs(repository_root)).spec,
         )
 
         known_first_party = u.Tests.toml_strings(

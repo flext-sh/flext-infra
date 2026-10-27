@@ -1,10 +1,8 @@
 id: retire-publication-stack-authenticated-guard
 snapshots:
-  ? |
-    if rope_project is not None and not rope_project.authenticated_sources:
-        rope_project = None
-  : fixed: |2+
-
+  "if rope_project is not None and not rope_project.authenticated_sources:\n    rope_project = None\n":
+    fixed: |+
+      
     labels:
     - source: |-
         if rope_project is not None and not rope_project.authenticated_sources:

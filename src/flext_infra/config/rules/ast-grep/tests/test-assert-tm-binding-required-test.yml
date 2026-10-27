@@ -1,4 +1,7 @@
 id: test-assert-tm-binding-required
+# A bare assert is a finding only where no `tm` binding to the flext-tests
+# matchers exists (utils/tm-imported-from-flext.yml): there the tm rewrites
+# repair it instead.
 valid:
   - tm.that(condition, truth=True)
   - |
@@ -11,8 +14,11 @@ valid:
         return value.upper()
   - assert value is None
   - assert observed == expected, details()
+  - |
+    from tests import tm
+    assert left == right
 invalid:
   - assert condition
   - |
-    from tests import tm
+    from other_library import tm
     assert left == right

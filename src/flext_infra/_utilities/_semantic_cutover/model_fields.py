@@ -13,10 +13,17 @@ import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
-from flext_infra._utilities import (
+from flext_infra import c
+from flext_infra._utilities._codemod.codemod_project import (
     FlextInfraUtilitiesCodemodProject,
+)
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -129,7 +136,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         if any(
             runtime.same_name(classvar, runtime.resolve_symbol(scope, node))
             for node in ast.walk(annotation)
-            if isinstance(node, (ast.Name, ast.Attribute))
+            if isinstance(node, c.Infra.AST_NAME_REFERENCE_TYPES)
         ):
             return False
         name = declaration.target.id
@@ -410,7 +417,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         replacements: list[t.Triple[int, int, str]] = []
         lines = source.splitlines(keepends=True)
         for function in ast.walk(tree):
-            if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
+            if not isinstance(function, c.Infra.AST_FUNCTION_TYPES):
                 continue
             replacements.extend(
                 cls._function_field_replacements(path, function, lines),

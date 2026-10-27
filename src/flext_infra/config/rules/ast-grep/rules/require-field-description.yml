@@ -1,0 +1,32 @@
+# Every model field documents its contract: the field specifier carries a
+# `description=` (in the Annotated metadata or the assigned `Field(...)`), so
+# the generated schema and the CLI help never expose an undocumented field.
+id: require-field-description
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+rule:
+  matches: model-field-assignment
+  has:
+    field: left
+    pattern: $NAME
+  not:
+    regex: "\\bdescription\\s*="
+message: >-
+  Model field `$NAME` has no description: declare it through
+  `m.Field(description="...")`.
+  Detection only: the description is authored knowledge no rewrite can derive.
+metadata:
+  enforce: [ENFORCE-103]

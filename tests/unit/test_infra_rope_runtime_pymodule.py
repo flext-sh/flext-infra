@@ -113,11 +113,13 @@ class TestsFlextInfraRopeRuntimePymodule:
         )
         consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
         expected_module = "consumer" if admitted else "unselected"
+        visits: list[str] = []
 
         def accept(
             module: p.Infra.RopePyModule,
             match: p.Infra.RopeContractMatch,
         ) -> bool:
+            visits.append(module.get_name())
             return (
                 module.get_name() == expected_module
                 and "Alias" in module.get_scope().get_defined_names()
@@ -136,6 +138,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 match_filter=accept,
             )
             changes = u.Infra.restructure_changes(project, request)
+            tm.that(visits, eq=["consumer"])
             tm.that(
                 capsys.readouterr().out,
                 has=f"matched=1 admitted={int(admitted)}",
@@ -152,6 +155,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 tm.ok(change.resource is resource)
             project.do(changes)
             tm.that(u.Infra.restructure_changes(project, request).changes, empty=True)
+            tm.that(len(visits), eq=1 + int(not admitted))
             tm.that(
                 capsys.readouterr().out,
                 has=f"matched={int(not admitted)} admitted=0",

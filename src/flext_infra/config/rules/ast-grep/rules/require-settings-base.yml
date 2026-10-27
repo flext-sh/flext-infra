@@ -1,0 +1,47 @@
+# A settings class extends the FlextSettings owner (or a project settings
+# class built on it), never the raw pydantic-settings or pydantic base:
+# FlextSettings owns the environment prefix, the layer-zero SSOT contract and
+# the registration every consumer reads through `settings.<Namespace>`.
+# flext-core is the owner that builds FlextSettings on BaseSettings. A
+# namespaced payload nested in a models family container (`settings.Infra`) is
+# a composition part of the project's FlextSettings class, not a settings
+# owner, so only module-level classes are settings classes.
+id: require-settings-base
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+metadata:
+  enforce: [ENFORCE-042]
+  owner: flext-core
+rule:
+  kind: class_definition
+  inside:
+    kind: module
+  has:
+    field: name
+    pattern: $NAME
+  any:
+    - has:
+        field: superclasses
+        has:
+          regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*BaseSettings$"
+    - all:
+        - has:
+            field: name
+            regex: "Settings$"
+        - has:
+            field: superclasses
+            has:
+              regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*BaseModel$"
+message: >-
+  Settings class `$NAME` does not extend FlextSettings: inherit FlextSettings
+  (or the project settings class built on it).
+  Detection only: the base swap changes the environment prefix and the
+  registration owner, and needs the FlextSettings binding.

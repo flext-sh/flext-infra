@@ -576,6 +576,35 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @classmethod
+    def test_module_resource_move_keeps_existing_lazy_publications_importable(
+        cls, tmp_path: Path
+    ) -> None:
+        """A native move carries lazy module data without another generation pass."""
+        root, package, source, target = cls._module_move_workspace(tmp_path)
+        probe = (
+            f"from {package.name} import DeclaredOwner\n"
+            f"import {package.name} as public\n"
+            "print(DeclaredOwner.normalize(' receiver '))\n"
+            "print(sorted(public.__all__))\n"
+        )
+        before = u.Tests.run_lazy_init_probe(probe, python_paths=(str(package.parent),))
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            inputs = cls._module_move_inputs(workspace.rope_project)
+            plans = u.Infra.plan_module_move(
+                workspace.rope_project,
+                source,
+                destination_file=target,
+                inputs=inputs,
+            )
+        tm.ok(u.Infra.publish_codegen_plans(root, plans))
+        tm.fail(source.exists())
+        tm.ok(target.is_file())
+        tm.that(
+            u.Tests.run_lazy_init_probe(probe, python_paths=(str(package.parent),)),
+            eq=before,
+        )
+
+    @classmethod
     def test_module_move_stale_source_rejects_before_any_effect(
         cls,
         tmp_path: Path,

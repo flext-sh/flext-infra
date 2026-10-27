@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, workspace
+from flext_infra import config, settings, workspace
 from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parent
@@ -126,23 +126,6 @@ def source_preview_workspace(
     return root, package
 
 
-@pytest.fixture
-def binding_probe_rule() -> m.Infra.CodemodRule:
-    """Supply one validated metadata owner for semantic binding probes.
-
-    Returns:
-        The probe rule whose consumer supplies its context conditions.
-
-    """
-    return m.Infra.CodemodRule(
-        id="binding-probe",
-        digest="probe",
-        provider="probe",
-        resource=Path("probe.yml"),
-        fixable=True,
-    )
-
-
 def _read_fixture(*parts: str) -> str:
     return _FIXTURES_DIR.joinpath(*parts).read_text(encoding="utf-8")
 
@@ -205,6 +188,51 @@ def runner_ci_context_cleared() -> Iterator[None]:
     """
     with u.Tests.env_vars_context(
         vars_to_clear=(config.Infra.codegen.make.ci.variable,),
+    ):
+        yield
+
+
+@pytest.fixture(scope="session")
+def suite_runtime_root() -> Path:
+    """Elect the runtime that owns this suite's checkout, through its owner.
+
+    Fixture checkouts declare it as their runtime root, as a composed member
+    declares its workspace's: the probes then run in a real environment
+    holding the FLEXT packages, never in the bare runner interpreter.
+
+    Returns:
+        The physical runtime root of the suite checkout.
+
+    """
+    return tm.ok(u.Infra.runtime_owner_root(_PROJECT_ROOT))
+
+
+@pytest.fixture(scope="session")
+def infra_project_root() -> Path:
+    """Return the flext-infra checkout whose real facades the suite exercises.
+
+    Returns:
+        The project root holding flext-infra's ``pyproject.toml``.
+
+    """
+    return _PROJECT_ROOT
+
+
+@pytest.fixture
+def profiling_enabled() -> Iterator[None]:
+    """Opt child processes into profiling through the typed settings owner.
+
+    Profiling is opt-in; the variable is the settings field's own declared
+    alias, so a renamed setting cannot leave the scenario silently unprofiled.
+
+    Yields:
+        Control while spawned processes inherit the enabled setting.
+
+    """
+    alias = type(settings.Infra).model_fields["profile"].validation_alias
+    tm.that(alias, is_=str)
+    with u.Tests.env_vars_context(
+        env_vars={str(alias): c.ParserBooleanToken.TRUE},
     ):
         yield
 

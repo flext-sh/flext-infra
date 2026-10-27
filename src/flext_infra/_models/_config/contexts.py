@@ -11,8 +11,6 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from flext_cli import m
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
@@ -275,6 +273,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             Path | None,
             m.Field(description="Project-relative Hatch custom build hook module"),
         ] = None
+        uv_cache_key_files: Annotated[
+            t.StrSequence,
+            m.Field(description="Derived uv editable-build cache-key files"),
+        ] = ()
         docs_audit: Annotated[
             FlextInfraConfigModelsContract.DocsAuditOverridesSpec,
             m.Field(
@@ -332,9 +334,9 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             """
             depended = {
-                canonicalize_name(Requirement(requirement).name)
+                t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
                 for requirement in self.project_dependencies
-            } | {canonicalize_name(self.upstream)}
+            } | {t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(self.upstream)}
             for base in self.scaffold.project.config_bases:
                 if base.distribution in depended:
                     return base
@@ -423,22 +425,14 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
                 description="Validated relative data paths shipped in distributions",
             ),
         ]
-        packaged_data_files: Annotated[
-            t.StrSequence,
-            m.Field(description="Validated individually declared data files"),
-        ]
         project_declaration_resource: Annotated[
             t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
             m.Field(
                 description=(
-                    "Producer declaration source and wheel resource destination"
+                    "Producer declaration source and wheel extra-metadata destination"
                 ),
             ),
         ]
-        package_config_resource: Annotated[
-            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
-            m.Field(description="Package-owned defaults source and wheel destination"),
-        ] = None
         packaged_data_excludes: Annotated[
             t.StrSequence,
             m.Field(description="Validated files excluded from packaged data roots"),

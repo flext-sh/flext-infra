@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities._git.attestation_evidence import (
         FlextInfraUtilitiesGitAttestationEvidenceMixin,
     )
+    from flext_infra._utilities._git.gitignore import FlextInfraUtilitiesGitignore
     from flext_infra._utilities._git.lane_hygiene import (
         FlextInfraUtilitiesGitLaneHygieneMixin,
     )
@@ -138,6 +139,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
+    "FlextInfraUtilitiesGitignore",
 )
 
 install_lazy_exports(
@@ -179,6 +181,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitWorktreeRemovalMixin": ".worktree_removal",
         "FlextInfraUtilitiesGitWorktreeRootsMixin": ".worktree_roots",
         "FlextInfraUtilitiesGitWorktreeStatusMixin": ".worktree_status",
+        "FlextInfraUtilitiesGitignore": ".gitignore",
     }),
     public_exports=__all__,
 )

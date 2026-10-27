@@ -38,29 +38,76 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
 
     @classmethod
     def _state_file(cls, root: Path, relative: Path) -> m.Infra.GitWorktreeFileState:
+        (state,) = cls._state_files(root, (relative,))
+        return state
 
-        path = root / relative
-        if any((root / parent).is_symlink() for parent in relative.parents):
-            msg = f"capture path traverses a symlink: {relative}"
-            raise ValueError(msg)
-        mode = path.lstat().st_mode
-        if stat.S_ISLNK(mode):
-            git_mode = "120000"
-        elif stat.S_ISREG(mode):
-            git_mode = "100755" if mode & stat.S_IXUSR else "100644"
-        else:
-            msg = f"capture requires a regular file or symlink: {relative}"
-            raise ValueError(msg)
-        with FlextInfraUtilitiesGitWorktreeIO.git_stdin(
-            cls._state_file_bytes(path),
-        ) as stream:
-            oid = cls._repo(root).git.hash_object("--stdin", istream=stream)
-        return m.Infra.GitWorktreeFileState(
-            path=relative,
-            mode=git_mode,
-            permissions=stat.S_IMODE(mode),
-            oid=oid,
-        )
+    @classmethod
+    def _state_files(
+        cls,
+        root: Path,
+        relatives: t.SequenceOf[Path],
+    ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState]:
+        """Measure raw working bytes, hashing every regular file in one process.
+
+        Regular files go through one unfiltered ``hash-object --stdin-paths``
+        batch (the same raw-byte object id ``--stdin`` yields); a symlink's
+        object is its link text, so it is hashed alone.
+
+        Returns:
+            One file state per requested path, in request order.
+
+        Raises:
+            ValueError: If a path traverses a symlink or is not a regular file
+                or symlink, or Git returns a different number of object ids.
+
+        """
+        modes: list[t.Pair[Path, int]] = []
+        for relative in relatives:
+            if any((root / parent).is_symlink() for parent in relative.parents):
+                msg = f"capture path traverses a symlink: {relative}"
+                raise ValueError(msg)
+            mode = (root / relative).lstat().st_mode
+            if not (stat.S_ISLNK(mode) or stat.S_ISREG(mode)):
+                msg = f"capture requires a regular file or symlink: {relative}"
+                raise ValueError(msg)
+            modes.append((relative, mode))
+        repo = cls._repo(root)
+        regular = [relative for relative, mode in modes if stat.S_ISREG(mode)]
+        oids: dict[Path, str] = {}
+        if regular:
+            with FlextInfraUtilitiesGitWorktreeIO.git_stdin(
+                "".join(f"{path.as_posix()}\n" for path in regular).encode(
+                    c.DEFAULT_ENCODING,
+                ),
+            ) as stream:
+                batch = repo.git.hash_object(
+                    "--no-filters",
+                    "--stdin-paths",
+                    istream=stream,
+                ).splitlines()
+            if len(batch) != len(regular):
+                msg = "hash-object returned a different number of object ids"
+                raise ValueError(msg)
+            oids.update(zip(regular, batch, strict=True))
+        states: list[m.Infra.GitWorktreeFileState] = []
+        for relative, mode in modes:
+            if stat.S_ISLNK(mode):
+                with FlextInfraUtilitiesGitWorktreeIO.git_stdin(
+                    cls._state_file_bytes(root / relative),
+                ) as stream:
+                    oids[relative] = repo.git.hash_object("--stdin", istream=stream)
+                git_mode = "120000"
+            else:
+                git_mode = "100755" if mode & stat.S_IXUSR else "100644"
+            states.append(
+                m.Infra.GitWorktreeFileState(
+                    path=relative,
+                    mode=git_mode,
+                    permissions=stat.S_IMODE(mode),
+                    oid=oids[relative],
+                ),
+            )
+        return tuple(states)
 
     @classmethod
     def state_snapshot_index(
@@ -183,6 +230,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
                     msg = f"snapshot scope traverses an unowned symlink: {path}"
                     raise ValueError(msg)
         files: list[m.Infra.GitWorktreeFileState] = []
+        measured: list[Path] = []
         for path in candidates:
             candidate = root / path
             if any((root / parent).is_symlink() for parent in path.parents):
@@ -207,8 +255,9 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
                 # A former HEAD file can now be a directory; its descendants
                 # are separate ls-files entries and the old file is absent.
             elif candidate.exists() or candidate.is_symlink():
-                files.append(cls._state_file(root, path))
-        return tuple(files)
+                measured.append(path)
+        files.extend(cls._state_files(root, measured))
+        return tuple(sorted(files, key=lambda state: state.path.as_posix()))
 
     @classmethod
     def _state_snapshot(

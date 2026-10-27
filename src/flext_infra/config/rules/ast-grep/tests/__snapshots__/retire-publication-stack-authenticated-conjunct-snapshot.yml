@@ -1,9 +1,7 @@
 id: retire-publication-stack-authenticated-conjunct
 snapshots:
-  ? |
-    if loaded.success and source_project.authenticated_sources:
-        cache[key] = loaded.value
-  : fixed: |
+  "if loaded.success and source_project.authenticated_sources:\n    cache[key] = loaded.value\n":
+    fixed: |
       if loaded.success:
           cache[key] = loaded.value
     labels:

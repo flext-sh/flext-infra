@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from contextlib import ExitStack, nullcontext
 from pathlib import Path
-from typing import Literal
 
 import pytest
 
@@ -63,7 +62,6 @@ class TestsFlextInfraGeneratedRuntime:
 
     @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
-    @pytest.mark.parametrize("relative", [False, True])
     @pytest.mark.parametrize(
         "segment", ["child", "descriptive_namespace_for_deep_native_owner_projection"]
     )
@@ -72,10 +70,14 @@ class TestsFlextInfraGeneratedRuntime:
         tmp_path: Path,
         depth: int,
         segment: str,
-        *,
-        relative: bool,
     ) -> None:
-        """Execute elected own imports alongside ancestor and external imports."""
+        """Execute elected own imports alongside ancestor and external imports.
+
+        Premise: the public renderer expresses same-root targets relative to the
+        rendered package and binds an own child whose import line cannot fit
+        through a module alias; a namespace whose own import cannot fit at all
+        is rejected before any initializer is written.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         children = (segment,) * depth
         child = package.joinpath(*children)
@@ -89,36 +91,45 @@ class TestsFlextInfraGeneratedRuntime:
         )
         provider = child / "provider.py"
         tm.ok(u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = object()\n"))
-        groups = {
-            (
-                f"{'.' * (depth + 1)}sibling" if relative else f"{package.name}.sibling"
-            ): (("sibling", ""),),
-            "pathlib": (("Path", "Path"),),
-            f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),
-        }
-        width = u.Infra.native_tool_setting(
+        plan = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=child,
+                init_path=child / c.Infra.INIT_PY,
+                current_pkg=namespace,
+                surface=package.name,
+                importable=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("LOCAL_SENTINEL", "Path", "sibling"),
+            lazy_map={
+                "sibling": (f"{package.name}.sibling", ""),
+                "Path": ("pathlib", "Path"),
+                "LOCAL_SENTINEL": (f"{namespace}.{provider.stem}", "LOCAL_SENTINEL"),
+            },
+            eager_dunders={},
+        )
+        width: int = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
-        if len(f"    from {namespace}.{provider.stem} import (") > width:
-            with pytest.raises(ValueError, match="Absolute import owner"):
-                codegen.FlextInfraCodegenGeneration.generate_type_checking(
-                    groups,
-                    include_flext_types=False,
-                    local_package_root=namespace,
-                )
-            tm.fail((child / c.Infra.INIT_PY).exists())
-            return
-        imports = codegen.FlextInfraCodegenGeneration.generate_type_checking(
-            groups,
-            include_flext_types=False,
-            local_package_root=namespace,
-        )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                child / c.Infra.INIT_PY,
-                "TYPE_CHECKING = True\n\n" + "\n".join(imports) + "\n",
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            project = snapshot.engine
+            model = u.Infra.lazy_init_run(
+                project,
+                u.Infra.index_rope_workspace(snapshot, root),
+                root=root,
+                scoped=True,
+            ).model
+            if len(f"    from {namespace} import (") > width:
+                with pytest.raises(ValueError, match="exceeds Ruff line length"):
+                    u.Infra.lazy_init_render(
+                        plan, model=model, first_party=frozenset({package.name})
+                    )
+                tm.fail((child / c.Infra.INIT_PY).exists())
+                return
+            rendered = u.Infra.lazy_init_render(
+                plan, model=model, first_party=frozenset({package.name})
             )
-        )
+        tm.ok(u.Cli.atomic_write_text_file(child / c.Infra.INIT_PY, rendered))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             "import pathlib\n"
@@ -325,12 +336,15 @@ class TestsFlextInfraGeneratedRuntime:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("failed_stage", ["sources", "tooling"])
     def test_failed_planning_retains_only_a_completed_source_cohort(
         tmp_path: Path,
-        failed_stage: Literal["sources", "tooling"],
     ) -> None:
-        """Reject source cycles before retaining output for a later tooling failure."""
+        """A tooling failure retains the completed source cohort, unpublished.
+
+        Premise: projected import cycles are a declarative catalog finding
+        (``ban-cyclic-import``), not a planning failure, so the first planning
+        failure here is the invalid tooling configuration.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_standalone_workspace_manifest(root, root.name)
         model = u.Infra.facade_families()["m"]
@@ -368,15 +382,6 @@ class TestsFlextInfraGeneratedRuntime:
                 "u = ConsumerUtilities\n__all__ = ['ConsumerUtilities', 'u']\n"
             ),
         }
-        if failed_stage == "sources":
-            sources.update({
-                package / "cycle_first.py": (
-                    "from . import cycle_second\n__all__ = []\n"
-                ),
-                package / "cycle_second.py": (
-                    "from . import cycle_first\n__all__ = []\n"
-                ),
-            })
         for path, content in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, content))
@@ -400,50 +405,48 @@ class TestsFlextInfraGeneratedRuntime:
                 root, inputs=inputs
             )
         )
-        outcome = codegen.FlextInfraCodegenConformExecute.plan_repository_task(
-            m.Infra.CodegenRepositoryPlanTask(
-                root=root,
-                workspace=spec,
-                current_target=tm.ok(
-                    workspace.FlextInfraWorkspaceDetector.conform_target(
-                        root, spec, inputs=inputs
-                    )
-                ),
-                repository=spec.repository,
-                surface=c.Infra.CodegenConformSurface.ALL,
-                selected_inputs=inputs,
-                provider_plans=incoming,
-            )
-        )
-        tm.that(outcome.failed, eq=True)
-        if failed_stage == "sources":
-            tm.that(outcome.error, has="projected runtime import cycle")
-            tm.that(outcome.files, eq=())
-        else:
-            tm.that(outcome.error, has="settings")
-            tm.that(isinstance(outcome.exception, m.ValidationError), eq=True)
-            projected = {file.path: file for file in outcome.files}
-            tm.that(set(projected), has=facade)
-            tm.that(set(projected), has=barrel)
-            tm.that(set(projected), has=utility_facade)
-            tm.that(set(projected), has=package / c.Infra.INIT_PY)
-            tm.that(
-                projected[facade].before,
-                eq=next(state for state in originals if state.path == facade),
-            )
-            tm.fail(b"DepartedOwner" in tm.not_none(projected[facade].desired_content))
-            with u.Infra.facade_source_project(
-                root,
-                declared_files=outcome.files,
-            ) as binding:
-                tm.that(
-                    tm.not_none(
-                        u.Infra.render_utility_facade(
-                            package, project=binding[0], sources=binding[1]
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            outcome = codegen.FlextInfraCodegenConform.Generate.plan_repository_task(
+                m.Infra.CodegenRepositoryPlanTask(
+                    root=root,
+                    workspace=spec,
+                    current_target=tm.ok(
+                        workspace.FlextInfraWorkspaceDetector.conform_target(
+                            root, spec, inputs=inputs
                         )
-                    ).encode(c.DEFAULT_ENCODING),
-                    eq=projected[utility_facade].desired_content,
-                )
+                    ),
+                    repository=spec.repository,
+                    surface=c.Infra.CodegenConformSurface.ALL,
+                    selected_inputs=inputs,
+                    provider_plans=incoming,
+                ),
+                snapshot,
+            )
+        tm.that(outcome.failed, eq=True)
+        tm.that(outcome.error, has="settings")
+        tm.that(isinstance(outcome.exception, m.ValidationError), eq=True)
+        projected = {file.path: file for file in outcome.files}
+        tm.that(set(projected), has=facade)
+        tm.that(set(projected), has=barrel)
+        tm.that(set(projected), has=utility_facade)
+        tm.that(set(projected), has=package / c.Infra.INIT_PY)
+        tm.that(
+            projected[facade].before,
+            eq=next(state for state in originals if state.path == facade),
+        )
+        tm.fail(b"DepartedOwner" in tm.not_none(projected[facade].desired_content))
+        with u.Infra.facade_source_project(
+            root,
+            declared_files=outcome.files,
+        ) as binding:
+            tm.that(
+                tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=binding[0], sources=binding[1]
+                    )
+                ).encode(c.DEFAULT_ENCODING),
+                eq=projected[utility_facade].desired_content,
+            )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     @staticmethod

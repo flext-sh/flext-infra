@@ -1,0 +1,14 @@
+id: add-facade-module-constants-alias
+valid:
+  - |
+    class FlextDemoConstants:
+        pass
+    c = FlextDemoConstants
+    __all__: list[str] = ["FlextDemoConstants", "c"]
+  - |
+    __all__: list[str] = ["load"]
+invalid:
+  - |
+    class FlextDemoConstants:
+        pass
+    __all__: list[str] = ["FlextDemoConstants"]

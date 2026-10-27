@@ -49,3 +49,5 @@ note: >-
   only renames the callee, expose the canonical name on the owning facade.
 files:
   - "**/*.py"
+metadata:
+  enforce: [ENFORCE-043]

@@ -1,9 +1,7 @@
 id: ban-test-source-introspection-assertion
 snapshots:
-  ? |
-    from inspect import getsource
-    assert "return" in getsource(handler)
-  : labels:
+  "from inspect import getsource\nassert \"return\" in getsource(handler)\n":
+    labels:
     - source: getsource(handler)
       style: primary
       start: 49
@@ -30,10 +28,8 @@ snapshots:
       style: secondary
       start: 30
       end: 67
-  ? |
-    from inspect import getsource as source_of
-    tm.that(source_of(handler), has="return")
-  : labels:
+  "from inspect import getsource as source_of\ntm.that(source_of(handler), has=\"return\")\n":
+    labels:
     - source: source_of(handler)
       style: primary
       start: 51
@@ -52,14 +48,16 @@ snapshots:
       style: secondary
       start: 0
       end: 85
+    - source: source_of
+      style: secondary
+      start: 51
+      end: 60
     - source: tm.that(source_of(handler), has="return")
       style: secondary
       start: 43
       end: 84
-  ? |
-    from inspect import getsource as source_of, isfunction
-    assert "def" in source_of(isfunction)
-  : labels:
+  "from inspect import getsource as source_of, isfunction\nassert \"def\" in source_of(isfunction)\n":
+    labels:
     - source: source_of(isfunction)
       style: primary
       start: 71
@@ -78,14 +76,16 @@ snapshots:
       style: secondary
       start: 0
       end: 93
+    - source: source_of
+      style: secondary
+      start: 71
+      end: 80
     - source: assert "def" in source_of(isfunction)
       style: secondary
       start: 55
       end: 92
-  ? |
-    from inspect import getsource as source_of, isfunction
-    tm.that(source_of(isfunction), has="def")
-  : labels:
+  "from inspect import getsource as source_of, isfunction\ntm.that(source_of(isfunction), has=\"def\")\n":
+    labels:
     - source: source_of(isfunction)
       style: primary
       start: 63
@@ -104,14 +104,16 @@ snapshots:
       style: secondary
       start: 0
       end: 97
+    - source: source_of
+      style: secondary
+      start: 63
+      end: 72
     - source: tm.that(source_of(isfunction), has="def")
       style: secondary
       start: 55
       end: 96
-  ? |
-    import inspect
-    assert "await " in inspect.getsource(handler)
-  : labels:
+  "import inspect\nassert \"await \" in inspect.getsource(handler)\n":
+    labels:
     - source: inspect.getsource(handler)
       style: primary
       start: 34
@@ -134,10 +136,8 @@ snapshots:
       style: secondary
       start: 15
       end: 60
-  ? |
-    import inspect
-    assert any("await " in inspect.getsource(handler) for handler in handlers)
-  : labels:
+  "import inspect\nassert any(\"await \" in inspect.getsource(handler) for handler in handlers)\n":
+    labels:
     - source: inspect.getsource(handler)
       style: primary
       start: 38
@@ -160,10 +160,8 @@ snapshots:
       style: secondary
       start: 15
       end: 89
-  ? |
-    import inspect
-    tm.that(inspect.getsource(handler), has="return", lacks="raise")
-  : labels:
+  "import inspect\ntm.that(inspect.getsource(handler), has=\"return\", lacks=\"raise\")\n":
+    labels:
     - source: inspect.getsource(handler)
       style: primary
       start: 23
@@ -186,10 +184,8 @@ snapshots:
       style: secondary
       start: 15
       end: 79
-  ? |
-    import inspect as reflection
-    assert "try:" in reflection.getsource(handler)
-  : labels:
+  "import inspect as reflection\nassert \"try:\" in reflection.getsource(handler)\n":
+    labels:
     - source: reflection.getsource(handler)
       style: primary
       start: 46

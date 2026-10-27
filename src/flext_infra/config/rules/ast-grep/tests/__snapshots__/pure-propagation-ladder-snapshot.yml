@@ -1,17 +1,10 @@
 id: pure-propagation-ladder
 snapshots:
-  ? |
-    if result.failure:
-        return r[p.Sample.Plan].fail(
-            result.error,
-            error_code=result.error_code,
-            error_data=result.error_data,
-            exception=result.exception,
-        )
-  : fixed: |+
+  "if result.failure:\n    return r[p.Sample.Plan].fail(\n        result.error,\n        error_code=result.error_code,\n        error_data=result.error_data,\n        exception=result.exception,\n    )\n":
+    fixed: |+
       if result.failure:
           return r[p.Sample.Plan].from_failure(result)
-
+      
     labels:
     - source: |-
         if result.failure:

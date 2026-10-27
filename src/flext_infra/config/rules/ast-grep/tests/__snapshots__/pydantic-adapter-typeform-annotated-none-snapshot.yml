@@ -1,6 +1,6 @@
 id: pydantic-adapter-typeform-annotated-none
 snapshots:
-  adapter = TypeAdapter(Annotated[FlextTypingBase.Scalar, None]):
+  "adapter = TypeAdapter(Annotated[FlextTypingBase.Scalar, None])":
     fixed: adapter = TypeAdapter(TypeForm(FlextTypingBase.Scalar))
     labels:
     - source: Annotated[FlextTypingBase.Scalar, None]
@@ -19,7 +19,7 @@ snapshots:
       style: secondary
       start: 21
       end: 62
-  adapter = u.type_adapter(Annotated[t.ScalarMapping, None]):
+  "adapter = u.type_adapter(Annotated[t.ScalarMapping, None])":
     fixed: adapter = u.type_adapter(TypeForm(t.ScalarMapping))
     labels:
     - source: Annotated[t.ScalarMapping, None]

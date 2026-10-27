@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -67,14 +66,11 @@ class TestsFlextInfraModTextPublication:
         ).unwrap()
         originals = (first.read_bytes(), second.read_bytes())
 
-        rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
-        tm.fail(rejected, has=str(first))
-        native = tm.not_none(rejected.exception)
-        tm.ok(isinstance(native, SyntaxError))
-        if isinstance(native, SyntaxError):
-            tm.that(native.filename, eq=str(first))
-            tm.that(native.text, has="value =")
-        tm.ok(native.__traceback__ is not None)
+        with pytest.raises(SyntaxError) as rejected:
+            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        tm.that(rejected.value.filename, eq=str(first))
+        tm.that(rejected.value.text, has="value =")
+        tm.ok(rejected.value.__traceback__ is not None)
 
         tm.that((first.read_bytes(), second.read_bytes()), eq=originals)
 
@@ -147,7 +143,7 @@ class TestsFlextInfraModTextPublication:
     ) -> None:
         """A rejected generated target leaves authored siblings unpublished."""
         first, second = self._publication_inputs(mod_workspace)
-        generated = f'{c.Infra.AUTOGEN_HEADERS[0]}\nvalue = "before"\n'
+        generated = f'{c.Infra.AUTOGEN_HEADER}\nvalue = "before"\n'
         u.Cli.atomic_write_text_file(second, generated).unwrap()
         tm.fail(
             FlextInfraModTextGateEngine.scan(mod_workspace, fix=False),
@@ -163,12 +159,11 @@ class TestsFlextInfraModTextPublication:
         self,
         mod_workspace: Path,
     ) -> None:
-        """A decoding failure retains its native cause and unpublished sibling."""
+        """A decoding failure escapes with its native cause before any effect."""
         first, second = self._publication_inputs(mod_workspace)
         second.write_bytes(b"\xff")
-        result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
-        tm.fail(result)
-        tm.ok(isinstance(result.exception, UnicodeDecodeError))
+        with pytest.raises(UnicodeDecodeError):
+            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
 
         tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.read_bytes(), eq=b"\xff")
@@ -205,15 +200,11 @@ class TestsFlextInfraModTextPublication:
         )
         with pytest.raises(SyntaxError) as expected:
             compile(f"{malformed_rule.replace}\n", str(second), "exec")
-        rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
-        tm.fail(rejected, has=str(second))
-        native = tm.not_none(rejected.exception)
-        tm.that(isinstance(native, SyntaxError), truth=True)
-        syntax_error = cast("SyntaxError", native)
-        tm.that(syntax_error.args, eq=expected.value.args)
-        tm.that(syntax_error.filename, eq=expected.value.filename)
-        tm.ok(native.__traceback__ is not None)
-        tm.ok(expected.value.__traceback__ is not None)
+        with pytest.raises(SyntaxError) as rejected:
+            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        tm.that(rejected.value.args, eq=expected.value.args)
+        tm.that(rejected.value.filename, eq=expected.value.filename)
+        tm.ok(rejected.value.__traceback__ is not None)
 
         tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.read_bytes(), eq=original_second)
@@ -222,17 +213,17 @@ class TestsFlextInfraModTextPublication:
         self,
         mod_workspace: Path,
     ) -> None:
-        """A symlink cannot impersonate an authenticated physical destination."""
+        """A symlinked projection is never a text source; its target stays intact."""
         first, second = self._publication_inputs(mod_workspace)
         alias = second.with_suffix(".linked")
         second.rename(alias)
         second.symlink_to(alias)
-        original = first.read_bytes()
+        original = alias.read_bytes()
 
-        result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
-        tm.fail(result, has="regular file")
+        report = tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
+        tm.that(report.files, eq=frozenset({first.relative_to(mod_workspace)}))
 
-        tm.that(first.read_bytes(), eq=b'value = "before"\n')
+        tm.that(first.read_bytes(), eq=b'value = "after"\n')
         tm.ok(second.is_symlink())
         tm.that(second.read_bytes(), eq=original)
         tm.that(alias.read_bytes(), eq=original)
@@ -313,13 +304,14 @@ class TestsFlextInfraModTextPublication:
         tm.that(final.findings, eq=0)
         # This optional migration precondition deliberately does not promise
         # idempotence once the invocation has consumed its exact matches.
-        rejected = FlextInfraModTextGateEngine.scan(
-            mod_workspace,
-            fix=True,
-            validate_receipts=True,
-        )
-        tm.fail(rejected, has="expected 1 finding(s), scan produced 0")
-        tm.ok(isinstance(rejected.exception, RuntimeError))
+        with pytest.raises(
+            RuntimeError, match=r"expected 1 finding\(s\), scan produced 0"
+        ):
+            FlextInfraModTextGateEngine.scan(
+                mod_workspace,
+                fix=True,
+                validate_receipts=True,
+            )
         # The rewrite is proven by what changed, not by freezing the fixture's
         # whole text: the elected call carries the replacement and the original
         # argument list is gone.
@@ -348,13 +340,12 @@ class TestsFlextInfraModTextPublication:
             ),
         )
         original = (mod_workspace / "sample.py").read_bytes()
-        rejected = FlextInfraModTextGateEngine.scan(
-            mod_workspace,
-            fix=fix,
-            validate_receipts=True,
-        )
-        tm.fail(rejected, has="expected 2 finding(s), scan")
-        tm.ok(isinstance(rejected.exception, RuntimeError))
+        with pytest.raises(RuntimeError, match=r"expected 2 finding\(s\), scan"):
+            FlextInfraModTextGateEngine.scan(
+                mod_workspace,
+                fix=fix,
+                validate_receipts=True,
+            )
         tm.that((mod_workspace / "sample.py").read_bytes(), eq=original)
 
     @staticmethod

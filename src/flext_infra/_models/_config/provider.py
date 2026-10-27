@@ -95,6 +95,17 @@ class FlextInfraConfigModelsProvider:
                 ),
             ),
         ]
+        preservation_ref_namespaces: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Full-ref prefixes (ending in a slash) that hold WIP "
+                    "preservation pushes. The generated pre-push hook runs no "
+                    "gate matrix when every pushed remote ref is inside one."
+                ),
+            ),
+        ]
         integration_branch: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -174,6 +185,30 @@ class FlextInfraConfigModelsProvider:
                 min_length=1,
                 description="Selected repositories granted contents-read only",
             ),
+        ]
+
+    class CiSuperprojectCheckoutSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Containing workspace a member's CI checks out to install the root lock.
+
+        A workspace member tracks no lock of its own: its CI checks out the
+        containing workspace at its integration branch with the submodules,
+        pins the member at the tested commit and runs the member verbs there.
+        """
+
+        repository: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+                description="GitHub owner/name of the containing workspace",
+            ),
+        ]
+        ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Integration branch of the containing workspace"),
+        ]
+        path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Member checkout path below the workspace root"),
         ]
 
     class CiPrivateSubmodulesSpec(FlextInfraConfigModelsContract.ConfigContract):

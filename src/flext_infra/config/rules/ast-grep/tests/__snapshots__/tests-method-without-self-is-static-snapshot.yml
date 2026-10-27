@@ -1,11 +1,7 @@
 id: tests-method-without-self-is-static
 snapshots:
-  ? |
-    class TestsSample:
-        @pytest.mark.parametrize("a", [1, 2])
-        def test_marked(self, a: int) -> None:
-            tm.that(a, gt=0)
-  : fixed: |
+  "class TestsSample:\n    @pytest.mark.parametrize(\"a\", [1, 2])\n    def test_marked(self, a: int) -> None:\n        tm.that(a, gt=0)\n":
+    fixed: |
       class TestsSample:
           @pytest.mark.parametrize("a", [1, 2])
           @staticmethod
@@ -48,11 +44,8 @@ snapshots:
       style: secondary
       start: 23
       end: 128
-  ? |
-    class TestsSample:
-        def test_no_parameters(self) -> None:
-            tm.that(1, eq=1)
-  : fixed: |
+  "class TestsSample:\n    def test_no_parameters(self) -> None:\n        tm.that(1, eq=1)\n":
+    fixed: |
       class TestsSample:
           @staticmethod
           def test_no_parameters() -> None:
@@ -85,11 +78,8 @@ snapshots:
       style: secondary
       start: 23
       end: 85
-  ? |
-    class TestsSample:
-        def test_plain(self, tmp_path: Path) -> None:
-            tm.that(tmp_path.name, ne="")
-  : fixed: |
+  "class TestsSample:\n    def test_plain(self, tmp_path: Path) -> None:\n        tm.that(tmp_path.name, ne=\"\")\n":
+    fixed: |
       class TestsSample:
           @staticmethod
           def test_plain(tmp_path: Path) -> None:

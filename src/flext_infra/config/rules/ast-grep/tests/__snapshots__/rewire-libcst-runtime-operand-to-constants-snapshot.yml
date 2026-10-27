@@ -1,0 +1,92 @@
+id: rewire-libcst-runtime-operand-to-constants
+snapshots:
+  "import libcst as cst\nok = isinstance(node, cst.List | cst.Tuple)\n":
+    fixed: |
+      import libcst as cst
+      ok = isinstance(node, c.Infra.Cst.List | cst.Tuple)
+    labels:
+    - source: cst.List
+      style: primary
+      start: 43
+      end: 51
+    - source: isinstance
+      style: secondary
+      start: 26
+      end: 36
+    - source: isinstance(node, cst.List | cst.Tuple)
+      style: secondary
+      start: 26
+      end: 64
+    - source: (node, cst.List | cst.Tuple)
+      style: secondary
+      start: 36
+      end: 64
+    - source: cst.List | cst.Tuple
+      style: secondary
+      start: 43
+      end: 63
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        ok = isinstance(node, cst.List | cst.Tuple)
+      style: secondary
+      start: 0
+      end: 65
+  "import libcst as cst\nok = isinstance(node, cst.Name)\n":
+    fixed: |
+      import libcst as cst
+      ok = isinstance(node, c.Infra.Cst.Name)
+    labels:
+    - source: cst.Name
+      style: primary
+      start: 43
+      end: 51
+    - source: isinstance
+      style: secondary
+      start: 26
+      end: 36
+    - source: isinstance(node, cst.Name)
+      style: secondary
+      start: 26
+      end: 52
+    - source: (node, cst.Name)
+      style: secondary
+      start: 36
+      end: 52
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        ok = isinstance(node, cst.Name)
+      style: secondary
+      start: 0
+      end: 53

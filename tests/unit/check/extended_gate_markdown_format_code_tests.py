@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m
+from flext_infra import config, m
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
@@ -37,11 +38,20 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         "# Test\n\n```python notest\ndef broken(:\n    return 1\n```\n\n"
         "```python\nx = 1\n```\n"
     )
-    # rumdl fmt reads the generated .markdownlint.json; the fixtures
+    # rumdl fmt reads the generated .rumdl.toml; the fixtures
     # materialize that projection the way `make gen` does.
-    RULES_CONFIG = "{}"
+    RULES_CONFIG = u.Infra.markdown_native_configuration(
+        config.Infra.tooling.tools.markdown,
+        config.Infra.codegen.markdown_exclude_globs,
+    )
     UNFORMATTED_LIST = "# Test\n\n*   item one\n*   item two\n"
     FORMATTED_LIST = "# Test\n\n* item one\n* item two\n"
+    MKDOCS_MARKDOWN = (
+        "# API\n\nSee [example.PublicApi][] for details.\n\n"
+        "::: example.PublicApi\n"
+        "    options:\n"
+        "        show_source: true\n"
+    )
 
     def _project(self, tmp_path: Path, name: str, content: str) -> Path:
         """Create one project carrying README.md and the rule projection.
@@ -50,12 +60,10 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             The project directory.
 
         """
-        project_dir = u.Tests.mk_project(tmp_path, name)
-        (project_dir / "README.md").write_text(content, encoding="utf-8")
-        (project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
-            self.RULES_CONFIG,
-            encoding="utf-8",
+        project_dir = u.Tests.mk_project(
+            tmp_path, name, markdown_config=self.RULES_CONFIG
         )
+        (project_dir / "README.md").write_text(content, encoding="utf-8")
         return project_dir
 
     @pytest.mark.parametrize(
@@ -175,18 +183,95 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             issues_len=0,
         )
 
-    def test_code_gate_notest_only_blocks_do_not_select_the_gate(
+    def test_mkdocs_flavor_survives_cross_repository_union(
+        self, tmp_path: Path
+    ) -> None:
+        """Native lint and format keep docs syntax across absolute union targets."""
+        policy = config.Infra.tooling.tools.markdown
+        native_config = u.Infra.markdown_native_configuration(
+            m.Infra.MarkdownConfig.model_validate({
+                **policy.model_dump(by_alias=True),
+                "native_settings": (
+                    *(
+                        entry
+                        for entry in policy.native_settings
+                        if entry[0] != "per-file-flavor"
+                    ),
+                    ("per-file-flavor", {"docs/**/*.md": "mkdocs"}),
+                ),
+            }),
+            config.Infra.codegen.markdown_exclude_globs,
+        )
+        projects = [
+            u.Tests.mk_project(tmp_path, name, markdown_config=native_config)
+            for name in ("markdown-docs-first", "markdown-docs-second")
+        ]
+        for project in projects:
+            (project / "README.md").write_text(
+                self.FORMATTED_MARKDOWN, encoding="utf-8"
+            )
+            docs = project / "docs"
+            docs.mkdir()
+            (docs / "api.md").write_text(self.MKDOCS_MARKDOWN, encoding="utf-8")
+        combined = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
+            [project.name for project in projects],
+            [c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT],
+            u.Tests.gate_context(tmp_path),
+        )
+        results = tm.ok(combined)
+        tm.that(len(results), eq=len(projects))
+        for result in results:
+            tm.ok(result.passed)
+            for execution in result.gates.values():
+                tm.that(execution.issues, empty=True)
+        for project in projects:
+            tm.that(
+                (project / "docs/api.md").read_text(encoding="utf-8"),
+                eq=self.MKDOCS_MARKDOWN,
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("gate_id", [c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT])
+    @pytest.mark.parametrize("repair", [False, True])
+    def test_missing_native_configuration_is_attributed_to_its_project(
+        tmp_path: Path, gate_id: str, *, repair: bool
+    ) -> None:
+        """Both native operations report the missing projection without a crash."""
+        project = u.Tests.mk_project(tmp_path, "markdown-missing-native")
+        document = project / "README.md"
+        content = "# Title   \n"
+        document.write_text(content, encoding="utf-8")
+        u.Tests.initialize_git_repo(project)
+        checked = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
+            [project.name],
+            [gate_id],
+            m.Infra.GateContext(
+                repository_root=tmp_path,
+                reports_dir=tmp_path / "reports",
+                apply_fixes=repair,
+            ),
+        )
+        result = tm.ok(checked)[0]
+        tm.fail(result.passed)
+        execution = result.gates[gate_id]
+        tm.fail(execution.result.passed)
+        tm.that(len(execution.issues), eq=1)
+        tm.that(execution.issues[0].message, has=c.Infra.MARKDOWN_CONFIG_FILENAME)
+        tm.that(document.read_text(encoding="utf-8"), eq=content)
+
+    def test_code_gate_notest_only_blocks_are_examined_clean(
         self,
         tmp_path: Path,
     ) -> None:
         """A ``notest`` fence is not embedded code to check (#1223 selection)."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-notest")
         (project_dir / "README.md").write_text(self.NOTEST_PSEUDO, encoding="utf-8")
+        gate = FlextInfraMarkdownCodeGate(tmp_path)
 
-        tm.that(
-            FlextInfraMarkdownCodeGate(tmp_path).selected_for(project_dir),
-            eq=False,
-        )
+        tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
+        result = gate.check(project_dir, u.Tests.gate_context(tmp_path))
+        tm.ok(result.result.passed)
+        tm.that(result.issues, empty=True)
 
     def test_code_gate_fix_splices_formatted_block_back(self, tmp_path: Path) -> None:
         """`make fix` formats fenced blocks whose round-trip recompiles cleanly."""
@@ -346,7 +431,9 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             '    """Function.\n\n    >>> second = 2\n\n    """\n',
             encoding="utf-8",
         )
-        sources = FlextInfraMarkdownCodeSources.docstring_sources(project_dir)
+        sources = tuple(
+            FlextInfraMarkdownCodeSources.docstring_sources(project_dir, None)
+        )
         tm.that(len(sources), eq=2)
         tm.that(len({name for name, _, _ in sources}), eq=2)
 
@@ -360,23 +447,26 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(result.issues[0].file, eq="src/widget.py")
 
     @staticmethod
-    def test_code_gate_is_not_selected_without_embedded_code(
+    def test_code_gate_reports_prose_only_documentation_clean(
         tmp_path: Path,
     ) -> None:
-        """Prose-only documentation never selects the embedded-code gate."""
+        """Prose-only documentation is an examined input without embedded code."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-empty")
         (project_dir / "README.md").write_text("# Prose only\n", encoding="utf-8")
         gate = FlextInfraMarkdownCodeGate(tmp_path)
 
-        tm.fail(gate.selected_for(project_dir))
-        tm.that(
-            gate.check(project_dir, u.Tests.gate_context(tmp_path)).result.passed,
-            eq=False,
-        )
+        tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
+        result = gate.check(project_dir, u.Tests.gate_context(tmp_path))
+        tm.ok(result.result.passed)
+        tm.that(result.issues, empty=True)
 
     def test_code_gate_is_selected_with_embedded_code(self, tmp_path: Path) -> None:
         """A parseable fenced Python block selects the embedded-code gate."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-present")
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
 
-        tm.ok(FlextInfraMarkdownCodeGate(tmp_path).selected_for(project_dir))
+        tm.ok(
+            FlextInfraMarkdownCodeGate(tmp_path).selected_for(
+                project_dir, u.Tests.gate_context(project_dir)
+            )
+        )

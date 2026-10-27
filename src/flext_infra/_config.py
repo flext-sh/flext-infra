@@ -12,11 +12,10 @@ from typing import override
 
 from flext_cli import FlextCliConfig
 
-from flext_infra import c
 from flext_infra._models._config import FlextInfraConfigModels
 
 
-class FlextInfraConfig(FlextCliConfig, extra="ignore"):
+class FlextInfraConfig(FlextCliConfig):
     """Declarative flext-infra config loaded and validated once."""
 
     # Direct config.Infra is the only codegen information surface; no accessor
@@ -38,7 +37,7 @@ class FlextInfraConfig(FlextCliConfig, extra="ignore"):
         if not isinstance(package, Path):
             msg = "packaged config source requires a filesystem package"
             raise TypeError(msg)
-        return package / c.Infra.CODEGEN_CONFIG_DIR
+        return package / cls.CONFIG_DIR_NAME
 
     @classmethod
     @override
@@ -114,7 +113,7 @@ class FlextInfraConfig(FlextCliConfig, extra="ignore"):
         ):
             msg = f"config requires an absolute root and one YAML filename: {filename}"
             raise ValueError(msg)
-        directory = repository_root / c.Infra.CODEGEN_CONFIG_DIR
+        directory = repository_root / cls.CONFIG_DIR_NAME
         library = cls.ssot_config_dir() / relative
         project = directory / relative
         if project.resolve() == library.resolve():

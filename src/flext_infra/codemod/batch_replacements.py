@@ -6,19 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sys
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import libcst as cst
-
 from flext_infra import c, m, r, t, u
-from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
-from flext_infra.codemod._batch_orphan_import import (
-    FlextInfraOrphanImport,
-    type_checking_guarded,
-)
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -168,16 +162,6 @@ class FlextInfraModReplacements:
         updated = cls._apply_replacements(before.content, replacements, path)
         if updated.failure:
             return r[m.Infra.SemanticFilePlan].from_failure(updated)
-        bindings: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        graphs = {
-            id(finding.binding_states): finding.binding_states for finding in findings
-        }
-        for states in graphs.values():
-            for state in states:
-                if bindings.setdefault(state.path, state) != state:
-                    return r[m.Infra.SemanticFilePlan].fail(
-                        f"binding snapshots disagree: {state.path}",
-                    )
         candidate = (
             r[bytes].ok(updated.value)
             if compose_only
@@ -331,7 +315,7 @@ class FlextInfraModReplacements:
         )
         if exact_replacements:
             final: p.Result[str] = r[str].ok(candidate.decode(c.DEFAULT_ENCODING))
-            cst.parse_module(final.value)
+            ast.parse(final.value, filename=str(path))
         else:
             normalized = u.Infra.normalize_source(
                 root,
@@ -341,18 +325,14 @@ class FlextInfraModReplacements:
             )
             if normalized.failure:
                 return r[bytes].from_failure(normalized)
-            module = cst.parse_module(normalized.value)
-            stripped = module.visit(FlextInfraDeadScaffold())
-            orphaned = stripped.visit(
-                FlextInfraOrphanImport(guarded=type_checking_guarded(stripped))
-            )
+            stripped = u.Infra.strip_type_checking_scaffold(normalized.value)
             final = (
                 normalized
-                if orphaned.code == normalized.value
+                if stripped == normalized.value
                 else u.Infra.normalize_source(
                     root,
                     path,
-                    orphaned.code,
+                    stripped,
                     before_source=before.decode(c.DEFAULT_ENCODING),
                 )
             )

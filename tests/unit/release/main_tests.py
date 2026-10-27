@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -24,12 +24,12 @@ class TestsFlextInfraReleaseCli:
         @staticmethod
         def test_release_group_help_returns_zero() -> None:
             """Expose the release command group through the public CLI."""
-            tm.that(main(["release", "--help"]), eq=0)
+            tm.that(FlextInfraCli.infra_main(["release", "--help"]), eq=0)
 
         @staticmethod
         def test_release_run_subcommand_help_returns_zero() -> None:
             """Expose the release run options through the public CLI."""
-            tm.that(main(["release", "run", "--help"]), eq=0)
+            tm.that(FlextInfraCli.infra_main(["release", "run", "--help"]), eq=0)
 
     class TestsValidation:
         """Public input validation behavior."""

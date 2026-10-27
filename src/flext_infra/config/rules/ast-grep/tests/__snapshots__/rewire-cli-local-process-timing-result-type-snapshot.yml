@@ -1,7 +1,7 @@
 id: rewire-cli-local-process-timing-result-type
 snapshots:
-  'value: p.Result[tuple[float | None, float, int]]':
-    fixed: 'value: p.Result[tuple[float | None, float]]'
+  "value: p.Result[tuple[float | None, float, int]]":
+    fixed: "value: p.Result[tuple[float | None, float]]"
     labels:
     - source: tuple[float | None, float, int]
       style: primary

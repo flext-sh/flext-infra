@@ -1,0 +1,162 @@
+# FLEXT law (operator order 2026-10-24, ADR-028 point 2): a third-party
+# library's types are named only through the facades. flext-infra owns libcst
+# and follows the fleet convention for library classes (flext-core
+# ValidationError): annotation positions read the typings alias
+# `t.Infra.Cst.<Name>` (a PEP 695 `type`), and runtime operands
+# (isinstance/issubclass) read the runtime class held by the constants family,
+# `c.Infra.Cst.<Name>`. Constructor and function calls (`cst.Name("x")`,
+# `cst.parse_module(...)`) stay with the owning utility and never match.
+#
+# The contexts mirror ban-library-type-reference-outside-typings, whose
+# findings these documents repair for the libcst owner. The third document
+# repairs a typings alias written as a runtime operand: a `type` alias is not a
+# class, so isinstance on it fails at runtime.
+id: rewire-libcst-annotation-to-typings
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/typings.py"
+  - "**/_typings/**"
+  - "**/constants.py"
+  - "**/_constants/**"
+utils:
+  libcst-module:
+    kind: module
+    has:
+      stopBy: end
+      kind: import_statement
+      has:
+        kind: aliased_import
+        all:
+          - has:
+              field: name
+              regex: "^libcst$"
+          - has:
+              field: alias
+              regex: "^cst$"
+rule:
+  kind: attribute
+  pattern: cst.$NAME
+  inside:
+    stopBy: end
+    matches: libcst-module
+  all:
+    - inside:
+        kind: type
+        stopBy: end
+constraints:
+  NAME:
+    regex: "^[A-Z][A-Za-z0-9]*$"
+fix: t.Infra.Cst.$NAME
+message: >-
+  libcst type `cst.$NAME` in an annotation: read the typings alias
+  t.Infra.Cst.$NAME.
+---
+id: rewire-libcst-runtime-operand-to-constants
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/typings.py"
+  - "**/_typings/**"
+  - "**/constants.py"
+  - "**/_constants/**"
+utils:
+  type-check-call:
+    kind: call
+    has:
+      field: function
+      regex: "^(?:isinstance|issubclass)$"
+  libcst-module:
+    kind: module
+    has:
+      stopBy: end
+      kind: import_statement
+      has:
+        kind: aliased_import
+        all:
+          - has:
+              field: name
+              regex: "^libcst$"
+          - has:
+              field: alias
+              regex: "^cst$"
+rule:
+  kind: attribute
+  pattern: cst.$NAME
+  inside:
+    stopBy: end
+    matches: libcst-module
+  any:
+    - all:
+        - nthChild: 2
+        - inside:
+            kind: argument_list
+            inside:
+              matches: type-check-call
+    - inside:
+        stopBy: end
+        any:
+          - kind: binary_operator
+          - kind: tuple
+          - kind: parenthesized_expression
+        nthChild: 2
+        inside:
+          kind: argument_list
+          inside:
+            matches: type-check-call
+constraints:
+  NAME:
+    regex: "^[A-Z][A-Za-z0-9]*$"
+fix: c.Infra.Cst.$NAME
+message: >-
+  libcst class `cst.$NAME` as a runtime operand: read the runtime class
+  c.Infra.Cst.$NAME.
+---
+id: rewire-typings-cst-runtime-operand-to-constants
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/typings.py"
+  - "**/_typings/**"
+  - "**/constants.py"
+  - "**/_constants/**"
+utils:
+  type-check-call:
+    kind: call
+    has:
+      field: function
+      regex: "^(?:isinstance|issubclass)$"
+rule:
+  kind: attribute
+  pattern: t.Infra.Cst.$NAME
+  any:
+    - all:
+        - nthChild: 2
+        - inside:
+            kind: argument_list
+            inside:
+              matches: type-check-call
+    - inside:
+        stopBy: end
+        any:
+          - kind: binary_operator
+          - kind: tuple
+          - kind: parenthesized_expression
+        nthChild: 2
+        inside:
+          kind: argument_list
+          inside:
+            matches: type-check-call
+constraints:
+  NAME:
+    regex: "^[A-Z][A-Za-z0-9]*$"
+fix: c.Infra.Cst.$NAME
+message: >-
+  Typings alias `t.Infra.Cst.$NAME` as a runtime operand: a `type` alias is not
+  a class; read the runtime class c.Infra.Cst.$NAME.

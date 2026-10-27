@@ -1,0 +1,48 @@
+# A protocol tree holds structural contracts only: every class nested in a
+# protocols-family class is a Protocol, a namespace holder, or a nominal ABC.
+# A nested class built on a model, an enumeration, an exception, a TypedDict,
+# a NamedTuple or a dataclass base is concrete data living in the wrong
+# family.
+id: require-protocol-inner-kind
+language: python
+severity: error
+files:
+  - "**/protocols.py"
+  - "**/_protocols.py"
+  - "**/_protocols/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/tests/unit/**"
+  - "**/tests/integration/**"
+  - "**/tests/e2e/**"
+rule:
+  kind: class_definition
+  has:
+    field: name
+    pattern: $NAME
+  all:
+    - inside:
+        kind: class_definition
+        stopBy: end
+    - has:
+        field: superclasses
+        has:
+          regex: "(?:^|\\.)(?:BaseModel|[A-Za-z]*Model|[A-Za-z]*Enum|[A-Za-z]*Exception|[A-Za-z]*Error|TypedDict|NamedTuple)$"
+    - not:
+        has:
+          field: superclasses
+          regex: "\\bProtocol\\b"
+    - not:
+        inside:
+          kind: function_definition
+          stopBy: end
+message: >-
+  `$NAME` nests concrete data in a protocol tree: keep only Protocols,
+  namespaces and ABCs here and move the declaration to its owning family.
+  Detection only: the move rewires every consumer to another family.
+metadata:
+  enforce: [ENFORCE-112]

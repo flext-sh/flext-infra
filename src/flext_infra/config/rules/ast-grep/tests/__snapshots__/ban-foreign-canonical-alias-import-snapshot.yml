@@ -1,9 +1,7 @@
 id: ban-foreign-canonical-alias-import
 snapshots:
-  ? |
-    class Holder:
-        from flext_core import m
-  : labels:
+  "class Holder:\n    from flext_core import m\n":
+    labels:
     - source: m
       style: primary
       start: 41
@@ -16,10 +14,8 @@ snapshots:
       style: secondary
       start: 18
       end: 42
-  ? |
-    def run():
-        from flext_core import c
-  : labels:
+  "def run():\n    from flext_core import c\n":
+    labels:
     - source: c
       style: primary
       start: 38

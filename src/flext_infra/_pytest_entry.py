@@ -23,9 +23,12 @@ class FlextInfraPytestEntry:
     def main(cls) -> int:
         """Parse the Make boundary and return the exact child process status.
 
-        ``full`` runs one complete testmon execution. ``coverage``
-        selects coverage alone; the default is the incremental operation. The
-        ``slow`` operation runs the incremental phase over the slow marker
+        ``global`` incrementally selects from FULL's entire inventory, under
+        the same green-check prerequisite. ``full`` explicitly executes that
+        complete inventory. ``profile`` profiles the global incremental run.
+        ``coverage`` selects coverage alone; the default remains the local
+        incremental operation. The ``slow`` operation runs the incremental
+        phase over the slow marker
         only, as its own process with an aggregate operation deadline. The
         ``file`` runs the complete declared target once within the shared
         deadline, including slow items. ``file-slow`` retains its incremental
@@ -37,39 +40,12 @@ class FlextInfraPytestEntry:
 
         Raises:
             ValueError: If unsupported pytest operation.
-            RuntimeError: If profiling was not activated before runtime imports.
 
         """
         # The clock module captures startup before these runtime imports.
         mode = sys.argv[1] if len(sys.argv) > 1 else ""
         if mode == "profile":
-            profiler = FlextInfraPytestClock.profiler
-            if profiler is None:
-                msg = "pytest profile requires its pre-import profiler"
-                raise RuntimeError(msg)
-            try:
-                profile = flext_infra.FlextInfraPytestProfile(Path(sys.argv[2]))
-                status = profile.run_parent(
-                    started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
-                    profile=profiler,
-                )
-            finally:
-                primary = sys.exception()
-                try:
-                    profiler.disable()
-                except BaseException as cleanup_failure:
-                    if primary is None or (
-                        isinstance(primary, SystemExit)
-                        and (primary.code is None or primary.code == 0)
-                    ):
-                        raise
-                    primary.add_note(
-                        "profile stop failed:\n"
-                        + "".join(
-                            traceback.format_exception(cleanup_failure, chain=False)
-                        )
-                    )
-            return status
+            return cls._run_profile()
 
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
         runner = FlextInfraPytestRunner.from_environment(
@@ -89,6 +65,8 @@ class FlextInfraPytestEntry:
             status = runner.execute_file().unwrap()
         elif mode in {"full", "full-slow"}:
             status = runner.execute_full().unwrap()
+        elif mode == "global":
+            status = runner.execute_global().unwrap()
         elif mode in {"", "slow", "file-slow"}:
             status = runner.execute().unwrap()
         else:
@@ -96,6 +74,45 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         return status
 
+    @staticmethod
+    def _run_profile() -> int:
+        """Run the profiled parent while preserving its primary failure.
+
+        Returns:
+            The profiled parent's exact process status.
+
+        Raises:
+            RuntimeError: If profiling was not activated before runtime imports.
+
+        """
+        profiler = FlextInfraPytestClock.profiler
+        if profiler is None:
+            msg = "pytest profile requires its pre-import profiler"
+            raise RuntimeError(msg)
+        try:
+            profile = flext_infra.FlextInfraPytestProfile(Path(sys.argv[2]))
+            status = profile.run_parent(
+                started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
+                profile=profiler,
+            )
+        finally:
+            primary = sys.exception()
+            try:
+                profiler.disable()
+            except BaseException as cleanup_failure:
+                if primary is None or (
+                    isinstance(primary, SystemExit)
+                    and (primary.code is None or primary.code == 0)
+                ):
+                    raise
+                primary.add_note(
+                    "profile stop failed:\n"
+                    + "".join(traceback.format_exception(cleanup_failure, chain=False))
+                )
+        return status
+
+
+__all__ = ["FlextInfraPytestEntry"]
 
 if __name__ == "__main__":
     raise SystemExit(FlextInfraPytestEntry.main())

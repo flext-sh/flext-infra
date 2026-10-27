@@ -1,0 +1,37 @@
+{% import "_macros.md.j2" as mk -%}
+{% filter markdown_wrap(line_width) -%}
+# {{ name }}
+
+{{ generated_header }}
+
+{{ text.README_METADATA.format(version=version, project_class=project_class) }}
+
+{{ text.ALPHA_NOTE }}
+
+## {{ text.PURPOSE }}
+
+{{ description }}
+
+## {{ text.MODULE_MAP }}
+
+{{ mk.public_surface(package_name) }}
+
+{{ mk.collection_rules(text, links) }}
+
+## {{ text.OPERATION_FLOW }}
+
+{{ text.PUBLIC_SURFACE_LINK }}
+{{ text.GENERATED_MODULE_LINK }}
+{{ text.SETTINGS_PREFIX }}
+
+## {{ text.INTEGRATION_POINTS }}
+
+{{ text.PARENT_CHAIN }}
+{{ text.PUBLIC_EXTENSIONS.format(facades=mk.preview(facades, preview_limit, text)) }}
+{{ text.LIBRARY_BOUNDARIES }}
+
+{{ mk.quality_gates(text, links) }}
+
+{{ mk.governance(text, links) }}
+{{ text.FULL_PORTAL }}
+{% endfilter -%}

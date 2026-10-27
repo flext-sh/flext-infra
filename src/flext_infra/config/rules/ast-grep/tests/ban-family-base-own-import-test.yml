@@ -1,21 +1,29 @@
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml); the
+# family-base file scope is resolved only in a native stage.
 id: ban-family-base-own-import
 valid:
   - |
-    from flext_core._models._base.flextmodelsbase_part_03 import FlextModelsBasePart
+    from ai_hub._models._base.aihubmodelsbase_part_03 import AiHubModelsBasePart
   - |
-    import flext_core._models._base.flextmodelsbase_part_03
+    import ai_hub._models._base.aihubmodelsbase_part_03
   - |
-    import flext_core._models._base.flextmodelsbase_part_03 as model_part
+    import ai_hub._models._base.aihubmodelsbase_part_03 as model_part
+  # Another package is no own module.
+  - |
+    from flext_infra import t
+  # The family's public compose module is the sanctioned static surface.
+  - |
+    from ai_hub.models import AiHubModels
 invalid:
   - |
     if TYPE_CHECKING:
-        from flext_infra import t
+        from ai_hub import t
   - |
-    import flext_infra
+    import ai_hub
   - |
-    import flext_infra._settings
+    import ai_hub._settings
   - |
-    import flext_infra._constants.make as make
+    import ai_hub._constants.make as make
   - |
     if TYPE_CHECKING:
-        import flext_infra._models
+        import ai_hub._models

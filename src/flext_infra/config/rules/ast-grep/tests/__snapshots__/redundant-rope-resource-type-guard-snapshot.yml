@@ -1,18 +1,11 @@
 id: redundant-rope-resource-type-guard
 snapshots:
-  ? |
-    def _resource(project: p.Infra.RopeProject, path: str) -> p.Infra.RopeResource:
-        relative = path.lstrip("/")
-        resource = project.get_resource(relative)
-        if not isinstance(resource, p.Infra.RopeResource):
-            message = f"not a Rope resource: {relative}"
-            raise TypeError(message)
-        return resource
-  : fixed: |+
+  "def _resource(project: p.Infra.RopeProject, path: str) -> p.Infra.RopeResource:\n    relative = path.lstrip(\"/\")\n    resource = project.get_resource(relative)\n    if not isinstance(resource, p.Infra.RopeResource):\n        message = f\"not a Rope resource: {relative}\"\n        raise TypeError(message)\n    return resource\n":
+    fixed: |+
       def _resource(project: p.Infra.RopeProject, path: str) -> p.Infra.RopeResource:
           relative = path.lstrip("/")
           return project.get_resource(relative)
-
+      
     labels:
     - source: |-
         def _resource(project: p.Infra.RopeProject, path: str) -> p.Infra.RopeResource:

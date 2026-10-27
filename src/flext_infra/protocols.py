@@ -21,6 +21,7 @@ from flext_infra._protocols import (
     FlextInfraProtocolsPromoted,
     FlextInfraProtocolsRope,
     FlextInfraProtocolsRopeRuntime,
+    FlextInfraProtocolsWorkspaceSnapshot,
 )
 
 
@@ -40,6 +41,7 @@ class FlextInfraProtocols(FlextCliProtocols):
         FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsRope,
         FlextInfraProtocolsBase,
+        FlextInfraProtocolsWorkspaceSnapshot,
     ):
         """Infra-specific structural protocol definitions."""
 

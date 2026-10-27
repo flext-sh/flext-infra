@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import c, m, tm, u
 
 
@@ -58,7 +58,7 @@ class TestsFlextInfraSetupOperationBatch:
             The public validation route's exit status.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_CODEGEN,
             "mise-artifacts",
             "--repository-root",

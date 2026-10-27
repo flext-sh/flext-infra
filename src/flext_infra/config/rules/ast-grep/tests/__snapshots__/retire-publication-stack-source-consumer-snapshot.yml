@@ -1,14 +1,10 @@
 id: retire-publication-stack-source-consumer
 snapshots:
-  ? |
-    with cls._semantic_source_project(
-        rope_workspace.rope_project
-    ) as source_project:
-        captured = load(source_project)
-  : fixed: |+
+  "with cls._semantic_source_project(\n    rope_workspace.rope_project\n) as source_project:\n    captured = load(source_project)\n":
+    fixed: |+
       source_project = rope_workspace.rope_project
       captured = load(source_project)
-
+      
     labels:
     - source: |-
         with cls._semantic_source_project(
@@ -18,15 +14,12 @@ snapshots:
       style: primary
       start: 0
       end: 123
-  ? |
-    with cls._semantic_source_project(workspace.rope_project) as source_project:
-        for rule in rules:
-            check(rule, source_project)
-  : fixed: |+
+  "with cls._semantic_source_project(workspace.rope_project) as source_project:\n    for rule in rules:\n        check(rule, source_project)\n":
+    fixed: |+
       source_project = workspace.rope_project
       for rule in rules:
           check(rule, source_project)
-
+      
     labels:
     - source: |-
         with cls._semantic_source_project(workspace.rope_project) as source_project:

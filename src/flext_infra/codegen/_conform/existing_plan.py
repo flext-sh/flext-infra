@@ -12,12 +12,19 @@ from contextlib import ExitStack, contextmanager
 from functools import partial
 from pathlib import Path
 
-from flext_infra import c, d, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra import (
+    c,
+    d,
+    deps as dependency_services,
+    m,
+    p,
+    r,
+    t,
+    u,
+    workspace as workspace_services,
+)
 from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
-from flext_infra.deps import FlextInfraPyprojectModernizer
-from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
@@ -84,9 +91,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ),
         )
         if key not in opened:
-            opened[key] = stack.enter_context(
-                u.Infra.facade_source_project(root, declared_files=declared_files)
-            )
+            snapshot = self.state.snapshot
+            if (
+                snapshot is not None
+                and snapshot.workspace_root == root
+                and Path(snapshot.engine.root.real_path) == root
+                and not key[1]
+            ):
+                opened[key] = (
+                    snapshot.engine,
+                    {
+                        path: u.Infra.workspace_source(snapshot, path).text
+                        for path in u.Infra.workspace_python_files(snapshot, root)
+                    },
+                )
+            else:
+                opened[key] = stack.enter_context(
+                    u.Infra.facade_source_project(root, declared_files=declared_files)
+                )
         yield opened[key]
 
     def _plan_existing_repository(
@@ -215,7 +237,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return None
         plans: list[m.Infra.CodegenFilePlan] = []
         for required in sorted(
-            codegen.templates.required_destinations(frozenset({destination})),
+            u.Cli.dag_closure(
+                codegen.templates.artifact_requirements, frozenset({destination})
+            ).unwrap(),
         ):
             planned = self._bootstrap_destination_plan(
                 target,
@@ -323,20 +347,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
         managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
     ) -> p.Result[m.Infra.ToolingRuntimeContext] | None:
-        """Resolve only the runtime consumed by an untooled template surface.
+        """Resolve the full live-source runtime consumed by a scoped pyproject.
 
         Returns:
             The elected pyproject runtime, no runtime, or its original failure.
 
         """
         if contract.pyproject:
-            return FlextInfraPyprojectModernizer(
+            return dependency_services.FlextInfraPyprojectModernizer(
                 repository_root=target.root,
                 skip_check=True,
                 managed_artifacts=managed_artifacts.resolution,
             ).resolve_tooling_context(
                 self._existing_tooling_request(target, identity, codegen, ()),
-                derive_runtime=False,
             )
         return None
 
@@ -370,8 +393,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             contract.destinations is not None
             and contract.destinations <= self._pyproject_destinations(codegen)
         )
-        # Metadata-only planning elects no initializer; custom planning elects
-        # them exactly once, over the sources its facades project.
+        # Custom convergence seeds exports before resolving its facade imports.
         lazy_result = (
             r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
             if metadata_only or contract.custom
@@ -379,6 +401,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
+        # Custom facades resolve their owners through the provided initializers
+        # of this repository too; the initializers re-planned over the projected
+        # facades below supersede them by path.
         cohort = tuple(
             {
                 plan.path: plan
@@ -386,7 +411,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     *(
                         plan
                         for plan in self.state.provider_plans or ()
-                        if plan.project != root
+                        if plan.project != root or contract.custom
                     ),
                     *lazy_result.value,
                 )
@@ -398,49 +423,287 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return self._projected_exports(root, cohort).map(
                 lambda exported: ((*cohort, *exported), (), tuple(exported))
             )
-        with self._source_view(root, declared_files=cohort) as binding:
-            custom_result = self._plan_existing_custom(
-                root,
-                codegen,
-                profile=target.make_profile.value,
-                binding=binding,
-                declared_files=cohort,
-            )
-        if custom_result.failure:
-            return result_type.from_failure(custom_result)
-        projected_files = {plan.path: plan for plan in (*cohort, *custom_result.value)}
-        exported = self._projected_exports(root, tuple(projected_files.values()))
+        return self._converged_custom_sources(
+            root,
+            (codegen, target.make_profile.value),
+            cohort=cohort,
+            normalize_imports=contract.complete_governed,
+        )
+
+    def _converged_custom_sources(
+        self,
+        root: Path,
+        configuration: t.Pair[m.Infra.CodegenConfigSpec, str],
+        *,
+        cohort: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        normalize_imports: bool,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None = None,
+    ) -> p.Result[
+        t.Triple[
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+        ]
+    ]:
+        """Render custom facades and initializers until they agree.
+
+        Facades resolve their owners through the initializers they see, and
+        the initializers re-planned over the projected facades may differ from
+        those. Facades are rendered again over the re-planned initializers
+        until both agree, so one generation publishes a fixed point. The
+        candidate's native package postorder handles recursive domains. Repeated
+        source identities detect cycles without imposing a family-count depth cap.
+        The complete lazy plan already supplied by this invocation seeds the
+        first round unless a foreign provider or another input changed. The
+        existing re-plan after facade effects remains the convergence proof.
+        A targeted facade uses the same component stage and fixed point for its
+        admitted package/family, without scheduling unrelated custom artifacts.
+
+        Returns:
+            Projected files, custom files and initializers, or the first failure.
+
+        """
+        result_type = r[
+            t.Triple[
+                t.VariadicTuple[m.Infra.CodegenFilePlan],
+                t.SequenceOf[m.Infra.CodegenFilePlan],
+                t.VariadicTuple[m.Infra.CodegenFilePlan],
+            ]
+        ]
+        exported = self._custom_export_seed(root, cohort, selection=selection)
         if exported.failure:
             return result_type.from_failure(exported)
-        projected_files.update((plan.path, plan) for plan in exported.value)
         initializers = tuple(
             {
                 plan.path: plan
-                for plan in (*lazy_result.value, *exported.value)
-                if plan.project == root
+                for plan in (
+                    *(plan for plan in cohort if plan.project == root),
+                    *exported.value,
+                )
             }.values()
         )
+        previous: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        custom_files: dict[Path, m.Infra.CodegenFilePlan] = {}
+        seen: set[t.VariadicTuple[t.Pair[Path, bytes | None]]] = set()
+        while True:
+            source_plans = {plan.path: plan for plan in (*cohort, *initializers)}
+            identity = tuple(
+                (path, plan.desired_content)
+                for path, plan in sorted(source_plans.items())
+            )
+            if identity in seen:
+                diverging = sorted(
+                    str(plan.path)
+                    for plan in initializers
+                    if not self._initializers_seen((plan,), previous)
+                )
+                return result_type.fail(
+                    "imports, custom facades and initializers repeat a source "
+                    f"candidate without convergence for {root}: " + ", ".join(diverging)
+                )
+            seen.add(identity)
+            custom_result = self._custom_candidate_sources(
+                root,
+                configuration,
+                tuple(source_plans.values()),
+                selection=selection,
+            )
+            if custom_result.failure:
+                return result_type.from_failure(custom_result)
+            projected_files = {
+                **source_plans,
+                **{plan.path: plan for plan in custom_result.value},
+            }
+            imports = (
+                self._planned_source_imports(
+                    root,
+                    tuple(projected_files.values()),
+                    files=tuple(projected_files) if selection is not None else None,
+                )
+                if normalize_imports
+                else r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(())
+            )
+            if imports.failure:
+                return result_type.from_failure(imports)
+            source_updates = (*custom_result.value, *imports.value)
+            projected_files.update((plan.path, plan) for plan in imports.value)
+            custom_files.update((plan.path, plan) for plan in source_updates)
+            if all(
+                plan.desired_content
+                == (
+                    source_plans[plan.path].desired_content
+                    if plan.path in source_plans
+                    else plan.before.content
+                )
+                for plan in source_updates
+            ):
+                # Facades read this candidate, whose initializer effects may
+                # differ from the checkout already. Only a new content effect
+                # invalidates the export plan that seeded this round.
+                break
+            exported = self._projected_exports(
+                root, tuple(projected_files.values()), selection=selection
+            )
+            if exported.failure:
+                return result_type.from_failure(exported)
+            projected_files.update((plan.path, plan) for plan in exported.value)
+            if not imports.value and self._initializers_seen(
+                exported.value, initializers
+            ):
+                initializers = tuple(
+                    plan for plan in exported.value if plan.project == root
+                )
+                break
+            previous, initializers = initializers, exported.value
+            cohort = tuple(projected_files.values())
         return result_type.ok((
             tuple(projected_files.values()),
-            custom_result.value,
+            tuple(custom_files.values()),
             initializers,
         ))
+
+    def _custom_export_seed(
+        self,
+        root: Path,
+        cohort: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Reuse the complete lazy plan only while its candidate is unchanged.
+
+        Returns:
+            Initial exports over the admitted source cohort.
+
+        """
+        if (
+            selection is None
+            and self.state.provider_plans is not None
+            and not any(
+                (plan.project != root or plan.path.name != c.Infra.INIT_PY)
+                and u.Infra.codegen_file_requires_effect(plan)
+                for plan in cohort
+            )
+        ):
+            return self._existing_lazy_sources(root).map(tuple)
+        return self._projected_exports(root, cohort, selection=selection)
+
+    def _custom_candidate_sources(
+        self,
+        root: Path,
+        configuration: t.Pair[m.Infra.CodegenConfigSpec, str],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Dispatch the same custom planner for a complete or selected candidate.
+
+        Returns:
+            Custom plans, or the original planning admission failure.
+
+        """
+        if selection is None:
+            return self._plan_existing_custom(
+                root,
+                configuration[0],
+                profile=configuration[1],
+                declared_files=declared_files,
+            )
+        ports, snapshot = self.state.ports, self.state.snapshot
+        if ports is None or snapshot is None:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                "selected family composition requires caller-bound planning "
+                "and an authenticated repository snapshot"
+            )
+        return ports.component_planner(
+            root,
+            declared_files=declared_files,
+            snapshot=snapshot,
+            planners=(self._projected_exports, self._source_view),
+            selection=selection,
+        )
+
+    def _planned_source_imports(
+        self,
+        root: Path,
+        declared: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        files: t.VariadicTuple[Path] | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan imports through the caller's capability over the same candidate.
+
+        Selected component cohorts normalize their destinations and native move
+        consumers; the complete source mapping remains the reference authority.
+
+        Returns:
+            Import plans, or the original admission or semantic failure.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        ports, snapshot = self.state.ports, self.state.snapshot
+        if ports is None or snapshot is None:
+            return result_type.fail(
+                "complete generation requires caller-bound import planning "
+                "and an authenticated repository snapshot"
+            )
+        with self._source_view(root, declared_files=declared) as binding:
+            return ports.imports_planner(
+                root,
+                tuple(binding[1])
+                if files is None
+                else tuple(path for path in files if path in binding[1]),
+                sources=binding[1],
+                snapshot=snapshot,
+                declared_files=declared,
+            )
+
+    @staticmethod
+    def _initializers_seen(
+        exported: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        initializers: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> bool:
+        """Report whether re-planned initializers equal those the facades saw.
+
+        A destination without an overlaid initializer showed its current bytes.
+
+        Returns:
+            True when every re-planned initializer carries the bytes the facade
+            render read for that destination.
+
+        """
+        seen = {plan.path: plan.desired_content for plan in initializers}
+        return all(
+            plan.desired_content == seen.get(plan.path, plan.before.content)
+            for plan in exported
+        )
 
     def _projected_exports(
         self,
         root: Path,
-        declared: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        snapshot: p.Infra.WorkspaceSnapshot | None = None,
+        selection: t.Pair[Path, c.Infra.FacadeFamily] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Re-plan initializers over one repository's projected sources.
 
         Returns:
             The export plans.
 
+        Raises:
+            ValueError: If the supplied snapshot belongs to another invocation.
+            RuntimeError: If the invocation has no authenticated snapshot.
+
         """
-        with self._source_view(root, declared_files=declared) as projected:
-            return FlextInfraCodegenLazyInit(
-                repository_root=root, project_scope_roots=(root,)
-            ).plan_files(source_project=projected[0])
+        if snapshot is not None and snapshot is not self.state.snapshot:
+            message = "component initializer snapshot differs from the run"
+            raise ValueError(message)
+        active = self.state.snapshot
+        if active is None:
+            message = "projected exports require the run snapshot"
+            raise RuntimeError(message)
+        return FlextInfraCodegenLazyInit.plan_candidate(
+            root, declared_files=declared_files, snapshot=active, selection=selection
+        )
 
     def _existing_lazy_sources(
         self,
@@ -556,8 +819,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         return result_type.ok(tuple(by_path.values()))
 
-    @staticmethod
     def _planned_lazy_init_files(
+        self,
         root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan the lazy-init projection the declarations determine, read-only.
@@ -572,14 +835,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         Complete generation stages every initializer before its project-wide
         admission; narrower surfaces retain their declared publication scope.
 
+        Planning reads the run snapshot's one Rope project, so every
+        repository and stage shares its parsed modules and inference.
+
         Returns:
             The repository's planned lazy-init file plans, or the planning failure.
 
+        Raises:
+            RuntimeError: If lazy-init planning requires the run's workspace snapshot.
+
         """
+        snapshot = self.state.snapshot
+        if snapshot is None:
+            msg = "lazy-init planning requires the run's workspace snapshot"
+            raise RuntimeError(msg)
         return FlextInfraCodegenLazyInit(
             repository_root=root,
             project_scope_roots=(root,),
-        ).plan_files()
+        ).plan_files(source_project=snapshot.engine, snapshot=snapshot)
 
     @staticmethod
     def _existing_tooling_context(
@@ -594,7 +867,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             The modernizer's tooling context or its original failure.
 
         """
-        modernizer = FlextInfraPyprojectModernizer(
+        modernizer = dependency_services.FlextInfraPyprojectModernizer(
             repository_root=request.path.parent,
             skip_check=True,
             managed_artifacts=managed_resolution,
@@ -635,7 +908,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             project_name=repository.distribution,
             package_name=metadata.package_name,
             path=root / c.PYPROJECT_FILENAME,
-            scaffold_project=codegen.scaffold.project,
+            codegen=codegen,
             runtime_dependency_overlay=project.runtime_dependency_overlay,
             declared_project_dependencies=metadata.project.dependencies,
             topology=m.Infra.PyprojectDeclaredTopology(
@@ -693,9 +966,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context)
         plans: list[m.Infra.CodegenFilePlan] = []
         for destination in sorted(
-            codegen.templates.required_destinations(
+            u.Cli.dag_closure(
+                codegen.templates.artifact_requirements,
                 c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
-            ),
+            ).unwrap(),
         ):
             planned = self._bootstrap_destination_plan(
                 target,
@@ -850,6 +1124,23 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         render_inputs: m.Infra.CodegenRenderInputs,
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Render the managed-file templates of one pass from one project context.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
+
+        """
+        with self.project_render_scope():
+            return self._planned_existing_templates(
+                render_inputs=render_inputs, contract=contract
+            )
+
+    def _planned_existing_templates(
+        self,
+        *,
+        render_inputs: m.Infra.CodegenRenderInputs,
+        contract: m.Infra.CodegenConformSurfaceContract,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the managed-file templates for an existing tree.
 
         Returns:
@@ -953,9 +1244,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if (
             contract.destinations is not None
             and managed.path.as_posix()
-            not in codegen.templates.required_destinations(
+            not in u.Cli.dag_closure(
+                codegen.templates.artifact_requirements,
                 contract.destinations,
-            )
+            ).unwrap()
         ):
             return True
         return managed.path == Path(c.PYPROJECT_FILENAME) and not contract.pyproject
@@ -1151,7 +1443,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         config: m.Infra.CodegenConfigSpec,
         *,
         profile: str | None = None,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Validate custom Make content and stage dependency-ordered family facades.
@@ -1160,6 +1451,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         profile policy. The canonical source inventory contributes declared
         facade families from every owned package, including internal test and
         auxiliary namespaces. Each subsequent family binds the prior candidate.
+        The component owner borrows this invocation's existing source views;
+        identical epochs reuse inference and changed effects rebind before use.
         This method returns file plans; it does not publish their contents.
 
         Returns:
@@ -1182,60 +1475,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if make_plan_present and make_plan_value is not None:
                 plans.append(make_plan_value)
         if root.is_dir():
-            layout = u.Infra.layout(root)
-            project, sources = binding
-            package_dirs = {
-                path.parent
-                for path in sources
-                if path.is_relative_to(root)
-                and path.suffix == c.Infra.EXT_PYTHON
-                and path.parent / c.Infra.INIT_PY in sources
-            }
-            if layout is not None and layout.class_stem:
-                package_dirs.add(layout.package_dir)
-            staged = {plan.path: plan for plan in declared_files}
-            for declared_family in u.Infra.facade_families().values():
-                family = c.Infra.FacadeFamily(declared_family.letter)
-                for package_dir in sorted(package_dirs):
-                    if (
-                        layout is None or package_dir != layout.package_dir
-                    ) and u.Infra.facade_module_path(
-                        package_dir,
-                        family,
-                        project=project,
-                        sources=sources,
-                    ) is None:
-                        continue
-                    projected = self._captured_facade_plan(
-                        root, package_dir, family, staged
-                    )
-                    if projected.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            projected
-                        )
-                    plans.extend(projected.value)
+            snapshot = self.state.snapshot
+            ports = self.state.ports
+            if snapshot is None or ports is None:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    "recursive family composition requires caller-bound "
+                    "planning and an authenticated repository snapshot"
+                )
+            recursive = ports.component_planner(
+                root,
+                declared_files=declared_files,
+                snapshot=snapshot,
+                planners=(self._projected_exports, self._source_view),
+                selection=None,
+            )
+            if recursive.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(recursive)
+            plans.extend(recursive.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
-
-    def _captured_facade_plan(
-        self,
-        root: Path,
-        package_dir: Path,
-        family: c.Infra.FacadeFamily,
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan one family facade over the staged candidate.
-
-        The staged plan map is updated in place.
-
-        Returns:
-            The facade plans, or the first planning failure.
-
-        """
-        with self._source_view(root, declared_files=tuple(staged.values())) as current:
-            planned = self._utility_facade_plan(root, package_dir, family, current)
-        if planned.success:
-            staged.update((plan.path, plan) for plan in planned.value)
-        return planned
 
     def _validated_custom_make_plan(
         self,
@@ -1268,67 +1525,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if planned.failure:
             return result_type.from_failure(planned)
         return result_type.ok((planned.value, True))
-
-    def _utility_facade_plan(
-        self,
-        root: Path,
-        package_dir: Path,
-        family: c.Infra.FacadeFamily,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan one projected facade for the discovered package layout.
-
-        Returns:
-            The owned facade file plan, or no plans for a family with no owners.
-
-        Raises:
-            ValueError: If a rendered facade has no declaring package module.
-
-        """
-        project, sources = binding
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        facade_path = u.Infra.facade_module_path(
-            package_dir, family, project=project, sources=sources
-        )
-        match family:
-            case c.Infra.FacadeFamily.T:
-                if facade_path is None or not project.source_query(
-                    package_dir / u.Infra.facade_families()[family].directory, "isdir"
-                ):
-                    return result_type.ok(())
-                rendered = u.Infra.render_type_facade(
-                    package_dir,
-                    facade_path,
-                    {
-                        path: u.Infra.require_file_resource(
-                            project.get_resource(path.relative_to(root).as_posix()),
-                            path,
-                        ).read()
-                        for path in sources
-                    },
-                    project=project,
-                )
-            case (
-                c.Infra.FacadeFamily.C
-                | c.Infra.FacadeFamily.U
-                | c.Infra.FacadeFamily.P
-                | c.Infra.FacadeFamily.M
-            ):
-                rendered = u.Infra.render_utility_facade(
-                    package_dir,
-                    family=family,
-                    project=project,
-                    sources=sources,
-                )
-        if rendered is None:
-            return result_type.ok(())
-        if facade_path is None:
-            msg = f"rendered {family} facade has no declaring module"
-            raise ValueError(msg)
-        relative = facade_path.relative_to(root)
-        return self.file_plan(root, relative.as_posix(), rendered).map(
-            lambda plan: (plan,)
-        )
 
     def _complete_governed_plans(
         self,
@@ -1598,7 +1794,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if loaded.failure:
                 return result_type.from_failure(loaded)
             spec = loaded.value.spec.vscode
-        merged = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+        merged = cls.render_vscode_settings(
             request.root,
             spec=spec,
         )
@@ -1628,7 +1824,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         root = request.root
         relative = request.relative
         path = root / relative
-        normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+        normalized = (
+            workspace_services.FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized
+        )(
             request.current,
         )
         if normalized and normalized == request.current:

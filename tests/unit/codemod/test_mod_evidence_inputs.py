@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, m, main, t
+from flext_infra import FlextInfraCli, infra, m, t
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm, u
 
@@ -120,11 +120,6 @@ class TestsFlextInfraModEvidenceInputs:
                 source,
             ),
         )
-        state = tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
-        snapshot = u.Infra.codemod_binding_snapshot(mod_workspace, (state,))
-        captured = {item.path for item in snapshot.states}
-        tm.that(set(owners).issubset(captured))
-        tm.fail(decoy in captured)
         with infra.rope_workspace(mod_workspace) as workspace:
             statements = u.Infra.source_import_statements(
                 workspace.rope_project,
@@ -150,52 +145,6 @@ class TestsFlextInfraModEvidenceInputs:
                 statement.import_info.get_import_statement() for statement in statements
             ),
             eq=("import first_owner", "import first_owner", "import second_owner"),
-        )
-
-    @staticmethod
-    def test_context_requires_a_captured_or_transformed_variable(
-        tmp_path: Path,
-    ) -> None:
-        """A declared transform never admits an unrelated context variable."""
-        rules = tmp_path / c.Infra.CODEMOD_RULE_DIRS_KEY
-        rules.mkdir()
-        configuration = tmp_path / c.Infra.CODEMOD_CONFIG_FILENAME
-        tm.ok(
-            u.Cli.yaml_dump(
-                configuration,
-                {c.Infra.CODEMOD_RULE_DIRS_KEY: [rules.name]},
-            )
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                rules / f"context{c.Infra.CODEMOD_RULE_SUFFIX}",
-                {
-                    "id": "unbound-context",
-                    "language": "Python",
-                    "severity": "error",
-                    "rule": {"pattern": "$CAPTURED"},
-                    "transform": {
-                        "DECLARED": {
-                            c.MergeStrategy.REPLACE: {
-                                "source": "$CAPTURED",
-                                c.MergeStrategy.REPLACE: "^.*$",
-                                "by": "derived",
-                            }
-                        }
-                    },
-                    "metadata": {
-                        "context": {
-                            "UNDECLARED": {
-                                "is": c.Infra.CodemodContextPredicate.FILE_FAMILY.value
-                            }
-                        }
-                    },
-                },
-            )
-        )
-        tm.fail(
-            u.Infra.codemod_catalog_rules("context-provider", configuration),
-            has="UNDECLARED",
         )
 
     @staticmethod
@@ -428,149 +377,77 @@ class TestsFlextInfraModEvidenceInputs:
         mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The public whole-catalog summary consumes the existing scan receipt."""
-        exit_code = main(["refactor", "ast", "--repository-root", str(mod_workspace)])
+        exit_code = FlextInfraCli.infra_main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+        ])
         console = capsys.readouterr()
         evidence = m.Infra.ModScanEvidence.model_validate_json(
             (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
         )
         tm.that(console.err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
-        tm.that(console.err.count("mod: capture bindings projects="), eq=1)
         if evidence.findings:
             tm.that(exit_code, ne=0)
 
     @staticmethod
-    def test_selected_projects_share_capture_without_mixing_bindings(
-        tmp_path: Path,
-    ) -> None:
-        """One immutable capture keeps each same-spelling import's real owner."""
-        selections, inputs = TestsFlextInfraModEvidenceInputs._built_binding_projects(
-            tmp_path
-        )
-        snapshot = u.Infra.codemod_binding_snapshot(
-            tmp_path, tuple(inputs), projects=tuple(selections)
-        )
-        TestsFlextInfraModEvidenceInputs._verified_owner_bindings(selections, snapshot)
-
-    @staticmethod
-    def _built_binding_projects(
-        tmp_path: Path,
-    ) -> tuple[list[m.Infra.CodemodBindingProject], list[m.Cli.AtomicFileState]]:
-        """Build two same-spelling binding projects with distinct owners.
-
-        Args:
-            tmp_path: Test scratch root owning both projects.
-
-        Returns:
-            The binding selections with their captured consumer states.
-
-        """
-        selections: list[m.Infra.CodemodBindingProject] = []
-        inputs: list[m.Cli.AtomicFileState] = []
+    def test_same_spelling_imports_keep_each_project_owner(tmp_path: Path) -> None:
+        """Each project's same-spelling import resolves to its own real owner."""
         for name in ("left", "right"):
-            project = u.Tests.mk_project(
+            project_root = u.Tests.mk_project(
                 tmp_path,
                 name,
                 pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
                 with_src=True,
             )
-            owner = project / "owner.py"
+            owner = project_root / "owner.py"
             owner.write_text(f"class Public:\n    value = '{name}'\n", encoding="utf-8")
-            consumer = project / "consumer.py"
-            consumer.write_text(
+            consumer = project_root / "consumer.py"
+            source = (
                 "from __future__ import annotations\n"
-                "from owner import Public\nvalue = Public\n",
-                encoding="utf-8",
+                "from owner import Public\nvalue = Public\n"
             )
-            inputs.append(
-                tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
-            )
-            selections.append(
-                m.Infra.CodemodBindingProject(
-                    root=project, source_paths=(consumer,), modules=()
-                )
-            )
-        return selections, inputs
-
-    @staticmethod
-    def _verified_owner_bindings(
-        selections: list[m.Infra.CodemodBindingProject],
-        snapshot: m.Infra.CodemodBindingSnapshot,
-    ) -> None:
-        """Verify each project's consumer resolves to its own captured owner.
-
-        Args:
-            selections: The binding selections under proof.
-            snapshot: The shared immutable binding capture.
-
-        """
-        paths = [state.path for state in snapshot.states]
-        tm.that(len(paths), eq=len(set(paths)))
-        epoch = u.Infra.codemod_source_epoch(snapshot)
-        for selection in selections:
-            owner = selection.root / "owner.py"
-            tm.that(owner in paths)
-            owner.write_text("invalid syntax !!!\n", encoding="utf-8")
-            with u.Infra.codemod_binding_project(selection.root, epoch) as (
-                project,
-                sources,
-            ):
-                tm.that(sources is epoch.sources)
-                consumer = selection.source_paths[0]
+            consumer.write_text(source, encoding="utf-8")
+            with u.Infra.open_project(project_root) as project:
                 module = u.Infra.resolve_pymodule(
                     project,
                     u.Infra.require_file_resource(
                         project.get_resource(consumer.name), consumer
                     ),
                 )
-                offset = sources[consumer].rindex("Public")
                 tm.that(
-                    u.Infra.name_definition_resource_path(module, offset),
+                    u.Infra.name_definition_resource_path(
+                        module, source.rindex("Public")
+                    ),
                     eq=str(owner),
                 )
 
     @staticmethod
-    @pytest.mark.parametrize(("occurrences", "resources"), [(2, 0), (96, 32)])
+    @pytest.mark.parametrize("occurrences", [2, 96])
     def test_native_occurrences_share_authenticated_inputs(
-        mod_workspace: Path, occurrences: int, resources: int
+        mod_workspace: Path, occurrences: int
     ) -> None:
-        """Distinct binding groups share inputs through both JSON publication paths."""
-        report, snapshot, inputs, source, owner = (
+        """Every occurrence shares one stored source input in both publications."""
+        report, snapshot, source = (
             TestsFlextInfraModEvidenceInputs._scanned_shared_occurrences(
                 mod_workspace, occurrences
             )
-        )
-        for index in range(resources):
-            resource = mod_workspace / f"binding_{index}.py"
-            resource.write_text(f"value = {index}\n", encoding="utf-8")
-            inputs.append(
-                tm.ok(u.Cli.atomic_read_binary_file_state(resource, required=True))
-            )
-        bindings = (
-            (*inputs, inputs[0], inputs[-1], inputs[0]),
-            (inputs[0],),
-            tuple(reversed(inputs)),
-            (),
-            tuple(inputs[:1]),
         )
         report = report.model_copy(
             update={
                 "entries": tuple(
                     entry.model_copy(
                         update={
-                            "binding_states": bindings[index % len(bindings)],
-                            **(
-                                {
-                                    "source_state": None,
-                                    "classification": (
-                                        c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
-                                    ),
-                                    "actionable": False,
-                                }
-                                if index == occurrences - 1
-                                else {}
+                            "source_state": None,
+                            "classification": (
+                                c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
                             ),
+                            "actionable": False,
                         }
                     )
+                    if index == occurrences - 1
+                    else entry
                     for index, entry in enumerate(report.entries)
                 )
             }
@@ -600,83 +477,33 @@ class TestsFlextInfraModEvidenceInputs:
         )
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
-        tm.that(
-            len(restored.binding_graphs),
-            eq=len({
-                tuple(state.path for state in entry.binding_states)
-                for entry in report.entries
-            }),
-        )
-        shared: dict[int, tuple[m.Cli.AtomicFileState, ...]] = {}
         for original, occurrence in zip(report.entries, restored.entries, strict=True):
             tm.that(occurrence.native_record, eq=original.native_record)
             tm.that(occurrence.source_state, eq=original.source_state)
-            tm.that(occurrence.binding_states, eq=original.binding_states)
-            tm.that(
-                restored.binding_graphs[occurrence.binding_graph],
-                eq=tuple(state.path for state in original.binding_states),
-            )
             tm.that(occurrence.classification, eq=original.classification)
-            tm.that(
-                occurrence.binding_states
-                is shared.setdefault(
-                    occurrence.binding_graph, occurrence.binding_states
-                )
-            )
-        nested = TestsFlextInfraModEvidenceInputs._verified_nested_evidence(
+        TestsFlextInfraModEvidenceInputs._verified_nested_evidence(
             mod_workspace, receipt, restored
         )
-        closure = nested.evidence.entries[0].binding_states
-        tm.that(closure[-1] is closure[0])
-        owner.write_text("invalid syntax !!!\n", encoding="utf-8")
-        with u.Infra.codemod_binding_project(
-            mod_workspace,
-            u.Infra.codemod_source_epoch(
-                m.Infra.CodemodBindingSnapshot(states=closure)
-            ),
-        ) as (project, sources):
-            tm.that(
-                u.Infra.name_definition_resource_path(
-                    u.Infra.resolve_pymodule(
-                        project,
-                        u.Infra.require_file_resource(
-                            project.get_resource(source.name), source
-                        ),
-                    ),
-                    sources[source].rindex("Public"),
-                ),
-                eq=str(owner),
-            )
         TestsFlextInfraModEvidenceInputs._rejected_tampered_evidence(restored, snapshot)
 
     @staticmethod
     def _scanned_shared_occurrences(
         mod_workspace: Path,
         occurrences: int,
-    ) -> tuple[
-        m.Infra.ModScanReport,
-        m.Infra.CodemodBindingSnapshot,
-        list[m.Cli.AtomicFileState],
-        Path,
-        Path,
-    ]:
-        """Scan the shared-occurrence workspace with its authenticated inputs.
+    ) -> tuple[m.Infra.ModScanReport, m.Infra.CodemodBindingSnapshot, Path]:
+        """Scan the shared-occurrence workspace with its authenticated input.
 
         Args:
             mod_workspace: The governed mod workspace root.
             occurrences: The expected native finding count.
 
         Returns:
-            The scanned report, its binding snapshot, the captured inputs,
-            the consumer source and the binding owner.
+            The scanned report, the snapshot of its source and the source path.
 
         """
         source = mod_workspace / "consumer.py"
-        owner = mod_workspace / "binding_owner.py"
-        owner.write_text("class Public:\n    value = 'captured'\n", encoding="utf-8")
         source.write_text(
             "# descriptor evidence sentinel\nfrom __future__ import annotations\n"
-            "from binding_owner import Public\n"
             + "".join(
                 f"def call_{index}(value: str) -> str:\n    return str(value)\n"
                 for index in range(occurrences)
@@ -689,26 +516,23 @@ class TestsFlextInfraModEvidenceInputs:
             )
         )
         tm.that(report.findings, eq=occurrences)
-        snapshot = u.Infra.codemod_binding_snapshot(
-            mod_workspace, (tm.not_none(report.entries[0].source_state),)
+        snapshot = m.Infra.CodemodBindingSnapshot(
+            states=(tm.not_none(report.entries[0].source_state),)
         )
-        return report, snapshot, list(snapshot.states), source, owner
+        return report, snapshot, source
 
     @staticmethod
     def _verified_nested_evidence(
         mod_workspace: Path,
         receipt: m.Infra.ModScanEvidenceReceipt,
         restored: m.Infra.ModScanEvidence,
-    ) -> m.Infra.ModScanEvidenceReceipt:
+    ) -> None:
         """Publish the evidence again and prove nested identity sharing.
 
         Args:
             mod_workspace: The governed mod workspace root.
             receipt: The original evidence publication receipt.
             restored: The restored evidence payload.
-
-        Returns:
-            The nested evidence receipt with its identity proof.
 
         """
         nested_path = tm.ok(
@@ -725,9 +549,6 @@ class TestsFlextInfraModEvidenceInputs:
         for occurrence in nested.evidence.entries:
             if occurrence.source_path is not None:
                 tm.that(occurrence.source_state is indexed[occurrence.source_path])
-            for state in occurrence.binding_states:
-                tm.that(state is indexed[state.path])
-        return nested
 
     @staticmethod
     def _rejected_tampered_evidence(
@@ -738,66 +559,24 @@ class TestsFlextInfraModEvidenceInputs:
 
         Args:
             restored: The restored evidence payload to tamper with.
-            snapshot: The binding snapshot whose duplicate states are invalid.
+            snapshot: The source snapshot whose duplicate states are invalid.
 
         """
-        for updates, expected_key in (
-            (
-                {
-                    "entries": (
-                        restored.entries[0].model_copy(
-                            update={"source_path": Path("absent_source.py")}
-                        ),
-                        *restored.entries[1:],
-                    )
-                },
-                Path("absent_source.py"),
-            ),
-            (
-                {
-                    "binding_graphs": (
-                        (Path("absent_binding.py"),),
-                        *restored.binding_graphs[1:],
-                    )
-                },
-                Path("absent_binding.py"),
-            ),
-            (
-                {
-                    "binding_graphs": (
-                        (Path("absent_binding.py"),),
-                        *restored.binding_graphs[1:],
-                    ),
-                    "entries": (
-                        restored.entries[0].model_copy(
-                            update={"source_path": Path("absent_source.py")}
-                        ),
-                        *restored.entries[1:],
-                    ),
-                },
-                Path("absent_binding.py"),
-            ),
-        ):
-            tampered = restored.model_copy(update=updates)
-            with pytest.raises(KeyError) as missing:
-                m.Infra.ModScanEvidence.model_validate_json(
-                    tampered.model_dump_json(round_trip=True)
-                )
-            tm.that(missing.value.args, eq=(expected_key,))
-        tampered_graph = restored.model_copy(
+        tampered = restored.model_copy(
             update={
                 "entries": (
                     restored.entries[0].model_copy(
-                        update={"binding_graph": len(restored.binding_graphs)}
+                        update={"source_path": Path("absent_source.py")}
                     ),
                     *restored.entries[1:],
                 )
             }
         )
-        with pytest.raises(m.ValidationError, match="binding graph is missing"):
+        with pytest.raises(KeyError) as missing:
             m.Infra.ModScanEvidence.model_validate_json(
-                tampered_graph.model_dump_json(round_trip=True)
+                tampered.model_dump_json(round_trip=True)
             )
+        tm.that(missing.value.args, eq=(Path("absent_source.py"),))
         for field in ("totals_by_repository", "totals_by_rule"):
             totals = dict(getattr(restored, field))
             totals[next(iter(totals))] += 1
@@ -850,6 +629,5 @@ class TestsFlextInfraModEvidenceInputs:
             receipt.path.read_bytes()
         )
         tm.that(restored.entries, eq=())
-        tm.that(restored.binding_graphs, eq=())
         tm.that(restored.totals_by_repository, eq={mod_workspace.name: 0})
         tm.that(restored.totals_by_rule, eq={"ban-pass-through-wrapper": 0})

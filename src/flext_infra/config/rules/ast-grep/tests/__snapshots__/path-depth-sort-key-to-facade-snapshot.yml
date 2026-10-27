@@ -1,6 +1,6 @@
 id: path-depth-sort-key-to-facade
 snapshots:
-  ordered = sorted(paths, key=path_depth):
+  "ordered = sorted(paths, key=path_depth)":
     fixed: ordered = sorted(paths, key=u.Infra.path_depth)
     labels:
     - source: path_depth

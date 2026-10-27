@@ -1,0 +1,55 @@
+id: require-static-utility-method
+valid:
+  - |
+    class FlextDemoUtilities:
+        @staticmethod
+        def build(value):
+            return value
+
+        @classmethod
+        def create(cls):
+            return cls
+
+        def _helper(self):
+            return self
+  - |
+    class FlextDemoUtilities:
+        @property
+        def label(self):
+            return "x"
+  - |
+    class FlextDemoUtilities:
+        class Reader(Protocol):
+            def read(self) -> str: ...
+  - |
+    class FlextDemoUtilities:
+        class _Collector:
+            def collect(self, value):
+                return value
+  - |
+    class FlextUtilitiesLogging:
+        def info(self, message):
+            return message
+  - |
+    class FlextDemoUtilities:
+        @staticmethod
+        def remove(module):
+            class RemoveShadows(CSTTransformer):
+                def leave_Assign(self, original_node, updated_node):
+                    return updated_node
+            return module.visit(RemoveShadows())
+  - |
+    class FlextDemoUtilities(Base):
+        @override
+        def build(self, value):
+            return value
+invalid:
+  - |
+    class FlextDemoUtilities:
+        def build(self, value):
+            return value
+  - |
+    class FlextDemoUtilities:
+        @cache
+        def build(self, value):
+            return value

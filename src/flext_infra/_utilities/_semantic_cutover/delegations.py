@@ -11,11 +11,15 @@ from copy import deepcopy
 from pathlib import Path
 from textwrap import indent
 
-from flext_infra import m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeCore,
+from flext_infra import c, m, p, t
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -267,9 +271,9 @@ class FlextInfraUtilitiesSemanticDelegations(
         )
         selected: list[p.Infra.SourceRewrite] = []
         for statement in owner.body:
-            if not isinstance(statement, ast.AnnAssign | ast.Assign) or not isinstance(
-                statement.value, ast.Call
-            ):
+            if not isinstance(
+                statement, c.Infra.AST_ASSIGNMENT_TYPES
+            ) or not isinstance(statement.value, ast.Call):
                 continue
             invocation = statement.value
             if not runtime.same_name(
@@ -372,9 +376,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         module = location[0]
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
             module
-        ) or not isinstance(
-            node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
-        ):
+        ) or not isinstance(node, c.Infra.AST_DEFINITION_TYPES):
             return None
         return module, node
 
@@ -811,7 +813,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             raise ValueError(msg)
         origin, native = definition
         cls._require_deferred(origin)
-        if not isinstance(native, ast.FunctionDef | ast.AsyncFunctionDef):
+        if not isinstance(native, c.Infra.AST_FUNCTION_TYPES):
             msg = "prototype has no native function declaration"
             raise TypeError(msg)
         if isinstance(native, ast.AsyncFunctionDef):
@@ -826,7 +828,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             raise TypeError(msg)
         if any(
             sum(
-                isinstance(part, ast.FunctionDef | ast.AsyncFunctionDef)
+                isinstance(part, c.Infra.AST_FUNCTION_TYPES)
                 and part.name == native.name
                 for part in declaration.body
             )
@@ -977,7 +979,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         generics = {
             parameter.name
             for parameter in signature.type_params
-            if isinstance(parameter, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec)
+            if isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES)
         }
         native_scope = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), "prototype annotation scope"
@@ -1066,7 +1068,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         expressions.extend(
             node.default_value
             for node in signature.type_params
-            if isinstance(node, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec)
+            if isinstance(node, c.Infra.AST_TYPE_PARAM_TYPES)
             and node.default_value is not None
         )
         for expression in expressions:

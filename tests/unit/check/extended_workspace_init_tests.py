@@ -70,7 +70,7 @@ class TestsFlextInfraWorkspaceInit:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["project-a"],
             [c.Infra.LINT],
-            reports_dir=reports_file,
+            u.Tests.gate_context(tmp_path, reports_file),
         )
 
         tm.fail(result)

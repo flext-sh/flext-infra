@@ -6,8 +6,19 @@
 	mkdir -p "{{ project_root }}/.bin"; \
 	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
 {% if toolchain.mise_version == "latest" %}	unset MISE_VERSION; \
+	mise_acquired=false; \
 {% else %}	export MISE_VERSION="{{ toolchain.mise_version }}"; \
-{% endif %}	case "$${OS:-}" in \
+	{#- The declared version is the gate: a present binary reporting exactly
+	    it needs no installer download, so a no-op setup needs no network. #}
+	mise_acquired=false; \
+	if [ -x "$(BOOTSTRAP_MISE)" ]; then \
+		mise_present="$$("$(BOOTSTRAP_MISE)" --version)"; \
+		if [ "$${mise_present%% *}" = "$${MISE_VERSION}" ]; then mise_acquired=true; fi; \
+	fi; \
+{% endif %}	if [ "$${mise_acquired}" = true ]; then \
+		printf 'setup: mise %s already acquired at %s\n' "$${MISE_VERSION}" "$(BOOTSTRAP_MISE)"; \
+	else \
+	case "$${OS:-}" in \
 		(Windows_NT) \
 			export MISE_INSTALL_PATH="$$(cygpath --windows "$(BOOTSTRAP_MISE)")"; \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
@@ -16,7 +27,8 @@
 			mise_stage="$$(mktemp -d "{{ project_root }}/.bin/.mise-install.XXXXXXXX")"; \
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
-	esac;
+	esac; \
+	fi;
 {%- endmacro %}
 
 {% macro mise_staging_cleanup() -%}
@@ -83,6 +95,10 @@
 	{{ mise_network_admission() }} \
 	{{ mise_acquisition(project_root, toolchain) }} \
 	export MISE_SHIMS_DIR="{{ project_root }}/.bin/shims"; \
+	{#- Setup installs the committed mise.lock as it is: mise's native locked
+	    mode resolves no backend and fetches no provenance artifact; `make upg`
+	    stays the only lock writer. #}
+	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
 	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \

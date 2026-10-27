@@ -19,7 +19,6 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesCodemodRulesDistributionsMixin:
@@ -227,10 +226,10 @@ class FlextInfraUtilitiesCodemodRulesDistributionsMixin:
             )
             for name in selected
         }
-        return FlextInfraUtilitiesDependencies.dependency_order(
-            tuple(selected),
-            dependencies=lambda name: edges[name],
-        )
+        order = u.Cli.dag_order(edges)
+        if order.failure:
+            raise ValueError(order.error)
+        return order.value
 
     @staticmethod
     def _provider_config(name: str) -> Path | None:

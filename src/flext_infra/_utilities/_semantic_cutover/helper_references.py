@@ -10,11 +10,15 @@ import ast
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import m, p, t
-from flext_infra._utilities import (
+from flext_infra import c, m, p, t
+from flext_infra._utilities._rope.rope_class_move import (
     FlextInfraUtilitiesRopeClassMove,
-    FlextInfraUtilitiesRopeCore,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -285,9 +289,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             )
             if isinstance(target, ast.Name)
         } | {
-            node.name
-            for node in body
-            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+            node.name for node in body if isinstance(node, c.Infra.AST_DEFINITION_TYPES)
         }
         module = runtime.build_string_module(project, source, resource=resource)
         imports = runtime.module_imports_for_pymodule(project, module)

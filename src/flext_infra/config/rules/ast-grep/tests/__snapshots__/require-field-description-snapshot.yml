@@ -1,0 +1,22 @@
+id: require-field-description
+snapshots:
+  "class Order(m.FrozenModel):\n    label: Annotated[str, m.Field(min_length=1)] = \"x\"\n":
+    labels:
+    - source: "label: Annotated[str, m.Field(min_length=1)] = \"x\""
+      style: primary
+      start: 32
+      end: 82
+    - source: label
+      style: secondary
+      start: 32
+      end: 37
+  "class Order(m.FrozenModel):\n    total: int\n":
+    labels:
+    - source: "total: int"
+      style: primary
+      start: 32
+      end: 42
+    - source: total
+      style: secondary
+      start: 32
+      end: 37

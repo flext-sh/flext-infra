@@ -4,11 +4,6 @@
 id: rewire-test-assert-instance
 language: Python
 severity: error
-metadata:
-  context:
-    X:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -49,11 +44,6 @@ message: Preserve native type narrowing and name bindings through tm.reject.
 id: rewire-test-assert-instance-message
 language: Python
 severity: error
-metadata:
-  context:
-    X:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"

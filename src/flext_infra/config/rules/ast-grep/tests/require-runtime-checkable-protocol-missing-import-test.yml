@@ -1,0 +1,16 @@
+id: require-runtime-checkable-protocol-missing-import
+valid:
+  - |
+    from typing import Protocol, runtime_checkable
+    class Reader(Protocol):
+        def read(self) -> str: ...
+  - |
+    from typing import Protocol
+    @runtime_checkable
+    class Reader(Protocol):
+        def read(self) -> str: ...
+invalid:
+  - |
+    from typing import Protocol
+    class Reader(Protocol):
+        def read(self) -> str: ...

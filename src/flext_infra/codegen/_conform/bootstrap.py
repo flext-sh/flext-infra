@@ -18,7 +18,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
 
     This is the only orchestrator for Make/toolchain/source conformance.
     Rendering stays in flext-cli; Git-source TOML policy and attached detection
-    are composed from their separately owned u.Infra/workspace services.
+    are composed from their source-owned Codegen and workspace services.
     """
 
     state: Annotated[
@@ -145,7 +145,10 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             )
         if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
             roots.extend(
-                (u.Infra.project_package_name(target.root / member.path), member.path)
+                (
+                    u.Infra.project_package_name(target.root / member.path),
+                    member.path,
+                )
                 for member in workspace.subprojects
                 if member.package
             )

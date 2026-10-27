@@ -1,0 +1,28 @@
+id: ban-deep-namespace-nesting
+valid:
+  - |
+    class FlextDemoModels:
+        class Demo:
+            class Order:
+                total: int
+  - |
+    class FlextDemoUtilities:
+        class Demo:
+            class Builder:
+                def build(self):
+                    class Local:
+                        pass
+                    return Local
+  - |
+    class FlextDemoConstants:
+        class Demo:
+            class Order:
+                class Status(StrEnum):
+                    OPEN = "open"
+invalid:
+  - |
+    class FlextDemoModels:
+        class Demo:
+            class Order:
+                class Line:
+                    total: int

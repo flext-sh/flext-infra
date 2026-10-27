@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codemod, m, main, t
+from flext_infra import FlextInfraCli, codemod, m, t
 from tests import c, tm, u
 
 
@@ -78,44 +78,6 @@ class TestsFlextInfraBatchReplacements:
         published = consumer.read_bytes()
         tm.fail(codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report))
         tm.that(consumer.read_bytes(), eq=published)
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_changed_companion_input_prevents_consumer_publication(
-        mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """A changed captured companion rejects the entire unchanged scan report."""
-        companion = mod_workspace / "companion.py"
-        companion.write_text(
-            '"""Independent public scan input."""\n'
-            "from __future__ import annotations\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
-            mod_workspace
-        )
-        original = consumer.read_bytes()
-        captured = companion.read_bytes()
-        concurrent = captured + b"\n# concurrent input edit\n"
-        companion.write_bytes(concurrent)
-        capsys.readouterr()
-
-        failed = codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report)
-        tm.fail(failed, has=str(companion))
-        tm.fail(
-            failed,
-            has=f"expected_content_sha256={u.Cli.sha256_bytes(captured)}",
-        )
-        tm.fail(
-            failed,
-            has=f"observed_content_sha256={u.Cli.sha256_bytes(concurrent)}",
-        )
-        progress = capsys.readouterr().err
-        tm.that(progress, has="verify stage=target-inventory")
-        tm.that(progress, lacks="verify stage=original-snapshot")
-        tm.that(consumer.read_bytes(), eq=original)
-        tm.that(companion.read_bytes(), eq=concurrent)
 
     @staticmethod
     @pytest.mark.slow
@@ -345,7 +307,7 @@ class TestsFlextInfraBatchReplacements:
         tm.that(
             generated.read_bytes(), eq=sources["generated"].encode(c.DEFAULT_ENCODING)
         )
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -468,9 +430,9 @@ class TestsFlextInfraBatchReplacements:
     ) -> None:
         """An emptied statement fix publishes skeleton-free, format-clean bytes.
 
-        The ban-test-suite-module-all rule rewrites its match to ``""``; the
-        byte-splice leaves the source line blank and the mod circuit enforces
-        canonical formatting on the first pass after applying.
+        The remove-breakpoint-debugger-statement rule rewrites its match to
+        ``""``; the byte-splice leaves the source line blank and the mod
+        circuit enforces canonical formatting on the first pass after applying.
         """
         root = u.Tests.git_repository(tmp_path)
         path = root / "tests" / "unit" / "test_demo.py"
@@ -480,16 +442,16 @@ class TestsFlextInfraBatchReplacements:
         )
         path.parent.mkdir(parents=True)
         original = (
-            b'"""Demo."""\n\n__all__ = ["X"]\n\n\ndef t() -> None:\n    assert True\n'
+            b'"""Demo."""\n\nbreakpoint()\n\n\ndef t() -> None:\n    assert True\n'
         )
         path.write_bytes(original)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-        statement = b'__all__ = ["X"]'
+        statement = b"breakpoint()"
         start = original.index(statement)
         offsets: t.JsonDict = {"start": start, "end": start + len(statement)}
         finding = m.Infra.ModOccurrence(
             rule_file=str(root / "rule.yaml"),
-            rule_id="ban-test-suite-module-all",
+            rule_id="remove-breakpoint-debugger-statement",
             repository=root.name,
             file=path,
             source_owner="authored",

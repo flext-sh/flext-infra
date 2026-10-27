@@ -16,11 +16,8 @@ Dependency lists remain CUSTOM after scaffolding. -#}
 
 {%- macro hatch_target_declaration(target) -%}
 [tool.hatch.build.targets.{{ target }}]
-{% if packaged_data_excludes or (target == "wheel" and package_config_resource) %}
+{% if packaged_data_excludes %}
 exclude = [
-{% if target == "wheel" and package_config_resource %}
-  {{ ("/" ~ package_config_resource[0]) | tojson }},
-{% endif %}
 {% for data_path in packaged_data_excludes %}
   {{ ("/" ~ data_path) | tojson }},
 {% endfor %}
@@ -31,7 +28,7 @@ only-include = [
 {% for package in root_packages %}
   {{ ("src/" ~ package) | tojson }},
 {% endfor %}
-{% for data_path in packaged_data_paths if data_path not in packaged_data_files %}
+{% for data_path in packaged_data_paths %}
   {{ data_path | tojson }},
 {% endfor %}
 {% for namespace in repository_namespace_packages %}
@@ -106,9 +103,13 @@ package_name = {{ package_name | tojson }}
 {% if documentation_language != "en" %}documentation_language = {{ documentation_language | tojson }}
 {% endif %}
 
+{#- Nothing is force-included at an import package's location: Hatch copies
+forced files into editable wheels, installing a stale namespace portion beside
+the editable source. Package config ships through only-include; the producer
+declaration ships as wheel extra-metadata under <dist>.dist-info/. -#}
 {% if make_profile == "workspace" and project_declaration_resource %}
 
-[tool.hatch.build.targets.wheel.force-include]
+[tool.hatch.build.targets.wheel.extra-metadata]
 {{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
 
 [tool.hatch.build.targets.sdist.force-include]
@@ -129,39 +130,32 @@ path = {{ hatch_build_hook_path | tojson }}
 {% for package in root_packages %}
 {{ ("src/" ~ package) | tojson }} = {{ package | tojson }}
 {% endfor %}
-{% for data_path in packaged_data_paths if data_path not in packaged_data_files %}
+{% for data_path in packaged_data_paths %}
 {{ data_path | tojson }} = {{ (package_name ~ "/" ~ data_path) | tojson }}
 {% endfor %}
 {% for namespace in repository_namespace_packages %}
 {{ namespace | tojson }} = {{ namespace | tojson }}
 {% endfor %}
-{% if packaged_data_files or root_modules or project_declaration_resource or package_config_resource %}
+{% if root_modules %}
 
 [tool.hatch.build.targets.wheel.force-include]
-{% if package_config_resource %}
-{{ package_config_resource[0] | tojson }} = {{ package_config_resource[1] | tojson }}
-{% endif %}
-{% if project_declaration_resource %}
-{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
-{% endif %}
-{% for data_dir in packaged_data_files if not project_declaration_resource or data_dir != project_declaration_resource[0] %}
-{{ data_dir | tojson }} = {{ (package_name ~ "/" ~ data_dir) | tojson }}
-{% endfor %}
 {% for module in root_modules %}
 {{ ("src/" ~ module ~ ".py") | tojson }} = {{ (module ~ ".py") | tojson }}
 {% endfor %}
 {% endif %}
+{% if project_declaration_resource %}
+
+[tool.hatch.build.targets.wheel.extra-metadata]
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
+{% endif %}
 
 {{ hatch_target_declaration("sdist") }}
-{% if packaged_data_files or root_modules or hatch_build_hook_path or project_declaration_resource %}
+{% if root_modules or hatch_build_hook_path or project_declaration_resource %}
 
 [tool.hatch.build.targets.sdist.force-include]
 {% if project_declaration_resource %}
 {{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[0] | tojson }}
 {% endif %}
-{% for data_file in packaged_data_files if not project_declaration_resource or data_file != project_declaration_resource[0] %}
-{{ data_file | tojson }} = {{ data_file | tojson }}
-{% endfor %}
 {% for module in root_modules %}
 {{ ("src/" ~ module ~ ".py") | tojson }} = {{ ("src/" ~ module ~ ".py") | tojson }}
 {% endfor %}
@@ -177,16 +171,11 @@ path = {{ hatch_build_hook_path | tojson }}
 # [MANAGED] tool.uv
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
-{% if package_config_resource %}
+{% if uv_cache_key_files %}
 cache-keys = [
-  { file = "pyproject.toml" },
-  { file = "setup.py" },
-  { file = "setup.cfg" },
-  { dir = "src" },
-  { file = {{ (package_config_resource[0] ~ "/**/*") | tojson }} },
-{% if hatch_build_hook_path %}
-  { file = {{ hatch_build_hook_path | tojson }} },
-{% endif %}
+{% for key_file in uv_cache_key_files %}
+  { file = {{ key_file | tojson }} },
+{% endfor %}
 ]
 {% endif %}
 

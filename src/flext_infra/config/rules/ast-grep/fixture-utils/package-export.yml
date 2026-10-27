@@ -1,0 +1,12 @@
+# Fixture value of the generated `package-export` utility: an imported name
+# the fixture package root its import statement names declares in __all__.
+id: package-export
+language: Python
+rule:
+  regex: "^(?:FlextMeltanoAbstractions|FlextMeltanoModelsSinger|FlextMeltanoServiceBase|FlextMeltanoSingerTapAdapter|FlextMeltanoTapServiceBase|FlextMeltanoTargetServiceBase)$"
+  inside:
+    kind: import_from_statement
+    stopBy: end
+    has:
+      field: module_name
+      regex: "^flext_meltano(?:\\.|$)"

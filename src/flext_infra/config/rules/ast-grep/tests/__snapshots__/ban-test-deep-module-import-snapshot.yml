@@ -24,12 +24,8 @@ snapshots:
       style: primary
       start: 0
       end: 52
-  ? |
-    from flext_infra.codegen import (
-        FlextInfraCodegenConform,
-        FlextInfraCodegenLazyInit,
-    )
-  : labels:
+  "from flext_infra.codegen import (\n    FlextInfraCodegenConform,\n    FlextInfraCodegenLazyInit,\n)\n":
+    labels:
     - source: |-
         from flext_infra.codegen import (
             FlextInfraCodegenConform,

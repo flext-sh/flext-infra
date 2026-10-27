@@ -157,16 +157,19 @@ class TestsFlextInfraGithubGateAttestation:
         """
         return self._signed_repository
 
+    @pytest.mark.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_original_capture_publishes_distinct_receipts_with_stable_context(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
+        phase: c.Infra.CheckPhase,
     ) -> None:
         """The original public capture binds each run without changing its status."""
         signed_repository_factory(tmp_path)
         request = m.Infra.GateCaptureRequest(
             repository_root=tmp_path,
-            gates=c.Infra.LINT,
+            gates=c.Infra.LINT if phase == c.Infra.CheckPhase.COMPLETE else None,
+            phase=phase,
         )
         first = tm.ok(
             u.Infra.git_capture_gate(
@@ -195,6 +198,8 @@ class TestsFlextInfraGithubGateAttestation:
         )
         tm.that(first_evidence.process == first.process, truth=True)
         tm.that(second_evidence.process == second.process, truth=True)
+        tm.that(first_evidence.intent.phase, eq=phase)
+        tm.that(second_evidence.intent.phase, eq=phase)
         tm.that(
             first_evidence.context_digest == second_evidence.context_digest, truth=True
         )
@@ -210,6 +215,15 @@ class TestsFlextInfraGithubGateAttestation:
             )
             digest = u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             tm.that(report.digest == f"sha256:{digest}", truth=True)
+            summary = tm.not_none(
+                m.Infra.SarifReport.model_validate_json(
+                    (tmp_path / report.path).read_bytes()
+                ).properties
+            )
+            tm.that(summary.phase, eq=phase)
+            tm.that(
+                tuple(summary.requested_gates), eq=first_evidence.intent.requested_gates
+            )
 
     @staticmethod
     @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])

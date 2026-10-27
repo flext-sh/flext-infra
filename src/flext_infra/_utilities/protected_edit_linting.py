@@ -13,7 +13,7 @@ import os
 import sys
 import traceback
 from collections import Counter
-from collections.abc import Iterable, MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -47,17 +47,43 @@ class FlextInfraUtilitiesProtectedEditLinting:
         source: str,
         *,
         before_source: str | None = None,
+        settings: t.StrSequence = (),
     ) -> p.Result[str]:
-        """Prepare a candidate through the destination's configured repair owners.
+        """Normalize only what a rewrite changed, then format the candidate.
+
+        A rewrite of existing bytes repairs exactly the Ruff rules its edit
+        introduced (codes absent from ``before_source``), so no unchanged
+        binding or pre-existing finding is touched; a whole new file receives
+        the declared full repair. ``settings`` carry the staged pyproject's
+        Ruff table when the same plan set rewrites it.
 
         Returns:
             Normalized source, or the original configured repair failure.
 
         """
         del repository_root
-        if before_source is not None:
-            source = cls.remove_orphaned_text_imports(before_source, source)
-        return cls.normalize_python_text(path, source)
+        if before_source is None:
+            return cls.normalize_python_text(path, source, settings=settings)
+        source = cls.remove_orphaned_text_imports(before_source, source)
+        before_codes = cls._ruff_stdin_codes(path, before_source, settings=settings)
+        if before_codes.failure:
+            return r[str].from_failure(before_codes)
+        after_codes = cls._ruff_stdin_codes(path, source, settings=settings)
+        if after_codes.failure:
+            return r[str].from_failure(after_codes)
+        declared = config.Infra.codegen.make.ruff
+        introduced = sorted(after_codes.value - before_codes.value)
+        if introduced:
+            repaired = cls.ruff_select_fix(path, source, introduced, settings=settings)
+            if repaired.failure:
+                return repaired
+            source = repaired.value
+        return cls._ruff_stdin_pass(
+            path,
+            source,
+            (c.Infra.FORMAT, *declared.format_apply),
+            settings=settings,
+        )
 
     @classmethod
     def normalized_codegen_changes(
@@ -66,7 +92,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
     ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]:
         """Normalize Python destinations once; pass every other plan through.
 
-        Check and publication share this view, so they never disagree.
+        Check and publication share this view, so they never disagree. A plan
+        over existing bytes repairs only the findings its change introduced
+        (``normalize_source``); a new file receives the declared full repair.
 
         Returns:
             The file changes with normalized Python bytes, or the first failure.
@@ -74,16 +102,27 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         result_type = r[tuple[m.Cli.FileChange, ...]]
         changes: list[m.Cli.FileChange] = []
+        staged_settings = cls._staged_ruff_settings(plans)
         for plan in plans:
+            before = plan.before.content
+            # A plan that keeps its bytes changed nothing, so it has nothing
+            # to normalize; only rewritten or new sources go through ruff.
             if (
                 plan.path.suffix != c.Infra.EXT_PYTHON
                 or plan.desired_content is None
                 or plan.desired_mode is None
+                or plan.desired_content == before
             ):
                 changes.append(plan)
                 continue
-            normalized = cls.normalize_python_text(
-                plan.path, plan.desired_content.decode(c.DEFAULT_ENCODING)
+            normalized = cls.normalize_source(
+                plan.project,
+                plan.path,
+                plan.desired_content.decode(c.DEFAULT_ENCODING),
+                before_source=(
+                    None if before is None else before.decode(c.DEFAULT_ENCODING)
+                ),
+                settings=staged_settings.get(plan.project, ()),
             )
             if normalized.failure:
                 return result_type.from_failure(normalized)
@@ -123,6 +162,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
             changes.value,
             lock_path=lock.value,
             directory_mode=config.Infra.codegen.modes.directory_generated,
+            nonsecret_source_paths=tuple(
+                plan.path
+                for plan in plans
+                if plan.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            ),
         )
         if published.failure:
             return published
@@ -136,64 +180,263 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
             if retired.failure:
                 return result_type.from_failure(retired)
+        pruned = cls._prune_emptied_directories(lock.value, plans, published.value)
+        if pruned.failure:
+            return result_type.from_failure(pruned)
         if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
             u.read_project_document_cached.cache_clear()
         return published
 
+    @staticmethod
+    def _prune_emptied_directories(
+        lock_path: Path,
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        published: t.VariadicTuple[Path],
+    ) -> p.Result[bool]:
+        """Remove the directories a published deletion left empty.
+
+        Publication creates the missing parents of a written projection; a
+        deleted projection symmetrically removes each parent it emptied, under
+        the same lock, stopping at the first non-empty directory and never at
+        or above the owning project.
+
+        Returns:
+            True once every emptied parent is removed, or the first failure.
+
+        """
+        deleted = frozenset(published)
+        with u.Cli.file_changes_lock(lock_path):
+            for plan in plans:
+                if plan.desired_content is not None or plan.path not in deleted:
+                    continue
+                for directory in plan.path.parents:
+                    if (
+                        directory == plan.project
+                        or not directory.is_relative_to(plan.project)
+                        or not directory.is_dir()
+                        or any(directory.iterdir())
+                    ):
+                        break
+                    removed = u.Cli.atomic_read_empty_directory_state(
+                        directory, required=True
+                    ).flat_map(u.Cli.atomic_delete_empty_directory_guarded)
+                    if removed.failure:
+                        return removed
+        return r[bool].ok(value=True)
+
     @classmethod
-    def normalize_python_text(cls, path: Path, source: str) -> p.Result[str]:
+    def normalize_python_text(
+        cls, path: Path, source: str, *, settings: t.StrSequence = ()
+    ) -> p.Result[str]:
         """Repair then format one Python candidate through Ruff on stdin.
 
         ``path`` is the destination; it selects the owning project's Ruff
-        configuration. The flags are the declared ``make.ruff`` repair and
-        format surfaces; remaining findings never break repair (``make check``
-        enforces them), only a Ruff error does.
+        configuration, overridden by ``settings`` when the same plan set stages
+        that project's pyproject. The flags are the declared ``make.ruff``
+        repair and format surfaces; remaining findings never break repair
+        (``make check`` enforces them), only a Ruff error does.
 
         Returns:
             The repaired and formatted source, or Ruff's native failure.
 
         """
+        declared = config.Infra.codegen.make.ruff
+        return cls._ruff_stdin_pass(
+            path, source, (c.Infra.CHECK, *declared.lint_fix), settings=settings
+        ).flat_map(
+            lambda repaired: cls._ruff_stdin_pass(
+                path,
+                repaired,
+                (c.Infra.FORMAT, *declared.format_apply),
+                settings=settings,
+            )
+        )
+
+    @classmethod
+    def ruff_select_fix(
+        cls,
+        path: Path,
+        source: str,
+        select: t.StrSequence,
+        *,
+        settings: t.StrSequence = (),
+    ) -> p.Result[str]:
+        """Repair exactly the selected Ruff codes of one candidate on stdin.
+
+        ``path`` is the destination; it selects the owning project's Ruff
+        configuration. The flags are the declared ``make.ruff`` repair surface.
+
+        Returns:
+            The repaired source, or Ruff's native failure.
+
+        """
+        declared = config.Infra.codegen.make.ruff
+        return cls._ruff_stdin_pass(
+            path,
+            source,
+            (c.Infra.CHECK, *declared.lint_fix, "--select", ",".join(select)),
+            settings=settings,
+        )
+
+    @staticmethod
+    def _staged_ruff_settings(
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> t.MappingKV[Path, t.StrSequence]:
+        """Render each staged pyproject's Ruff table as ``--config`` overrides.
+
+        A plan set that rewrites a project's ``pyproject.toml`` also rewrites
+        its Ruff settings; normalizing that project's Python candidates with
+        the on-disk copy reads the settings the run replaces (an UP040 that is
+        unfixable in the new settings once rewrote ``Name: TypeAlias = Owner``
+        into a runtime-different ``type`` statement). Ruff runs ``--isolated``
+        and every leaf of the complete staged ``[tool.ruff]`` table, ``src`` and
+        first-party settings included, becomes one quoted dotted ``--config``
+        key, so on-disk state is irrelevant and the run's discovery matches the
+        projection exactly. Paths resolve against the project root, which is
+        the pass's working directory.
+
+        Returns:
+            Override arguments per project root that stages a pyproject.
+
+        """
+        staged: t.MutableMappingKV[Path, t.StrSequence] = {}
+        for plan in plans:
+            if (
+                plan.path != plan.project / c.PYPROJECT_FILENAME
+                or plan.desired_content is None
+            ):
+                continue
+            payload = u.Cli.toml_mapping_from_text_result(
+                plan.desired_content.decode(c.DEFAULT_ENCODING)
+            ).unwrap()
+            tool = payload.get(c.Infra.TOOL)
+            ruff = tool.get(c.Infra.RUFF) if isinstance(tool, Mapping) else None
+            if not isinstance(ruff, Mapping):
+                continue
+            # `--isolated` makes Ruff ignore every on-disk configuration, so the
+            # complete staged table below is the whole configuration: a key the
+            # staged file drops is dropped here too, never merged from disk.
+            overrides: list[str] = ["--isolated"]
+            pending: list[tuple[t.StrSequence, t.JsonValue]] = [
+                ((key,), value) for key, value in ruff.items()
+            ]
+            while pending:
+                keys, value = pending.pop()
+                if isinstance(value, Mapping):
+                    pending.extend(
+                        ((*keys, key), nested) for key, nested in value.items()
+                    )
+                    continue
+                dotted = ".".join(u.Cli.json_dumps(key).unwrap() for key in keys)
+                overrides.extend((
+                    "--config",
+                    f"{dotted} = {u.Cli.json_dumps(value).unwrap()}",
+                ))
+            staged[plan.project] = tuple(overrides)
+        return staged
+
+    @classmethod
+    def _ruff_stdin_codes(
+        cls, path: Path, source: str, *, settings: t.StrSequence = ()
+    ) -> p.Result[frozenset[str]]:
+        """Return the Ruff rule codes one candidate reports on stdin.
+
+        Returns:
+            The reported rule codes, or Ruff's native failure.
+
+        Raises:
+            TypeError: If Ruff's JSON report is not a list of finding objects.
+
+        """
+        declared = config.Infra.codegen.make.ruff
+        reported = cls._ruff_stdin_pass(
+            path,
+            source,
+            (
+                c.Infra.CHECK,
+                *declared.lint_check,
+                "--output-format",
+                c.Infra.OUTPUT_JSON,
+                "--exit-zero",
+                "--quiet",
+            ),
+            settings=settings,
+        )
+        if reported.failure:
+            return r[frozenset[str]].from_failure(reported)
+        report = u.Cli.json_parse(reported.value or "[]").unwrap()
+        if not isinstance(report, list):
+            msg = f"Ruff JSON report is not a list: {type(report).__name__}"
+            raise TypeError(msg)
+        codes: set[str] = set()
+        for entry in report:
+            if not isinstance(entry, Mapping):
+                msg = f"Ruff JSON finding is not an object: {type(entry).__name__}"
+                raise TypeError(msg)
+            code = u.Cli.json_pick_str(entry, "code")
+            if code:
+                codes.add(code)
+        return r[frozenset[str]].ok(frozenset(codes))
+
+    @classmethod
+    def _ruff_stdin_pass(
+        cls,
+        path: Path,
+        source: str,
+        arguments: t.StrSequence,
+        *,
+        settings: t.StrSequence = (),
+    ) -> p.Result[str]:
+        """Run one declared Ruff surface on stdin with the destination's config.
+
+        ``settings`` are the ``--config`` overrides of a pyproject staged in the
+        same plan set (``_staged_ruff_settings``), so the pass reads the Ruff
+        settings the run publishes, never the stale on-disk copy.
+
+        Returns:
+            Ruff's stdout, or its native failure; findings never fail the pass.
+
+        """
         command_cwd = cls._command_cwd(path, path.parent)
+        u.Cli.debug(
+            f"normalize: ruff {arguments[0]} settings source="
+            f"{'staged' if settings else 'none'} project={command_cwd} path={path}"
+        )
         environment = dict(cls._command_env())
         environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
             FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
         )
-        declared = config.Infra.codegen.make.ruff
-        for arguments in (
-            ("check", *declared.lint_fix),
-            ("format", *declared.format_apply),
-        ):
-            executed = u.Cli.run_raw(
-                (
-                    *cls._workspace_tool_command(c.Infra.RUFF),
-                    *arguments,
-                    "--stdin-filename",
-                    str(path),
-                    "-",
-                ),
-                cwd=command_cwd,
-                options=m.Cli.ProcessOptions(
-                    env=environment,
-                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-                    input_data=source,
-                ),
-                timeout=cls._gate_deadline(c.Infra.RUFF),
+        executed = u.Cli.run_raw(
+            (
+                *cls._workspace_tool_command(c.Infra.RUFF),
+                *arguments,
+                *settings,
+                "--stdin-filename",
+                str(path),
+                "-",
+            ),
+            cwd=command_cwd,
+            options=m.Cli.ProcessOptions(
+                env=environment,
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                input_data=source,
+            ),
+            timeout=cls._gate_deadline(c.Infra.RUFF),
+        )
+        if executed.failure:
+            return r[str].from_failure(executed)
+        output = executed.value
+        outcome = FlextInfraUtilitiesProcess.tool_outcome(
+            output.outcome,
+            findings=int(bool(output.stderr.strip())),
+            findings_exit_codes=config.Infra.tooling.tools.ruff.findings_exit_codes,
+        )
+        if outcome is c.Infra.ToolOutcome.ERROR:
+            return r[str].fail(
+                f"ruff {arguments[0]} failed for {path}: "
+                f"{(output.stderr or output.stdout).strip()}"
             )
-            if executed.failure:
-                return r[str].from_failure(executed)
-            output = executed.value
-            outcome = FlextInfraUtilitiesProcess.tool_outcome(
-                output.outcome,
-                findings=int(bool(output.stderr.strip())),
-                findings_exit_codes=config.Infra.tooling.tools.ruff.findings_exit_codes,
-            )
-            if outcome is c.Infra.ToolOutcome.ERROR:
-                return r[str].fail(
-                    f"ruff {arguments[0]} failed for {path}: "
-                    f"{(output.stderr or output.stdout).strip()}"
-                )
-            source = output.stdout
-        return r[str].ok(source)
+        return r[str].ok(output.stdout)
 
     @classmethod
     def normalize_sources(
@@ -280,9 +523,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             if isinstance(item, ast.Constant) and isinstance(item.value, str)
         )
         lost = {name for name in lost if not any(name in value for value in strings)}
+        # No executable use was lost, so no import can have become orphaned and
+        # the libcst transform would return the proposal byte for byte.
+        if not lost:
+            return proposed
         context = CodemodContext()
         for imported in ast.walk(after):
-            if not isinstance(imported, ast.Import | ast.ImportFrom):
+            if not isinstance(imported, c.Infra.AST_IMPORT_TYPES):
                 continue
             for alias in imported.names:
                 if (alias.asname or alias.name.split(".")[0]) not in lost:
@@ -492,49 +739,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         return tuple(entry[0] for entry in cls._selected_lint_tools(gates))
-
-    @classmethod
-    def ruff_fix_files(cls, paths: t.SequenceOf[Path], workspace: Path) -> None:
-        """Run ``ruff check --fix`` on *paths* with snapshot-identical resolution.
-
-        Same venv-resolved binary and same working directory as the lint
-        snapshots, so the fix pass and the before/after diff always resolve
-        the SAME Ruff configuration for the same file.
-
-        Raises:
-            RuntimeError: If ruff normalization failed for.
-
-        """
-        for py_file in paths:
-            output = u.Cli.run_raw(
-                [
-                    *cls._workspace_tool_command("ruff"),
-                    c.Infra.CHECK,
-                    "--fix",
-                    str(py_file),
-                ],
-                cwd=cls._command_cwd(py_file, workspace),
-                options=m.Cli.ProcessOptions(
-                    env=cls._command_env(),
-                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-                ),
-                timeout=c.Infra.TIMEOUT_SHORT,
-            ).unwrap()
-            outcome = output.outcome
-            # Ruff's exit 1 means remaining findings, which the delta judge owns.
-            findings_remain = (
-                outcome.raw_return_code == 1
-                and not outcome.timed_out
-                and outcome.forwarded_signal is None
-            )
-            if not u.Cli.process_succeeded(outcome) and not findings_remain:
-                detail = (output.stderr or output.stdout).strip()
-                msg = (
-                    f"ruff normalization failed for {py_file}: "
-                    f"exit={outcome.raw_return_code}, timed_out={outcome.timed_out}, "
-                    f"signal={outcome.forwarded_signal}: {detail}"
-                )
-                raise RuntimeError(msg)
 
     @staticmethod
     def _relative_path(py_file: Path, workspace: Path) -> Path:

@@ -30,6 +30,17 @@ class FlextInfraConstantsSharedInfra:
         NODE = "flext_connectivity_prerequisite_node"
 
     @unique
+    class PytestExitCode(IntEnum):
+        """Pytest's documented process exit codes (external protocol)."""
+
+        OK = 0
+        TESTS_FAILED = 1
+        INTERRUPTED = 2
+        INTERNAL_ERROR = 3
+        USAGE_ERROR = 4
+        NO_TESTS_COLLECTED = 5
+
+    @unique
     class ScriptExitCode(IntEnum):
         """Canonical exit codes for infra-owned validation scripts."""
 
@@ -73,6 +84,14 @@ class FlextInfraConstantsSharedInfra:
         r'([A-Za-z0-9][A-Za-z0-9_.-]*)["`]?',
         re.IGNORECASE,
     )
+    MYPY_BUILD_SOURCE_MARKER: ClassVar[str] = "Found source:"
+    "Mypy verbose trace marker of one selected build source."
+    MYPY_BUILD_SOURCE_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"Found source:\s+BuildSource\(path=(.+?), module=",
+    )
+    "Mypy verbose build source entry, capturing the path's Python literal."
+    MYPY_BUILD_FINISHED_MARKER: ClassVar[str] = "Build finished in "
+    "Mypy verbose trace marker proving the build completed."
     INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
 
     # --- File names (was: class Files) ---
@@ -89,7 +108,7 @@ class FlextInfraConstantsSharedInfra:
     FOLLOW_SUPERPROJECT_BRANCH: ClassVar[str] = "."
     GITIGNORE: ClassVar[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: ClassVar[str] = ".pre-commit-config.yaml"
-    MARKDOWNLINT_CONFIG_FILENAME: ClassVar[str] = ".markdownlint.json"
+    MARKDOWN_CONFIG_FILENAME: ClassVar[str] = ".rumdl.toml"
     MARKDOWNLINT_IGNORE_FILENAME: ClassVar[str] = ".markdownlintignore"
     "Generated markdown lint/format projections (SSOT: tooling.tools.markdown)."
     "Hook-config projection whose presence decides whether a checkout runs hooks."
@@ -195,9 +214,15 @@ class FlextInfraConstantsSharedInfra:
     # module loaded from outside this checkout must fail with the origin
     # error naming the foreign path, never with a phantom-attribute error
     # raised while resolving a stale export name.
+    # After the exports resolve, every pydantic class reachable from them must
+    # be complete at import: a deferred annotation would need the banned
+    # ``model_rebuild`` or fail at first use.
     FRESH_IMPORT_EXPORT_RESOLVE_CODE: ClassVar[str] = (
         "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
         "    getattr(module, name)\n"
+        "from flext_infra.validate.fresh_import import "
+        "FlextInfraValidateFreshImport as fresh_import_owner\n"
+        "fresh_import_owner.require_complete_models(module)\n"
     )
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.

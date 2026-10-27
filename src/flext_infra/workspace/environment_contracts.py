@@ -151,6 +151,9 @@ class FlextInfraWorkspaceEnvironmentContracts:
         lines. Custom operator content is preserved verbatim; an empty
         remainder means the file must not exist.
 
+        The artifact catalog declares owner-only publication permissions for
+        these private overrides; normalization does not change that ownership.
+
         Returns:
             The resulting ``str``.
 

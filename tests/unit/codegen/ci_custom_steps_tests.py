@@ -32,7 +32,13 @@ class TestsFlextInfraCodegenCiCustomSteps:
     block = "      - name: Declared project step\n        run: echo declared"
 
     @classmethod
-    def _render_ci(cls, *, custom_steps: str) -> str:
+    def _render(
+        cls,
+        template: Path,
+        *,
+        custom_steps: str = "",
+        custom_post_steps: str = "",
+    ) -> str:
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="fixture-project",
             make_profile=c.Infra.MakeProfile.STANDALONE,
@@ -42,29 +48,51 @@ class TestsFlextInfraCodegenCiCustomSteps:
             ),
             overrides=u.CodegenTestSupport.Ci.WorkflowRenderOverrides(
                 custom_steps=custom_steps,
+                custom_post_steps=custom_post_steps,
             ),
         )
-        return tm.ok(u.Cli.template_render(cls.ci_template, spec))
+        return tm.ok(u.Cli.template_render(template, spec))
 
-    def test_declared_steps_reach_every_installing_job_before_setup(self) -> None:
-        """The block lands verbatim in the ci and release-plan jobs, pre-install."""
+    @classmethod
+    def _render_ci(cls, *, custom_steps: str = "", custom_post_steps: str = "") -> str:
+        return cls._render(
+            cls.ci_template,
+            custom_steps=custom_steps,
+            custom_post_steps=custom_post_steps,
+        )
+
+    def test_declared_steps_precede_every_approval_verb(self) -> None:
+        """The pre-approval block lands verbatim before the first approval step."""
         rendered = self._render_ci(custom_steps=self.block)
 
-        tm.that(rendered.count(self.block), eq=2)
-        jobs = rendered.split("\n  release-plan:\n")
-        tm.that(jobs, len=2)
-        for job in jobs:
-            tm.that(job, has=self.block)
-            # Before the toolchain installer, so a declared credential or
-            # input is present when setup and every gate run.
-            tm.that(
-                job.index(self.block) < job.index("name: Install the mise release"),
-                eq=True,
-            )
+        tm.that(rendered.count(self.block), eq=1)
+        tm.ok(rendered.index(self.block) < rendered.index("id: approval-"))
+
+    def test_declared_post_steps_follow_every_approval_verb(self) -> None:
+        """A failure diagnostic lands after the last approval step it observes."""
+        post = (
+            "      - name: Declared diagnostic\n        if: failure()\n        "
+            "run: echo d"
+        )
+        rendered = self._render_ci(custom_steps=self.block, custom_post_steps=post)
+
+        tm.that(rendered.count(post), eq=1)
+        tm.ok(rendered.rindex("id: approval-") < rendered.index(post))
+        tm.ok(rendered.index(self.block) < rendered.index(post))
+
+    def test_release_plan_receives_the_pre_approval_block_before_setup(self) -> None:
+        """The release guard installs through the same declared extension."""
+        rendered = self._render(
+            self.ci_template.with_name("release-plan.yml.j2"),
+            custom_steps=self.block,
+        )
+
+        tm.that(rendered.count(self.block), eq=1)
+        tm.ok(rendered.index(self.block) < rendered.index("name: Boot"))
 
     def test_a_project_declaring_nothing_changes_nothing(self) -> None:
         """Without a custom-steps file the workflow carries no project block."""
-        rendered = self._render_ci(custom_steps="")
+        rendered = self._render_ci()
 
         tm.that(rendered, lacks="Project-owned steps")
 
@@ -75,8 +103,11 @@ class TestsFlextInfraCodegenCiCustomSteps:
         Placing the extension there would surface as a permanent workflow syntax
         error in the repository's Actions tab.
         """
-        location = Path(c.Infra.CUSTOM_CI_STEPS_FILENAME)
-
-        tm.that(location.parts[0], eq=".github")
-        tm.fail("workflows" in location.parts)
-        tm.that(location.suffix, eq=".yml")
+        for name in (
+            c.Infra.CUSTOM_CI_STEPS_FILENAME,
+            c.Infra.CUSTOM_CI_POST_STEPS_FILENAME,
+        ):
+            location = Path(name)
+            tm.that(location.parts[0], eq=".github")
+            tm.fail("workflows" in location.parts)
+            tm.that(location.suffix, eq=".yml")

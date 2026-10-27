@@ -14,16 +14,24 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeModulePatch,
-    FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._rope_analysis import (
+from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
+)
+from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
+)
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -234,9 +242,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             module.get_ast()
         )
         target = definition.get_ast()
-        if not isinstance(
-            target, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-        ):
+        if not isinstance(target, c.Infra.AST_DEFINITION_TYPES):
             msg = "retirement requires a native source definition"
             raise TypeError(msg)
         container: p.Infra.RopePyName | None = None
@@ -368,8 +374,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 and isinstance(item.value.value, str)
             )
             or (
-                isinstance(item, ast.Assign | ast.AnnAssign)
-                and isinstance(item.value, ast.List | ast.Tuple)
+                isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES)
+                and isinstance(item.value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
                 and not item.value.elts
                 and len(
                     targets := item.targets
@@ -416,9 +422,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             raise TypeError(msg)
         container, target = cls._retiring_declaration_span(module, definition, path)
         if (
-            not isinstance(
-                target, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-            )
+            not isinstance(target, c.Infra.AST_DEFINITION_TYPES)
             or target.end_lineno is None
         ):
             msg = "retiring declaration has no complete native span"
@@ -497,7 +501,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             ValueError: If a callable default expression is unproven.
 
         """
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+        if not isinstance(node, c.Infra.AST_FUNCTION_TYPES):
             message = "native signature proof requires a function definition"
             raise TypeError(message)
         args = node.args
@@ -564,7 +568,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             path = Path(resource.real_path).resolve()
             if path not in observed:
                 source = resource.read()
-                if not source.startswith(c.Infra.AUTOGEN_HEADERS):
+                if not source.startswith(c.Infra.AUTOGEN_HEADER):
                     message = (
                         "ownership transfer requires complete governed inventory: "
                         f"{path}"
@@ -611,7 +615,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         span: tuple[Path, int, int],
     ) -> None:
         path, source = entry
-        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
             return
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding, container = owners
@@ -695,7 +699,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 node.lineno
             ):
                 continue
-            if isinstance(node, ast.Name | ast.Attribute):
+            if isinstance(node, c.Infra.AST_NAME_REFERENCE_TYPES):
                 cls._prove_retirement_reference(
                     node, parents, resolves, probes, (binding, container, path)
                 )
@@ -762,7 +766,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 )
             )
             for part in ast.walk(expression)
-            if isinstance(part, ast.Name | ast.Attribute)
+            if isinstance(part, c.Infra.AST_NAME_REFERENCE_TYPES)
             for actual in (resolves(part),)
         )
 

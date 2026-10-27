@@ -1,0 +1,66 @@
+# FLEXT law (operator order 2026-10-24): a utility that owns a structural
+# library (griffe, libcst, rope, ...) reads code through that library's model.
+# `ast.literal_eval`, `ast.walk` or a hand-written `ast.NodeVisitor` in the
+# same module re-derives what the library already models -- a second parser
+# beside the owner. Detection for review only: the replacement member of the
+# library model is chosen per call site, so no fix is offered.
+#
+# The library set is derived, never listed: the module binds an import whose
+# module is neither stdlib, the own package, nor a FLEXT facade package.
+id: ban-manual-ast-walk-beside-library
+language: python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  scope:
+    not-in: [layer-zero]
+constraints:
+  MODULE:
+    not:
+      any:
+        - matches: stdlib-module
+        - matches: own-package
+        - matches: facade-package
+utils:
+  library-bound-module:
+    kind: module
+    has:
+      stopBy: end
+      any:
+        - kind: import_statement
+          has:
+            stopBy: end
+            kind: dotted_name
+            nthChild: 1
+            pattern: $MODULE
+            not:
+              regex: "^ast(?:\\.|$)"
+        - kind: import_from_statement
+          has:
+            field: module_name
+            pattern: $MODULE
+            not:
+              regex: "^ast(?:\\.|$)"
+rule:
+  any:
+    - pattern: ast.literal_eval($$$ARGS)
+    - pattern: ast.walk($$$ARGS)
+    - kind: argument_list
+      has:
+        regex: "^ast\\.NodeVisitor$"
+      inside:
+        kind: class_definition
+  inside:
+    stopBy: end
+    matches: library-bound-module
+message: >-
+  Manual `ast` walk beside the `$MODULE` library: read the structure through
+  the library model the utility already owns.
+note: >-
+  Where: this call or visitor. Why: FLEXT law -- a module that owns a structural
+  library must not keep a second hand-written parser; `ast.literal_eval`,
+  `ast.walk` and `ast.NodeVisitor` re-derive what the library models. How:
+  review the site and replace it with the library's model member (for example
+  griffe expression values, libcst matchers, rope pyobjects), declared types
+  reached through `t`.

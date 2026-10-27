@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, m, tm
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,6 +53,7 @@ class TestsFlextInfraDepsModernizerMain:
                 "invalid [[[",
                 path=pyproject,
                 topology=m.Infra.PyprojectDeclaredTopology(),
+                codegen=tm.ok(u.Infra.load_codegen_inputs(modernizer_workspace)).spec,
             ),
             has="invalid TOML",
         )
@@ -90,7 +91,7 @@ class TestsFlextInfraDepsModernizerMain:
     ) -> None:
         """Verify cli reports pending changes in audit mode."""
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "deps",
                 "modernize",
                 "--repository-root",

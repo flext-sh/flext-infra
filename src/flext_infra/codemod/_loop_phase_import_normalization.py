@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -36,30 +35,19 @@ class FlextInfraImportNormalizationPhase:
             Whether at least one file changed.
 
         """
-        sources = cls._project_sources((project_root,)).unwrap()
-        with u.Infra.open_project(project_root) as project:
-            planned = FlextInfraImportNormalization.plan_files(
-                project_root, files, sources=sources, rope_project=project
+        with u.Infra.workspace_snapshot(project_root, (project_root,)) as snapshot:
+            sources = {
+                path: captured.text
+                for path, captured in u.Infra.workspace_sources(snapshot).items()
+            }
+            planned = u.Infra.plan_import_normalization(
+                project_root,
+                files,
+                sources=sources,
+                declared_files=(),
+                snapshot=snapshot,
             ).unwrap()
         return cls._publish(project_root, planned).unwrap()
-
-    @staticmethod
-    def _project_sources(
-        project_roots: t.VariadicTuple[Path],
-    ) -> p.Result[t.MappingKV[Path, str]]:
-        """Read every governed Python source of the given projects once.
-
-        Returns:
-            The decoded sources, or the inventory failure.
-
-        """
-        return u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=project_roots)
-        ).map(
-            lambda paths: {
-                path: path.read_text(encoding=c.DEFAULT_ENCODING) for path in paths
-            }
-        )
 
     @staticmethod
     def _publish(
@@ -108,11 +96,12 @@ class FlextInfraImportNormalizationPhase:
                 and path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 and (u.Infra.project_root(path) or project_root) == project_root
             )
-            planned = FlextInfraImportNormalization.plan_files(
+            planned = u.Infra.plan_import_normalization(
                 project_root,
                 selected,
                 sources=sources,
-                rope_project=rope_workspace.rope_project,
+                declared_files=(),
+                snapshot=rope_workspace.snapshot,
             )
             if planned.failure:
                 return planned
@@ -132,10 +121,13 @@ class FlextInfraImportNormalizationPhase:
             The resulting ``p.Result[bool]`` — ``True`` marks changed sources.
 
         """
-        sources = cls._project_sources(tuple(u.Infra.governed_project_roots(root)))
-        if sources.failure:
-            return r[bool].from_failure(sources)
-        planned = cls.plan(root, preflight, rope_workspace, sources=sources.value)
+        sources = {
+            path: captured.text
+            for path, captured in u.Infra.workspace_sources(
+                rope_workspace.snapshot
+            ).items()
+        }
+        planned = cls.plan(root, preflight, rope_workspace, sources=sources)
         if planned.failure:
             return r[bool].from_failure(planned)
         return cls._publish(root, planned.value)

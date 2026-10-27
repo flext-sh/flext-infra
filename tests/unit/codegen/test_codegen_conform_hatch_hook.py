@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -43,14 +43,14 @@ class TestsFlextInfraCodegenConformHatchHook:
         root: Path,
         hook_path: str | Path | None,
     ) -> t.Triple[
-        FlextInfraCodegenConformExecute,
+        FlextInfraCodegenConform.Generate,
         m.Infra.CodegenConformRequest,
         m.Infra.CodegenFilePlan,
     ]:
         """Plan the canonical pyproject through the public conform owner.
 
         Returns:
-            The resulting ``t.Triple[FlextInfraCodegenConformExecute,
+            The resulting ``t.Triple[FlextInfraCodegenConform.Generate,
                 m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan]``.
 
         """

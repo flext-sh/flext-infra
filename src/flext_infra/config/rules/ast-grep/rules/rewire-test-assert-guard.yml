@@ -1,21 +1,22 @@
 # Explicit failure preserves native guard narrowing and lazy message evaluation.
-# The emitted-symbol predicate requires the real tm facade binding.
+# Every rewrite requires the real tm facade binding (tm-imported-from-flext).
 # A non-None name narrows through tm.not_none and a name type guard through
 # tm.instance (rewire-test-assert-not-none.yml, rewire-test-assert-instance.yml);
 # any other non-narrowing condition is a tm.that observation.
 id: rewire-test-assert-message
 language: Python
 severity: error
-metadata:
-  context:
-    COND:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
 rule:
   all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
     - pattern: "assert $COND, $MSG"
     - has:
         any:
@@ -37,16 +38,17 @@ message: Preserve lazy assertion arguments and narrowing through tm.reject.
 id: rewire-test-assert-guard
 language: Python
 severity: error
-metadata:
-  context:
-    COND:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
 rule:
   all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
     - pattern: "assert $COND"
     - not:
         matches: assert-has-message
@@ -72,16 +74,17 @@ message: Preserve native guard narrowing through tm.reject.
 id: rewire-test-assert-type-guard
 language: Python
 severity: error
-metadata:
-  context:
-    COND:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
 rule:
   all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
     - any:
         - pattern: "assert $COND"
         - pattern: |-

@@ -1,0 +1,53 @@
+# A public method named `get_*`, `set_*` or `is_*` is an accessor: it exposes
+# state instead of a domain action. Name it with a domain verb
+# (fetch_/resolve_/compute_, configure_/apply_/update_) or expose a field or
+# computed field. The accessor migration owns the guidance per prefix
+# (tooling `accessor-policy`) and the proven renames
+# (config/rules/rope/accessor-migrations.yaml).
+#
+# An external contract keeps the names its owner defines: a Protocol mirrors
+# the structural surface of an object FLEXT does not own (rope, libcst), and an
+# @override implements a base class's declared method
+# (pydantic_settings.BaseSettingsSource.get_field_value is overridden by name in
+# every settings source).
+id: ban-accessor-method-name
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+constraints:
+  NAME:
+    all:
+      - regex: "^(?:get|set|is)_"
+      - not:
+          regex: "^get_field_value$"
+rule:
+  matches: class-body-method
+  has:
+    field: name
+    pattern: $NAME
+  not:
+    any:
+      - inside:
+          kind: decorated_definition
+          has:
+            kind: decorator
+            regex: "^@(?:typing(?:_extensions)?\\.)?override$"
+      - inside:
+          kind: class_definition
+          stopBy: end
+          has:
+            field: superclasses
+            regex: "\\bProtocol\\b"
+message: >-
+  Accessor method `$NAME`: rename it to a domain verb or expose a field or
+  computed field.
+  Detection only: a new name is a domain decision; proven renames run through the make mod accessor phase from config/rules/rope/accessor-migrations.yaml.
+metadata:
+  enforce: [ENFORCE-113]

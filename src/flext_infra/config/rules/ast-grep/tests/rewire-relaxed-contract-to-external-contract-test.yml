@@ -1,0 +1,24 @@
+id: rewire-relaxed-contract-to-external-contract
+valid:
+  - |
+    class Finding(m.ContractModel):
+        """Strict finding."""
+
+        code: str
+  - |
+    class Finding(m.ContractModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
+        code: str
+invalid:
+  - |
+    class Finding(m.ContractModel):
+        """Required fields consumed from one native finding."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+
+        code: str
+  - |
+    class FlextDemoModels:
+        class Report(m.ContractModel):
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+            items: t.StrSequence

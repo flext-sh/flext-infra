@@ -1,0 +1,245 @@
+id: rewire-model-protocol-field-to-port
+snapshots:
+  "class Probe(m.Value):\n    assertion_message: Annotated[\n        p.AttributeProbe | None,\n        m.Field(description=\"Original assertion message.\"),\n    ] = None\n":
+    fixed: |
+      class Probe(m.Value):
+          assertion_message: Annotated[
+              t.Port[p.AttributeProbe] | None,
+              m.Field(description="Original assertion message."),
+          ] = None
+    labels:
+    - source: p.AttributeProbe
+      style: primary
+      start: 64
+      end: 80
+    - source: m.Value
+      style: secondary
+      start: 12
+      end: 19
+    - source: m.Value
+      style: secondary
+      start: 12
+      end: 19
+    - source: |-
+        class Probe(m.Value):
+            assertion_message: Annotated[
+                p.AttributeProbe | None,
+                m.Field(description="Original assertion message."),
+            ] = None
+      style: secondary
+      start: 0
+      end: 161
+    - source: |-
+        assertion_message: Annotated[
+                p.AttributeProbe | None,
+                m.Field(description="Original assertion message."),
+            ] = None
+      style: secondary
+      start: 26
+      end: 161
+    - source: |-
+        assertion_message: Annotated[
+                p.AttributeProbe | None,
+                m.Field(description="Original assertion message."),
+            ] = None
+      style: secondary
+      start: 26
+      end: 161
+    - source: |-
+        assertion_message: Annotated[
+                p.AttributeProbe | None,
+                m.Field(description="Original assertion message."),
+            ] = None
+      style: secondary
+      start: 26
+      end: 161
+    - source: |-
+        Annotated[
+                p.AttributeProbe | None,
+                m.Field(description="Original assertion message."),
+            ]
+      style: secondary
+      start: 45
+      end: 154
+  "class Runner(FlextModelsBase.ArbitraryTypesModel):\n    writer: p.Writer\n":
+    fixed: |
+      class Runner(FlextModelsBase.ArbitraryTypesModel):
+          writer: t.Port[p.Writer]
+    labels:
+    - source: p.Writer
+      style: primary
+      start: 63
+      end: 71
+    - source: FlextModelsBase.ArbitraryTypesModel
+      style: secondary
+      start: 13
+      end: 48
+    - source: FlextModelsBase.ArbitraryTypesModel
+      style: secondary
+      start: 13
+      end: 48
+    - source: |-
+        class Runner(FlextModelsBase.ArbitraryTypesModel):
+            writer: p.Writer
+      style: secondary
+      start: 0
+      end: 71
+    - source: "writer: p.Writer"
+      style: secondary
+      start: 55
+      end: 71
+    - source: "writer: p.Writer"
+      style: secondary
+      start: 55
+      end: 71
+    - source: "writer: p.Writer"
+      style: secondary
+      start: 55
+      end: 71
+    - source: p.Writer
+      style: secondary
+      start: 63
+      end: 71
+  "class Runner(m.Value):\n    sink: p.Sink[str] | None = None\n":
+    fixed: |
+      class Runner(m.Value):
+          sink: t.Port[p.Sink[str]] | None = None
+    labels:
+    - source: p.Sink[str]
+      style: primary
+      start: 33
+      end: 44
+    - source: p.Sink
+      style: secondary
+      start: 33
+      end: 39
+    - source: m.Value
+      style: secondary
+      start: 13
+      end: 20
+    - source: m.Value
+      style: secondary
+      start: 13
+      end: 20
+    - source: |-
+        class Runner(m.Value):
+            sink: p.Sink[str] | None = None
+      style: secondary
+      start: 0
+      end: 58
+    - source: "sink: p.Sink[str] | None = None"
+      style: secondary
+      start: 27
+      end: 58
+    - source: "sink: p.Sink[str] | None = None"
+      style: secondary
+      start: 27
+      end: 58
+    - source: "sink: p.Sink[str] | None = None"
+      style: secondary
+      start: 27
+      end: 58
+    - source: p.Sink[str] | None
+      style: secondary
+      start: 33
+      end: 51
+  "class Runner(m.Value):\n    writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")\n":
+    fixed: |
+      class Runner(m.Value):
+          writers: t.SequenceOf[t.Port[p.Writer]] = m.Field(description="Writers.")
+    labels:
+    - source: p.Writer
+      style: primary
+      start: 49
+      end: 57
+    - source: m.Value
+      style: secondary
+      start: 13
+      end: 20
+    - source: m.Value
+      style: secondary
+      start: 13
+      end: 20
+    - source: |-
+        class Runner(m.Value):
+            writers: t.SequenceOf[p.Writer] = m.Field(description="Writers.")
+      style: secondary
+      start: 0
+      end: 92
+    - source: "writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")"
+      style: secondary
+      start: 27
+      end: 92
+    - source: "writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")"
+      style: secondary
+      start: 27
+      end: 92
+    - source: "writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")"
+      style: secondary
+      start: 27
+      end: 92
+    - source: t.SequenceOf[p.Writer]
+      style: secondary
+      start: 36
+      end: 58
+  "class Scope(m.Value):\n    settings: Annotated[\n        t.MappingKV[str, p.Tests.NativeMatchValue] | None,\n        m.Field(description=\"Initial configuration values.\"),\n    ] = None\n":
+    fixed: |
+      class Scope(m.Value):
+          settings: Annotated[
+              t.MappingKV[str, t.Port[p.Tests.NativeMatchValue]] | None,
+              m.Field(description="Initial configuration values."),
+          ] = None
+    labels:
+    - source: p.Tests.NativeMatchValue
+      style: primary
+      start: 72
+      end: 96
+    - source: m.Value
+      style: secondary
+      start: 12
+      end: 19
+    - source: m.Value
+      style: secondary
+      start: 12
+      end: 19
+    - source: |-
+        class Scope(m.Value):
+            settings: Annotated[
+                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                m.Field(description="Initial configuration values."),
+            ] = None
+      style: secondary
+      start: 0
+      end: 180
+    - source: |-
+        settings: Annotated[
+                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                m.Field(description="Initial configuration values."),
+            ] = None
+      style: secondary
+      start: 26
+      end: 180
+    - source: |-
+        settings: Annotated[
+                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                m.Field(description="Initial configuration values."),
+            ] = None
+      style: secondary
+      start: 26
+      end: 180
+    - source: |-
+        settings: Annotated[
+                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                m.Field(description="Initial configuration values."),
+            ] = None
+      style: secondary
+      start: 26
+      end: 180
+    - source: |-
+        Annotated[
+                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                m.Field(description="Initial configuration values."),
+            ]
+      style: secondary
+      start: 36
+      end: 173

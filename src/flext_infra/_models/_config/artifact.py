@@ -7,16 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import cached_property
 from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 import flext_core
 from flext_cli import m
-from packaging.utils import canonicalize_name
-from typing_extensions import TypeForm
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -161,6 +160,33 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = ()
+        markdown: Annotated[
+            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
+            m.Field(
+                description=(
+                    "Positive repository-relative Markdown exclusion patterns "
+                    "not derived from analyzer or full-generated artifact ownership"
+                ),
+            ),
+        ]
+        docs_publish: Annotated[
+            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
+            m.Field(
+                description=(
+                    "Repository-relative page patterns excluded from site "
+                    "publication, not from physical documentation copying"
+                ),
+            ),
+        ]
+        docs_copy: Annotated[
+            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
+            m.Field(
+                description=(
+                    "Repository-relative documentation patterns excluded from "
+                    "physical copying and site publication"
+                ),
+            ),
+        ]
         pyproject_scan: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -234,6 +260,16 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = ()
+        scenario_data_roots: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Project-relative roots of tests-tier scenario trees "
+                    "(ADR-028): complete roots and descendants are artifacts "
+                    "the engines under test consume as data, never governed code"
+                ),
+            ),
+        ] = ()
 
     class CodegenGovernedPlanRequest(FlextInfraConfigModelsContract.ConfigContract):
         """Resolved inputs for planning one governed artifact's file plan."""
@@ -262,6 +298,92 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         max_lines: Annotated[
             int,
             m.Field(ge=1, description="Per-module code-LOC ceiling"),
+        ]
+
+    class CodegenAstGrepRendererSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One u.Infra renderer of generated native rule documents."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "u.Infra renderer mapping a project root to native rule "
+                    "documents keyed by '<shape>' or '<shape>--<qualifier>'"
+                ),
+            ),
+        ]
+        shapes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Rule shapes the renderer is registered to emit"),
+        ] = ()
+        shapes_from: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "u.Infra producer deriving the renderer's shapes from their "
+                    "source of truth, instead of a declared list"
+                ),
+            ),
+        ] = None
+        facts: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "u.Infra facts producer whose typed model the stage passes "
+                    "to the renderer, computed once per generation"
+                ),
+            ),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_one_shape_source(self) -> Self:
+            """Require exactly one shape source: a declared list or its producer.
+
+            Returns:
+                The validated renderer declaration.
+
+            Raises:
+                ValueError: If both or neither shape sources are declared.
+
+            """
+            if bool(self.shapes) == (self.shapes_from is not None):
+                msg = (
+                    f"ast-grep renderer {self.name} declares exactly one of "
+                    "shapes or shapes_from"
+                )
+                raise ValueError(msg)
+            return self
+
+    class CodegenAstGrepSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Native ast-grep utilities and rules rendered in memory from SSOT facts."""
+
+        producers: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "u.Infra producer names; each maps a project root to its "
+                    "native utility rules keyed by utility id"
+                ),
+            ),
+        ]
+        renderers: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenAstGrepRendererSpec],
+            m.Field(
+                description=(
+                    "Renderers emitting generated native rule documents, run "
+                    "after the utility producers"
+                ),
+            ),
+        ]
+        scopes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "u.Infra file-scope producer names; each maps a project root "
+                    "to project-relative file sets keyed by the selector a "
+                    "catalog rule names under metadata.scope"
+                ),
+            ),
         ]
 
     class RetiredProjectionSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -309,7 +431,107 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ]
 
-    class CodegenConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenArtifactScopeSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Declared artifacts and their editor, source and generated-tree views."""
+
+        artifacts: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenArtifactSpec],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Ephemeral/generated artifact SSOT; every ignore/exclude "
+                    "projection derives from this list"
+                ),
+            ),
+        ]
+
+        @m.computed_field
+        @property
+        def vscode_files_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``files.exclude`` entries from the artifact SSOT.
+
+            Returns:
+                The resulting ``Mapping[str, bool]``.
+
+            """
+            return {
+                f"**/{artifact.name}": True
+                for artifact in self.artifacts
+                if artifact.vscode_exclude
+            }
+
+        @m.computed_field
+        @property
+        def vscode_watcher_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``files.watcherExclude`` entries from the SSOT.
+
+            Returns:
+                The resulting ``Mapping[str, bool]``.
+
+            """
+            return {
+                (
+                    f"**/{artifact.name}/**"
+                    if artifact.is_dir
+                    else f"**/{artifact.name}"
+                ): True
+                for artifact in self.artifacts
+                if artifact.watch_exclude
+            }
+
+        @m.computed_field
+        @property
+        def vscode_search_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``search.exclude`` entries from the artifact SSOT.
+
+            Returns:
+                The resulting ``Mapping[str, bool]``.
+
+            """
+            return dict(self.vscode_files_exclude_map)
+
+        @m.computed_field
+        @property
+        def source_scan_ignored(self) -> t.VariadicTuple[str]:
+            """Derived ``source_scan.ignored_resources`` names from the SSOT.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                artifact.name
+                for artifact in self.artifacts
+                if artifact.source_scan_ignore or artifact.generated_source
+            )
+
+        @m.computed_field
+        @property
+        def generated_sources(self) -> t.VariadicTuple[str]:
+            """Derived names of the tracked foreign-generator source trees.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                artifact.name
+                for artifact in self.artifacts
+                if artifact.generated_source
+            )
+
+        @m.computed_field
+        @property
+        def generated_source_globs(self) -> t.VariadicTuple[str]:
+            """Derived path globs every analyzer excludes for generated sources.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(f"**/{name}/**" for name in self.generated_sources)
+
+    class CodegenConfigSpec(CodegenArtifactScopeSpec):
         """Fully modeled content of ``config/codegen.yaml``."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
@@ -328,12 +550,10 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ] = m.Field(
             default_factory=flext_core.u.empty(
-                TypeForm(
-                    Mapping[
-                        t.NonEmptyStr,
-                        Mapping[Literal["config", "settings"], t.NonEmptyStr],
-                    ]
-                )
+                Mapping[
+                    t.NonEmptyStr,
+                    Mapping[Literal["config", "settings"], t.NonEmptyStr],
+                ]
             ),
             validate_default=True,
         )
@@ -354,7 +574,9 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
             """
             for project, roles in value.items():
-                if project != canonicalize_name(project, validate=True):
+                if project != t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
+                    project
+                ):
                     msg = f"runtime module project identity is not canonical: {project}"
                     raise ValueError(msg)
                 stems = tuple(roles.values())
@@ -403,19 +625,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 description="Concurrent protected-edit lint snapshot threads",
             ),
         ]
-        fleet_worker_memory_gb: Annotated[
-            int,
-            m.Field(
-                ge=1,
-                description=(
-                    "Physical memory one fleet worker process needs, in GiB; the "
-                    "worker count derives from CPU and memory capacity"
-                ),
-            ),
-        ]
         loc_cap: Annotated[
             FlextInfraConfigModelsArtifact.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
+        ]
+        ast_grep: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenAstGrepSpec,
+            m.Field(description="Generated native ast-grep utility rules"),
         ]
         modes: Annotated[
             FlextInfraConfigModelsArtifact.CodegenModesSpec,
@@ -513,16 +729,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             FlextInfraConfigModelsTemplates.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),
         ]
-        artifacts: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenArtifactSpec],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Ephemeral/generated artifact SSOT; every ignore/exclude "
-                    "projection derives from this list"
-                ),
-            ),
-        ]
         exclusions: Annotated[
             FlextInfraConfigModelsArtifact.DeclaredExclusionsSpec,
             m.Field(
@@ -541,92 +747,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ]
-
-        @m.computed_field
-        @property
-        def vscode_files_exclude_map(self) -> Mapping[str, bool]:
-            """Derived VS Code ``files.exclude`` entries from the artifact SSOT.
-
-            Returns:
-                The resulting ``Mapping[str, bool]``.
-
-            """
-            return {
-                f"**/{artifact.name}": True
-                for artifact in self.artifacts
-                if artifact.vscode_exclude
-            }
-
-        @m.computed_field
-        @property
-        def vscode_watcher_exclude_map(self) -> Mapping[str, bool]:
-            """Derived VS Code ``files.watcherExclude`` entries from the SSOT.
-
-            Returns:
-                The resulting ``Mapping[str, bool]``.
-
-            """
-            return {
-                (
-                    f"**/{artifact.name}/**"
-                    if artifact.is_dir
-                    else f"**/{artifact.name}"
-                ): True
-                for artifact in self.artifacts
-                if artifact.watch_exclude
-            }
-
-        @m.computed_field
-        @property
-        def vscode_search_exclude_map(self) -> Mapping[str, bool]:
-            """Derived VS Code ``search.exclude`` entries from the artifact SSOT.
-
-            Returns:
-                The resulting ``Mapping[str, bool]``.
-
-            """
-            return dict(self.vscode_files_exclude_map)
-
-        @m.computed_field
-        @property
-        def source_scan_ignored(self) -> t.VariadicTuple[str]:
-            """Derived ``source_scan.ignored_resources`` names from the SSOT.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            return tuple(
-                artifact.name
-                for artifact in self.artifacts
-                if artifact.source_scan_ignore or artifact.generated_source
-            )
-
-        @m.computed_field
-        @property
-        def generated_sources(self) -> t.VariadicTuple[str]:
-            """Derived names of the tracked foreign-generator source trees.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            return tuple(
-                artifact.name
-                for artifact in self.artifacts
-                if artifact.generated_source
-            )
-
-        @m.computed_field
-        @property
-        def generated_source_globs(self) -> t.VariadicTuple[str]:
-            """Derived path globs every analyzer excludes for generated sources.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            return tuple(f"**/{name}/**" for name in self.generated_sources)
 
         @m.computed_field
         @property
@@ -649,7 +769,71 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                         if artifact.analysis_exclude or artifact.generated_source
                     }
                     | {f"**/{name}/**" for name in self.check_excluded_dirs}
+                    | set(self.scenario_data_globs)
                 )
+            )
+
+        @m.computed_field
+        @property
+        def markdown_exclude_globs(self) -> t.VariadicTuple[str]:
+            """Derive Markdown scope without hiding authored or merged documents.
+
+            Returns:
+                Analyzer, full-generated Markdown and declared residual patterns.
+
+            """
+            return tuple(
+                sorted(
+                    set(self.analyzer_exclude_globs)
+                    | {
+                        entry.destination
+                        for entry in self.templates.entries
+                        if entry.ownership is not None
+                        and entry.ownership.policy == c.Infra.MANAGED_FILE_POLICY_FULL
+                        and Path(entry.destination).suffix == ".md"
+                    }
+                    | set(self.exclusions.markdown)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def docs_publish_patterns(self) -> t.VariadicTuple[str]:
+            """Compose page and copy exclusions in repository coordinates.
+
+            Returns:
+                Page and copy patterns in declaration order, without duplicates.
+
+            """
+            return tuple(
+                dict.fromkeys((
+                    *self.exclusions.docs_publish,
+                    *self.exclusions.docs_copy,
+                ))
+            )
+
+        @m.computed_field
+        @property
+        def docs_copy_patterns(self) -> t.VariadicTuple[str]:
+            """Expose declared copy exclusions without importing Markdown scope.
+
+            Returns:
+                Copy patterns in declaration order, without duplicates.
+
+            """
+            return tuple(dict.fromkeys(self.exclusions.docs_copy))
+
+        @m.computed_field
+        @property
+        def scenario_data_globs(self) -> t.VariadicTuple[str]:
+            """Derived globs of complete artifact trees at each declared root.
+
+            Returns:
+                One recursive pattern per declared root.
+
+            """
+            return tuple(
+                f"**/{root}/**" for root in self.exclusions.scenario_data_roots
             )
 
         @m.computed_field
@@ -923,11 +1107,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             )
 
         @m.computed_field
-        @property
+        @cached_property
         def managed_file_specs(
             self,
         ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
-            """Derive managed views from the single artifact declaration catalog.
+            """Derive managed views once per catalog from its single declaration.
 
             Returns:
                 The owned artifacts, excluding authored scaffold seeds.
@@ -1248,6 +1432,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
+        ports: Annotated[
+            t.Port[p.Infra.CodegenConformPorts] | None,
+            m.Field(
+                exclude=True,
+                description="Caller-bound capabilities shared by repository phases",
+            ),
+        ] = None
         provider_plans: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan] | None,
             m.Field(

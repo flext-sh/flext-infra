@@ -1,9 +1,7 @@
 id: pydantic-field-positional-default
 snapshots:
-  ? |
-    class Cache(m.Value):
-        backend: str = u.Field("memory", description="Backend")
-  : fixed: |
+  "class Cache(m.Value):\n    backend: str = u.Field(\"memory\", description=\"Backend\")\n":
+    fixed: |
       class Cache(m.Value):
           backend: str = u.Field(
               default="memory", description="Backend",
@@ -13,10 +11,8 @@ snapshots:
       style: primary
       start: 41
       end: 81
-  ? |
-    class Enabled(m.Value):
-        enabled: bool = m.Field(True)
-  : fixed: |
+  "class Enabled(m.Value):\n    enabled: bool = m.Field(True)\n":
+    fixed: |
       class Enabled(m.Value):
           enabled: bool = m.Field(
               default=True,
@@ -26,14 +22,8 @@ snapshots:
       style: primary
       start: 44
       end: 57
-  ? |
-    class Location(m.ContractModel):
-        start_line: int | None = m.Field(
-            None,
-            validation_alias=m.AliasPath("physicalLocation", "region", "startLine"),
-            description="Start line",
-        )
-  : fixed: |
+  "class Location(m.ContractModel):\n    start_line: int | None = m.Field(\n        None,\n        validation_alias=m.AliasPath(\"physicalLocation\", \"region\", \"startLine\"),\n        description=\"Start line\",\n    )\n":
+    fixed: |
       class Location(m.ContractModel):
           start_line: int | None = m.Field(
               default=None,
@@ -50,12 +40,8 @@ snapshots:
       style: primary
       start: 62
       end: 205
-  ? |
-    class Operation(m.ContractModel):
-        kind: Literal["set"] = m.Field("set", description="Operation")
-        locations: tuple[str, ...] = m.Field((), description="Locations")
-        receipt: Path | None = m.Field(None, description="Receipt")
-  : fixed: |
+  "class Operation(m.ContractModel):\n    kind: Literal[\"set\"] = m.Field(\"set\", description=\"Operation\")\n    locations: tuple[str, ...] = m.Field((), description=\"Locations\")\n    receipt: Path | None = m.Field(None, description=\"Receipt\")\n":
+    fixed: |
       class Operation(m.ContractModel):
           kind: Literal["set"] = m.Field(
               default="set", description="Operation",

@@ -6,11 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Annotated
 
 from flext_core import FlextRuntime
-from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
 from flext_infra._models.deps import (
@@ -49,8 +47,10 @@ class FlextInfraPyprojectModernizerDocument(
             The resulting ``t.StrSequence``.
 
         """
-        return u.Infra.native_tool_setting(
-            config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+        return u.Infra.native_tool_strings(
+            config.Infra.tooling,
+            "tomlsort",
+            "sort_first",
         )
 
     audit: Annotated[
@@ -263,30 +263,13 @@ class FlextInfraPyprojectModernizerDocument(
         repository = inputs.value.spec.repository
         project = repository.project
         build_changes = self._normalize_build_payload(state.payload)
-        packaging = m.Infra.ProjectPackagingDeclaration.model_validate(state.payload)
-        topology = m.Infra.PyprojectDeclaredTopology.model_validate({
-            **(
-                project.model_dump(
-                    include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
-                )
-                if project is not None
-                else {}
-            ),
-            "project_declaration_resource": (
-                FlextInfraEnsurePackagingPhase.declaration_resource(
-                    package_name=(
-                        project.package_name
-                        if project is not None
-                        else u.Infra.package_name_from_payload(
-                            state.pyproject_path.parent,
-                            state.payload,
-                            u.Infra.docs_meta_from_payload(state.payload),
-                        )
-                    ),
-                    package=u.Infra.project_package_participation(packaging),
-                )
-            ),
-        })
+        topology = m.Infra.PyprojectDeclaredTopology.model_validate(
+            project.model_dump(
+                include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
+            )
+            if project is not None
+            else {},
+        )
         return self._render_document_state(
             state,
             (
@@ -295,6 +278,7 @@ class FlextInfraPyprojectModernizerDocument(
                     state,
                     canonical_dev=canonical_dev,
                     topology=topology,
+                    codegen=inputs.value.spec,
                 ),
             ),
             skip_comments=skip_comments,
@@ -306,6 +290,7 @@ class FlextInfraPyprojectModernizerDocument(
         *,
         canonical_dev: t.StrSequence,
         topology: m.Infra.PyprojectDeclaredTopology,
+        codegen: m.Infra.CodegenConfigSpec,
         tool_config: m.Infra.ToolConfigDocument | None = None,
     ) -> t.StrSequence:
         """Run every managed phase, in order, over one parsed payload.
@@ -370,7 +355,7 @@ class FlextInfraPyprojectModernizerDocument(
         changes: t.MutableSequenceOf[str] = [
             *self._normalize_build_payload(payload),
             *FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
-            *FlextInfraToolTablesPhase(tooling).apply_payload(
+            *FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
                 payload,
                 path=path,
                 repository_namespace_packages=topology.repository_namespace_packages,
@@ -378,7 +363,7 @@ class FlextInfraPyprojectModernizerDocument(
             ),
             # Pyrefly derives its include globs from the canonical Pyright
             # roots, so resolve Pyright first and converge in one pass.
-            *FlextInfraEnsurePyrightConfigPhase(tooling).apply_payload(
+            *FlextInfraEnsurePyrightConfigPhase(tooling, codegen=codegen).apply_payload(
                 payload,
                 context=analyzer_context,
                 paths_manager=paths_manager,
@@ -386,7 +371,7 @@ class FlextInfraPyprojectModernizerDocument(
             ),
             # Declared roots are topology facts only during atomic creation;
             # normal modernization derives productive roots on disk.
-            *FlextInfraEnsurePyreflyConfigPhase(tooling).apply_payload(
+            *FlextInfraEnsurePyreflyConfigPhase(tooling, codegen=codegen).apply_payload(
                 payload,
                 context=(
                     analyzer_context
@@ -399,6 +384,7 @@ class FlextInfraPyprojectModernizerDocument(
             ),
             *FlextInfraEnsureRuffConfigPhase(
                 tooling,
+                codegen=codegen,
             ).apply_payload(
                 payload,
                 path=path,
@@ -453,7 +439,7 @@ class FlextInfraPyprojectModernizerDocument(
                     f"original TOML document is unavailable: {path}"
                 )
             doc = state.document
-            self._sync_document_values(doc, state.payload)
+            u.Infra.sync_document_values(doc, state.payload)
         else:
             canonical = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
                 u.Cli.json_sort_keys(dict(state.payload)),
@@ -483,30 +469,6 @@ class FlextInfraPyprojectModernizerDocument(
             rendered = formatted.value
         state.rendered = rendered.rstrip() + "\n"
         return r[t.StrSequence].ok((*changes, *comment_changes))
-
-    @classmethod
-    def _sync_document_values(
-        cls,
-        document: t.Cli.TomlDocument | t.Cli.TomlTable,
-        payload: t.JsonMapping,
-    ) -> None:
-        """Synchronize changed semantic values through the original TOML tree."""
-        for key, value in payload.items():
-            if u.Cli.toml_value(document, key) == value:
-                continue
-            child = u.Cli.toml_table_child(document, key)
-            if child is not None and isinstance(value, Mapping):
-                cls._sync_document_values(child, value)
-            elif isinstance(value, list) and all(
-                isinstance(item, str) for item in value
-            ):
-                u.Cli.toml_sync_string_list(
-                    document,
-                    key,
-                    tuple(item for item in value if isinstance(item, str)),
-                )
-            else:
-                u.Cli.toml_sync_value(document, key, value)
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerDocument"]

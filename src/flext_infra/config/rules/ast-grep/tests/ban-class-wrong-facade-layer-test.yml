@@ -1,6 +1,6 @@
-# Shape only: the engine admits a finding when the derived $FAMILY is not a
-# family of the finding's module. Nested payloads are covered separately by
-# ban-nested-payload-outside-models, with Rope role/ancestry admission.
+# Shape only: each generated partition keeps the derived $FAMILY to the files
+# outside that facade family. Nested payloads are covered separately by
+# ban-nested-payload-outside-models through its declaration scopes.
 id: ban-class-wrong-facade-layer
 valid:
   - |

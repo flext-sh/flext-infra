@@ -1,0 +1,34 @@
+# A value object is immutable by definition: a class on a value-object preset
+# (FrozenValueModel, ImmutableValueModel) never switches `frozen` off.
+id: require-frozen-value-object
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  kind: keyword_argument
+  all:
+    - has:
+        field: name
+        regex: "^frozen$"
+    - has:
+        field: value
+        regex: "^False$"
+    - inside:
+        kind: class_definition
+        stopBy: end
+        has:
+          field: superclasses
+          regex: "\\b(?:FrozenValueModel|ImmutableValueModel)\\b"
+message: >-
+  A value object switches `frozen` off: value objects are immutable; inherit a
+  mutable preset if the model is not a value object.
+  Detection only: consumers that mutate the instance break when it freezes.
+metadata:
+  enforce: [ENFORCE-110]

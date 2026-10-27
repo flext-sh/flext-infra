@@ -1,8 +1,7 @@
 id: require-family-base-module
 snapshots:
-  ? |
-    __all__ = ["FlextFooModelsItem"]
-  : labels:
+  "__all__ = [\"FlextFooModelsItem\"]\n":
+    labels:
     - source: __all__
       style: primary
       start: 0

@@ -13,43 +13,43 @@ import pytest
 from tests import tm, u
 
 
-@pytest.fixture
-def docs_repository(tmp_path: Path) -> Path:
-    """Create a real peripheral Git owner with an explicit integration contract.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    root = tmp_path / "docs-owner"
-    root.mkdir()
-    u.Tests.initialize_git_repo(
-        root,
-        origin_url="https://github.com/example-owner/root-docs.git",
-    )
-    directory = root / "config"
-    directory.mkdir(exist_ok=True)
-    (directory / "codegen.yaml").write_text(
-        "Infra:\n  codegen:\n    repository:\n      integration:\n"
-        "        provider: github\n        branch: docs/integration\n",
-        encoding="utf-8",
-    )
-    (root / ".gitmodules").write_text(
-        '[submodule "peripheral"]\n'
-        "  path = components/peripheral\n"
-        "  url = https://github.com/second-owner/peripheral-docs.git\n"
-        "  branch = docs/member-line\n",
-        encoding="utf-8",
-    )
-    member = root / "components/peripheral"
-    member.mkdir(parents=True)
-    (root / "README.md").write_text("Root docs\n", encoding="utf-8")
-    (member / "README.md").write_text("Member docs\n", encoding="utf-8")
-    return root
-
-
 class TestsFlextInfraUtilitiesDocsGithubLinks:
     """Exercise Git identity, branch rewriting, and local existence evidence."""
+
+    @staticmethod
+    @pytest.fixture
+    def docs_repository(tmp_path: Path) -> Path:
+        """Create a real peripheral Git owner with an explicit integration contract.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        root = tmp_path / "docs-owner"
+        root.mkdir()
+        u.Tests.initialize_git_repo(
+            root,
+            origin_url="https://github.com/example-owner/root-docs.git",
+        )
+        directory = root / "config"
+        directory.mkdir(exist_ok=True)
+        (directory / "codegen.yaml").write_text(
+            "Infra:\n  codegen:\n    repository:\n      integration:\n"
+            "        provider: github\n        branch: docs/integration\n",
+            encoding="utf-8",
+        )
+        (root / ".gitmodules").write_text(
+            '[submodule "peripheral"]\n'
+            "  path = components/peripheral\n"
+            "  url = https://github.com/second-owner/peripheral-docs.git\n"
+            "  branch = docs/member-line\n",
+            encoding="utf-8",
+        )
+        member = root / "components/peripheral"
+        member.mkdir(parents=True)
+        (root / "README.md").write_text("Root docs\n", encoding="utf-8")
+        (member / "README.md").write_text("Member docs\n", encoding="utf-8")
+        return root
 
     @staticmethod
     def test_gitmodule_admits_member_without_a_catalog(docs_repository: Path) -> None:

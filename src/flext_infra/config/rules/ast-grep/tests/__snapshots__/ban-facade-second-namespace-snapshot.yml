@@ -1,12 +1,7 @@
 id: ban-facade-second-namespace
 snapshots:
-  ? |
-    class FlextFooModels(FlextCliModels):
-        class Foo(FlextFooModelsBase):
-            pass
-        class Bar(FlextFooModelsBase):
-            pass
-  : labels:
+  "class FlextFooModels(FlextCliModels):\n    class Foo(FlextFooModelsBase):\n        pass\n    class Bar(FlextFooModelsBase):\n        pass\n":
+    labels:
     - source: |-
         class Bar(FlextFooModelsBase):
                 pass

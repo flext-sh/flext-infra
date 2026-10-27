@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, infra, m
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 
 pytestmark = pytest.mark.slow
@@ -151,12 +151,6 @@ class TestsFlextInfraCodegenHookConformance:
             **policy.model_dump(exclude_computed_fields=True),
             "pre_commit": False,
             "pre_push": True,
-            "workflow": (
-                m.Infra.MakeWorkflowStepSpec(
-                    verb="check",
-                    contexts=("local", "pre_push"),
-                ),
-            ),
         })
         rendered = tm.ok(
             u.Cli.template_render(
@@ -170,8 +164,18 @@ class TestsFlextInfraCodegenHookConformance:
         repositories = u.Cli.json_as_sequence(document["repos"])
         repository = u.Cli.json_as_mapping(repositories[0])
         hooks = u.Cli.json_as_sequence(repository["hooks"])
-        tm.that(len(hooks), eq=1)
-        hook = u.Cli.json_as_mapping(hooks[0])
+        check = next(
+            step
+            for step in make.workflow
+            if step.verb == c.Infra.VERB_CHECK
+            and step.phase == c.Infra.CheckPhase.COMPLETE
+        )
+        hook = next(
+            mapping
+            for row in hooks
+            if (mapping := u.Cli.json_as_mapping(row))["id"]
+            == f"flext-pre-push-{check.identity}"
+        )
         entry = u.Cli.json_pick_str(hook, "entry")
         tm.that(entry, empty=False)
         process = tm.ok(
@@ -225,6 +229,54 @@ class TestsFlextInfraCodegenHookConformance:
 
         for stage in ("pre-commit", "pre-push"):
             tm.that((hooks_dir / stage).read_text(encoding="utf-8"), eq=foreign)
+
+    @staticmethod
+    def test_commit_hook_check_selects_only_the_commit_stage_gates() -> None:
+        """The commit row passes its declared token; that token runs commit gates.
+
+        The token reaches the same runtime selector the check verb uses, so the
+        commit hook never runs a CI-stage or push-stage gate.
+        """
+        make = config.Infra.codegen.make.model_copy(
+            update={"pre_commit": True, "pre_push": True},
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                _HOOK_TEMPLATE,
+                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+            ),
+        )
+        commit_rows = [
+            line
+            for line in rendered.splitlines()
+            if "make check" in line and f"{make.ci.variable}=" in line
+        ]
+        tm.ok(
+            any(
+                f"{make.ci.variable}={make.ci.pre_commit_value} make check" in line
+                for line in commit_rows
+            ),
+        )
+        tm.fail(
+            any(
+                f"{make.ci.variable}={make.ci.value} make check" in line
+                for line in commit_rows
+            ),
+        )
+        with u.Tests.env_vars_context(
+            env_vars={make.ci.variable: make.ci.pre_commit_value},
+        ):
+            selected = u.Infra.selected_check_gates(
+                make,
+                c.Infra.CheckGateSet.CHECK,
+            )
+        tm.that(selected, eq=make.pre_commit_check_gates)
+        tm.ok(
+            all(
+                make.check_gate_stages[gate] is c.Infra.GateStage.COMMIT
+                for gate in selected
+            ),
+        )
 
     @staticmethod
     def test_hook_stages_follow_configuration() -> None:
@@ -307,7 +359,7 @@ class TestsFlextInfraCodegenHookConformance:
             encoding="utf-8",
         )
 
-        planned = FlextInfraCodegenConformExecute.retired_projection_plans(
+        planned = FlextInfraCodegenConform.Generate.retired_projection_plans(
             root,
             c.Infra.MakeProfile.STANDALONE,
         )
@@ -327,7 +379,7 @@ class TestsFlextInfraCodegenHookConformance:
             encoding="utf-8",
         )
 
-        planned = FlextInfraCodegenConformExecute.retired_projection_plans(
+        planned = FlextInfraCodegenConform.Generate.retired_projection_plans(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
         )

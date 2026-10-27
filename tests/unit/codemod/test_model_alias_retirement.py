@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.refactor import FlextInfraImportNormalization
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -56,7 +55,7 @@ class TestsFlextInfraModelAliasRetirement:
             encoding="utf-8",
         )
         (utilities / "__init__.py").write_text(
-            c.Infra.AUTOGEN_HEADERS[0] + "\n"
+            c.Infra.AUTOGEN_HEADER + "\n"
             "from .relay import RedundantRelay\n"
             '__all__ = ["RedundantRelay"]\n',
             encoding="utf-8",
@@ -98,7 +97,7 @@ class TestsFlextInfraModelAliasRetirement:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                    import_normalizer=FlextInfraImportNormalization.normalize_source,
+                    import_normalizer=u.Infra.normalize_import_source,
                     rope_workspace=workspace,
                     sources=sources,
                 )
@@ -110,7 +109,7 @@ class TestsFlextInfraModelAliasRetirement:
                 tm.ok(
                     u.Infra.plan_semantic_cutover(
                         c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                        import_normalizer=FlextInfraImportNormalization.normalize_source,
+                        import_normalizer=u.Infra.normalize_import_source,
                         rope_workspace=workspace,
                         sources=updated,
                     )
@@ -119,7 +118,7 @@ class TestsFlextInfraModelAliasRetirement:
             )
         for path, source in updated.items():
             if source != sources[path]:
-                tm.fail(source.startswith(c.Infra.AUTOGEN_HEADERS))
+                tm.fail(source.startswith(c.Infra.AUTOGEN_HEADER))
                 path.write_text(source, encoding="utf-8")
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         package = next(path.parent for path in sources if path.name == "consumer.py")
@@ -182,7 +181,7 @@ class TestsFlextInfraModelAliasRetirement:
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                import_normalizer=FlextInfraImportNormalization.normalize_source,
+                import_normalizer=u.Infra.normalize_import_source,
                 rope_workspace=workspace,
                 sources=sources,
             )
@@ -209,7 +208,7 @@ class TestsFlextInfraModelAliasRetirement:
                 tm.ok(
                     u.Infra.plan_semantic_cutover(
                         c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                        import_normalizer=FlextInfraImportNormalization.normalize_source,
+                        import_normalizer=u.Infra.normalize_import_source,
                         rope_workspace=workspace,
                         sources=sources,
                     )

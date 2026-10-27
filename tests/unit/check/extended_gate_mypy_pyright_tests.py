@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import check, config, gates, main
+from flext_infra import FlextInfraCli, check, config, gates
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -40,15 +40,15 @@ class TestsFlextInfraTypeGates:
     def test_required_cache_environment_fields_do_not_inherit_defaults(
         field: str,
     ) -> None:
-        """Testmon and codemod keep their explicitly required YAML contracts."""
+        """Testmon keeps its explicitly required YAML environment contract."""
         configured = config.Infra.codegen.make
-        for policy in (configured.testmon_cache, configured.codemod_rules_cache):
-            payload = policy.model_dump(
-                exclude={field},
-                exclude_computed_fields=True,
-            )
-            with pytest.raises(ValueError, match=field):
-                type(policy).model_validate(payload)
+        policy = configured.testmon_cache
+        payload = policy.model_dump(
+            exclude={field},
+            exclude_computed_fields=True,
+        )
+        with pytest.raises(ValueError, match=field):
+            type(policy).model_validate(payload)
 
     @staticmethod
     @pytest.mark.slow
@@ -185,7 +185,7 @@ class TestsFlextInfraTypeGates:
         sibling = source_root / "unselected_file.py"
         sibling.write_text("def :\n", encoding="utf-8")
         reports = checker_context.reports_dir / "literal-file"
-        code = main([
+        code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -496,9 +496,13 @@ class TestsFlextInfraTypeGates:
         gate_class: type[gates.FlextInfraGate],
     ) -> None:
         """Detected Python content, not a pass receipt, selects the type gates."""
-        tm.fail(gate_class(tmp_path).selected_for(tmp_path))
+        tm.fail(
+            gate_class(tmp_path).selected_for(tmp_path, u.Tests.gate_context(tmp_path))
+        )
         tm.that(
-            gate_class(real_python_package).selected_for(real_python_package),
+            gate_class(real_python_package).selected_for(
+                real_python_package, u.Tests.gate_context(real_python_package)
+            ),
             eq=True,
         )
 
@@ -578,7 +582,7 @@ class TestsFlextInfraTypeGates:
                     gates.FlextInfraPyrightGate.gate_id,
                     gates.FlextInfraPyreflyGate.gate_id,
                 ],
-                reports_dir=reports,
+                u.Tests.gate_context(real_python_package.parent, reports),
             ),
         )
 

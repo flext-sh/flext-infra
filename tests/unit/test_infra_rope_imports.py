@@ -213,3 +213,29 @@ class TestsFlextInfraRopeImports:
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
         tm.ok(result, eq=expected_change, is_=bool)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("module_source", "expected"),
+        [
+            pytest.param("from x import p\nclass A:\n    y = p.X\n", True, id="one"),
+            pytest.param(
+                "if TYPE_CHECKING:\n    from x import p\nq = p.Y\n",
+                True,
+                id="guarded",
+            ),
+            pytest.param("from x import p\ndef f(p): ...\n", False, id="param"),
+            pytest.param("from x import p\nfrom y import p\n", False, id="twice"),
+            pytest.param("from x import *\nfrom y import p\n", False, id="star"),
+            pytest.param("def f():\n    from x import p\n", False, id="local"),
+            pytest.param("from x import p\n[p for p in z]\n", False, id="loop"),
+        ],
+    )
+    def test_single_module_import_binding_follows_python_scoping(
+        module_source: str,
+        *,
+        expected: bool,
+    ) -> None:
+        """Only a sole module-level import binds every load of the name."""
+        tree = u.Infra.parsed_module(module_source)
+        tm.that(u.Infra.single_module_import_binding(tree, "p"), eq=expected)

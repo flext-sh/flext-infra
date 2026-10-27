@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import re
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
+
+import libcst
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -16,6 +19,50 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
+
+    class Cst:
+        """libcst runtime classes for isinstance operands; annotations read t."""
+
+        AnnAssign = libcst.AnnAssign
+        Annotation = libcst.Annotation
+        Arg = libcst.Arg
+        AsName = libcst.AsName
+        Assign = libcst.Assign
+        AssignTarget = libcst.AssignTarget
+        Attribute = libcst.Attribute
+        AugAssign = libcst.AugAssign
+        BaseCompoundStatement = libcst.BaseCompoundStatement
+        BaseExpression = libcst.BaseExpression
+        BaseStatement = libcst.BaseStatement
+        Call = libcst.Call
+        ClassDef = libcst.ClassDef
+        Comma = libcst.Comma
+        ConcatenatedString = libcst.ConcatenatedString
+        Del = libcst.Del
+        DictComp = libcst.DictComp
+        FunctionDef = libcst.FunctionDef
+        GeneratorExp = libcst.GeneratorExp
+        If = libcst.If
+        Import = libcst.Import
+        ImportAlias = libcst.ImportAlias
+        ImportFrom = libcst.ImportFrom
+        ImportStar = libcst.ImportStar
+        IndentedBlock = libcst.IndentedBlock
+        Index = libcst.Index
+        Lambda = libcst.Lambda
+        List = libcst.List
+        ListComp = libcst.ListComp
+        Module = libcst.Module
+        Name = libcst.Name
+        ParamSpec = libcst.ParamSpec
+        Pass = libcst.Pass
+        SetComp = libcst.SetComp
+        SimpleStatementLine = libcst.SimpleStatementLine
+        SimpleString = libcst.SimpleString
+        Tuple = libcst.Tuple
+        TypeAlias = libcst.TypeAlias
+        TypeVar = libcst.TypeVar
+        TypeVarTuple = libcst.TypeVarTuple
 
     class MergeConflictControl(StrEnum):
         """Closed Git merge-control vocabulary."""
@@ -54,6 +101,8 @@ class FlextInfraConstantsSourceCode:
     # computed projections) composed with the artifact analysis_exclude flags
     # and the VCS-derived names; the former COMMON_EXCLUDED_DIRS family and
     # its parallel copies were removed with that registry.
+    GITHUB_DIRNAME: ClassVar[str] = ".github"
+    "Repository directory holding the forge workflows and agent projections."
     GITHUB_AGENT_PROJECTION_DIRS: ClassVar[frozenset[str]] = frozenset({
         "agents",
         "hooks",
@@ -233,6 +282,83 @@ class FlextInfraConstantsSourceCode:
     # --- Reporting paths (was: class Reporting) ---
     REPORTS_DIR_NAME: ClassVar[str] = ".reports"
     "Standard directory name for report output."
+
+    # --- Python syntax node type sets (ENFORCE-079 *_TYPES convention) ---
+    AST_FUNCTION_TYPES: ClassVar[
+        tuple[type[ast.FunctionDef], type[ast.AsyncFunctionDef]]
+    ] = (ast.FunctionDef, ast.AsyncFunctionDef)
+    "Python function definition nodes, synchronous and asynchronous."
+    AST_CALLABLE_TYPES: ClassVar[
+        tuple[type[ast.FunctionDef], type[ast.AsyncFunctionDef], type[ast.Lambda]]
+    ] = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+    "Python nodes that open a function scope: definitions and lambdas."
+    AST_DEFINITION_TYPES: ClassVar[
+        tuple[type[ast.ClassDef], type[ast.FunctionDef], type[ast.AsyncFunctionDef]]
+    ] = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    "Python class and function definition nodes."
+    AST_ASSIGNMENT_TYPES: ClassVar[tuple[type[ast.Assign], type[ast.AnnAssign]]] = (
+        ast.Assign,
+        ast.AnnAssign,
+    )
+    "Python plain and annotated assignment statements."
+    AST_IMPORT_TYPES: ClassVar[tuple[type[ast.Import], type[ast.ImportFrom]]] = (
+        ast.Import,
+        ast.ImportFrom,
+    )
+    "Python import statements, absolute and from-import."
+    AST_IMPORT_OR_CLASS_TYPES: ClassVar[
+        tuple[type[ast.Import], type[ast.ImportFrom], type[ast.ClassDef]]
+    ] = (ast.Import, ast.ImportFrom, ast.ClassDef)
+    "Python import statements and class definitions."
+    AST_NAME_REFERENCE_TYPES: ClassVar[tuple[type[ast.Name], type[ast.Attribute]]] = (
+        ast.Name,
+        ast.Attribute,
+    )
+    "Python bare and dotted name references."
+    AST_SEQUENCE_DISPLAY_TYPES: ClassVar[tuple[type[ast.List], type[ast.Tuple]]] = (
+        ast.List,
+        ast.Tuple,
+    )
+    "Python list and tuple displays."
+    AST_TYPE_PARAM_TYPES: ClassVar[
+        tuple[type[ast.TypeVar], type[ast.TypeVarTuple], type[ast.ParamSpec]]
+    ] = (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec)
+    "Python PEP 695 type parameter nodes."
+    AST_UNBINDING_CONTEXT_TYPES: ClassVar[tuple[type[ast.Store], type[ast.Del]]] = (
+        ast.Store,
+        ast.Del,
+    )
+    "Python expression contexts that bind or delete a name."
+    AST_WITH_TYPES: ClassVar[tuple[type[ast.With], type[ast.AsyncWith]]] = (
+        ast.With,
+        ast.AsyncWith,
+    )
+    "Python context-manager statements, synchronous and asynchronous."
+    AST_TRY_TYPES: ClassVar[tuple[type[ast.Try], type[ast.TryStar]]] = (
+        ast.Try,
+        ast.TryStar,
+    )
+    "Python try statements, plain and exception-group."
+    AST_SCOPE_OWNER_TYPES: ClassVar[
+        tuple[
+            type[ast.Module],
+            type[ast.ClassDef],
+            type[ast.FunctionDef],
+            type[ast.AsyncFunctionDef],
+        ]
+    ] = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    "Python nodes that own a lexical scope: module, class and function bodies."
+    CST_IMPORT_TYPES: ClassVar[
+        tuple[type[t.Infra.Cst.Import], type[t.Infra.Cst.ImportFrom]]
+    ] = (
+        libcst.Import,
+        libcst.ImportFrom,
+    )
+    "libcst import statements, absolute and from-import."
+    CST_DEFINITION_TYPES: ClassVar[
+        tuple[type[t.Infra.Cst.ClassDef], type[t.Infra.Cst.FunctionDef]]
+    ] = (libcst.ClassDef, libcst.FunctionDef)
+    "libcst class and function definition nodes."
 
 
 __all__: list[str] = ["FlextInfraConstantsSourceCode"]

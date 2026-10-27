@@ -20,3 +20,5 @@ rule:
 message: >-
   Hardcoded error-code literal bypassing the c.ErrorCode SSOT: import c and
   use c.ErrorCode.OPERATION_ERROR.value / c.ErrorCode.TIMEOUT_ERROR.value.
+metadata:
+  enforce: [ENFORCE-097]

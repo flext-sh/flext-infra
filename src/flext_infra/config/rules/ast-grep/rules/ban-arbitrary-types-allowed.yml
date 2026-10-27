@@ -1,0 +1,44 @@
+# Pydantic validates what it can describe. ``arbitrary_types_allowed`` makes a
+# model accept any object by bare ``isinstance`` and hides every field the
+# schema cannot see, so consumers re-narrow what the model should have proven.
+#
+# Plan of record (Pydantic at the maximum level, 2026-10-24): a field whose type
+# is a runtime dependency is declared ``t.Port[p.Protocol]``; the flext-core
+# preset owner (``_models/_base``) is the only place the flag still exists, and
+# it is being retired there. `rewire-model-protocol-field-to-port` wraps every
+# bare protocol field in `t.Port[...]`. Detection only: models carrying the flag
+# also hold non-protocol classes without a schema (measured on flext-cli:
+# `os.stat_result`, `threading.Thread`), so removing the flag breaks class
+# creation until each such field is declared through its owner type.
+id: ban-arbitrary-types-allowed
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/flext_core/_models/_base/**"
+  - "**/config/rules/ast-grep/tests/**"
+rule:
+  any:
+    - kind: keyword_argument
+      all:
+        - has:
+            field: name
+            regex: "^arbitrary_types_allowed$"
+        - has:
+            field: value
+            kind: "true"
+    - kind: pair
+      all:
+        - has:
+            field: key
+            regex: "^[\"']arbitrary_types_allowed[\"']$"
+        - has:
+            field: value
+            kind: "true"
+message: >-
+  `arbitrary_types_allowed` lets a model accept unvalidated objects: declare the
+  field as `t.Port[p.<Protocol>]` (or a validated `t.*` type) and extend a preset
+  without the flag.

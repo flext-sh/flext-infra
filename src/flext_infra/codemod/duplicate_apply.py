@@ -303,7 +303,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         """
         checks: t.SequenceOf[t.Pair[bool, str]] = (
             (
-                definition.source.startswith(c.Infra.AUTOGEN_HEADERS),
+                definition.source.startswith(c.Infra.AUTOGEN_HEADER),
                 "a definition lives in a generated module",
             ),
             (
@@ -580,7 +580,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                     in_module_uses += 1
                     continue
                 generated = rope_workspace.source(path).startswith(
-                    c.Infra.AUTOGEN_HEADERS
+                    c.Infra.AUTOGEN_HEADER
                 )
                 if generated or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name):
                     return f"a consumer is generated: {path}"
@@ -902,12 +902,17 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         """Compose validated edits into the shared working map.
 
         Raises:
-            ValueError: If two plans disagree about one file's base.
+            ValueError: If two plans disagree about one file's base, or a
+                plan declares a creation a duplicate cure never performs.
 
         """
         for edit in edits:
-            current = working.setdefault(edit.file_path, edit.original_source)
-            if current != edit.original_source:
+            original = edit.original_source
+            if original is None:
+                msg = f"duplicate cure plans never create files: {edit.file_path}"
+                raise ValueError(msg)
+            current = working.setdefault(edit.file_path, original)
+            if current != original:
                 msg = f"duplicate cure plans disagree for {edit.file_path}"
                 raise ValueError(msg)
             working[edit.file_path] = edit.updated_source

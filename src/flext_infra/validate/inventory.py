@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, cast, override
+from typing import Annotated, override
 
 from flext_infra import c, m, p, r, s, t, u
 
@@ -82,25 +82,25 @@ class FlextInfraInventoryService(s[bool]):
 
         """
         now = u.now().isoformat()
-        inventory_payload = u.json_value_adapter().validate_python({
+        inventory_payload = u.json_mapping_adapter().validate_python({
             "generated_at": now,
             "repo_root": str(root),
             "total_scripts": len(scripts),
             "scripts": list(scripts),
         })
-        wiring_payload = u.json_value_adapter().validate_python({
+        wiring_payload = u.json_mapping_adapter().validate_python({
             "generated_at": now,
             "root_makefile": [c.Infra.MAKEFILE_FILENAME],
             "unwired_scripts": [],
         })
-        external_payload = u.json_value_adapter().validate_python({
+        external_payload = u.json_mapping_adapter().validate_python({
             "generated_at": now,
             "candidates": [],
         })
         return (
-            cast("t.JsonMapping", inventory_payload),
-            cast("t.JsonMapping", wiring_payload),
-            cast("t.JsonMapping", external_payload),
+            inventory_payload,
+            wiring_payload,
+            external_payload,
         )
 
     @staticmethod

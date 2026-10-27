@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConformExecute
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -179,7 +179,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         tm.that(
             tm.ok(
-                FlextInfraCodegenConformExecute(
+                FlextInfraCodegenConform.Generate(
                     repository_root=root,
                     state=m.Infra.CodegenConformState(
                         repository_root=root,
@@ -194,7 +194,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = TestsFlextInfraConformSupport.project_tree(root)
 
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(
+            FlextInfraCodegenConform.Generate(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -268,7 +268,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         command = m.Infra.CandidateBootstrapCommand(repository_root=root)
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(
+            FlextInfraCodegenConform.Generate(repository_root=root).plan(
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.PYPROJECT,
@@ -795,7 +795,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
         destinations = tm.not_none(
-            FlextInfraCodegenConformExecute.surface_contract(
+            FlextInfraCodegenConform.Generate.surface_contract(
                 c.Infra.CodegenConformSurface.PYPROJECT,
                 codegen=inputs.spec,
             ).destinations,

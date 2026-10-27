@@ -1,6 +1,6 @@
 id: ban-test-implementation-shape
 snapshots:
-  assert FlextLdap.__bases__ == (FlextLdapModels,):
+  "assert FlextLdap.__bases__ == (FlextLdapModels,)":
     labels:
     - source: FlextLdap.__bases__
       style: primary
@@ -12,27 +12,25 @@ snapshots:
       style: primary
       start: 27
       end: 44
-  ? |
-    def test_mro(self) -> None:
-        assert cls.__mro__[1] is Base
-  : labels:
+  "def test_mro(self) -> None:\n    assert cls.__mro__[1] is Base\n":
+    labels:
     - source: cls.__mro__
       style: primary
       start: 39
       end: 50
-  tm.that(Service in Facade.__mro__, eq=True):
+  "tm.that(Service in Facade.__mro__, eq=True)":
     labels:
     - source: Facade.__mro__
       style: primary
       start: 19
       end: 33
-  tm.that(Widget.__bases__, eq=(Base,)):
+  "tm.that(Widget.__bases__, eq=(Base,))":
     labels:
     - source: Widget.__bases__
       style: primary
       start: 8
       end: 24
-  tm.that(p.Grpc.__mro__, has=FlextGrpcProtocols.Grpc):
+  "tm.that(p.Grpc.__mro__, has=FlextGrpcProtocols.Grpc)":
     labels:
     - source: p.Grpc.__mro__
       style: primary

@@ -330,6 +330,35 @@ class TestsFlextInfraReleaseDag:
                 has="Hatch source path is outside the release boundary",
             )
 
+        @staticmethod
+        def test_hatch_extra_metadata_source_must_ride_in_sdist(
+            tmp_path: Path,
+        ) -> None:
+            """A wheel rebuilt from the sdist needs every extra-metadata source."""
+            project_name = "flext-a"
+            workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
+            project = workspace / project_name
+            pyproject = project / c.PYPROJECT_FILENAME
+            content = pyproject.read_text(encoding="utf-8")
+            header = "[tool.hatch.metadata]\n"
+            declared = (
+                "[tool.hatch.build.targets.wheel.extra-metadata]\n"
+                '"NOTICE.md" = "NOTICE.md"\n\n'
+            )
+            pyproject.write_text(
+                content.replace(header, declared + header),
+                encoding="utf-8",
+            )
+            u.Tests.commit_git_changes(project, "add unretained extra metadata")
+
+            result = u.Tests.run_release_build(workspace, project_name, dry_run=True)
+
+            tm.that(result, eq=1)
+            tm.that(
+                u.Tests.release_build_log_text(workspace, project_name),
+                has="Hatch sdist must retain every forced and extra-metadata wheel",
+            )
+
     class TestsGitleaksPolicy:
         """Trusted secret-scanning policy behavior."""
 

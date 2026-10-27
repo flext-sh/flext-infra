@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, config, m, r, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -28,6 +28,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.SMELLS
     gate_name: ClassVar[str] = "Code Smells"
     scanner_binary: ClassVar[str] = c.Infra.QLTY_BINARY
+    check_timeout: ClassVar[int] = c.Infra.TIMEOUT_LONG
 
     def _scanned_issues(
         self,
@@ -73,7 +74,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
         """
         started = time.monotonic()
-        scan = self._scan(project_dir)
+        scan = self._scan(project_dir, ctx)
         issues = self._scanned_issues(scan, project_dir)
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
@@ -167,7 +168,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
             ),
         )
 
-    def _scan(self, project_dir: Path) -> p.Cli.CommandOutput:
+    def _scan(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> p.Cli.CommandOutput:
         """Run one qlty scan, or synthesize the blocking reason it cannot run.
 
         Codegen renders the qlty config from its template; this gate used to
@@ -200,7 +205,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return self._run(
             self._scan_command(binary, project_dir),
             self._repository_root,
-            timeout=c.Infra.TIMEOUT_LONG,
+            ctx,
         )
 
     @staticmethod
@@ -316,21 +321,18 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @staticmethod
     def _enriched_message(code: str, sarif_text: str) -> str:
-        """Append the flext-core fix law text when the tag exists.
+        """Append the declared repair text of the qlty check when it exists.
 
         The SARIF text already states the concrete problem (name and count);
-        the core problem text is a census template whose placeholders qlty
-        does not supply, so only the fix is appended.
+        tooling ``smells.fix-text`` owns the repair guidance per qlty check.
 
         Returns:
             The resulting ``str``.
 
         """
-        tag = c.Infra.SMELLS_RULE_TAGS.get(code, "")
-        text = c.ENFORCEMENT_RULES_TEXT.get(tag) if tag else None
-        if text is None:
+        fix = config.Infra.tooling.smells.fix_text.get(code)
+        if fix is None:
             return sarif_text
-        _, fix = text
         return f"{sarif_text}. Fix: {fix}"
 
 

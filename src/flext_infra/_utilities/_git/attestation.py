@@ -21,6 +21,7 @@ from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, settings, t
+from flext_infra._utilities import FlextInfraUtilitiesBase
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
     FlextInfraUtilitiesGitWorktreeIO,
@@ -197,6 +198,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         """
         root = request.repository_root.resolve()
+        gates = request.gates or ",".join(
+            FlextInfraUtilitiesBase.selected_check_gates(
+                inputs.spec.make, c.Infra.CheckGateSet.CHECK, phase=request.phase
+            )
+        )
+        if not gates:
+            return r[m.Infra.GateCaptureReport].fail(
+                "no active check gates remain in the selected context",
+            )
         directory = inputs.spec.make.gate_receipts_directory
         if directory.is_absolute() or ".." in directory.parts:
             return r[m.Infra.GateCaptureReport].fail(
@@ -209,20 +219,17 @@ class FlextInfraUtilitiesGitAttestationMixin(
         command = (
             sys.executable,
             "-m",
-            *(
-                (
-                    "flext_infra._profile_entry",
-                    str(report_root / c.Infra.CHECK_PROFILE_FILENAME),
-                )
-                if settings.Infra.profile
-                else ("flext_infra",)
-            ),
+            "flext_infra",
             "check",
             "run",
             "--repository-root",
             str(root),
             "--gates",
-            request.gates,
+            gates,
+            "--phase",
+            request.phase,
+            "--scope",
+            c.Infra.CodegenConformScope.ALL.value,
             "--reports-dir",
             str(report_root / c.Infra.VERB_CHECK),
             *(
@@ -232,7 +239,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
         )
         native_request = m.Infra.RunCommand.model_validate(
-            {"repository_root": root, "gates": request.gates},
+            {
+                "repository_root": root,
+                "gates": gates,
+                "phase": request.phase,
+                "scope": c.Infra.CodegenConformScope.ALL,
+            },
         )
         started_capture = cls.git_begin_gate_capture(
             m.Infra.GateCaptureBeginRequest(
@@ -240,6 +252,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 gate=c.Infra.VERB_CHECK,
                 command=command,
                 intent=m.Infra.GateExecutionIntent(
+                    phase=request.phase,
                     requested_gates=tuple(native_request.gates),
                 ),
                 runtime_identity=read_runtime_identity(native_request.gates).unwrap(),
@@ -254,7 +267,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
             command,
             report_root / "execution.log",
             cwd=root,
-            options=m.Cli.ProcessOptions(live=True),
+            # A profiled capture profiles the captured check command itself.
+            options=m.Cli.ProcessOptions(
+                live=True,
+                env=(
+                    {
+                        "FLEXT_INFRA_PROFILE_OUTPUT": str(
+                            report_root / c.Infra.CHECK_PROFILE_FILENAME
+                        )
+                    }
+                    if settings.Infra.profile
+                    else None
+                ),
+            ),
         )
         if native.failure:
             return r[m.Infra.GateCaptureReport].from_failure(native)

@@ -1,0 +1,31 @@
+id: ban-artifact-execution
+valid:
+  - |
+    payload = Path("tests/fixtures/example.py").read_bytes()
+  - |
+    fixture_tree.materialize("parser")
+  - |
+    pytest_plugins = ["flext_tests.plugin"]
+  - |
+    engine.refactor(Path("tests/fixtures/parser/input.py"))
+  - |
+    importlib.import_module("tests.unit.support")
+invalid:
+  - |
+    importlib.import_module("tests.fixtures.support")
+  - |
+    __import__("tests.fixtures.support")
+  - |
+    runpy.run_path("tests/fixtures/example.py")
+  - |
+    runpy.run_module("tests.fixtures.support")
+  - |
+    importlib.util.spec_from_file_location("support", "/project/tests/fixtures/example.py")
+  - |
+    SourceFileLoader("support", "tests/fixtures/example.py")
+  - |
+    pytest_plugins = ["tests.fixtures.support"]
+  - |
+    pytest_plugins = "tests.fixtures.support"
+  - |
+    pytest_plugins += ["tests.fixtures.support"]

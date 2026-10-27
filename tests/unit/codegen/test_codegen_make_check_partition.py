@@ -1,4 +1,4 @@
-"""CI follows its declared partition; local checks retain every active gate.
+"""Every check partition derives from each gate's declared stage.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -65,56 +65,141 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
     @staticmethod
-    def test_ci_excludes_only_declared_local_only_gates() -> None:
-        """Local checks cover every active gate; CI excludes its declared set."""
+    def test_runtime_gate_selection_follows_the_ci_token() -> None:
+        """The checker resolves each requested gate set from the typed Make spec."""
         make = config.Infra.codegen.make
-        local = frozenset(make.ci.local_check_gates)
-        tm.that(make.check_gates_default, eq=make.check_gates_allowed)
+        ci = make.ci
+        expected = {
+            ci.value: make.check_gates_ci,
+            ci.pre_commit_value: make.pre_commit_check_gates,
+            ci.local_value: make.check_gates_local,
+        }
+        for token, gates in expected.items():
+            with u.Tests.env_vars_context(env_vars={ci.variable: token}):
+                tm.that(
+                    u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
+                    eq=gates,
+                )
+                tm.that(
+                    u.Infra.selected_check_gates(
+                        make,
+                        c.Infra.CheckGateSet.CHECK,
+                        phase=c.Infra.CheckPhase.PRIMARY,
+                    ),
+                    eq=make.check_prerequisite_gates,
+                )
+        with u.Tests.env_vars_context(vars_to_clear=(ci.variable,)):
+            tm.that(
+                u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
+                eq=make.check_gates_default,
+            )
         tm.that(
-            make.check_gates_ci,
-            eq=tuple(gate for gate in make.check_gates_default if gate not in local),
+            u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.FIX),
+            eq=make.check_gates_fixable,
         )
-        tm.that(make.check_gates_local, eq=make.check_gates_default)
         tm.that(
-            set(make.check_gates_ci) <= set(make.check_gates_local),
-            eq=True,
+            u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.FMT),
+            eq=make.fmt_gates,
         )
 
     @staticmethod
-    def test_ci_partition_runs_the_non_local_type_checkers() -> None:
-        """Active type checkers follow the declared partition for any value.
+    def test_partitions_derive_from_each_gate_declared_stage() -> None:
+        """Every context partition is the stage-admitted slice of the default set.
 
-        The local-only set is config-owned: a checker declared in
-        ``ci.local_check_gates`` stays out of CI, and every checker outside the
-        declared local set surfaces in the CI partition.
+        The commit hook admits only commit-stage gates, CI admits the commit
+        and CI stages, and local/pre-push runs keep every active gate.
         """
+        make = config.Infra.codegen.make
+        stages = make.check_gate_stages
+        tm.that(set(stages), eq=set(make.check_gates_default))
+        tm.that(make.check_gates_default, eq=make.check_gates_allowed)
+        tm.that(make.check_gates_local, eq=make.check_gates_default)
+        tm.that(
+            make.check_gates_ci,
+            eq=tuple(
+                gate
+                for gate in make.check_gates_default
+                if stages[gate] is not c.Infra.GateStage.PUSH
+            ),
+        )
+        tm.that(
+            make.pre_commit_check_gates,
+            eq=tuple(
+                gate
+                for gate in make.check_gates_default
+                if stages[gate] is c.Infra.GateStage.COMMIT
+            ),
+        )
+        tm.ok(set(make.pre_commit_check_gates) <= set(make.check_gates_ci))
+        tm.ok(set(make.check_gates_ci) <= set(make.check_gates_local))
+
+    @staticmethod
+    def test_type_checkers_follow_their_declared_stage() -> None:
+        """A type checker reaches CI exactly when its stage admits CI."""
         make = config.Infra.codegen.make
         active_type_checkers = c.Infra.TYPE_CHECKER_GATES & set(
             make.check_gates_default,
         )
         tm.ok(bool(active_type_checkers))
-        local = frozenset(make.ci.local_check_gates)
-        tm.that(
-            active_type_checkers & local <= set(make.check_gates_local),
-            eq=True,
-        )
-        tm.that(
-            active_type_checkers - local <= set(make.check_gates_ci),
-            eq=True,
-        )
+        for gate in active_type_checkers:
+            stage = c.Infra.GATE_STAGES[gate]
+            tm.that(
+                gate in make.check_gates_ci,
+                eq=stage is not c.Infra.GateStage.PUSH,
+            )
+            tm.fail(gate in make.pre_commit_check_gates)
 
     @staticmethod
-    def test_project_declared_gates_follow_the_declared_partition() -> None:
-        """A project gate absent from the local set runs in the CI partition."""
+    @pytest.mark.parametrize("stage", tuple(c.Infra.GateStage))
+    def test_project_declared_gates_follow_their_declared_stage(
+        stage: c.Infra.GateStage,
+    ) -> None:
+        """A repository-owned gate lands in every partition its stage admits."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
-        payload["project_check_gates"] = ("fixture-project-gate",)
+        payload["project_check_gates"] = (
+            {
+                "name": "fixture-project-gate",
+                "module": "fixture_project.gate",
+                "stage": stage,
+            },
+        )
 
         active = m.Infra.MakeSpec.model_validate(payload)
 
-        tm.that(active.check_gates_default, eq=active.check_gates_allowed)
         tm.that(active.check_gates_default, has="fixture-project-gate")
-        tm.that(active.check_gates_ci, has="fixture-project-gate")
         tm.that(active.check_gates_local, has="fixture-project-gate")
+        tm.that(
+            "fixture-project-gate" in active.check_gates_ci,
+            eq=stage is not c.Infra.GateStage.PUSH,
+        )
+        tm.that(
+            "fixture-project-gate" in active.pre_commit_check_gates,
+            eq=stage is c.Infra.GateStage.COMMIT,
+        )
+
+    @staticmethod
+    def test_project_declared_gate_defaults_to_the_push_stage() -> None:
+        """An undeclared stage keeps a repository validator out of CI and commits."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload["project_check_gates"] = (
+            {"name": "fixture-project-gate", "module": "fixture_project.gate"},
+        )
+
+        active = m.Infra.MakeSpec.model_validate(payload)
+
+        tm.that(
+            active.check_gate_stages["fixture-project-gate"],
+            eq=c.Infra.GateStage.PUSH,
+        )
+        tm.that(active.check_gates_ci, lacks="fixture-project-gate")
+
+    @staticmethod
+    def test_context_tokens_must_be_distinct() -> None:
+        """Two contexts sharing one token would silently merge their partitions."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload["ci"] = {**payload["ci"], "pre_commit_value": payload["ci"]["value"]}
+        with pytest.raises(e.PydanticValidationError, match="tokens must be distinct"):
+            m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     def test_ci_workflow_runs_only_the_ci_partition() -> None:
@@ -130,8 +215,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
         commands = [str(step.get("run", "")) for step in steps]
         approvals = [
-            f"{make.ci.variable}={make.ci.value} make {verb}"
-            for verb in make.approval_verbs
+            f"{make.ci.variable}={make.ci.value} {step.make_command}"
+            for step in make.workflow
+            if "ci" in step.contexts
         ]
         positions = [commands.index(approval) for approval in approvals]
         tm.that(positions, eq=sorted(positions))
@@ -140,45 +226,48 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.fail(any("make pre-commit" in command for command in commands))
 
     @staticmethod
-    def test_pre_commit_uses_the_ci_validation_workflow() -> None:
-        """Commit checks and tests derive from the same CI workflow rows."""
+    def test_pre_commit_runs_only_the_check_operation() -> None:
+        """The commit hook declares exactly the read-only check row."""
         make = config.Infra.codegen.make
-        ci_validation = tuple(
-            step.verb
-            for step in make.workflow
-            if "ci" in step.contexts
-            and step.verb in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
+        tm.that(
+            tuple(step.verb for step in make.workflow if "pre_commit" in step.contexts),
+            eq=(c.Infra.VERB_CHECK,),
         )
-        commit_validation = tuple(
-            step.verb for step in make.workflow if "pre_commit" in step.contexts
-        )
-        tm.that(commit_validation, eq=ci_validation)
 
     @staticmethod
-    @pytest.mark.parametrize("verb", ["setup", "audit", "verify-clean"])
-    def test_pre_commit_workflow_refuses_other_lifecycle_steps(verb: str) -> None:
-        """Provisioning and clean-tree approval remain separate lifecycle operations."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
-        payload["workflow"] = [
-            {
-                **row,
-                "contexts": (
-                    (*row["contexts"], "pre_commit")
-                    if row["verb"] == verb
-                    else row["contexts"]
-                ),
-            }
-            for row in payload["workflow"]
+    def test_pre_commit_workflow_refuses_every_other_operation() -> None:
+        """Any other declared workflow verb in the commit hook is refused."""
+        base = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        others = [
+            row["verb"] for row in base["workflow"] if row["verb"] != c.Infra.VERB_CHECK
         ]
-        with pytest.raises(e.PydanticValidationError, match="pre-commit hook requires"):
-            m.Infra.MakeSpec.model_validate(payload)
+        tm.that(others, empty=False)
+        for verb in others:
+            payload = {
+                **base,
+                "workflow": [
+                    {
+                        **row,
+                        "contexts": (
+                            (*row["contexts"], "pre_commit")
+                            if row["verb"] == verb
+                            else row["contexts"]
+                        ),
+                    }
+                    for row in base["workflow"]
+                ],
+            }
+            with pytest.raises(
+                e.PydanticValidationError, match="pre-commit hook requires"
+            ):
+                m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "verb", ["setup", "audit", "check", "test", "verify-clean"]
-    )
-    def test_ci_workflow_requires_the_closing_clean_tree(verb: str) -> None:
-        """Removing any mandatory CI milestone is refused."""
+    @pytest.mark.parametrize("verb", ["setup", "tests"])
+    def test_ci_workflow_requires_its_provisioning_and_test_boundaries(
+        verb: str,
+    ) -> None:
+        """Removing CI provisioning or the closing tests owner is refused."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         payload["workflow"] = [
             {
@@ -191,21 +280,13 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             }
             for row in payload["workflow"]
         ]
-        with pytest.raises(e.PydanticValidationError, match="verify-clean workflow"):
+        with pytest.raises(e.PydanticValidationError, match="CI requires setup"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        ("first", "second"),
-        [
-            ("setup", "audit"),
-            ("audit", "check"),
-            ("check", "test"),
-            ("test", "verify-clean"),
-        ],
-    )
+    @pytest.mark.parametrize(("first", "second"), [("setup", "check")])
     def test_ci_workflow_rejects_reordered_milestones(first: str, second: str) -> None:
-        """Provisioning, approval order, and closing clean boundary are mandatory."""
+        """Provisioning precedes the approval milestones."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         rows = list(payload["workflow"])
         positions = [
@@ -214,12 +295,12 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         ]
         rows[positions[0]], rows[positions[1]] = rows[positions[1]], rows[positions[0]]
         payload["workflow"] = rows
-        with pytest.raises(e.PydanticValidationError, match="verify-clean workflow"):
+        with pytest.raises(e.PydanticValidationError, match="CI requires setup"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    @pytest.mark.parametrize("before", ["audit", "check", "test", "verify-clean"])
+    @pytest.mark.parametrize("before", ["check", "tests"])
     def test_ci_workflow_renders_additional_admissible_phases(
         profile: c.Infra.MakeProfile,
         before: str,
@@ -236,9 +317,10 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         rows.insert(
             next(i for i, row in enumerate(rows) if row["verb"] == before),
             m.Infra.MakeWorkflowStepSpec(
+                identity=phase.name,
                 verb=phase.name,
                 contexts=("local", "ci"),
-            ).model_dump(),
+            ).model_dump(exclude_computed_fields=True),
         )
         payload["workflow"] = rows
         active = m.Infra.MakeSpec.model_validate(payload)
@@ -263,33 +345,73 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 if str(step.get("id", "")).startswith("approval-")
             ),
             eq=tuple(
-                f"{active.ci.variable}={active.ci.value} make {verb}"
-                for verb in active.approval_verbs
+                f"{active.ci.variable}={active.ci.value} {step.make_command}"
+                for step in active.workflow
+                if "ci" in step.contexts
             ),
         )
 
     @staticmethod
-    @pytest.mark.parametrize("restriction", ["arguments", "profiles"])
-    def test_ci_workflow_requires_selector_free_all_profile_verbs(
-        restriction: str,
-    ) -> None:
+    def test_ci_workflow_requires_all_profile_verbs() -> None:
         """A declared workflow operation must be callable by every consumer."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         payload["verbs"] = [
-            {
-                **row,
-                restriction: ("fixture-selector",)
-                if restriction == "arguments"
-                else tuple(c.Infra.MakeProfile)[:-1],
-            }
+            {**row, "profiles": tuple(c.Infra.MakeProfile)[:-1]}
             if row["name"] == c.Infra.VERB_CHECK
             else row
             for row in payload["verbs"]
         ]
         with pytest.raises(
-            e.PydanticValidationError, match="selector-free in every profile"
+            e.PydanticValidationError, match="available in every profile"
         ):
             m.Infra.MakeSpec.model_validate(payload)
+
+    @staticmethod
+    def test_tests_workflow_step_must_require_check() -> None:
+        """Initial tests require the primary phase, not complete check acceptance."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload["workflow"] = [
+            {**row, "requires": ()} if row["verb"] == c.Infra.VERB_TEST else row
+            for row in payload["workflow"]
+        ]
+        with pytest.raises(
+            e.PydanticValidationError, match="tests require fresh global primary"
+        ):
+            m.Infra.MakeSpec.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_ci_step_runs_only_after_its_required_steps(
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """Each CI approval step is admitted only by its required steps' success."""
+        make = config.Infra.codegen.make
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist="workflow-consumer",
+            make_profile=profile,
+            repository_branch="integration/workflow-consumer",
+            ci_trigger_branches=(),
+        ).model_copy(update={"make": make})
+        steps = {
+            str(step.get("id", "")): str(step.get("if", ""))
+            for step in u.CodegenTestSupport.Ci.ci_job_steps(
+                tm.ok(
+                    u.Cli.template_render(
+                        TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
+                        spec,
+                    )
+                )
+            )
+        }
+        required = [row for row in make.workflow if "ci" in row.contexts]
+        tm.that([row for row in required if row.requires], empty=False)
+        for row in required:
+            for prerequisite in row.requires:
+                if "ci" in prerequisite.contexts:
+                    tm.that(
+                        steps[f"approval-{row.identity}"],
+                        has=f"steps.approval-{prerequisite.step}.outcome == 'success'",
+                    )
 
     @staticmethod
     @pytest.mark.slow

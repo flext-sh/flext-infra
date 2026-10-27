@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraCli, main
+from flext_infra import FlextInfraCli
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class TestsFlextInfraAuditorCli:
     @staticmethod
     def test_auditor_main_help_exits_zero() -> None:
         """Test auditor main help exits zero."""
-        tm.that(main(["docs", "audit", "--help"]), eq=0)
+        tm.that(FlextInfraCli.infra_main(["docs", "audit", "--help"]), eq=0)
 
     @staticmethod
     def test_auditor_main_writes_reports_for_selected_project(
@@ -39,7 +39,7 @@ class TestsFlextInfraAuditorCli:
 
         tm.that(
             (
-                main([
+                FlextInfraCli.infra_main([
                     "docs",
                     "audit",
                     "--repository-root",
@@ -77,7 +77,7 @@ class TestsFlextInfraAuditorCli:
         result = (
             FlextInfraCli.docs_main(argv)
             if package_entrypoint
-            else main(["docs", *argv])
+            else FlextInfraCli.infra_main(["docs", *argv])
         )
         tm.that(result, eq=1)
         captured = capsys.readouterr()
@@ -96,7 +96,13 @@ class TestsFlextInfraAuditorCli:
         """The old CLI forms cannot select an alternative audit policy."""
         workspace = u.Tests.create_docs_workspace(tmp_path)
         tm.that(
-            main(["docs", "audit", "--repository-root", str(workspace), option]),
+            FlextInfraCli.infra_main([
+                "docs",
+                "audit",
+                "--repository-root",
+                str(workspace),
+                option,
+            ]),
             ne=0,
         )
         tm.fail((workspace / ".reports/docs/audit-report.md").exists())
@@ -108,7 +114,15 @@ class TestsFlextInfraAuditorCli:
         (workspace / "docs/README.md").write_text("Retired phrase\n", encoding="utf-8")
         payload: t.JsonDict = {"audit": {"forbidden_terms": ["Retired phrase"]}}
         tm.ok(u.Cli.json_write(workspace / "docs/docs_config.json", payload))
-        tm.that(main(["docs", "audit", "--repository-root", str(workspace)]), eq=1)
+        tm.that(
+            FlextInfraCli.infra_main([
+                "docs",
+                "audit",
+                "--repository-root",
+                str(workspace),
+            ]),
+            eq=1,
+        )
         markdown = (workspace / ".reports/docs/audit-report.md").read_text(
             encoding="utf-8",
         )

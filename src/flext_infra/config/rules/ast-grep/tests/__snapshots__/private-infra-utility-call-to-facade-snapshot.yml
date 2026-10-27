@@ -7,8 +7,9 @@ snapshots:
       style: primary
       start: 0
       end: 48
-  ? FlextInfraUtilitiesPrivateImportFacades.public_reference(class_bases=FlextInfraUtilitiesPrivateImportAncestry.class_bases(modules))
-  : fixed: u.Infra.public_reference(class_bases=FlextInfraUtilitiesPrivateImportAncestry.class_bases(modules))
+  FlextInfraUtilitiesPrivateImportFacades.public_reference(class_bases=FlextInfraUtilitiesPrivateImportAncestry.class_bases(modules)):
+    fixed: >-
+      u.Infra.public_reference(class_bases=FlextInfraUtilitiesPrivateImportAncestry.class_bases(modules))
     labels:
     - source: FlextInfraUtilitiesPrivateImportFacades.public_reference
       style: primary

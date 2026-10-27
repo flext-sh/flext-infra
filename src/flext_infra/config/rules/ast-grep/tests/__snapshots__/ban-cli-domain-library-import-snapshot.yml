@@ -30,10 +30,8 @@ snapshots:
       style: secondary
       start: 5
       end: 9
-  ? |
-    if TYPE_CHECKING:
-        from rich.console import Console
-  : labels:
+  "if TYPE_CHECKING:\n    from rich.console import Console\n":
+    labels:
     - source: from rich.console import Console
       style: primary
       start: 22
@@ -42,10 +40,8 @@ snapshots:
       style: secondary
       start: 27
       end: 39
-  ? |
-    if TYPE_CHECKING:
-        import argparse
-  : labels:
+  "if TYPE_CHECKING:\n    import argparse\n":
+    labels:
     - source: import argparse
       style: primary
       start: 22

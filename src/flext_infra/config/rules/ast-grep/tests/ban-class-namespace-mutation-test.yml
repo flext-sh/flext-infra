@@ -1,0 +1,41 @@
+id: ban-class-namespace-mutation
+valid:
+  # Instance and class state inside methods.
+  - |
+    class Holder:
+        def set(self) -> None:
+            self.value = 1
+
+        @classmethod
+        def reset(cls) -> None:
+            cls.value = 0
+  # The class's own body declares its namespace.
+  - |
+    class Holder:
+        value = 1
+        Holder = None
+  # A local object, not a module-level class or module binding.
+  - |
+    def build() -> None:
+        state = make()
+        state.value = 1
+invalid:
+  # The collector shape: a class namespace mutated after its body.
+  - |
+    class Holder:
+        value = 1
+
+    Holder.value = 2
+  - |
+    from flext_core import FlextSettings
+
+    def patch() -> None:
+        FlextSettings.instance = None
+  - |
+    import os
+
+    os.environ = {}
+  - |
+    from pkg import Owner as Alias
+
+    Alias.counter += 1

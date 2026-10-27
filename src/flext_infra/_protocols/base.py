@@ -7,17 +7,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from contextlib import AbstractContextManager
 from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from flext_cli import p
+from flext_cli import p
 
-    from flext_infra import c, m, t
+from flext_infra import t
+
+if TYPE_CHECKING:
+    from flext_infra import c, m
     from flext_infra._protocols.check import FlextInfraProtocolsCheck
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
+    from flext_infra._protocols.workspace_snapshot import (
+        FlextInfraProtocolsWorkspaceSnapshot,
+    )
 
 
 @runtime_checkable
@@ -63,6 +69,25 @@ class FlextInfraProtocolsBase(Protocol):
         def summary(self) -> str: ...
 
     @runtime_checkable
+    class CodegenFilePublisher(Protocol):
+        """Normalize and publish the same guarded generation plans.
+
+        The composition root supplies the existing publication owner by
+        reference; consumers never assemble the aggregate utility facade.
+        """
+
+        def normalized_codegen_changes(
+            self,
+            plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]: ...
+
+        def publish_codegen_plans(
+            self,
+            root: Path,
+            plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        ) -> p.Result[t.VariadicTuple[Path]]: ...
+
+    @runtime_checkable
     class CodegenConformPorts(Protocol):
         """Caller-bound cross-family capabilities consumed by conform."""
 
@@ -70,6 +95,27 @@ class FlextInfraProtocolsBase(Protocol):
         def docs_planner(
             self,
         ) -> FlextInfraProtocolsBase.DocsArtifactPlannerFactory: ...
+
+        @property
+        def file_publisher(self) -> FlextInfraProtocolsBase.CodegenFilePublisher: ...
+
+        @property
+        def source_preview(self) -> FlextInfraProtocolsBase.SourcePreview: ...
+
+        @property
+        def candidate_validator(
+            self,
+        ) -> Callable[[Path, Path, t.VariadicTuple[Path]], p.Result[bool]]: ...
+
+        @property
+        def imports_planner(
+            self,
+        ) -> FlextInfraProtocolsBase.SourceImportPlanner: ...
+
+        @property
+        def component_planner(
+            self,
+        ) -> FlextInfraProtocolsBase.SourceComponentPlanner: ...
 
     @runtime_checkable
     class CodegenGenerateRequest(Protocol):
@@ -147,6 +193,20 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> FlextInfraProtocolsBase.CodegenConformPorts | None: ...
 
     @runtime_checkable
+    class CodegenService(CodegenExecutionContext, p.Service[t.JsonDict], Protocol):
+        """Public codegen operations bound to the caller's execution context."""
+
+        def codegen_generate(
+            self,
+            request: FlextInfraProtocolsBase.CodegenGenerateRequest,
+        ) -> p.Result[FlextInfraProtocolsBase.CodegenResult]: ...
+
+        def codegen_conform(
+            self,
+            request: FlextInfraProtocolsBase.CodegenConformRequest,
+        ) -> p.Result[FlextInfraProtocolsBase.CodegenResult]: ...
+
+    @runtime_checkable
     class FunctionDescriptor(Protocol):
         """Native descriptor capability used to authenticate its defining function."""
 
@@ -167,6 +227,73 @@ class FlextInfraProtocolsBase(Protocol):
         def rollback(self) -> None:
             """Close the descriptor and remove only its unpublished lock."""
             ...
+
+    @runtime_checkable
+    class SourceImportPlanner(Protocol):
+        """Plan canonical imports from one proposed workspace source epoch."""
+
+        def __call__(
+            self,
+            project_root: Path,
+            files: t.SequenceOf[Path],
+            *,
+            sources: t.MappingKV[Path, str],
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+            snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
+        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+            """Return source-preserving import plans without publishing them."""
+            ...
+
+    @runtime_checkable
+    class SourceInitializerPlanner(Protocol):
+        """Plan lazy exports over one declared candidate without publishing it."""
+
+        def __call__(
+            self,
+            root: Path,
+            *,
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+            snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
+            selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+
+    @runtime_checkable
+    class SourceViewProvider(Protocol):
+        """Borrow the caller-owned native view for one candidate source epoch.
+
+        Identical effective bytes and tombstones under the same root share the
+        invocation's existing view. Changed candidates require another binding;
+        the caller retains original file witnesses, snapshot authority and teardown.
+        """
+
+        def __call__(
+            self,
+            root: Path,
+            *,
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        ) -> AbstractContextManager[
+            t.Pair[
+                FlextInfraProtocolsRopeRuntime.RopeProject,
+                t.MappingKV[Path, str],
+            ]
+        ]: ...
+
+    @runtime_checkable
+    class SourceComponentPlanner(Protocol):
+        """Close an admitted facade's dependencies, or all families with None."""
+
+        def __call__(
+            self,
+            root: Path,
+            *,
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+            snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
+            planners: t.Pair[
+                FlextInfraProtocolsBase.SourceInitializerPlanner,
+                FlextInfraProtocolsBase.SourceViewProvider,
+            ],
+            selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
     @runtime_checkable
     class SourceImportNormalizer(Protocol):
@@ -519,8 +646,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def outcome(self) -> c.Infra.ToolOutcome:
-            """Native tool outcome, independent of acceptance."""
+        def outcome(self) -> c.Infra.ToolOutcome | None:
+            """Declared native tool outcome; absent derives it from findings."""
             ...
 
         @property
@@ -821,11 +948,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def tool_selectors(self) -> t.MappingKV[str, str]:
             """Declared Mise selector of every selector-bearing fleet tool."""
-            ...
-
-        @property
-        def tool_version_prefixes(self) -> t.MappingKV[str, str]:
-            """Declared release tag prefix of every prefix-bearing tool."""
             ...
 
     @runtime_checkable

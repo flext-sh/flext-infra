@@ -1,0 +1,44 @@
+id: ban-letter-module-object
+snapshots:
+  "import ai_hub\n\nai_hub.u.Cli.field_default(name, info, settings)\n":
+    labels:
+    - source: ai_hub.u
+      style: primary
+      start: 15
+      end: 23
+    - source: ai_hub
+      style: secondary
+      start: 15
+      end: 21
+    - source: u
+      style: secondary
+      start: 22
+      end: 23
+  "import flext_core\n\nmerged = flext_core.u.config_merge(merged, loaded.value)\n":
+    labels:
+    - source: flext_core.u
+      style: primary
+      start: 28
+      end: 40
+    - source: flext_core
+      style: secondary
+      start: 28
+      end: 38
+    - source: u
+      style: secondary
+      start: 39
+      end: 40
+  "import tests\n\ntests.m.Value\n":
+    labels:
+    - source: tests.m
+      style: primary
+      start: 14
+      end: 21
+    - source: tests
+      style: secondary
+      start: 14
+      end: 19
+    - source: m
+      style: secondary
+      start: 20
+      end: 21

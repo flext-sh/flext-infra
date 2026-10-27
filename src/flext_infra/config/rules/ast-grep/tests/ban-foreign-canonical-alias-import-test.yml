@@ -1,6 +1,9 @@
-# Shape only: the context is the same as ban-foreign-namespace-source's.
+# The constraints and file scopes are ban-foreign-namespace-source's.
 id: ban-foreign-canonical-alias-import
 valid:
+  - |
+    def run():
+        from ai_hub import c
   - from flext_core import c
   - |
     def run():

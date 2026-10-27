@@ -1,0 +1,23 @@
+id: ban-model-facade-family-root
+# Native ast-grep fixtures validate the syntactic shape. The same-rule native
+# scan in test_rule_fixture_snapshots.py proves the generated model-class and
+# family scopes: red on a family root inheriting a model, green on a plain
+# namespace nesting the model.
+valid:
+  - |
+    class FlextFooModels:
+        class State(m.BaseModel):
+            name: str
+  - |
+    def build() -> type:
+        class Local(Base):
+            pass
+        return Local
+invalid:
+  - |
+    class FlextFooModels(FlextCliModels):
+        pass
+  - |
+    class FlextFooModels(StateModel, FlextCliModels):
+        class State(m.BaseModel):
+            name: str

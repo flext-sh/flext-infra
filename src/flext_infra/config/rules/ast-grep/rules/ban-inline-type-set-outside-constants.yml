@@ -1,0 +1,36 @@
+# FLEXT law (operator order 2026-10-24): outside c/t/p/m/u no module declares
+# the objects those families own, not even implicitly, and inside the families
+# no letter declares another letter's objects. An `isinstance`/`issubclass`
+# operand written as a union (`A | B`) or a tuple literal (`(A, B)`) is an
+# implicit runtime type-set constant: ENFORCE-079 places every such set on the
+# constants family under the `*_TYPES` convention (FlextConstantsGuards), and
+# `rewire-typing-type-tuples-to-constants` already routes reads to `c.<NAME>`.
+#
+# Scope is every module except the constants family itself, which is the one
+# owner allowed to spell the set. No token fix: the constant needs a name and a
+# home in the project's constants family, which the relocation owner derives;
+# until then the finding names where, why and how.
+id: ban-inline-type-set-outside-constants
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/constants.py"
+  - "**/_constants/**"
+rule:
+  any:
+    - pattern: isinstance($VALUE, $FIRST | $SECOND)
+    - pattern: issubclass($VALUE, $FIRST | $SECOND)
+    - pattern: isinstance($VALUE, ($FIRST, $$$REST))
+    - pattern: issubclass($VALUE, ($FIRST, $$$REST))
+message: >-
+  Inline type set in an isinstance/issubclass check: a `*_TYPES` constant the
+  constants family owns is being declared implicitly here.
+note: >-
+  Where: this call. Why: FLEXT law — only c/t/p/m/u declare their objects, and a
+  runtime type set is a constant (ENFORCE-079, FlextConstantsGuards); spelling it
+  inline is a second, hidden owner. How: declare
+  `<NAME>_TYPES: Final[tuple[type, ...]] = (A, B)` in this project's constants
+  family (third-party classes reach it through the family that owns the
+  library), then write `isinstance(value, c.<Namespace>.<NAME>_TYPES)`.

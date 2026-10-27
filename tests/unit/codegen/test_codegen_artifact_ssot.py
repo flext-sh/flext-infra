@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.services import FlextInfraCodegenVscodeMixin as FlextInfraCodegen
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 
 
@@ -36,12 +36,50 @@ class TestsFlextInfraCodegenArtifactSsot:
         return config.Infra.codegen
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("dependencies", "error"),
+        [
+            pytest.param("cycle", "cyclic dependency graph:", id="cycle"),
+            pytest.param("unknown", "outside the graph:", id="unknown"),
+        ],
+    )
+    def test_template_artifact_dependencies_form_a_closed_dag(
+        codegen: m.Infra.CodegenConfigSpec,
+        dependencies: str,
+        error: str,
+    ) -> None:
+        """A cyclic or undeclared artifact dependency rejects the catalog."""
+        payload = codegen.templates.model_dump(
+            mode="json", by_alias=True, exclude_computed_fields=True
+        )
+        first, second = sorted(payload["entries"])[:2]
+        payload["entries"][first]["requires_artifacts"] = [second]
+        payload["entries"][second]["requires_artifacts"] = (
+            [first] if dependencies == "cycle" else [f"{second}.undeclared"]
+        )
+        with pytest.raises(c.ValidationError, match=error):
+            m.Infra.TemplatesSpec.model_validate(payload)
+
+    @staticmethod
     def test_artifact_names_are_unique(codegen: m.Infra.CodegenConfigSpec) -> None:
         """Reject ambiguous projection keys at the typed owner."""
         names = tuple(artifact.name for artifact in codegen.artifacts)
         tm.ok(bool(names))
         tm.that(len(names), eq=len(set(names)))
         tm.ok(all(names))
+
+    @staticmethod
+    def test_template_entries_keep_every_declared_field(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> None:
+        """Each derived entry carries its declaration verbatim plus its key."""
+        catalog = codegen.templates.catalog
+        entries = codegen.templates.entries
+        tm.that(len(entries), eq=len(catalog))
+        for entry in entries:
+            declaration = catalog[entry.destination]
+            for name in type(declaration).model_fields:
+                tm.that(getattr(entry, name), eq=getattr(declaration, name))
 
     @staticmethod
     def test_vscode_maps_are_exact_projections(
@@ -287,7 +325,9 @@ class TestsFlextInfraCodegenArtifactSsot:
             project,
             origin_url=u.Tests.repository_ref("artifact-ssot").url,
         )
-        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
+        rendered: str = tm.ok(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(project)
+        )
         settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
         tm.that(settings["files.exclude"], eq=dict(codegen.vscode_files_exclude_map))
         tm.that(settings["search.exclude"], eq=dict(codegen.vscode_search_exclude_map))

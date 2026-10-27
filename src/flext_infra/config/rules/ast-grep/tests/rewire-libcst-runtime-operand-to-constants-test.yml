@@ -1,0 +1,24 @@
+id: rewire-libcst-runtime-operand-to-constants
+# `valid` MUST NOT match: an annotation, a call, the runtime class already read,
+# or a `cst` that is not the libcst module binding.
+valid:
+  - |
+    import libcst as cst
+    def leaf(node: cst.CSTNode) -> str: ...
+  - |
+    import libcst as cst
+    node = cst.Name("value")
+  - |
+    from flext_infra import c
+    ok = isinstance(node, c.Infra.Cst.Name)
+  - |
+    cst = load()
+    ok = isinstance(node, cst.Node)
+# `invalid` MUST match: a libcst class as an isinstance operand.
+invalid:
+  - |
+    import libcst as cst
+    ok = isinstance(node, cst.Name)
+  - |
+    import libcst as cst
+    ok = isinstance(node, cst.List | cst.Tuple)

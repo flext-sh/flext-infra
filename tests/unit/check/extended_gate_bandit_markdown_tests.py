@@ -29,11 +29,12 @@ class TestsFlextInfraBanditAndMarkdownGates:
         "Kappa lambda mu nu xi omicron pi rho sigma tau.\n"
     )
     LONG_LINE = "# Test\n\n" + " ".join(["word"] * 30) + "\n"
-    # The .markdownlint.json projection renders this exact typed SSOT; tests
+    # The .rumdl.toml projection renders this exact typed SSOT; tests
     # of the markdown contract read it instead of freezing a config literal.
-    CANONICAL_MARKDOWNLINT_CONFIG: ClassVar[str] = u.Cli.json_dumps(
-        u.Infra.configuration_pairs(config.Infra.tooling.tools.markdown.rules),
-    ).unwrap()
+    CANONICAL_MARKDOWN_CONFIG: ClassVar[str] = u.Infra.markdown_native_configuration(
+        config.Infra.tooling.tools.markdown,
+        config.Infra.codegen.markdown_exclude_globs,
+    )
 
     @staticmethod
     def test_bandit_reports_real_finding(tmp_path: Path) -> None:
@@ -98,7 +99,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         gate = FlextInfraBanditGate(tmp_path)
-        tm.ok(gate.selected_for(project_dir))
+        tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         context = u.Tests.create_gate_context(tmp_path)
         result = (
             gate.check_files((module,), project_dir, context)
@@ -184,7 +185,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         """
         project_dir = u.Tests.mk_project(tmp_path, "p1")
 
-        tm.fail(FlextInfraBanditGate(tmp_path).selected_for(project_dir))
+        tm.fail(
+            FlextInfraBanditGate(tmp_path).selected_for(
+                project_dir, u.Tests.gate_context(project_dir)
+            )
+        )
         result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
         tm.fail(result.result.passed)
@@ -214,15 +219,15 @@ class TestsFlextInfraBanditAndMarkdownGates:
     @pytest.mark.parametrize(
         ("markdown_text", "config_text", "findings_block", "codes"),
         [
-            (HEADING_SKIP, None, True, ["MD001"]),
-            ("# Test\n", '{"broken": [', True, [c.Infra.ToolOutcome.ERROR]),
+            (HEADING_SKIP, "", True, ["MD001"]),
+            ("# Test\n", "[broken\n", True, [c.Infra.ToolOutcome.ERROR]),
             # A residual MD013 reflow finding remains blocking when the
             # formatter cannot normalize the paragraph.
             (
                 REFLOW_HINT,
                 (
-                    '{"MD013": {"line_length": 88, "reflow": true,'
-                    ' "reflow-mode": "normalize"}}'
+                    "[MD013]\nline_length = 88\nreflow = true\n"
+                    'reflow-mode = "normalize"\n'
                 ),
                 True,
                 ["MD013"],
@@ -232,29 +237,26 @@ class TestsFlextInfraBanditAndMarkdownGates:
             # MD013 declares reflow disabled (flext-md-converge: wrapping is
             # hand-owned — the normalize pass joins paragraphs into lines no
             # verb can repair), so the hint path cannot fire and the gate
-            # reads the same typed rules SSOT the .markdownlint.json
+            # reads the same typed rules SSOT the .rumdl.toml
             # projection renders. A hand-written config literal here would
             # freeze a shape no projection produces.
-            (REFLOW_HINT, CANONICAL_MARKDOWNLINT_CONFIG, False, []),
+            (REFLOW_HINT, CANONICAL_MARKDOWN_CONFIG, False, []),
         ],
     )
     def test_markdown_check(
         *,
         tmp_path: Path,
         markdown_text: str,
-        config_text: str | None,
+        config_text: str,
         findings_block: bool,
         codes: t.StrSequence,
     ) -> None:
         """Test markdown check."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-project")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-project", markdown_config=config_text
+        )
         if markdown_text:
             (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
-        if config_text is not None:
-            (project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
-                config_text,
-                encoding="utf-8",
-            )
         result = u.Tests.check_gate_asserting(
             FlextInfraMarkdownGate,
             tmp_path,
@@ -278,7 +280,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-empty")
         gate = FlextInfraMarkdownGate(tmp_path)
 
-        tm.fail(gate.selected_for(project_dir))
+        tm.fail(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         tm.that(
             gate.check(project_dir, u.Tests.gate_context(tmp_path)).result.passed,
             eq=False,
@@ -290,15 +292,25 @@ class TestsFlextInfraBanditAndMarkdownGates:
         bare = u.Tests.mk_project(tmp_path, "bandit-bare")
         packaged = u.Tests.mk_project(tmp_path, "bandit-packaged", with_src=True)
 
-        tm.fail(FlextInfraBanditGate(tmp_path).selected_for(bare))
-        tm.ok(FlextInfraBanditGate(tmp_path).selected_for(packaged))
+        tm.fail(
+            FlextInfraBanditGate(tmp_path).selected_for(
+                bare, u.Tests.gate_context(bare)
+            )
+        )
+        tm.ok(
+            FlextInfraBanditGate(tmp_path).selected_for(
+                packaged, u.Tests.gate_context(packaged)
+            )
+        )
 
     def test_markdown_applies_only_the_local_config(self, tmp_path: Path) -> None:
         """A standalone project's gate never crosses its repository boundary."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-local-owner")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-local-owner", markdown_config=""
+        )
         (project_dir / "README.md").write_text(self.LONG_LINE, encoding="utf-8")
-        disabled = '{"MD013": false}'
-        (tmp_path / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
+        disabled = '[global]\ndisable = ["MD013"]\n'
+        (tmp_path / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
             disabled,
             encoding="utf-8",
         )
@@ -310,7 +322,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             passed=False,
             issues_len=1,
         )
-        (project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).write_text(
+        (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
             disabled,
             encoding="utf-8",
         )
@@ -343,7 +355,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         owner_parts: t.StrSequence,
     ) -> None:
         """Tracker storage and provider projections are not live project docs."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-excluded-owner")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-excluded-owner", markdown_config=""
+        )
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         excluded = project_dir.joinpath(*owner_parts, "projected.md")
         excluded.parent.mkdir(parents=True, exist_ok=True)
@@ -359,7 +373,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
     def test_markdown_keeps_project_owned_github_markdown(self, tmp_path: Path) -> None:
         """Shared GitHub roots retain non-provider Markdown in the native gate."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-github-project-owner")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-github-project-owner", markdown_config=""
+        )
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         project_owned = project_dir / ".github" / "prompts" / "project.md"
         project_owned.parent.mkdir(parents=True)
@@ -380,7 +396,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tmp_path: Path,
     ) -> None:
         """Prove the real gate cannot bind a host or mise-provided executable."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-managed-tool")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-managed-tool", markdown_config=""
+        )
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
@@ -400,7 +418,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tmp_path: Path,
     ) -> None:
         """Exercise the real linter's path resolution at the project boundary."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-relative-link")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-relative-link", markdown_config=""
+        )
         docs_dir = project_dir / "docs"
         target_dir = docs_dir / "generated"
         target_dir.mkdir(parents=True)
@@ -423,7 +443,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tmp_path: Path,
     ) -> None:
         """Do not let one missing target poison an equal valid relative link."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-link-scope")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-link-scope", markdown_config=""
+        )
         valid_docs = project_dir / "valid"
         invalid_docs = project_dir / "invalid"
         (valid_docs / "generated").mkdir(parents=True)
@@ -450,7 +472,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tmp_path: Path,
     ) -> None:
         """A cached source hash must not hide a removed relative-link target."""
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-cache-state")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-cache-state", markdown_config=""
+        )
         target = project_dir / "target.md"
         (project_dir / "README.md").write_text(
             "# Documentation\n\n[Target](target.md)\n",
@@ -477,7 +501,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         without repairing any of them. The gate uses the tool's formatter so a
         successful repair exits zero and leaves the file clean for `check`.
         """
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-fix-project")
+        project_dir = u.Tests.mk_project(
+            tmp_path, "markdown-fix-project", markdown_config=""
+        )
         readme = project_dir / "README.md"
         readme.write_text("# Title   \n", encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)

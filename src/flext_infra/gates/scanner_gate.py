@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import m, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -47,10 +47,9 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
         if files_result.failure:
             return self._build_single_issue_result(
                 project_dir,
-                Path(c.PYPROJECT_FILENAME),
                 files_result.error or self.scan_error_message,
-                ctx=ctx,
-                started=started,
+                ctx,
+                started,
             )
         if not files_result.value:
             return self._skip_result(project_dir, ctx, started)

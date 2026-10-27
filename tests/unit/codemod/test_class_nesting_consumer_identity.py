@@ -151,7 +151,7 @@ class TestsFlextInfraClassNestingConsumerIdentity(TestsFlextInfraClassNestingSup
             tree = ast.parse(updated[module])
             tm.that(
                 all(
-                    isinstance(node, ast.Import | ast.ImportFrom | ast.ClassDef)
+                    isinstance(node, c.Infra.AST_IMPORT_OR_CLASS_TYPES)
                     for node in tree.body
                 ),
                 eq=True,

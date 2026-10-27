@@ -14,12 +14,13 @@ from flext_infra import c, config, m, r, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import FlextInfraGate
 from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
+from flext_infra.gates.duplication_report import FlextInfraDuplicationReportMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraDuplicationGate(FlextInfraGate):
+class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate):
     """Report every clone owned by one project from a fresh scan of that project.
 
     R2 extension: consumer+family scope via [tool.flext.project] config keys;
@@ -31,6 +32,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Code Duplication"
     can_fix: ClassVar[bool] = False
     scanner_binary: ClassVar[str] = c.Infra.JSCPD_BINARY
+    check_timeout: ClassVar[int] = c.Infra.TIMEOUT_LONG
 
     @override
     def check(
@@ -46,36 +48,18 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """
         started = time.monotonic()
         overrides = self._read_project_config(project_dir)
-        fleet_enabled = overrides.success and overrides.value.fleet
-        scan = self._scan_project(project_dir, fleet_enabled=fleet_enabled)
+        scan = self._scan_project(
+            project_dir,
+            ctx,
+            fleet_enabled=overrides.success and overrides.value.fleet,
+        )
         if (
             scan.outcome.timed_out
             or scan.outcome.forwarded_signal is not None
             or scan.outcome.raw_return_code < 0
         ):
             return self._parsed_gate_execution(project_dir, ctx, scan, started)
-        report: m.Infra.JscpdReport | None = None
-        try:
-            if scan.stdout.strip():
-                report = FlextInfraDuplicationEvidence.parse(scan.stdout)
-            parsed = self._issues_from_report(scan, project_dir, report=report)
-        except ValueError as exc:
-            parsed = r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
-        issues = (
-            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
-        )
-        empty_failure = (
-            scan.outcome.raw_return_code == 1
-            and report is not None
-            and report.statistics.total.clones == 0
-        )
-        if (
-            scan.outcome.raw_return_code not in {0, 1}
-            or scan.outcome.timed_out
-            or scan.outcome.forwarded_signal is not None
-            or empty_failure
-        ):
-            issues = (*issues, self._tool_failure_issue(scan))
+        report, issues, tool_failed = self._report_issues(scan, project_dir)
         not_executed = (
             "jscpd semantic pass NOT EXECUTED: the CI context has no embeddings host"
             if self.semantic_not_executed()
@@ -88,63 +72,122 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             ),
         )
         if report is not None and overrides.success:
-            try:
-                assessment = FlextInfraDuplicationEvidence().assess(
-                    report,
+            issues = (
+                *issues,
+                *self._assessment_issues(
+                    (report, overrides.value),
                     project_dir,
-                    overrides.value,
-                    raw_receipt=evidence.raw_output,
-                    execution=(
+                    evidence,
+                    (
                         f"return_code={scan.outcome.raw_return_code}; "
                         f"timed_out={scan.outcome.timed_out}; "
                         f"signal={scan.outcome.forwarded_signal}; {not_executed}"
                     ),
-                )
-            except (OSError, ValueError) as exc:
-                issues = (
-                    *issues,
-                    self._failure_issue(f"duplication assessment: {exc}"),
-                )
-            else:
-                u.Cli.atomic_write_text_file(
-                    evidence.path.with_suffix(".assessment.json"),
-                    assessment.model_dump_json(indent=2),
-                ).unwrap()
-                if assessment.counts.get("analysis_error", 0):
-                    issues = (
-                        *issues,
-                        self._failure_issue(
-                            "duplication assessment contains source analysis errors; "
-                            "see assessment receipt",
-                        ),
-                    )
-        outcome = u.Infra.tool_outcome(
-            scan.outcome,
-            findings=len(issues),
-            findings_exit_codes=(1,),
+                ),
+            )
+        outcome = (
+            c.Infra.ToolOutcome.ERROR
+            if tool_failed
+            or any(issue.code == c.Infra.ToolOutcome.ERROR for issue in issues)
+            else u.Infra.tool_outcome(
+                scan.outcome,
+                findings=len(issues),
+                findings_exit_codes=(1,),
+            )
         )
-        if empty_failure or any(
-            issue.code == c.Infra.ToolOutcome.ERROR for issue in issues
-        ):
-            outcome = c.Infra.ToolOutcome.ERROR
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=not issues,
-            issues=issues,
-            evidence=evidence,
-            started=started,
+        return self._gate_execution_from(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=not issues,
+                outcome=outcome,
+                issues=tuple(issues),
+                raw_output=evidence.raw_output,
+                started=started,
+            ),
+            evidence,
         ).model_copy(
             update={
-                "outcome": outcome,
                 "process": m.Cli.ProcessOutcome.model_validate(
                     scan.outcome, from_attributes=True
                 ),
             }
         )
 
+    def _report_issues(
+        self,
+        scan: p.Cli.CommandOutput,
+        project_dir: Path,
+    ) -> t.Triple[m.Infra.JscpdReport | None, t.VariadicTuple[m.Infra.Issue], bool]:
+        """Parse the native report into owned clones plus any tool failure.
+
+        A non-findings exit, or a findings exit whose report holds no clone,
+        is a tool failure reported beside the parsed clones.
+
+        Returns:
+            The parsed report, its issues, and whether the tool itself failed.
+
+        """
+        report: m.Infra.JscpdReport | None = None
+        try:
+            if scan.stdout.strip():
+                report = FlextInfraDuplicationEvidence.parse(scan.stdout)
+            parsed = self._issues_from_report(project_dir, report)
+        except ValueError as exc:
+            parsed = r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
+        issues: t.VariadicTuple[m.Infra.Issue] = (
+            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        )
+        empty_failure = (
+            scan.outcome.raw_return_code == 1
+            and report is not None
+            and report.statistics.total.clones == 0
+        )
+        tool_failed = scan.outcome.raw_return_code not in {0, 1} or empty_failure
+        if tool_failed:
+            issues = (*issues, self._tool_failure_issue(scan))
+        return report, issues, tool_failed
+
+    def _assessment_issues(
+        self,
+        assessed: t.Pair[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
+        project_dir: Path,
+        evidence: m.Infra.GateOutputReceipt,
+        execution: str,
+    ) -> t.VariadicTuple[m.Infra.Issue]:
+        """Publish the duplication assessment beside its receipt.
+
+        Returns:
+            The assessment's own failures; none when it is clean.
+
+        """
+        report, overrides = assessed
+        try:
+            assessment = FlextInfraDuplicationEvidence().assess(
+                report,
+                project_dir,
+                overrides,
+                raw_receipt=evidence.raw_output,
+                execution=execution,
+            )
+        except (OSError, ValueError) as exc:
+            return (self._failure_issue(f"duplication assessment: {exc}"),)
+        u.Cli.atomic_write_text_file(
+            evidence.path.with_suffix(".assessment.json"),
+            assessment.model_dump_json(indent=2),
+        ).unwrap()
+        if assessment.counts.get("analysis_error", 0):
+            return (
+                self._failure_issue(
+                    "duplication assessment contains source analysis errors; "
+                    "see assessment receipt",
+                ),
+            )
+        return ()
+
     def _scan_project(
         self,
         project_dir: Path,
+        ctx: m.Infra.GateContext,
         *,
         fleet_enabled: bool = False,
     ) -> p.Cli.CommandOutput:
@@ -198,7 +241,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                     forwarded_signal=None,
                 ),
             )
-        rendered_config = self._render_config(project_dir)
+        rendered_config = self._render_config(project_dir, scope.value)
         if rendered_config.failure:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -229,7 +272,11 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             str(report_dir),
             *scope.value,
         )
-        result = self._run(cmd, self._repository_root, timeout=c.Infra.TIMEOUT_LONG)
+        result = self._run(
+            cmd,
+            self._repository_root,
+            ctx,
+        )
         return self._load_report(report_dir, result)
 
     def _render_scope_dirs(self, project_dir: Path) -> p.Result[t.StrSequence]:
@@ -363,7 +410,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         repository = loaded.value.spec.repository
         return r[t.StrSequence].ok(repository.duplication_trees)
 
-    def _render_config(self, project_dir: Path) -> p.Result[Path]:
+    def _render_config(self, project_dir: Path, scope: t.StrSequence) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
 
         R2: Reads thresholds from [tool.flext.project] config SSOT.
@@ -386,7 +433,14 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
-            ignore=self._derived_ignore_patterns(),
+            ignore=(
+                *self._derived_ignore_patterns(),
+                *u.Infra.generated_projection_patterns(
+                    self._repository_root,
+                    tuple(self._repository_root / directory for directory in scope),
+                ),
+            ),
+            ignorePattern=passes.ignore_patterns,
             minLines=overrides.min_lines,
             minTokens=overrides.min_tokens,
             mode=overrides.mode,
@@ -428,10 +482,10 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         Every pattern names a declared semantic fact, never a hand-maintained
         exception: the ast-grep corpus topology read from the declared
         sgconfig fixtures (provider resource and the repository-local delta
-        when declared), the declared ast-grep snapshot directory, the
-        generated Python initializer surface, the generated foreign-source
-        globs, resolver-owned lockfile emission, and the declared exclusion
-        registry's structural fixture/container/helper names.
+        when declared), the declared ast-grep snapshot directory,
+        resolver-owned lockfile emission, and the declared exclusion
+        registry's structural fixture/container/helper names. Generator
+        projections come from the one generated-projection owner.
 
         Returns:
             The resulting ``t.StrSequence``.
@@ -451,11 +505,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         local_root = self._repository_root / corpus_root_rel
         if (local_root / c.Infra.CODEMOD_CONFIG_FILENAME).is_file():
             globs.extend(self._sgconfig_fixture_globs(corpus_root_rel, local_root))
-        globs.extend((
-            f"**/{c.Infra.CODEMOD_SNAPSHOT_DIRNAME}/**",
-            f"**/{c.Infra.INIT_PY}",
-        ))
-        globs.extend(config.Infra.codegen.generated_source_globs)
+        globs.append(f"**/{c.Infra.CODEMOD_SNAPSHOT_DIRNAME}/**")
         globs.extend(f"**/{name}" for name in config.Infra.codegen.resolver_owned_files)
         exclusions = config.Infra.codegen.exclusions
         structural = (
@@ -511,158 +561,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 timed_out=result.outcome.timed_out,
                 forwarded_signal=result.outcome.forwarded_signal,
             ),
-        )
-
-    @staticmethod
-    def _failure_issue(message: str | None) -> m.Infra.Issue:
-        """Represent malformed or absent jscpd output as a blocking issue.
-
-        Returns:
-            The resulting ``m.Infra.Issue``.
-
-        """
-        return m.Infra.Issue(
-            file=c.PYPROJECT_FILENAME,
-            line=1,
-            column=0,
-            code=c.Infra.ToolOutcome.ERROR.value,
-            message=message or "jscpd returned no parseable report",
-            severity=str(c.Infra.GateSeverity.ERROR.value),
-        )
-
-    @classmethod
-    def _issues_from_report(
-        cls,
-        scan: p.Cli.CommandOutput,
-        project_dir: Path,
-        *,
-        report: m.Infra.JscpdReport | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
-        """Extract one Issue per clone side that falls inside ``project_dir``.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.Issue]]``.
-
-        """
-        if not scan.stdout.strip():
-            return r[tuple[m.Infra.Issue, ...]].fail(
-                f"duplication scan did not produce its required JSON report "
-                f"for project {project_dir.name}",
-            )
-        if report is None:
-            try:
-                report = FlextInfraDuplicationEvidence.parse(scan.stdout)
-            except ValueError as exc:
-                return r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
-        data = u.Cli.json_as_mapping(report.model_dump(mode="json", by_alias=True))
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        seen_clones: set[str] = set()
-        for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
-            first = u.Cli.json_deep_mapping(duplicate, "firstFile")
-            second = u.Cli.json_deep_mapping(duplicate, "secondFile")
-            first_name = cls.report_file_name(first)
-            second_name = cls.report_file_name(second)
-            first_span = cls.side_span_key(first)
-            second_span = cls.side_span_key(second)
-            # The two sides of a clone are the same span only when the same
-            # directory reached jscpd twice (the double-scan artifact): that is
-            # never an owned clone. The same file with two different spans is
-            # genuine intra-file duplication and must be reported.
-            if first_span == second_span:
-                continue
-            # Ownership is path containment, never a string prefix: a sibling
-            # project whose directory name extends this one (``flext-x`` vs
-            # ``flext-x-extra``) shares the prefix but owns its own clones.
-            # ``startswith`` claimed those siblings and then raised ValueError
-            # from ``relative_to``, turning a real cross-project clone into a
-            # crashed gate.
-            first_owned = Path(first_name).is_relative_to(project_dir)
-            second_owned = Path(second_name).is_relative_to(project_dir)
-            if not (first_owned or second_owned):
-                continue
-            # jscpd can emit both A->B and B->A for one clone; publish one
-            # finding per unordered span pair.
-            mirror = "|".join(sorted((first_span, second_span)))
-            if mirror in seen_clones:
-                continue
-            seen_clones.add(mirror)
-            if first_owned:
-                issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate,
-                        first,
-                        first_name,
-                        second_name,
-                        project_dir,
-                    ),
-                )
-            else:
-                issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate,
-                        second,
-                        second_name,
-                        first_name,
-                        project_dir,
-                    ),
-                )
-        return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
-
-    @staticmethod
-    def report_file_name(side: t.JsonMapping) -> str:
-        """Return one jscpd clone side's on-disk file name.
-
-        jscpd names markdown-embedded code blocks ``<file>:<language>``; the
-        range belongs to that embedded block, and ownership to the real file.
-
-        Returns:
-            The clone side's file name without any virtual suffix.
-
-        """
-        raw = u.Cli.json_pick_str(side, "name")
-        file_name, separator, _language = raw.rpartition(":")
-        return file_name if separator and file_name and "." in file_name else raw
-
-    @classmethod
-    def side_span_key(cls, side: t.JsonMapping) -> str:
-        """Return one clone side's on-disk span identity.
-
-        Returns:
-            The clone side's ``<file>:<start-line>:<end-line>`` identity.
-
-        """
-        name = cls.report_file_name(side)
-        start = u.Cli.json_nested_int(side, "startLoc", "line", default=0)
-        end = u.Cli.json_nested_int(side, "endLoc", "line", default=start)
-        return f"{name}:{start}:{end}"
-
-    @classmethod
-    def _issue_from_duplicate(
-        cls,
-        duplicate: t.JsonMapping,
-        own_side: t.JsonMapping,
-        own_name: str,
-        other_name: str,
-        root: Path,
-    ) -> m.Infra.Issue:
-        """Map one clone side inside ``root`` to a strict error.
-
-        Returns:
-            The resulting ``m.Infra.Issue``.
-
-        """
-        return m.Infra.Issue(
-            file=str(Path(own_name).relative_to(root)),
-            line=u.Cli.json_nested_int(own_side, "startLoc", "line", default=1),
-            column=u.Cli.json_nested_int(own_side, "startLoc", "column", default=0),
-            code=cls.gate_id,
-            message=(
-                f"{u.Cli.json_pick_int(duplicate, 'lines', default=0)}-line "
-                f"({u.Cli.json_pick_int(duplicate, 'tokens', default=0)}-token) "
-                f"clone of {other_name} "
-                f"— extend one owner, rewire consumers, delete the duplicate"
-            ),
-            severity=str(c.Infra.GateSeverity.ERROR.value),
         )
 
 

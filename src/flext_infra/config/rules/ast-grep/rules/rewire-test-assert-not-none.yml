@@ -3,11 +3,6 @@
 id: rewire-test-assert-not-none
 language: Python
 severity: error
-metadata:
-  context:
-    X:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -43,11 +38,6 @@ message: Preserve non-None narrowing and name bindings through tm.reject.
 id: rewire-test-assert-not-none-message
 language: Python
 severity: error
-metadata:
-  context:
-    X:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -80,11 +70,6 @@ message: Preserve non-None narrowing and lazy assertion arguments through tm.rej
 id: rewire-test-assert-message-observation
 language: Python
 severity: error
-metadata:
-  context:
-    COND:
-      is: emitted-symbol
-      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"

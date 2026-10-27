@@ -42,7 +42,7 @@ class FlextInfraModelsSonarcloud:
             ),
         ]
 
-    class SonarcloudSetting(m.ContractModel):
+    class SonarcloudSetting(m.ExternalContractModel):
         """One setting returned by ``api/settings/values``.
 
         ``fieldValues`` contains the effective value, including inherited
@@ -51,11 +51,8 @@ class FlextInfraModelsSonarcloud:
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="ignore",
-            frozen=True,
             populate_by_name=True,
         )
-
         key: Annotated[t.NonEmptyStr, m.Field(description="Setting key")]
         field_values: Annotated[
             t.VariadicTuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue],
@@ -109,10 +106,8 @@ class FlextInfraModelsSonarcloud:
             m.Field(min_length=2, description="Ordered form fields for the endpoint"),
         ]
 
-    class SonarcloudIssue(m.ContractModel):
+    class SonarcloudIssue(m.ExternalContractModel):
         """One issue in a SonarCloud issue-search response."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
 
         key: Annotated[t.NonEmptyStr, m.Field(description="Stable issue key")]
         rule: Annotated[t.NonEmptyStr, m.Field(description="Rule key")]
@@ -126,10 +121,8 @@ class FlextInfraModelsSonarcloud:
         ] = None
         message: Annotated[t.NonEmptyStr, m.Field(description="Observed finding")]
 
-    class SonarcloudIssuePaging(m.ContractModel):
+    class SonarcloudIssuePaging(m.ExternalContractModel):
         """Server-side page accounting required before reporting completeness."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
 
         page_index: Annotated[
             t.PositiveInt,
@@ -144,10 +137,8 @@ class FlextInfraModelsSonarcloud:
             m.Field(ge=0, description="Total issues matching the server query"),
         ]
 
-    class SonarcloudIssueSearch(m.ContractModel):
+    class SonarcloudIssueSearch(m.ExternalContractModel):
         """A complete typed page returned by ``api/issues/search``."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
 
         paging: Annotated[
             FlextInfraModelsSonarcloud.SonarcloudIssuePaging,

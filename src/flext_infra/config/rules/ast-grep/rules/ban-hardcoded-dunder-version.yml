@@ -45,3 +45,5 @@ message: >-
   metadata (importlib.metadata.version) so the package and its metadata cannot
   disagree. Detection only: choosing the distribution name and inserting the
   import is a semantic decision, not a token rewrite.
+metadata:
+  enforce: [ENFORCE-033]

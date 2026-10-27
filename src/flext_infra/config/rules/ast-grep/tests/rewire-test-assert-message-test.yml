@@ -1,13 +1,30 @@
 id: rewire-test-assert-message
+# Every rewrite requires the `tm` binding to the flext-tests matchers.
 valid:
-  - assert result.success
-  - assert result.success, result.error
-  - assert value == expected, f"Unexpected value {value!r}"
-  - assert value is not None, "A value is required"
-  - assert isinstance(value, Entry), "An entry is required"
   - |
+    from flext_tests import tm
+    assert result.success
+  - |
+    from flext_tests import tm
+    assert result.success, result.error
+  - |
+    from flext_tests import tm
+    assert value == expected, f"Unexpected value {value!r}"
+  - |
+    from flext_tests import tm
+    assert value is not None, "A value is required"
+  - |
+    from flext_tests import tm
+    assert isinstance(value, Entry), "An entry is required"
+  - |
+    from flext_tests import tm
     if not result.success:
         raise AssertionError(result.error)
-invalid:
-  - assert self.value is not None, "A value is required"
   - assert value is None, "No value is expected"
+invalid:
+  - |
+    from flext_tests import tm
+    assert self.value is not None, "A value is required"
+  - |
+    from tests import tm
+    assert value is None, "No value is expected"

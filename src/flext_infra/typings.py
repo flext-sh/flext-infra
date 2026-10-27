@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Type aliases for flext-infra.
 
 Re-exports and extends flext-cli typings for infrastructure services.
@@ -18,9 +19,11 @@ from flext_cli import FlextCliTypes
 from flext_infra._typings import (
     FlextInfraTypesAdapters,
     FlextInfraTypesBase,
+    FlextInfraTypesCollections,
+    FlextInfraTypesPytest,
     FlextInfraTypesRope,
+    FlextInfraTypesRopeNative,
 )
-from flext_infra._typings.collections import FlextInfraTypesCollections
 
 
 class FlextInfraTypes(FlextCliTypes):
@@ -37,7 +40,14 @@ class FlextInfraTypes(FlextCliTypes):
     type PyrightScalarValue = str | bool | int
     """Scalar value accepted by a Pyright setting."""
 
-    class Infra(FlextInfraTypesAdapters, FlextInfraTypesRope, FlextInfraTypesBase):
+    class Infra(
+        FlextInfraTypesAdapters,
+        FlextInfraTypesBase,
+        FlextInfraTypesCollections,
+        FlextInfraTypesPytest,
+        FlextInfraTypesRope,
+        FlextInfraTypesRopeNative,
+    ):
         """Infrastructure-domain type aliases.
 
         These aliases compose CLI JSON contracts and infrastructure-specific
@@ -46,5 +56,4 @@ class FlextInfraTypes(FlextCliTypes):
 
 
 t = FlextInfraTypes
-
 __all__: list[str] = ["FlextInfraTypes", "t"]

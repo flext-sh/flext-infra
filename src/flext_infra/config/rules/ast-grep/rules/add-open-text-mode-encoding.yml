@@ -44,6 +44,8 @@ fix: open($PATH, encoding="utf-8")
 message: >-
   A text-mode open() must declare its encoding explicitly; the default depends
   on the host locale.
+metadata:
+  enforce: [ENFORCE-029]
 ---
 id: add-open-builtin-text-mode-encoding
 language: python
@@ -60,6 +62,8 @@ fix: open($PATH, $MODE, encoding="utf-8")
 message: >-
   A text-mode open() must declare its encoding explicitly; the default depends
   on the host locale.
+metadata:
+  enforce: [ENFORCE-029]
 ---
 id: add-path-open-default-mode-encoding
 language: python
@@ -78,6 +82,8 @@ fix: $RECV.open(encoding="utf-8")
 message: >-
   A text-mode Path.open() must declare its encoding explicitly; the default
   depends on the host locale.
+metadata:
+  enforce: [ENFORCE-029]
 ---
 id: add-path-open-text-mode-encoding
 language: python
@@ -98,3 +104,5 @@ fix: $RECV.open($MODE, encoding="utf-8")
 message: >-
   A text-mode Path.open() must declare its encoding explicitly; the default
   depends on the host locale.
+metadata:
+  enforce: [ENFORCE-029]

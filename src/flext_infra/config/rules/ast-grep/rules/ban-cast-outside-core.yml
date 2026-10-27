@@ -1,0 +1,29 @@
+# `cast()` asserts a type the checker cannot prove and the runtime never
+# checks. The framework owner (flext-core) is the only tree that bridges
+# untyped boundaries this way; every consumer narrows through the result
+# contract or an explicit isinstance guard.
+id: ban-cast-outside-core
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+metadata:
+  enforce: [ENFORCE-039]
+  owner: flext-core
+rule:
+  kind: call
+  has:
+    field: function
+    regex: "^(?:typing\\.)?cast$"
+message: >-
+  `cast()` outside flext-core asserts an unproven type: narrow through the
+  result contract or an explicit isinstance guard.
+  Detection only: removing the cast loses the asserted type; the narrowing owner is a typed decision.

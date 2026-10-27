@@ -1,0 +1,52 @@
+# A class declaration one of whose direct bases is a `typing` or
+# `typing_extensions` construct (`Protocol`, `Protocol[T]`, `typing.Protocol`):
+# a subprotocol names Protocol among its direct bases, so merely implementing
+# an inherited protocol never matches. A bare base name counts only when the
+# module imports it, under that name or an alias, from either module.
+id: typing-base-class
+language: python
+rule:
+  kind: class_definition
+  has:
+    field: superclasses
+    has:
+      any:
+        - any:
+            - kind: attribute
+              regex: "^typing(?:_extensions)?\\."
+            - kind: subscript
+              has:
+                field: value
+                kind: attribute
+                regex: "^typing(?:_extensions)?\\."
+        - all:
+            - any:
+                - kind: identifier
+                  pattern: $TYPING_BASE
+                - kind: subscript
+                  has:
+                    field: value
+                    kind: identifier
+                    pattern: $TYPING_BASE
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  kind: import_from_statement
+                  all:
+                    - has:
+                        field: module_name
+                        regex: "^typing(?:_extensions)?$"
+                    - has:
+                        stopBy: end
+                        any:
+                          - kind: dotted_name
+                            pattern: $TYPING_BASE
+                            not:
+                              inside:
+                                kind: aliased_import
+                          - kind: aliased_import
+                            has:
+                              field: alias
+                              pattern: $TYPING_BASE

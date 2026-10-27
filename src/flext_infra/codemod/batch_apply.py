@@ -82,17 +82,38 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return r[t.Cli.ResultValue].fail(
                 "consumer roots must be existing absolute checkout roots"
             )
-        planned = u.Infra.codemod_rule_plan(self.repository_root)
-        if planned.failure:
-            return r[t.Cli.ResultValue].from_failure(planned)
-        rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            planned = u.Infra.codemod_rule_plan(snapshot)
+            if planned.failure:
+                return r[t.Cli.ResultValue].from_failure(planned)
+            rules = u.Infra.codemod_fixture_resources(planned.value)
+            if self.effective_dry_run:
+                self.progress.emit(f"mod: scan {len(rules)} discovered rule file(s)")
+            else:
+                self.progress.emit("mod: validate ast-grep rule fixtures")
+                FlextInfraModGateEngine.validate_rule_fixtures(
+                    self.repository_root,
+                    rules,
+                ).unwrap()
+            u.Infra.workspace_snapshot_verify(
+                snapshot, tuple(snapshot.sources)
+            ).unwrap()
+            pending = FlextInfraModGateEngine.scan(
+                self.repository_root,
+                fix=False,
+                selection=planned.value,
+            ).unwrap()
+            u.Infra.workspace_snapshot_verify(
+                snapshot, tuple(snapshot.sources)
+            ).unwrap()
         if self.effective_dry_run:
-            return self._execute_dry_run(rules)
-        return self._execute_apply(rules)
+            return self._execute_dry_run(rules, pending)
+        return self._execute_apply(pending)
 
     def _execute_dry_run(
         self,
         rules: t.SequenceOf[Path],
+        pending: m.Infra.ModScanReport,
     ) -> p.Result[t.Cli.ResultValue]:
         """Report every pending finding without applying any phase.
 
@@ -100,11 +121,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The inspection verdict over the discovered rule cascade.
 
         """
-        self.progress.emit(f"mod: scan {len(rules)} discovered rule file(s)")
-        pending = FlextInfraModGateEngine.scan(
-            self.repository_root,
-            fix=False,
-        ).unwrap()
         if self.rename_plan is not None:
             preview = self._advance_phases(
                 self.repository_root,
@@ -122,6 +138,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             validate_receipts=True,
         ).unwrap()
         pending_count += text_pending.findings
+        cycles = u.Infra.codemod_import_cycle_issues(self.repository_root)
+        pending_count += len(cycles)
         renames_pending = self._pending_renames()
         if renames_pending.failure:
             return r[t.Cli.ResultValue].from_failure(renames_pending)
@@ -132,26 +150,28 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"{pending.detection_only} detection-only and "
                 f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
                 f"{text_pending.findings} pending sed-by-list finding(s) "
-                f"({text_pending.actionable} actionable) and "
+                f"({text_pending.actionable} actionable), "
+                f"{len(cycles)} module(s) in runtime import cycles and "
                 f"{renames_pending.value} pending CSV-rename occurrence(s), "
                 f"across {len(rules)} rule file(s)",
             )
         self.progress.emit("mod: no pending ast-grep or sed-by-list fixes")
         return r[t.Cli.ResultValue].ok(value=True)
 
-    def _execute_apply(self, rules: t.SequenceOf[Path]) -> p.Result[t.Cli.ResultValue]:
+    def _execute_apply(
+        self, current: m.Infra.ModScanReport
+    ) -> p.Result[t.Cli.ResultValue]:
         """Converge AST, semantic, and text phases over the same source state.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        self.progress.emit("mod: validate ast-grep rule fixtures")
-        FlextInfraModGateEngine.validate_rule_fixtures(
+        result = self._converge(
             self.repository_root,
-            rules,
-        ).unwrap()
-        result = self._execute_apply_cycle(text_precondition_pending=True)
+            current,
+            text_precondition_pending=True,
+        )
         if result.failure:
             return result
         self.progress.emit("mod: verify the workspace constants census")
@@ -192,24 +212,58 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> m.Infra.StageSourcePlan:
         """Compose syntax fixes without publishing the original producer epoch.
 
+        Every fixable rule without engine context applies first through the
+        native ast-grep cascade (header, catalog, Ruff import fix) to its
+        fixed point; the engine then composes only the admitted fixes of the
+        rules that carry project context.
+
         Returns:
             The complete all-root candidate with target-only syntax effects.
 
         Raises:
-            RuntimeError: If the syntax cascade repeats a source state.
+            RuntimeError: If the syntax cascade repeats a source state, or a
+                native-eligible rule still reports an actionable finding
+                after the native cascade.
+            ValueError: If native syntax planning requires its original scan rule plan.
 
         """
-        after_ast = FlextInfraModGateEngine.authored(current)
         plans: dict[Path, m.Infra.SemanticFilePlan] = {}
         inputs = {state.path: state for state in seed.inputs}
-        if seed.updates:
-            after_ast = FlextInfraModGateEngine.authored(
-                self._preview_ast_candidate(root, plans, inputs, seed)
+        self._capture_ast_inputs(root, inputs)
+        rule_plan = current.rule_plan
+        if rule_plan is None:
+            msg = "native syntax planning requires its original scan rule plan"
+            raise ValueError(msg)
+        native_ids = frozenset(
+            rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
+        )
+        for path, content in self._native_cascade(rule_plan, inputs, seed).items():
+            plans[path] = m.Infra.SemanticFilePlan(
+                project=u.Infra.project_root(path) or root,
+                path=path,
+                before=inputs[path],
+                desired_content=content,
+                desired_mode=inputs[path].mode,
+                changes=(c.Infra.MOD_NATIVE_CASCADE_CHANGE,),
             )
-        if after_ast.actionable:
-            self._capture_ast_inputs(root, inputs)
+        after_ast = FlextInfraModGateEngine.authored(
+            self._preview_ast_candidate(root, plans, inputs, seed)
+            if seed.updates or plans
+            else current
+        )
         seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
         while after_ast.actionable:
+            residue = sorted({
+                entry.rule_id
+                for entry in after_ast.entries
+                if entry.actionable and entry.rule_id in native_ids
+            })
+            if residue:
+                msg = (
+                    "native cascade left actionable findings of native rules: "
+                    f"{', '.join(residue)}"
+                )
+                raise RuntimeError(msg)
             state = tuple(
                 sorted(
                     (str(path), plan.desired_content.hex())
@@ -266,6 +320,51 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return seed
 
     @staticmethod
+    def _native_cascade(
+        rule_plan: m.Infra.CodemodRulePlan,
+        inputs: t.MappingKV[Path, m.Cli.AtomicFileState],
+        seed: m.Infra.StageSourcePlan,
+    ) -> t.MappingKV[Path, bytes]:
+        """Run each governed project's native cascade over the seeded sources.
+
+        Each source belongs to its deepest governed project; the plan carries
+        that project's generated provider beside its catalogs.
+
+        Returns:
+            Absolute path to new bytes for every source a cascade changed.
+
+        """
+        current: dict[Path, bytes] = {
+            path: state.content
+            for path, state in inputs.items()
+            if state.content is not None and path.suffix == c.Infra.EXT_PYTHON
+        }
+        for path, source in seed.updates.items():
+            if source is None:
+                current.pop(path, None)
+            elif path.suffix == c.Infra.EXT_PYTHON:
+                current[path] = source.encode(c.DEFAULT_ENCODING)
+        projects = sorted(
+            rule_plan.project_rule_ids,
+            key=lambda project: len(project.parts),
+            reverse=True,
+        )
+        owned: dict[Path, dict[Path, bytes]] = {project: {} for project in projects}
+        for path, content in current.items():
+            owner = next(
+                (project for project in projects if path.is_relative_to(project)),
+                None,
+            )
+            if owner is not None:
+                owned[owner][path] = content
+        changed: dict[Path, bytes] = {}
+        for project, sources in owned.items():
+            if not sources:
+                continue
+            changed.update(u.Infra.codemod_native_cascade(project, rule_plan, sources))
+        return changed
+
+    @staticmethod
     def _capture_ast_inputs(
         root: Path, inputs: MutableMapping[Path, m.Cli.AtomicFileState]
     ) -> None:
@@ -278,7 +377,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         for target in u.Infra.ast_grep_scan_targets(root):
             path = root / target
             paths = (
-                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
+                u.Infra.iter_directory_python_files(path, repository_root=root)
+                if path.is_dir()
+                else (path,)
             )
             for source in paths:
                 captured = u.Cli.atomic_read_binary_file_state(
@@ -373,19 +474,25 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             candidate, planned.value[1]
         )
 
-    def _apply_renames(self) -> p.Result[bool]:
+    def _apply_renames(
+        self,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Apply every declared CSV rename campaign in declared order.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The latest authenticated state of every published campaign path.
 
         """
+        published: dict[Path, m.Cli.AtomicFileState] = {}
         for rename_params in self.rename_inputs:
             renamed = self.rename_runner.run(rename_params)
             if renamed.failure:
-                return r[bool].from_failure(renamed)
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(renamed)
+            published.update({
+                state.path: state for state in renamed.value.published_states
+            })
             self.progress.emit_rename(renamed.value)
-        return r[bool].ok(value=True)
+        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(published.values()))
 
     def _advance_phases(
         self,
@@ -434,7 +541,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         if accepted.failure:
             return outcome.from_failure(accepted)
         return self._finish_phases(
-            root, rope_workspace, current, (publish, phase_states)
+            root, rope_workspace, current, (publish, accepted.value, phase_states)
         )
 
     def _publish_phase_candidate(
@@ -443,7 +550,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         seed: m.Infra.SemanticSourcePlan,
         *,
         publish: bool,
-    ) -> p.Result[bool]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose final callbacks and text before publishing one candidate.
 
         Returns:
@@ -452,12 +559,12 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         """
         callbacks = self._plan_phase_callbacks(root, seed)
         if callbacks.failure:
-            return r[bool].from_failure(callbacks)
+            return r[t.VariadicTuple[Path]].from_failure(callbacks)
         text = self._plan_text_phase(
             root, callbacks.value, text_precondition_pending=False
         )
         if text.failure:
-            return r[bool].from_failure(text)
+            return r[t.VariadicTuple[Path]].from_failure(text)
         return FlextInfraCodemodSemanticApply.publish_candidate(
             root, text.value, publish=publish
         )
@@ -602,7 +709,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         current: m.Infra.ModScanReport,
-        publication: t.Pair[bool, list[t.VariadicTuple[t.Pair[str, str]]]],
+        publication: t.Triple[
+            bool, t.VariadicTuple[Path], list[t.VariadicTuple[t.Pair[str, str]]]
+        ],
     ) -> p.Result[
         t.Pair[m.Infra.ModScanReport, t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]]]
     ]:
@@ -617,10 +726,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 m.Infra.ModScanReport, t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]]
             ]
         ]
-        publish, phase_states = publication
+        publish, published_paths, phase_states = publication
         if not publish:
             return outcome.ok((current, tuple(phase_states)))
         self.rename_plan = None
+        self.progress.emit(f"mod: published {len(published_paths)} source file(s)")
         rope_workspace.refresh()
         after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         phase_states.append(
@@ -631,6 +741,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         renames = self._apply_renames()
         if renames.failure:
             return outcome.from_failure(renames)
+        u.Cli.atomic_verify_binary_file_states(renames.value).unwrap()
+        if renames.value:
+            rope_workspace.refresh()
+            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         return outcome.ok((after_ast, tuple(phase_states)))
 
     def _emit_residuals(
@@ -664,7 +778,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     def _verdict_message(
         self,
         root: Path,
-        baseline_cycles: t.SequenceOf[frozenset[str]],
         states: t.Pair[
             t.VariadicTuple[t.Pair[str, str]],
             t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]],
@@ -676,15 +789,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         Returns:
             The fixed-point failure message, or ``None`` when the joint AST,
             semantic, and text fixed point is verified with zero remaining
-            findings and no new runtime import cycles.
+            findings and no runtime import cycle.
 
         """
         before, phase_states = states
         current, current_text = reports
-        # Cyclic-import regression gate: a refactor phase that closed a
-        # new runtime import cycle fails the fixed point loud — zero new
-        # cycles is an acceptance condition, and cycles the tree already
-        # had stay check's existing verdict.
         if any(state != before for state in phase_states):
             return "mod cross-phase cycle returned to its starting source state"
         if current.actionable or current_text.actionable:
@@ -694,14 +803,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 "actionable findings"
             )
         self._emit_residuals(current, current_text)
-        converged_cycles = self._import_cycles(root)
-        new_cycles = [
-            cycle for cycle in converged_cycles if cycle not in baseline_cycles
-        ]
-        if new_cycles:
-            return "mod introduced new runtime import cycle(s): " + "; ".join(
-                " -> ".join(sorted(cycle)) for cycle in new_cycles
-            )
+        # ENFORCE-006: the runtime import graph, not a syntax rule, decides a
+        # cycle; any cycle at the fixed point blocks, like check's verdict.
+        cycles = u.Infra.codemod_import_cycle_issues(root)
+        for issue in cycles:
+            self.progress.emit(f"mod: {issue.file}: {issue.message}")
+        if cycles:
+            return f"mod: {len(cycles)} module(s) remain in runtime import cycles"
         if current.findings or current_text.findings:
             return (
                 f"mod: fixed point retains {current.findings} AST finding(s) "
@@ -710,25 +818,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"{current_text.findings} text finding(s); owner repair required"
             )
         return None
-
-    def _execute_apply_cycle(
-        self,
-        *,
-        text_precondition_pending: bool,
-    ) -> p.Result[t.Cli.ResultValue]:
-        """Converge every mod phase while retaining accepted progress.
-
-        Returns:
-            The resulting ``p.Result[t.Cli.ResultValue]``.
-
-        """
-        root = self.repository_root
-        current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        return self._converge(
-            root,
-            current,
-            text_precondition_pending=text_precondition_pending,
-        )
 
     def _converge(
         self,
@@ -744,7 +833,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         """
         rope_workspace = self.rope
-        baseline_cycles = self._import_cycles(root)
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
         seen: MutableMapping[t.VariadicTuple[t.Pair[str, str]], int] = {}
         iteration = 0
@@ -770,16 +858,14 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             if advanced.failure:
                 return r[t.Cli.ResultValue].from_failure(advanced)
-            _after_ast, phase_states = advanced.value
+            current, phase_states = advanced.value
             text_precondition_pending = False
-            current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
             current_text = FlextInfraModTextGateEngine.scan(root, fix=False).unwrap()
             after = fingerprint(root, current)
             if after != before:
                 continue
             message = self._verdict_message(
                 root,
-                baseline_cycles,
                 (before, phase_states),
                 (current, current_text),
             ) or self._relocation_verdict(root, rope_workspace, current)
@@ -824,33 +910,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             f"mod: {len(findings)} declaration-relocation finding(s) remain for "
             "owner repair"
         )
-
-    @staticmethod
-    def _import_cycles(root: Path) -> t.SequenceOf[frozenset[str]]:
-        """Collect every runtime import cycle over the governed projects.
-
-        The graph comes from the codemod project's Rope module-level import
-        table — only imports that run at module load can form a cycle, so a
-        lazy (function-local) import never registers as one.
-
-        Returns:
-            The resulting ``t.FrozenSet[t.FrozenSet[str]]``.
-
-        """
-        cycles: set[frozenset[str]] = set()
-        for project_root in u.Infra.governed_project_roots(root):
-            if not u.Infra.namespace_enabled(project_root):
-                continue
-            graph, _modules = u.Infra.project_import_graph(
-                project_root,
-            )
-            cycles.update(
-                frozenset(members)
-                for members in u.Infra.project_import_cycles(
-                    graph,
-                ).values()
-            )
-        return tuple(sorted(cycles, key=sorted))
 
     def _plan_phase_callbacks(
         self,

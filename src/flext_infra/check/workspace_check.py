@@ -17,6 +17,7 @@ from flext_infra.check import (
     FlextInfraWorkspaceCheckGatesMixin,
     FlextInfraWorkspaceCheckReportsMixin,
 )
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.workspace.runtime_dependencies import (
     FlextInfraRuntimeDependencyCollector,
 )
@@ -27,7 +28,11 @@ class FlextInfraWorkspaceChecker(
     FlextInfraWorkspaceCheckGatesMixin,
     FlextInfraWorkspaceCheckReportsMixin,
 ):
-    """Run workspace quality gates and generate reports."""
+    """Run workspace quality gates and generate reports.
+
+    The native scope planner and gate registry also own the global inventory
+    used to publish and admit coverage proof; admission never executes gates.
+    """
 
     _repository_root: Path = m.PrivateAttr()
     _registry: FlextInfraGateRegistry = m.PrivateAttr()
@@ -163,30 +168,25 @@ class FlextInfraWorkspaceChecker(
         if project_targets_result.failure:
             return r[m.Infra.CheckReportSummary].from_failure(project_targets_result)
         project_targets = project_targets_result.value
-        # An omitted gate selection is the typed SSOT default: every default
-        # check gate (the set an unset CI token runs), never an empty run.
-        gates = list(
-            params.gates
-            or u.Infra
-            .load_codegen_inputs(params.repository_root)
-            .unwrap()
-            .spec.make.check_gates_default
-        )
+        # An omitted gate selection resolves the requested gate set from the
+        # typed Make spec at runtime, never from a generated projection.
+        requested = self._resolve_requested_gates(params)
+        if requested.failure:
+            return r[m.Infra.CheckReportSummary].from_failure(requested)
+        gates = requested.value
         destination = params.report_output
-        before = None
-        if destination is not None:
-            if not destination.is_absolute() or not destination.parent.is_dir():
-                return r[m.Infra.CheckReportSummary].fail(
-                    "check report output requires an absolute path "
-                    "in an existing directory"
-                )
-            before = u.Cli.atomic_read_binary_file_state(
+        before = (
+            None
+            if destination is None
+            else u.Cli.atomic_read_binary_file_state(
                 destination, required=False
             ).unwrap()
-            if before.content is not None:
-                return r[m.Infra.CheckReportSummary].fail(
-                    f"check report output already exists: {destination}"
-                )
+            if destination.is_absolute() and destination.parent.is_dir()
+            else None
+        )
+        refusal = self._report_output_refusal(destination, before)
+        if refusal is not None:
+            return r[m.Infra.CheckReportSummary].fail(refusal)
         if selected_files:
             u.Cli.info(
                 f"file-gate: source={selected_files[0]} gates={gates} "
@@ -205,17 +205,72 @@ class FlextInfraWorkspaceChecker(
                 python=Path(sys.executable),
                 development_only=(),
             ),
+            # Applicability and every gate of this invocation share each
+            # repository's Git scope facts instead of re-reading Git.
+            scope_facts=u.Infra.ScopeFacts(),
         )
-        run_result = self.run_projects_report(
-            projects=project_targets,
-            gates=gates,
-            reports_dir=params.reports_dir_path,
-            ctx=gate_ctx,
+        return self.run_projects_report(
+            project_targets,
+            gates,
+            gate_ctx,
             report_output_state=before,
+            phase=params.phase,
         )
-        if run_result.failure:
-            return r[m.Infra.CheckReportSummary].from_failure(run_result)
-        return run_result
+
+    @staticmethod
+    def _resolve_requested_gates(params: m.Infra.RunCommand) -> p.Result[t.StrSequence]:
+        """Bind primary admission to its exact unfiltered global policy.
+
+        Returns:
+            The declared inventory or the first invalid phase selection.
+
+        """
+        gates = u.Infra.selected_check_gates(
+            u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make,
+            params.gate_set,
+            phase=params.phase,
+        )
+        if params.phase == c.Infra.CheckPhase.PRIMARY:
+            if any((
+                params.file is not None,
+                params.projects,
+                params.scope != c.Infra.CodegenConformScope.ALL,
+                params.gate_set != c.Infra.CheckGateSet.CHECK,
+                params.apply,
+                params.check_only,
+                params.ruff_args is not None,
+                params.pyright_args is not None,
+            )):
+                return r[t.StrSequence].fail(
+                    "primary check requires unfiltered read-only global check scope"
+                )
+            if params.gates and tuple(params.gates) != gates:
+                return r[t.StrSequence].fail(
+                    "primary check gates differ from check_prerequisite_gates"
+                )
+        return r[t.StrSequence].ok(params.gates or gates)
+
+    @staticmethod
+    def _report_output_refusal(
+        destination: Path | None,
+        before: m.Cli.AtomicFileState | None,
+    ) -> str | None:
+        """Refuse a report destination this invocation cannot exclusively own.
+
+        Returns:
+            Why the destination is refused, or ``None`` for an absent or
+            exclusively ownable destination.
+
+        """
+        if destination is None:
+            return None
+        if before is None:
+            return (
+                "check report output requires an absolute path in an existing directory"
+            )
+        if before.content is not None:
+            return f"check report output already exists: {destination}"
+        return None
 
     @classmethod
     def _resolve_selected_files(
@@ -323,9 +378,11 @@ class FlextInfraWorkspaceChecker(
     ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
         """Resolve the selected projects from the declared workspace topology.
 
-        An omitted selection covers the root and its first-party members.
-        Standalone repositories resolve their own root through the same owner.
-        A literal file selects only its deepest declared project owner.
+        An omitted selection covers only the invoked repository under scope
+        ``self``. Scope ``all`` adds every governed member the workspace
+        declares in ``.gitmodules``, resolved by the workspace detector, so a
+        workspace verb processes all members in one pass. A literal file
+        selects only its deepest declared project owner.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]``.
@@ -361,12 +418,90 @@ class FlextInfraWorkspaceChecker(
                     for project_name in requested
                 ),
             )
-        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
-            m.Infra.CheckProjectTarget(
-                name=params.repository_root.name,
-                path=params.repository_root,
+        return FlextInfraWorkspaceChecker._scoped_targets(params)
+
+    @staticmethod
+    def _scoped_targets(
+        params: m.Infra.RunCommand,
+    ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
+        """Resolve an omitted project selection from the requested scope.
+
+        Returns:
+            The invoked repository under ``self``; it and every governed
+            member under ``all``.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.CheckProjectTarget]]
+        root_target = m.Infra.CheckProjectTarget(
+            name=params.repository_root.name,
+            path=params.repository_root,
+        )
+        # The contract stores enum values; StrEnum members compare equal.
+        scope = c.Infra.CodegenConformScope(params.scope)
+        if scope is c.Infra.CodegenConformScope.SELF:
+            return result_type.ok((root_target,))
+        if scope is not c.Infra.CodegenConformScope.ALL:
+            return result_type.fail(
+                f"check run accepts scope self or all, not {scope.value}",
+            )
+        return FlextInfraWorkspaceDetector.load_workspace_spec(
+            params.repository_root,
+        ).map(
+            lambda workspace: (
+                root_target,
+                *(
+                    m.Infra.CheckProjectTarget(
+                        name=member.name,
+                        path=params.repository_root / member.path,
+                    )
+                    for member in u.Infra.mutable_flext_members(workspace)
+                ),
             ),
-        ))
+        )
+
+    def plan_global_targets(
+        self,
+        gates: t.StrSequence,
+        ctx: m.Infra.GateContext | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CheckProjectTarget]]:
+        """Plan global coverage through native topology and applicability only.
+
+        Producer and receipt admission share this plan. No gate is executed and
+        no report is written; the caller retains the original selection facts.
+
+        Returns:
+            The complete canonical project and applicable-gate inventory.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CheckProjectTarget]]
+        resolved = self.resolve_gates(gates)
+        if resolved.failure:
+            return result_type.from_failure(resolved)
+        projects = self._scoped_targets(
+            m.Infra.RunCommand(
+                repository_root=self._repository_root,
+                scope=c.Infra.CodegenConformScope.ALL,
+            ),
+        )
+        if projects.failure:
+            return result_type.from_failure(projects)
+        context = ctx or m.Infra.GateContext(
+            repository_root=self._repository_root,
+            reports_dir=self._default_reports_dir,
+            scope_facts=u.Infra.ScopeFacts(),
+        )
+        return result_type.ok(
+            tuple(
+                m.Infra.CheckProjectTarget(
+                    name=project.path.name,
+                    path=project.path.resolve(),
+                    applicable_gates=self._registry.applicable_gate_ids(
+                        resolved.value, project.path, context
+                    ),
+                )
+                for project in projects.value
+            ),
+        )
 
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project.
@@ -407,9 +542,6 @@ class FlextInfraWorkspaceChecker(
         self,
         projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
         gates: t.StrSequence,
-        *,
-        reports_dir: Path | None = None,
-        fail_fast: bool = c.Infra.CHECK_FAIL_FAST_DEFAULT,
         ctx: m.Infra.GateContext | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Expose project results from the same invocation-owned report.
@@ -418,91 +550,70 @@ class FlextInfraWorkspaceChecker(
             The project results of the invocation report.
 
         """
-        if ctx is not None and ctx.fail_fast != fail_fast:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                "gate context fail_fast disagrees with the requested project policy",
-            )
-        return self.run_projects_report(
-            projects,
-            gates,
-            reports_dir=reports_dir,
-            ctx=ctx
-            or m.Infra.GateContext(
-                repository_root=self._repository_root,
-                reports_dir=reports_dir or self._default_reports_dir,
-                fail_fast=fail_fast,
-            ),
-        ).map(lambda summary: summary.results)
+        return self.run_projects_report(projects, gates, ctx).map(
+            lambda summary: summary.results
+        )
 
     def run_projects_report(
         self,
         projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
         gates: t.StrSequence,
-        *,
-        reports_dir: Path | None = None,
         ctx: m.Infra.GateContext | None = None,
         report_output_state: m.Cli.AtomicFileState | None = None,
+        *,
+        phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
     ) -> p.Result[m.Infra.CheckReportSummary]:
         """Run selected gates in one exclusively owned invocation report directory.
+
+        The context carries the report base, the fail-fast policy and the
+        invocation's shared facts; without one the checker's defaults apply.
+        Unfiltered checking captures each exact repository's native identity
+        before its first gate and retains it through subsequent gate phases.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectResult]]``.
 
         """
-        resolved_gates_result = self.resolve_gates(gates)
-        if resolved_gates_result.failure:
-            return r[m.Infra.CheckReportSummary].from_failure(
-                resolved_gates_result,
-            )
-        resolved_gates = resolved_gates_result.value
-        targets = self._project_targets(projects)
-        if not targets:
-            return r[m.Infra.CheckReportSummary].fail(
-                "quality check selected no projects",
-            )
-        unrunnable = [
-            str(target.path / c.PYPROJECT_FILENAME)
-            for target in targets
-            if not (target.path / c.PYPROJECT_FILENAME).is_file()
-        ]
-        if unrunnable:
-            return r[m.Infra.CheckReportSummary].fail(
-                "quality check selected projects without a pyproject: "
-                + ", ".join(unrunnable),
-            )
-        reports_root = reports_dir or self._default_reports_dir
-        dir_ensure = u.Cli.ensure_dir(reports_root)
-        if dir_ensure.failure:
-            return r[m.Infra.CheckReportSummary].from_failure(dir_ensure)
-        # One invocation owns one report leaf: concurrent checks never
-        # overwrite each other's receipt.
-        report_base = reports_root / u.generate_id()
-        report_base.mkdir(exist_ok=False)
+        selection = self._resolve_report_selection(projects, gates)
+        if selection.failure:
+            return r[m.Infra.CheckReportSummary].from_failure(selection)
+        gates, targets = selection.value
         effective_ctx = ctx or m.Infra.GateContext(
             repository_root=self._repository_root,
-            reports_dir=report_base,
+            reports_dir=self._default_reports_dir,
             fail_fast=c.Infra.CHECK_FAIL_FAST_DEFAULT,
+            scope_facts=u.Infra.ScopeFacts(),
         )
-        effective_ctx = effective_ctx.model_copy(update={"reports_dir": report_base})
-        requested_gates = tuple(resolved_gates)
-        report_targets = tuple(
-            m.Infra.CheckProjectTarget(
-                name=target.path.name,
-                path=target.path.resolve(),
-                applicable_gates=(
-                    requested_gates
-                    if effective_ctx.selected_files
-                    else self._registry.applicable_gate_ids(
-                        requested_gates, target.path
-                    )
-                ),
-            )
-            for target in targets
+        unfiltered = not any((
+            effective_ctx.selected_files,
+            effective_ctx.ruff_args,
+            effective_ctx.pyright_args,
+            effective_ctx.apply_fixes,
+            effective_ctx.check_only,
+        ))
+        preparation = self._prepare_report_invocation(
+            targets, effective_ctx, capture_identity=unfiltered
         )
+        if preparation.failure:
+            return r[m.Infra.CheckReportSummary].from_failure(preparation)
+        targets, effective_ctx = preparation.value
+        prerequisites = tuple(
+            gate
+            for gate in u.Infra
+            .load_codegen_inputs(self._repository_root)
+            .unwrap()
+            .spec.make.check_prerequisite_gates
+            if gate in gates
+        )
+        admission_gates = prerequisites or gates
+        pending_gates = tuple(gate for gate in gates if gate not in admission_gates)
+        targets = self._targets_for_gates(targets, admission_gates, effective_ctx)
         reached: dict[Path, m.Infra.ProjectResult] = {}
         current_summary = m.Infra.CheckReportSummary(
-            requested_gates=requested_gates,
-            targets=report_targets,
+            phase=phase,
+            requested_gates=gates,
+            pending_gates=pending_gates,
+            targets=targets,
             results=(),
             selected_files=tuple(effective_ctx.selected_files),
         )
@@ -517,7 +628,7 @@ class FlextInfraWorkspaceChecker(
                     summary,
                     report_output_state,
                 )
-            self._write_reports(report_base, summary).unwrap()
+            self._write_reports(effective_ctx.reports_dir, summary).unwrap()
             current_summary = summary
 
         publish_summary(current_summary)
@@ -526,11 +637,13 @@ class FlextInfraWorkspaceChecker(
             reached[project_dir.resolve()] = project
             publish_summary(
                 m.Infra.CheckReportSummary(
-                    requested_gates=requested_gates,
-                    targets=report_targets,
+                    phase=phase,
+                    requested_gates=gates,
+                    pending_gates=pending_gates,
+                    targets=targets,
                     results=tuple(
                         reached[target.path]
-                        for target in report_targets
+                        for target in targets
                         if target.path in reached
                     ),
                     selected_files=tuple(effective_ctx.selected_files),
@@ -540,48 +653,175 @@ class FlextInfraWorkspaceChecker(
         effective_ctx = effective_ctx.model_copy(
             update={"check_progress": publish_progress}
         )
-        outcome = self._run_project_loop(
-            targets,
-            resolved_gates,
-            effective_ctx,
-            fail_fast=effective_ctx.fail_fast,
+        # Elect only the current phase before it runs. Later applicability
+        # remains explicit pending evidence until prerequisites are clean.
+        outcome = (
+            self._run_prerequisite_checks(targets, admission_gates, effective_ctx)
+            if prerequisites
+            and not effective_ctx.apply_fixes
+            and not effective_ctx.fail_fast
+            else self._run_project_phase(
+                targets,
+                admission_gates,
+                effective_ctx,
+                fail_fast=effective_ctx.fail_fast,
+            )
         )
+        if (
+            pending_gates
+            and not outcome.failed
+            and len(outcome.results) == len(targets)
+        ):
+            targets = self._targets_for_gates(targets, gates, effective_ctx)
+            admission_gates = pending_gates
+            pending_gates = ()
+            outcome = self._run_project_phase(
+                targets,
+                admission_gates,
+                effective_ctx,
+                fail_fast=effective_ctx.fail_fast,
+                previous=outcome,
+            )
+        global_targets: t.VariadicTuple[m.Infra.CheckProjectTarget] | None = None
+        if not pending_gates and unfiltered:
+            global_plan = self.plan_global_targets(gates, effective_ctx)
+            if global_plan.failure:
+                return r[m.Infra.CheckReportSummary].from_failure(global_plan)
+            global_targets = global_plan.value
         summary = m.Infra.CheckReportSummary(
-            requested_gates=requested_gates,
-            targets=report_targets,
+            phase=phase,
+            requested_gates=gates,
+            pending_gates=pending_gates,
+            targets=targets,
             results=tuple(outcome.results),
             # A file-scoped run never claims whole-project quality.
             selected_files=tuple(effective_ctx.selected_files),
+            global_targets=global_targets,
         )
         # Preserve a changed returned result without repeating an identical
         # last-gate or zero-applicable-gate publication.
-        if summary.results != current_summary.results:
+        if summary != current_summary:
             publish_summary(summary)
-        self._print_summary(report_base, outcome, summary)
+        self._print_summary(effective_ctx.reports_dir, outcome, summary)
         return r[m.Infra.CheckReportSummary].ok(summary)
+
+    @staticmethod
+    def _prepare_report_invocation(
+        targets: t.VariadicTuple[m.Infra.CheckProjectTarget],
+        ctx: m.Infra.GateContext,
+        *,
+        capture_identity: bool,
+    ) -> p.Result[
+        tuple[t.VariadicTuple[m.Infra.CheckProjectTarget], m.Infra.GateContext]
+    ]:
+        """Capture pre-gate identities and reserve this invocation's report leaf.
+
+        Returns:
+            Original or identity-bearing targets and the exclusively owned context.
+
+        """
+        result_type = r[
+            tuple[t.VariadicTuple[m.Infra.CheckProjectTarget], m.Infra.GateContext]
+        ]
+        if capture_identity:
+            captured: list[m.Infra.CheckProjectTarget] = []
+            for target in targets:
+                identity = u.Infra.exact_worktree_root(target.path)
+                if identity.failure:
+                    return result_type.from_failure(identity)
+                captured.append(
+                    m.Infra.CheckProjectTarget(
+                        name=target.name,
+                        path=target.path,
+                        applicable_gates=target.applicable_gates,
+                        source_identity=identity.value,
+                    ),
+                )
+            targets = tuple(captured)
+        dir_ensure = u.Cli.ensure_dir(ctx.reports_dir)
+        if dir_ensure.failure:
+            return result_type.from_failure(dir_ensure)
+        # One invocation owns one report leaf: concurrent checks never
+        # overwrite each other's receipt.
+        ctx = ctx.model_copy(update={"reports_dir": ctx.reports_dir / u.generate_id()})
+        ctx.reports_dir.mkdir(exist_ok=False)
+        return result_type.ok((targets, ctx))
+
+    def _resolve_report_selection(
+        self,
+        projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
+        gates: t.StrSequence,
+    ) -> p.Result[tuple[t.StrTuple, t.VariadicTuple[m.Infra.CheckProjectTarget]]]:
+        """Resolve runnable report inputs before creating invocation effects.
+
+        Returns:
+            Validated gates and the original immutable project target tuple.
+
+        """
+        result_type = r[tuple[t.StrTuple, t.VariadicTuple[m.Infra.CheckProjectTarget]]]
+        resolved_gates = self.resolve_gates(gates)
+        if resolved_gates.failure:
+            return result_type.from_failure(resolved_gates)
+        targets = self._project_targets(projects)
+        if not targets:
+            return result_type.fail("quality check selected no projects")
+        unrunnable = [
+            str(target.path / c.PYPROJECT_FILENAME)
+            for target in targets
+            if not (target.path / c.PYPROJECT_FILENAME).is_file()
+        ]
+        if unrunnable:
+            return result_type.fail(
+                "quality check selected projects without a pyproject: "
+                + ", ".join(unrunnable),
+            )
+        return result_type.ok((tuple(resolved_gates.value), targets))
+
+    def _targets_for_gates(
+        self,
+        targets: t.SequenceOf[m.Infra.CheckProjectTarget],
+        gates: t.StrSequence,
+        ctx: m.Infra.GateContext,
+    ) -> t.VariadicTuple[m.Infra.CheckProjectTarget]:
+        """Elect the declared gate population for one project phase.
+
+        Returns:
+            Normalized project targets with the phase's applicable gates.
+
+        """
+        return tuple(
+            m.Infra.CheckProjectTarget(
+                name=target.path.name,
+                path=target.path.resolve(),
+                applicable_gates=(
+                    gates
+                    if ctx.selected_files
+                    else self._registry.applicable_gate_ids(gates, target.path, ctx)
+                ),
+                source_identity=target.source_identity,
+            )
+            for target in targets
+        )
 
     def _project_targets(
         self,
         projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
-    ) -> t.SequenceOf[m.Infra.CheckProjectTarget]:
+    ) -> t.VariadicTuple[m.Infra.CheckProjectTarget]:
         """Return typed project targets from public names or internal selections.
 
         Returns:
             Typed project targets from public names or internal selections.
 
         """
-        targets: list[m.Infra.CheckProjectTarget] = []
-        for project in projects:
-            if isinstance(project, m.Infra.CheckProjectTarget):
-                targets.append(project)
-                continue
-            targets.append(
-                m.Infra.CheckProjectTarget(
-                    name=project,
-                    path=self._repository_root / project,
-                ),
+        return tuple(
+            project
+            if isinstance(project, m.Infra.CheckProjectTarget)
+            else m.Infra.CheckProjectTarget(
+                name=project,
+                path=self._repository_root / project,
             )
-        return tuple(targets)
+            for project in projects
+        )
 
 
 __all__: list[str] = ["FlextInfraWorkspaceChecker"]

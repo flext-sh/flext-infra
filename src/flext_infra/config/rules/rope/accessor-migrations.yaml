@@ -19,3 +19,73 @@
   declaring_class: flext_infra._models.mixins.FlextInfraModelsMixins.ReadMixin
   field: output_dir
   reason: Resolve optional output directories at the public utility boundary.
+# Accessor renames proven against their flext_core declarations: each source
+# accessor is renamed at every owned reference to its canonical domain verb.
+- source_name: is_success_result
+  replacement_name: successful_result
+  origin: flext_core
+  reason: Rename result helper to the canonical success helper
+- source_name: is_failure_result
+  replacement_name: failed_result
+  origin: flext_core
+  reason: Rename result helper to the canonical failure helper
+- source_name: is_success
+  replacement_name: success
+  origin: flext_core
+  reason: Rename boolean result predicate to the canonical success field
+- source_name: is_failure
+  replacement_name: failure
+  origin: flext_core
+  reason: Rename boolean result predicate to the canonical failure field
+- source_name: set_attribute
+  replacement_name: update_attribute
+  origin: flext_core
+  reason: Rewrite attribute mutator to the canonical update verb
+- source_name: get_beartype_conf
+  replacement_name: build_beartype_conf
+  origin: flext_core
+  reason: Rewrite beartype settings accessor to the canonical build verb
+- source_name: get_message_route
+  replacement_name: resolve_message_route
+  origin: flext_core
+  reason: Rewrite route accessor to the canonical resolve helper
+- source_name: set_container_adapter
+  replacement_name: container_set_adapter
+  origin: flext_core
+  reason: Rewrite type adapter accessor to the canonical container_* name
+- source_name: set_str_adapter
+  replacement_name: string_set_adapter
+  origin: flext_core
+  reason: Rewrite type adapter accessor to the canonical string_* name
+- source_name: set_scalar_adapter
+  replacement_name: scalar_set_adapter
+  origin: flext_core
+  reason: Rewrite type adapter accessor to the canonical scalar_* name
+- source_name: get_logger
+  replacement_name: fetch_logger
+  origin: flext_core
+  reason: Rewrite logger accessor to the canonical fetch verb
+- source_name: is_structlog_configured
+  replacement_name: structlog_configured
+  origin: flext_core
+  reason: Rewrite structlog predicate to the canonical boolean helper
+- source_name: get_log_level_from_config
+  replacement_name: resolve_log_level_from_config
+  origin: flext_core
+  reason: Rewrite log-level accessor to the canonical resolve helper
+- source_name: get_version_string
+  replacement_name: resolve_version_string
+  origin: flext_core
+  reason: Rewrite version accessor to the canonical resolve helper
+- source_name: get_version_info
+  replacement_name: resolve_version_info
+  origin: flext_core
+  reason: Rewrite version info accessor to the canonical resolve helper
+- source_name: get_package_info
+  replacement_name: resolve_package_info
+  origin: flext_core
+  reason: Rewrite package info accessor to the canonical resolve helper
+- source_name: is_version_at_least
+  replacement_name: version_at_least
+  origin: flext_core
+  reason: Rewrite version predicate to the canonical boolean helper

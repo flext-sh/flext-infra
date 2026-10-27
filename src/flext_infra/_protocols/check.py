@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import p
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import m, t
 
 
@@ -79,6 +81,15 @@ class FlextInfraProtocolsCheck(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsCheck.SarifLocation]: ...
 
     @runtime_checkable
+    class GitScopeFacts(Protocol):
+        """Share one invocation's tracked Git scope inventory across consumers."""
+
+        def tracked_scope_relative_paths(
+            self,
+            scope_root: Path,
+        ) -> t.StrSequence | None: ...
+
+    @runtime_checkable
     class NativeStorageSlot[ValueT](Protocol):
         """Read one interpreter-owned slot with its precise native result."""
 
@@ -101,6 +112,15 @@ class FlextInfraProtocolsCheck(Protocol):
 
         @property
         def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
+
+    @runtime_checkable
+    class GlobalCheckTargetPlanner(Protocol):
+        """Plan native global coverage on demand at the admission boundary."""
+
+        def __call__(
+            self,
+            gates: t.StrSequence,
+        ) -> p.Result[t.VariadicTuple[m.Infra.CheckProjectTarget]]: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

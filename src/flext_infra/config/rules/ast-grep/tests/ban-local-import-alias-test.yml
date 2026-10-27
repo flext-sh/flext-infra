@@ -1,16 +1,23 @@
-# Shape only: the engine admits the finding when the module is the own package.
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml) with the
+# runtime aliases of fixture-utils/local-alias.yml.
 id: ban-local-import-alias
 valid:
-  - from pkg import m
-  - from pkg import m as m
-  - from pkg.child import Owner as Owner
+  - from ai_hub import m
+  - from ai_hub import m as m
+  - from ai_hub.child import Owner as Owner
   - |
     if TYPE_CHECKING:
-        from pkg import _child as _child
-  - import pkg.models
+        from ai_hub import _child as _child
+  - import ai_hub.models
+  # Another package's names are not the own package's.
+  - from flext_core import m as models
+  # The canonical letter binding under TYPE_CHECKING.
+  - |
+    if TYPE_CHECKING:
+        from ai_hub.models import AiHubModels as m
 invalid:
-  - from pkg import m as models
+  - from ai_hub import m as models
   - |
     if TYPE_CHECKING:
-        from pkg import child as renamed
-  - import pkg.models as models
+        from ai_hub import child as renamed
+  - import ai_hub.models as models

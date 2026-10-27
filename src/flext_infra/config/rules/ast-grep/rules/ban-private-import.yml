@@ -4,9 +4,9 @@
 # couples a consumer to that owner's layout; the consumer uses the public
 # facade discovered from the owner's live assignment and inheritance graph.
 # Inside one package every import is absolute (relative imports are banned),
-# so the imported module's root is captured as $MOD and the engine admits the
-# finding only when it is not the scanned project's own package (context
-# own-package, read from the project's declared package name).
+# so the imported module's root is captured as $MOD and constrained natively
+# to fall outside the project's generated `own-package` utility (its declared
+# package and internal tiers).
 #
 # Both static spellings are the same coupling: `from pkg._mod import X` and
 # `import pkg._mod`. The semantic private-import cutover rewrites only the
@@ -17,9 +17,11 @@ id: ban-private-import
 language: Python
 severity: error
 metadata:
-  context:
-    MOD:
-      not: own-package
+  enforce: [ENFORCE-004]
+constraints:
+  MOD:
+    not:
+      matches: own-package
 rule:
   any:
     - all:

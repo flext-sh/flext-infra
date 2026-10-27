@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from functools import partial
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.gates import FlextInfraGate
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -35,24 +36,23 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
 
         """
         started = time.monotonic()
-        native = self._run(command, project_dir)
+        native = self._run(command, project_dir, ctx)
         passed = u.Cli.process_succeeded(native.outcome)
         issues = (
             ()
             if passed
-            else (
-                self._command_error_issue(
-                    native, tool=name, file=str(project_dir), line=0, column=0
-                ),
-            )
+            else (self._command_error_issue(native, name, str(project_dir)),)
         )
         component_ctx = ctx.model_copy(update={"reports_dir": ctx.reports_dir / name})
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=passed,
-            issues=issues,
-            evidence=self._publish_raw_receipt(component_ctx, self._raw_output(native)),
-            started=started,
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=passed,
+                issues=tuple(issues),
+                raw_output=self._raw_output(native),
+                started=started,
+            ),
+            component_ctx,
         ).model_copy(
             update={
                 "process": m.Cli.ProcessOutcome.model_validate(
@@ -64,11 +64,32 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
             }
         )
 
+    def _waved_execution(
+        self,
+        name: str,
+        command: t.StrSequence,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        signal_wave: p.Cli.SignalWave,
+    ) -> m.Infra.GateExecution:
+        """Run one native owner as a task of the gate's concurrent wave.
+
+        Returns:
+            The native execution result.
+
+        """
+        return self.native_execution(
+            name,
+            command,
+            project_dir,
+            ctx.model_copy(update={"signal_wave": signal_wave}),
+        )
+
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """Execute the four original owners through this check invocation.
+        """Execute the original owners through this check invocation.
 
         Returns:
             The combined execution of the original owners.
@@ -125,27 +146,45 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
             ),
         )
         components: dict[str, m.Infra.GateExecution] = {}
-        for name, command in commands:
-            execution = self.native_execution(name, command, project_dir, ctx)
-            components[name] = execution
-            if execution.interrupted or (not execution.result.passed and ctx.fail_fast):
-                break
+        if ctx.fail_fast:
+            for name, command in commands:
+                execution = self.native_execution(name, command, project_dir, ctx)
+                components[name] = execution
+                if execution.interrupted or not execution.result.passed:
+                    break
+        else:
+            # The read-only owners share no mutable state: one concurrent
+            # wave, so the gate costs its slowest owner instead of their sum.
+            executions = u.Cli.run_in_signal_wave(
+                tuple(
+                    partial(self._waved_execution, name, command, project_dir, ctx)
+                    for name, command in commands
+                ),
+                max_workers=len(commands),
+                signal_wave=ctx.signal_wave,
+            )
+            components.update(
+                (name, execution)
+                for (name, _command), execution in zip(
+                    commands, executions, strict=True
+                )
+            )
         issues = tuple(
             issue for execution in components.values() for issue in execution.issues
         )
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=len(components) == len(commands)
-            and all(execution.result.passed for execution in components.values()),
-            issues=issues,
-            evidence=self._publish_raw_receipt(
-                ctx,
-                "\n".join(
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=len(components) == len(commands)
+                and all(execution.result.passed for execution in components.values()),
+                issues=tuple(issues),
+                raw_output="\n".join(
                     f"{name}: {execution.raw_receipt}"
                     for name, execution in components.items()
                 ),
+                started=started,
             ),
-            started=started,
+            ctx,
         ).model_copy(
             update={
                 "components": components,

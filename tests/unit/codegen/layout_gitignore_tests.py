@@ -13,11 +13,7 @@ import pytest
 from flext_infra import FlextInfraConfig, config, m
 from flext_infra.codegen import FlextInfraCodegenLayout, FlextInfraCodegenMakeBootstrap
 from tests import c, t, tm, u
-from tests.unit.codegen.layout_fixture import (
-    archive_root,
-    build_loose_project,
-    layout_engine,
-)
+from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
 
 
 class TestsFlextInfraCodegenLayoutGitignore:
@@ -58,7 +54,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tmp_path: Path,
     ) -> None:
         """Gitignore additions from the SSOT are appended once across applies."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         cls._declare_layout_override(project, project.name)
         codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
         override = codegen.layout.project_overrides[project.name]
@@ -71,7 +67,9 @@ class TestsFlextInfraCodegenLayoutGitignore:
                 cwd=project,
             ),
         )
-        engine = layout_engine(tmp_path, apply_changes=True)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
 
         first = engine.execute()
         tm.ok(first)
@@ -93,8 +91,10 @@ class TestsFlextInfraCodegenLayoutGitignore:
     @staticmethod
     def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
         """Tracked sources move through git so history follows the rename."""
-        project = build_loose_project(tmp_path)
-        engine = layout_engine(tmp_path, apply_changes=True)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
 
         result = engine.execute()
 
@@ -105,7 +105,8 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok("docs/guides/intro.md" in tracked_names)
         tm.fail("guides/intro.md" in tracked_names)
         tm.that(
-            f"{archive_root()}/{project.name}/output.log" in tracked_names,
+            f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/{project.name}/output.log"
+            in tracked_names,
             eq=False,
         )
 
@@ -115,7 +116,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tmp_path: Path,
     ) -> None:
         """The canonical gitignore render owns the layout SSOT additions."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         cls._declare_layout_override(project, project.name)
         codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
         override = codegen.layout.project_overrides[project.name]
@@ -238,7 +239,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tmp_path: Path,
     ) -> None:
         """Local ignored files are not layout inputs; tracked files stay."""
-        project = build_loose_project(tmp_path)
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         local = project / "local-artifact"
         tracked = project / "tracked-artifact"
         local.write_text("local\n", encoding="utf-8")
@@ -256,7 +257,9 @@ class TestsFlextInfraCodegenLayoutGitignore:
             ),
         )
 
-        report = layout_engine(tmp_path, apply_changes=False).plan_project(project)
+        report = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=False
+        ).plan_project(project)
 
         paths = {finding.path for finding in report.findings}
         tm.fail(local.name in paths)

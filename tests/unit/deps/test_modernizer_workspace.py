@@ -12,7 +12,7 @@ import pytest
 from tomlkit.exceptions import ParseError
 from typing_extensions import TypeForm
 
-from flext_infra import config, main
+from flext_infra import FlextInfraCli, config
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import c, m, t, tm, u
 
@@ -202,7 +202,10 @@ class TestsFlextInfraDepsModernizerWorkspace:
         package_init.write_text("", encoding="utf-8")
         expected_order = (
             u.Infra.native_tool_setting(
-                config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+                config.Infra.tooling,
+                "tomlsort",
+                "sort_first",
+                TypeForm(t.StrSequence),
             )
             if sort_first is None
             else sort_first
@@ -234,6 +237,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 source,
                 path=pyproject,
                 topology=m.Infra.PyprojectDeclaredTopology(),
+                codegen=tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec,
             ),
         )
         tm.that(rendered.count("[project]"), eq=1)
@@ -265,7 +269,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
             modernizer_workspace_with_projects / "ignored" / c.PYPROJECT_FILENAME
         )
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "deps",
                 "modernize",
                 "--repository-root",

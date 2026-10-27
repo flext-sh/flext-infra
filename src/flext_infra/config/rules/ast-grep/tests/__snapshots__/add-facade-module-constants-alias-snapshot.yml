@@ -1,0 +1,21 @@
+id: add-facade-module-constants-alias
+snapshots:
+  "class FlextDemoConstants:\n    pass\n__all__: list[str] = [\"FlextDemoConstants\"]\n":
+    fixed: |
+      class FlextDemoConstants:
+          pass
+      c = FlextDemoConstants
+      
+      __all__: list[str] = ["FlextDemoConstants", "c"]
+    labels:
+    - source: "__all__: list[str] = [\"FlextDemoConstants\"]"
+      style: primary
+      start: 35
+      end: 78
+    - source: |
+        class FlextDemoConstants:
+            pass
+        __all__: list[str] = ["FlextDemoConstants"]
+      style: secondary
+      start: 0
+      end: 79
