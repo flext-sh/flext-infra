@@ -229,13 +229,13 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 )
                 if required.failure:
                     return r[bool].from_failure(required)
-                merged = FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
+                merged_entries = FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
                     required.value.root,
                     custom.value,
                 )
                 groups[selected] = (
                     FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
-                        merged,
+                        merged_entries,
                     )
                 )
             else:

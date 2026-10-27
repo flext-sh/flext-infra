@@ -450,7 +450,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     def _import_law_deferred_class_lines(
         cls,
         tree: ast.Module,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: t.MappingKV[int, ast.AST],
         module: str,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
     ) -> frozenset[int]:

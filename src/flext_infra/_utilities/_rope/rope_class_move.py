@@ -75,8 +75,23 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             """
             before = self.states.get(source)
             if before is None or source not in self.sources:
+                resolved = source.resolve()
+                mismatched = sum(
+                    1 for path in self.sources if path.resolve() not in self.states
+                )
                 msg = f"module move source is not among its inputs: {source}"
-                raise ValueError(msg)
+                raise ValueError(
+                    msg,
+                    {
+                        "sources": len(self.sources),
+                        "states": len(self.states),
+                        "declared": len(self.declared),
+                        "resolved": str(resolved),
+                        "resolved_in_sources": resolved in self.sources,
+                        "resolved_in_states": resolved in self.states,
+                        "sources_outside_states": mismatched,
+                    },
+                ) from None
             if source not in self.declared and (
                 before.content is None or before.mode is None
             ):

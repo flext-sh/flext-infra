@@ -92,6 +92,17 @@ class FlextInfraDuplicationEvidence:
 
         """
         started = time.monotonic()
+        # Measurement scope mirrors the scan scope: the invoking project plus
+        # every declared comparison root present on disk. Ownership is and
+        # stays path containment under the invoking project alone, so a
+        # cross-checkout clone remains a finding of the project that declares
+        # the external root, never of the external checkout's owner.
+        comparison = tuple(
+            path.resolve()
+            for path in map(Path, config.comparison_roots)
+            if path.is_dir()
+        )
+        allowed: t.SequenceOf[Path] = (root.resolve(), *comparison)
         candidates: list[m.Infra.DuplicationCandidateEvidence] = []
         pairs: t.MutableMappingKV[tuple[str, str], int] = {}
         counts: t.MutableMappingKV[str, int] = {
@@ -118,7 +129,7 @@ class FlextInfraDuplicationEvidence:
             )
             measures: tuple[m.Infra.DuplicationSpanMeasure, ...] = ()
             try:
-                measures = self._candidate_measures(candidate, root)
+                measures = self._candidate_measures(candidate, allowed)
                 classification = self._classify(
                     candidate.format_name,
                     measures,
@@ -215,9 +226,12 @@ class FlextInfraDuplicationEvidence:
     def _candidate_measures(
         self,
         candidate: m.Infra.JscpdDuplicate,
-        root: Path,
+        allowed: t.SequenceOf[Path],
     ) -> tuple[m.Infra.DuplicationSpanMeasure, ...]:
-        """Bind both reported spans to physical sources within this project.
+        """Bind both reported spans to a scanned scope root.
+
+        A scanned scope root is the invoking project or one of its declared
+        comparison roots; anything else is outside this gate's evidence.
 
         Returns:
             Both source-bound measurements.
@@ -228,7 +242,9 @@ class FlextInfraDuplicationEvidence:
         """
         sides = (candidate.first_file, candidate.second_file)
         if any(
-            not Path(side.name).resolve().is_relative_to(root.resolve())
+            not any(
+                Path(side.name).resolve().is_relative_to(scope) for scope in allowed
+            )
             for side in sides
         ):
             msg = "candidate source outside selected project scope"

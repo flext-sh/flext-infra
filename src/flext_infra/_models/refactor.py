@@ -1065,7 +1065,7 @@ class FlextInfraModelsRefactor(
         ]
         tree: Annotated[t.Port[ast.Module], m.Field(description="Parsed module")]
         parents: Annotated[
-            t.MappingKV[int, t.Port[t.Infra.RopeAstNode]],
+            t.MappingKV[int, t.Port[ast.AST]],
             m.Field(description="Child node id to parent node map"),
         ]
         bindings: Annotated[

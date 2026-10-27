@@ -35,6 +35,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyprojectConform,
 )
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.lint_source_positions import (
     FlextInfraUtilitiesLintSourcePositions,
 )
@@ -993,9 +994,6 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         name = cls._finding_exception(issue, path)
-        # Diferido: a análise Rope reentra no grafo flext_infra pelo root.
-        from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
-
         parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(function)
         clauses = [
             cls._raise_condition(function, raised, parents)
@@ -1029,7 +1027,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _raised_names(
         raised: ast.Raise,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: t.MappingKV[int, ast.AST],
     ) -> frozenset[str]:
         """Return the exception names one ``raise`` statement raises.
 
@@ -1061,7 +1059,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         cls,
         function: ast.FunctionDef | ast.AsyncFunctionDef,
         raised: ast.Raise,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: t.MappingKV[int, ast.AST],
     ) -> str:
         """Return the clause under which one ``raise`` statement runs.
 
@@ -1098,7 +1096,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             if stated:
                 return f"if {stated}"
         node: ast.AST = raised
-        while (parent := parents.get(node)) is not None and parent is not function:
+        while (parent := parents.get(id(node))) is not None and parent is not function:
             if isinstance(parent, ast.If):
                 test = ast.unparse(parent.test)
                 return (

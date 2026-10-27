@@ -12,9 +12,11 @@ from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPrivateImportAncestry as ImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
+    FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._semantic_cutover import (
@@ -224,6 +226,51 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             class_bases=class_bases,
         )
 
+    @staticmethod
+    def _finding_is_own_family_facade(
+        root: Path,
+        file_path: Path,
+        private_module: str,
+    ) -> bool:
+        """Report whether the consumer declares the imported private family facade.
+
+        The import law binds the owning family facade (for example
+        ``typings.py`` over ``_typings``) to import through its family
+        package, so that own-family import is canonical and never a
+        cross-owner finding; rerouting it to the namespace root would create
+        a reverse runtime dependency cycle.
+
+        Returns:
+            Whether the consumer is the imported family's own facade module
+            inside the same namespace.
+
+        """
+        namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+            file_path.parent,
+            project_root=root,
+        )
+        if not namespace or not private_module.startswith(f"{namespace}."):
+            return False
+        private_directory = next(
+            (
+                part
+                for part in private_module.split(".")
+                if part.startswith("_") and not part.startswith("__")
+            ),
+            "",
+        )
+        family = (
+            FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                private_directory,
+            )
+            if private_directory
+            else None
+        )
+        consumer = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
+            file_path.name,
+        )
+        return family is not None and family == consumer
+
     @classmethod
     def _finding_import_specs(
         cls,
@@ -266,6 +313,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             if package is None:
                 continue
             file_path = (root / finding.file).resolve()
+            if cls._finding_is_own_family_facade(root, file_path, private_module):
+                continue
             file_specs = specs.setdefault(file_path, [])
             for imported in statement.names:
                 if imported.name == "*":

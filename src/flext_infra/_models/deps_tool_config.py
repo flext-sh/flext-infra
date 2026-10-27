@@ -232,9 +232,14 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(
                 alias="run-timeout-seconds",
                 gt=0,
-                le=120,
+                le=1800,
                 description=(
-                    "Fleet-default wall-clock maximum for one testmon runner operation."
+                    "Fleet-default wall-clock maximum for one testmon runner "
+                    "operation. Repositories whose session prepares a real "
+                    "local runtime (for example the Docker OUD stack) may "
+                    "declare a higher budget; the previous 120s fleet ceiling "
+                    "predates in-session real-runtime preparation and is "
+                    "recorded in the fleet policy notes."
                 ),
             ),
         ]

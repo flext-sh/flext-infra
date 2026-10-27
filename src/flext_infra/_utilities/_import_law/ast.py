@@ -39,8 +39,8 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_enclosing_scope(
         cls,
         node: ast.AST,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
-    ) -> t.Infra.RopeAstNode | None:
+        parents: t.MappingKV[int, ast.AST],
+    ) -> ast.AST | None:
         """Return the lexical scope that evaluates one node.
 
         Definition headers and a comprehension's first iterable run in the
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         node: ast.AST,
         child: ast.AST,
         scope: ast.AST,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: t.MappingKV[int, ast.AST],
     ) -> bool:
         """Return whether ``scope`` evaluates ``node`` reached through ``child``.
 
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_comprehension_owns_node(
         node: ast.AST,
         scope: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: t.MappingKV[int, ast.AST],
     ) -> bool:
         """Keep the first iterable outside its comprehension's lexical bindings.
 
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_inside_type_checking(
         cls,
         node: ast.AST,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: t.MappingKV[int, ast.AST],
     ) -> bool:
         """Return whether the node sits under an ``if TYPE_CHECKING:`` block.
 

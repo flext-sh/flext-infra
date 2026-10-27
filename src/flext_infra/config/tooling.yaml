@@ -210,6 +210,12 @@ Infra:
       - [ split-on-trailing-comma, false ]
       ruff.lint.pydocstyle:
       - [ convention, google ]
+      ruff.lint.pep8-naming:
+      # Settings-branch protocol properties mirror their config namespace
+      # name (``settings.Ldif.*``): the branch attribute is capitalized by
+      # the config law, so the structural contract repeats that name and
+      # pep8-naming carries the namespace-name exception here.
+      - [ ignore-names, [ Ldif ] ]
       ruff.lint.pylint:
       - [ allow-dunder-method-names, [ __base__, __bases__ ] ]
       mypy:

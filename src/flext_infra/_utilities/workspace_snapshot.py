@@ -620,6 +620,24 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             edges = {name: frozenset(found) for name, found in reversed_edges.items()}
         return u.Cli.dag_closure(edges, modules)
 
+    @classmethod
+    def workspace_snapshot_rebase(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        paths: t.SequenceOf[Path],
+    ) -> None:
+        """Refresh this run's recorded states for paths the run itself wrote.
+
+        Later planning surfaces of one process must verify against the bytes
+        their own run published, not the process-start capture; external
+        mutations still fail the unchanged-file proof.
+
+        """
+        for path in paths:
+            if path in snapshot.sources:
+                del snapshot.sources[path]
+                cls.workspace_source(snapshot, path)
+
     @staticmethod
     def workspace_snapshot_verify(
         snapshot: p.Infra.WorkspaceSnapshot,

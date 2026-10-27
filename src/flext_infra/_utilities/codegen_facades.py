@@ -799,11 +799,13 @@ class FlextInfraUtilitiesCodegenFacades(
 
         A holder must compose another domain module's native class. Its own nested
         declarations do not establish an independent domain-composition identity.
-        External declaration-time compositions precede internal domain components.
-        Calling a component only supplies boundary evidence at its canonical sibling.
-        Incomparable publications at the elected precedence remain competing owners.
-        Entity specializations consume a domain rather than publish its namespace;
-        an existing canonical sibling still requires native domain composition proof.
+        A declaration inside the native child domain outranks an external
+        composition, and the canonical sibling outranks both. A holder whose
+        declared suppliers span more than one private domain directory is a
+        family-root composition, never a single-domain owner. Incomparable
+        publications at the elected precedence remain competing owners. Entity
+        specializations consume a domain rather than publish its namespace; an
+        existing canonical sibling still requires native domain composition proof.
 
         Returns:
             Existing compositions, without deriving ownership from class spelling.
@@ -811,7 +813,7 @@ class FlextInfraUtilitiesCodegenFacades(
         """
         owners: list[t.Pair[Path, str]] = []
         classes: list[p.Infra.RopeSourceClass] = []
-        priorities: list[t.Pair[bool, bool]] = []
+        priorities: list[t.Pair[bool, t.Pair[bool, bool]]] = []
         model = FlextInfraUtilitiesDeclarationPayload.identity_name(
             project, "pydantic.BaseModel"
         ).get_object()
@@ -864,11 +866,23 @@ class FlextInfraUtilitiesCodegenFacades(
                     for supplier in declared_suppliers
                 )
                 if evidence:
+                    supplier_directories = {
+                        Path(resource.real_path).parent
+                        for supplier in declared_suppliers
+                        if (
+                            cls.py_class(supplier)
+                            and (resource := supplier.get_module().get_resource())
+                            is not None
+                            and Path(resource.real_path).parent.name.startswith("_")
+                        )
+                    }
+                    if len(supplier_directories) > 1 and path != canonical:
+                        continue
                     owners.append((path, name))
                     classes.append(owner)
                     priorities.append((
                         path == canonical,
-                        path.parent == directory.parent,
+                        (path.parent == directory, path.parent == directory.parent),
                     ))
         composed = tuple(
             frozenset(
@@ -1239,8 +1253,8 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @staticmethod
     def _component_stage_plans(
-        planned: dict[Path, m.Infra.CodegenFilePlan],
-        staged: dict[Path, m.Infra.CodegenFilePlan],
+        planned: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
         additions: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> None:
         """Admit stage effects only through the authenticated plan composer.
@@ -1260,6 +1274,29 @@ class FlextInfraUtilitiesCodegenFacades(
         )
         planned.clear()
         planned.update((plan.path, plan) for plan in composed)
+
+    @classmethod
+    def _require_component_snapshot(
+        cls,
+        root: Path,
+        snapshot: p.Infra.WorkspaceSnapshot,
+    ) -> Path:
+        """Verify the snapshot is the native capture of this repository.
+
+        Returns:
+            The resolved repository root on provenance match.
+
+        Raises:
+            ValueError: The snapshot belongs to another repository.
+
+        """
+        if (
+            snapshot.workspace_root != root
+            or Path(snapshot.engine.root.real_path) != root
+        ):
+            message = f"Component snapshot belongs to another repository: {root}"
+            raise ValueError(message)
+        return root
 
     @classmethod
     def plan_component_facades(
@@ -1294,51 +1331,58 @@ class FlextInfraUtilitiesCodegenFacades(
         Returns:
             Component, relocation and dependent initializer plans.
 
-        Raises:
-            ValueError: The snapshot belongs to another repository.
-
         """
-        root = root.resolve()
-        if (
-            snapshot.workspace_root != root
-            or Path(snapshot.engine.root.real_path) != root
-        ):
-            message = f"Component snapshot belongs to another repository: {root}"
-            raise ValueError(message)
+        root = cls._require_component_snapshot(root.resolve(), snapshot)
         initializer_planner, source_view = planners
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         staged = {plan.path: plan for plan in declared_files}
         planned: dict[Path, m.Infra.CodegenFilePlan] = {}
         utility_paths: set[Path] = set()
-        with source_view(root, declared_files=tuple(staged.values())) as binding:
-            rebound = cls._component_root_import_seeds(
-                root, snapshot, binding, selection=selection
+
+        def elected_domains() -> p.Result[
+            t.SequenceOf[t.Triple[Path, Path, c.Infra.FacadeFamily]]
+        ]:
+            """Elect the selected recursive domains from the observed capture.
+
+            Election authority is the observed capture, unconditionally:
+            pending initializers may withhold a consumed parent export in the
+            candidate view, and a vanished export never revokes the input
+            declaration's native ownership. Import rebinds are derived from
+            the recorded move and staged before rendering, never elected
+            from a candidate view whose publisher is pending retirement.
+
+            Returns:
+                The elected domains, or the first staged failure.
+
+            """
+            with source_view(root, declared_files=tuple(staged.values())) as binding:
+                return cls._component_selected_domains(
+                    root, snapshot, binding, selection=selection
+                )
+
+        def finalize_roots() -> p.Result[bool]:
+            """Stage root facades, close consumers and replan initializers.
+
+            Returns:
+                Success, or the first root, consumer or initializer failure.
+
+            """
+            roots = cls._component_root_plans(
+                root, snapshot, staged, source_view=source_view, selection=selection
             )
-        cls._component_stage_plans(planned, staged, rebound)
-        with source_view(root, declared_files=tuple(staged.values())) as binding:
-            inventory = cls._component_selected_domains(
-                root, snapshot, binding, selection=selection
+            if roots.failure:
+                return r[bool].from_failure(roots)
+            cls._component_stage_plans(
+                planned, staged, tuple(plan for plan, _ in roots.value)
             )
-            if inventory.failure:
-                return result_type.from_failure(inventory)
-            domains = inventory.value
-        for depth in sorted({len(domain[1].parts) for domain in domains}, reverse=True):
-            with source_view(root, declared_files=rebound) as ownership:
-                seeds = {
-                    domain: cls._component_seed(
-                        root,
-                        domain,
-                        staged,
-                        source_view=source_view,
-                        ownership_project=ownership[0] if rebound else snapshot.engine,
-                    )
-                    for domain in domains
-                    if len(domain[1].parts) == depth
-                }
-            moved = tuple(
-                plan for _, seed_moved in seeds.values() for plan in seed_moved
+            utility_paths.update(
+                plan.path
+                for plan, family in roots.value
+                if family is c.Infra.FacadeFamily.U
             )
-            cls._component_stage_plans(planned, staged, moved)
+            consumers = cls._component_consumer_plans(
+                root, utility_paths, staged, source_view=source_view
+            )
+            cls._component_stage_plans(planned, staged, consumers)
             initializers = initializer_planner(
                 root,
                 declared_files=tuple(staged.values()),
@@ -1346,41 +1390,100 @@ class FlextInfraUtilitiesCodegenFacades(
                 selection=selection,
             )
             if initializers.failure:
-                return result_type.from_failure(initializers)
+                return r[bool].from_failure(initializers)
             cls._component_stage_plans(planned, staged, initializers.value)
-            for domain, (seed, _) in seeds.items():
-                final = cls._component_render(
-                    root, domain, seed, staged, source_view=source_view
+            return r[bool].ok(value=True)
+
+        def plan_cohort(
+            domains: t.SequenceOf[t.Triple[Path, Path, c.Infra.FacadeFamily]],
+        ) -> p.Result[bool]:
+            """Seed, move and render every domain, deepest first.
+
+            Election authority stays the observed capture; the recorded move
+            and the renderer own the candidate-side rebind. Initializer
+            replanning runs after each depth's actual effects so dependent
+            renders consume their real interfaces.
+
+            Returns:
+                Success, or the first planner failure in any depth cohort.
+
+            """
+            for depth in sorted(
+                {len(domain[1].parts) for domain in domains}, reverse=True
+            ):
+                targets = tuple(
+                    domain for domain in domains if len(domain[1].parts) == depth
                 )
-                cls._component_stage_plans(planned, staged, (final,))
-                if domain[2] is c.Infra.FacadeFamily.U:
-                    utility_paths.add(final.path)
-        roots = cls._component_root_plans(
-            root, snapshot, staged, source_view=source_view, selection=selection
+                seeds = {
+                    domain: cls._component_seed(
+                        root,
+                        domain,
+                        staged,
+                        source_view=source_view,
+                        ownership_project=snapshot.engine,
+                    )
+                    for domain in targets
+                }
+                moved = tuple(
+                    plan for _, seed_moved in seeds.values() for plan in seed_moved
+                )
+                cls._component_stage_plans(planned, staged, moved)
+                initializers = initializer_planner(
+                    root,
+                    declared_files=tuple(staged.values()),
+                    snapshot=snapshot,
+                    selection=selection,
+                )
+                if initializers.failure:
+                    return r[bool].from_failure(initializers)
+                cls._component_stage_plans(planned, staged, initializers.value)
+                cls._component_rebind_imports(
+                    snapshot,
+                    staged,
+                    planned,
+                    source_view=source_view,
+                    selection=selection,
+                )
+                for domain, (seed, _) in seeds.items():
+                    final = cls._component_render(
+                        root, domain, seed, staged, source_view=source_view
+                    )
+                    cls._component_stage_plans(planned, staged, (final,))
+                    if domain[2] is c.Infra.FacadeFamily.U:
+                        utility_paths.add(final.path)
+            return r[bool].ok(value=True)
+
+        return (
+            elected_domains()
+            .flat_map(plan_cohort)
+            .flat_map(lambda _: finalize_roots())
+            .map(lambda _: tuple(planned.values()))
         )
-        if roots.failure:
-            return result_type.from_failure(roots)
-        root_plans = tuple(plan for plan, _ in roots.value)
-        cls._component_stage_plans(planned, staged, root_plans)
-        utility_paths.update(
-            plan.path
-            for plan, family in roots.value
-            if family is c.Infra.FacadeFamily.U
-        )
-        consumers = cls._component_consumer_plans(
-            root, utility_paths, staged, source_view=source_view
-        )
-        cls._component_stage_plans(planned, staged, consumers)
-        initializers = initializer_planner(
-            root,
-            declared_files=tuple(staged.values()),
-            snapshot=snapshot,
-            selection=selection,
-        )
-        if initializers.failure:
-            return result_type.from_failure(initializers)
-        cls._component_stage_plans(planned, staged, initializers.value)
-        return result_type.ok(tuple(planned.values()))
+
+    @classmethod
+    def _component_rebind_imports(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        planned: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        *,
+        source_view: p.Infra.SourceViewProvider,
+        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> None:
+        """Stage root-facade import rebinds after this cohort's recorded moves.
+
+        The rebind is derived from the recorded move: the staged view already
+        contains the destination module and the retired publisher, so the seed
+        elects the surviving publisher instead of the retired one. The root is
+        the snapshot's verified workspace root.
+
+        """
+        root = snapshot.workspace_root
+        with source_view(root, declared_files=tuple(staged.values())) as binding:
+            rebound = cls._component_root_import_seeds(
+                root, snapshot, binding, selection=selection
+            )
+        cls._component_stage_plans(planned, staged, rebound)
 
     @classmethod
     def _component_root_import_seeds(
@@ -1501,7 +1604,7 @@ class FlextInfraUtilitiesCodegenFacades(
         directory: Path,
         prefix: str,
         name: str,
-    ) -> str:
+    ) -> str | None:
         """Locate the unique child initializer publishing a relocated owner.
 
         Returns:
@@ -1514,13 +1617,25 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         publishers: list[str] = []
+        declaring: dict[str, Path] = {}
         for child, content in sources.items():
-            if (
-                child.name != c.Infra.INIT_PY
-                or child.parent == directory
-                or not child.is_relative_to(directory)
-                or name not in cls.public_export_names_source(content)
-            ):
+            if child.suffix != ".py" or child.parent == directory:
+                continue
+            if not child.is_relative_to(directory):
+                continue
+            declares = f"class {name}(" in content or f"class {name}:" in content
+            if child.name != c.Infra.INIT_PY:
+                # The recorded move's destination declares the holder in the
+                # candidate view; it is the surviving publisher, and being
+                # the shallowest declaring module it outranks retired child
+                # initializer re-exports.
+                previous = declaring.get(name)
+                if declares and (
+                    previous is None or len(child.parts) < len(previous.parts)
+                ):
+                    declaring[name] = child
+                continue
+            if name not in cls.public_export_names_source(content):
                 continue
             exported = (
                 cls
@@ -1541,6 +1656,9 @@ class FlextInfraUtilitiesCodegenFacades(
                 f"{name}: {publishers}"
             )
             raise ValueError(message)
+        if name in declaring:
+            destination = declaring[name]
+            return ".".join((prefix, *destination.parent.relative_to(directory).parts))
         return publishers[0] if publishers else None
 
     @classmethod
@@ -1981,6 +2099,13 @@ class FlextInfraUtilitiesCodegenFacades(
                     for resource in project.get_python_files()
                     for source_path in (Path(resource.real_path).resolve(),)
                 }
+                u.Cli.info(
+                    "component owner move "
+                    f"directory={directory} destination={path} "
+                    f"owner={owner} captured={len(captured)} "
+                    f"owner_captured={owner in captured} "
+                    f"owner_resolved={owner.resolve() in captured}"
+                )
                 moved = cls.plan_module_move(
                     project,
                     owner,
@@ -5573,19 +5698,7 @@ class FlextInfraUtilitiesCodegenFacades(
             message = "Competing declared facade import bindings"
             raise ValueError(message)
         prefix = f"{package_name}.{owners_dir.name}"
-        declaring: dict[str, str] = {}
-        packaged: set[str] = set()
-        for module, (path, content) in sources.items():
-            if path.name == c.Infra.INIT_PY:
-                packaged.add(module)
-            for (
-                name
-            ) in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                content
-            ):
-                previous = declaring.get(name)
-                if previous is None or module.count(".") >= previous.count("."):
-                    declaring[name] = module
+        declaring, packaged = cls._declared_owner_publications(sources)
         for node in ast.walk(ast.parse(source)):
             if not isinstance(node, ast.ImportFrom) or node.module is None:
                 continue
@@ -5612,9 +5725,38 @@ class FlextInfraUtilitiesCodegenFacades(
         return source
 
     @staticmethod
+    def _declared_owner_publications(
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+    ) -> t.Pair[dict[str, str], set[str]]:
+        """Map every public export to its nearest declaring package.
+
+        A nested domain owns its own members, so each exported owner binds
+        from its declaring module's immediate package; initializer modules
+        mark their own packages as packaged publishers.
+
+        Returns:
+            The owner-to-module map and the packaged module set.
+
+        """
+        declaring: dict[str, str] = {}
+        packaged: set[str] = set()
+        for module, (path, content) in sources.items():
+            if path.name == c.Infra.INIT_PY:
+                packaged.add(module)
+            for (
+                name
+            ) in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                content
+            ):
+                previous = declaring.get(name)
+                if previous is None or module.count(".") >= previous.count("."):
+                    declaring[name] = module
+        return declaring, packaged
+
+    @staticmethod
     def _declared_import_target(
         owner: str | None,
-        packaged: t.ContainerOf[str],
+        packaged: t.Container[str],
     ) -> str | None:
         """Resolve the publishing binding for one declared owner import.
 

@@ -925,7 +925,13 @@ suppliers and callable receivers separately, with bounded identities and total
 counts. Only declaration-time bases and published members establish namespace
 composition. Callable receivers are diagnostic consumer evidence, never owner or
 containment evidence. If no authored composition exists, derive the canonical
-missing facade; do not elect an unrelated caller to avoid creating it.
+missing facade; do not elect an unrelated caller to avoid creating it. A holder
+whose declared suppliers span more than one private domain directory is a
+family-root composition and never a single-domain owner; a declaration inside the
+native child domain outranks an external composition, and the canonical sibling
+outranks both. Relocating one family's elected owner must not retire a file that
+another family's election also selected: multi-domain holders are excluded before
+any move is planned.
 An occupied destination without elected ownership still fails before seeding or
 moving source. Its diagnostic records the elected path, class and source owner,
 the candidate project's root, and bounded exported native class identities and

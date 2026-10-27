@@ -14,7 +14,6 @@ from __future__ import annotations
 import re
 from collections.abc import MutableMapping
 from pathlib import Path
-from urllib.parse import urlparse
 
 from flext_cli import u
 from packaging.requirements import Requirement
@@ -566,35 +565,6 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
 
         """
         return cls._canonical_https_url(url.strip())
-
-    @staticmethod
-    def _canonical_https_url(url: str) -> p.Result[str]:
-        """Canonicalize one Git remote URL to its HTTPS form, fail loud.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        if url.startswith("https://"):
-            candidate = url
-        elif url.startswith("http://"):
-            candidate = f"https://{url.removeprefix('http://')}"
-        elif url.startswith("ssh://"):
-            candidate = f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
-        elif url.startswith("git@") and ":" in url:
-            host, _, path = url.removeprefix("git@").partition(":")
-            candidate = f"https://{host}/{path}"
-        else:
-            return r[str].fail(f"git remote url is not canonicalizable to HTTPS: {url}")
-        # A URL without a host (``https:///repo``) or without a repository
-        # path (``https://host``) carries no origin identity: reject it as a
-        # declared remote rather than letting a generated source point at it.
-        parsed = urlparse(candidate)
-        if not parsed.netloc or not parsed.path.strip("/"):
-            return r[str].fail(
-                f"git remote url must name a host and repository path: {url}",
-            )
-        return r[str].ok(candidate)
 
     @classmethod
     def _declared_dependency_lines(

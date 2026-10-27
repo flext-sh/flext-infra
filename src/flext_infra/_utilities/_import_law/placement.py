@@ -557,7 +557,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @staticmethod
     def _import_law_sole_body_statement(
         node: ast.stmt,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: t.MappingKV[int, ast.AST],
     ) -> bool:
         """Return whether moving one import would leave its body empty.
 

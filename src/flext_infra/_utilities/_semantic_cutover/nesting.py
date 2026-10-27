@@ -2102,10 +2102,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _orphan_nesting_destinations(
         cls,
         project: p.Infra.RopeProject,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
         modules: t.MappingKV[Path, m.Infra.RopeModuleIndexEntry],
         owned: t.SequenceOf[t.Pair[Path, str]],
-        planned: p.Result[t.VariadicTuple[t.StrMapping]],
+        planned: p.Result[t.SequenceOf[t.StrMapping]],
     ) -> t.Pair[
         t.MappingKV[Path, t.MappingKV[str, str]],
         t.MappingKV[Path, str],
@@ -2141,6 +2140,31 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             for path, _source in owned
         }
         return definitions_by_file, module_names
+
+    @classmethod
+    def _orphan_nesting_bindings(
+        cls,
+        definitions_by_file: t.MappingKV[Path, t.MappingKV[str, str]],
+        module_names: t.MappingKV[Path, str],
+    ) -> p.Result[t.MappingKV[str, t.MappingKV[str, str]]]:
+        """Group nested-owner declarations per native module name.
+
+        Returns:
+            Owner bindings per module, or a failure naming the ambiguity.
+
+        """
+        result = r[t.MappingKV[str, t.MappingKV[str, str]]]
+        bindings_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
+        for path, definitions in definitions_by_file.items():
+            module_name = module_names[path]
+            bindings = bindings_by_module.setdefault(module_name, {})
+            for name, owner in definitions.items():
+                if bindings.setdefault(name, owner) != owner:
+                    return result.fail(
+                        f"ambiguous class-nesting owner for {module_name}.{name}: "
+                        f"{bindings[name]}, {owner}",
+                    )
+        return result.ok(bindings_by_module)
 
     @classmethod
     def _plan_orphan_nesting(
@@ -2198,21 +2222,17 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             lifetime.close()
             return planned_edits.from_failure(planned)
         definitions_by_file, module_names = cls._orphan_nesting_destinations(
-            project, rope_workspace, modules, owned, planned
+            project, modules, owned, planned
         )
-        bindings_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
-        for path, definitions in definitions_by_file.items():
-            module_name = module_names[path]
-            bindings = bindings_by_module.setdefault(module_name, {})
-            for name, owner in definitions.items():
-                if bindings.setdefault(name, owner) != owner:
-                    lifetime.close()
-                    return planned_edits.fail(
-                        f"ambiguous class-nesting owner for {module_name}.{name}: "
-                        f"{bindings[name]}, {owner}",
-                    )
+        bindings = cls._orphan_nesting_bindings(definitions_by_file, module_names)
+        if bindings.failure:
+            lifetime.close()
+            return planned_edits.from_failure(bindings)
+        bindings_by_module = bindings.value
         nested_names = frozenset(
-            name for bindings in bindings_by_module.values() for name in bindings
+            name
+            for module_bindings in bindings_by_module.values()
+            for name in module_bindings
         )
         if not nested_names:
             lifetime.close()

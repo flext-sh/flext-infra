@@ -23,6 +23,7 @@ from flext_infra._utilities import (
 from flext_infra._utilities._codemod.codemod_project import (
     FlextInfraUtilitiesCodemodProject,
 )
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -1658,7 +1659,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if not isinstance(tree, ast.AST):
             message = "factory receiver requires the original native syntax tree"
             raise TypeError(message)
-        parents = u.Infra.ast_parent_map(tree)
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
         nodes: t.MutableMappingKV[tuple[type[ast.AST], int], ast.AST] = {
             (type(node), runtime.source_offset(module.source_code, node)): node
             for node in ast.walk(tree)

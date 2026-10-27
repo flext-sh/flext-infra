@@ -232,6 +232,11 @@ class FlextInfraUtilitiesLazyInitPlan:
             for child in view.source_children(plan.context.pkg_dir)
             if child.name in names and view.source_query(child, "isdir")
         ):
+            # One initializer, one owner: a tree the package planner already
+            # planned owns its own exports-bearing initializer; this fallback
+            # only serves generated trees outside the indexed package set.
+            if tree in run.plans:
+                continue
             init_path = tree / c.Infra.INIT_PY
             text = FlextInfraUtilitiesLazyInitLetters.lazy_init_text(run, init_path)
             if (

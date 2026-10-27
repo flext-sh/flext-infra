@@ -14,28 +14,28 @@ import ast
 from collections.abc import MutableMapping
 from typing import TypeGuard
 
-from flext_infra import p, t
+from flext_infra import p
 
 
 class FlextInfraUtilitiesRopeAst:
     """Family-leaf AST identity, narrowing and parent-lookup primitives."""
 
     @staticmethod
-    def ast_node(obj: p.AttributeProbe) -> TypeGuard[t.Infra.RopeAstNode]:
-        """Narrow a rope-provided object to an AST node.
+    def ast_node(obj: p.AttributeProbe) -> TypeGuard[ast.AST]:
+        """Narrow a rope-provided object to a native ``ast.AST`` node.
 
         Returns:
-            The resulting ``TypeGuard[t.Infra.RopeAstNode]``.
+            The resulting ``TypeGuard[ast.AST]``.
 
         """
         return isinstance(obj, ast.AST)
 
     @staticmethod
-    def ensure_ast_node(obj: p.AttributeProbe) -> t.Infra.RopeAstNode:
+    def ensure_ast_node(obj: p.AttributeProbe) -> ast.AST:
         """Ensure an object is an AST node, narrowing the type.
 
         Returns:
-            The resulting ``t.Infra.RopeAstNode``.
+            The resulting ``ast.AST``.
 
         Raises:
             TypeError: If Expected AST node, got.
@@ -49,16 +49,18 @@ class FlextInfraUtilitiesRopeAst:
     @staticmethod
     def ast_parent_map(
         root: p.AttributeProbe,
-    ) -> MutableMapping[int, t.Infra.RopeAstNode]:
+    ) -> MutableMapping[int, ast.AST]:
         """Return a child-id -> parent map for the full AST reachable from ``root``.
 
-        The shared SSOT for parent lookups across every rope detector.
+        The shared SSOT for parent lookups across every rope detector. The
+        walk visits native ``ast.AST`` nodes, so the map values keep that
+        exact vocabulary.
 
         Returns:
             A child-id -> parent map for the full AST reachable from ``root``.
 
         """
-        parent_map: MutableMapping[int, t.Infra.RopeAstNode] = {}
+        parent_map: MutableMapping[int, ast.AST] = {}
         if not isinstance(root, ast.AST):
             return parent_map
         for parent in ast.walk(root):

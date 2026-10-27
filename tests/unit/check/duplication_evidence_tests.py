@@ -263,3 +263,125 @@ class TestsFlextInfraDuplicationEvidence:
             assessment.candidates[0].disposition, eq="below_existing_behavior_floor"
         )
         tm.ok(assessment.candidates[0].measures[0].tokens > 0)
+
+    @staticmethod
+    def _cross_root_report(
+        project: Path, external: Path, source: str
+    ) -> m.Infra.JscpdReport:
+        """One clone whose sides live under different declared checkout roots.
+
+        Returns:
+            The parsed report carrying exactly that cross-root pair.
+
+        """
+        own = project / "first.py"
+        library = external / "second.py"
+        for path in (own, library):
+            path.write_text(source, encoding="utf-8")
+        lines = source.splitlines()
+        end_column = len(lines[-1].encode())
+        sides = (
+            {
+                "name": str(own),
+                "start": 1,
+                "end": len(lines),
+                "startLoc": {"line": 1, "column": 0, "position": 0},
+                "endLoc": {"line": len(lines), "column": end_column, "position": 0},
+            },
+            {
+                "name": str(library),
+                "start": 1,
+                "end": len(lines),
+                "startLoc": {"line": 1, "column": 0, "position": 0},
+                "endLoc": {"line": len(lines), "column": end_column, "position": 0},
+            },
+        )
+        duplicate = {
+            "firstFile": sides[0],
+            "secondFile": sides[1],
+            "fragment": source.rstrip(),
+            "format": "python",
+            "lines": len(lines),
+            "tokens": 100,
+        }
+        summary = {
+            "clones": 1,
+            "sources": 2,
+            "lines": len(lines) * 2,
+            "tokens": 200,
+            "duplicatedLines": len(lines),
+            "duplicatedTokens": 100,
+            "newClones": 0,
+            "newDuplicatedLines": 0,
+            "percentage": 50,
+            "percentageTokens": 50,
+        }
+        return m.Infra.JscpdReport.model_validate({
+            "duplicates": [duplicate],
+            "statistics": {
+                "detectionDate": "2026-10-27",
+                "formats": {"python": summary},
+                "total": summary,
+            },
+        })
+
+    def test_comparison_root_side_is_measured_without_ownership(
+        self, tmp_path: Path
+    ) -> None:
+        """A declared external side joins measurement; the finding stays ours."""
+        project = tmp_path / "project"
+        external = tmp_path / "library"
+        project.mkdir()
+        external.mkdir()
+        source = "def real_operation(value):\n    return value\n"
+        report = self._cross_root_report(project, external, source)
+        overrides = m.Infra.ProjectDuplicationOverrides(
+            comparison_roots=[str(external)]
+        )
+        assessment = FlextInfraDuplicationEvidence().assess(
+            report,
+            project,
+            overrides,
+            raw_receipt=report.model_dump_json(),
+            execution="cross-root contract fixture",
+        )
+        tm.that(assessment.counts.get("analysis_error", 0), eq=0)
+        tm.that(assessment.candidates[0].owned, eq=True)
+        tm.ok(assessment.candidates[0].measures[0].tokens > 0)
+        tm.ok(assessment.candidates[0].measures[1].tokens > 0)
+
+    def test_undeclared_external_side_fails_closed(self, tmp_path: Path) -> None:
+        """Without the declaration the external side stays outside this gate."""
+        project = tmp_path / "project"
+        external = tmp_path / "library"
+        project.mkdir()
+        external.mkdir()
+        report = self._cross_root_report(
+            project, external, "def real_operation(value):\n    return value\n"
+        )
+        assessment = self._assess(project, report)
+        tm.that(assessment.candidates[0].disposition, eq="analysis_error")
+        tm.that(assessment.candidates[0].reason, has="outside selected project scope")
+
+    def test_absent_comparison_root_never_extends_measurement(
+        self, tmp_path: Path
+    ) -> None:
+        """A degraded root cannot widen the scope it no longer contributes."""
+        project = tmp_path / "project"
+        external = tmp_path / "library"
+        project.mkdir()
+        external.mkdir()
+        report = self._cross_root_report(
+            project, external, "def real_operation(value):\n    return value\n"
+        )
+        overrides = m.Infra.ProjectDuplicationOverrides(
+            comparison_roots=[str(tmp_path / "missing-checkout")]
+        )
+        assessment = FlextInfraDuplicationEvidence().assess(
+            report,
+            project,
+            overrides,
+            raw_receipt=report.model_dump_json(),
+            execution="degraded-root fixture",
+        )
+        tm.that(assessment.candidates[0].disposition, eq="analysis_error")

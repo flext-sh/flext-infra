@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import socket
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
+from urllib.parse import urlsplit
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
@@ -33,6 +35,8 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
     can_fix: ClassVar[bool] = False
     scanner_binary: ClassVar[str] = c.Infra.JSCPD_BINARY
     check_timeout: ClassVar[int] = c.Infra.TIMEOUT_LONG
+    semantic_probe_timeout_seconds: ClassVar[int] = 2
+    "Bounded availability probe; never a data fetch."
 
     @override
     def check(
@@ -60,15 +64,14 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         ):
             return self._parsed_gate_execution(project_dir, ctx, scan, started)
         report, issues, tool_failed = self._report_issues(scan, project_dir)
-        not_executed = (
-            "jscpd semantic pass NOT EXECUTED: the CI context has no embeddings host"
-            if self.semantic_not_executed()
-            else ""
-        )
+        skipped_roots = self._absent_comparison_note(project_dir)
+        not_executed = self._semantic_not_executed_reason()
         evidence = self._publish_raw_receipt(
             ctx,
             "\n".join(
-                part for part in (scan.stdout, scan.stderr, not_executed) if part
+                part
+                for part in (scan.stdout, scan.stderr, not_executed, skipped_roots)
+                if part
             ),
         )
         if report is not None and overrides.success:
@@ -81,7 +84,8 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
                     (
                         f"return_code={scan.outcome.raw_return_code}; "
                         f"timed_out={scan.outcome.timed_out}; "
-                        f"signal={scan.outcome.forwarded_signal}; {not_executed}"
+                        f"signal={scan.outcome.forwarded_signal}; "
+                        f"{not_executed}; {skipped_roots}".rstrip("; ")
                     ),
                 ),
             )
@@ -266,8 +270,11 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             binary,
             "--config",
             str(config_path),
+            # The CLI reporters flag overrides the generated config, so the
+            # typed SSOT constant must drive it here too; leaving "json"
+            # hardcoded would silently drop the SARIF artifact.
             "--reporters",
-            "json",
+            ",".join(c.Infra.JSCPD_REPORTERS),
             "--output",
             str(report_dir),
             *scope.value,
@@ -320,6 +327,22 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
                 continue
             seen.add(candidate)
             candidates.append(candidate)
+        # External comparison roots join the same single scan so a clone
+        # shared with a declared external checkout is a finding of this
+        # project, never a per-project blind spot. Resolution is absolute;
+        # a resolved alias of an internal entry would duplicate every file
+        # against itself (the double-scan artifact), so membership is judged
+        # on resolved identity, never on the raw strings.
+        present, _absent = self._comparison_roots(project_config.value)
+        internal: set[str] = {
+            str(Path(candidate).resolve()) for candidate in candidates
+        }
+        for root_path in present:
+            resolved = str(root_path.resolve())
+            if resolved in internal:
+                continue
+            internal.add(resolved)
+            candidates.append(resolved)
         return r[t.StrSequence].ok(
             tuple(str(project_dir / candidate) for candidate in candidates),
         )
@@ -427,6 +450,14 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             return r[Path].from_failure(project_config)
         overrides = project_config.value
         passes = config.Infra.tooling.tools.jscpd
+        # The embedding pass runs wherever its declared host answers; in CI
+        # it is typed NOT EXECUTED, and a locally unreachable host is typed
+        # the same way. It is never silently dropped and never faked.
+        semantic = passes.semantic
+        if semantic is not None and (
+            self.semantic_not_executed() or self.semantic_host_unreachable() is not None
+        ):
+            semantic = None
         jscpd_config = m.Infra.JscpdConfig(
             absolute=True,
             formatsExts={
@@ -440,10 +471,10 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             mode=overrides.mode,
             noColors=True,
             noTips=True,
-            reporters=(c.Infra.OUTPUT_JSON,),
+            reporters=c.Infra.JSCPD_REPORTERS,
             threshold=overrides.threshold_percent,
             similarity=passes.similarity,
-            semantic=None if self.semantic_not_executed() else passes.semantic,
+            semantic=semantic,
         )
         config_path = (
             self._repository_root
@@ -469,6 +500,93 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         """
         ci = config.Infra.codegen.make.ci
         return (u.Infra.env_lookup(ci.variable) or "").strip() == ci.value
+
+    @classmethod
+    def semantic_host_unreachable(cls) -> str | None:
+        """Probe the declared embeddings host transport once; never a fetch.
+
+        An accepted TCP connection proves the configured host answers; only
+        a bounded transport failure names it unreachable. The result decides
+        whether ``--semantic`` runs locally, never a silent pass: an
+        unreachable host is recorded NOT EXECUTED beside the receipt.
+
+        Returns:
+            The transport failure reason, or None when the host answered.
+
+        """
+        semantic = config.Infra.tooling.tools.jscpd.semantic
+        if semantic is None:
+            return None
+        parsed = urlsplit(semantic.url)
+        if not parsed.hostname:
+            return f"invalid embeddings host URL: {semantic.url}"
+        try:
+            with socket.create_connection(
+                (parsed.hostname, parsed.port or 80),
+                timeout=cls.semantic_probe_timeout_seconds,
+            ):
+                return None
+        except OSError as exc:
+            return f"{type(exc).__name__}: {exc}"
+
+    def _semantic_not_executed_reason(self) -> str:
+        """Name the declared reason the semantic pass will not run.
+
+        Returns:
+            The typed NOT EXECUTED note, or an empty string when it runs.
+
+        """
+        if self.semantic_not_executed():
+            return (
+                "jscpd semantic pass NOT EXECUTED: the CI context has no "
+                "embeddings host"
+            )
+        unreachable = self.semantic_host_unreachable()
+        if unreachable is not None:
+            return (
+                "jscpd semantic pass NOT EXECUTED: the embeddings host is "
+                f"unreachable ({unreachable})"
+            )
+        return ""
+
+    @staticmethod
+    def _comparison_roots(
+        overrides: m.Infra.ProjectDuplicationOverrides,
+    ) -> t.Pair[t.SequenceOf[Path], t.StrSequence]:
+        """Resolve declared external comparison roots against the filesystem.
+
+        Returns:
+            The present directories and the declared-but-absent entries.
+
+        """
+        present: list[Path] = []
+        absent: list[str] = []
+        for entry in overrides.comparison_roots:
+            path = Path(entry)
+            if path.is_dir():
+                present.append(path)
+            else:
+                absent.append(entry)
+        return tuple(present), tuple(absent)
+
+    def _absent_comparison_note(self, project_dir: Path) -> str:
+        """Record declared-but-absent comparison roots in the gate output.
+
+        A missing root degrades the scan, exactly like a standalone fleet
+        checkout; degradation is recorded, never silent, so a path typo in
+        the declaring manifest stays visible beside the receipt.
+
+        Returns:
+            The degradation note, or an empty string when all roots exist.
+
+        """
+        project_config = self._read_project_config(project_dir)
+        if project_config.failure:
+            return ""
+        _present, absent = self._comparison_roots(project_config.value)
+        if not absent:
+            return ""
+        return "jscpd comparison roots skipped (absent): " + ", ".join(absent)
 
     def _derived_ignore_patterns(self) -> t.StrSequence:
         """Derive the complete jscpd ignore list from declared owners.

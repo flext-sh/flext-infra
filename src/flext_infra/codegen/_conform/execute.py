@@ -268,6 +268,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         )
         if published.failure:
             return result_type.from_failure(published)
+        snapshot = self.state.snapshot
+        if snapshot is not None and snapshot.workspace_root == root:
+            u.Infra.workspace_snapshot_rebase(snapshot, published.value)
         for operation in after_publication:
             completed = operation(published.value)
             if completed.failure:

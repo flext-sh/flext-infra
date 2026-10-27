@@ -67,7 +67,13 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
 
         tm.fail(execution.result.passed)
         tm.that(len(execution.issues), eq=1)
-        tm.that(execution.issues[0].message, has="the scanned scope is empty")
+        tm.that(
+            execution.issues[0].message,
+            has=(
+                "duplication scan did not produce its required JSON report "
+                "for project missing-project"
+            ),
+        )
         tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))
 
     @staticmethod
@@ -434,3 +440,133 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
         tm.that("peer-alpha" in text, eq=fleet)
         tm.that("peer-beta" in text, eq=fleet)
+
+    @staticmethod
+    def _comparison_workspace(
+        tmp_path: Path, *, declare_root: bool, existing: bool
+    ) -> Path:
+        """One governed project and one external checkout sharing a block.
+
+        Returns:
+            The resulting pair of the project and the external root paths.
+
+        """
+        project = tmp_path / "comparison-project"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            project,
+            "fixture-comparison",
+            beads=u.Tests.BeadsIdentity(
+                workspace="comparison-workspace",
+                database="comparison_database",
+                issue_prefix="comparison",
+            ),
+        )
+        package = project / "src" / "fixture_comparison"
+        package.mkdir(parents=True, exist_ok=True)
+        (package / "unique.py").write_text(
+            "PROJECT_ONLY_MARKER = 'comparison-project-only'\n",
+            encoding="utf-8",
+        )
+        block = TestsFlextInfraDuplicationGate._PYTHON_BEHAVIOR_BLOCK
+        external = tmp_path / "external-library"
+        if existing:
+            external.mkdir(parents=True, exist_ok=True)
+            (external / "shared.py").write_text(block, encoding="utf-8")
+        package.mkdir(parents=True, exist_ok=True)
+        (package / "duplicated.py").write_text(block, encoding="utf-8")
+        if declare_root:
+            pyproject = project / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                f"{pyproject.read_text(encoding='utf-8')}\n"
+                "[tool.flext.project.duplication]\n"
+                f'comparison_roots = ["{external}"]\n',
+                encoding="utf-8",
+            )
+        return project, external
+
+    def test_comparison_root_clone_is_a_project_finding(self, tmp_path: Path) -> None:
+        """A declared external root joins the scan; the clone stays project-owned."""
+        project, _external = self._comparison_workspace(
+            tmp_path, declare_root=True, existing=True
+        )
+
+        execution = FlextInfraDuplicationGate(project).check(
+            project, self._ctx(project)
+        )
+
+        tm.fail(execution.result.passed)
+        text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
+        tm.that(text, has="src/fixture_comparison/duplicated.py")
+        tm.that(text, has="external-library")
+        sarif = (
+            project
+            / c.Infra.JSCPD_REPORT_DIRNAME
+            / f"{c.Infra.JSCPD_REPORT_FILENAME.removesuffix('.json')}.sarif"
+        )
+        runs = u.Cli.json_as_mapping(
+            u.Cli.json_parse(sarif.read_text(encoding="utf-8")).unwrap()
+        ).get("runs")
+        tm.ok(runs is not None and len(runs) >= 1)
+
+    def test_absent_comparison_root_degrades_with_a_recorded_note(
+        self, tmp_path: Path
+    ) -> None:
+        """A missing declared root is skipped with its typed degradation note."""
+        project, _external = self._comparison_workspace(
+            tmp_path, declare_root=True, existing=False
+        )
+
+        execution = FlextInfraDuplicationGate(project).check(
+            project, self._ctx(project)
+        )
+
+        tm.ok(execution.result.passed)
+        tm.that(execution.raw_output, has="comparison roots skipped (absent)")
+
+    def test_undeclared_comparison_root_keeps_project_isolated(
+        self, tmp_path: Path
+    ) -> None:
+        """Without the declaration an external checkout is never scanned.
+
+        The project carries one copy of the block and no internal duplicate,
+        so the isolated scan is clean.
+        """
+        project, _external = self._comparison_workspace(
+            tmp_path, declare_root=False, existing=True
+        )
+
+        execution = FlextInfraDuplicationGate(project).check(
+            project, self._ctx(project)
+        )
+
+        tm.ok(execution.result.passed)
+        text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
+        tm.fail("external-library" in text)
+
+    def test_overlapping_comparison_root_never_double_scans(
+        self, tmp_path: Path
+    ) -> None:
+        """A comparison root that aliases an internal scope adds no second view."""
+        project, external = self._comparison_workspace(
+            tmp_path, declare_root=False, existing=True
+        )
+        pyproject = project / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            f"{pyproject.read_text(encoding='utf-8')}\n"
+            "[tool.flext.project.duplication]\n"
+            f'comparison_roots = ["{external}", "{external.resolve()}"]\n',
+            encoding="utf-8",
+        )
+
+        execution = FlextInfraDuplicationGate(project).check(
+            project, self._ctx(project)
+        )
+
+        tm.fail(execution.result.passed)
+        report = m.Infra.JscpdReport.model_validate_json(
+            (
+                project / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_REPORT_FILENAME
+            ).read_text(encoding="utf-8"),
+        )
+        for duplicate in report.duplicates:
+            tm.fail(duplicate.first_file == duplicate.second_file)
