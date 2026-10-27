@@ -117,6 +117,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         """
         cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
         testmon_db = tmp_path / ".testmon-cache" / cache.database_filename
         testmon_db.parent.mkdir(parents=True, exist_ok=True)
         return FlextInfraPytestRunner(
@@ -128,6 +129,8 @@ class TestsFlextInfraPytestRunnerZeroTest:
             apply_changes=True,
             slow_phase=slow_phase,
             target_file=target_file,
+            run_timeout_seconds=policy.run_timeout_seconds,
+            termination_grace_seconds=policy.termination_grace_seconds,
         )
 
     @pytest.mark.slow

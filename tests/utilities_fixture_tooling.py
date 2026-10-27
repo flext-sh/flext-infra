@@ -50,6 +50,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 / cache.database_filename
             )
             testmon_db.parent.mkdir(parents=True, exist_ok=True)
+            policy = config.Infra.tooling.tools.pytest
             return validate.FlextInfraPytestRunner(
                 repository_root=cached_runner_project,
                 ci_context=ci_context,
@@ -64,6 +65,8 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 reports=cache.reports_directory,
                 testmon_db=testmon_db,
                 slow_phase=slow_phase,
+                run_timeout_seconds=policy.run_timeout_seconds,
+                termination_grace_seconds=policy.termination_grace_seconds,
             )
 
         @staticmethod

@@ -82,8 +82,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 else pytest.slow_suite_stop_reserve_seconds
             )
         else:
-            reserve = pytest.termination_grace_seconds
-        return self.started_at_monotonic + pytest.run_timeout_seconds - reserve
+            reserve = self.termination_grace_seconds
+        return self.started_at_monotonic + self.run_timeout_seconds - reserve
 
     def ci_excluded_markers(
         self,

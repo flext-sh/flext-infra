@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Annotated, Self
 
 from flext_infra import c, config, m, settings, t, u
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra.base import s
 
 
@@ -40,6 +43,24 @@ class FlextInfraPytestRunnerBase(s[int]):
     testmon_db: Annotated[
         Path,
         m.Field(description="Absolute external pytest-testmon SQLite database path."),
+    ]
+    run_timeout_seconds: Annotated[
+        int,
+        m.Field(
+            gt=0,
+            description=(
+                "Repository-elected suite wall-clock maximum. The election "
+                "always includes the packaged fleet default as its merge base, "
+                "so this single source decides the deadline."
+            ),
+        ),
+    ]
+    termination_grace_seconds: Annotated[
+        int,
+        m.Field(
+            gt=0,
+            description="Repository-elected graceful stop reserve inside the deadline.",
+        ),
     ]
     scratch_root: Annotated[
         Path | None,
@@ -184,8 +205,17 @@ class FlextInfraPytestRunnerBase(s[int]):
         if not repository_root.is_absolute():
             msg = "Make-owned pytest repository root must be absolute"
             raise ValueError(msg)
+        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+            repository_root
+        )
+        if tooling.failure:
+            msg = f"repository pytest tooling election failed: {tooling.error}"
+            raise ValueError(msg)
+        pytest_section = tooling.value.document.tools.pytest
         return cls(
             repository_root=repository_root,
+            run_timeout_seconds=pytest_section.run_timeout_seconds,
+            termination_grace_seconds=pytest_section.termination_grace_seconds,
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,

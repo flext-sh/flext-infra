@@ -259,7 +259,10 @@ Infra:
         - - MD013
           - line_length: *formatting_width
             heading_line_length: 200
-            code_block_line_length: *formatting_width
+            # Code blocks carry verbatim shell/JSON/policy lines that must not
+            # be wrapped; prose keeps the formatting width, code gets the same
+            # leniency as headings.
+            code_block_line_length: 200
             tables: false
         - [MD022, false]
         - [MD023, false]

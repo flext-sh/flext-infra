@@ -996,7 +996,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     raise TypeError(message)
                 return None
             bindings = self._provider_source_bindings(module_name, provider, resource)
-            reference = bindings.get(attributes[0])
+            # A lexical collector may shadow an initializer export with None;
+            # the installer literal remains the declaration SSOT for that name.
+            reference = bindings.get(attributes[0]) or self._lazy_declared_reference(
+                module_name, provider, resource, attributes[0]
+            )
             if reference is None:
                 if (
                     attributes[0] not in bindings
@@ -1079,6 +1083,44 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 self._modules[module_name] = bindings
             return bindings
+
+        def _lazy_declared_reference(
+            self,
+            module_name: str,
+            provider: p.Infra.RopeSourceModule,
+            resource: p.Infra.RopeResource,
+            name: str,
+        ) -> m.Infra.SourceClassReference | None:
+            """Read the core installer's declared route when inventory shadows it.
+
+            The literal ``install_lazy_exports`` mapping is the declaration
+            SSOT for initializers; a lexical collector that shadows an exported
+            name with ``None`` must not erase the publisher route.
+
+            Returns:
+                The declared reference, or None when nothing is declared.
+
+            """
+            if resource is None or not resource.exists():
+                return None
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            source = self._sources.get(
+                module_name, (source_path, provider.source_code)
+            )[1]
+            declared = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                module_name,
+                source_path,
+                source,
+                project=self._project,
+            )
+            u.Cli.info(
+                "lazy declared probe "
+                f"module={module_name} exists={resource.exists()} "
+                f"source_len={len(source)} declared={sorted(declared)}"
+            )
+            return declared.get(name)
 
         def _provider_reference(
             self,
