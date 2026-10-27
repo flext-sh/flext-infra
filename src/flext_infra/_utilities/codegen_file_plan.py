@@ -61,7 +61,8 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 if not equal
             )
             if conflicts:
-                diagnostic = FlextInfraUtilitiesCodegenFilePlan.codegen_duplicate_effect_diagnostic((
+                file_plan = FlextInfraUtilitiesCodegenFilePlan
+                diagnostic = file_plan.codegen_duplicate_effect_diagnostic((
                     previous,
                     file,
                 ))
