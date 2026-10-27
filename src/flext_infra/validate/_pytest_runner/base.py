@@ -162,8 +162,8 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"pytest scratch must be outside the runtime checkout: {scratch_root}"
             raise ValueError(msg)
-        run_timeout_seconds, termination_grace_seconds = (
-            cls._elected_pytest_deadline(root)
+        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
+            root
         )
         runner = cls(
             repository_root=root,
@@ -239,8 +239,8 @@ class FlextInfraPytestRunnerBase(s[int]):
         if not repository_root.is_absolute():
             msg = "Make-owned pytest repository root must be absolute"
             raise ValueError(msg)
-        run_timeout_seconds, termination_grace_seconds = (
-            cls._elected_pytest_deadline(repository_root)
+        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
+            repository_root
         )
         return cls(
             repository_root=repository_root,
