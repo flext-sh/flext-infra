@@ -32,6 +32,7 @@ class FlextInfraDocGeneratorBundleMixin:
     @staticmethod
     def _presentation_metadata(
         scopes: t.SequenceOf[m.Infra.DocScope],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Prepare only authorial YAML and the owned pyproject locale leaf.
 
@@ -44,17 +45,27 @@ class FlextInfraDocGeneratorBundleMixin:
         if ownership.failure:
             return result_type.from_failure(ownership)
         plans: list[m.Infra.CodegenFilePlan] = []
+        declared = {plan.path: plan for plan in declared_files}
         for root in dict.fromkeys(scope.path for scope in scopes):
             declaration = u.Infra.load_repository_declaration_inputs(root)
             if declaration.failure:
                 return result_type.from_failure(declaration)
-            source = u.Cli.atomic_read_binary_file_state(
-                root / c.PYPROJECT_FILENAME,
-                required=declaration.value.spec.project is not None,
+            previous = declared.get(root / c.PYPROJECT_FILENAME)
+            source = (
+                r[m.Cli.AtomicFileState].ok(previous.before)
+                if previous is not None
+                else u.Cli.atomic_read_binary_file_state(
+                    root / c.PYPROJECT_FILENAME,
+                    required=declaration.value.spec.project is not None,
+                )
             )
             if source.failure:
                 return result_type.from_failure(source)
-            content = source.value.content
+            content = (
+                previous.desired_content
+                if previous is not None
+                else source.value.content
+            )
             if content is None:
                 continue
             decoded = r[str].create_from_callable(
@@ -73,9 +84,28 @@ class FlextInfraDocGeneratorBundleMixin:
                     path=source.value.path,
                     before=source.value,
                     desired_content=projected.value.encode(c.DEFAULT_ENCODING),
-                    desired_mode=source.value.mode,
-                    owner=ownership.value.owner,
-                    policy=ownership.value.policy,
+                    desired_mode=(
+                        previous.desired_mode
+                        if previous is not None
+                        else source.value.mode
+                    ),
+                    owner=(
+                        previous.owner
+                        if previous is not None
+                        else ownership.value.owner
+                    ),
+                    policy=(
+                        previous.policy
+                        if previous is not None
+                        else ownership.value.policy
+                    ),
+                    tracking=previous.tracking if previous is not None else "versioned",
+                    index_before=(
+                        previous.index_before if previous is not None else None
+                    ),
+                    tracking_dependencies=(
+                        previous.tracking_dependencies if previous is not None else ()
+                    ),
                 )
             )
         return result_type.ok(tuple(plans))
@@ -126,6 +156,7 @@ class FlextInfraDocGeneratorBundleMixin:
     def _prepare_request(
         cls,
         request: m.Infra.DocsGenerateRequest,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Render one inventory from the live workspace sources.
 
@@ -137,7 +168,9 @@ class FlextInfraDocGeneratorBundleMixin:
         if roots.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(roots)
         repository_root = roots.value[0]
-        rendered = cls._rendered_scope_inventory(repository_root, request)
+        rendered = cls._rendered_scope_inventory(
+            repository_root, request, declared_files
+        )
         if rendered.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(rendered)
         return cls._validated_bundle(
@@ -151,12 +184,14 @@ class FlextInfraDocGeneratorBundleMixin:
         cls,
         repository_root: Path,
         request: m.Infra.DocsGenerateRequest,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[FlextInfraDocGeneratorBundleMixin._DocsRenderedInventory]:
         """Resolve the docs scopes, their governance source and artifacts.
 
         Args:
             repository_root: Repository root owning the docs inventory.
             request: Canonical docs generation request.
+            declared_files: Managed candidate effects supplying presentation metadata.
 
         Returns:
             The rendered scope artifacts, or the first resolution failure.
@@ -170,7 +205,7 @@ class FlextInfraDocGeneratorBundleMixin:
         scopes = cls._validated_scopes(repository_root, request, output_dir)
         if scopes.failure:
             return result_type.from_failure(scopes)
-        metadata = cls._presentation_metadata(scopes.value[0])
+        metadata = cls._presentation_metadata(scopes.value[0], declared_files)
         if metadata.failure:
             return result_type.from_failure(metadata)
         governance = cls._governance_source(repository_root)

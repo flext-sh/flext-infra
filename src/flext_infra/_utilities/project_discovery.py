@@ -620,7 +620,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             frozenset[str](
                 artifact.name
                 for artifact in config.Infra.codegen.artifacts
-                if artifact.generated_source or artifact.retired_typing_root
+                if artifact.retired_typing_root
             )
             if owned_path_admission
             else frozenset[str]()
@@ -702,30 +702,18 @@ class FlextInfraUtilitiesProjectDiscovery(
         artifact_boundaries = frozenset(
             artifact.name
             for artifact in config.Infra.codegen.artifacts
-            if artifact.source_scan_ignore
-            and not (artifact.generated_source or artifact.retired_typing_root)
+            if artifact.source_scan_ignore and not artifact.retired_typing_root
         ) | {c.Infra.GIT_DIR}
-        # Complete declared artifact roots are data, including direct files.
-        # Do not open or parse Python scenarios while admitting source paths.
         walk = (
             directory.walk(on_error=on_error)
             if source_project is None
             else source_project.source_walk(directory)
         )
         for parent, child_dirs, file_names in walk:
-            scenario_root = (
-                FlextInfraUtilitiesIterationDirectory.source_scan_artifact_path(
-                    directory, parent
-                )
-            )
-            if scenario_root:
-                child_dirs.clear()
-                continue
             child_dirs[:] = [
                 name
                 for name in child_dirs
-                if not scenario_root
-                and (
+                if (
                     (name not in skip_dirs and not name.startswith("."))
                     or (
                         name not in artifact_boundaries

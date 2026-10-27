@@ -398,11 +398,64 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         Returns:
             The run's verdict and the findings it reported.
 
+        """
+        del ctx
+        issues = self._native_issues(result)
+        passed, parsed = self._finalize_parse_result(
+            result,
+            project_dir,
+            issues,
+            c.Infra.RUFF,
+        )
+        # Only the authenticated identity owner can remove a native finding.
+        explained = passed or (
+            bool(issues)
+            and result.outcome.raw_return_code in self._findings_exit_codes()
+        )
+        remaining = self._without_exempt_identities(project_dir, parsed)
+        return explained and not remaining, remaining
+
+    @override
+    def _check_output_outcome(
+        self,
+        result: p.Cli.CommandOutput,
+        issues: t.SequenceOf[p.Infra.Issue],
+        project_dir: Path,
+    ) -> c.Infra.ToolOutcome:
+        """Retain the native explanation of an authenticated exemption-only exit.
+
+        Returns:
+            Clean only when every original finding has an authenticated exemption.
+
+        """
+        outcome = super()._check_output_outcome(result, issues, project_dir)
+        if outcome is not c.Infra.ToolOutcome.ERROR or issues:
+            return outcome
+        if (
+            result.stderr.strip()
+            or result.outcome.timed_out
+            or result.outcome.forwarded_signal is not None
+            or result.outcome.raw_return_code not in self._findings_exit_codes()
+        ):
+            return outcome
+        native = self._native_issues(result)
+        if native and not self._without_exempt_identities(project_dir, native):
+            return c.Infra.ToolOutcome.CLEAN
+        return outcome
+
+    @staticmethod
+    def _native_issues(
+        result: p.Cli.CommandOutput,
+    ) -> t.MutableSequenceOf[m.Infra.Issue]:
+        """Read original Ruff diagnostics before applying identity policy.
+
+        Returns:
+            Every diagnostic in the original native JSON report.
+
         Raises:
             TypeError: If the report is not a list of finding objects.
 
         """
-        del ctx
         report = u.Cli.json_parse(result.stdout or "[]").unwrap()
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
@@ -423,21 +476,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     severity=c.Infra.GateSeverity.ERROR.value,
                 ),
             )
-        passed, parsed = self._finalize_parse_result(
-            result,
-            project_dir,
-            issues,
-            c.Infra.RUFF,
-        )
-        # Ruff's findings exit is a valid scanner result, but every reported
-        # finding still blocks the lint gate under the current quality baseline,
-        # except exactly the authenticated identities the exemption owner names.
-        explained = passed or (
-            bool(issues)
-            and result.outcome.raw_return_code in self._findings_exit_codes()
-        )
-        remaining = self._without_exempt_identities(project_dir, parsed)
-        return explained and not remaining, remaining
+        return issues
 
     @staticmethod
     def _without_exempt_identities(

@@ -196,6 +196,10 @@ class FlextInfraModelsScan:
     class ModScanSourceContext(m.ArbitraryTypesModel):
         """One scan's per-file authentication and ownership indexes."""
 
+        project_source_roots: Annotated[
+            t.MappingKV[Path, Path] | None,
+            m.Field(description="Physical scan roots for logical catalog projects"),
+        ] = None
         inventory: Annotated[
             t.MappingKV[Path, m.Cli.AtomicFileState],
             m.Field(description="Exact sources captured before the native scan"),

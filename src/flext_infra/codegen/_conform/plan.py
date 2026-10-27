@@ -325,6 +325,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         The complete initial lazy plan supplies the existing provider-seed path;
         its unchanged-input predicate still elects whether replanning is required.
         Caller-owned provider plans and snapshots are restored on every exit.
+        A module-selected package remains selected through source convergence;
+        dependency reads do not admit unrelated facade publication domains.
 
         Returns:
             The dependency-complete source plan, or the first planning failure.
@@ -332,16 +334,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         result_type = r[m.Infra.CodegenPlan]
         root = request.root.expanduser().resolve()
-        topology = self._planning_workspace(request, root, inputs=inputs)
-        if topology.failure:
-            return result_type.from_failure(topology)
-        workspace, _target, repository = topology.value
-        selected = self._select_repositories(request, workspace, repository)
+        selected = self._lazy_init_repositories(request, root, inputs)
         if selected.failure:
             return result_type.from_failure(selected)
+        workspace, repositories = selected.value
         participants = tuple(
             participant
-            for participant in selected.value
+            for participant in repositories
             if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
         )
         roots = tuple(
@@ -380,11 +379,35 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                     if project_inputs.failure:
                         return result_type.from_failure(project_inputs)
+                    selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None = None
+                    if request.module is not None:
+                        with self._source_view(
+                            project, declared_files=tuple(files.values())
+                        ) as (source_project, _sources):
+                            destinations = tuple(
+                                file.path
+                                for file in planned.value
+                                if file.project == project
+                                and u.Infra.module_name_for_file(
+                                    file.path,
+                                    project_root=project,
+                                    source_project=source_project,
+                                )
+                                == request.module
+                            )
+                        if not destinations:
+                            continue
+                        if len(destinations) != 1:
+                            return result_type.fail(
+                                f"lazy package selection is ambiguous: {request.module}"
+                            )
+                        selection = (destinations[0], None)
                     converged = self._converged_custom_sources(
                         project,
                         (project_inputs.value.spec, participant.role.value),
                         cohort=tuple(files.values()),
                         normalize_imports=True,
+                        selection=selection,
                     )
                     if converged.failure:
                         return result_type.from_failure(converged)
@@ -394,7 +417,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         return result_type.ok(
             m.Infra.CodegenPlan(
                 request=request,
-                repositories=selected.value,
+                repositories=repositories,
                 workspace=workspace,
                 uv_environments=(),
                 files=tuple(files[path] for path in sorted(files)),
@@ -402,6 +425,30 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 exception=self.state.planning_exception,
             )
         )
+
+    def _lazy_init_repositories(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[
+        t.Pair[m.Infra.WorkspaceSpec, t.VariadicTuple[m.Infra.RepositoryRef]]
+    ]:
+        """Resolve initializer participants through the existing topology owner.
+
+        Returns:
+            The workspace and its selected repositories, or the original failure.
+
+        """
+        result_type = r[
+            t.Pair[m.Infra.WorkspaceSpec, t.VariadicTuple[m.Infra.RepositoryRef]]
+        ]
+        topology = self._planning_workspace(request, root, inputs=inputs)
+        if topology.failure:
+            return result_type.from_failure(topology)
+        workspace, _target, repository = topology.value
+        selected = self._select_repositories(request, workspace, repository)
+        return selected.map(lambda repositories: (workspace, repositories))
 
     def _planning_workspace(
         self,
@@ -770,64 +817,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if lazy.repository != managed.repository:
             msg = "repository planning phases have different owners"
             raise ValueError(msg)
-        files = (
-            {file.path: file for file in lazy.files}
-            if cls._plannable_outcome(managed)
-            else {}
+        files = u.Infra.codegen_compose_file_plans(
+            (
+                *(lazy.files if cls._plannable_outcome(managed) else ()),
+                *managed.files,
+            ),
+            ordered=True,
         )
-        for file in managed.files:
-            previous = files.get(file.path)
-            if previous is not None:
-                conflicts = tuple(
-                    name
-                    for name, equal in (
-                        ("project", previous.project == file.project),
-                        ("before", previous.before == file.before),
-                        ("owner", previous.owner == file.owner),
-                        ("policy", previous.policy == file.policy),
-                        ("tracking", previous.tracking == file.tracking),
-                        ("index_before", previous.index_before == file.index_before),
-                    )
-                    if not equal
-                )
-                if conflicts:
-                    msg = (
-                        f"repository phases have competing file authority: {file.path}"
-                    )
-                    failure = ValueError(msg)
-                    failure.add_note(f"competing_fields={conflicts}")
-                    failure.add_note(
-                        "original payload equality: "
-                        f"content={previous.before.content == file.before.content}; "
-                        f"mode={previous.before.mode == file.before.mode}; "
-                        f"owners={previous.owner!r}, {file.owner!r}"
-                    )
-                    raise failure
-            dependencies = tuple(
-                dict.fromkeys((
-                    *(() if previous is None else previous.tracking_dependencies),
-                    *file.tracking_dependencies,
-                ))
-            )
-            files[file.path] = (
-                file
-                if dependencies == file.tracking_dependencies
-                else m.Infra.CodegenFilePlan(
-                    project=file.project,
-                    path=file.path,
-                    before=file.before,
-                    desired_content=file.desired_content,
-                    desired_mode=file.desired_mode,
-                    owner=file.owner,
-                    policy=file.policy,
-                    tracking=file.tracking,
-                    index_before=file.index_before,
-                    tracking_dependencies=dependencies,
-                )
-            )
         return managed.model_copy(
             update={
-                "files": tuple(files.values()),
+                "files": files,
                 "issues": (*lazy.issues, *managed.issues),
                 "exception": (
                     lazy.exception if lazy.exception is not None else managed.exception

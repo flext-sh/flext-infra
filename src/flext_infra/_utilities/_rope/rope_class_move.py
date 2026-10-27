@@ -672,7 +672,23 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             for index, scope in enumerate(current)
         ]
         if old_declarations != declarations:
-            msg = f"module relocation changed native annotation scopes: {path}"
+            msg = (
+                f"module relocation changed native annotation scopes: {path}; "
+                f"native scope counts: original={len(old_declarations)}, "
+                f"current={len(declarations)}; source={source}; target={target}"
+            )
+            for index in range(max(len(old_declarations), len(declarations))):
+                original = (
+                    old_declarations[index] if index < len(old_declarations) else None
+                )
+                relocated = declarations[index] if index < len(declarations) else None
+                if original != relocated:
+                    msg += (
+                        f"; first differing native scope: index={index}; "
+                        f"original={str(original)[:160]!r}; "
+                        f"current={str(relocated)[:160]!r}"
+                    )
+                    break
             raise ValueError(msg)
         if source.stem == target.stem:
             return

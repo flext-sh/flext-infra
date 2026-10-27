@@ -74,7 +74,7 @@ class FlextInfraUtilitiesPyrefly:
         """Compose Pyrefly exclusions with the shared analysis artifact catalog.
 
         Every analyzer consumes the same declared file and directory patterns,
-        including foreign generated sources and ephemeral tool output.
+        excluding declared ephemeral tool output, not generated source ownership.
 
         Returns:
             The sorted, deduplicated ``project-excludes`` values.

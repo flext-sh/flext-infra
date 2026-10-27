@@ -372,8 +372,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             lineages = tuple(self._linearize(identity) for identity in identities)
             try:
                 lineage = (
-                    FlextInfraUtilitiesRopeSourceBasesRuntime
-                    .merge_class_lineages(
+                    FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                         lineages,
                         message=(
                             "Inconsistent declared facade owner precedence: "
@@ -443,6 +442,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 Whether the class defers annotations through its ancestry.
 
+            Raises:
+                TypeError: If a source provider has no module AST.
+
             """
 
             def reject(identity: str, reason: str) -> bool:
@@ -486,12 +488,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 if scope.parent is None:
                     return reject(identity, "missing-parent-scope")
-                for decorator in declaration.decorator_list:
-                    binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                        scope.parent, decorator
+                if any(
+                    (
+                        binding := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                            scope.parent, decorator
+                        )
                     )
-                    if binding is None or binding.get_object() is not runtime_checkable:
-                        return reject(identity, "evaluating-decorator")
+                    is None
+                    or binding.get_object() is not runtime_checkable
+                    for decorator in declaration.decorator_list
+                ):
+                    return reject(identity, "evaluating-decorator")
                 if declaration.keywords:
                     return reject(identity, "class-keywords")
                 if "__init_subclass__" in self._definitions[identity].members:
@@ -1338,6 +1345,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             bindings = self._provider_source_bindings(module_name, declaring, resource)
             reference = bindings.get(name)
             if reference is None:
+                if name not in bindings and module_name not in self._sources:
+                    return None
                 message = f"Unresolved provider base: {module_name}.{name}"
                 raise ValueError(message)
             if (
@@ -1751,7 +1760,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                             ), []
                         except (ValueError, ImportError) as failure:
                             resource = self._project.find_module(".".join(parts))
-                            origin = resource.real_path if resource is not None else None
+                            origin = (
+                                resource.real_path if resource is not None else None
+                            )
                             failure.add_note(
                                 f"Uncaptured namespace descent: module={module!r}; "
                                 f"selected={submodule!r}; remaining={remaining!r}; "
@@ -1761,12 +1772,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                             raise
                     break
                 module = submodule
-            if module not in self._modules:
-                message = f"Planned namespace has no module binding: {module}.{name}"
-                raise ValueError(message)
-            binding = self._modules[module].get(name)
+            bindings = self._modules.get(module)
+            binding = None if bindings is None else bindings.get(name)
             if binding is None:
-                message = f"Unresolved planned base: {module}.{name}"
+                message = (
+                    f"Planned namespace has no module binding: {module}.{name}"
+                    if bindings is None
+                    else f"Unresolved planned base: {module}.{name}"
+                )
                 raise ValueError(message)
             try:
                 return self._resolve(

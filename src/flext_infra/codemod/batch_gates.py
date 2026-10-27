@@ -1180,7 +1180,7 @@ class FlextInfraModGateEngine:
             root: The root directory of the project being scanned.
             plan: The codemod rule plan containing rules and rulesets.
             targets: The sequence of target paths to scan.
-            context: The source context for the scan.
+            context: The source context for the scan and its physical project roots.
             artifact_root: Base owner for project-scoped native scan artifacts.
 
         Returns:
@@ -1202,7 +1202,11 @@ class FlextInfraModGateEngine:
             for project, project_targets in u.Infra.codemod_project_targets(
                 plan, native_targets
             ):
-                resolved_project = project.resolve()
+                resolved_project = (
+                    project
+                    if context.project_source_roots is None
+                    else context.project_source_roots[project]
+                ).resolve()
                 if not resolved_project.is_relative_to(root):
                     return r[m.Infra.ModScanReport].fail(
                         f"native scan project escapes workspace root: "
@@ -1460,15 +1464,31 @@ class FlextInfraModGateEngine:
         view_root /= root.relative_to(candidate.workspace)
         with u.Infra.codemod_workspace_snapshot(root) as snapshot:
             plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
+        staged_plan = plan.model_copy(
+            update={
+                "project_rule_ids": {
+                    view_root / project.relative_to(root): rule_ids
+                    for project, rule_ids in plan.project_rule_ids.items()
+                }
+            }
+        )
         states = captured.value
         owned_sources = u.Infra.facade_original_sources(root, states)
         context = m.Infra.ModScanSourceContext(
             inventory={
-                state.path: state for state in states if state.path in owned_sources
+                view_root / state.path.relative_to(root): state.model_copy(
+                    update={"path": view_root / state.path.relative_to(root)}
+                )
+                for state in states
+                if state.path in owned_sources
+            },
+            project_source_roots={
+                project: view_root / project.relative_to(root)
+                for project in plan.project_rule_ids
             },
             repository_roots=tuple(
                 sorted(
-                    u.Infra.governed_project_roots(view_root),
+                    staged_plan.project_rule_ids,
                     key=cls._path_depth,
                     reverse=True,
                 )
@@ -1489,10 +1509,7 @@ class FlextInfraModGateEngine:
             view_root,
             scanned.value,
             {rule.id: rule for rule in plan.rules},
-            {
-                view_root / project.relative_to(root): rule_ids
-                for project, rule_ids in plan.project_rule_ids.items()
-            },
+            staged_plan.project_rule_ids,
         )
         for entry in report.entries:
             relative = (
@@ -1504,6 +1521,15 @@ class FlextInfraModGateEngine:
                 entry.model_copy(
                     update={
                         "file": relative,
+                        "repository": cls._finding_repository(
+                            relative,
+                            sorted(
+                                plan.project_rule_ids,
+                                key=cls._path_depth,
+                                reverse=True,
+                            ),
+                            root,
+                        ),
                         "source_state": logical[(root / relative).resolve()],
                     }
                 )
@@ -1511,6 +1537,10 @@ class FlextInfraModGateEngine:
         report = cls.recounted(
             tuple(entries),
             native_artifacts=report.native_artifacts,
+        )
+        sys.stderr.write(
+            "mod: candidate logical repositories="
+            f"{','.join(sorted({entry.repository for entry in entries}))}\n"
         )
         current = cls._validate_expected_receipts(plan.rules, report)
         if current.failure:

@@ -139,14 +139,18 @@ class FlextInfraDocGenerator(
         """
         return u.Infra.docs_file_plans(bundle)
 
-    def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
+    def prepare_bundle(
+        self,
+        *,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+    ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Render the configured docs inventory once.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
-        return self._prepare_request(self._configured_request())
+        return self._prepare_request(self._configured_request(), declared_files)
 
     @override
     def execute(

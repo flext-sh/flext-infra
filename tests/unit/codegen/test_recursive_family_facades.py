@@ -6,7 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
+
+import pytest
 
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -123,27 +126,221 @@ class TestsFlextInfraRecursiveFamilyFacades:
             )
 
     @classmethod
-    def test_selected_family_retains_authored_child_composition(
+    def test_uncomposed_type_publications_do_not_elect_a_holder(
         cls, tmp_path: Path
     ) -> None:
-        """Move a declared holder without deriving a replacement name or other families."""
+        """Ordinary class publications need a public MRO before composition election."""
         root, package, sentinel = cls._workspace(tmp_path)
         layout = tm.not_none(u.Infra.layout(root))
         directory = package / "_utilities" / "_dispatch"
-        name = f"{layout.class_stem}DispatchUtilities"
         supplier = f"{layout.class_stem}DispatchRunner"
-        cls._write(directory / c.Infra.INIT_PY, '"""Dispatch capabilities."""\n')
+        name = f"{layout.class_stem}DispatchUtilities"
+        cls._write(directory / c.Infra.INIT_PY, '"""Dispatch declarations."""\n')
         cls._write(directory / "runner.py", cls._part(supplier, "u", "Execute"))
-        origin = directory / "namespace.py"
         cls._write(
-            origin,
-            '"""Authored dispatch composition."""\n'
+            directory / "namespace.py",
             f"from {package.name}._utilities._dispatch.runner import {supplier}\n"
             f"class {name}:\n"
             f"    {supplier} = {supplier}\n"
             f"__all__ = [{name!r}]\n",
         )
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            tm.that(u.Infra.family_subfacade_owners(snapshot.engine, directory), eq=[])
+        tm.fail(sentinel.exists())
+
+    @classmethod
+    def _write_selected_composition(cls, root: Path, package: Path) -> tuple[str, str]:
+        """Declare a published composition with behavior and a stateful helper.
+
+        Returns:
+            The authored composition and method-provider class names.
+
+        """
+        layout = tm.not_none(u.Infra.layout(root))
+        directory = package / "_utilities" / "_dispatch"
+        name = f"{layout.class_stem}DispatchUtilities"
+        supplier = f"{layout.class_stem}DispatchRunner"
+        stateful = f"{layout.class_stem}DispatchState"
+        cls._write(directory / c.Infra.INIT_PY, '"""Dispatch capabilities."""\n')
+        cls._write(directory / "runner.py", cls._part(supplier, "u", "Execute"))
+        cls._write(
+            directory / "stateful.py",
+            f"class {stateful}:\n"
+            "    def __init__(self, value: str) -> None:\n"
+            "        self.value = value\n"
+            f"__all__ = [{stateful!r}]\n",
+        )
+        origin = directory / "namespace.py"
+        cls._write(
+            origin,
+            '"""Authored dispatch composition."""\n'
+            f"from {package.name}._utilities._dispatch.runner import {supplier}\n"
+            f"from {package.name}._utilities._dispatch.stateful import {stateful}\n"
+            f"class {name}:\n"
+            f"    {supplier} = {supplier}\n"
+            f"    Stateful = {stateful}\n"
+            f"__all__ = [{name!r}]\n",
+        )
         destination = package / "utilities.py"
+        declaration = f"{layout.class_stem}{u.Infra.facade_families()['u'].suffix}"
+        root_owner = f"{declaration}RootOwner"
+        cls._write(
+            package / "_utilities" / c.Infra.INIT_PY,
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            f"from {package.name}._utilities._dispatch.namespace import {name}\n"
+            f"from {package.name}._utilities.base import {root_owner}\n"
+            f"__all__ = [{name!r}, {root_owner!r}]\n",
+        )
+        cls._write(
+            destination,
+            '"""Public composition authenticates its authored child holder."""\n'
+            f"from {package.name}._utilities import {root_owner}, {name}\n"
+            f"class {declaration}:\n"
+            f"    class Domain({root_owner}, {name}):\n"
+            '        """Public dispatch namespace."""\n'
+            f"u = {declaration}\n"
+            f"__all__ = [{declaration!r}, 'u']\n",
+        )
+        cls._write(
+            package / c.Infra.INIT_PY,
+            (package / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+            + f"\nfrom {package.name}.utilities import {declaration}, u\n"
+            + f"__all__ = ['r', {declaration!r}, 'u']\n",
+        )
+        consumer = package / "dispatch_consumer.py"
+        cls._write(
+            consumer,
+            f"from {package.name} import u\n"
+            "def dispatch() -> str:\n"
+            f"    callback = u.Domain.{supplier}.execute\n"
+            f"    return callback() + u.Domain.{supplier}.execute() + "
+            f"u.Domain.{supplier}.execute()\n",
+        )
+        return name, supplier
+
+    @staticmethod
+    def _publication_names(namespace: ast.ClassDef) -> set[str]:
+        """Observe the names assigned by the candidate's class-publication syntax.
+
+        Returns:
+            Assignment, annotated-assignment and native type-alias target names.
+
+        """
+        names: set[str] = set()
+        for member in namespace.body:
+            if isinstance(member, ast.Assign):
+                names.update(
+                    target.id
+                    for target in member.targets
+                    if isinstance(target, ast.Name)
+                )
+            elif isinstance(member, ast.AnnAssign) and isinstance(
+                member.target, ast.Name
+            ):
+                names.add(member.target.id)
+            elif isinstance(member, ast.TypeAlias) and isinstance(
+                member.name, ast.Name
+            ):
+                names.add(member.name.id)
+        return names
+
+    @classmethod
+    def test_initializer_projection_keeps_observed_composition_ownership(
+        cls, tmp_path: Path
+    ) -> None:
+        """Move an observed owner even when pending exports hide its old route."""
+        root, package, sentinel = cls._workspace(tmp_path)
+        name, _supplier = cls._write_selected_composition(root, package)
+        destination = package / "utilities.py"
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            initial = tm.ok(
+                FlextInfraCodegenLazyInit.plan_candidate(
+                    root,
+                    declared_files=(),
+                    snapshot=snapshot,
+                    selection=(destination, c.Infra.FacadeFamily.U),
+                )
+            )
+            with u.Infra.facade_source_project(root, declared_files=initial) as binding:
+                namespace = u.Infra.require_class_object(
+                    u.Infra
+                    .facade_source_classes(
+                        package.name, ("u",), source_project=binding[0]
+                    )["u"]
+                    .get_attributes()["Domain"]
+                    .get_object(),
+                    "projected public namespace",
+                )
+                tm.that(
+                    any(
+                        not u.Infra.abstract_class(base)
+                        for base in namespace.get_superclasses()
+                    )
+                )
+            planned = tm.ok(
+                u.Infra.plan_component_facades(
+                    root,
+                    declared_files=initial,
+                    snapshot=snapshot,
+                    planners=(
+                        FlextInfraCodegenLazyInit.plan_candidate,
+                        u.Infra.facade_source_project,
+                    ),
+                    selection=(destination, c.Infra.FacadeFamily.U),
+                )
+            )
+            repeated = tm.ok(
+                u.Infra.plan_component_facades(
+                    root,
+                    declared_files=planned,
+                    snapshot=snapshot,
+                    planners=(
+                        FlextInfraCodegenLazyInit.plan_candidate,
+                        u.Infra.facade_source_project,
+                    ),
+                    selection=(destination, c.Infra.FacadeFamily.U),
+                )
+            )
+            tm.that(
+                {plan.path: (plan.before, plan.desired_content) for plan in repeated},
+                eq={plan.path: (plan.before, plan.desired_content) for plan in planned},
+            )
+        tm.that(
+            any(
+                plan.path == package / "_utilities" / "dispatch.py"
+                and plan.desired_content is not None
+                and f"class {name}(".encode() in plan.desired_content
+                for plan in planned
+            )
+        )
+        tm.fail(sentinel.exists())
+
+    @classmethod
+    def test_unresolved_observed_provider_is_rejected(cls, tmp_path: Path) -> None:
+        """An unresolved input provider never becomes an accepted native owner."""
+        root, package, sentinel = cls._workspace(tmp_path)
+        name, _supplier = cls._write_selected_composition(root, package)
+        destination = package / "utilities.py"
+        cls._write(
+            destination,
+            destination.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                f", {name}):", ", UnresolvedProvider):"
+            ),
+        )
+        with pytest.raises(TypeError, match="expected a native Rope class:"):
+            cls._plans(root, (destination, c.Infra.FacadeFamily.U))
+        tm.fail(sentinel.exists())
+
+    @classmethod
+    def test_selected_family_retains_authored_child_composition(
+        cls, tmp_path: Path
+    ) -> None:
+        """Keep the authored MRO alias-free and close its callable consumers."""
+        root, package, sentinel = cls._workspace(tmp_path)
+        name, supplier = cls._write_selected_composition(root, package)
+        origin = package / "_utilities" / "_dispatch" / "namespace.py"
+        destination = package / "utilities.py"
+        consumer = package / "dispatch_consumer.py"
         planned = {
             plan.path: plan
             for plan in tm.ok(cls._plans(root, (destination, c.Infra.FacadeFamily.U)))
@@ -156,6 +353,27 @@ class TestsFlextInfraRecursiveFamilyFacades:
         tm.that(
             f"class {name}(".encode() in tm.not_none(planned[sibling].desired_content)
         )
+        candidate = tm.not_none(planned[sibling].desired_content).decode(
+            c.DEFAULT_ENCODING
+        )
+        namespace = next(
+            node
+            for node in ast.parse(candidate).body
+            if isinstance(node, ast.ClassDef) and node.name == name
+        )
+        publications = cls._publication_names(namespace)
+        tm.fail(supplier in publications)
+        tm.that("Stateful" in publications)
+        tm.that(b"u.Domain.execute()" in tm.not_none(planned[consumer].desired_content))
+        tm.that(
+            b"callback = u.Domain.execute"
+            in tm.not_none(planned[consumer].desired_content)
+        )
+        tm.fail(
+            f"u.Domain.{supplier}.".encode()
+            in tm.not_none(planned[consumer].desired_content)
+        )
+        tm.that(planned[consumer].before.content, eq=consumer.read_bytes())
         for family in u.Infra.facade_families().values():
             if family.letter != "u":
                 tm.fail(package / f"{family.module}.py" in planned)
@@ -166,6 +384,39 @@ class TestsFlextInfraRecursiveFamilyFacades:
                     )
                 )
         tm.fail(package / "_utilities" / "base.py" in planned)
+        tm.fail(sentinel.exists())
+
+    @classmethod
+    def test_provider_mutations_reject_the_public_candidate(
+        cls, tmp_path: Path
+    ) -> None:
+        """Reject each unsafe mutation without publishing or retargeting its owner."""
+        root, package, sentinel = cls._workspace(tmp_path)
+        _name, supplier = cls._write_selected_composition(root, package)
+        consumer = package / "dispatch_consumer.py"
+        destination = package / "utilities.py"
+        original = consumer.read_text(encoding=c.DEFAULT_ENCODING)
+        reference = f"u.Domain.{supplier}.execute"
+        for statement in (
+            f"{reference} = callback",
+            f"del {reference}",
+            f"{reference} += callback",
+        ):
+            mutated = (
+                original
+                + "\ndef mutations():\n"
+                + f"    callback = {reference}\n    {statement}\n"
+            )
+            cls._write(consumer, mutated)
+            with pytest.raises(
+                (TypeError, ValueError),
+                match=(
+                    r"expected a native Rope class: facade component ancestry"
+                    r"|provider publication has a surviving consumer:"
+                ),
+            ):
+                cls._plans(root, (destination, c.Infra.FacadeFamily.U))
+            tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=mutated)
         tm.fail(sentinel.exists())
 
     @staticmethod
@@ -289,10 +540,19 @@ class TestsFlextInfraRecursiveFamilyFacades:
         existing = owners / "legacy_domain.py"
         base = f"{layout.class_stem}{family.suffix}DomainBase"
         cls._write(
+            owners / "_domain" / "bridge.py",
+            '"""Intermediate inherited domain composition."""\n'
+            f"from {package.name}.{family.directory}._domain.base import {base}\n"
+            f"class IntermediateHolder({base}):\n"
+            '    """Retain the inherited behavior."""\n'
+            "__all__ = ['IntermediateHolder']\n",
+        )
+        cls._write(
             existing,
             '"""Existing domain composition."""\n'
-            f"from {package.name}.{family.directory}._domain.base import {base}\n"
-            f"class ExistingDomainFacade({base}):\n"
+            f"from {package.name}.{family.directory}._domain.bridge "
+            "import IntermediateHolder\n"
+            "class ExistingDomainFacade(IntermediateHolder):\n"
             '    """Inherited domain behavior."""\n'
             "__all__ = ['ExistingDomainFacade']\n",
         )
@@ -309,3 +569,6 @@ class TestsFlextInfraRecursiveFamilyFacades:
             eq=["anchor"],
         )
         tm.fail(sentinel.exists())
+        second = tm.ok(cls._plans(root))
+        tm.that(u.Cli.pending_file_changes(second), eq=())
+        tm.that(tm.ok(u.Infra.publish_codegen_plans(root, second)), eq=())

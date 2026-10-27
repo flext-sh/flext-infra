@@ -17,9 +17,15 @@ import re
 import sys
 from importlib.metadata import packages_distributions
 from pathlib import Path
+from typing import override
 
-from flext_infra import c, config, p, t
+from libcst import Attribute, CSTTransformer, Module, parse_expression, parse_module
+from libcst.metadata import MetadataWrapper, PositionProvider
+
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
@@ -46,6 +52,220 @@ from flext_infra._utilities.workspace_snapshot import (
 
 class FlextInfraUtilitiesFacadeComponents:
     """Derive component-to-namespace references and render their relocation."""
+
+    @classmethod
+    def facade_composes_class(
+        cls,
+        owner: p.Infra.RopeSourceClass,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> bool:
+        """Authenticate a holder through its published family's native ancestry.
+
+        The family catalog locates the publisher, never elects a class name.
+        Ordinary type publications outside that exact ancestry remain types.
+
+        Returns:
+            Whether an existing public namespace composes this native class.
+
+        """
+        resource = owner.get_module().get_resource()
+        if resource is None:
+            return False
+        root = Path(source_project.root.real_path)
+        for directory in Path(resource.real_path).parents:
+            if not directory.is_relative_to(root):
+                break
+            for (
+                family
+            ) in FlextInfraUtilitiesCodegenNamespace.facade_families().values():
+                if directory.name != family.directory:
+                    continue
+                publisher = source_project.get_pymodule(
+                    source_project.get_folder(
+                        directory.parent.relative_to(root).as_posix()
+                    )
+                )
+                package = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                    publisher, source_project=source_project
+                )
+                if any(
+                    owner is holder or owner in cls._component_ancestors(holder)
+                    for holder, _target in cls._facade_namespace_holders(
+                        package, (family.letter,), source_project=source_project
+                    )
+                ):
+                    return True
+        return False
+
+    @classmethod
+    def plan_component_consumers(
+        cls,
+        root: Path,
+        *,
+        source_project: p.Infra.RopeProject,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        """Close native callable receiver rewrites over the composed candidate.
+
+        The existing claims and lexical-call proof elect every replacement.
+        Original physical witnesses and previous move declarations remain owned
+        by the shared semantic-edit planner; no source is published here.
+
+        Returns:
+            Consumer plans with their original CAS and ownership witnesses.
+
+        Raises:
+            TypeError: A projected consumer is not a source module.
+            ValueError: A callable witness is ambiguous or differs from its candidate.
+
+        """
+        claims = cls._component_claims(root, source_project=source_project)
+        if not claims:
+            return ()
+        declared = {plan.path: plan for plan in declared_files}
+        plans: list[m.Infra.CodegenFilePlan] = []
+        for resource in source_project.get_python_files():
+            path = Path(resource.real_path)
+            module = cls._consumer_module(source_project, path)
+            calls = cls._component_calls(module, claims)
+            if not calls:
+                continue
+            replacements = {
+                (
+                    node.lineno,
+                    node.col_offset,
+                    node.end_lineno,
+                    node.end_col_offset,
+                ): destination
+                for node, _original, destination in calls
+            }
+            source = module.source_code
+            wrapper = MetadataWrapper(parse_module(source))
+            elected = cls._component_elected_attributes(wrapper, source, replacements)
+            if len(elected) != len(replacements):
+                msg = f"component reference differs from its candidate: {path}"
+                raise ValueError(msg)
+
+            class Rewrite(CSTTransformer):
+                """Apply all identity-proven references in one source traversal."""
+
+                @override
+                def leave_Attribute(
+                    self,
+                    original_node: t.Infra.Cst.Attribute,
+                    updated_node: t.Infra.Cst.Attribute,
+                    *,
+                    destinations: t.MappingKV[t.Infra.Cst.Attribute, str] = elected,
+                ) -> t.Infra.Cst.BaseExpression:
+                    destination = destinations.get(original_node)
+                    return (
+                        parse_expression(destination)
+                        if destination is not None
+                        else updated_node
+                    )
+
+            updated = wrapper.module.visit(Rewrite())
+            if not isinstance(updated, Module):
+                msg = f"component rewrite lost its source module: {path}"
+                raise TypeError(msg)
+            if updated.code != source:
+                plans.append(
+                    FlextInfraUtilitiesCodegenFilePlan.source_file_plan_from_edit(
+                        root,
+                        m.Infra.SemanticMigrationEdit(
+                            file_path=path,
+                            original_source=source,
+                            updated_source=updated.code,
+                        ),
+                        source_project=source_project,
+                        declared_files=declared,
+                    )
+                )
+        return tuple(plans)
+
+    @staticmethod
+    def _component_elected_attributes(
+        wrapper: t.Infra.CstMetadata,
+        source: str,
+        replacements: t.MappingKV[tuple[int, int, int | None, int | None], str],
+    ) -> dict[t.Infra.Cst.Attribute, str]:
+        """Match native byte spans to concrete syntax nodes without changing text.
+
+        Returns:
+            The identity-proven replacements on this exact wrapped source tree.
+
+        """
+        lines = source.splitlines()
+        elected: dict[t.Infra.Cst.Attribute, str] = {}
+        for node, span in wrapper.resolve(PositionProvider).items():
+            if not isinstance(node, Attribute):
+                continue
+            key = (
+                span.start.line,
+                len(lines[span.start.line - 1][: span.start.column].encode("utf-8")),
+                span.end.line,
+                len(lines[span.end.line - 1][: span.end.column].encode("utf-8")),
+            )
+            if key in replacements:
+                elected[node] = replacements[key]
+        return elected
+
+    @classmethod
+    def assert_provider_publications_closed(
+        cls,
+        source_project: p.Infra.RopeProject,
+        publications: t.MappingKV[
+            t.Pair[p.Infra.RopeClassObject, str], p.Infra.RopeClassObject
+        ],
+    ) -> None:
+        """Reject surviving references before a composed provider loses its alias.
+
+        This observes all native contexts, including the load of a publication
+        inside an assignment, deletion or augmented-assignment mutation target.
+        It never rewrites those targets or elects another mutation owner.
+
+        Raises:
+            ValueError: A candidate still consumes a retiring provider publication.
+            TypeError: A native consumer does not provide a module declaration.
+
+        """
+        if not publications:
+            return
+        names = {name for _owner, name in publications}
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        for resource in source_project.get_python_files():
+            module = cls._consumer_module(source_project, Path(resource.real_path))
+            tree = module.get_ast()
+            if not isinstance(tree, ast.Module):
+                message = f"Native consumer has no module declaration: {resource.path}"
+                raise TypeError(message)
+            for reference in ast.walk(tree):
+                if (
+                    not isinstance(reference, ast.Attribute)
+                    or reference.attr not in names
+                ):
+                    continue
+                context = module.get_source_binding_index().context_at(
+                    runtime.source_offset(module.source_code, reference)
+                )
+                scope = context.environment
+                receiver = runtime.resolve_symbol(scope, reference.value)
+                if receiver is None or not (
+                    FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                        owner := receiver.get_object()
+                    )
+                ):
+                    continue
+                if any(
+                    (ancestor, reference.attr) in publications
+                    for ancestor in (owner, *cls._component_ancestors(owner))
+                ):
+                    message = (
+                        "provider publication has a surviving consumer: "
+                        f"{resource.real_path}:{reference.lineno}:{reference.attr}"
+                    )
+                    raise ValueError(message)
 
     @classmethod
     def facade_component_references(
@@ -122,19 +342,63 @@ class FlextInfraUtilitiesFacadeComponents:
         Returns:
             The resulting ``t.VariadicTuple[p.Infra.RopeClassObject]``.
 
+        Raises:
+            TypeError: An inferred ancestor is not a native class object.
+
         """
-        pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(holder))
+        pending = [
+            (holder, index, candidate)
+            for index, candidate in enumerate(
+                FlextInfraUtilitiesDeclarationPayload.direct_bases(holder)
+            )
+        ]
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
         while pending:
-            base = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
-                pending.pop(), "facade component ancestry"
-            )
+            owner, index, candidate = pending.pop()
+            try:
+                base = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                    candidate, "facade component ancestry"
+                )
+            except TypeError as exc:
+                exc.add_note(
+                    f"ancestry owner={owner.get_name()}; direct_base_index={index}; "
+                    f"inferred_kind={type(candidate).__module__}."
+                    f"{type(candidate).__qualname__}"
+                )
+                if isinstance(owner, p.Infra.RopeSourceClass):
+                    module = owner.get_module()
+                    resource = module.get_resource()
+                    exc.add_note(
+                        "owner_source="
+                        f"{resource.path if resource is not None else None}; "
+                        f"owner_line={owner.get_scope().get_start()}"
+                    )
+                    tree = owner.get_ast()
+                    if isinstance(tree, ast.ClassDef):
+                        for lexical_index, expression in enumerate(tree.bases[:16]):
+                            names = tuple(
+                                node.id if isinstance(node, ast.Name) else node.attr
+                                for node in ast.walk(expression)
+                                if isinstance(node, (ast.Name, ast.Attribute))
+                            )[:24]
+                            exc.add_note(
+                                f"lexical_base_index={lexical_index}; "
+                                f"kind={type(expression).__name__}; "
+                                f"line={expression.lineno}; "
+                                f"column={expression.col_offset}; names={names}"
+                            )
+                raise
             if base in seen:
                 continue
             seen.add(base)
             ancestors.append(base)
-            pending.extend(FlextInfraUtilitiesDeclarationPayload.direct_bases(base))
+            pending.extend(
+                (base, index, candidate)
+                for index, candidate in enumerate(
+                    FlextInfraUtilitiesDeclarationPayload.direct_bases(base)
+                )
+            )
         return tuple(ancestors)
 
     @classmethod
@@ -184,9 +448,7 @@ class FlextInfraUtilitiesFacadeComponents:
             )
             and FlextInfraUtilitiesRopeRuntimeTypes.py_function(binding.get_object())
             and member in holder_members
-            and FlextInfraUtilitiesRopeRuntimeModules.same_name(
-                holder_members[member], binding
-            )
+            and holder_members[member].get_object() is binding.get_object()
         )
 
     @classmethod
@@ -248,6 +510,10 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> t.SequenceOf[t.Triple[ast.Attribute, str, str]]:
         """Prove both the imported component and its lexical facade receiver.
 
+        Callbacks consume the same native callable as call expressions. Both join
+        the cohort only in load context. Writes, deletions, augmented assignments
+        and class-base declarations never change their mutation or declaration owner.
+
         Returns:
             The resulting ``t.SequenceOf[t.Triple[ast.Attribute, str, str]]``.
 
@@ -271,10 +537,12 @@ class FlextInfraUtilitiesFacadeComponents:
             for node in ast.walk(base)
         }
         references: list[t.Triple[ast.Attribute, str, str]] = []
-        for call in ast.walk(tree):
+        methods = {name for _component, name in claims}
+        for reference in ast.walk(tree):
             if (
-                not isinstance(call, ast.Call)
-                or not isinstance(reference := call.func, ast.Attribute)
+                not isinstance(reference, ast.Attribute)
+                or not isinstance(reference.ctx, ast.Load)
+                or reference.attr not in methods
                 or id(reference) in bases
             ):
                 continue
@@ -300,6 +568,9 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> str | None:
         """Elect an already bound facade for one native component call.
 
+        Same-name class publications retain their declaration-time RHS identity;
+        a stale self-reference in the class scope cannot elect another receiver.
+
         Returns:
             The identity-proven destination, or none without a bound facade.
 
@@ -312,6 +583,8 @@ class FlextInfraUtilitiesFacadeComponents:
         offset = runtime.source_offset(module.source_code, reference)
         scope = module.get_source_binding_index().context_at(offset).environment
         receiver = runtime.resolve_symbol(scope, reference.value)
+        if receiver is not None:
+            receiver = runtime.class_assignment_binding(receiver, classes_only=False)
         if (
             receiver is None
             or not types.abstract_class(component := receiver.get_object())
@@ -319,7 +592,7 @@ class FlextInfraUtilitiesFacadeComponents:
         ):
             return None
         targets = claims.get((component, reference.attr), ())
-        original = runtime.resolve_symbol(scope, reference)
+        original = component.get_attributes().get(reference.attr)
         if original is None or not types.py_function(original.get_object()):
             return None
         destinations = cls._bound_destinations(scope, reference, original, targets)
@@ -355,7 +628,7 @@ class FlextInfraUtilitiesFacadeComponents:
             actual = runtime.resolve_symbol(
                 scope, ast.parse(destination, mode="eval").body
             )
-            if actual is not None and runtime.same_name(original, actual):
+            if actual is not None and original.get_object() is actual.get_object():
                 destinations.add(destination)
         return destinations
 

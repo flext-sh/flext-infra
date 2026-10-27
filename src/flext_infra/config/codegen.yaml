@@ -969,9 +969,9 @@ Infra:
     # Retired first-party typing distributions remain owned path-policy inputs,
     # never an analyzer search root or a source-scan exemption for .pyi files.
     - { name: typings, source_scan_ignore: true, retired_typing_root: true }
-    # protoc-generated wire-protocol modules ("DO NOT EDIT"): tracked and
-    # imported as a regular package, never first-party code. generated_source
-    # is the one key every analyzer exclusion, scan, and init derives from.
+    # Tracked protocol-generator output retains its initializer ownership.
+    # This basename declares generation topology, not third-party provenance;
+    # owned executable modules remain in native discovery and analysis.
     - { name: protos, generated_source: true }
     - { name: site, analysis_exclude: true }
     - { name: target, analysis_exclude: true }
@@ -1085,17 +1085,9 @@ Infra:
       - htmlcov
       - site
       - vendor
-      parameterized_case_dirs:
-      - api_cases
-      - _cases
-      part_container_dirs:
-      - _parts
-      helper_modules:
-      - _cov.py
-      # Complete artifact trees (ADR-028): roots and all descendants are data,
-      # including Python scenarios consumed as data by test engines. Executable
-      # test support belongs in the Tests facades and conftest.py outside these
-      # roots. flext-tests derives its fixture-tree location from this owner.
+      # Fixture materialization and pytest collection roots, not analyzer
+      # exclusions. Python files remain governed regardless of fixture location.
+      # flext-tests derives its fixture-tree location from this owner.
       scenario_data_roots:
       - tests/fixtures
     vscode:
@@ -2406,6 +2398,10 @@ Infra:
           ownership: null
         "src/{package_name}/_models/config.py":
           source: base/src/_models/config.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/config_models.py":
+          source: base/src/config_models.py.j2
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_models/settings.py":

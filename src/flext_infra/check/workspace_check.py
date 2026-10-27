@@ -603,7 +603,7 @@ class FlextInfraWorkspaceChecker(
             .load_codegen_inputs(self._repository_root)
             .unwrap()
             .spec.make.check_prerequisite_gates
-            if gate in gates
+            if gate in gates and not effective_ctx.apply_fixes
         )
         admission_gates = prerequisites or gates
         pending_gates = tuple(gate for gate in gates if gate not in admission_gates)
@@ -653,13 +653,11 @@ class FlextInfraWorkspaceChecker(
         effective_ctx = effective_ctx.model_copy(
             update={"check_progress": publish_progress}
         )
-        # Elect only the current phase before it runs. Later applicability
-        # remains explicit pending evidence until prerequisites are clean.
+        # Elect each phase before it runs; pending gates are never counted
+        # as executed, even when prerequisite diagnostics stop admission.
         outcome = (
             self._run_prerequisite_checks(targets, admission_gates, effective_ctx)
-            if prerequisites
-            and not effective_ctx.apply_fixes
-            and not effective_ctx.fail_fast
+            if prerequisites and not effective_ctx.fail_fast
             else self._run_project_phase(
                 targets,
                 admission_gates,
@@ -669,8 +667,13 @@ class FlextInfraWorkspaceChecker(
         )
         if (
             pending_gates
-            and not outcome.failed
+            and (not outcome.failed or not effective_ctx.fail_fast)
             and len(outcome.results) == len(targets)
+            and not any(
+                execution.interrupted
+                for project in outcome.results
+                for execution in project.gates.values()
+            )
         ):
             targets = self._targets_for_gates(targets, gates, effective_ctx)
             admission_gates = pending_gates

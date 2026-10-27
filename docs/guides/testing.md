@@ -40,13 +40,17 @@ environment. Do not assume another city's activation or connection settings.
   do not introduce a competing `d`/`de` helper facade or compatibility shim.
 - Put shared setup in the unified `conftest.py`, shared test declarations in
   `c/t/p/m/u.Tests.*`, and executable tests in `unit`, `integration`, or `e2e`.
-  The complete `tests/fixtures/` tree contains global data artifacts only.
-  Python scenario filenames remain valid data for refactoring engines, but no
-  source scanner, linter, refactorer, or generator interprets their contents.
-  Package and pytest wiring (`__init__.py`, `conftest.py`) and executable imports
-  or loading from that tree are forbidden. The source-admission declaration is
-  `codegen.exclusions.scenario_data_roots`; the test-import DAG enforces its
-  import boundary. See [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md).
+  `codegen.exclusions.scenario_data_roots` declares the roots used to materialize
+  fixture trees and exclude them from automatic pytest collection. It does not
+  exempt Python files from source inventory, lint or type analysis: executable
+  fixture support and Python scenarios remain owned code regardless of their
+  location. Both directory-scoped and repository-scoped Python discovery admit
+  those files through their existing source and ownership checks. Inert data
+  retains its materialization path and is not selected as Python source. Existing
+  artifact import and execution boundaries remain separate from analyzer
+  applicability.
+  Duplication analysis also has no exemption based on a case directory, part
+  directory, or helper filename. See [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md).
 - Use `tm` matchers and shared `flext-tests` builders for assertions and test data.
 - Read project-owned values from typed config or settings. Never freeze current defaults
   in tests, examples, or golden files.

@@ -6,14 +6,194 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import libcst as cst
-from libcst.metadata import Assignment, ParentNodeProvider, Scope, ScopeProvider
+from libcst.metadata import (
+    Assignment,
+    ImportAssignment,
+    ParentNodeProvider,
+    Scope,
+    ScopeProvider,
+)
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesSemanticCutoverOwnMro:
     """Preserve lexical bindings while removing concrete own-method dispatch."""
+
+    @classmethod
+    def rewrite_own_family_members(
+        cls,
+        source: str,
+        routes: t.MappingKV[t.StrTuple, t.Triple[str, str, str]],
+        imports: t.MappingKV[str, str],
+    ) -> str:
+        """Apply authenticated member routes without moving their import guards.
+
+        Returns:
+            The lexically checked candidate, retaining typing-only imports.
+
+        """
+        visitor = cls._FamilyMembers(routes, imports)
+        module = cst.metadata.MetadataWrapper(cst.parse_module(source))
+        return module.visit(visitor).code
+
+    class _FamilyMembers(cst.CSTTransformer):
+        """Replace only accesses bound to the elected facade import."""
+
+        METADATA_DEPENDENCIES = (ScopeProvider,)
+
+        def __init__(
+            self,
+            routes: t.MappingKV[t.StrTuple, t.Triple[str, str, str]],
+            imports: t.MappingKV[str, str],
+        ) -> None:
+            self.routes = routes
+            self.imports = imports
+            self.rewritten_imports: set[cst.ImportFrom] = set()
+
+        @staticmethod
+        def _import_binding(alias: cst.ImportAlias) -> str:
+            """Require the single lexical name legal for a facade import.
+
+            Returns:
+                The exact alias binding.
+
+            Raises:
+                TypeError: A destructuring target cannot bind a facade import.
+
+            """
+            if alias.asname is None:
+                return cst.Module([]).code_for_node(alias.name)
+            if not isinstance(alias.asname.name, cst.Name):
+                message = "Own-family import requires a single-name binding"
+                raise TypeError(message)
+            return alias.asname.name.value
+
+        @staticmethod
+        def _import_statement(module: str, owner: str) -> cst.ImportFrom:
+            """Build an import only from an exact dotted-module CST expression.
+
+            Returns:
+                The authenticated owner import statement.
+
+            Raises:
+                TypeError: An expression cannot serve as an import module.
+
+            """
+            provider = cst.parse_expression(module)
+            if not isinstance(provider, (cst.Attribute, cst.Name)):
+                message = "Own-family import requires a dotted module name"
+                raise TypeError(message)
+            return cst.ImportFrom(
+                module=provider, names=(cst.ImportAlias(cst.Name(owner)),)
+            )
+
+        @override
+        def leave_Attribute(
+            self, original_node: cst.Attribute, updated_node: cst.Attribute
+        ) -> cst.BaseExpression:
+            attributes: list[str] = []
+            receiver: cst.BaseExpression = original_node
+            while isinstance(receiver, cst.Attribute):
+                attributes.append(receiver.attr.value)
+                receiver = receiver.value
+            if not isinstance(receiver, cst.Name):
+                return updated_node
+            route = self.routes.get((receiver.value, *reversed(attributes)))
+            if route is None:
+                return updated_node
+            scope = self.get_metadata(ScopeProvider, receiver)
+            if not isinstance(scope, Scope):
+                message = "Own-family repair requires lexical scope"
+                raise TypeError(message)
+            bindings = scope[receiver.value]
+            if len(bindings) != 1:
+                message = "Own-family repair has ambiguous bindings; use make mod"
+                raise ValueError(message)
+            binding = next(iter(bindings))
+            if (
+                not isinstance(binding, ImportAssignment)
+                or not isinstance(binding.node, cst.ImportFrom)
+                or binding.node.module is None
+                or cst.Module([]).code_for_node(binding.node.module)
+                != self.imports[receiver.value]
+            ):
+                return updated_node
+            _, owner, suffix = route
+            if scope[owner]:
+                message = "Own-family repair would capture a binding; use make mod"
+                raise ValueError(message)
+            replacement = cst.parse_expression(f"{owner}.{suffix}")
+            if not isinstance(replacement, cst.Attribute):
+                message = "Own-family repair requires an attribute expression"
+                raise TypeError(message)
+            return replacement
+
+        @override
+        def leave_ImportFrom(
+            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
+        ) -> cst.ImportFrom | cst.FlattenSentinel[cst.BaseSmallStatement]:
+            if (
+                isinstance(original_node.names, cst.ImportStar)
+                or original_node.module is None
+            ):
+                return updated_node
+            provider = cst.Module([]).code_for_node(original_node.module)
+            retained: list[cst.ImportAlias] = []
+            replacements: dict[t.Pair[str, str], cst.ImportFrom] = {}
+            for alias in original_node.names:
+                bound = self._import_binding(alias)
+                if self.imports.get(bound) != provider:
+                    retained.append(alias.with_changes(comma=cst.MaybeSentinel.DEFAULT))
+                    continue
+                for path, (module, owner, _) in self.routes.items():
+                    if path[0] == bound:
+                        replacements[module, owner] = self._import_statement(
+                            module, owner
+                        )
+            if not replacements:
+                return updated_node
+            self.rewritten_imports.add(original_node)
+            statements: list[cst.BaseSmallStatement] = []
+            if retained:
+                statements.append(updated_node.with_changes(names=retained))
+            statements.extend(replacements.values())
+            return cst.FlattenSentinel(statements)
+
+        @override
+        def leave_SimpleStatementLine(
+            self,
+            original_node: cst.SimpleStatementLine,
+            updated_node: cst.SimpleStatementLine,
+        ) -> cst.SimpleStatementLine | cst.FlattenSentinel[cst.BaseStatement]:
+            """Give each rewritten import its own span without leaving its suite.
+
+            Returns:
+                Separate full statement lines with the original group comments.
+
+            """
+            if not any(
+                statement in self.rewritten_imports
+                for statement in original_node.body
+                if isinstance(statement, cst.ImportFrom)
+            ):
+                return updated_node
+            return cst.FlattenSentinel(
+                cst.SimpleStatementLine(
+                    body=(statement.with_changes(semicolon=cst.MaybeSentinel.DEFAULT),),
+                    leading_lines=updated_node.leading_lines if index == 0 else (),
+                    trailing_whitespace=updated_node.trailing_whitespace
+                    if index == len(updated_node.body) - 1
+                    else cst.TrailingWhitespace(
+                        newline=updated_node.trailing_whitespace.newline
+                    ),
+                )
+                for index, statement in enumerate(updated_node.body)
+            )
 
     @classmethod
     def rewrite_own_method_mro_calls(cls, source: str) -> tuple[str, tuple[str, ...]]:

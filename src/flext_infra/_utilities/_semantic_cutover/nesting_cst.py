@@ -44,6 +44,89 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     """Move identity-proven members using one native source graph and regions."""
 
     @classmethod
+    def _model_namespace_structure(
+        cls,
+        source: str,
+        owner: p.Infra.RopeSourceClass,
+        *,
+        wrapped: bool,
+    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+        """Remove only the authenticated model header or transparent wrapper.
+
+        Returns:
+            Original-region edits preserving every nested payload declaration.
+
+        """
+        if not wrapped:
+            return (cls._model_namespace_header(source, owner),)
+        scope = owner.get_scope()
+        facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
+        header = next(item for item in facts if item.line == scope.get_start())
+        body = tuple(
+            item for item in facts if header.end_line < item.line <= scope.get_end()
+        )
+        node = owner.get_ast()
+        docstring = (
+            (body[0].line, body[0].end_line)
+            if isinstance(node, ast.ClassDef)
+            and isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Constant)
+            and isinstance(node.body[0].value.value, str)
+            else None
+        )
+        return tuple(
+            FlextInfraUtilitiesRopeRuntimeRefactors.unwrap_class_rewrites(
+                source,
+                m.Infra.ClassBlockLayout(
+                    header_start=header.line,
+                    header_end=header.end_line,
+                    body_end=scope.get_end(),
+                    indentation=body[0].indent - header.indent,
+                    docstring_span=docstring,
+                ),
+            )
+        )
+
+    @staticmethod
+    def _model_namespace_header(
+        source: str,
+        owner: p.Infra.RopeSourceClass,
+    ) -> m.Infra.SourceRewrite:
+        """Prune the proven preset from only the original class header region.
+
+        Returns:
+            A header edit retaining the payload body and its lexical references.
+
+        """
+        wrapper = MetadataWrapper(cst.parse_module(source))
+        declaration = next(
+            node
+            for node, span in wrapper.resolve(PositionProvider).items()
+            if isinstance(node, cst.ClassDef)
+            and span.start.line == owner.get_scope().get_start()
+        ).with_changes(leading_lines=())
+        block = wrapper.module.code_for_node(declaration)
+        bare = wrapper.module.code_for_node(
+            declaration.with_changes(
+                bases=(),
+                lpar=cst.MaybeSentinel.DEFAULT,
+                rpar=cst.MaybeSentinel.DEFAULT,
+            )
+        )
+        header = next(
+            item for item in FlextInfraUtilitiesRopeStructure.logical_statements(source)
+            if item.line == owner.get_scope().get_start()
+        )
+        lines = source.splitlines(keepends=True)
+        start = sum(len(line) for line in lines[: header.line - 1])
+        end = sum(len(line) for line in lines[: header.end_line])
+        return m.Infra.SourceRewrite(
+            start=start,
+            end=end,
+            text=bare[: end - start + len(bare) - len(block)],
+        )
+
+    @classmethod
     def _rewrite_class_nesting_source(
         cls,
         source: str,
@@ -569,7 +652,15 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         edits = cls._owner_nesting_edits(
             source,
             module,
-            (facts, selection[1], wrapper),
+            (
+                facts,
+                {
+                    name: scope
+                    for name, scope in selection[1].items()
+                    if name not in definitions
+                },
+                wrapper,
+            ),
             (owner_name, nested, indentation),
             edits,
         )

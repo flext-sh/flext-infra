@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -42,19 +41,11 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
         """
         _ = project_dir, ctx
-        # Generated source trees are tracked, so Git ignore rules no longer
-        # hide them; scc drops them by exact directory name instead.
-        generated = tuple(
-            argument
-            for name in config.Infra.codegen.generated_sources
-            for argument in ("--not-match", f"^{re.escape(name)}$")
-        )
         return [
             c.Infra.SCC_BINARY,
             "--format",
             "json",
             "--by-file",
-            *generated,
             *check_dirs,
         ]
 
@@ -71,7 +62,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
             The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
 
         """
-        del ctx
+        del project_dir, ctx
         if not u.Cli.process_succeeded(result.outcome):
             return (
                 False,
@@ -89,7 +80,6 @@ class FlextInfraLocCapGate(FlextInfraGate):
         issues = self._files_over_cap(
             result.stdout,
             config.Infra.codegen.loc_cap.max_lines,
-            project_dir,
         )
         return len(issues) == 0, issues
 
@@ -115,14 +105,11 @@ class FlextInfraLocCapGate(FlextInfraGate):
         cls,
         scc_json: str,
         cap: int,
-        project_dir: Path,
     ) -> t.VariadicTuple[m.Infra.Issue]:
         """Extract over-cap modules from an `scc --format json --by-file` payload.
 
-        SCC paths are relative to its project working directory, not the caller.
-        Parsing and header-read failures propagate. Generated facades carry
-        AUTOGEN_HEADER and are exempt: their size is the generator's obligation,
-        enforced by its own contract — the SUPREME LAW caps authored modules.
+        Generated and authored modules share the same configured ceiling.
+        Parsing failures propagate.
 
         Returns:
             The resulting ``t.VariadicTuple[m.Infra.Issue]``.
@@ -135,7 +122,6 @@ class FlextInfraLocCapGate(FlextInfraGate):
             if language.name == c.Infra.SCC_PYTHON_LANG
             for file in language.files
             if file.code > cap
-            and not u.Infra.generated_source(project_dir / file.location)
         )
 
 

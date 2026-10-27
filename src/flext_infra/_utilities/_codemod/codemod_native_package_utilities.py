@@ -1003,17 +1003,83 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         }
 
     @classmethod
+    def _layer_zero_helpers(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> set[str]:
+        """Collect own helpers admitted by the normalization owner's native proof.
+
+        Returns:
+            The admitted native module identities.
+
+        Raises:
+            ValueError: If a layer-zero source lacks an authenticated namespace.
+
+        """
+        sources = {
+            path: source.text
+            for path, source in (
+                FlextInfraUtilitiesWorkspaceSnapshot.workspace_sources(snapshot).items()
+            )
+        }
+        helpers: set[str] = set()
+        for relative in cls.codemod_layer_zero_files(snapshot, project):
+            path = project.resolve() / relative
+            located = FlextInfraUtilitiesImportLaw.snapshot_import_namespace(
+                snapshot, project.resolve(), path
+            )
+            if located is None:
+                message = f"Layer-zero module has no native namespace: {path}"
+                raise ValueError(message)
+            state = m.Infra.ImportLawPass(
+                scope=m.Infra.ImportLawScope(
+                    project_root=project.resolve(),
+                    file_path=path,
+                    namespace_dir=located[0],
+                    module=located[1],
+                    layer=FlextInfraUtilitiesImportLaw.module_import_layer(located[1]),
+                    own_exports=frozenset(),
+                ),
+                tree=FlextInfraUtilitiesWorkspaceSnapshot.workspace_module_tree(
+                    snapshot, path
+                ),
+                parents={},
+                bindings={},
+                root_exports={},
+                sources=sources,
+                source_project=snapshot.engine,
+            )
+            for node in ast.walk(state.tree):
+                if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                    continue
+                for alias in node.names:
+                    target = (
+                        node.module or ""
+                        if isinstance(node, ast.ImportFrom)
+                        else alias.name
+                    )
+                    if target.startswith(f"{state.scope.namespace}.") and (
+                        FlextInfraUtilitiesImportLaw.import_law_layer_zero_helper(
+                            state, target
+                        )
+                    ):
+                        helpers.add(target)
+        return helpers
+
+    @classmethod
     def codemod_layer_zero_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> t.MappingKV[str, t.JsonMapping]:
-        """Ban own-namespace imports from the project's layer-zero modules.
+        """Ban own-root/family imports, admitting only native-proven helpers.
 
         A settings/config (or lazy-loader) module owns its declarations before
         any facade family exists, so it imports neither its own root facade
-        nor any module of its own namespace, TYPE_CHECKING included. The
+        nor an own facade family, TYPE_CHECKING included. Own helpers require
+        the normalization owner's complete native identity and acyclicity proof.
+        Exact admitted identities are projected, not inferred by regex. The
         layer-zero files are rendered as exact ``files`` globs and the own
         package is the native ``own-package`` utility, so the native scan and
-        ``make mod`` reach the same verdict without per-finding admission.
+        ``make mod`` consume the same source-derived admission decision.
+        Native namespace, helper completeness and cycle errors propagate unchanged.
 
         Returns:
             The two layer-zero rule documents keyed by id, or nothing when the
@@ -1027,6 +1093,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         if not files:
             return {}
         package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        helpers = cls._layer_zero_helpers(snapshot, project)
         separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
         root_name = c.Infra.CODEMOD_ROOT_IMPORTED_NAME_UTILITY
         root_rule = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
@@ -1034,6 +1101,14 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             root_name,
         )
         own: t.JsonDict = {"MODULE": {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY}}
+        own_module: t.JsonDict = {
+            "MODULE": {
+                "all": [
+                    {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY},
+                    {"not": cls.codemod_exact_names_rule(tuple(helpers))},
+                ]
+            }
+        }
         facade_shape = c.Infra.CODEMOD_LAYER_ZERO_FACADE_IMPORT_SHAPE
         module_shape = c.Infra.CODEMOD_LAYER_ZERO_MODULE_IMPORT_SHAPE
         facade_id = f"{facade_shape}{separator}{package}"
@@ -1092,11 +1167,12 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                         },
                     ]
                 },
-                "constraints": own,
+                "constraints": own_module,
                 "message": (
                     "Layer-zero settings/config imports its own namespace "
-                    "`$MODULE`, including TYPE_CHECKING: use native or valid "
-                    "upstream contracts."
+                    "`$MODULE`, including TYPE_CHECKING: use native, valid "
+                    "upstream contracts or an identity-proven acyclic layer-zero "
+                    "helper."
                 ),
             },
         }

@@ -11,11 +11,62 @@ from pathlib import Path
 
 import pytest
 
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraSourceMemberResolver:
     """A bound source resolver retains its capture across member and C3 queries."""
+
+    @staticmethod
+    def test_installed_pydantic_import_keeps_the_exact_declaring_class(
+        tmp_path: Path,
+    ) -> None:
+        """An absent external lexical export retains its real native import origin."""
+        with closing(u.Infra.init_rope_project(tmp_path)) as project:
+            binding = u.Infra.source_member_binding(
+                project,
+                m.Infra.SourceClassReference(
+                    target="pydantic",
+                    attributes=("BaseModel",),
+                    qualified_base="pydantic.BaseModel",
+                ),
+            )
+            declared = u.Infra.require_semantic_module(
+                project.get_module("pydantic.main")
+            ).get_attributes()["BaseModel"]
+            tm.that(binding.get_object() is declared.get_object(), eq=True)
+            tm.that(
+                binding.get_definition_location(),
+                eq=declared.get_definition_location(),
+            )
+
+    @staticmethod
+    def test_unresolved_external_binding_cannot_reuse_an_earlier_import(
+        tmp_path: Path, installed_dependency_path: Path
+    ) -> None:
+        """A completed unknown assignment never forwards the stale native import."""
+        (installed_dependency_path / "unresolved_provider.py").write_text(
+            "from pydantic import BaseModel\nBaseModel = None\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with (
+            closing(u.Infra.init_rope_project(tmp_path)) as project,
+            pytest.raises(
+                ValueError,
+                match=(
+                    r"Unresolved declared provider base: "
+                    r"unresolved_provider\.BaseModel"
+                ),
+            ),
+        ):
+            u.Infra.source_member_binding(
+                project,
+                m.Infra.SourceClassReference(
+                    target="unresolved_provider",
+                    attributes=("BaseModel",),
+                    qualified_base="unresolved_provider.BaseModel",
+                ),
+            )
 
     @staticmethod
     def test_bound_source_resolver_reads_a_member_before_ordering_classes(
@@ -69,11 +120,13 @@ class TestsFlextInfraSourceMemberResolver:
                 attributes=("c",),
                 qualified_base=f"{child.target}.c",
             )
-            for captured in ({}, {"resolver_port": (source, content)}):
-                completed = u.Infra.source_member_resolver(project, sources=captured)
+            for capture in (False, True):
+                completed = u.Infra.source_member_resolver(
+                    project,
+                    sources={"resolver_port": (source, content)} if capture else {},
+                )
                 tm.that(
-                    completed(published).get_object()
-                    is completed(child).get_object(),
+                    completed(published).get_object() is completed(child).get_object(),
                     eq=True,
                 )
             names = ("resolver_first", "resolver_second")

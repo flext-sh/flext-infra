@@ -210,6 +210,10 @@ class FlextInfraModelsRope:
             t.NonEmptyStr,
             m.Field(description="Qualified module name under inventory"),
         ]
+        provider: Annotated[
+            m.InstanceOf[p.Infra.RopeSourceModule],
+            m.Field(description="Native provider elected for the captured source"),
+        ]
         package: Annotated[
             str,
             m.Field(description="Enclosing package name of the module"),

@@ -75,11 +75,10 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             bool,
             m.Field(
                 description=(
-                    "Tracked directory of foreign-generator output (for example "
-                    "protoc modules) that ships and imports as a regular "
-                    "package: never gitignored, ignored by every source scan, "
-                    "excluded by every lint/type/codemod gate, and given a "
-                    "generated package initializer"
+                    "Tracked directory of generator output that ships and imports "
+                    "as a regular package: never gitignored and given a generated "
+                    "package initializer, without excluding executable source "
+                    "from analysis or establishing third-party provenance"
                 ),
             ),
         ] = False
@@ -232,41 +231,12 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = ()
-        parameterized_case_dirs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Structured test-case parameterization directories: "
-                    "fixture twins whose bodies mirror their case tables"
-                ),
-            ),
-        ] = ()
-        part_container_dirs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Declared part-container directories: mechanical "
-                    "declaration splits whose overlap is structural, not "
-                    "authored duplication"
-                ),
-            ),
-        ] = ()
-        helper_modules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Declared helper module filenames (coverage aggregation "
-                    "and similar mechanical companions)"
-                ),
-            ),
-        ] = ()
         scenario_data_roots: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
-                    "Project-relative roots of tests-tier scenario trees "
-                    "(ADR-028): complete roots and descendants are artifacts "
-                    "the engines under test consume as data, never governed code"
+                    "Project-relative fixture materialization and pytest collection "
+                    "roots; Python contents remain governed by lint and type analysis"
                 ),
             ),
         ] = ()
@@ -502,13 +472,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             return tuple(
                 artifact.name
                 for artifact in self.artifacts
-                if artifact.source_scan_ignore or artifact.generated_source
+                if artifact.source_scan_ignore
             )
 
         @m.computed_field
         @property
         def generated_sources(self) -> t.VariadicTuple[str]:
-            """Derived names of the tracked foreign-generator source trees.
+            """Derived names of the tracked generator-owned source trees.
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
@@ -523,7 +493,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         @m.computed_field
         @property
         def generated_source_globs(self) -> t.VariadicTuple[str]:
-            """Derived path globs every analyzer excludes for generated sources.
+            """Derived generation-ownership globs, not analyzer exemptions.
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
@@ -766,10 +736,9 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                             else f"**/{artifact.name}"
                         )
                         for artifact in self.artifacts
-                        if artifact.analysis_exclude or artifact.generated_source
+                        if artifact.analysis_exclude
                     }
                     | {f"**/{name}/**" for name in self.check_excluded_dirs}
-                    | set(self.scenario_data_globs)
                 )
             )
 
@@ -822,19 +791,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
             """
             return tuple(dict.fromkeys(self.exclusions.docs_copy))
-
-        @m.computed_field
-        @property
-        def scenario_data_globs(self) -> t.VariadicTuple[str]:
-            """Derived globs of complete artifact trees at each declared root.
-
-            Returns:
-                One recursive pattern per declared root.
-
-            """
-            return tuple(
-                f"**/{root}/**" for root in self.exclusions.scenario_data_roots
-            )
 
         @m.computed_field
         @property

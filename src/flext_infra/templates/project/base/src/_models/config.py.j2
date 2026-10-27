@@ -1,5 +1,4 @@
-{# NOTE:the pure config model owns every generated runtime value. -#}
-"""{{ class_stem }} pure Pydantic config models.
+"""{{ class_stem }} model-family configuration composition.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,31 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import m, t
+from {{ package_name }}.config_models import (
+    {{ class_stem }}ConfigModels as _ConfigModels,
+)
 
 
-class {{ class_stem }}ConfigModels:
-    """Field-only Pydantic declarations for the {{ ns }} config singleton."""
-
-    class ConfigNamespace(m.ImmutableValueModel):
-        """Validated values loaded from ``config/{{ ns }}.yaml``."""
-
-        name: t.StrictStr = m.Field(description="Project display name")
-        description: t.StrictStr = m.Field(description="Project purpose")
-        version: t.StrictStr = m.Field(description="Declared project version")
-        ping_command_name: t.StrictStr = m.Field(
-            description="Configured name of the ping command",
-        )
-        ping_help_text: t.StrictStr = m.Field(
-            description="Help text for the ping command",
-        )
-        ping_success_message: t.StrictStr = m.Field(
-            description="Message emitted after a successful ping",
-        )
-        ping_reply: t.StrictStr = m.Field(description="Reply returned by ping")
-        disabled_reply: t.StrictStr = m.Field(
-            description="Reply returned when ping is disabled",
-        )
+class {{ class_stem }}ConfigModels(_ConfigModels):
+    """Compose the single layer-zero schema owner into the public model family."""
 
 
 __all__: list[str] = ["{{ class_stem }}ConfigModels"]

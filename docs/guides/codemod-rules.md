@@ -297,9 +297,12 @@ executable module's guarded `main()` entry point and generator-emitted dunders
 (generator law p.11), plus the tests-tier delta of ADR-028 p.6 — pytest
 fixtures, `pytest_*` hooks and `pytest_plugins` at module level in `conftest.py`.
 Shared executable declarations belong to `c/t/p/m/u.Tests.*` and test modules
-remain governed. The complete `tests/fixtures/` tree is artifact data, excluded
-from source admission, lint, generation and refactoring. Python filenames remain
-valid engine inputs there; their bytes are never interpreted as suite support.
+remain governed. Fixture materialization roots do not define source-inventory,
+lint or type-analysis exclusions: directory-scoped iteration and repository-scoped
+discovery admit their Python files under the existing ownership checks, including
+fixture support and Python scenarios. Non-Python resources are not selected as
+Python sources. Materialization and automatic pytest
+collection retain their separate source-owned configuration.
 The test-import DAG rejects package/pytest wiring and static imports from those
 roots. `ban-artifact-execution` rejects literal executable loader and pytest plugin
 references using the native fact derived from `exclusions.scenario_data_roots`.

@@ -241,7 +241,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
                     forwarded_signal=None,
                 ),
             )
-        rendered_config = self._render_config(project_dir, scope.value)
+        rendered_config = self._render_config(project_dir)
         if rendered_config.failure:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -410,7 +410,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         repository = loaded.value.spec.repository
         return r[t.StrSequence].ok(repository.duplication_trees)
 
-    def _render_config(self, project_dir: Path, scope: t.StrSequence) -> p.Result[Path]:
+    def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
 
         R2: Reads thresholds from [tool.flext.project] config SSOT.
@@ -433,13 +433,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
-            ignore=(
-                *self._derived_ignore_patterns(),
-                *u.Infra.generated_projection_patterns(
-                    self._repository_root,
-                    tuple(self._repository_root / directory for directory in scope),
-                ),
-            ),
+            ignore=self._derived_ignore_patterns(),
             ignorePattern=passes.ignore_patterns,
             minLines=overrides.min_lines,
             minTokens=overrides.min_tokens,
@@ -483,9 +477,9 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         exception: the ast-grep corpus topology read from the declared
         sgconfig fixtures (provider resource and the repository-local delta
         when declared), the declared ast-grep snapshot directory,
-        resolver-owned lockfile emission, and the declared exclusion
-        registry's structural fixture/container/helper names. Generator
-        projections come from the one generated-projection owner.
+        and resolver-owned lockfile emission. Case directories, part
+        directories and helper filenames do not establish ownership exemptions.
+        Owned generated sources remain subject to clone analysis.
 
         Returns:
             The resulting ``t.StrSequence``.
@@ -507,13 +501,6 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             globs.extend(self._sgconfig_fixture_globs(corpus_root_rel, local_root))
         globs.append(f"**/{c.Infra.CODEMOD_SNAPSHOT_DIRNAME}/**")
         globs.extend(f"**/{name}" for name in config.Infra.codegen.resolver_owned_files)
-        exclusions = config.Infra.codegen.exclusions
-        structural = (
-            *exclusions.parameterized_case_dirs,
-            *exclusions.part_container_dirs,
-        )
-        globs.extend(f"**/{name}/**" for name in sorted(set(structural)))
-        globs.extend(f"**/{name}" for name in sorted(set(exclusions.helper_modules)))
         return tuple(dict.fromkeys(globs))
 
     @staticmethod

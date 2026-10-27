@@ -336,8 +336,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
 
         """
         # The gate scans the same inventory `make mod` rewrites: trees the
-        # codegen artifact SSOT ignores for source scans (generated sources
-        # included) stay outside it even when Git tracks them.
+        # codegen artifact SSOT explicitly ignores for source scans stay outside
+        # it. Generation ownership alone does not exclude a source tree.
         globs: t.StrSequence = tuple(
             f"!{dir_name}/"
             for dir_name in sorted({

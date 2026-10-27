@@ -1,0 +1,41 @@
+{# NOTE:the pure config model owns every generated runtime value. -#}
+"""{{ class_stem }} pure Pydantic config models.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
+
+
+class {{ class_stem }}ConfigModels:
+    """Field-only Pydantic declarations for the {{ ns }} config singleton."""
+
+    class ConfigNamespace(BaseModel):
+        """Validated values loaded from ``config/{{ ns }}.yaml``."""
+
+        model_config = ConfigDict(
+            frozen=True, extra="forbid", validate_assignment=True, defer_build=True
+        )
+
+        name: StrictStr = Field(description="Project display name")
+        description: StrictStr = Field(description="Project purpose")
+        version: StrictStr = Field(description="Declared project version")
+        ping_command_name: StrictStr = Field(
+            description="Configured name of the ping command",
+        )
+        ping_help_text: StrictStr = Field(
+            description="Help text for the ping command",
+        )
+        ping_success_message: StrictStr = Field(
+            description="Message emitted after a successful ping",
+        )
+        ping_reply: StrictStr = Field(description="Reply returned by ping")
+        disabled_reply: StrictStr = Field(
+            description="Reply returned when ping is disabled",
+        )
+
+
+__all__: list[str] = ["{{ class_stem }}ConfigModels"]

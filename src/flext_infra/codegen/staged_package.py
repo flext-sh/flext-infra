@@ -384,7 +384,10 @@ class FlextInfraStagedPackage:
         """
         result_type = r[dict[Path, int]]
         if len({plan.path for plan in declared_files}) != len(declared_files):
-            return result_type.fail("candidate has competing declared file effects")
+            return result_type.fail(
+                "candidate has competing declared file effects; "
+                + u.Infra.codegen_duplicate_effect_diagnostic(declared_files)
+            )
         if any(plan.path not in updates for plan in declared_files):
             return result_type.fail("declared file has no desired source effect")
         effect_modes = {

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
-from collections.abc import Generator
+from collections.abc import Generator, MutableMapping
 from contextlib import closing, contextmanager
 from pathlib import Path
 
@@ -35,6 +35,138 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 
 class FlextInfraUtilitiesWorkspaceSnapshot:
     """Build the one snapshot of a workspace run and answer its queries."""
+
+    @classmethod
+    @contextmanager
+    def facade_source_project(
+        cls,
+        root: Path,
+        *,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        planned_sources: t.MappingKV[Path, str | None] | None = None,
+        project_roots: t.VariadicTuple[Path] = (),
+    ) -> Generator[t.Pair[p.Infra.RopeProject, MutableMapping[Path, str]]]:
+        """Open the native source view with authenticated planned overrides.
+
+        Yields:
+            The native project and its elected captured Python sources.
+
+        Raises:
+            ValueError: If a project root escapes its authority.
+
+        """
+        root = root.resolve()
+        project_roots = tuple(sorted({project.resolve() for project in project_roots}))
+        if any(not project.is_relative_to(root) for project in project_roots):
+            msg = "Rope declared project root is outside the original authority"
+            raise ValueError(msg)
+        if planned_sources:
+            declared_files = cls._workspace_declared_sources(
+                root, declared_files, planned_sources
+            )
+        original_root = next(path for path in (root, *root.parents) if path.is_dir())
+        folders = cls._workspace_planned_folders(
+            root, project_roots, declared_files, original_root=original_root
+        )
+        with cls.workspace_overlay_project(
+            root,
+            project_roots,
+            declared_files=declared_files,
+            additional_source_folders=folders,
+        ) as project:
+            yield (
+                project,
+                {
+                    path: project.source_text(path)
+                    for scope in project_roots or (root,)
+                    for path in (
+                        FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                            scope,
+                            workspace_excluded_top_dirs=frozenset(),
+                            source_project=project,
+                        )
+                    )
+                },
+            )
+
+    @staticmethod
+    def _workspace_planned_folders(
+        root: Path,
+        project_roots: tuple[Path, ...],
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        *,
+        original_root: Path,
+    ) -> tuple[str, ...]:
+        """Elect live and proposed source folders from the same native authority.
+
+        Returns:
+            The elected relative source folders.
+
+        """
+        proposed = tuple(
+            plan.path for plan in declared_files if plan.desired_content is not None
+        )
+        return tuple(
+            sorted({
+                ""
+                if folder == original_root
+                else folder.relative_to(original_root).as_posix()
+                for folder in (
+                    root,
+                    *project_roots,
+                    *(
+                        project / name
+                        for project in (root, *project_roots)
+                        for name in config.Infra.source_scan.roots
+                    ),
+                )
+                if folder.is_dir()
+                or any(path.is_relative_to(folder) for path in proposed)
+            }),
+        )
+
+    @staticmethod
+    def _workspace_declared_sources(
+        root: Path,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        planned_sources: t.MappingKV[Path, str | None],
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        """Bind planned overrides to their original physical witnesses.
+
+        Returns:
+            Declared plans including authenticated source overrides.
+
+        Raises:
+            ValueError: If planned bytes conflict with a declared plan.
+
+        """
+        declarations = {plan.path: plan for plan in declared_files}
+        for supplied_path, source in planned_sources.items():
+            path = supplied_path.resolve()
+            content = source.encode(c.DEFAULT_ENCODING) if source is not None else None
+            declared = declarations.get(path)
+            if declared is not None:
+                if declared.desired_content != content:
+                    message = f"Rope planned source has competing declarations: {path}"
+                    raise ValueError(message)
+                continue
+            before = u.Cli.atomic_read_binary_file_state(path).unwrap()
+            declarations[path] = m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=before,
+                desired_content=content,
+                desired_mode=(
+                    None
+                    if content is None
+                    else (
+                        before.mode
+                        if before.mode is not None
+                        else config.Infra.codegen.modes.file_default
+                    )
+                ),
+            )
+        return tuple(declarations.values())
 
     @staticmethod
     @contextmanager

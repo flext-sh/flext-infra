@@ -317,6 +317,13 @@ declared operation; `make check` validates without applying repairs. Change this
 authored contract before its presentation text, then publish through the docs owner,
 never by editing a generated README.
 
+Documentation templates resolve from the installed package resource owner exposed
+by `FlextInfraConfig.ssot_config_dir().parent`, under `templates/docs/`, never
+relative to the renderer module's position. The codegen catalog's `project` root
+selects project scaffolding, not documentation templates. Rendering retains the
+CLI's authenticated native template loader and source witnesses; a missing source
+fails without creating directories or searching alternate roots.
+
 The public `FlextInfraDocGenerator.prepare_bundle()` and `plan_files(bundle)`
 surfaces expose the captured render and destination plans before publication.
 Inspect the entire inventory: `docs generate` also plans documentation indexes,
@@ -413,8 +420,12 @@ offset and produce authenticated create/retire file effects. Planning does not
 move or write source files. The artifact retains the original binding epoch,
 consumer scope and candidate updates. `refactor rename-preview` and `make mod`
 with the existing rename artifact input rederive that candidate and reject
-source drift before publishing through the shared semantic transaction. Each
-consumer retains its own native source-folder election, so independently owned
+source drift before publishing through the shared semantic transaction. A
+candidate mismatch reports the differing candidate fields and the first differing
+record's metadata field names, without logging source bytes or configuration
+values. Ordered closure differences remain authentication failures; diagnostics
+do not normalize, replace or exempt any persisted candidate field.
+Each consumer retains its own native source-folder election, so independently owned
 `tests` packages do not compete for one module identity. Provider, receivers and
 generated exports form one declared dependency group. Projection planning reads
 the original authenticated native overlay, including proposed module retirement;
@@ -442,6 +453,11 @@ modules, preserving functions, constants, aliases, class bodies and inheritance.
 Quoted type positions are selected by original native module identity and the
 existing quoted-type owner, with native import binding election. Ordinary
 string payloads are not filename replacements.
+Native annotation-scope rejection reports both scope counts and the first
+differing declaration (bounded, without source payloads) in the primary exception
+message, so CLI transports that omit exception notes retain the causal evidence.
+The lexical-declaration and name-capture guards remain mandatory; a scope-order
+hypothesis alone never authorizes accepting a changed candidate.
 
 No directory, module or Rope metadata is created while planning. Native rename
 intermediates are lookup-only and never published; an occupied intermediate is
@@ -647,8 +663,21 @@ and lazy exports. The one exception is the model→protocol stage, which the ope
 ordered restored and run on every `make gen` (2026-10-24: "fazer os protocolos de
 forma automática por flext-infra (já existe e tem que estar ativo e sempre rodar no
 make)"). Its generated `p.*` protocols are projections of the declared models, not
-authored mirrors. Restoration is tracked by bead `flext-vjj1s.8`; until it lands, no
-such stage exists. The utility path delegates
+authored mirrors. Restoration is tracked by bead `flext-vjj1s.8`. The restored
+projection reads the invocation's authenticated native model inventory and C3
+declarations, selects consumed structural data contracts and closes their model
+dependencies without importing the target package. It emits annotated attributes,
+not model methods, defaults, validators or SDK signatures. Protocol sources join
+the existing candidate before recursive facade and lazy-export convergence and use
+the same publisher and read-only drift comparison. It adds no CLI route, per-model
+catalog or separate publication engine. Runtime acceptance remains with the
+coordinator; this source restoration alone is not generation or gate evidence.
+The workspace snapshot and injected native candidate own source authentication;
+the projector consumes their existing source-access contract, not a separate
+project flag. Builtin annotation identities use the native semantic-module
+adapter before attribute lookup. Private renderer helpers preserve that same
+inventory, candidate and dependency closure without opening another project.
+The utility path delegates
 directly to the declaration planner. Static and runtime consumer checks retain
 their own import-failure verdicts.
 Generated protocol and model namespace assignments are derived output, not new
@@ -658,6 +687,11 @@ order, including their declared overrides. A stale renamed alias cannot publish
 itself or shadow a different inherited contract. The generated ownership marker
 and native class identity are both required; unrelated namespace members remain
 unchanged, and contradictory authored class bindings still fail before publication.
+An upstream owner containing the target class under another name does not prove
+that the receiving namespace inherits that publication. Redundancy is resolved
+against the effective same-named member of that namespace, not an arbitrary
+attribute anywhere in its ancestors. Composed utility providers retain their
+separate callable-cohort admission.
 This also applies to a generated, declaration-only subclass alias whose name is
 already supplied by a canonical inherited class. The inherited declaring owner
 wins even when the old alias names a retired top-level model; the generator
@@ -687,6 +721,8 @@ the TypeAlias import, reported location and native RHS class checks remain requi
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
+The final generated facade also prunes an unused typing guard import through the
+native import visitor, even when its export declaration was already canonical.
 Runtime-base discovery treats supplied planned bytes as authoritative, including
 unpublished packages. Original-file reads and package membership checks retain
 their native project-tree scope; planned initializer bytes own alias analysis.
@@ -700,11 +736,12 @@ planned project view. Local scope, value shadowing, module-as-base, cyclic route
 and unknown bindings retain their native failure; spelling alone never proves
 that a base can be dropped. No private import or live-disk replacement may bypass
 that public source provenance.
-The upstream import and the locally published facade letter must have distinct
-bindings. Reassigning an imported letter to the local class makes that export a
-variable rather than a type alias for static consumers. Treat the local publication
-as an occupied name and use the existing package-qualified upstream import alias;
-preserve the public letter, class identity and declaration-time base references.
+Upstream import bindings follow ADR-028 Decision 10: preserve a used bare letter
+or a source-proven existing alias according to the declaration's header references.
+A later publication of the package's own letter does not alone require aliasing the
+upstream import. Diagnose a static/runtime binding disagreement against the same
+captured declarations and lazy exports before changing that election; an inferred
+duplicate base does not prove that distinct native components may be removed.
 The runtime-base inventory retains its exact native declaring module by reference
 through binding lookup. A native module display name is not an import path:
 search-root election may shorten it or collide with another package. Captured
@@ -725,6 +762,42 @@ replace the declaration-line lexical view used to resolve that class's bases.
 Literal dunder metadata on a bound provider does not bind or replace a class.
 Recognize that metadata in both completed and conditional source inventories;
 ordinary attribute rebinding still requires its declared class-namespace owner.
+Instance attribute stores do not publish class bindings. Classify their receiver
+through the elected native source provider and the current source-binding state,
+not the assigned value or a library-specific metadata spelling. Native class
+objects and source-declared class receivers retain namespace-mutation admission;
+structural stores never become instance metadata exemptions.
+Exception branches are inventoried independently from the same incoming bindings.
+Equal references retain their binding. Differing ordinary function or value
+bindings require native object-kind proof for every present alternative, including
+unknown lexical values; absence is distinct from an unresolved value. A single
+proven function alias remains available to later consumers without claiming that
+its return value is a class. Differing class references and unproven potential
+class origins retain fail-closed admission. Finally statements apply to the merged
+binding state; neither import probing nor executing a branch establishes its kind.
+Native value evidence retains literal RHS provenance: looking up a Boolean literal
+as a module attribute may yield an opaque native builtin, not its expression type.
+For source-function calls, the existing annotation-origin owner resolves the return
+annotation in its defining native scope. A concrete builtin-backed data constraint
+is separate evidence, never a fabricated instance or class identity. Metaclass and
+universal-object constraints, unresolved aliases, and an actually inferred class
+cannot receive that data proof. Function aliases remain unchanged for later factory
+consumption. Native inference and source-declared return constraints are consumed
+together; the annotation does not override a proven class result.
+These native queries are public capabilities of the existing runtime MRO:
+`call_data_return_constraint` consumes the canonical annotation-origin owner,
+while `concrete_data_class` and `definition_location` belong to its lower native
+query owner. Consumers use those inherited methods directly, without private
+cross-class access, forwarding aliases or a second implementation.
+Foreign attribute receivers are checked by their exact native expression binding,
+including subscriptions, not by stripping the receiver to its root name. A store
+without a source-declared or native class receiver does not invalidate unrelated
+class identities; unknown inference does not manufacture a class receiver. Known
+class receivers and structural stores retain mutation rejection. Protobuf's
+standard builder publishes message descriptors and message classes under separate
+bindings: descriptor serialization offsets are value metadata, not class bindings.
+Generated protobuf sources remain in whole-code admission, unchanged by this rule;
+neither generated headers nor descriptor names grant an exemption.
 When a package has no explicit binding for a name, a native submodule of that
 name remains a valid import provider. Resolve its remaining class path through
 the same native source owner; an explicit value binding keeps precedence and
@@ -789,7 +862,13 @@ remain errors.
 
 `plan_component_facades` stages domains deepest-first, their dependent
 initializers, all root family facades, and the final package exports in one
-candidate. Conformance and other callers inject the same
+candidate. Native ownership is elected from the observed-source snapshot before
+pending initializer projections can withhold a still-consumed export. Moves and
+consumer rewrites retain their original witnesses in the current candidate. An
+unresolved observed owner remains an error, never an accepted native class.
+Later rounds recognize a moved owner only through its recorded creation and
+retirement plans and the canonical candidate's native composition proof.
+Conformance and other callers inject the same
 `FlextInfraCodegenLazyInit.plan_candidate` initializer capability. Module moves
 authenticate any existing candidate against its declared `CodegenFilePlan`
 bytes and original physical witness; lazy installer targets participate in the
@@ -802,6 +881,9 @@ Conform supplies its complete initial lazy plan through the existing
 Only the existing unchanged-input and foreign-provider predicate permits seed
 reuse; actual facade or consumer effects still require export replanning.
 Component composition consumes the caller's existing source-view capability.
+The workspace snapshot owns the source-view factory, planned-folder election and
+authenticated planned-source witnesses. Publication inherits that factory; native
+workspace queries consume it directly without importing the publication facade.
 The targeted `facades` surface authenticates its existing destination module and
 published family before selecting that package's recursive family cohort. The
 same component, initializer, import-normalization and candidate-admission owners
@@ -810,10 +892,43 @@ all owned families. Unrelated family drift is not added to the selected cohort.
 Native declarations elect an authored methodless composition beside or inside
 its private child domain before any missing identity is derived. Suppliers must
 come from other native domain modules, not the holder's own nested declarations.
+An existing public namespace's native MRO authenticates its composition holder:
+that holder's declaration-time class publications may supply its component MRO
+without reclassifying ordinary type publications globally. Once the composed
+receiver binds identical native callables and their consumer cohort is closed,
+stateless method-provider publications retire rather than preserving compatibility
+paths. Native entity and stateful-helper publications retain their declarations.
+Native module moves retain the holder name, retire its old module and carry every
+observed consumer and export effect in that same candidate.
+Callable receiver rewrites admit only native load contexts. Assignment, deletion
+and augmented assignment retain their mutation owner and block provider-publication
+retirement when that owner would otherwise disappear from the candidate.
 An inherited component is not a competing owner when another candidate is its
 strict native descendant. Elect maximal owners by source ancestry; incomparable
 owners still fail. An existing family `base.py` that is already the domain's
 canonical sibling stays in place rather than being rejected as a relocation.
+An authenticated composition already published at the canonical sibling takes
+precedence over broader compositions that reuse its capabilities. Otherwise a
+consumer's larger MRO could displace the domain's actual owner. Canonical location
+does not waive the native declaration and supplier proofs above.
+An ambiguous election reports each candidate's native bases, declaration-member
+suppliers and callable receivers separately, with bounded identities and total
+counts. Only declaration-time bases and published members establish namespace
+composition. Callable receivers are diagnostic consumer evidence, never owner or
+containment evidence. If no authored composition exists, derive the canonical
+missing facade; do not elect an unrelated caller to avoid creating it.
+An occupied destination without elected ownership still fails before seeding or
+moving source. Its diagnostic records the elected path, class and source owner,
+the candidate project's root, and bounded exported native class identities and
+base origins from that same authenticated source view. Candidate/native source
+agreement is reported as a boolean; source contents and native object reprs are
+never included. Physical source alone does not prove candidate ownership.
+Nested class composition supplies ownership evidence through its native ancestry
+too: a namespace that exposes a derived nested contract consumes the contract's
+base. Class-supplier discovery first classifies declared members through the
+existing facade-member policy. Positively declared constant values do not become
+class suppliers merely because their values originate in another domain module;
+their ordinary value inference is not a facade-ownership prerequisite.
 Its class name is retained when the native module move places that owner at its
 canonical sibling. The complete source inventory, consumer rewrites, dependent
 initializers and original file witnesses stay in one candidate. The root private
@@ -892,6 +1007,25 @@ repository is reached. Configuration failures escape unchanged. Existing
 receipt-based operations retain their own admission contracts. Full applicable
 checks remain required before completion and integration; a member-only receipt
 never claims fleet completion.
+
+Ruff's native findings exit is classified before policy can erase its explanation.
+When the existing per-identity exemption owner authenticates every original native
+diagnostic, the lint producer may report an effective clean execution while retaining
+the original process status and verbatim output receipt. An empty native report,
+unexplained findings exit, unauthenticated diagnostic, stderr failure, timeout or
+signal never qualifies. Operational errors always fail the displayed gate verdict;
+a green Markdown row cannot override an error in the original typed SARIF summary.
+Receipt admission continues to consume that same phase-specific report and its
+original byte bindings, never a fabricated receipt or an older green invocation.
+
+Within a read-only check invocation, prerequisite gates run first, but their
+failed verdicts do not suppress the remaining requested diagnostic gates unless
+explicit fail-fast is selected. All native findings and receipts remain in the
+same aggregate report; a fully measured red result is not an incomplete target
+inventory and never becomes green. Interrupted execution still stops, and
+mutating checks retain prerequisite admission. Missing project or gate executions
+remain incomplete and fail closed. This diagnostic collection does not admit
+tests, publication or any subsequent lifecycle phase on red prerequisite evidence.
 
 The phase-aware Make and CI consumers are generated projections. Until the
 updated template is published, use the native `workspace check --phase primary`
@@ -1685,16 +1819,31 @@ ambient or process-global state:
   through the wave it receives, so an interrupt reaches every owned process group.
   Repairs and explicit fail-fast runs stay serial.
 
+Repair invocations execute their complete requested fixable-gate inventory in
+declared order, with the same applicability and explicit fail-fast policy. The
+read-only prerequisite partition must not strand pending repairs after an ordinary
+failed verdict. Repair completion retains every actual finding and receipt; it
+does not imply an independent read-only verification pass or project acceptance.
+Interrupted or fail-fast executions retain unexecuted targets as incomplete.
+
 Every gate assembles its result through one builder: the native output receipt is
 published, every finding blocks acceptance, and an undeclared native outcome is
 derived from the findings and the tool verdict.
 
-The duplication and smells gates analyse authored sources only. Generator
-projections repeat their template by contract, so the generated projection surface
-has one owner, derived from each projection's own generator marker and the
-generated-artifact catalog, never from a hand-kept glob list. The jscpd
-configuration and the rendered `qlty.toml` both consume that owner; the template a
-projection comes from is measured at its source. No authored code is excluded.
+The duplication and smells gates analyse all owned executable sources, including
+generated Python in `src/`, `tests/`, `examples/` and `scripts/`. Generator markers
+and generated-artifact catalog membership establish generation ownership, not
+third-party provenance or an analysis exemption. Measuring a template does not
+replace measuring its executable output. The license header remains the only
+clone-content exception. Genuine third-party exclusions require canonical policy
+paths and proven provenance; a directory basename such as `protos` proves neither.
+The artifact's `generated_source` flag controls tracked generation ownership and
+package-initializer production only. It does not feed analyzer exclusions, native
+source-scan ignored resources, SonarCloud exclusions or module-cap exemptions.
+Native discovery and gate targets admit owned generated Python, including modules
+under `protos`, through the same configured source roots as authored Python.
+The generated-module rule fact remains available for the specific static import
+publication contract; it is not a blanket file-admission exemption.
 
 Tracked Pyright configurations contain analysis policy and import roots, without
 `venv` or `venvPath` bindings to the checkout that generated them. The native gate
@@ -2365,6 +2514,27 @@ and canonical defaults; closed domains use `c.StrEnum`, while free-form text sta
 open. Type narrowing and redundant conversions are not transport mechanisms.
 Conflicting observations still fail.
 
+Candidate file-effect admission reports duplicate destination paths with bounded
+producer ownership, original and desired byte digests, modes and tracking metadata,
+never source payloads. This diagnostic consumes the declared plans already in memory;
+it does not reread physical files. A duplicate is not proof of a sequential producer
+chain: composition must authenticate that chain and retain its original physical CAS
+witness before admission. Independent competing desired contents remain failures.
+Managed generation and documentation can independently declare the same unchanged
+`pyproject.toml`. Before normalization, their shared file-plan composition owner
+coalesces only effects with equal project, complete original source state (including
+lexical source metadata), ownership, policy, tracking, index witness, desired bytes
+and desired mode. It retains the first original witness by reference and unions
+tracking dependencies in producer order. Hash equality alone never admits a plan.
+Only explicitly ordered, source-derived projection composition may advance desired
+contents; independent documentation effects cannot claim that lineage.
+When complete generation invokes documentation, it supplies the composed managed
+file plans to the presentation-metadata producer. That producer projects the locale
+leaf from the candidate's desired bytes, not the physical pre-generation manifest,
+and retains the original witness, publication metadata and dependencies. Only these
+explicitly derived metadata effects join the managed plans as an ordered phase;
+independent rendered documentation effects retain strict identical-effect admission.
+
 Repository rendering owns one assignment-validated `CodegenRenderInputs` state
 per planning operation. Its static target, workspace, codegen policy, artifact
 snapshot and branch references are read-only; only planned requirements and the
@@ -2392,6 +2562,42 @@ equivalent authored component declaration; its complete value and native type
 identity must agree. Declaration retirement and consumer rewrites share one
 authenticated candidate. Layer-zero modules retain their configured runtime roles,
 and generation still rejects genuinely mixed scalar/class facades.
+Before facade model-owner validation, generation may repair exported singleton
+model entities declared directly in model-family modules through the existing
+class-nesting engine. This bounded entry uses
+the authenticated candidate's repository workspace and native model ancestry;
+it does not run helper promotion, family flattening or unrelated nesting. The
+entity retains its name, bases, fields and methods inside a same-named namespace
+holder. Native identity consumer rewrites and structural edits join the shared
+source plan with their original CAS witnesses; generated consumers remain excluded
+and are regenerated after rebinding. No intermediate publication, parallel project
+model or recursive public operation participates. Runtime acceptance remains with
+the coordinator's serialized generation and gate cycle.
+Fieldless namespace declarations are not singleton entities merely because they
+inherit a model preset. Before wrapping, the same semantic owner proves that the
+declaration contains only nested payload models and inert documentation, has no
+decorators, class keywords, type parameters, fields, configuration or methods,
+and directly inherits the exact native canonical arbitrary-types model preset.
+The existing wrapper consumer census must prove no constructor, type, base,
+value or inherited-member use, including quoted annotations. Only then may its
+incorrect model ancestry be removed. Arbitrary custom bases are never discarded.
+A plain holder containing that same-named, otherwise pure model namespace is
+recovered by the existing identity-bound wrapper promotion and source-region
+unwrapping machinery, without prefixing or copying the nested payloads. All
+payload declarations, defaults and subtype relationships remain unchanged; the
+facade regains those members through canonical holder MRO. Real entity uses
+block promotion, and field-bearing singleton entities retain their nesting rule.
+The existing seed owner rebinds its authenticated source view between private
+repair epochs until no source edit remains, retaining original file witnesses
+through every epoch and rejecting repeated nonconvergent candidates. Namespace
+normalization and real entity nesting therefore complete before facade validation
+in one unpublished candidate, even when both shapes occur in one repository.
+Selected model-facade planning restricts declaration repair to its admitted package
+while retaining the repository's authored consumer population; selecting another
+family does not schedule model repair.
+Family discovery returns textual catalogue letters; singleton admission compares
+their values, not object identity with the facade-family enumeration. This
+selection precedes native model-ancestry proof and never replaces it.
 The rule catalogue belongs to the elected repository root, not the physical Rope
 workspace root that an attached member shares with its containing workspace.
 
@@ -2891,6 +3097,20 @@ runtime dependencies that would introduce a cycle retain their original provider
 Import aliases keep their lexical binding. Unknown origins, conflicting owners
 and incompatible member paths fail before publication; a matching letter or
 directory name never proves identity.
+
+Before boundary validation, normalization may repair an own-family facade import
+only when native member identity proves every consumed reference's declaring
+owner and its nearest published export. The semantic cutover owner preserves
+lexical bindings and the original import's typing-only placement. Same-module
+owners, unresolved identities, captured bindings and unsupported quoted annotations
+remain blocking and require the canonical structural `make mod` route; generation
+does not relax the own-family ban. The rewritten candidate is reparsed and subject
+to the unchanged boundary, placement and native runtime-cycle validation.
+Corrective imports are emitted as separate native statement lines, never as
+semicolon-separated small statements. This preserves each import's physical span
+for subsequent line-based placement, including when runtime reads promote only
+some imports out of a typing guard. Leading and trailing comments remain attached
+to the rewritten statement group; no empty guard is masked with a synthetic pass.
 
 Deferred class annotations stay typing-only when native source ancestry proves
 ordinary class construction through `object`: undecorated declarations, no class

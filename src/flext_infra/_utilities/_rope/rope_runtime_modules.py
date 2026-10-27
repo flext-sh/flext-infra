@@ -26,62 +26,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 ):
     """Resolve lexical identities and construct Rope module/import objects."""
 
-    @staticmethod
-    def _source_import_binding(
-        binding: p.Infra.RopePyName,
-    ) -> p.Infra.RopePyName | None:
-        """Follow native imported names to their declaring source binding.
-
-        Returns:
-            The declared binding, or None for an unresolved or cyclic import.
-
-        """
-        imported: set[int] = set()
-        while isinstance(binding, p.Infra.RopeImportedName):
-            if id(binding) in imported:
-                return None
-            imported.add(id(binding))
-            supplier = (
-                binding.imported_module
-                .get_object()
-                .get_attributes()
-                .get(binding.imported_name)
-            )
-            if supplier is None:
-                return None
-            binding = supplier
-        return binding
-
-    @staticmethod
-    def definition_location(
-        binding: t.Infra.RopePyName,
-    ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
-        """Read native definition metadata, including annotation-only bindings.
-
-        Returns:
-            The original supplier and first assignment's logical declaration line.
-
-        Raises:
-            TypeError: The native annotation is not an expression node.
-
-        """
-        module, line = binding.get_definition_location()
-        if (
-            line is not None
-            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
-            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
-            or not binding.assignments
-        ):
-            return module, line
-        assignment = binding.assignments[0]
-        annotation = assignment.type_hint
-        if assignment.ast_node is not None or annotation is None:
-            return module, line
-        if not isinstance(annotation, ast.expr):
-            message = "native Rope assignment annotation is not an expression"
-            raise TypeError(message)
-        return module, module.logical_lines.logical_line_in(annotation.lineno)[0]
-
     @classmethod
     def annotation_alias_definition(
         cls,
@@ -96,7 +40,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             TypeError: If the native module does not expose a Python syntax tree.
 
         """
-        supplier = cls._source_import_binding(binding)
+        supplier = cls.source_import_binding(binding)
         if (
             supplier is None
             or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
@@ -132,7 +76,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             assignment has no resolved generic expression.
 
         """
-        supplier = cls._source_import_binding(binding)
+        supplier = cls.source_import_binding(binding)
         if (
             supplier is None
             or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
@@ -154,7 +98,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         else:
             return None
         scope = cls.scope_at(module, cls.source_offset(module.source_code, expression))
-        origin = cls.annotation_origin(project, expression, scope)
+        origin = (
+            cls.annotation_origin(project, expression, scope)
+            if from_value
+            else cls.resolve_symbol(scope, expression.value)
+        )
         return (origin, from_value) if origin is not None else None
 
     @classmethod
@@ -202,6 +150,47 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         return cls.annotation_origin(
             project, declaration.value, lexical, visiting=visiting | {identity}
         )
+
+    @classmethod
+    def call_data_return_constraint(
+        cls,
+        project: p.Infra.RopeProject,
+        expression: ast.expr,
+        scope: p.Infra.RopeScope,
+        *,
+        inferred: p.Infra.RopePyObject | None,
+    ) -> bool:
+        """Prove a source call's concrete data return without inventing a value.
+
+        Returns:
+            Whether its native return annotation excludes class identities.
+
+        """
+        if not isinstance(expression, ast.Call) or (
+            inferred is not None
+            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(inferred)
+        ):
+            return False
+        binding = cls.resolve_symbol(scope, expression.func)
+        function = None if binding is None else binding.get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(function):
+            return False
+        declaration = function.get_ast()
+        module = function.get_module()
+        if (
+            not isinstance(declaration, ast.FunctionDef)
+            or declaration.returns is None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+        ):
+            return False
+        context = module.get_source_binding_index().context_at(
+            cls.source_offset(module.source_code, declaration.returns)
+        )
+        origin = cls.annotation_origin(
+            project, declaration.returns, context.environment
+        )
+        candidate = None if origin is None else origin.get_object()
+        return cls.concrete_data_class(candidate)
 
     @classmethod
     def expression_name(

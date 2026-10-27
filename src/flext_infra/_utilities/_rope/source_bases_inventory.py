@@ -41,10 +41,14 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             The module's explicit lexical bindings, including value shadowing.
 
         Raises:
-            TypeError: If the elected provider does not return a module AST.
+            TypeError: If the elected provider is not a native source module or
+                does not return a module AST.
 
         """
         provider = cls.source_provider(request, provider=provider)
+        if not FlextInfraUtilitiesRopeRuntime.source_module(provider):
+            message = f"Captured file has no native source module: {request.path}"
+            raise TypeError(message)
         parsed = provider.get_ast()
         if not isinstance(parsed, ast.Module):
             message = f"Rope returned a non-module AST for {request.path}"
@@ -57,6 +61,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
         globals_: MutableMapping[str, m.Infra.SourceClassReference | None] = {}
         spec = m.Infra.SourceBindingCollectorSpec(
             module=request.module,
+            provider=provider,
             package=package,
             required_line=request.required_line,
             allow_conditional=request.allow_conditional,

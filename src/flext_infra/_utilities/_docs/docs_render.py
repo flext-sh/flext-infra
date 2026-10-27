@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesDocsRender:
         return (
             u.Cli
             .template_render_authenticated(
-                Path(__file__).resolve().parent.parent / "templates" / template,
+                FlextInfraConfig.ssot_config_dir().parent / "templates" / template,
                 context,
             )
             .unwrap()

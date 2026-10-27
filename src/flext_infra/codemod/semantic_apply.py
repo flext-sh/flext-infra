@@ -1110,11 +1110,68 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 for name in artifact_fields
                 if current_fields[name] != artifact_fields[name]
             ]
+            if "candidate" in differences:
+                differences.remove("candidate")
+                differences.extend(
+                    cls._rename_candidate_differences(
+                        artifact.candidate, rebuilt.value.candidate
+                    )
+                )
             return r[bool].fail(
                 "semantic rename artifact differs from current native plan; fields="
                 + ", ".join(differences)
             )
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _rename_candidate_differences(
+        original: m.Infra.StageSourcePlan,
+        current: m.Infra.StageSourcePlan,
+    ) -> t.VariadicTuple[str]:
+        """Describe exact candidate differences without emitting observed values.
+
+        Returns:
+            Candidate fields whose identities or recorded contents differ.
+
+        """
+        before = original.model_dump(mode="python")
+        after = current.model_dump(mode="python")
+        differences = [
+            f"candidate.{name}" for name in before if before[name] != after[name]
+        ]
+        for name, original_records, current_records in (
+            ("inputs", original.inputs, current.inputs),
+            ("declared_files", original.declared_files, current.declared_files),
+            ("layouts", original.layouts, current.layouts),
+            (
+                "candidate_layouts",
+                original.candidate_layouts,
+                current.candidate_layouts,
+            ),
+        ):
+            if len(original_records) != len(current_records):
+                differences.append(f"candidate.{name}.length")
+            for index, (old, new) in enumerate(
+                zip(original_records, current_records, strict=False)
+            ):
+                old_fields = old.model_dump(mode="python")
+                new_fields = new.model_dump(mode="python")
+                if old_fields != new_fields:
+                    differences.extend(
+                        f"candidate.{name}[{index}].{field}"
+                        for field in old_fields
+                        if old_fields[field] != new_fields[field]
+                    )
+                    break
+        for name, old_paths, new_paths in (
+            ("updates", original.updates, current.updates),
+            ("modes", original.modes, current.modes),
+        ):
+            if old_paths.keys() != new_paths.keys():
+                differences.append(f"candidate.{name}.keys")
+            elif old_paths != new_paths:
+                differences.append(f"candidate.{name}.values")
+        return tuple(differences)
 
     @staticmethod
     def _authenticate_rename_inputs(

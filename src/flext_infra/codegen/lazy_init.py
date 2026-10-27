@@ -18,6 +18,7 @@ from typing import Annotated, override
 from flext_cli import u
 
 from flext_infra import c, d, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
@@ -56,12 +57,14 @@ class FlextInfraCodegenLazyInit(
         *,
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         snapshot: p.Infra.WorkspaceSnapshot,
-        selection: t.Pair[Path, c.Infra.FacadeFamily] | None = None,
+        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan this candidate's exports through the existing public initializer.
 
         A selected facade retains its package and private-family projections,
         plus initializer consumers already changed by authenticated native moves.
+        A selected package retains its descendants and affected native consumers;
+        its absent family does not select every family in the repository.
         None preserves the complete repository planning contract.
 
         Returns:
@@ -70,15 +73,56 @@ class FlextInfraCodegenLazyInit(
         """
         with cls.facade_source_project(root, declared_files=declared_files) as (
             project,
-            _sources,
+            sources,
         ):
+            if selection is not None and selection[1] is None:
+                destination = selection[0]
+                consumers = {
+                    plan.path.parent / c.Infra.INIT_PY
+                    for plan in declared_files
+                    if plan.project == root
+                    and plan.path.suffix == c.Infra.EXT_PYTHON
+                    and FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect(
+                        plan
+                    )
+                    and plan.path.parent / c.Infra.INIT_PY in sources
+                }
+                files: dict[Path, m.Infra.CodegenFilePlan] = {}
+                for target in sorted({destination, *consumers}):
+                    module = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                        target, project_root=root, source_project=project
+                    )
+                    if not module:
+                        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
+                            f"selected initializer has no native package: {target}"
+                        )
+                    planned = cls(
+                        repository_root=root,
+                        project_scope_roots=(root,),
+                        module=module,
+                    ).plan_files(source_project=project, snapshot=snapshot)
+                    if planned.failure:
+                        return planned
+                    files.update(
+                        (file.path, file)
+                        for file in planned.value
+                        if file.path.is_relative_to(destination.parent)
+                        or file.path in consumers
+                    )
+                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(
+                    tuple(files[path] for path in sorted(files))
+                )
             planned = cls(repository_root=root, project_scope_roots=(root,)).plan_files(
                 source_project=project, snapshot=snapshot
             )
             if selection is None:
                 return planned
             destination, family = selection
-            family_root = destination.parent / cls.facade_families()[family].directory
+            family_root = (
+                destination.parent
+                if family is None
+                else destination.parent / cls.facade_families()[family].directory
+            )
             consumers = {
                 plan.path
                 for plan in declared_files

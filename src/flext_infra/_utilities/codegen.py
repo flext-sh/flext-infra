@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
 
 from flext_cli import u
 
@@ -40,6 +39,7 @@ from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities.protocol_models import FlextInfraUtilitiesProtocolModels
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
@@ -64,6 +64,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesProtocolModels,
     FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGitignore,
@@ -83,17 +84,6 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
 ):
     """Compose the source helpers consumed by the generation operation."""
-
-    if TYPE_CHECKING:
-
-        @staticmethod
-        @override
-        def project_root(
-            file_path: Path,
-            *,
-            source_project: p.Infra.RopeProject | None = None,
-        ) -> Path | None:
-            del file_path, source_project
 
     @staticmethod
     def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:

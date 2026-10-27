@@ -275,9 +275,12 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         spec = find_spec(package)
         if spec is None or spec.origin is None:
             return frozenset()
-        root = Path(spec.origin).parent
+        source = Path(spec.origin)
+        if not source.is_file():
+            return frozenset()
+        root = source.parent
         found: set[str] = set()
-        pending = [Path(spec.origin)]
+        pending = [source]
         while pending:
             tree = ast.parse(pending.pop().read_text(encoding=c.Infra.ENCODING_DEFAULT))
             statements = list(tree.body)

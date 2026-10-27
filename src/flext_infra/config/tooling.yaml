@@ -279,10 +279,9 @@ Infra:
         # Ruff exits 1 on findings. Remaining findings block repair acceptance;
         # the gate verifies the repaired state through the native read-only check.
         findings-exit-codes: [ 1 ]
-        # The codegen artifact registry (analysis_exclude, generated_source and
-        # the declared exclusion registry) is the only exclusion source: the
-        # projection appends it, so evidence trees, generated sources and the
-        # tool-home dot directories holding AI Hub hooks are never listed here.
+        # The codegen artifact registry (analysis_exclude and the declared
+        # exclusion registry) is the only exclusion source. Generation ownership
+        # alone never excludes owned executable sources from analysis.
         # Lint covers every tracked Python surface; `.gitignore` and the
         # artifact registry decide visibility, never a copied exclude list.
         # tests, examples, and scripts are dev/tooling source roots (see `src`

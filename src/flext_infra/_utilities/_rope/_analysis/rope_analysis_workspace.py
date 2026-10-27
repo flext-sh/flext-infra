@@ -13,7 +13,6 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
@@ -36,8 +35,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """Return the import packages of a project's generated source trees.
 
         The tree names come from the codegen artifact key
-        (``generated_source``); analyzers that take module names rather than
-        path globs exclude exactly these packages.
+        (``generated_source``). This is generation-ownership inventory, not
+        analyzer applicability or proof of third-party provenance.
 
         Returns:
             The sorted import packages of every generated source tree.
@@ -88,7 +87,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         with ExitStack() as stack:
             if source_project is None:
                 source_project, captured = stack.enter_context(
-                    FlextInfraUtilitiesCodegenFacades.facade_source_project(
+                    FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
                         root,
                         planned_sources=planned_sources,
                     )

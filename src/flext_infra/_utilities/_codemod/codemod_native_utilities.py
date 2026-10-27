@@ -161,8 +161,8 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         """Generated module: a module whose first line is the generator header.
 
         The same header ``generated_source`` reads proves a file is a
-        generator projection, so rules skip generated files through this one
-        derived fact instead of listing file names.
+        generator projection. Rules use this ownership fact for specific
+        publication contracts, never as a blanket source-admission exclusion.
 
         Returns:
             The ``generated-module`` utility rule.

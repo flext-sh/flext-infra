@@ -676,22 +676,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                         if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                         else ()
                     ),
-                    generated_source_globs=codegen.generated_source_globs,
                 ),
             )
         if destination == (
             f"{c.Infra.QLTY_CONFIG_DIRNAME}/{c.Infra.QLTY_CONFIG_FILENAME}"
         ):
-            # The smells scan measures authored code: the same generated
-            # projection surface the duplication gate excludes.
             return r[p.Model].ok(
-                m.Infra.QltyRenderSpec(
-                    generated_projection_patterns=tuple(
-                        u.Infra.generated_projection_patterns(
-                            target.root, (target.root,)
-                        )
-                    ),
-                ),
+                m.Infra.QltyRenderSpec(),
             )
         if destination == c.Infra.ENVRC_FILENAME:
             # The workspace declaration owns whether a Beads route exists.

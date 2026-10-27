@@ -246,7 +246,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class SourceInitializerPlanner(Protocol):
-        """Plan lazy exports over one declared candidate without publishing it."""
+        """Plan exports for a facade, an initializer/package, or the whole candidate."""
 
         def __call__(
             self,
@@ -254,7 +254,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
-            selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+            selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
     @runtime_checkable
@@ -280,7 +280,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class SourceComponentPlanner(Protocol):
-        """Close an admitted facade's dependencies, or all families with None."""
+        """Close a facade or package cohort; no selection means every family."""
 
         def __call__(
             self,
@@ -292,7 +292,7 @@ class FlextInfraProtocolsBase(Protocol):
                 FlextInfraProtocolsBase.SourceInitializerPlanner,
                 FlextInfraProtocolsBase.SourceViewProvider,
             ],
-            selection: t.Pair[Path, c.Infra.FacadeFamily] | None,
+            selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
     @runtime_checkable
@@ -606,7 +606,11 @@ class FlextInfraProtocolsBase(Protocol):
     class DocsArtifactPlanner(Protocol):
         """Docs render planned as file changes for the shared publisher."""
 
-        def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
+        def prepare_bundle(
+            self,
+            *,
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        ) -> p.Result[m.Infra.DocsGenerationBundle]:
             """Freeze one configured inventory and its consumed inputs."""
             ...
 

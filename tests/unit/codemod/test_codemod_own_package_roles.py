@@ -147,5 +147,11 @@ class TestsFlextInfraCodemodOwnPackageRoles:
         tm.that(ordinary in plugins, eq=False)
         tm.that(u.Infra.import_module_role(ordinary), eq="consumer")
 
+    @staticmethod
+    def test_frozen_stdlib_module_has_no_source_bootstrap() -> None:
+        """Do not read a frozen module origin as a physical source file."""
+        tm.that(u.Infra.bootstrap_modules("zipimport"), eq=frozenset())
+        tm.that(u.Infra.import_module_role("zipimport"), eq="consumer")
+
 
 __all__: list[str] = ["TestsFlextInfraCodemodOwnPackageRoles"]

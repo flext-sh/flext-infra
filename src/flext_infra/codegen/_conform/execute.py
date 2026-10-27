@@ -308,17 +308,28 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         docs = self._docs_plans(request, plan)
         if docs.failure:
             return result_type.from_failure(docs)
-        files = (*plan.files, *docs.value)
+        composed = result_type.create_from_callable(
+            lambda: u.Infra.codegen_compose_file_plans(docs.value)
+        )
+        if composed.failure:
+            return result_type.from_failure(composed)
+        files = composed.value
         changes = ports.file_publisher.normalized_codegen_changes(files)
         if changes.failure:
             return result_type.from_failure(changes)
         normalized = {change.path: change for change in changes.value}
         files = tuple(
-            file.model_copy(
-                update={
-                    "desired_content": normalized[file.path].desired_content,
-                    "desired_mode": normalized[file.path].desired_mode,
-                }
+            m.Infra.CodegenFilePlan(
+                project=file.project,
+                path=file.path,
+                before=file.before,
+                desired_content=normalized[file.path].desired_content,
+                desired_mode=normalized[file.path].desired_mode,
+                owner=file.owner,
+                policy=file.policy,
+                tracking=file.tracking,
+                index_before=file.index_before,
+                tracking_dependencies=file.tracking_dependencies,
             )
             for file in files
         )
@@ -375,10 +386,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         plan: m.Infra.CodegenPlan,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Plan the documentation the complete surface owns.
+        """Compose managed plans with their derived presentation and documentation.
 
         Returns:
-            The documentation file plans, empty outside the complete surface.
+            The complete candidate, retaining strict independent artifact admission.
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
@@ -388,7 +399,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if repository.path == Path()
         )
         if request.what is not c.Infra.CodegenConformSurface.ALL or not owned:
-            return result_type.ok(())
+            return result_type.ok(tuple(plan.files))
         ports = self.state.ports
         if ports is None:
             return result_type.fail(
@@ -400,7 +411,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             projects=owned,
             include_root=True,
         )
-        return planner.prepare_bundle().flat_map(planner.plan_files)
+        bundle = planner.prepare_bundle(declared_files=tuple(plan.files))
+        if bundle.failure:
+            return result_type.from_failure(bundle)
+        rendered = planner.plan_files(bundle.value)
+        if rendered.failure:
+            return result_type.from_failure(rendered)
+        return result_type.create_from_callable(
+            lambda: u.Infra.codegen_compose_file_plans((
+                *u.Infra.codegen_compose_file_plans(
+                    (*plan.files, *bundle.value.metadata_files), ordered=True
+                ),
+                *rendered.value,
+            ))
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformExecute"]

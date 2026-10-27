@@ -74,6 +74,24 @@ snapshots:
       style: secondary
       start: 50
       end: 86
+  "pytest_plugins += [\"tests.fixtures.support\"]\n":
+    labels:
+    - source: pytest_plugins += ["tests.fixtures.support"]
+      style: primary
+      start: 0
+      end: 44
+    - source: pytest_plugins
+      style: secondary
+      start: 0
+      end: 14
+    - source: "\"tests.fixtures.support\""
+      style: secondary
+      start: 19
+      end: 43
+    - source: "[\"tests.fixtures.support\"]"
+      style: secondary
+      start: 18
+      end: 44
   "pytest_plugins = \"tests.fixtures.support\"\n":
     labels:
     - source: pytest_plugins = "tests.fixtures.support"

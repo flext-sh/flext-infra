@@ -10,6 +10,7 @@ import ast
 import os
 import typing
 from fnmatch import fnmatch
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -17,13 +18,18 @@ from flext_cli import u
 
 from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope._analysis.exports import (
+    FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+)
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import m
 
 
@@ -651,6 +657,195 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             name.id
             for name in ast.walk(node)
             if isinstance(name, ast.Name) and isinstance(name.ctx, ast.Load)
+        )
+
+    @classmethod
+    def _model_namespace_candidate(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+    ) -> t.Pair[p.Infra.RopeSourceClass, t.StrTuple] | None:
+        """Select an exported pure namespace, including its redundant wrapper.
+
+        Returns:
+            The native declaration and payload names eligible for use census.
+
+        """
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            return None
+        classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
+        if len(classes) != 1:
+            return None
+        node = classes[0]
+        if node.name not in (
+            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                module.source_code
+            )
+        ):
+            return None
+        owner = module.get_attribute(node.name).get_object()
+        runtime = FlextInfraUtilitiesRopeRuntimeTypes
+        if not runtime.py_class(owner):
+            return None
+        names = cls._model_namespace_payloads(project, owner)
+        if names:
+            return owner, names
+        return cls._model_namespace_wrapped_candidate(project, owner, node)
+
+    @classmethod
+    def _model_namespace_wrapped_candidate(
+        cls,
+        project: p.Infra.RopeProject,
+        owner: p.Infra.RopeSourceClass,
+        node: ast.ClassDef,
+    ) -> t.Pair[p.Infra.RopeSourceClass, t.StrTuple] | None:
+        """Admit only a transparent holder around the same pure namespace.
+
+        Returns:
+            The native nested namespace, or refusal for nontransparent holders.
+
+        """
+        if node.bases or node.keywords or node.decorator_list or node.type_params:
+            return None
+        children = owner.get_scope().get_scopes()
+        if len(children) != 1 or set(owner.get_scope().get_defined_names()) != {
+            node.name
+        }:
+            return None
+        child = children[0].pyobject
+        if (
+            not FlextInfraUtilitiesRopeRuntimeTypes.py_class(child)
+            or child.get_name() != node.name
+        ):
+            return None
+        names = cls._model_namespace_payloads(project, child)
+        return (child, names) if names else None
+
+    @staticmethod
+    def _model_namespace_payloads(
+        project: p.Infra.RopeProject,
+        owner: p.Infra.RopePyObject,
+    ) -> t.StrTuple:
+        """Prove a fieldless payload namespace at its native preset boundary.
+
+        Returns:
+            Nested model names, or no admission for an entity or custom base.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeTypes
+        if not runtime.py_class(owner):
+            return ()
+        node = owner.get_ast()
+        if not isinstance(node, ast.ClassDef) or (
+            node.decorator_list or node.keywords or node.type_params
+        ):
+            return ()
+        children = tuple(
+            member for member in node.body if isinstance(member, ast.ClassDef)
+        )
+        if not children or any(
+            not isinstance(member, ast.ClassDef | ast.Pass)
+            and not (
+                isinstance(member, ast.Expr)
+                and isinstance(member.value, ast.Constant)
+                and isinstance(member.value.value, str)
+            )
+            for member in node.body
+        ):
+            return ()
+        payloads = FlextInfraUtilitiesDeclarationPayload
+        bases = tuple(payloads.direct_bases(owner))
+        if len(bases) != 1:
+            return ()
+        preset = payloads.qualified_name(
+            project, "flext_core.m.ArbitraryTypesModel"
+        ).get_object()
+        if bases != (preset,):
+            return ()
+        model = payloads.identity_name(
+            project, c.Infra.PYDANTIC_MODEL_IDENTITY
+        ).get_object()
+        return (
+            tuple(child.name for child in children)
+            if all(
+                model in payloads.class_ancestry(
+                    owner.get_attribute(child.name).get_object()
+                )
+                for child in children
+            )
+            else ()
+        )
+
+    @classmethod
+    def _singleton_model_namespace(
+        cls,
+        project: p.Infra.RopeProject,
+        file_path: Path,
+        classes: t.MappingKV[str, ast.ClassDef],
+    ) -> t.StrMapping:
+        """Wrap an exported singleton model without renaming its entity.
+
+        Returns:
+            The existing nesting mapping, or no move for a namespace holder.
+
+        Raises:
+            TypeError: If Singleton model owner requires a native source module.
+            ValueError: A pure model namespace still has actual entity consumers.
+
+        """
+        if (
+            len(classes) != 1
+            or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                file_path.parent.name
+            )
+            != c.Infra.FacadeFamily.M
+        ):
+            return {}
+        name = next(iter(classes))
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            project.get_resource(
+                file_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+        )
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            message = (
+                f"Singleton model owner requires a native source module: {file_path}"
+            )
+            raise TypeError(message)
+        if (
+            name
+            not in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                module.source_code
+            )
+        ):
+            return {}
+        payloads = FlextInfraUtilitiesDeclarationPayload
+        model = payloads.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY)
+        owner = module.get_attribute(name).get_object()
+        if cls._model_namespace_payloads(project, owner):
+            message = (
+                "Fieldless model namespace has entity consumers; "
+                f"native namespace normalization was refused: {file_path}:{name}"
+            )
+            raise ValueError(message)
+        ancestry = payloads.class_ancestry(owner)
+        parents = tuple(
+            (item.get_module().get_name(), item.get_name())
+            for item in ancestry[:8]
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(item)
+        )
+        u.Cli.info(
+            f"  stage=singleton-model-detection module={module.get_name()} "
+            f"owner={name} native_model={model.get_object() in ancestry} "
+            f"model_config={c.Infra.MODEL_CONFIG_ATTRIBUTE in owner.get_attributes()} "
+            f"ancestry={parents}"
+        )
+        return (
+            {name: name}
+            if model.get_object() in ancestry
+            else {}
         )
 
     @classmethod

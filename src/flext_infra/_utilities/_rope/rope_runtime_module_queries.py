@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sys
 import sysconfig
 from importlib.machinery import BuiltinImporter, FrozenImporter, ModuleSpec, PathFinder
@@ -26,6 +27,84 @@ from flext_infra._utilities._rope.rope_runtime_types import (
 
 class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
     """Authenticate native suppliers and construct Rope source snapshots."""
+
+    @staticmethod
+    def definition_location(
+        binding: t.Infra.RopePyName,
+    ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
+        """Read native definition metadata, including annotation-only bindings.
+
+        Returns:
+            The original supplier and first assignment's logical declaration line.
+
+        Raises:
+            TypeError: The native annotation is not an expression node.
+
+        """
+        module, line = binding.get_definition_location()
+        if (
+            line is not None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+            or not binding.assignments
+        ):
+            return module, line
+        assignment = binding.assignments[0]
+        annotation = assignment.type_hint
+        if assignment.ast_node is not None or annotation is None:
+            return module, line
+        if not isinstance(annotation, ast.expr):
+            message = "native Rope assignment annotation is not an expression"
+            raise TypeError(message)
+        return module, module.logical_lines.logical_line_in(annotation.lineno)[0]
+
+    @staticmethod
+    def concrete_data_class(candidate: p.Infra.RopePyObject | None) -> bool:
+        """Distinguish a native concrete data constraint from a class constraint.
+
+        Returns:
+            Whether native class metadata excludes universal and metaclass types.
+
+        """
+        if not (
+            FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(candidate)
+            and isinstance(candidate, p.Infra.RopeBuiltinClass)
+        ):
+            return False
+        native = candidate.builtin
+        # A metaclass or its universal ancestor can describe class objects.
+        return (
+            isinstance(native, type)
+            and type(native) is type
+            and not issubclass(native, type)
+            and not issubclass(type, native)
+        )
+
+    @staticmethod
+    def source_import_binding(
+        binding: p.Infra.RopePyName,
+    ) -> p.Infra.RopePyName | None:
+        """Follow native imported names to their declaring source binding.
+
+        Returns:
+            The declared binding, or None for an unresolved or cyclic import.
+
+        """
+        imported: set[int] = set()
+        while isinstance(binding, p.Infra.RopeImportedName):
+            if id(binding) in imported:
+                return None
+            imported.add(id(binding))
+            supplier = (
+                binding.imported_module
+                .get_object()
+                .get_attributes()
+                .get(binding.imported_name)
+            )
+            if supplier is None:
+                return None
+            binding = supplier
+        return binding
 
     @staticmethod
     def imported_module_resource(

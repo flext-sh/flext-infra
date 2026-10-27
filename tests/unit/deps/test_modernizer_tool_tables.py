@@ -68,14 +68,16 @@ class TestsFlextInfraDepsModernizerToolTables:
             table = u.Tests.toml_mapping(table[segment])
         return table
 
-    def test_mypy_exclude_skips_complete_artifact_trees(self, tmp_path: Path) -> None:
-        """Mypy excludes root artifacts and every descendant."""
+    def test_mypy_admits_python_in_fixture_materialization_roots(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Fixture materialization does not exempt Python from type analysis."""
         payload, _ = self._applied(tmp_path)
         exclude = re.compile(str(self._table(payload, "mypy")["exclude"]))
         for root in config.Infra.codegen.exclusions.scenario_data_roots:
-            tm.that(exclude.match(f"{root}/scenario/module.py"), none=False)
-            tm.that(exclude.match(f"{root}/module.py"), none=False)
-            tm.that(exclude.match(f"{root}/"), none=False)
+            tm.that(exclude.match(f"{root}/scenario/module.py"), none=True)
+            tm.that(exclude.match(f"{root}/module.py"), none=True)
         tm.that(exclude.match("tests/unit/test_behavior.py"), none=True)
 
     def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:

@@ -335,15 +335,6 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = ()
-        generated_source_globs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Tracked generated-source trees derived from the codegen "
-                    "artifact key; never governed source"
-                ),
-            ),
-        ] = ()
 
     class UvResolutionSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Resolver keys conform owns in one project's ``[tool.uv]`` table.
@@ -398,16 +389,6 @@ class FlextInfraModelsCodegenRender:
             frozen=True,
             strict=True,
         )
-
-        generated_projection_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Generated projection surface excluded from the smells "
-                    "scan, from the one generated-projection owner."
-                ),
-            ),
-        ] = ()
 
     # Keep the module-skeleton template boundary model-backed and immutable.
     class ModuleSkeletonRenderContext(m.ContractModel):
