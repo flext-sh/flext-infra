@@ -57,6 +57,7 @@ class FlextInfraUtilitiesProtocolModels:
             self.parameters: set[str] = set()
             self.type_parameters: dict[str, list[ast.type_param]] = {}
             self.dependencies: set[str] = set()
+            self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
 
         def render(self) -> t.MappingKV[Path, str]:
             """Close consumed model identities and render their native namespaces.
@@ -289,7 +290,6 @@ class FlextInfraUtilitiesProtocolModels:
             """
             selected: set[str] = set()
             facade = self.facades["p"]
-            member_cache: dict[str, p.Infra.RopePyName | None] = {}
             for entry in self.workspace.modules():
                 resource = self.workspace.resource(entry.file_path)
                 if resource is None:
@@ -327,7 +327,9 @@ class FlextInfraUtilitiesProtocolModels:
                         or self.same_name(self.facades["m"], reference)
                     ):
                         continue
-                    port = self._member(facade, route)
+                    if route not in self.member_cache:
+                        self.member_cache[route] = self._member(facade, route)
+                    port = self.member_cache[route]
                     owner = port.get_object().get_module() if port is not None else None
                     if owner is None or (
                         self.source_module(owner)

@@ -3458,6 +3458,15 @@ pass; shallower domains then consume the completed child publications.
 An unchanged module owner retains its captured native view while seeding.
 Actual module moves rebind their candidate before the seed consumes it.
 Provider reexports retain Rope's imported-name provenance through resolution.
+
+One generation process runs several publishing surfaces. The workspace snapshot
+records each source's read state once; after a surface publishes effects, the
+executor rebases the recorded states of exactly the written paths, so a later
+surface verifies its plans against the bytes this run wrote. External mutations
+still fail the unchanged-file proof, because only the run's own publisher may
+rebase. CLI failure rendering emits native exception notes (owner, base index,
+inferred kind, scope identities) after the message: producers attach the causal
+annotations, and dropping them turns a precise diagnosis into a bare string.
 The existing captured-source override decides rebinding before the imported
 module is elected; a declared leaf import does not restart at an ancestor
 package and mistake namespace traversal for a provider cycle.

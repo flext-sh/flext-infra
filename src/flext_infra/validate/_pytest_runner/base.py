@@ -162,9 +162,14 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"pytest scratch must be outside the runtime checkout: {scratch_root}"
             raise ValueError(msg)
+        run_timeout_seconds, termination_grace_seconds = (
+            cls._elected_pytest_deadline(root)
+        )
         runner = cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
+            run_timeout_seconds=run_timeout_seconds,
+            termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,
             reports=cache.reports_directory,
             testmon_db=(
@@ -179,6 +184,35 @@ class FlextInfraPytestRunnerBase(s[int]):
         )
         scratch_root.mkdir(parents=True, exist_ok=False)
         return runner
+
+    @classmethod
+    def _elected_pytest_deadline(
+        cls,
+        repository_root: Path,
+    ) -> tuple[int, int]:
+        """Elect the repository's suite deadline from its governed YAML layers.
+
+        The election always merges the packaged fleet defaults as its base, so
+        one source decides the deadline for every repository.
+
+        Returns:
+            The elected run timeout and termination grace in seconds.
+
+        Raises:
+            ValueError: If the repository tooling election fails.
+
+        """
+        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+            repository_root,
+        )
+        if tooling.failure:
+            msg = f"repository pytest tooling election failed: {tooling.error}"
+            raise ValueError(msg)
+        pytest_section = tooling.value.document.tools.pytest
+        return (
+            pytest_section.run_timeout_seconds,
+            pytest_section.termination_grace_seconds,
+        )
 
     @classmethod
     def from_environment(
@@ -205,17 +239,13 @@ class FlextInfraPytestRunnerBase(s[int]):
         if not repository_root.is_absolute():
             msg = "Make-owned pytest repository root must be absolute"
             raise ValueError(msg)
-        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
-            repository_root
+        run_timeout_seconds, termination_grace_seconds = (
+            cls._elected_pytest_deadline(repository_root)
         )
-        if tooling.failure:
-            msg = f"repository pytest tooling election failed: {tooling.error}"
-            raise ValueError(msg)
-        pytest_section = tooling.value.document.tools.pytest
         return cls(
             repository_root=repository_root,
-            run_timeout_seconds=pytest_section.run_timeout_seconds,
-            termination_grace_seconds=pytest_section.termination_grace_seconds,
+            run_timeout_seconds=run_timeout_seconds,
+            termination_grace_seconds=termination_grace_seconds,
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,

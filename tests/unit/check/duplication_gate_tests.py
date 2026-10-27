@@ -444,7 +444,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
     @staticmethod
     def _comparison_workspace(
         tmp_path: Path, *, declare_root: bool, existing: bool
-    ) -> Path:
+    ) -> tuple[Path, Path]:
         """One governed project and one external checkout sharing a block.
 
         Returns:

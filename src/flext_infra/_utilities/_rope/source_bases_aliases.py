@@ -210,39 +210,66 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             The literal mapping source, or None when the occurrence is not a
             lazy-exports call carrying mapping data.
 
-        Raises:
-            TypeError: If the lazy export occurrence has no native call expression.
-            ValueError: If its mapping argument has no native source span.
-
         """
         if not words.is_a_function_being_called(offset):
             return None
-        start, _end = words.get_primary_range(offset)
-        _first, last = words.get_word_parens_range(offset)
-        call_source = source[start:last]
-        call = ast.parse(call_source, mode="eval").body
-        if not isinstance(call, ast.Call):
-            message = "Lazy export occurrence has no native call expression"
-            raise TypeError(message)
-        argument = next(
-            (
-                keyword.value
-                for keyword in call.keywords
-                if keyword.arg == "lazy_imports"
-            ),
-            None,
+        # The mapping region is derived by balancing the initializer text, not
+        # by Worder ranges: a candidate-epoch reader must not truncate the last
+        # declared export (byte/char and epoch drift are the known artifacts).
+        mapping_source = cls._balanced_braces_source(source, offset)
+        if mapping_source is None:
+            return None
+        return cls._declared_alias_mapping_source(
+            f"MappingProxyType({mapping_source})", module
         )
-        if argument is None:
-            match call.args:
-                case [_, _, positional_mapping, *_]:
-                    argument = positional_mapping
-                case _:
+
+    @classmethod
+    def _balanced_braces_source(cls, source: str, offset: int) -> str | None:
+        """Extract the first brace-balanced literal after a lazy-exports call.
+
+        Returns:
+            The balanced ``{...}`` text, or None when the call carries none.
+
+        """
+        opening = source.find("{", offset)
+        if opening < 0:
+            return None
+        depth = 0
+        index = opening
+        while index < len(source):
+            char = source[index]
+            if char in {'"', "'"}:
+                index = cls._string_end(source, index)
+                if index < 0:
                     return None
-        mapping = ast.get_source_segment(call_source, argument)
-        if mapping is None:
-            message = "Lazy export mapping argument has no native source span"
-            raise ValueError(message)
-        return cls._declared_alias_mapping_source(mapping, module)
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return source[opening : index + 1]
+            index += 1
+        return None
+
+    @staticmethod
+    def _string_end(source: str, opening: int) -> int:
+        """Return the index after the string literal opening at ``opening``.
+
+        Returns:
+            The closing index, or -1 when the string never terminates.
+
+        """
+        quote = source[opening]
+        index = opening + 1
+        while index < len(source):
+            char = source[index]
+            if char == "\\":
+                index += 2
+                continue
+            if char == quote:
+                return index + 1
+            index += 1
+        return -1
 
     @classmethod
     def _declared_alias_mapping_source(

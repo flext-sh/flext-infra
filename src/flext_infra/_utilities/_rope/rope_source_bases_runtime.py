@@ -1815,7 +1815,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     break
                 module = submodule
             bindings = self._modules.get(module)
-            binding = None if bindings is None else bindings.get(name)
+            binding = (
+                bindings.get(name) if bindings is not None else None
+            ) or self._planned_lazy_binding(module, name)
             if binding is None:
                 message = (
                     f"Planned namespace has no module binding: {module}.{name}"
@@ -1840,6 +1842,31 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"remaining={remaining!r}; visiting={tuple(sorted(visiting))!r}"
                 )
                 raise
+
+        def _planned_lazy_binding(
+            self,
+            module: str,
+            name: str,
+        ) -> m.Infra.SourceClassReference | None:
+            """Resolve one planned base through the initializer's lazy SSOT.
+
+            Returns:
+                The declared reference, or None when nothing is declared.
+
+            """
+            resource = self._project.find_module(module)
+            if resource is None:
+                return None
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            captured = self._sources.get(module, (source_path, ""))
+            return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                module,
+                source_path,
+                captured[1],
+                project=self._project,
+            ).get(name)
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.
