@@ -769,9 +769,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         return (
             tuple(child.name for child in children)
             if all(
-                model in payloads.class_ancestry(
-                    owner.get_attribute(child.name).get_object()
-                )
+                model
+                in payloads.class_ancestry(owner.get_attribute(child.name).get_object())
                 for child in children
             )
             else ()
@@ -842,11 +841,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             f"model_config={c.Infra.MODEL_CONFIG_ATTRIBUTE in owner.get_attributes()} "
             f"ancestry={parents}"
         )
-        return (
-            {name: name}
-            if model.get_object() in ancestry
-            else {}
-        )
+        return {name: name} if model.get_object() in ancestry else {}
 
     @classmethod
     def _module_owner(

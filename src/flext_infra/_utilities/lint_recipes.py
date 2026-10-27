@@ -33,7 +33,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities.lint_source_positions import (
     FlextInfraUtilitiesLintSourcePositions,
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         if declared is not None:
             identity = (declared.author_name, declared.license, declared.year)
         else:
-            metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+            metadata = FlextInfraUtilitiesPyprojectConform.read_project_metadata_result(
                 project_root,
                 source_project=source_project,
             )
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                     f"project manifest declares no author name: {project_root}",
                 )
             license_id = u.Cli.json_walk_path(
-                FlextInfraUtilitiesPyproject.pyproject_payload(
+                FlextInfraUtilitiesPyprojectConform.pyproject_payload(
                     project_root / c.PYPROJECT_FILENAME,
                     source_project=source_project,
                 ),
@@ -993,11 +993,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         name = cls._finding_exception(issue, path)
-        parents = {
-            child: node
-            for node in ast.walk(function)
-            for child in ast.iter_child_nodes(node)
-        }
+        # Diferido: a análise Rope reentra no grafo flext_infra pelo root.
+        from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
+
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(function)
         clauses = [
             cls._raise_condition(function, raised, parents)
             for raised in ast.walk(function)
@@ -1030,7 +1029,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _raised_names(
         raised: ast.Raise,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> frozenset[str]:
         """Return the exception names one ``raise`` statement raises.
 
@@ -1044,7 +1043,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             target = raised.exc.func if isinstance(raised.exc, ast.Call) else raised.exc
             return frozenset({ast.unparse(target).rsplit(".", maxsplit=1)[-1]})
         node: ast.AST = raised
-        while (parent := parents.get(node)) is not None:
+        while (parent := parents.get(id(node))) is not None:
             if isinstance(parent, ast.ExceptHandler) and parent.type is not None:
                 caught = (
                     parent.type.elts
@@ -1062,7 +1061,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         cls,
         function: ast.FunctionDef | ast.AsyncFunctionDef,
         raised: ast.Raise,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> str:
         """Return the clause under which one ``raise`` statement runs.
 

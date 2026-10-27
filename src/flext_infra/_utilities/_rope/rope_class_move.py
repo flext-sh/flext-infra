@@ -464,7 +464,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
 
-        checks: t.DictKV[Path, t.DictKV[tuple[int, str], int]] = {}
+        checks: t.DictKV[Path, t.DictKV[tuple[t.StrTuple, str], int]] = {}
         composed = runtime.snapshot_project(
             project, candidate, declared_files=declared_files
         )
@@ -525,19 +525,39 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             verified.close()
 
     @staticmethod
-    def _module_scopes(module: p.Infra.RopeParsedModule) -> list[p.Infra.RopeScope]:
-        """Return native lexical scopes in stable breadth-first order.
+    def _module_scopes(
+        module: p.Infra.RopeParsedModule,
+    ) -> t.DictKV[t.StrTuple, p.Infra.RopeScope]:
+        """Map native lexical declarations independently of synthetic scope caches.
 
         Returns:
-            The module scope followed by its lexical children.
+            Native scopes keyed by declaration ancestry and sibling identity.
 
         """
-        ordered: list[p.Infra.RopeScope] = [module.get_scope()]
+        scopes: t.DictKV[t.StrTuple, p.Infra.RopeScope] = {(): module.get_scope()}
+        pending: list[t.StrTuple] = [()]
         index = 0
-        while index < len(ordered):
-            ordered.extend(ordered[index].get_scopes())
+        while index < len(pending):
+            parent = pending[index]
+            occurrences: t.DictKV[str, int] = {}
+            for scope in scopes[parent].get_scopes():
+                node = scope.pyobject.get_ast()
+                # Rope caches expression comprehensions alongside declarations.
+                if isinstance(
+                    node, ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp
+                ):
+                    continue
+                declaration = (
+                    f"{scope.get_kind()}:{type(node).__name__}:"
+                    f"{scope.pyobject.get_name()}"
+                )
+                occurrence = occurrences.get(declaration, 0)
+                occurrences[declaration] = occurrence + 1
+                identity = (*parent, f"{declaration}:{occurrence}")
+                scopes[identity] = scope
+                pending.append(identity)
             index += 1
-        return ordered
+        return scopes
 
     @classmethod
     def _module_quoted_consumer(
@@ -547,7 +567,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         text: str,
         identities: t.Pair[int, int],
         destination: str,
-    ) -> t.Pair[str, t.DictKV[tuple[int, str], int]]:
+    ) -> t.Pair[str, t.DictKV[tuple[t.StrTuple, str], int]]:
         """Rewrite one consumer with callback state owned by this invocation.
 
         Returns:
@@ -564,12 +584,6 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
             composed, resource
         )
-        cls._validate_module_quoted_scopes(
-            cls._module_scopes(original),
-            cls._module_scopes(module),
-            paths,
-            identities[0],
-        )
         rewritten, required = cls._module_quoted_rewrite(
             composed, (original, module), text, paths, (identities, destination)
         )
@@ -585,7 +599,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         text: str,
         paths: t.Triple[Path, Path, Path],
         destination_info: t.Pair[t.Pair[int, int], str],
-    ) -> t.Pair[str, t.DictKV[tuple[int, str], int]]:
+    ) -> t.Pair[str, t.DictKV[tuple[t.StrTuple, str], int]]:
         """Apply one consumer's quoted edits with invocation-local callback state.
 
         Returns:
@@ -601,24 +615,26 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             composed, Path(composed.root.real_path).resolve(), paths[2]
         )
         before_scopes = cls._module_scopes(modules[0])
-        positions = {
-            id(scope): index for index, scope in enumerate(cls._module_scopes(module))
-        }
-        required: t.DictKV[tuple[int, str], int] = {}
+        current_scopes = cls._module_scopes(module)
+        cls._validate_module_quoted_scopes(
+            before_scopes, current_scopes, paths, identities[0]
+        )
+        positions = {id(scope): key for key, scope in current_scopes.items()}
+        required: t.DictKV[tuple[t.StrTuple, str], int] = {}
         binding: str | None = None
 
         def replacement(scope: p.Infra.RopeScope, expression: str) -> str | None:
             nonlocal binding
-            index = positions[id(scope)]
+            identity = positions[id(scope)]
             selected, elected, count = cls._module_quoted_reference(
                 composed,
                 module,
-                (before_scopes[index], scope),
+                (before_scopes[identity], scope),
                 expression,
                 ((paths[0], paths[1]), identities, destination),
             )
             if count:
-                required[index, selected if selected is not None else expression] = (
+                required[identity, selected if selected is not None else expression] = (
                     count
                 )
             if elected is not None:
@@ -651,8 +667,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
     @staticmethod
     def _validate_module_quoted_scopes(
-        before: t.SequenceOf[p.Infra.RopeScope],
-        current: t.SequenceOf[p.Infra.RopeScope],
+        before: t.MappingKV[t.StrTuple, p.Infra.RopeScope],
+        current: t.MappingKV[t.StrTuple, p.Infra.RopeScope],
         paths: t.Triple[Path, Path, Path],
         expected: int,
     ) -> None:
@@ -663,14 +679,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         source, target, path = paths
-        old_declarations = [
-            (scope.get_kind(), scope.pyobject.get_name() if index else "")
-            for index, scope in enumerate(before)
-        ]
-        declarations = [
-            (scope.get_kind(), scope.pyobject.get_name() if index else "")
-            for index, scope in enumerate(current)
-        ]
+        old_declarations = tuple(before)
+        declarations = tuple(current)
         if old_declarations != declarations:
             msg = (
                 f"module relocation changed native annotation scopes: {path}; "
@@ -692,7 +702,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise ValueError(msg)
         if source.stem == target.stem:
             return
-        for scope in before:
+        for scope in before.values():
             previous, occupied = scope.lookup(source.stem), scope.lookup(target.stem)
             if (
                 previous is not None
@@ -836,7 +846,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         project: p.Infra.RopeProject,
         path: Path,
         text: str,
-        required: t.DictKV[tuple[int, str], int],
+        required: t.DictKV[tuple[t.StrTuple, str], int],
         relocated: int,
     ) -> None:
         """Verify every original quoted position in a single consumer invocation.
@@ -851,9 +861,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             project, resource
         )
         positions = {
-            id(scope): index for index, scope in enumerate(cls._module_scopes(module))
+            id(scope): key for key, scope in cls._module_scopes(module).items()
         }
-        seen: set[tuple[int, str]] = set()
+        seen: set[tuple[t.StrTuple, str]] = set()
 
         def validate(scope: p.Infra.RopeScope, expression: str) -> None:
             key = positions[id(scope)], expression

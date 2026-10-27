@@ -21,19 +21,24 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
-)
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticPublishMixin,
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
 )
+from flext_infra._utilities._git.requirement_source import (
+    FlextInfraUtilitiesGitRequirementSource,
+)
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 
-class FlextInfraUtilitiesRepository:
+class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     """Resolve detected identity and branch policy for one governed repository."""
 
     @classmethod
@@ -264,67 +269,6 @@ class FlextInfraUtilitiesRepository:
             ),
         ))
 
-    @staticmethod
-    def ref_is_commit(ref: str) -> bool:
-        """Whether one Git ref names a commit rather than an integration line.
-
-        uv.lock, written only by ``make upg``, owns every resolved commit. In a
-        generated pyproject a commit ref is projection residue that generation
-        re-renders on the family line; in a hand-authored source it is a pin
-        beside the lock and fails loudly.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        return c.Infra.GIT_COMMIT_OID_RE.fullmatch(ref) is not None
-
-    @staticmethod
-    def declared_git_source(requirement: str) -> p.Result[t.Pair[str, str]]:
-        """Parse one requirement's declared direct Git source.
-
-        Returns ``(canonical_url, ref)`` for a requirement that declares
-        ``name @ git+URL@REF``, or the empty pair when the requirement declares
-        no direct source at all. The declared line is the only authority for the
-        dependency's canonical URL and branch: canonicalization normalizes the
-        transport scheme (``ssh://``, SCP-style, ``http``) to ``https`` and
-        never invents an organization, host, or ref. A declared source that is
-        not a Git URL, or a Git URL without a ref, fails loudly. Whether a
-        commit ref is projection residue or a hand-authored pin is the
-        caller's decision (``ref_is_commit``).
-
-        Returns:
-            The resulting ``p.Result[t.Pair[str, str]]``.
-
-        """
-        requirement_part, _, _ = requirement.partition(";")
-        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
-        if head_match is None:
-            return r[t.Pair[str, str]].fail(f"invalid requirement head: {requirement}")
-        _, at_separator, source = requirement_part.partition("@")
-        if not at_separator:
-            # Plain workspace requirement: no direct git source is declared.
-            # Success payloads are never None (flext-core result law), so the
-            # caller reads the empty pair as "no declared source".
-            return r[t.Pair[str, str]].ok(("", ""))
-        source = source.strip()
-        if not source.startswith(c.Infra.GIT_URL_SCHEME_PREFIX):
-            return r[t.Pair[str, str]].fail(
-                f"internal dependency direct source must be a git URL: {requirement}",
-            )
-        url, ref_separator, ref = source.rpartition("@")
-        url = url.removeprefix(c.Infra.GIT_URL_SCHEME_PREFIX).strip()
-        ref = ref.strip()
-        if not ref_separator or not ref:
-            return r[t.Pair[str, str]].fail(
-                f"internal dependency git source must declare a branch or ref: "
-                f"{requirement}",
-            )
-        canonical = FlextInfraUtilitiesRepository._canonical_https_url(url)
-        if canonical.failure:
-            return r[t.Pair[str, str]].from_failure(canonical)
-        return r[t.Pair[str, str]].ok((canonical.value, ref))
-
     @classmethod
     def configured_repository_ref(
         cls,
@@ -492,7 +436,7 @@ class FlextInfraUtilitiesRepository:
             The resulting ``p.Result[t.Pair[str, str]]``.
 
         """
-        metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+        metadata = FlextInfraUtilitiesPyprojectConform.read_project_metadata_result(
             repository_root,
         )
         if metadata.success and metadata.value.project.name == distribution:
@@ -762,7 +706,7 @@ class FlextInfraUtilitiesRepository:
             The exact distribution's source, or its declared workspace source.
 
         """
-        payload = FlextInfraUtilitiesPyproject.declared_dependency_payload(
+        payload = FlextInfraUtilitiesPyprojectConform.declared_dependency_payload(
             pyproject_path,
         )
         if payload.failure:
@@ -891,7 +835,7 @@ class FlextInfraUtilitiesRepository:
                 return result_type.fail(str(error), exception=error)
             if not (member_root / c.PYPROJECT_FILENAME).is_file():
                 continue
-            metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+            metadata = FlextInfraUtilitiesPyprojectConform.read_project_metadata_result(
                 member_root,
             )
             if metadata.failure:

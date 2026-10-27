@@ -13,6 +13,9 @@ from flext_cli import u
 from flext_infra import c, config, m, p, t
 from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._utilities._git.gitignore import FlextInfraUtilitiesGitignore
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
@@ -40,7 +43,6 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities.protocol_models import FlextInfraUtilitiesProtocolModels
-from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning

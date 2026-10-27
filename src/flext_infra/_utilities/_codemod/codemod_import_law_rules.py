@@ -22,7 +22,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod.codemod_native_package_utilities import (
@@ -112,7 +112,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
         """
         root = project.absolute()
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         layer_zero = frozenset(
             FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_layer_zero_files(

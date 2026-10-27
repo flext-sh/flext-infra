@@ -13,11 +13,13 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesRepository,
+from flext_infra._utilities._git.requirement_source import (
+    FlextInfraUtilitiesGitRequirementSource,
 )
-from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectRequirements
+from flext_infra._utilities._pyproject.requirements import (
+    FlextInfraUtilitiesPyprojectRequirements,
+)
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.dependency_requirements import (
     FlextInfraUtilitiesDependencyRequirements,
 )
@@ -223,7 +225,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             )
             if name is None or not cls._declares_direct_source(line):
                 continue
-            declared = FlextInfraUtilitiesRepository.declared_git_source(line)
+            declared = FlextInfraUtilitiesGitRequirementSource.declared_git_source(line)
             if declared.failure:
                 return result_type.from_failure(declared)
             url, reference = declared.value

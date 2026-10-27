@@ -7,47 +7,21 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, TypeGuard
+from typing import ClassVar
 
 from flext_cli import u
 
 from flext_infra import c, m, p, settings, t
+from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
-class FlextInfraUtilitiesRopeAnalysisAstHelpers:
+class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
     """Shared rope parsing and AST traversal primitives."""
 
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
-
-    @staticmethod
-    def ast_node(obj: p.AttributeProbe) -> TypeGuard[t.Infra.RopeAstNode]:
-        """Narrow a rope-provided object to an AST node.
-
-        Returns:
-            The resulting ``TypeGuard[t.Infra.RopeAstNode]``.
-
-        """
-        return isinstance(obj, ast.AST)
-
-    @staticmethod
-    def ensure_ast_node(obj: p.AttributeProbe) -> t.Infra.RopeAstNode:
-        """Ensure an object is an AST node, narrowing the type.
-
-        Returns:
-            The resulting ``t.Infra.RopeAstNode``.
-
-        Raises:
-            TypeError: If Expected AST node, got.
-
-        """
-        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(obj):
-            msg = f"Expected AST node, got {type(obj).__name__}"
-            raise TypeError(msg)
-        return obj
 
     @staticmethod
     def resource_cache_key(
@@ -217,27 +191,6 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         if not isinstance(root, ast.AST):
             return []
         return tuple(ast.walk(root))
-
-    @staticmethod
-    def ast_parent_map(
-        root: p.AttributeProbe,
-    ) -> MutableMapping[int, t.Infra.RopeAstNode]:
-        """Return a child-id -> parent map for the full AST reachable from ``root``.
-
-        The shared SSOT for parent lookups across every rope detector.
-
-        Returns:
-            A child-id -> parent map for the full AST reachable from ``root``.
-
-        """
-        parent_map: MutableMapping[int, t.Infra.RopeAstNode] = {}
-        if not isinstance(root, ast.AST):
-            return parent_map
-        for parent in ast.walk(root):
-            owner = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(parent)
-            for child in ast.iter_child_nodes(parent):
-                parent_map[id(child)] = owner
-        return parent_map
 
     @classmethod
     def module_level_node(

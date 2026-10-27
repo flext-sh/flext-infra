@@ -27,36 +27,30 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 
 from flext_infra import FlextInfraConfig, c, config, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
-from flext_infra._utilities._codemod.codemod_native_package_utilities import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesFacadeMembers,
+    FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
+from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackageUtilities,
-)
-from flext_infra._utilities._codemod.codemod_native_utilities import (
     FlextInfraUtilitiesCodemodNativeUtilities,
-)
-from flext_infra._utilities._codemod.codemod_project import (
     FlextInfraUtilitiesCodemodProject,
-)
-from flext_infra._utilities._codemod.codemod_rules import (
     FlextInfraUtilitiesCodemodRules,
-)
-from flext_infra._utilities._codemod.codemod_scopes import (
     FlextInfraUtilitiesCodemodScopes,
 )
-from flext_infra._utilities._rope._analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._rope._analysis import (
+    FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
-from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
-from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesCodemodProjectFacts:
@@ -97,7 +91,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         aliases = cls._reached_facade_aliases(snapshot, project)
-        own = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         return {
             c.Infra.CODEMOD_LOCAL_ALIAS_UTILITY: cls._fact_exact_names(
                 tuple(aliases[own])
@@ -149,7 +145,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         del snapshot
         root = project.absolute()
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         leaves = c.Infra.FAMILY_COMPOSE_MODULES
         runtime = FlextInfraUtilitiesCodemodNativeUtilities.codemod_runtime_modules
@@ -700,7 +696,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         root = project.absolute()
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         prefix = c.Infra.CODEMOD_IMPLEMENTATION_OWNER_SCOPE_PREFIX
         requested = cls._catalog_references(prefix)
         scopes: dict[str, t.StrTuple] = {}
@@ -846,7 +842,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         root = project.absolute()
         rules, documents = cls._infra_catalog()
         scopes = facts.scopes
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         utilities = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rules(
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH
         )
@@ -938,7 +934,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         root = project.absolute()
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
             msg = f"project layout is unresolved: {root}"

@@ -21,6 +21,9 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 from flext_infra.codegen._conform.pyproject_policy import (
     FlextInfraCodegenConformPyprojectPolicy,
 )
@@ -147,7 +150,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 },
             )
         toolchain = codegen.toolchain
-        return u.Infra.pyproject_conform(
+        return FlextInfraUtilitiesPyprojectConform.pyproject_conform(
             source,
             workspace=workspace,
             required_dev_dependencies=u.Infra.project_development_requirements(

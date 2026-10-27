@@ -486,8 +486,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         """Remove exactly the findings an authenticated identity exempts.
 
         The readonly-namespace owner authenticates each operator-decided
-        exemption (2026-10-25: "Exceção UP040 por identidade" and "property +
-        exceção N802") at the reported file, row, column and rule. UP040 is
+        publication exemption (2026-10-25: "Exceção UP040 por identidade")
+        at the reported file, row, column and rule. UP040 is
         also unfixable at the tooling SSOT, because its fix would replace a
         published class with a ``TypeAliasType``. Every other finding, every
         other rule and every unauthenticated row remains blocking; nothing is

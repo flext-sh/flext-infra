@@ -17,7 +17,7 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesPythonModel,
 )
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         """
         package = run.packages.get(project_root)
         if package is None:
-            package = FlextInfraUtilitiesPyproject.project_package_name(
+            package = FlextInfraUtilitiesPyprojectConform.project_package_name(
                 project_root, source_project=run.model.source_project
             )
             run.packages[project_root] = package

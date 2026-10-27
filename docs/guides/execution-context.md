@@ -453,11 +453,20 @@ modules, preserving functions, constants, aliases, class bodies and inheritance.
 Quoted type positions are selected by original native module identity and the
 existing quoted-type owner, with native import binding election. Ordinary
 string payloads are not filename replacements.
-Native annotation-scope rejection reports both scope counts and the first
-differing declaration (bounded, without source payloads) in the primary exception
+Quoted relocation uses one native lexical-declaration map for before/after
+validation, rewriting and final identity verification. Keys retain native ancestry,
+AST declaration kind, name and same-name sibling occurrence, not breadth-first
+cache positions. Declaration order, missing or added declarations and name capture
+remain blocking. The installed Rope scope cache also contains synthetic
+comprehension objects: only native `ListComp`, `SetComp`, `DictComp` and
+`GeneratorExp` AST scopes are excluded from this declaration map, because their
+expression grammar cannot declare annotations. An absent scope kind alone never
+excludes a scope. The existing quoted-type selector still owns annotation positions,
+including nested quoted types and typing-only declarations; ordinary strings,
+lambda payloads, literal values and annotation metadata are not replacement targets.
+Native annotation-scope rejection reports both declaration counts and the first
+differing identity (bounded, without source payloads) in the primary exception
 message, so CLI transports that omit exception notes retain the causal evidence.
-The lexical-declaration and name-capture guards remain mandatory; a scope-order
-hypothesis alone never authorizes accepting a changed candidate.
 
 No directory, module or Rope metadata is created while planning. Native rename
 intermediates are lookup-only and never published; an occupied intermediate is
@@ -2528,6 +2537,13 @@ and desired mode. It retains the first original witness by reference and unions
 tracking dependencies in producer order. Hash equality alone never admits a plan.
 Only explicitly ordered, source-derived projection composition may advance desired
 contents; independent documentation effects cannot claim that lineage.
+Every mutable candidate index stages declarations through that same composition
+owner before replacing an entry. Ordered stages may advance desired bytes and mode,
+but never original witnesses or publication authority. Peer declarations, including
+same-depth domain moves, compose unordered before joining the ordered candidate;
+different peer effects conflict. Semantic seed edits retain preceding declared-plan
+metadata through the canonical semantic-edit conversion. Only genuinely absent
+sources use the creation path.
 When complete generation invokes documentation, it supplies the composed managed
 file plans to the presentation-metadata producer. That producer projects the locale
 leaf from the candidate's desired bytes, not the physical pre-generation manifest,
@@ -2607,6 +2623,18 @@ and local bindings. Unsupported references, ambiguous bindings and uncertain
 star exports reject the entire move before publication, including creation of a
 previously absent destination. Quoted type expressions participate in semantic
 identity checks; ordinary strings, `Literal` values and `Annotated` metadata do not.
+
+Parent lookups share one canonical owner: the family-leaf `rope_ast`
+`ast_parent_map`, keyed by child node id with native AST-node values. The leaf
+imports nothing from the rope family, so runtime members load it at module top
+level and analysis members inherit it; per-module `ast.walk` parent-map
+constructors and deferred family imports are consolidation defects. Consumers adopt
+the native identity-keyed contract instead of retaining a private key shape. Module
+relocation compares quoted-annotation scopes through one lexical identity map
+(ancestry, native kind, AST kind, name and same-name sibling occurrence), not
+positional correspondence; Rope's cached synthetic comprehension scopes are
+excluded by their native AST identity, and every declaration, ordering, capture
+and module-identity change still fails the move.
 
 Lazy initializer planning publishes only explicit exports of a package's direct
 declaring modules. A child's `__all__` never adds symbols to an ancestor

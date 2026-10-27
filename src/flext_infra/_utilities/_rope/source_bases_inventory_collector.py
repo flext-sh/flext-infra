@@ -776,8 +776,10 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 if name in branch or name in bindings
             ]
             reference = present[0][0]
-            if reference is not None and len(present) == len(branches) and all(
-                other == reference for other, _ in present
+            if (
+                reference is not None
+                and len(present) == len(branches)
+                and all(other == reference for other, _ in present)
             ):
                 bindings[name] = reference
                 continue
@@ -825,9 +827,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             FlextInfraUtilitiesRopeRuntime.py_function(value)
             or (
                 FlextInfraUtilitiesRopeRuntime.instance_object(value)
-                and FlextInfraUtilitiesRopeRuntime.concrete_data_class(
-                    value.get_type()
-                )
+                and FlextInfraUtilitiesRopeRuntime.concrete_data_class(value.get_type())
             )
         )
 

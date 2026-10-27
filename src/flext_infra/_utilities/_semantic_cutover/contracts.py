@@ -1658,11 +1658,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if not isinstance(tree, ast.AST):
             message = "factory receiver requires the original native syntax tree"
             raise TypeError(message)
-        parents = {
-            id(child): parent
-            for parent in ast.walk(tree)
-            for child in ast.iter_child_nodes(parent)
-        }
+        parents = u.Infra.ast_parent_map(tree)
         nodes: t.MutableMappingKV[tuple[type[ast.AST], int], ast.AST] = {
             (type(node), runtime.source_offset(module.source_code, node)): node
             for node in ast.walk(tree)
@@ -1711,7 +1707,7 @@ class FlextInfraUtilitiesSemanticContracts(
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         call: ast.Call,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> ast.Call | None:
         while (
             isinstance(member := parents.get(id(call)), ast.Attribute)
@@ -1797,7 +1793,7 @@ class FlextInfraUtilitiesSemanticContracts(
     @staticmethod
     def _discarded_logging_emission(
         node: p.Infra.RopeAstNode,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         methods: t.StrSequence,
         result_contract: str | None,
     ) -> bool:
@@ -1838,7 +1834,7 @@ class FlextInfraUtilitiesSemanticContracts(
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         node: p.Infra.RopeAstNode,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         methods: t.StrSequence,
     ) -> None:
         member = parents[id(node)]
@@ -1883,7 +1879,7 @@ class FlextInfraUtilitiesSemanticContracts(
         module: p.Infra.RopePyModule,
         call: ast.Call | None,
         context: tuple[
-            t.MappingKV[int, ast.AST],
+            t.MappingKV[int, t.Infra.RopeAstNode],
             t.MappingKV[tuple[type[ast.AST], int], ast.AST],
             t.StrSequence,
             str | None,
@@ -1945,7 +1941,7 @@ class FlextInfraUtilitiesSemanticContracts(
         module: p.Infra.RopePyModule,
         target_binding: tuple[ast.Name, p.Infra.RopePyName, int],
         context: tuple[
-            t.MappingKV[int, ast.AST],
+            t.MappingKV[int, t.Infra.RopeAstNode],
             t.MappingKV[tuple[type[ast.AST], int], ast.AST],
             t.StrSequence,
             str | None,

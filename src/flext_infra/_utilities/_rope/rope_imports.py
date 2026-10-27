@@ -16,9 +16,9 @@ import libcst as cst
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesPyproject,
-    FlextInfraUtilitiesQualifiedNames,
+from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
@@ -820,7 +820,7 @@ class FlextInfraUtilitiesRopeImports:
             The declared project package or no owned relocation target.
 
         """
-        own = FlextInfraUtilitiesPyproject.project_package_name(project_root)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(project_root)
         return own if source_module.split(".", maxsplit=1)[0] == own else None
 
     @classmethod

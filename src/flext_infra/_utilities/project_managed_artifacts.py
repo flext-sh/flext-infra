@@ -19,7 +19,7 @@ from flext_cli import u
 from flext_core import FlextStrictYamlConfigSource
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):

@@ -19,13 +19,15 @@ from flext_infra import c, deps, m, p, t, workspace
 from flext_infra._utilities._docs.docs_scope_projects import (
     FlextInfraUtilitiesDocsScopeProjectsMixin,
 )
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 from flext_infra._utilities._pyproject.toml_phases import (
     FlextInfraUtilitiesPyprojectTomlPhases,
 )
 from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraToolTablesPhase:
@@ -140,7 +142,7 @@ class FlextInfraToolTablesPhase:
                 )(project_dir, source_project=source_project)
                 if project != project_dir
                 for namespace in (
-                    FlextInfraUtilitiesPyproject.project_package_name(
+                    FlextInfraUtilitiesPyprojectConform.project_package_name(
                         project, source_project=source_project
                     ),
                 )

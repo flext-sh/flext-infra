@@ -12,7 +12,6 @@ from pathlib import Path, PurePosixPath
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesDependencyDeptryMixin:
@@ -131,9 +130,7 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         document = u.Cli.toml_parse_text(settings.content.decode(c.DEFAULT_ENCODING))
         if document is None:
             return result_type.fail(f"invalid deptry configuration: {settings.path}")
-        wheel: t.JsonMapping | None = (
-            FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
-        )
+        wheel: t.JsonMapping | None = u.Cli.toml_as_mapping(document)
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             wheel = None if wheel is None else u.Cli.toml_mapping_child(wheel, key)
         return result_type.ok(dict[str, t.JsonValue]() if wheel is None else wheel)

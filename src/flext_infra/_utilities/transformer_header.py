@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
 
 from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesTransformerHeaderParser
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 
 class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderParser):
@@ -282,10 +282,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             Ids of class-body annotations a model resolves at runtime.
 
         """
-        parents: MutableMapping[int, ast.AST] = {}
-        for parent in ast.walk(module):
-            for child in ast.iter_child_nodes(parent):
-                parents[id(child)] = parent
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(module)
         runtime_ids: set[int] = set()
         for node in ast.walk(module):
             if not isinstance(node, ast.AnnAssign):

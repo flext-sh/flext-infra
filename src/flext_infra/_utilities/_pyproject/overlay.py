@@ -9,14 +9,11 @@ from __future__ import annotations
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesManagedConflicts,
-    FlextInfraUtilitiesPyproject,
-)
 from flext_infra._utilities._pyproject.requirements import (
     FlextInfraUtilitiesPyprojectRequirements,
 )
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
 
 
 class FlextInfraUtilitiesPyprojectOverlay:
@@ -145,7 +142,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        group = FlextInfraUtilitiesPyproject.dependency_group_name(
+        group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
             groups,
             group,
         )
@@ -193,11 +190,13 @@ class FlextInfraUtilitiesPyprojectOverlay:
         )
         groups = dict(rendered_groups)
         for name, entries in live_groups.items():
-            authored_name = FlextInfraUtilitiesPyproject.dependency_group_name(
-                tuple(live_groups),
-                name,
+            authored_name = (
+                FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                    tuple(live_groups),
+                    name,
+                )
             )
-            previous = FlextInfraUtilitiesPyproject.dependency_group_name(
+            previous = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
                 tuple(groups),
                 authored_name,
             )
@@ -205,11 +204,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 groups.pop(previous, None)
             groups[authored_name] = entries
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
-            selected = FlextInfraUtilitiesPyproject.dependency_group_name(
+            selected = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
                 tuple(groups),
                 str(group),
             )
-            custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
+            custom = FlextInfraUtilitiesPyprojectRequirements.custom_dev_additions(
                 live_payload,
                 live,
                 group=group,
@@ -220,7 +219,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 required = u.validate_value(
                     m.Infra.DependencyGroupEntries,
                     rendered_groups.get(
-                        FlextInfraUtilitiesPyproject.dependency_group_name(
+                        FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
                             tuple(rendered_groups),
                             str(group),
                         ),
@@ -230,15 +229,20 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 )
                 if required.failure:
                     return r[bool].from_failure(required)
-                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
-                    FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
-                        required.value.root,
-                        custom.value,
-                    ),
+                merged = FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
+                    required.value.root,
+                    custom.value,
+                )
+                groups[selected] = (
+                    FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                        merged,
+                    )
                 )
             else:
-                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
-                    custom.value,
+                groups[selected] = (
+                    FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                        custom.value,
+                    )
                 )
         validated = u.validate_value(
             m.Infra.DependencyGroupDeclarations,

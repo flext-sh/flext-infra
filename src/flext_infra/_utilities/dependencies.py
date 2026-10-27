@@ -17,12 +17,11 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencyRequirements,
-    FlextInfraUtilitiesPyproject,
-)
 from flext_infra._utilities._dependency_deptry import (
     FlextInfraUtilitiesDependencyDeptryMixin,
+)
+from flext_infra._utilities.dependency_requirements import (
+    FlextInfraUtilitiesDependencyRequirements,
 )
 
 
@@ -350,7 +349,7 @@ class FlextInfraUtilitiesDependencies(
             The resulting ``t.MappingKV[str, t.StrSequence]``.
 
         """
-        normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
+        normalized = u.Cli.toml_as_mapping(document) or {}
         if not normalized:
             # Keep the empty mapping immutable and fully typed.
             return MappingProxyType(dict[str, t.VariadicTuple[str]]())
@@ -367,7 +366,7 @@ class FlextInfraUtilitiesDependencies(
             The resulting ``t.StrSequence``.
 
         """
-        normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
+        normalized = u.Cli.toml_as_mapping(document) or {}
         if not normalized:
             return ()
         return cls.canonical_dev_dependencies_from_payload(normalized)
@@ -716,7 +715,7 @@ class FlextInfraUtilitiesDependencies(
             Normalized dependency names from one TOML document.
 
         """
-        normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
+        normalized = u.Cli.toml_as_mapping(document) or {}
         if not normalized:
             return ()
         return cls.declared_dependency_names_from_payload(normalized)

@@ -218,7 +218,7 @@ class FlextInfraExtractDuplicatePhase:
 
         """
         tree = ast.parse(source)
-        parents = cls._parent_map(tree)
+        parents = u.Infra.ast_parent_map(tree)
         for span in spans:
             rewritten = cls._plan_span(source, tree, parents, span)
             if rewritten is not None:
@@ -230,7 +230,7 @@ class FlextInfraExtractDuplicatePhase:
         cls,
         source: str,
         tree: ast.Module,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         span: t.Quad[int, int, int, int],
     ) -> str | None:
         """Plan one extraction for a single reported clone span.
@@ -281,20 +281,6 @@ class FlextInfraExtractDuplicatePhase:
         return cls._block_is_safe(first_block)
 
     # ------------------------------------------------------------------ scopes
-
-    @staticmethod
-    def _parent_map(tree: ast.Module) -> t.MappingKV[ast.AST, ast.AST]:
-        """Return every node's direct parent.
-
-        Returns:
-            Every node's direct parent.
-
-        """
-        return {
-            child: parent
-            for parent in ast.walk(tree)
-            for child in ast.iter_child_nodes(parent)
-        }
 
     @staticmethod
     def _statement_slice(
@@ -427,7 +413,7 @@ class FlextInfraExtractDuplicatePhase:
 
     @staticmethod
     def _enclosing_class(
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         node: ast.stmt,
     ) -> ast.ClassDef | None:
         """Return the innermost class enclosing ``node``, if any.
@@ -436,17 +422,17 @@ class FlextInfraExtractDuplicatePhase:
             The innermost class enclosing ``node``, if any.
 
         """
-        current = parents.get(node)
+        current = parents.get(id(node))
         while current is not None:
             if isinstance(current, ast.ClassDef):
                 return current
-            current = parents.get(current)
+            current = parents.get(id(current))
         return None
 
     @classmethod
     def _class_is_module_level(
         cls,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         owner: ast.ClassDef,
     ) -> bool:
         """Return whether the class name resolves as a module global.
@@ -458,17 +444,17 @@ class FlextInfraExtractDuplicatePhase:
             Whether the class name resolves as a module global.
 
         """
-        current = parents.get(owner)
+        current = parents.get(id(owner))
         while current is not None:
             if isinstance(current, c.Infra.AST_DEFINITION_TYPES):
                 return False
-            current = parents.get(current)
+            current = parents.get(id(current))
         return True
 
     @classmethod
     def _enclosing_functions(
         cls,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         node: ast.stmt,
     ) -> tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]:
         """Return the enclosing functions of ``node``, innermost first.
@@ -478,18 +464,18 @@ class FlextInfraExtractDuplicatePhase:
 
         """
         chain: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
-        current = parents.get(node)
+        current = parents.get(id(node))
         while current is not None:
             if isinstance(current, c.Infra.AST_FUNCTION_TYPES):
                 chain.append(current)
-            current = parents.get(current)
+            current = parents.get(id(current))
         return tuple(chain)
 
     @classmethod
     def _free_parameters(
         cls,
         tree: ast.Module,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         block: t.SequenceOf[ast.stmt],
     ) -> tuple[tuple[str, str], ...] | None:
         """Return the typed parameters the helper needs, or ``None`` if untypable.

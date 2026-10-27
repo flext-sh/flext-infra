@@ -22,7 +22,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod.codemod_binding_chain import (
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         root = project.resolve()
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         sources = FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
             snapshot, root
         )

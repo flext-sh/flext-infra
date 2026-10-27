@@ -26,7 +26,7 @@ from flext_infra import FlextInfraConfig, c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesPythonModel,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -155,7 +155,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         """
         del snapshot
         roots = sorted({
-            FlextInfraUtilitiesPyproject.project_package_name(project.absolute()),
+            FlextInfraUtilitiesPyprojectConform.project_package_name(
+                project.absolute()
+            ),
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
         })
         directories = sorted({
@@ -779,7 +781,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The sorted facade package names the project reaches.
 
         """
-        own = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         return tuple(
             sorted({
                 own,
@@ -808,7 +812,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The external-import rule document keyed by id.
 
         """
-        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         catalog = (
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH
         )
@@ -872,7 +878,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The library-type rule document keyed by id.
 
         """
-        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         facade = c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY
         stdlib = c.Infra.CODEMOD_STDLIB_MODULE_UTILITY
         own = c.Infra.CODEMOD_OWN_PACKAGE_UTILITY
@@ -1092,7 +1100,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         ]
         if not files:
             return {}
-        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         helpers = cls._layer_zero_helpers(snapshot, project)
         separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
         root_name = c.Infra.CODEMOD_ROOT_IMPORTED_NAME_UTILITY

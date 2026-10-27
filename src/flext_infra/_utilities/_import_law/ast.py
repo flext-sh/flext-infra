@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import operator
-from collections.abc import MutableMapping
 
 from flext_infra import c, m, t
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
@@ -16,20 +15,6 @@ from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolic
 
 class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     """Parse, scope and edit module sources for import rewrites."""
-
-    @staticmethod
-    def _import_law_parent_map(tree: ast.Module) -> t.MappingKV[int, ast.AST]:
-        """Map every node id to its parent node.
-
-        Returns:
-            The resulting ``t.MappingKV[int, ast.AST]``.
-
-        """
-        parents: MutableMapping[int, ast.AST] = {}
-        for node in ast.walk(tree):
-            for child in ast.iter_child_nodes(node):
-                parents[id(child)] = node
-        return parents
 
     @staticmethod
     def _import_law_iter_imports(
@@ -54,8 +39,8 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_enclosing_scope(
         cls,
         node: ast.AST,
-        parents: t.MappingKV[int, ast.AST],
-    ) -> ast.AST | None:
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+    ) -> t.Infra.RopeAstNode | None:
         """Return the lexical scope that evaluates one node.
 
         Definition headers and a comprehension's first iterable run in the
@@ -81,7 +66,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         node: ast.AST,
         child: ast.AST,
         scope: ast.AST,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> bool:
         """Return whether ``scope`` evaluates ``node`` reached through ``child``.
 
@@ -105,7 +90,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_comprehension_owns_node(
         node: ast.AST,
         scope: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> bool:
         """Keep the first iterable outside its comprehension's lexical bindings.
 
@@ -143,7 +128,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_inside_type_checking(
         cls,
         node: ast.AST,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> bool:
         """Return whether the node sits under an ``if TYPE_CHECKING:`` block.
 

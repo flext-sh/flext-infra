@@ -23,7 +23,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities._codemod.codemod_native_utilities import (
     FlextInfraUtilitiesCodemodNativeUtilities,
@@ -795,7 +795,7 @@ class FlextInfraUtilitiesFacadeMembers:
             project's duplicate names by declaring letter.
 
         """
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         lineage = cls.facade_member_lineage(
             package, letters, source_project=source_project
@@ -1024,7 +1024,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         root = project.absolute()
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         _lineage, _references, exposed = cls.facade_member_census(
             root, source_project=snapshot.engine
         )
@@ -1171,7 +1171,7 @@ class FlextInfraUtilitiesFacadeMembers:
         )
         if not references:
             return {}
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         sources = sorted({
             *lineage,
             *FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(

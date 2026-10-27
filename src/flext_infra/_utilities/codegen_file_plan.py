@@ -61,11 +61,10 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 if not equal
             )
             if conflicts:
-                diagnostic = (
-                    FlextInfraUtilitiesCodegenFilePlan.codegen_duplicate_effect_diagnostic(
-                        (previous, file)
-                    )
-                )
+                diagnostic = FlextInfraUtilitiesCodegenFilePlan.codegen_duplicate_effect_diagnostic((
+                    previous,
+                    file,
+                ))
                 message = (
                     f"candidate has competing file authority: {file.path}; "
                     f"ordered={ordered}; competing_fields={conflicts}; {diagnostic}"
@@ -97,6 +96,21 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 )
             )
         return tuple(files.values())
+
+    @classmethod
+    def codegen_stage_file_plans(
+        cls,
+        index: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        ordered: bool = False,
+    ) -> None:
+        """Check peer declarations before advancing the caller's candidate index."""
+        peers = cls.codegen_compose_file_plans(plans)
+        composed = cls.codegen_compose_file_plans(
+            (*index.values(), *peers), ordered=ordered
+        )
+        index.update((plan.path, plan) for plan in composed)
 
     @classmethod
     def codegen_duplicate_effect_diagnostic(

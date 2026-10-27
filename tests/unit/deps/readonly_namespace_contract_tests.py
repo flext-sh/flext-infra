@@ -43,7 +43,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
             "        def encoding(self) -> str: ...\n\n"
             "    class Settings(Protocol):\n"
             "        @property\n"
-            "        def Branch(self) -> Contracts.BranchSettings: ...\n",
+            "        def branch(self) -> Contracts.BranchSettings: ...\n",
             encoding="utf-8",
         )
         (package / "settings.py").write_text(
@@ -82,7 +82,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
             proof.read_text(encoding="utf-8") + "\ndef forbidden(\n"
             "    value: Contracts.Settings, branch: Contracts.BranchSettings\n"
             ") -> None:\n"
-            "    value.Branch = branch\n",
+            "    value.branch = branch\n",
             encoding="utf-8",
         )
         rejected = checker.check_files((proof,), project, context)
@@ -93,37 +93,33 @@ class TestsFlextInfraReadonlyNamespaceContract:
         )
 
     @staticmethod
-    def test_exempt_identities_authenticate_only_readonly_branch_getters(
+    def test_protocol_getter_names_have_no_identity_exemption(
         tmp_path: Path,
     ) -> None:
-        """N802 is exempt only at an authenticated settings-protocol branch."""
+        """N802 remains blocking even for a structurally read-only getter."""
         project = TestsFlextInfraReadonlyNamespaceContract._semantic_project(tmp_path)
         contracts = project / "src" / "sample" / "contracts.py"
         contracts.write_text(
-            contracts.read_text(encoding="utf-8")
-            + "\n        def Unrelated(self) -> str: ...\n",
+            contracts.read_text(encoding="utf-8") + "\n        @property\n"
+            "        def Branch(self) -> Contracts.BranchSettings: ...\n"
+            "\n        def Unrelated(self) -> str: ...\n",
             encoding="utf-8",
         )
-        branch_row = 12
-        unrelated_row = 14
-        findings = tuple(
-            m.Infra.Issue(
-                file=str(contracts),
-                line=row,
-                column=13,
-                code=c.Infra.RUFF_INVALID_FUNCTION_NAME,
-                message="function name should be lowercase",
-                severity=c.Infra.GateSeverity.ERROR.value,
-            )
-            for row in (branch_row, unrelated_row)
+        context = m.Infra.GateContext(
+            repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
-        exempt = gates.FlextInfraReadonlyNamespace.exempt_identities(project, findings)
+        checked = gates.FlextInfraRuffLintGate(tmp_path).check_files(
+            (contracts,), project, context
+        )
+        tm.that(checked.result.passed, eq=False)
         tm.that(
-            exempt,
-            eq=frozenset({
-                (
-                    (contracts.resolve(), branch_row, 13),
-                    c.Infra.RUFF_INVALID_FUNCTION_NAME,
-                )
-            }),
+            sum(
+                issue.code == c.Infra.RUFF_INVALID_FUNCTION_NAME
+                for issue in checked.issues
+            ),
+            eq=2,
         )
+        exempt = gates.FlextInfraReadonlyNamespace.exempt_identities(
+            project, checked.issues
+        )
+        tm.that(exempt, eq=frozenset())

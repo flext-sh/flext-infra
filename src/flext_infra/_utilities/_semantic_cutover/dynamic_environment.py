@@ -25,7 +25,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
+)
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
@@ -285,13 +287,13 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             ValueError: A supplied policy belongs to another root or epoch.
 
         """
-        payload = FlextInfraUtilitiesPyproject.pyproject_payload(
+        payload = FlextInfraUtilitiesPyprojectConform.pyproject_payload(
             owner_root / c.PYPROJECT_FILENAME, source_project=source_project
         )
-        project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
+        project_name = FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
             owner_root, payload
         )
-        package_name = FlextInfraUtilitiesPyproject.project_package_name(
+        package_name = FlextInfraUtilitiesPyprojectConform.project_package_name(
             owner_root, source_project=source_project
         )
         if owner_root == repository_root.resolve():

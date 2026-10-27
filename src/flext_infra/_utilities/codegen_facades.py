@@ -48,6 +48,7 @@ from libcst.metadata import MetadataWrapper, PositionProvider
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
+    FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesFacadeMembers,
@@ -236,6 +237,7 @@ class FlextInfraUtilitiesCodegenFacades(
             / FlextInfraUtilitiesCodegenNamespace.facade_families()["t"].directory,
             source,
             declarations,
+            declared_sources,
         )
         source = cls._inherit_upstream_namespace(
             project, facade_path, source, captured_sources=sources
@@ -662,7 +664,11 @@ class FlextInfraUtilitiesCodegenFacades(
             project,
             facade_path,
             cls._rebind_declared_imports(
-                package_name, owners_dir, source, declarations
+                package_name,
+                owners_dir,
+                source,
+                declarations,
+                declared_sources,
             ),
         )
         explicit_parts = cls._explicit_class_facade(
@@ -1231,6 +1237,30 @@ class FlextInfraUtilitiesCodegenFacades(
             owners_dir=directory,
         )
 
+    @staticmethod
+    def _component_stage_plans(
+        planned: dict[Path, m.Infra.CodegenFilePlan],
+        staged: dict[Path, m.Infra.CodegenFilePlan],
+        additions: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> None:
+        """Admit stage effects only through the authenticated plan composer.
+
+        Ordered composition advances desired bytes for a destination only when
+        the original authority agrees; competing stage effects escape from the
+        composer unchanged.
+
+        """
+        composed = FlextInfraUtilitiesCodegenFilePlan.codegen_compose_file_plans(
+            (*staged.values(), *additions), ordered=True
+        )
+        staged.clear()
+        staged.update((plan.path, plan) for plan in composed)
+        composed = FlextInfraUtilitiesCodegenFilePlan.codegen_compose_file_plans(
+            (*planned.values(), *additions), ordered=True
+        )
+        planned.clear()
+        planned.update((plan.path, plan) for plan in composed)
+
     @classmethod
     def plan_component_facades(
         cls,
@@ -1284,8 +1314,7 @@ class FlextInfraUtilitiesCodegenFacades(
             rebound = cls._component_root_import_seeds(
                 root, snapshot, binding, selection=selection
             )
-        planned.update((plan.path, plan) for plan in rebound)
-        staged.update((plan.path, plan) for plan in rebound)
+        cls._component_stage_plans(planned, staged, rebound)
         with source_view(root, declared_files=tuple(staged.values())) as binding:
             inventory = cls._component_selected_domains(
                 root, snapshot, binding, selection=selection
@@ -1306,9 +1335,10 @@ class FlextInfraUtilitiesCodegenFacades(
                     for domain in domains
                     if len(domain[1].parts) == depth
                 }
-            planned.update(
-                (plan.path, plan) for _, moved in seeds.values() for plan in moved
+            moved = tuple(
+                plan for _, seed_moved in seeds.values() for plan in seed_moved
             )
+            cls._component_stage_plans(planned, staged, moved)
             initializers = initializer_planner(
                 root,
                 declared_files=tuple(staged.values()),
@@ -1317,14 +1347,12 @@ class FlextInfraUtilitiesCodegenFacades(
             )
             if initializers.failure:
                 return result_type.from_failure(initializers)
-            planned.update((plan.path, plan) for plan in initializers.value)
-            staged.update((plan.path, plan) for plan in initializers.value)
+            cls._component_stage_plans(planned, staged, initializers.value)
             for domain, (seed, _) in seeds.items():
                 final = cls._component_render(
                     root, domain, seed, staged, source_view=source_view
                 )
-                planned[final.path] = final
-                staged[final.path] = final
+                cls._component_stage_plans(planned, staged, (final,))
                 if domain[2] is c.Infra.FacadeFamily.U:
                     utility_paths.add(final.path)
         roots = cls._component_root_plans(
@@ -1332,7 +1360,8 @@ class FlextInfraUtilitiesCodegenFacades(
         )
         if roots.failure:
             return result_type.from_failure(roots)
-        planned.update((plan.path, plan) for plan, _ in roots.value)
+        root_plans = tuple(plan for plan, _ in roots.value)
+        cls._component_stage_plans(planned, staged, root_plans)
         utility_paths.update(
             plan.path
             for plan, family in roots.value
@@ -1341,7 +1370,7 @@ class FlextInfraUtilitiesCodegenFacades(
         consumers = cls._component_consumer_plans(
             root, utility_paths, staged, source_view=source_view
         )
-        planned.update((plan.path, plan) for plan in consumers)
+        cls._component_stage_plans(planned, staged, consumers)
         initializers = initializer_planner(
             root,
             declared_files=tuple(staged.values()),
@@ -1350,7 +1379,7 @@ class FlextInfraUtilitiesCodegenFacades(
         )
         if initializers.failure:
             return result_type.from_failure(initializers)
-        planned.update((plan.path, plan) for plan in initializers.value)
+        cls._component_stage_plans(planned, staged, initializers.value)
         return result_type.ok(tuple(planned.values()))
 
     @classmethod
@@ -1366,91 +1395,153 @@ class FlextInfraUtilitiesCodegenFacades(
 
         The component renderer still owns the final MRO. These import-only seeds
         retain physical witnesses and never fabricate a declaration or a base.
+
+        Returns:
+            The relocated import seeds for every generated root facade.
+
         """
         project, sources = binding
-        plans: list[m.Infra.CodegenFilePlan] = []
-        for package, family in cls._component_root_families(
-            root, snapshot, binding, selection=selection
-        ):
-            path = cls.facade_module_path(
-                package, family, project=project, sources=sources
+        return tuple(
+            plan
+            for package, family in cls._component_root_families(
+                root, snapshot, binding, selection=selection
             )
-            if path is None or not sources[path].startswith(c.Infra.AUTOGEN_HEADER):
+            for plan in cls._component_import_seed_plans(
+                root, project, sources, package, family
+            )
+        )
+
+    @classmethod
+    def _component_import_seed_plans(
+        cls,
+        root: Path,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+        package: Path,
+        family: c.Infra.FacadeFamily,
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        """Rewrite one generated root facade's relocated member imports.
+
+        Returns:
+            The relocation plan, or no plan when the facade keeps its imports.
+
+        """
+        path = cls.facade_module_path(package, family, project=project, sources=sources)
+        if path is None or not sources[path].startswith(c.Infra.AUTOGEN_HEADER):
+            return ()
+        directory = package / cls.facade_families()[family].directory
+        if directory / c.Infra.INIT_PY not in sources:
+            return ()
+        package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+            package, project_root=root, source_project=project
+        )
+        prefix = f"{package_name}.{directory.name}"
+        module = cls.require_semantic_module(
+            project.get_pymodule(
+                cls.file_resource_at(project, directory / c.Infra.INIT_PY)
+            )
+        )
+        source = sources[path]
+        tree = ast.parse(source)
+        base_names = {
+            node.id
+            for declaration in ast.walk(tree)
+            if isinstance(declaration, ast.ClassDef)
+            for base in declaration.bases
+            for node in ast.walk(base)
+            if isinstance(node, ast.Name)
+        }
+        for statement in ast.walk(tree):
+            if not isinstance(statement, ast.ImportFrom) or statement.module != prefix:
                 continue
-            directory = package / cls.facade_families()[family].directory
-            initializer = directory / c.Infra.INIT_PY
-            if initializer not in sources:
-                continue
-            package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
-                package, project_root=root, source_project=project
-            )
-            prefix = f"{package_name}.{directory.name}"
-            module = cls.require_semantic_module(
-                project.get_pymodule(cls.file_resource_at(project, initializer))
-            )
-            source = sources[path]
-            tree = ast.parse(source)
-            base_names = {
-                node.id
-                for declaration in ast.walk(tree)
-                if isinstance(declaration, ast.ClassDef)
-                for base in declaration.bases
-                for node in ast.walk(base)
-                if isinstance(node, ast.Name)
-            }
-            for statement in ast.walk(tree):
-                if (
-                    not isinstance(statement, ast.ImportFrom)
-                    or statement.module != prefix
+            for alias in statement.names:
+                name = alias.asname or alias.name
+                current = module.get_attributes().get(name)
+                if name not in base_names or (
+                    current is not None and cls.abstract_class(current.get_object())
                 ):
                     continue
-                for alias in statement.names:
-                    if (alias.asname or alias.name) not in base_names:
-                        continue
-                    current = module.get_attributes().get(alias.name)
-                    if current is not None and cls.abstract_class(current.get_object()):
-                        continue
-                    publishers: list[str] = []
-                    for child, content in sources.items():
-                        if (
-                            child.name != c.Infra.INIT_PY
-                            or child.parent == directory
-                            or not child.is_relative_to(directory)
-                            or alias.name not in cls.public_export_names_source(content)
-                        ):
-                            continue
-                        provider = cls.require_semantic_module(
-                            project.get_pymodule(cls.file_resource_at(project, child))
-                        )
-                        exported = provider.get_attributes().get(alias.name)
-                        if exported is not None and cls.py_class(exported.get_object()):
-                            publishers.append(
-                                ".".join((
-                                    prefix,
-                                    *child.parent.relative_to(directory).parts,
-                                ))
-                            )
-                    if len(publishers) != 1:
-                        message = (
-                            "Relocated facade import has no unique native publisher: "
-                            f"{path}:{alias.name}: {publishers}"
-                        )
-                        raise ValueError(message)
-                    source = cls._relocated_import_source(
-                        source, package_name, (prefix, alias.name), publishers[0]
-                    )
-            if source != sources[path]:
-                before = project.source_state(path, required=True)
-                plans.append(
-                    m.Infra.CodegenFilePlan(
-                        project=root,
-                        path=path,
-                        before=before,
-                        desired_content=source.encode(c.DEFAULT_ENCODING),
-                        desired_mode=before.mode,
-                    )
+                if not any(
+                    f"class {name}(" in content or f"class {name}:" in content
+                    for content in sources.values()
+                ):
+                    # A base declared nowhere is retired: the root facade
+                    # composition rebuild drops its import and base, so no
+                    # publisher is required.
+                    continue
+                target = cls._component_seed_publisher(
+                    project, sources, directory, prefix, name
                 )
-        return tuple(plans)
+                if target is None:
+                    continue
+                source = cls._relocated_import_source(
+                    source,
+                    package_name,
+                    (prefix, name),
+                    target,
+                )
+        if source == sources[path]:
+            return ()
+        before = project.source_state(path, required=True)
+        return (
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=before,
+                desired_content=source.encode(c.DEFAULT_ENCODING),
+                desired_mode=before.mode,
+            ),
+        )
+
+    @classmethod
+    def _component_seed_publisher(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+        directory: Path,
+        prefix: str,
+        name: str,
+    ) -> str:
+        """Locate the unique child initializer publishing a relocated owner.
+
+        Returns:
+            The child package importing the native class declaration, or ``None``
+            when no child publishes it anymore and the declared-facade stage owns
+            the retired binding.
+
+        Raises:
+            ValueError: The owner has competing child-facade publishers.
+
+        """
+        publishers: list[str] = []
+        for child, content in sources.items():
+            if (
+                child.name != c.Infra.INIT_PY
+                or child.parent == directory
+                or not child.is_relative_to(directory)
+                or name not in cls.public_export_names_source(content)
+            ):
+                continue
+            exported = (
+                cls
+                .require_semantic_module(
+                    project.get_pymodule(cls.file_resource_at(project, child))
+                )
+                .get_attributes()
+                .get(name)
+            )
+            if exported is None or not cls.py_class(exported.get_object()):
+                continue
+            publishers.append(
+                ".".join((prefix, *child.parent.relative_to(directory).parts))
+            )
+        if len(publishers) > 1:
+            message = (
+                "Relocated facade import has competing native publishers: "
+                f"{name}: {publishers}"
+            )
+            raise ValueError(message)
+        return publishers[0] if publishers else None
 
     @classmethod
     def _component_consumer_plans(
@@ -2132,7 +2223,7 @@ class FlextInfraUtilitiesCodegenFacades(
             pkg_dir, owners_dir, contents=contents, project=project
         )
         source = cls._rebind_declared_imports(
-            package_name, owners_dir, source, declarations
+            package_name, owners_dir, source, declarations, sources
         )
         cls._explicit_class_facade(
             project, facade_path, source, declarations, binding=(sources, family)
@@ -2932,11 +3023,11 @@ class FlextInfraUtilitiesCodegenFacades(
                     family
                 ].directory
             )
-        _, declarations, package_name = cls._declared_sources(
+        sources, declarations, package_name = cls._declared_sources(
             pkg_dir, owners_dir, contents=contents, project=project
         )
         source = cls._rebind_declared_imports(
-            package_name, owners_dir, source, declarations
+            package_name, owners_dir, source, declarations, sources
         )
         source = cls._wrap_facade_imports(
             cls._merged_facade_imports(cls._canonical_exports(source))
@@ -3059,7 +3150,7 @@ class FlextInfraUtilitiesCodegenFacades(
             pkg_dir, owners_dir, contents=binding[1], project=binding[0]
         )
         source = cls._rebind_declared_imports(
-            package_name, owners_dir, source, declarations
+            package_name, owners_dir, source, declarations, sources
         )
         sources[f"{package_name}.{facade_path.stem}"] = (facade_path, source)
         owners, _ = cls._facade_protocol_owners(
@@ -4080,7 +4171,7 @@ class FlextInfraUtilitiesCodegenFacades(
             pkg_dir, owners_dir, contents=binding[1], project=binding[0]
         )
         source = cls._rebind_declared_imports(
-            package_name, owners_dir, source, declarations
+            package_name, owners_dir, source, declarations, sources
         )
         sources[f"{package_name}.{facade_path.stem}"] = (facade_path, source)
         if cls._explicit_class_facade(
@@ -5461,11 +5552,14 @@ class FlextInfraUtilitiesCodegenFacades(
         owners_dir: Path,
         source: str,
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        sources: t.MappingKV[str, t.Pair[Path, str]],
     ) -> str:
-        """Import declared owners from their publishing family package.
+        """Import declared owners from their nearest publishing package.
 
         Declarations elect exports; the existing joint initializer plan publishes
-        them. A stale barrel is never bypassed by importing a concrete leaf.
+        them. A nested domain owns its own members, so each imported owner binds
+        from its declaring module's immediate package, never a concrete leaf and
+        never an ancestor that stopped flattening descendants.
 
         Returns:
             Source with owned leaf import origins replaced by their package.
@@ -5479,6 +5573,19 @@ class FlextInfraUtilitiesCodegenFacades(
             message = "Competing declared facade import bindings"
             raise ValueError(message)
         prefix = f"{package_name}.{owners_dir.name}"
+        declaring: dict[str, str] = {}
+        packaged: set[str] = set()
+        for module, (path, content) in sources.items():
+            if path.name == c.Infra.INIT_PY:
+                packaged.add(module)
+            for (
+                name
+            ) in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                content
+            ):
+                previous = declaring.get(name)
+                if previous is None or module.count(".") >= previous.count("."):
+                    declaring[name] = module
         for node in ast.walk(ast.parse(source)):
             if not isinstance(node, ast.ImportFrom) or node.module is None:
                 continue
@@ -5490,12 +5597,34 @@ class FlextInfraUtilitiesCodegenFacades(
             if module != prefix and not module.startswith(f"{prefix}."):
                 continue
             for alias in node.names:
+                owner = declaring.get(alias.name)
+                target = cls._declared_import_target(owner, packaged)
+                if module == prefix and target is not None and target != prefix:
+                    source = cls._relocated_import_source(
+                        source, package_name, (module, alias.name), target
+                    )
+                    continue
                 if alias.name not in owners or module == prefix:
                     continue
                 source = cls._relocated_import_source(
                     source, package_name, (module, alias.name), prefix
                 )
         return source
+
+    @staticmethod
+    def _declared_import_target(
+        owner: str | None,
+        packaged: t.ContainerOf[str],
+    ) -> str | None:
+        """Resolve the publishing binding for one declared owner import.
+
+        Returns:
+            The owner binding when packaged, its parent package, or no target.
+
+        """
+        if owner is None:
+            return None
+        return owner if owner in packaged else owner.rpartition(".")[0]
 
     @staticmethod
     def _relocated_import_source(

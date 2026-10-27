@@ -35,9 +35,11 @@ from pathlib import Path
 from typing import TypeGuard, TypeIs
 
 from flext_infra import c, p, t
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
 from flext_infra._utilities._codemod.codemod_native_package_utilities import (
     FlextInfraUtilitiesCodemodNativePackageUtilities,
+)
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
 )
 
 
@@ -59,7 +61,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
 
         """
         del snapshot
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         # A package that is not installed has no runtime facade (typed
         # absence); an installed package that fails to import raises.
         if find_spec(package) is None:
@@ -242,7 +244,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
 
         """
         del snapshot
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         # A package that is not installed has no runtime facade (typed
         # absence); an installed package that fails to import raises.
         if find_spec(package) is None:

@@ -26,6 +26,7 @@ from flext_infra._utilities._import_law import (
     FlextInfraUtilitiesImportLawRoutes,
 )
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
@@ -397,7 +398,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         state: m.Infra.ImportLawPass | None = None
         for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
             tree = ast.parse(current, filename=str(file_path))
-            parents = cls._import_law_parent_map(tree)
+            parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
             state = m.Infra.ImportLawPass(
                 scope=m.Infra.ImportLawScope(
                     project_root=project_root.resolve(),
@@ -449,7 +450,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     def _import_law_deferred_class_lines(
         cls,
         tree: ast.Module,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         module: str,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
     ) -> frozenset[int]:

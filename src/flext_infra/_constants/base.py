@@ -101,7 +101,7 @@ class FlextInfraConstantsBase(
     RUFF_NON_PEP695_TYPE_ALIAS: ClassVar[str] = "non-pep695-type-alias"
     "Ruff UP040; exempt only per authenticated facade class publication."
     RUFF_INVALID_FUNCTION_NAME: ClassVar[str] = "invalid-function-name"
-    "Ruff N802; exempt only per authenticated settings-protocol branch getter."
+    "Ruff N802; function names must be lowercase, including protocol getters."
     DEPTRY: ClassVar[str] = "deptry"
     "Deptry tool section key."
     ISORT: ClassVar[str] = "isort"

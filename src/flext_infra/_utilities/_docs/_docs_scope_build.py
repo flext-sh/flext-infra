@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceManifest,
 )
 from flext_infra._utilities._docs._docs_scope_selection import (
@@ -104,7 +104,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
             resolved_root,
         )
         has_declared_members = bool(
-            FlextInfraUtilitiesPyproject.workspace_project_paths(resolved_root),
+            FlextInfraUtilitiesPyprojectConform.workspace_project_paths(resolved_root),
         )
         has_child_projects = any(
             project.path.resolve() != resolved_root for project in discovered

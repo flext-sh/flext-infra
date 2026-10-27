@@ -114,7 +114,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             )
         )
         header = next(
-            item for item in FlextInfraUtilitiesRopeStructure.logical_statements(source)
+            item
+            for item in FlextInfraUtilitiesRopeStructure.logical_statements(source)
             if item.line == owner.get_scope().get_start()
         )
         lines = source.splitlines(keepends=True)

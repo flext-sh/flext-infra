@@ -233,9 +233,9 @@ class FlextInfraUtilitiesProtocolModels:
                     )
                 ):
                     continue
-                owner = (
-                    FlextInfraUtilitiesRopeAnalysis.published_facade_owner
-                )(self.project, resource)
+                owner = (FlextInfraUtilitiesRopeAnalysis.published_facade_owner)(
+                    self.project, resource
+                )
                 if owner is not None and owner[0] in {"m", "p"}:
                     self.facades[owner[0]] = module.get_attribute(owner[1])
                     self.package = entry.package_dir
@@ -410,10 +410,9 @@ class FlextInfraUtilitiesProtocolModels:
                 name, annotation = declaration
                 if name.startswith("_") or name == "model_config":
                     continue
-                if (
-                    isinstance(statement, ast.AnnAssign)
-                    and self._declares_class_storage(self.project, scope, statement)
-                ):
+                if isinstance(
+                    statement, ast.AnnAssign
+                ) and self._declares_class_storage(self.project, scope, statement):
                     fields.pop(name, None)
                     continue
                 if isinstance(annotation, ast.Subscript) and self._denotes(
@@ -645,9 +644,7 @@ class FlextInfraUtilitiesProtocolModels:
             if binding is not None and self.same_name(
                 self.facades["p"], self.expression_name(scope, root)
             ):
-                return self._declared_port(
-                    binding, ast.unparse(node).partition(".")[2]
-                )
+                return self._declared_port(binding, ast.unparse(node).partition(".")[2])
             source = ast.unparse(node)
             aliases = self._imports(source, scope)
             renamed = aliases.get(root, root)
@@ -690,9 +687,7 @@ class FlextInfraUtilitiesProtocolModels:
                     return ast.parse(self.references[route], mode="eval").body
             return None
 
-        def _declared_port(
-            self, binding: p.Infra.RopePyName, route: str
-        ) -> ast.expr:
+        def _declared_port(self, binding: p.Infra.RopePyName, route: str) -> ast.expr:
             """Retain an authored contract through its nearest family export.
 
             Returns:
@@ -729,9 +724,9 @@ class FlextInfraUtilitiesProtocolModels:
                 if scope.get_kind() == c.Infra.RopeScopeKind.CLASS:
                     names.append(scope.pyobject.get_name())
             names.reverse()
-            package = (
-                FlextInfraUtilitiesRopeAnalysis.package_name_for_module
-            )(module.get_name(), resource)
+            package = (FlextInfraUtilitiesRopeAnalysis.package_name_for_module)(
+                module.get_name(), resource
+            )
             self.imports[names[0]] = f"from {package} import {names[0]}"
             return ast.parse(".".join(names), mode="eval").body
 
@@ -754,14 +749,13 @@ class FlextInfraUtilitiesProtocolModels:
                     and Path(resource.real_path).is_relative_to(self.package)
                 ):
                     continue
-                exports = (
-                    FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                        module.source_code
-                    )
+                exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                    module.source_code
                 )
                 published = module.get_attributes().get("p")
                 if (
-                    "p" not in exports or published is None
+                    "p" not in exports
+                    or published is None
                     or published.get_object() is not ancestor
                 ):
                     continue
@@ -799,10 +793,10 @@ class FlextInfraUtilitiesProtocolModels:
                 )
             }
             rebound: dict[str, str] = {}
-            for information in (
-                FlextInfraUtilitiesSemanticDeclarationRelocation.native_import_infos(
-                    self.project, module
-                )
+            for (
+                information
+            ) in FlextInfraUtilitiesSemanticDeclarationRelocation.native_import_infos(
+                self.project, module
             ):
                 aliases = tuple(
                     (name, alias)
@@ -847,7 +841,9 @@ class FlextInfraUtilitiesProtocolModels:
             return rebound
 
         def _validate_builtins(
-            self, roots: set[str], scope: p.Infra.RopeScope,
+            self,
+            roots: set[str],
+            scope: p.Infra.RopeScope,
         ) -> None:
             """Require exact native builtin identities for roots without imports.
 

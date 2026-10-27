@@ -10,14 +10,15 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, p, t
+from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
+from flext_infra._utilities._rope.rope_bindings import (
+    FlextInfraUtilitiesRopeAstBindings,
+)
 from flext_infra._utilities._rope.rope_runtime_module_queries import (
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverBindings,
 )
 
 
@@ -639,11 +640,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             Matching lexical writes with their unconditional execution status.
 
         """
-        parents = {
-            child: parent
-            for parent in ast.walk(tree)
-            for child in ast.iter_child_nodes(parent)
-        }
+        parents = FlextInfraUtilitiesRopeAst.ast_parent_map(tree)
         frames = (
             ast.Module,
             ast.ClassDef,
@@ -653,11 +650,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         )
         selected: list[t.Pair[ast.AST, bool]] = []
         for node in ast.walk(tree):
-            if name not in FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
-                node
-            ):
+            if name not in FlextInfraUtilitiesRopeAstBindings.bound_identifiers(node):
                 continue
-            parent = parents.get(node)
+            parent = parents.get(id(node))
             unconditional = True
             while parent is not None and not isinstance(parent, frames):
                 if isinstance(
@@ -673,7 +668,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                     | ast.ExceptHandler,
                 ):
                     unconditional = False
-                parent = parents.get(parent)
+                parent = parents.get(id(parent))
             if (
                 parent is not None
                 and not isinstance(parent, ast.Module)

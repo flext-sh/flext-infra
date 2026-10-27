@@ -16,7 +16,9 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r, t
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -152,7 +154,9 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
         """
         return bool(
-            FlextInfraUtilitiesPyproject.workspace_project_paths(repository_root),
+            FlextInfraUtilitiesPyprojectConform.workspace_project_paths(
+                repository_root
+            ),
         )
 
 

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities._project_discovery_shape import (
         FlextInfraUtilitiesProjectDiscoveryShapeMixin,
     )
+    from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -127,10 +128,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protected_edit_writes import (
         FlextInfraUtilitiesProtectedEditWrites,
     )
-    from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-    from flext_infra._utilities.pyproject_conform import (
-        FlextInfraUtilitiesPyprojectConform,
-    )
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
@@ -216,7 +213,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditLinting",
     "FlextInfraUtilitiesProtectedEditPreview",
     "FlextInfraUtilitiesProtectedEditWrites",
-    "FlextInfraUtilitiesPyproject",
     "FlextInfraUtilitiesPyprojectConform",
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
@@ -302,8 +298,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditLinting": ".protected_edit_linting",
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
-        "FlextInfraUtilitiesPyproject": ".pyproject",
-        "FlextInfraUtilitiesPyprojectConform": ".pyproject_conform",
+        "FlextInfraUtilitiesPyprojectConform": "._pyproject",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",

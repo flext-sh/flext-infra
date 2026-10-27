@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, p
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
 )
 
 if TYPE_CHECKING:
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesProjectDiscoveryShapeMixin:
             )
         ):
             return True
-        payload = FlextInfraUtilitiesPyproject.pyproject_payload(
+        payload = FlextInfraUtilitiesPyprojectConform.pyproject_payload(
             pyproject_path, source_project=source_project
         )
         if not payload:

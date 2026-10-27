@@ -16,6 +16,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
 )
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
@@ -38,22 +39,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     """
 
     @staticmethod
-    def _type_checking_ancestors(tree: ast.Module) -> t.MappingKV[ast.AST, ast.AST]:
-        """Map every node of one module tree to its parent.
-
-        Returns:
-            The resulting ``t.MappingKV[ast.AST, ast.AST]``.
-
-        """
-        return {
-            child: parent
-            for parent in ast.walk(tree)
-            for child in ast.iter_child_nodes(parent)
-        }
-
-    @staticmethod
     def _is_type_only(
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: t.MappingKV[int, t.Infra.RopeAstNode],
         node: ast.AST,
     ) -> bool:
         """Report whether one node sits inside a ``TYPE_CHECKING`` boundary.
@@ -62,7 +49,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             The resulting ``bool``.
 
         """
-        parent = parents.get(node)
+        parent = parents.get(id(node))
         while parent is not None:
             if (
                 isinstance(parent, ast.If)
@@ -70,7 +57,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
                 and parent.test.id == "TYPE_CHECKING"
             ):
                 return True
-            parent = parents.get(parent)
+            parent = parents.get(id(parent))
         return False
 
     @staticmethod
@@ -118,7 +105,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             Facades required outside a ``TYPE_CHECKING`` boundary.
 
         """
-        parents = cls._type_checking_ancestors(tree)
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
         runtime_aliases: set[str] = set()
         for node in ast.walk(tree):
             if not isinstance(node, ast.ImportFrom) or node.module is None:

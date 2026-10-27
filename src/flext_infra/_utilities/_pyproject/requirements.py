@@ -14,11 +14,10 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesPyproject,
-    FlextInfraUtilitiesRepository,
+from flext_infra._utilities._git.requirement_source import (
+    FlextInfraUtilitiesGitRequirementSource,
 )
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -28,6 +27,116 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
+
+    @staticmethod
+    def dependency_group_name(names: t.IterableOf[str], name: str) -> str:
+        """Elect an existing native spelling using PEP 735 normalized identity.
+
+        Returns:
+            The declared spelling when one matches, else the requested name.
+
+        Raises:
+            ValueError: If dependency group names have colliding normalized
+                identities.
+
+        """
+        matches = tuple(
+            key for key in names if canonicalize_name(key) == canonicalize_name(name)
+        )
+        if len(matches) > 1:
+            msg = "dependency group names have colliding normalized identities"
+            raise ValueError(msg)
+        return matches[0] if matches else name
+
+    @staticmethod
+    def dependency_group_wire(
+        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ) -> list[t.JsonValue]:
+        """Serialize native entries without turning inclusion tables into strings.
+
+        Returns:
+            The resulting ``list[t.JsonValue]``.
+
+        """
+        return [
+            entry
+            if isinstance(entry, str)
+            else dict(
+                u.json_mapping_adapter().validate_python(
+                    entry.model_dump(mode="json", by_alias=True),
+                ),
+            )
+            for entry in entries
+        ]
+
+    @staticmethod
+    def custom_dev_additions(
+        live_payload: t.JsonMapping,
+        live: str | None,
+        *,
+        group: str = str(c.Infra.DEV),
+    ) -> p.Result[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]:
+        """Remove only entries carrying this generator's explicit provenance.
+
+        Returns:
+            Native ordered CUSTOM entries, or their original parse failure.
+
+        """
+        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+            tuple(groups), group
+        )
+        result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
+        values = u.validate_value(
+            m.Infra.DependencyGroupEntries,
+            groups.get(group, ()),
+        )
+        if values.failure:
+            return result_type.from_failure(values)
+        entries = values.value.root
+        if not entries or live is None:
+            return (
+                result_type.ok(())
+                if not entries
+                else result_type.fail("dev provenance requires its parsed source")
+            )
+        comments = FlextInfraUtilitiesPyprojectRequirements._dependency_group_comments(
+            live, group
+        )
+        if comments.failure:
+            return result_type.from_failure(comments)
+        if len(comments.value) != len(entries):
+            return result_type.fail("dev provenance occurrence counts differ")
+        return result_type.ok(
+            tuple(
+                value
+                for value, comment in zip(entries, comments.value, strict=True)
+                if not isinstance(value, str)
+                or comment.removeprefix("#").strip() != c.Infra.MEMBER_DEV_PROVENANCE
+            ),
+        )
+
+    @staticmethod
+    def _dependency_group_comments(
+        live: str,
+        group: str,
+    ) -> p.Result[t.StrSequence]:
+        """Read native per-occurrence comments from the parsed dependency group.
+
+        Returns:
+            Ordered array comments or the original missing-source failure.
+
+        """
+        result_type = r[t.StrSequence]
+        document = u.Cli.toml_parse_text(live)
+        if document is None:
+            return result_type.fail("dev provenance source is invalid TOML")
+        group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if group_table is None:
+            return result_type.fail("dev provenance dependency groups are missing")
+        if group not in group_table:
+            return result_type.fail("dev provenance group array is missing")
+        return result_type.ok(u.Cli.toml_array_item_comments(group_table, group))
 
     @staticmethod
     def dependency_group_entries(
@@ -55,7 +164,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         """
         value = u.Cli.toml_value(
             container,
-            FlextInfraUtilitiesPyproject.dependency_group_name(container, name),
+            cls.dependency_group_name(container, name),
         )
         return (
             ()
@@ -230,7 +339,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_sync_value(
                 section,
                 group_name,
-                FlextInfraUtilitiesPyproject.dependency_group_wire(values),
+                cls.dependency_group_wire(values),
             )
         return r[bool].ok(value=True)
 
@@ -438,7 +547,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
             return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].fail(
                 f"invalid internal requirement: {requirement}",
             )
-        source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
+        source = FlextInfraUtilitiesGitRequirementSource.declared_git_source(
+            requirement
+        )
         if source.failure:
             return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].from_failure(
                 source,
@@ -460,7 +571,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
 
         """
         source_line = f"{head} @ {declared}"
-        parsed = FlextInfraUtilitiesRepository.declared_git_source(source_line)
+        parsed = FlextInfraUtilitiesGitRequirementSource.declared_git_source(
+            source_line
+        )
         if parsed.failure:
             return r[t.Pair[str, str]].from_failure(parsed)
         return r[t.Pair[str, str]].ok(parsed.value)
@@ -483,13 +596,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 "candidate dependency has no declared Git provenance: "
                 f"{dependency_name}",
             )
-        selected = FlextInfraUtilitiesRepository.declared_git_source(
+        selected = FlextInfraUtilitiesGitRequirementSource.declared_git_source(
             f"{head} @ {candidate}",
         )
         if selected.failure:
             return r[t.Pair[str, str]].from_failure(selected)
         candidate_url, candidate_commit = selected.value
-        if not FlextInfraUtilitiesRepository.ref_is_commit(candidate_commit):
+        if not FlextInfraUtilitiesGitRequirementSource.ref_is_commit(candidate_commit):
             return r[t.Pair[str, str]].fail(
                 f"candidate dependency must pin a full Git commit: {dependency_name}",
             )
@@ -599,9 +712,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             msg = "Canonical development requirements include retired distributions"
             raise ValueError(msg)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        dev_name = FlextInfraUtilitiesPyproject.dependency_group_name(
-            groups, str(c.Infra.DEV)
-        )
+        dev_name = cls.dependency_group_name(groups, str(c.Infra.DEV))
         # Authored requirements retain their source, including registry choice.
         live = cls._normalized_live_group_entries(
             groups,
@@ -640,12 +751,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_sync_value(
                 groups,
                 dev_name,
-                FlextInfraUtilitiesPyproject.dependency_group_wire(dev),
+                cls.dependency_group_wire(dev),
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, dev_name)
 
-        codegen_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+        codegen_name = cls.dependency_group_name(
             groups,
             str(c.Infra.DependencyGroup.CODEGEN),
         )
@@ -657,7 +768,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_sync_value(
                 groups,
                 codegen_name,
-                FlextInfraUtilitiesPyproject.dependency_group_wire(codegen),
+                cls.dependency_group_wire(codegen),
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, codegen_name)
@@ -799,7 +910,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
             )
         if member is None or "@" not in requirement.partition(";")[0]:
             return r[bool].ok(value=True)
-        declared = FlextInfraUtilitiesRepository.declared_git_source(requirement)
+        declared = FlextInfraUtilitiesGitRequirementSource.declared_git_source(
+            requirement
+        )
         if declared.failure:
             return r[bool].from_failure(declared)
         if declared.value[0] != member.url:

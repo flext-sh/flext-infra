@@ -14,7 +14,7 @@ from flext_cli import u
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities._docs._docs_scope_paths import (
     FlextInfraUtilitiesDocsScopePathsMixin,
@@ -83,7 +83,9 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
                 raise ValueError(msg) from exc
             # The live text is read with managed merge conflicts resolved (the
             # same owner the metadata and overlay readers use).
-            recovered = FlextInfraUtilitiesPyproject.recover_live_pyproject_text(source)
+            recovered = FlextInfraUtilitiesPyprojectConform.recover_live_pyproject_text(
+                source
+            )
             if recovered.failure:
                 raise ValueError(recovered.error)
             parsed = u.Cli.toml_mapping_from_text(recovered.value)
@@ -121,7 +123,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
                 )
             ),
             package_name=(
-                FlextInfraUtilitiesPyproject.package_name_from_payload(
+                FlextInfraUtilitiesPyprojectConform.package_name_from_payload(
                     root,
                     payload,
                     docs_meta,
@@ -163,7 +165,9 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             The declared project name from ``[project].name``.
 
         """
-        return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
+        return FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
+            entry, payload
+        )
 
     @staticmethod
     def project_payload(
@@ -187,7 +191,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             The resulting ``t.JsonMapping``.
 
         """
-        return FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
+        return FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
 
     @staticmethod
     def docs_documentation_language(
@@ -251,7 +255,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             The primary package name using pre-loaded payload.
 
         """
-        return FlextInfraUtilitiesPyproject.package_name_from_payload(
+        return FlextInfraUtilitiesPyprojectConform.package_name_from_payload(
             project_root,
             payload,
             docs_meta,

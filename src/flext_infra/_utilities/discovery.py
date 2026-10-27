@@ -15,8 +15,8 @@ from flext_infra import c, config, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesDiscovery(
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesRopeAnalysis,
 ):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""

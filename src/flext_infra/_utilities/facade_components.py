@@ -28,7 +28,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities._codemod.codemod_native_package_utilities import (
     FlextInfraUtilitiesCodemodNativePackageUtilities,
@@ -465,7 +465,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]]]``.
 
         """
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         claims: dict[
             t.Pair[p.Infra.RopeClassObject, str],
@@ -702,10 +702,10 @@ class FlextInfraUtilitiesFacadeComponents:
         calls: t.SequenceOf[t.Triple[ast.Attribute, str, str]],
         source: str,
     ) -> t.JsonMapping:
-        """Group native call witnesses by consumer file and public namespace.
+        """Group native callable-load witnesses by file and public namespace.
 
         Returns:
-            One declarative rule for the identity-proven calls and replacements.
+            One declarative rule for the identity-proven loads and replacements.
 
         Raises:
             ValueError: If a source spelling has competing facade destinations.
@@ -740,7 +740,6 @@ class FlextInfraUtilitiesFacadeComponents:
             "rule": {
                 "kind": "attribute",
                 "pattern": "$REF",
-                "inside": {"kind": "call", "field": "function"},
                 "any": witnesses,
             },
             "rewriters": rewriters,
@@ -754,7 +753,7 @@ class FlextInfraUtilitiesFacadeComponents:
             },
             "fix": "$RELOCATED",
             "message": (
-                "Call the component method through its composed public "
+                "Access the component method through its composed public "
                 f"facade `{namespace}`."
             ),
         }
@@ -781,7 +780,7 @@ class FlextInfraUtilitiesFacadeComponents:
         prefix = (
             f"{c.Infra.FACADE_COMPONENT_RELOCATE_SHAPE}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
-            f"{FlextInfraUtilitiesPyproject.project_package_name(root)}"
+            f"{FlextInfraUtilitiesPyprojectConform.project_package_name(root)}"
         )
         rules: dict[str, t.JsonMapping] = {}
         for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
@@ -873,7 +872,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 set(config.Infra.tooling.facade_members.owners.values())
             )
         )
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         rule_id = (
             f"{c.Infra.FACADE_LIBRARY_MEMBER_SHAPE}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"

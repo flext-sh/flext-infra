@@ -1903,7 +1903,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if not path.is_relative_to(model_root) or (
                 FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
                     path.parent.name
-                ) != c.Infra.FacadeFamily.M
+                )
+                != c.Infra.FacadeFamily.M
             ):
                 continue
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
@@ -2098,6 +2099,50 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             raise
 
     @classmethod
+    def _orphan_nesting_destinations(
+        cls,
+        project: p.Infra.RopeProject,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        modules: t.MappingKV[Path, m.Infra.RopeModuleIndexEntry],
+        owned: t.SequenceOf[t.Pair[Path, str]],
+        planned: p.Result[t.VariadicTuple[t.StrMapping]],
+    ) -> t.Pair[
+        t.MappingKV[Path, t.MappingKV[str, str]],
+        t.MappingKV[Path, str],
+    ]:
+        """Resolve nested-owner declarations and module names for owned sources.
+
+        Returns:
+            Destinations per file and the native module name per owned path.
+
+        """
+        definitions_by_file = {
+            path: cls._nesting_declaration_destinations(
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    project,
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                        project.get_resource(
+                            path.relative_to(Path(project.root.real_path)).as_posix()
+                        ),
+                        path,
+                    ),
+                ),
+                definitions,
+            )
+            for (path, _source), definitions in zip(owned, planned.value, strict=True)
+            if definitions
+        }
+        module_names = {
+            path: modules[path].module_name
+            or FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                project.get_resource(modules[path].resource_path),
+            ).get_name()
+            for path, _source in owned
+        }
+        return definitions_by_file, module_names
+
+    @classmethod
     def _plan_orphan_nesting(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
@@ -2152,30 +2197,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if planned.failure:
             lifetime.close()
             return planned_edits.from_failure(planned)
-        definitions_by_file = {
-            path: cls._nesting_declaration_destinations(
-                FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    project,
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                        project.get_resource(
-                            path.relative_to(Path(project.root.real_path)).as_posix()
-                        ),
-                        path,
-                    ),
-                ),
-                definitions,
-            )
-            for (path, _source), definitions in zip(owned, planned.value, strict=True)
-            if definitions
-        }
-        module_names = {
-            path: modules[path].module_name
-            or FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                project,
-                project.get_resource(modules[path].resource_path),
-            ).get_name()
-            for path, _source in owned
-        }
+        definitions_by_file, module_names = cls._orphan_nesting_destinations(
+            project, rope_workspace, modules, owned, planned
+        )
         bindings_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
         for path, definitions in definitions_by_file.items():
             module_name = module_names[path]

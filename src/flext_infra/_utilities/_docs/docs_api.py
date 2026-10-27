@@ -10,7 +10,9 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
@@ -712,8 +714,10 @@ class FlextInfraUtilitiesDocsApi:
         """
         # Retain flext-core's validated metadata object; no shadow DTO.
 
-        metadata_result = FlextInfraUtilitiesPyproject.read_project_metadata_result(
-            project_root,
+        metadata_result = (
+            FlextInfraUtilitiesPyprojectConform.read_project_metadata_result(
+                project_root,
+            )
         )
         if metadata_result.failure:
             raise ValueError(

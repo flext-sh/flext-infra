@@ -33,7 +33,7 @@ from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod.codemod_rules import (
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
         """
         return (
-            FlextInfraUtilitiesPyproject.project_package_name(project),
+            FlextInfraUtilitiesPyprojectConform.project_package_name(project),
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
             *FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(project),
         )
@@ -469,7 +469,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
         """
         del snapshot
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         aliases = sorted(u.runtime_alias_names(c.Infra.PKG_CORE_UNDERSCORE))
         families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
         rule_id = (
