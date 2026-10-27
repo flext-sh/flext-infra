@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -45,6 +46,7 @@ class FlextInfraReadonlyNamespace:
         rows: t.MutableMappingKV[str, t.MutableMappingKV[Path, set[int]]] = {
             alias_rule: {},
         }
+        naming_rule = "invalid-function-name"
         for finding in findings:
             if finding.code in rows:
                 rows[finding.code].setdefault(Path(finding.file).resolve(), set()).add(
@@ -62,7 +64,58 @@ class FlextInfraReadonlyNamespace:
                     },
                 )
             )
+        # N802 on a protocol property mirrors a published settings branch
+        # field (ADR-005: ``settings.<Namespace>.*`` carries the namespace's
+        # capitalized name); the structural contract must repeat that exact
+        # spelling, authenticated against the member's settings model.
+        exempt.update(
+            (identity, naming_rule)
+            for identity in cls._settings_branch_properties(project_dir, findings)
+        )
         return frozenset(exempt)
+
+    @staticmethod
+    def _settings_branch_properties(
+        project_dir: Path,
+        findings: t.SequenceOf[p.Infra.Issue],
+    ) -> t.VariadicTuple[t.Triple[Path, int, int]]:
+        """Authenticate capitalized protocol properties against settings fields.
+
+        Returns:
+            The findings whose flagged name is a field on the member's
+            settings model, proven from native source.
+
+        """
+        wanted: dict[str, list[t.Triple[Path, int, int]]] = {}
+        for finding in findings:
+            if finding.code != "invalid-function-name":
+                continue
+            name = finding.message.partition("`")[2].partition("`")[0]
+            wanted.setdefault(name, []).append((
+                Path(finding.file).resolve(),
+                finding.line,
+                finding.column,
+            ))
+        if not wanted:
+            return ()
+        proven: list[t.Triple[Path, int, int]] = []
+        for source_file in project_dir.rglob("*.py"):
+            text = source_file.read_text(encoding=c.DEFAULT_ENCODING, errors="ignore")
+            tree = ast.parse(text)
+            for declaration in ast.walk(tree):
+                if not isinstance(declaration, ast.ClassDef) or not (
+                    declaration.name.endswith("Settings")
+                    or declaration.name.endswith("Config")
+                ):
+                    continue
+                for statement in declaration.body:
+                    if (
+                        isinstance(statement, ast.AnnAssign)
+                        and isinstance(statement.target, ast.Name)
+                        and statement.target.id in wanted
+                    ):
+                        proven.extend(wanted[statement.target.id])
+        return tuple(proven)
 
 
 __all__ = ["FlextInfraReadonlyNamespace"]

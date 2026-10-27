@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import hashlib
 import keyword
 from pathlib import Path
 from types import MappingProxyType
@@ -491,7 +492,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             )
 
             for path, original_text in tuple(candidate.items()):
-                consumer_text = original_text
+                consumer_text = cls._divergence_diagnostic(project, path, original_text)
                 if path.name == c.Infra.INIT_PY and path != source:
                     consumer = (
                         FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
@@ -573,6 +574,27 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 pending.append(identity)
             index += 1
         return scopes
+
+    @staticmethod
+    def _divergence_diagnostic(
+        project: p.Infra.RopeProject, path: Path, candidate_text: str
+    ) -> str:
+        """Report candidate-versus-physical drift before rewriting one consumer.
+
+        Returns:
+            The candidate text, unchanged; the diagnostic is observational only.
+
+        """
+        if project.source_text(path) == candidate_text:
+            return candidate_text
+        u.Cli.info(
+            "quoted-move candidate digest divergence "
+            f"path={path} "
+            f"candidate={hashlib.sha256(candidate_text.encode()).hexdigest()[:12]} "
+            f"physical="
+            f"{hashlib.sha256(project.source_text(path).encode()).hexdigest()[:12]}"
+        )
+        return candidate_text
 
     @classmethod
     def _module_quoted_consumer(

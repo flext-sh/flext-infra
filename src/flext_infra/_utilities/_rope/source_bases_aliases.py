@@ -19,9 +19,6 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-)
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
@@ -112,8 +109,6 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             The absolute provider and exact attribute of every declared export.
 
         Raises:
-            TypeError: The parsed module is not a native Rope source module or
-                the native parameter reader is absent.
             ValueError: The parsed module differs from its native Rope snapshot.
 
         """
@@ -130,18 +125,14 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         parsed = cls._parsed_initializer(project, source, pymodule)
         if key in cls._export_bindings_memo:
             return dict(cls._export_bindings_memo[key])
-        finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-            parsed.pycore.project, "install_lazy_exports"
-        )
-        words = FlextInfraUtilitiesRopeRuntimeModules.runtime_callable(
-            "rope.base.worder", "Worder"
-        )(source, handle_ignores=True)
-        if not isinstance(words, p.Infra.RopeWorder):
-            message = "Lazy aliases require Rope's native parameter reader"
-            raise TypeError(message)
         aliases: t.MutableMappingKV[str, m.Infra.SourceClassReference] = {}
-        for occurrence in finder.find_occurrences(pymodule=parsed):
-            mapping = cls._call_alias_source(source, words, occurrence.offset, parsed)
+        # A declaracao e textual: a varredura percorre o proprio texto do
+        # inicializador (epoch-proof), sem depender do indice de modulos do
+        # projeto para localizar a chamada nativa.
+        search_from = 0
+        while (call_at := source.find("install_lazy_exports", search_from)) >= 0:
+            search_from = call_at + len("install_lazy_exports")
+            mapping = cls._call_alias_source(source, call_at, parsed)
             if mapping is None:
                 continue
             for name, (provider, attribute) in cls._literal_exports(mapping).items():
@@ -194,7 +185,6 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
     def _call_alias_source(
         cls,
         source: str,
-        words: p.Infra.RopeWorder,
         offset: int,
         module: p.Infra.RopeParsedModule,
     ) -> str | None:
@@ -202,7 +192,6 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
         Args:
             source: Full native source text of the parsed package initializer.
-            words: Rope's native primary and parenthesis reader.
             offset: Lexical offset of the candidate call occurrence.
             module: Authenticated native module supplying the call bindings.
 
@@ -211,8 +200,6 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             lazy-exports call carrying mapping data.
 
         """
-        if not words.is_a_function_being_called(offset):
-            return None
         # The mapping region is derived by balancing the initializer text, not
         # by Worder ranges: a candidate-epoch reader must not truncate the last
         # declared export (byte/char and epoch drift are the known artifacts).
@@ -231,7 +218,10 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             The balanced ``{...}`` text, or None when the call carries none.
 
         """
-        opening = source.find("{", offset)
+        # Rope offsets are byte-based; the text scan is char-based, so the
+        # anchor is converted before the balanced-brace scan.
+        text_offset = len(source.encode("utf-8")[:offset].decode("utf-8", "ignore"))
+        opening = source.find("{", text_offset)
         if opening < 0:
             return None
         depth = 0
@@ -242,7 +232,8 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 index = cls._string_end(source, index)
                 if index < 0:
                     return None
-            elif char == "{":
+                continue
+            if char == "{":
                 depth += 1
             elif char == "}":
                 depth -= 1
