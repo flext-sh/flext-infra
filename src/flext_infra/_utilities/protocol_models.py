@@ -218,6 +218,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """Elect the native model and protocol exports in this package.
 
             Raises:
+                TypeError: An indexed protocol file is not a native source module.
                 ValueError: If an indexed source resource is unavailable.
 
             """
@@ -233,10 +234,11 @@ class FlextInfraUtilitiesModelsProtocol:
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     self.project, resource
                 )
+                if not self.source_module(module):
+                    message = f"indexed protocol file is not a source module: {entry.file_path}"
+                    raise TypeError(message)
                 if not {"m", "p"}.intersection(
-                    FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                        module.source_code
-                    )
+                    FlextInfraUtilitiesRopeAnalysis.public_export_names_source(module)
                 ):
                     continue
                 owner = (FlextInfraUtilitiesRopeAnalysis.published_facade_owner)(
@@ -758,7 +760,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ):
                     continue
                 exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                    module.source_code
+                    module
                 )
                 published = module.get_attributes().get("p")
                 if (

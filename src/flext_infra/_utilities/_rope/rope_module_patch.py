@@ -17,6 +17,7 @@ from flext_infra._utilities._rope._analysis.exports import (
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -74,6 +75,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
             force_errors=True,
         )
+        if not FlextInfraUtilitiesRopeRuntime.source_module(module):
+            message = f"Facade export metadata has no native source module: {path}"
+            raise TypeError(message)
         tree = module.get_ast()
         if not isinstance(tree, ast.Module):
             message = f"facade source carries no module syntax tree: {path}"
@@ -102,7 +106,7 @@ class FlextInfraUtilitiesRopeModulePatch:
                 bindings_by_name.setdefault(bound, []).append(node)
         letters: set[str] = set()
         for name in FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
-            tree,
+            module,
             c.Infra.DUNDER_ALL,
         ):
             if not name.islower() or name.startswith("_"):
@@ -137,7 +141,9 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @classmethod
-    def remove_runtime_alias_export(cls, source: str, *, alias: str) -> str:
+    def remove_runtime_alias_export(
+        cls, source_module: p.Infra.RopeSourceModule, *, alias: str
+    ) -> str:
         """Return source with one published alias letter removed from ``__all__``.
 
         The owner of a declared-but-unbound letter is the declaration itself:
@@ -148,8 +154,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             Source with one published alias letter removed from ``__all__``.
 
         """
+        source = source_module.source_code
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            source,
+            source_module
         )
         if alias not in exports:
             return source

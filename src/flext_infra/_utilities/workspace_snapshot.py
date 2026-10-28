@@ -551,7 +551,13 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             owner.workspace_source(snapshot, path)
             snapshot.exports[path] = (
                 FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
-                    owner.workspace_module_tree(snapshot, path), c.Infra.DUNDER_ALL
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        snapshot.engine,
+                        FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                            snapshot.engine, path
+                        ),
+                    ),
+                    c.Infra.DUNDER_ALL,
                 )
             )
         return snapshot.exports[path]

@@ -81,6 +81,22 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         return isinstance(value, cls.runtime_type("rope.base.pyobjectsdef", "PyModule"))
 
     @classmethod
+    def require_source_module(cls, value: p.AttributeProbe) -> p.Infra.RopeSourceModule:
+        """Admit the native source-bearing module at the shared runtime boundary.
+
+        Returns:
+            The original native source module.
+
+        Raises:
+            TypeError: If the native object is not a source-bearing module.
+
+        """
+        if not cls.source_module(value):
+            message = "expected a native Rope source module"
+            raise TypeError(message)
+        return value
+
+    @classmethod
     def require_parsed_module(cls, value: p.AttributeProbe) -> p.Infra.RopeParsedModule:
         """Admit native parsed modules through the existing runtime predicate.
 

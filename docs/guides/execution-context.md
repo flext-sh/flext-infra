@@ -458,6 +458,11 @@ Incremental workspace indexing accepts its prior typed index and changed paths
 as one refresh request. Module evolution and package assembly remain in the
 existing workspace-index owner; equal package records retain their prior identity.
 
+Facade export readers receive the elected native source module. Unpublished
+rendered source enters the same invocation project's candidate binding before
+module lookup and export reading; that binding restores its entry candidate on
+exit. A detached string module or a second project cannot supply this identity.
+
 A DSL consumer that updates one working source binds it through the existing
 source-view owner. That binding retains the entry candidate's foreign/provider
 plans and their original witnesses and modes; an owned-source mapping must not
@@ -4052,6 +4057,10 @@ including their mutable-map value contracts, rather than concrete model classes.
 Untyped SDK core and match results enter through strict native adapter admission;
 the project subclass does not override SDK methods merely to replace their inferred
 return annotations.
+Own-method MRO promotion authenticates builtin decorators by native identity,
+including imported aliases. The emitted classmethod decorator must retain the
+builtin identity in its actual lexical scope; a shadowed same-spelled name does
+not satisfy the publication contract.
 Documentation collection and pytest collection publish distinct manifest methods;
 their different inputs must not collide in the composed utilities facade.
 

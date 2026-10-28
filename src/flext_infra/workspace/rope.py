@@ -573,7 +573,10 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
 
         """
         return u.Infra.module_export_names_source(
-            self.rope_project.source_text(file_path),
+            u.Infra.resolve_pymodule(
+                self.rope_project,
+                u.Infra.require_file_resource(self.resource(file_path), file_path),
+            ),
             export_options=export_options,
         )
 

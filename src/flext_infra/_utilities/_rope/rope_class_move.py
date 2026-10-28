@@ -500,7 +500,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                         exports={
                             destination: frozenset(
                                 FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                                    candidate[target]
+                                    destination_module
                                 )
                             )
                         }
@@ -870,7 +870,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         source, target, _path = paths
-        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(text)
+        if not FlextInfraUtilitiesRopeRuntime.source_module(original):
+            msg = "Quoted module exports require their original native source module"
+            raise TypeError(msg)
+        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(original)
         published = original.get_scope().lookup(source.stem)
         if (
             source.stem != target.stem

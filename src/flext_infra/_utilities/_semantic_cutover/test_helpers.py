@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.rope_module_patch import (
     FlextInfraUtilitiesRopeModulePatch,
@@ -82,12 +83,22 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                     for edit in planned:
                         working[edit.file_path] = edit.updated_source
                         changes.setdefault(edit.file_path, []).extend(edit.changes)
-                    working[path] = (
-                        FlextInfraUtilitiesRopeModulePatch.remove_runtime_alias_export(
-                            working[path],
-                            alias=move.class_name,
+                    with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                        workspace.repository_root,
+                        planned_sources=working,
+                        source_project=project,
+                    ) as (native, _captured):
+                        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                            native,
+                            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                                native, path
+                            ),
                         )
-                    )
+                        working[path] = (
+                            FlextInfraUtilitiesRopeModulePatch.remove_runtime_alias_export(
+                                module, alias=move.class_name
+                            )
+                        )
                 finally:
                     project.close()
         return tuple(

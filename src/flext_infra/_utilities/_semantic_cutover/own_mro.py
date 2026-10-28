@@ -132,6 +132,167 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         )
 
     @staticmethod
+    def _family_admission(
+        root: str, owner: str, provider: str
+    ) -> t.Infra.RopeMatchFilter:
+        """Bind a family route once for native lexical admission.
+
+        Returns:
+            The matcher whose route cannot change during planning.
+
+        """
+
+        def admit(
+            native: p.Infra.RopePyModule, match: p.Infra.RopeContractMatch
+        ) -> bool:
+            if not FlextInfraUtilitiesRopeRuntime.source_module(native):
+                msg = "Own-family matching requires native source"
+                raise TypeError(msg)
+            scope = (
+                native
+                .get_source_binding_index()
+                .context_at(match.get_region()[0])
+                .environment
+            )
+            binding = scope.lookup(root)
+            if not isinstance(binding, p.Infra.RopeImportedName):
+                return False
+            if (
+                binding.imported_module.module_name != provider
+                or binding.imported_module.level
+            ):
+                return False
+            if scope.lookup(owner) is not None:
+                msg = "Own-family repair would capture a binding"
+                raise ValueError(msg)
+            return True
+
+        return admit
+
+    @staticmethod
+    def _receivers(owner: p.Infra.RopeScope) -> t.StrTuple:
+        """Collect native receiver spellings without re-reading source.
+
+        Returns:
+            Ordered distinct receiver names for this owner.
+
+        """
+        receivers: set[str] = set()
+        for method in owner.get_scopes():
+            function = method.pyobject
+            if FlextInfraUtilitiesRopeRuntime.py_function(function):
+                parameters = tuple(function.get_param_names(special_args=True))
+                receivers.add(
+                    "cls"
+                    if function.get_kind() == "staticmethod" or not parameters
+                    else parameters[0]
+                )
+        return tuple(sorted(receivers))
+
+    @classmethod
+    def _method_admission(
+        cls,
+        route: tuple[t.StrTuple, str, str, str],
+        effects: tuple[dict[t.StrTuple, str], set[t.StrTuple]],
+    ) -> t.Infra.RopeMatchFilter:
+        """Bind one own-method route and its planned effects.
+
+        Returns:
+            The identity-authenticated native match filter.
+
+        """
+        owner_path, owner_name, target_name, receiver = route
+        changed, promotions = effects
+        runtime = FlextInfraUtilitiesRopeRuntime
+
+        def admit(
+            native: p.Infra.RopePyModule, match: p.Infra.RopeContractMatch
+        ) -> bool:
+            if not runtime.source_module(native):
+                msg = "Own MRO matching requires native source"
+                raise TypeError(msg)
+            current_owner = cls._scope(native, owner_path)
+            context = native.get_source_binding_index().context_at(
+                match.get_region()[0]
+            )
+            if context.role not in {
+                "function-body",
+                "lambda-body",
+                "comprehension-inner",
+            }:
+                return False
+            binding = context.environment.lookup(owner_name)
+            if binding is None or binding.get_object() is not current_owner.pyobject:
+                return False
+            method = cls._enclosing_method(context.structural_scope, owner_path)
+            if method is None:
+                return False
+            target = current_owner.get_defined_names()[target_name].get_object()
+            function = method.pyobject
+            if not runtime.py_function(target) or not runtime.py_function(function):
+                msg = "Own MRO requires native source functions"
+                raise TypeError(msg)
+            target_parent = target.get_scope().parent
+            if (
+                target_parent is None
+                or target_parent.pyobject is not current_owner.pyobject
+            ):
+                return False
+            if target.get_kind() == "method":
+                msg = (
+                    "Own instance method retains an unbound reference: "
+                    f"{owner_name}.{target_name}"
+                )
+                raise ValueError(msg)
+            if cls._receiver(function, context, owner_name) != receiver:
+                return False
+            path = cls._scope_path(method)
+            changed[path] = f"own-method-mro:{owner_name}.{function.get_name()}"
+            if function.get_kind() == "staticmethod":
+                promotions.add(path)
+            return True
+
+        return admit
+
+    @staticmethod
+    def _receiver(
+        function: p.Infra.RopeSourceFunction,
+        context: p.Infra.RopeSourceBindingContext,
+        owner_name: str,
+    ) -> str:
+        """Prove that the selected receiver retains its parameter identity.
+
+        Returns:
+            The existing receiver or the new class receiver.
+
+        Raises:
+            ValueError: A receiver is missing or would capture a binding.
+
+        """
+        parameters = tuple(function.get_param_names(special_args=True))
+        if function.get_kind() == "staticmethod":
+            if "cls" in parameters or context.environment.lookup("cls") is not None:
+                msg = (
+                    "Own MRO receiver would capture a parameter: "
+                    f"{owner_name}.{function.get_name()}"
+                )
+                raise ValueError(msg)
+            return "cls"
+        if not parameters:
+            msg = "Own MRO method has no receiver"
+            raise ValueError(msg)
+        receiver = parameters[0]
+        expected = function.get_parameters().get(receiver)
+        actual = context.environment.lookup(receiver)
+        same = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            "rope.refactor.occurrences", "same_pyname"
+        )
+        if expected is None or actual is None or not same(expected, actual):
+            msg = "Own MRO receiver would capture a binding"
+            raise ValueError(msg)
+        return receiver
+
+    @staticmethod
     def _module(
         project: p.Infra.RopeProject, path: Path, source: str
     ) -> p.Infra.RopeSourceModule:
@@ -183,6 +344,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         source: str,
         pattern: str,
         goal: str,
+        *,
         admission: t.Infra.RopeMatchFilter | None,
     ) -> str:
         """Delegate matching, admission and source emission to native Restructure.
@@ -208,7 +370,9 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
                 ),
             )
             updated = source
-            for change in runtime.change_set_members(changes):
+            for change in runtime.change_set_members(
+                changes.changes, "Own MRO received a non-content native effect"
+            ).unwrap():
                 if not isinstance(change, p.Infra.RopeChangeContents):
                     msg = "Own MRO received a non-content native effect"
                     raise TypeError(msg)
@@ -365,8 +529,8 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
                 )
                 decorators = runtime.semantic_regions(
                     module,
-                    "staticmethod",
-                    arguments={},
+                    "${own_staticmethod}",
+                    arguments={"own_staticmethod": "name=__builtin__.staticmethod"},
                     start=scope.get_region()[0],
                     end=module.lines.get_line_start(scope.get_start()),
                 )
