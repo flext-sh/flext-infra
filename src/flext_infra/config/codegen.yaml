@@ -1094,11 +1094,15 @@ Infra:
       # Ordered key/value pairs accept every extension setting and JSON value.
       # Layer composition appends pairs; the final occurrence replaces the whole value.
       # Environment tokens resolve against the opened workspace or standalone checkout.
+      runtime_environment_token: '${runtimeEnvironment}'
       settings:
       - [python-envs.workspaceSearchPaths, [./.venv]]
-      - [terminal.integrated.env.linux, {PATH: '${workspaceFolder}/.venv/bin:${env:PATH}', VIRTUAL_ENV: '${workspaceFolder}/.venv'}]
-      - [ruff.interpreter, ['${workspaceFolder}/.venv/bin/python']]
-      - [ruff.path, ['${workspaceFolder}/.venv/bin/ruff']]
+      - [terminal.integrated.env.linux, {PATH: '${runtimeEnvironment}/bin:${env:PATH}', VIRTUAL_ENV: '${runtimeEnvironment}'}]
+      - [ruff.interpreter, ['${runtimeEnvironment}/bin/python']]
+      - [ruff.path, ['${runtimeEnvironment}/bin/ruff']]
+      - [mypy-type-checker.interpreter, ['${runtimeEnvironment}/bin/python']]
+      - [mypy-type-checker.path, ['${interpreter}', -m, mypy]]
+      - [mypy-type-checker.cwd, '${nearestConfig}']
       - [editor.mouseWheelZoom, true]
       - [explorer.excludeGitIgnore, true]
       - [files.autoSave, afterDelay]
@@ -1144,7 +1148,7 @@ Infra:
       - [python.analysis.useNearestConfiguration, false]
       - [python.analysis.usePerProjectEnvironments, false]
       - [python.analysis.userFileIndexingLimit, -1]
-      - [python.defaultInterpreterPath, '${workspaceFolder}/.venv/bin/python']
+      - [python.defaultInterpreterPath, '${runtimeEnvironment}/bin/python']
       - [python.languageServer, Pylance]
       - [python.pyrefly.diagnosticMode, workspace]
       - [python.pyrefly.disableLanguageServices, true]
@@ -1159,7 +1163,7 @@ Infra:
       - [ruff.format.preview, true]
       - [ruff.importStrategy, fromEnvironment]
       - [ruff.lint.preview, true]
-      - [pyrefly.lspPath, '${workspaceFolder}/.venv/bin/pyrefly']
+      - [pyrefly.lspPath, '${runtimeEnvironment}/bin/pyrefly']
       - [shellcheck.useWorkspaceRootAsCwd, true]
       - [shellcheck.useRepositoryRootAsCwd, true]
       - [git.autoRepositoryDetection, subFolders]

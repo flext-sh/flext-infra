@@ -12,7 +12,6 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, t
-from flext_infra._utilities import FlextInfraUtilitiesDocs
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsAuditDetectors,
@@ -20,6 +19,7 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsGithubLinks,
     FlextInfraUtilitiesDocsScope,
 )
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsAudit(
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsAudit(
             Whether the target should be ignored as prose, not a path.
 
         """
-        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(target):
+        if FlextInfraUtilitiesDocsBase.docs_is_secure_web_url(target):
             return False
         looks_like_prose = ".md" not in raw and "/" not in raw
         return looks_like_prose and ("," in raw or " " in raw)
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesDocsAudit(
             return
         if not target or target.startswith("#"):
             return
-        if FlextInfraUtilitiesDocs.docs_is_external(target):
+        if FlextInfraUtilitiesDocsBase.docs_is_external(target):
             issues.extend(
                 FlextInfraUtilitiesDocsGithubLinks.docs_github_link_issues(
                     file=rel,
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesDocsAudit(
 
         """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+        for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
                 encoding=c.DEFAULT_ENCODING,
@@ -216,7 +216,7 @@ class FlextInfraUtilitiesDocsAudit(
         live_public_symbols = (
             FlextInfraUtilitiesDocsAudit.docs_live_public_symbol_names(scope)
         )
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+        for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path / c.Infra.DIR_DOCS).as_posix()
             if rel in exempt_paths:
                 continue
@@ -267,7 +267,7 @@ class FlextInfraUtilitiesDocsAudit(
             f"Scope: {scope.name}",
             (
                 f"Files scanned: "
-                f"{len(FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope))}"
+                f"{len(FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope))}"
             ),
             f"Issues: {len(issues)}",
             *metric_lines,

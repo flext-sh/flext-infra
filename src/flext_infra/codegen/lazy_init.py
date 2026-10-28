@@ -71,7 +71,9 @@ class FlextInfraCodegenLazyInit(
             The same initializer cohort for conformance and source composition.
 
         """
-        with cls.facade_source_project(root, declared_files=declared_files) as (
+        with FlextInfraUtilities.Infra.facade_source_project(
+            root, declared_files=declared_files
+        ) as (
             project,
             sources,
         ):
@@ -121,7 +123,8 @@ class FlextInfraCodegenLazyInit(
             family_root = (
                 destination.parent
                 if family is None
-                else destination.parent / cls.facade_families()[family].directory
+                else destination.parent
+                / FlextInfraUtilities.Infra.facade_families()[family].directory
             )
             consumers = {
                 plan.path

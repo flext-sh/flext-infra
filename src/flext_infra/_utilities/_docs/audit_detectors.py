@@ -13,11 +13,11 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, t
-from flext_infra._utilities import FlextInfraUtilitiesDocs
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
 )
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsAuditDetectors:
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         if not tokens:
             return issues
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+        for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             text = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for token in tokens:
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         compiled = tuple(re.compile(pattern) for pattern in patterns)
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+        for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for pattern in compiled:
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         container_identities = frozenset(container_home_identities)
         evidence = set(historical_evidence_files)
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+        for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             if Path(rel) in evidence:
                 continue
@@ -189,7 +189,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         ]
         for md_file in [
             scope.path / "README.md",
-            *FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope),
+            *FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope),
         ]:
             if not md_file.exists():
                 continue
@@ -294,7 +294,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
 
         """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
-        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+        for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for index, fence in enumerate(

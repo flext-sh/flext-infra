@@ -11,15 +11,13 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
-from flext_infra._config import FlextInfraConfigMakeContract
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
-    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
@@ -27,25 +25,17 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProtocolModels,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
-    FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
-    FlextInfraUtilitiesWorkspaceSnapshot,
-)
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
-from flext_infra._utilities._rope.rope_class_move import (
-    FlextInfraUtilitiesRopeClassMove,
-)
 from flext_infra._utilities._rope.rope_module_patch import (
     FlextInfraUtilitiesRopeModulePatch,
 )
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 class FlextInfraUtilitiesCodegen(
@@ -55,25 +45,19 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesProtocolModels,
-    FlextInfraUtilitiesPyprojectConform,
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
-    FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeModulePatch,
-    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
-    FlextInfraUtilitiesWorkspaceSnapshot,
-    FlextInfraUtilitiesSemanticCutover,
 ):
     """Compose the source helpers consumed by the generation operation."""
 

@@ -70,11 +70,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     def annotation_assignment_outer_type(
         cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
     ) -> t.Pair[p.Infra.RopePyName, bool] | None:
-        """Resolve a generic's native identity and whether it is the value.
+        """Resolve an annotation's native identity and whether it is the value.
 
         Returns:
             The lexical outer identity and RHS provenance, or None when the
-            assignment has no resolved generic expression.
+            assignment has no resolved annotation expression.
 
         """
         supplier = cls.source_import_binding(binding)
@@ -95,7 +95,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         module, _line = cls.definition_location(supplier)
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
-        if isinstance(annotation, ast.Subscript):
+        # Scalar model fields carry the same declaration proof as generic fields.
+        if isinstance(annotation, ast.Name | ast.Attribute | ast.Subscript):
             expression = annotation
             from_value = False
         elif isinstance(assigned, ast.Subscript):
@@ -107,7 +108,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         origin = (
             cls.annotation_origin(project, expression, scope)
             if from_value
-            else cls.resolve_symbol(scope, expression.value)
+            else cls.resolve_symbol(
+                scope,
+                expression.value
+                if isinstance(expression, ast.Subscript)
+                else expression,
+            )
         )
         return (origin, from_value) if origin is not None else None
 

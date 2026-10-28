@@ -253,6 +253,16 @@ modification use the same source authority, typed plans, engines and publisher;
 neither recursively invokes another public verb. A generated file is changed
 through its generating owner, never by a second repair or formatting writer.
 
+Within one repository invocation, each source is read and parsed exactly once:
+one native workspace model feeds every planning surface, and the executor
+rebases only the written paths between surfaces (ADR-018
+[single-read, single-batch publication](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#single-read-single-batch-publication-amended-2026-10-28-campaign-flext-pipol)).
+All planned effects of the invocation are validated as one complete candidate
+tree before any publication, and publication is a single atomic batch; the
+first causal failure retains the whole batch, leaving no partially published
+surface. No generation or modification surface re-reads the on-disk output of
+an earlier stage in place of the run's planned sources.
+
 New-project generation consumes the target's own explicit project, integration,
 kind and provenance declarations. Workspace membership comes only from
 `.gitmodules`. Its Git/worktree is prepared before generation; a missing
@@ -603,7 +613,12 @@ targets, pending effects and source/output identities. Repeated generation must 
 relevant artifact effects; routine receipt/archive publication is evidence, not source
 drift. An exit-zero invocation or a sample of unchanged files is insufficient: bounded
 observations do not cover every generated artifact. Repeated `mod`, `fix`
-and `fmt` also require zero relevant effects. A later effective change invalidates the
+and `fmt` also require zero relevant effects. Generated projections are
+gate-clean by construction (ADR-028
+[Decision 8](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-8)):
+`make gen` followed directly by `make check` is green and `make fmt` / `make fix`
+are no-ops, with zero post-adjustment, manual or automated — the engine never
+runs a fixer or formatter over its own output. A later effective change invalidates the
 affected runtime and gate receipts and requires their renewed validation, never a hidden
 retry or a whole-workspace quiet window.
 

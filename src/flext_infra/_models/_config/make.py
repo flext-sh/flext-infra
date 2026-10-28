@@ -13,7 +13,6 @@ from typing import Annotated, Literal, Self
 from flext_cli import m, t
 
 from flext_infra import c
-from flext_infra._config import FlextInfraConfigMakeContract
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.external_cache import (
@@ -21,6 +20,7 @@ from flext_infra._models._config.external_cache import (
 )
 from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
+from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 def _effective_custom_handler_policies(

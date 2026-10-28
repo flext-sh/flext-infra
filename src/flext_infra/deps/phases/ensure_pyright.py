@@ -547,13 +547,19 @@ class FlextInfraEnsurePyrightConfigPhase:
                 ),
             )
         operations.append(toml.RemoveOp(key="stubPath"))
-        # The tracked manifest binds the workspace venv with checkout-relative
-        # paths (operator order 2026-10-28, pyright incident): every governed
-        # member resolves its dependencies through the shared workspace
-        # environment, so direct analyzer runs evaluate flext code instead of
-        # cascading Unknown imports. Never emit an absolute checkout path here.
-        operations.append(toml.SetOp(key="venv", value=".venv"))
-        operations.append(toml.SetOp(key="venvPath", value=".."))
+        # ADR-003 Decision 5: the existing topology owner elects the runtime.
+        # A scaffold without an on-disk project owns its future environment.
+        environment_parent = (
+            u.Infra
+            .runtime_owner_root(project_root)
+            .unwrap()
+            .relative_to(project_root.resolve(), walk_up=True)
+            .as_posix()
+            if project_root is not None
+            else "."
+        )
+        operations.append(toml.SetOp(key="venv", value=c.Infra.ENVIRONMENT_DIRECTORY))
+        operations.append(toml.SetOp(key="venvPath", value=environment_parent))
         operations.append(
             toml.SetOp(
                 key="executionEnvironments",

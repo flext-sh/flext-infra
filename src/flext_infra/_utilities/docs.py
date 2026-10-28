@@ -19,9 +19,11 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsScopeBuild,
     FlextInfraUtilitiesDocsValidate,
 )
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocs(
+    FlextInfraUtilitiesDocsBase,
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsAudit,
     FlextInfraUtilitiesDocsBuild,

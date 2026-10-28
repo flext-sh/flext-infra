@@ -75,11 +75,11 @@ from flext_infra._utilities._rope._analysis import (
 
 class FlextInfraUtilitiesCodegenFacades(
     FlextInfraUtilitiesCodegenFacadeSyntax,
-    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesSemanticCutover,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesWorkspaceSnapshot,
 ):
     """Compose declared facade owners and resolve consumed protocols."""

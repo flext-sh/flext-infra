@@ -12,10 +12,8 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, config, m
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDocs,
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -243,7 +241,7 @@ class FlextInfraUtilitiesDocsCommandContract:
         )
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         docs_root = scope.path / c.Infra.DIR_DOCS
-        for path in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+        for path in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             if not path.is_relative_to(docs_root):
                 continue
             relative_docs_path = path.relative_to(docs_root)

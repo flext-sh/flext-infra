@@ -170,7 +170,7 @@ class FlextInfraModHandlers:
                     codemod.FlextInfraCodemodLoopPhaseImportNormalization(),
                     codemod.FlextInfraCodemodLoopPhaseNamespaceRelocation(),
                     codemod.FlextInfraCodemodLoopPhaseDuplicateApply(),
-                    codemod.FlextInfraCodemodLoopPhaseAccessorRename(),
+                    codemod.FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),
                 ),
             ).execute()
 

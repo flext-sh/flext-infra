@@ -32,6 +32,15 @@ class FlextInfraConfigModelsTemplates:
             t.Infra.SettingsPairs,
             m.Field(description="Ordered VS Code key/value pairs; the last key wins"),
         ] = ()
+        runtime_environment_token: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared generation token replaced by the topology-owned "
+                    "environment path, relative to the opened workspace folder"
+                ),
+            ),
+        ] = None
         map_union_settings: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(description="VS Code objects union-merged over project settings"),

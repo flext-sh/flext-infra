@@ -19,10 +19,10 @@ from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRepository,
 )
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -212,7 +212,7 @@ class FlextInfraUtilitiesDocsRender:
             ValueError: If documentation repository owner must resolve exactly once.
 
         """
-        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(prefix):
+        if FlextInfraUtilitiesDocsBase.docs_is_secure_web_url(prefix):
             kind = "tree" if is_dir else "blob"
             if governance_source is None:
                 msg = "governance link has no captured source and ref"

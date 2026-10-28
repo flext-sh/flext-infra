@@ -22,9 +22,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
     FlextInfraUtilitiesGitWorktreeMixin,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRequirementSource
 
 
 class FlextInfraUtilitiesGit(
+    FlextInfraUtilitiesGitRequirementSource,
     FlextInfraUtilitiesGitMutationScopeMixin,
     FlextInfraUtilitiesGitWorktreeMixin,
     FlextInfraUtilitiesGitAttestationMixin,

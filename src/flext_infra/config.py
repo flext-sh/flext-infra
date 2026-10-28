@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._config import FlextInfraConfigMakeContract
+from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 class FlextInfraFlextInfraConfig(

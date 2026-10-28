@@ -155,8 +155,9 @@ class FlextInfraCodegenVscodeMixin:
         """Return the canonical-merged ``settings.json`` document for one root.
 
         ``spec`` is an explicitly resolved project configuration. Live custom
-        keys remain intact outside its declared ownership. Rendering never
-        consults Git or rewrites paths for an attached member's physical runtime.
+        keys remain intact outside its declared ownership. Rendering
+        elects the runtime through the existing topology owner when the
+        declaration selects an environment token.
 
         Returns:
             The canonical-merged ``settings.json`` document for one root.
@@ -361,8 +362,22 @@ class FlextInfraCodegenVscodeMixin:
             codegen = loaded.value.spec
         spec = codegen.vscode if spec is None else spec
         changed = cls._apply_union_settings(settings, spec.map_union_settings)
+        token = spec.runtime_environment_token
+        environment = (
+            "${workspaceFolder}/"
+            + u.Infra
+            .runtime_environment_dir(repository_root)
+            .relative_to(repository_root.resolve(), walk_up=True)
+            .as_posix()
+            if token is not None
+            else ""
+        )
         for key, value in cls.vscode_settings(spec).items():
             normalized = u.normalize_to_json_value(value)
+            if token is not None:
+                normalized = cls._bind_environment_value(
+                    normalized, token=token, environment=environment
+                )
             if key not in settings or settings[key] != normalized:
                 settings[key] = normalized
                 changed = True
@@ -400,6 +415,32 @@ class FlextInfraCodegenVscodeMixin:
         return r[bool].ok(
             artifacts_changed or stripped_changed or changed,
         )
+
+    @classmethod
+    def _bind_environment_value(
+        cls, value: t.JsonValue, *, token: str, environment: str
+    ) -> t.JsonValue:
+        """Bind the declared environment token inside one validated setting.
+
+        Returns:
+            The same JSON shape with environment tokens resolved in string values.
+
+        """
+        if isinstance(value, str):
+            return value.replace(token, environment)
+        if isinstance(value, list):
+            return [
+                cls._bind_environment_value(item, token=token, environment=environment)
+                for item in value
+            ]
+        if isinstance(value, Mapping):
+            return {
+                key: cls._bind_environment_value(
+                    item, token=token, environment=environment
+                )
+                for key, item in value.items()
+            }
+        return value
 
     @staticmethod
     def _artifact_settings(

@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, config, m, t
-from flext_infra._utilities import FlextInfraUtilitiesDocs
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGithubLinks,
 )
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,14 +33,14 @@ class FlextInfraUtilitiesDocsFix:
             A corrected link target when a simple fix is possible.
 
         """
-        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(raw_link):
+        if FlextInfraUtilitiesDocsBase.docs_is_secure_web_url(raw_link):
             return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(
                 raw_link,
                 repository_root=md_file.parent,
             )
         result: str | None = None
         if not (
-            FlextInfraUtilitiesDocs.docs_is_external(raw_link)
+            FlextInfraUtilitiesDocsBase.docs_is_external(raw_link)
             or raw_link.startswith(c.Infra.DOCS_FRAGMENT_PREFIX)
         ):
             base = raw_link.split("#", maxsplit=1)[0]
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsFix:
         )
         replacements: t.MutableMappingKV[m.Cli.MarkdownFence, t.StrPair] = {}
         for fence in filter(
-            FlextInfraUtilitiesDocs.docs_is_python_fence,
+            FlextInfraUtilitiesDocsBase.docs_is_python_fence,
             u.Cli.markdown_fences(content),
         ):
             fixed = u.Cli.run_raw(
@@ -181,7 +181,7 @@ class FlextInfraUtilitiesDocsFix:
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""
-        FlextInfraUtilitiesDocs.docs_write_phase_reports(
+        FlextInfraUtilitiesDocsBase.docs_write_phase_reports(
             scope,
             phase="fix",
             table=m.Cli.TableRenderRequest(

@@ -16,7 +16,7 @@ import mkdocs.config
 from flext_cli import u
 
 from flext_infra import c, m, p
-from flext_infra._utilities import FlextInfraUtilitiesDocs
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -193,7 +193,7 @@ class FlextInfraUtilitiesDocsBuild:
             scope.report_dir / "build-summary.json",
             {c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
         ).unwrap()
-        _ = FlextInfraUtilitiesDocs.write_markdown(
+        _ = FlextInfraUtilitiesDocsBase.write_markdown(
             scope.report_dir / "build-report.md",
             [
                 "# Docs Build Report",

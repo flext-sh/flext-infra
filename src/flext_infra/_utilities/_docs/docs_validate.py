@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDocs
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
 )
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -220,7 +220,7 @@ class FlextInfraUtilitiesDocsValidate:
             scope.report_dir / c.Infra.DOCS_VALIDATE_SUMMARY_FILENAME,
             {c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
         )
-        _ = FlextInfraUtilitiesDocs.write_markdown(
+        _ = FlextInfraUtilitiesDocsBase.write_markdown(
             scope.report_dir / c.Infra.DOCS_VALIDATE_REPORT_FILENAME,
             [
                 "# Docs Validate Report",
