@@ -6,8 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import ast
 from collections.abc import MutableMapping, MutableSequence, Sequence
+from keyword import iskeyword
 from pathlib import Path
 
 from flext_infra import c, p, t
@@ -230,9 +240,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         Returns:
             The native declaring scope, including global interpreter builtins.
 
-        Raises:
-            TypeError: When a native parent violates the scope contract.
-
         """
         first = True
         current: p.Infra.RopeScope | None = scope
@@ -245,11 +252,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 )
                 if name in names:
                     return current
-            parent = getattr(current, "parent", None)
-            if parent is not None and not isinstance(parent, p.Infra.RopeScope):
-                message = "Rope lexical parent does not satisfy its scope contract"
-                raise TypeError(message)
-            current = parent
+            current = getattr(current, "parent", None)
             first = False
         return None
 
@@ -366,32 +369,45 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     def resolve_symbol(
         cls,
         scope: p.Infra.RopeScope,
-        expression: p.Infra.RopeAstNode,
+        expression: p.Infra.RopeAstNode | str,
     ) -> p.Infra.RopePyName | None:
-        """Resolve an identifier chain without evaluating Python expressions.
+        """Resolve native identifier syntax or a declared identifier route.
 
         Returns:
             The resulting ``p.Infra.RopePyName | None``.
 
         Raises:
             TypeError: If Rope identifier resolution returned an invalid name.
+            ValueError: A declared route is not an identifier chain.
 
         """
-        primary = expression
-        attributes: list[str] = []
-        while isinstance(primary, ast.Attribute):
-            attributes.append(primary.attr)
-            primary = primary.value
-        if not isinstance(primary, ast.Name):
-            return None
-        result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
-            scope,
-            primary,
-        )
+        attributes: Sequence[str]
+        if isinstance(expression, str):
+            names = expression.split(".")
+            if any(not name.isidentifier() or iskeyword(name) for name in names):
+                message = f"Rope identifier route is invalid: {expression}"
+                raise ValueError(message)
+            attributes = names[1:]
+            result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
+                scope, names[0]
+            )
+        else:
+            primary = expression
+            reversed_attributes: list[str] = []
+            while isinstance(primary, ast.Attribute):
+                reversed_attributes.append(primary.attr)
+                primary = primary.value
+            if not isinstance(primary, ast.Name):
+                return None
+            attributes = tuple(reversed(reversed_attributes))
+            result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
+                scope,
+                primary,
+            )
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "Rope identifier resolution returned an invalid name"
             raise TypeError(msg)
-        for attribute in reversed(attributes):
+        for attribute in attributes:
             result = cls.class_assignment_binding(result)
             if result is None:
                 return None

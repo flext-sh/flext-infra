@@ -202,7 +202,8 @@ class FlextInfraUtilitiesDocsScopeProjects(
             repository_root = owner.absolute_lexical(repository_root)
             if not source_project.source_query(repository_root, "isdir"):
                 return r[Sequence[m.Infra.ProjectInfo]].fail(
-                    f"docs repository root is missing from source view: {repository_root}"
+                    f"docs repository root is missing from source view: "
+                    f"{repository_root}"
                 )
         excluded = owner.excluded_roots(repository_root, source_project=source_project)
         workspace_declared_repositories = owner.workspace_declared_repository_path_set(

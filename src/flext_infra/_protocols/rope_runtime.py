@@ -209,7 +209,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_kind(self) -> str: ...
 
-        def get_param_names(self, special_args: bool = True) -> Sequence[str]: ...
+        def get_param_names(self, *, special_args: bool = True) -> Sequence[str]: ...
+
+        def get_parameters(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
 
     @runtime_checkable
     class NativeClassMetadata(Protocol):
@@ -410,12 +414,21 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def role(self) -> str: ...
 
     @runtime_checkable
+    class RopeScopeNameFinder(Protocol):
+        """Native lexical lookup through the source-binding index."""
+
+        def get_pyname_at(
+            self, offset: int
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
+
+    @runtime_checkable
     class RopeSourceFragment(Protocol):
         """Native cached source region, without exposing syntax nodes."""
 
         start: int
         end: int
         depth: int
+        context: FlextInfraProtocolsRopeRuntime.RopeSourceBindingContext
 
     @runtime_checkable
     class RopeSourceBindingIndex(Protocol):
@@ -703,6 +716,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_from_module(self, offset: int) -> str | None: ...
 
         def get_primary_range(self, offset: int) -> tuple[int, int]: ...
+
+        def get_splitted_primary_before(self, offset: int) -> tuple[str, str, int]: ...
 
         def is_a_function_being_called(self, offset: int) -> bool: ...
 

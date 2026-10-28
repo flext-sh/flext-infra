@@ -150,9 +150,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """
         return u.Infra.runtime_environment_dir(root, runtime_root=root)
 
+    @staticmethod
     @pytest.fixture
     def site_packages(
-        self,
         tmp_path: Path,
     ) -> Path:
         """Isolate metadata inside the locked workspace's owned environment.

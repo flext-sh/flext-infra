@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import sys
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
@@ -40,6 +49,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         a later disk edit remains a publication conflict.
         """
 
+        _source_roots: tuple[Path, ...]
+        _root_owners: tuple[tuple[Path, bool], ...]
+
         def __init__(
             self,
             plans: tuple[m.Infra.CodegenFilePlan, ...],
@@ -53,9 +65,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             ``None`` selects native first-read observation. An explicit tuple,
             including an empty tuple, selects a closed source observation.
 
-            Raises:
-                ValueError: Two observations disagree for one physical path.
-
             """
             self._physical: dict[str, Path] = {}
             self._states: dict[Path, m.Cli.AtomicFileState] = {}
@@ -66,35 +75,65 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self._observed_children: dict[Path, set[str]] = {}
             self._observed_directories: set[Path] = set()
             self._closed_observations = False
-            self._source_roots = tuple(
-                self._resolved(str(path)) for path in source_roots
-            )
             self._dependency_roots = tuple(
                 self._resolved(str(path)) for path in dependency_roots
             )
+            self.select_source_roots(source_roots)
             self._closed_observations = observations is not None
             self.plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
             for state in observations if observations is not None else ():
-                path = self._resolved(str(state.path))
-                for parent in path.parents:
-                    self._physical.setdefault(str(parent), parent)
-                previous = self._states.get(path)
-                if previous is not None and previous != state:
+                self._record_observation(state)
+            self.replace(plans)
+
+        def _record_observation(self, state: m.Cli.AtomicFileState) -> None:
+            """Retain one witness and its original filesystem membership.
+
+            Raises:
+                ValueError: A physical path already has another captured witness.
+
+            """
+            path = self._resolved(str(state.path))
+            for parent in path.parents:
+                self._physical.setdefault(str(parent), parent)
+            previous = self._states.get(path)
+            if previous is not None:
+                if previous != state:
                     message = f"source observations disagree for physical path: {path}"
                     raise ValueError(message)
-                self._states[path] = state
-                if state.content is not None:
-                    self._observed_directories.update(path.parents)
-                    for child in (path, *path.parents):
-                        if child.parent != child:
-                            self._observed_children.setdefault(child.parent, set()).add(
-                                child.name
-                            )
-            self.replace(plans)
+                return
+            self._states[path] = state
+            if state.content is not None:
+                self._observed_directories.update(path.parents)
+                for child in (path, *path.parents):
+                    if child.parent != child:
+                        self._observed_children.setdefault(child.parent, set()).add(
+                            child.name
+                        )
 
         def select_source_roots(self, roots: tuple[Path, ...]) -> None:
             """Use the native election's current source roots for captured reads."""
             self._source_roots = tuple(self._resolved(str(path)) for path in roots)
+            owners = dict.fromkeys(self._dependency_roots, False)
+            owners.update(dict.fromkeys(self._source_roots, True))
+            self._root_owners = tuple(
+                sorted(
+                    owners.items(), key=lambda item: len(item[0].parts), reverse=True
+                )
+            )
+
+        def source_member(self, path: Path) -> bool:
+            """Keep source traversal separate from native SDK lookup roots.
+
+            Returns:
+                Whether the path belongs to or leads to an elected source root.
+
+            """
+            if not self._closed_observations:
+                return True
+            resolved = self._resolved(str(path))
+            return self._captured_source(resolved) or any(
+                root.is_relative_to(resolved) for root in self._source_roots
+            )
 
         @property
         def directory_membership(self) -> frozenset[Path]:
@@ -132,23 +171,14 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             """
             if not self._closed_observations:
                 return False
-            source_depth = max(
+            return next(
                 (
-                    len(root.parts)
-                    for root in self._source_roots
+                    source
+                    for root, source in self._root_owners
                     if path.is_relative_to(root)
                 ),
-                default=-1,
+                False,
             )
-            dependency_depth = max(
-                (
-                    len(root.parts)
-                    for root in self._dependency_roots
-                    if path.is_relative_to(root)
-                ),
-                default=-1,
-            )
-            return source_depth >= 0 and source_depth >= dependency_depth
 
         def replace(
             self, plans: tuple[m.Infra.CodegenFilePlan, ...]
@@ -168,19 +198,19 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 path = self._resolved(str(plan.path))
                 previous = selected.get(path)
                 observed = self._states.get(path)
-                if (
-                    previous is not None
-                    and (
-                        previous.before != plan.before
-                        or previous.desired_content != plan.desired_content
-                        or previous.desired_mode != plan.desired_mode
-                    )
-                ) or (observed is not None and observed != plan.before):
+                conflicting_plan = previous is not None and (
+                    previous.before != plan.before
+                    or previous.desired_content != plan.desired_content
+                    or previous.desired_mode != plan.desired_mode
+                )
+                if conflicting_plan or (
+                    observed is not None and observed != plan.before
+                ):
                     msg = f"candidate source conflicts with captured state: {path}"
                     raise ValueError(msg)
                 selected[path] = plan
-            for path, plan in selected.items():
-                self._states.setdefault(path, plan.before)
+            for plan in selected.values():
+                self._record_observation(plan.before)
             changed: list[tuple[Path, bool, bool]] = []
             for path in sorted(self._files.keys() | self._hidden | selected.keys()):
                 previous = (
@@ -353,7 +383,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
             Raises:
                 FileNotFoundError: The path is hidden by a planned deletion.
-                ValueError: A closed source lookup was not observed.
 
             """
             resolved = self._resolved(path)
@@ -392,7 +421,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                         f"uncaptured source appeared in the source scope: {resolved}"
                     )
                     raise ValueError(message)
-                self._states[resolved] = state
+                self._record_observation(state)
             observed = self._states[resolved]
             if required and observed.content is None:
                 raise FileNotFoundError(path)
@@ -532,7 +561,13 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         plans: tuple[m.Infra.CodegenFilePlan, ...],
         folders: tuple[str, ...],
     ) -> None:
-        """Evolve source deltas before notifying native resource observers."""
+        """Evolve source deltas before notifying native resource observers.
+
+        Raises:
+            TypeError: The project has no authenticated source overlay.
+            ValueError: The project has no declared source election.
+
+        """
         files = self.fscommands
         if not isinstance(files, self.OverlayFiles):
             msg = "candidate transition requires an authenticated source overlay"
@@ -745,13 +780,22 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             for root in config.Infra.source_scan.roots
             if Path(root).parts
         )
+        files_view = self.fscommands
+        source_traversal = isinstance(files_view, self.OverlayFiles) and (
+            files_view.source_member(path)
+        )
         pending = [path]
         while pending:
             directory = pending.pop()
             directories: list[str] = []
             files: list[str] = []
             for child in self.source_children(directory):
-                files_view = self.fscommands
+                if (
+                    isinstance(files_view, self.OverlayFiles)
+                    and source_traversal
+                    and not files_view.source_member(child)
+                ):
+                    continue
                 if isinstance(files_view, self.OverlayFiles) and (
                     files_view.captured_directory(str(child))
                 ):
@@ -852,9 +896,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         Returns:
             The project reading planned sources before the live tree.
-
-        Raises:
-            ValueError: A virtual root is noncanonical or holds no planned file.
 
         """
         root = Path(live.root.real_path)

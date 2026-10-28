@@ -19,9 +19,9 @@ from tests import c, m, tm, u
 class TestsFlextInfraCliRepositoryRootContract:
     """Tests for ``FlextInfraCliRepositoryRootContract``."""
 
+    @staticmethod
     @pytest.fixture
     def rendered_makefile(
-        self,
         tmp_path: Path,
     ) -> str:
         """Use the conform owner and typed fixtures, not a copied Make recipe.

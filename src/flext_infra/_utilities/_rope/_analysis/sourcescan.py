@@ -1,45 +1,191 @@
 """Source-level rope parsing, literal scanning, and reference extraction.
 
+Rope is the only Python interpreter here: every parse and tree walk runs
+through rope's own ``ast`` surface (``rope.base.ast``), and the node
+vocabulary exposed for ``u``-family consumers comes from that same surface
+under capability names, so no consumer names or drives the interpreter
+itself (ADR-028 Decision 15).
+
 Copyright (c) 2026 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: MIT.
 """
 
 from __future__ import annotations
 
-import ast
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from collections.abc import Generator, MutableMapping, Sequence
 from functools import cache
 from typing import ClassVar
 
-from flext_infra import c, t
+from rope.base import ast
+
+from flext_infra import c, p, t
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisSourceScan:
     """Source-level rope parsing, literal scanning, and reference extraction.
 
-    Every ``*_source`` reader parses the module with :mod:`ast` and reads the
-    node it needs; source that does not parse raises its ``SyntaxError``.
+    Every ``*_source`` reader parses the module through rope's parse and reads
+    the node it needs; source that does not parse raises its ``SyntaxError``.
+    The class also carries the rope-owned syntax-tree vocabulary (node classes,
+    parse, walk, unparse) that ``u``-family consumers outside the ``_rope``
+    family consume in place of any interpreter import of their own.
     """
 
     _INSTALL_LAZY_IMPORTS_ARG_INDEX: ClassVar[int] = 2
 
+    # Rope-owned syntax-tree node vocabulary for u-family consumers. Each
+    # attribute is rope's own node class (the classes of the trees rope's
+    # index parses); consumers use them for isinstance checks, class patterns
+    # and node construction without naming the interpreter.
+    Alias: ClassVar[type[ast.alias]] = ast.alias
+    AnnAssign: ClassVar[type[ast.AnnAssign]] = ast.AnnAssign
+    Argument: ClassVar[type[ast.arg]] = ast.arg
+    Assign: ClassVar[type[ast.Assign]] = ast.Assign
+    AsyncFor: ClassVar[type[ast.AsyncFor]] = ast.AsyncFor
+    AsyncFunctionDef: ClassVar[type[ast.AsyncFunctionDef]] = ast.AsyncFunctionDef
+    Attribute: ClassVar[type[ast.Attribute]] = ast.Attribute
+    AugAssign: ClassVar[type[ast.AugAssign]] = ast.AugAssign
+    Await: ClassVar[type[ast.Await]] = ast.Await
+    BinOp: ClassVar[type[ast.BinOp]] = ast.BinOp
+    BitOr: ClassVar[type[ast.BitOr]] = ast.BitOr
+    Break: ClassVar[type[ast.Break]] = ast.Break
+    Call: ClassVar[type[ast.Call]] = ast.Call
+    ClassDef: ClassVar[type[ast.ClassDef]] = ast.ClassDef
+    Constant: ClassVar[type[ast.Constant]] = ast.Constant
+    Continue: ClassVar[type[ast.Continue]] = ast.Continue
+    Del: ClassVar[type[ast.Del]] = ast.Del
+    ExceptHandler: ClassVar[type[ast.ExceptHandler]] = ast.ExceptHandler
+    Expression: ClassVar[type[ast.expr]] = ast.expr
+    For: ClassVar[type[ast.For]] = ast.For
+    FunctionDef: ClassVar[type[ast.FunctionDef]] = ast.FunctionDef
+    Global: ClassVar[type[ast.Global]] = ast.Global
+    If: ClassVar[type[ast.If]] = ast.If
+    Import: ClassVar[type[ast.Import]] = ast.Import
+    ImportFrom: ClassVar[type[ast.ImportFrom]] = ast.ImportFrom
+    JoinedStr: ClassVar[type[ast.JoinedStr]] = ast.JoinedStr
+    Lambda: ClassVar[type[ast.Lambda]] = ast.Lambda
+    List: ClassVar[type[ast.List]] = ast.List
+    Load: ClassVar[type[ast.Load]] = ast.Load
+    Module: ClassVar[type[ast.Module]] = ast.Module
+    Name: ClassVar[type[ast.Name]] = ast.Name
+    NamedExpr: ClassVar[type[ast.NamedExpr]] = ast.NamedExpr
+    Nonlocal: ClassVar[type[ast.Nonlocal]] = ast.Nonlocal
+    ParamSpec: ClassVar[type[ast.ParamSpec]] = ast.ParamSpec
+    Pass: ClassVar[type[ast.Pass]] = ast.Pass
+    Raise: ClassVar[type[ast.Raise]] = ast.Raise
+    Return: ClassVar[type[ast.Return]] = ast.Return
+    Statement: ClassVar[type[ast.stmt]] = ast.stmt
+    Starred: ClassVar[type[ast.Starred]] = ast.Starred
+    Store: ClassVar[type[ast.Store]] = ast.Store
+    Subscript: ClassVar[type[ast.Subscript]] = ast.Subscript
+    Tuple: ClassVar[type[ast.Tuple]] = ast.Tuple
+    TypeVar: ClassVar[type[ast.TypeVar]] = ast.TypeVar
+    TypeVarTuple: ClassVar[type[ast.TypeVarTuple]] = ast.TypeVarTuple
+    Yield: ClassVar[type[ast.Yield]] = ast.Yield
+    YieldFrom: ClassVar[type[ast.YieldFrom]] = ast.YieldFrom
+
     @staticmethod
     @cache
-    def parsed_module(source: str) -> ast.Module:
-        """Parse one module source once per exact content.
+    def parsed_module(source: str, filename: str = "<string>") -> ast.Module:
+        """Parse one module source once per exact content through rope.
 
-        Every reader only inspects the tree, so one parse serves each repeated
-        query over the same source; a source that does not parse raises its
-        ``SyntaxError`` on every call.
+        Every reader only inspects the tree, so one rope parse serves each
+        repeated query over the same source; a source that does not parse
+        raises its ``SyntaxError`` on every call.
 
         Returns:
             The parsed module.
 
         """
-        return ast.parse(source)
+        return ast.parse(source, filename=filename)
+
+    @staticmethod
+    def parse_expression_source(source: str) -> t.Infra.RopeAstNode:
+        """Parse one expression source through rope's parse surface.
+
+        Returns:
+            The parsed expression node.
+
+        """
+        return ast.parse(source, mode="eval").body
+
+    @staticmethod
+    def unparse_node(node: p.AttributeProbe) -> str:
+        """Unparse one rope-owned tree node through rope's surface.
+
+        Returns:
+            The source text of the node.
+
+        """
+        return ast.unparse(node)
+
+    @staticmethod
+    def dump_node(node: p.AttributeProbe) -> str:
+        """Return the canonical structural digest of one rope-owned node.
+
+        Returns:
+            The canonical structural digest of one rope-owned node.
+
+        """
+        return ast.dump(node)
+
+    @staticmethod
+    def dump_statements(statements: Sequence[t.Infra.RopeAstNode]) -> str:
+        """Return the canonical structural digest of one statement list.
+
+        The module wrapper rope's dump needs is built from rope's own node
+        vocabulary; callers never construct an interpreter tree themselves.
+
+        Returns:
+            The canonical structural digest of one statement list.
+
+        """
+        return ast.dump(
+            ast.Module(body=[*statements], type_ignores=[]),
+        )
+
+    @staticmethod
+    def fix_missing_locations(module: p.AttributeProbe) -> t.Infra.AstModule:
+        """Fill the location fields of one freshly built rope tree.
+
+        Returns:
+            The module with every missing location filled.
+
+        """
+        return ast.fix_missing_locations(module)
+
+    @staticmethod
+    def get_docstring(node: p.AttributeProbe) -> str | None:
+        """Return the docstring of one definition node, rope's reader.
+
+        Returns:
+            The docstring of one definition node, rope's reader.
+
+        """
+        return ast.get_docstring(node)
+
+    @staticmethod
+    def iter_child_nodes(node: p.AttributeProbe) -> Sequence[t.Infra.RopeAstNode]:
+        """Return the direct children of one rope-owned tree node.
+
+        Returns:
+            The direct children of one rope-owned tree node.
+
+        """
+        return tuple(ast.iter_child_nodes(node))
 
     @staticmethod
     @cache
@@ -367,33 +513,212 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return ""
 
     @classmethod
-    def module_assignment_strings_source(cls, source: str, name: str) -> Sequence[str]:
-        """Collect literal module strings, including class-owned export metadata.
+    def module_assignment_strings_source(
+        cls, source_module: p.Infra.RopeSourceModule, name: str
+    ) -> Sequence[str]:
+        """Read strings through the invocation's original native module and DSL.
 
         Returns:
             The resulting ``Sequence[str]``.
 
         """
-        return cls.module_assignment_strings(cls.parsed_module(source), name)
+        return cls.module_assignment_strings(source_module, name)
 
     @classmethod
-    def module_assignment_strings(cls, module: ast.Module, name: str) -> Sequence[str]:
-        """Read literal and named-sequence strings from an existing parse.
+    def module_assignment_strings(
+        cls, source_module: p.Infra.RopeSourceModule, name: str
+    ) -> Sequence[str]:
+        """Read literal/name-sequence declarations from the native binding index.
+
+        A direct module declaration wins over a single direct class's export
+        metadata. Named sequences and the declared sequence constructors retain
+        their original module ownership; no source-only parse project is opened.
 
         Returns:
             The declared strings using the source reader's export semantics.
 
         """
-        value = cls._module_top_level_value(module, name)
-        values = cls.literal_string_sequence(value)
-        if values:
-            return values
-        # Generated roots use ``__all__ = tuple(_PUBLIC_EXPORTS)``; follow the
-        # bound name so docs validate matches the live lazy-init ABI.
-        nested_name = cls._sequence_constructor_ref(value)
-        if not nested_name or nested_name == name:
-            return ()
-        return cls.module_assignment_strings(module, nested_name)
+        module_scope = source_module.get_scope()
+        scope = module_scope
+        region = cls._native_assignment_region(source_module, scope, name, depth=1)
+        if region is None and name == c.Infra.DUNDER_ALL:
+            index = source_module.get_source_binding_index()
+            roots = tuple(
+                child
+                for child in module_scope.get_scopes()
+                if child.get_kind() == "Class"
+                and any(
+                    fragment.depth == 1
+                    and source_module.lines.get_line_number(fragment.start)
+                    == child.get_start()
+                    for fragment in index.fragments
+                )
+            )
+            if len(roots) == 1:
+                scope = roots[0]
+                region = cls._native_assignment_region(
+                    source_module, scope, name, depth=2
+                )
+        visited: set[str] = set()
+        while region is not None:
+            if name in visited:
+                msg = f"Cyclic native string-sequence declaration: {name}"
+                raise ValueError(msg)
+            visited.add(name)
+            value = cls._native_assignment_capture(source_module, region)
+            if value is None:
+                return ()
+            values = cls._native_sequence_strings(source_module, value)
+            if values is not None:
+                return values
+            name = cls._native_sequence_reference(source_module, value)
+            if not name:
+                return ()
+            region = cls._native_assignment_region(
+                source_module, module_scope, name, depth=1
+            )
+        return ()
+
+    @staticmethod
+    def _native_assignment_region(
+        module: p.Infra.RopeSourceModule,
+        scope: p.Infra.RopeScope,
+        name: str,
+        *,
+        depth: int,
+    ) -> tuple[int, int] | None:
+        """Select the first direct assignment that declares the requested name."""
+        runtime = FlextInfraUtilitiesRopeRuntime
+        index = module.get_source_binding_index()
+        direct = tuple(
+            fragment
+            for fragment in index.fragments
+            if fragment.depth == depth
+            and index.context_at(fragment.start).structural_scope.pyobject
+            is scope.pyobject
+        )
+        for fragment in direct:
+            arity = sum(
+                child.depth == fragment.depth + 1
+                and fragment.start <= child.start < child.end <= fragment.end
+                for child in index.fragments
+            )
+            patterns = (
+                f"{name}: ${{annotation}}",
+                f"{name}: ${{annotation}} = ${{value}}",
+                *(
+                    (
+                        " = ".join(
+                            (*(
+                                name if index == selected else f"${{target{index}}}"
+                                for index in range(arity - 1)
+                            ), "${value}")
+                        )
+                        for selected in range(arity - 1)
+                    )
+                    if arity > 1
+                    else ()
+                ),
+            )
+            for pattern in patterns:
+                if (fragment.start, fragment.end) in runtime.semantic_regions(
+                    module,
+                    pattern,
+                    arguments={},
+                    start=fragment.start,
+                    end=fragment.end,
+                ):
+                    return fragment.start, fragment.end
+        return None
+
+    @staticmethod
+    def _native_assignment_capture(
+        module: p.Infra.RopeSourceModule, region: tuple[int, int]
+    ) -> tuple[int, int] | None:
+        """Capture an indexed assignment's value with the native DSL."""
+        runtime = FlextInfraUtilitiesRopeRuntime
+        fragments = module.get_source_binding_index().fragments
+        statement = next(
+            fragment
+            for fragment in fragments
+            if (fragment.start, fragment.end) == region
+        )
+        arity = sum(
+            child.depth == statement.depth + 1
+            and statement.start <= child.start < child.end <= statement.end
+            for child in fragments
+        )
+        patterns = (
+            "${target}: ${annotation} = ${value}",
+            *(
+                (" = ".join((*(f"${{target{i}}}" for i in range(arity - 1)), "${value}")),)
+                if arity > 1
+                else ()
+            ),
+        )
+        finder = runtime.semantic_finder(module, arguments={})
+        for pattern in patterns:
+            for match in finder.get_matches(pattern, {}, start=region[0], end=region[1]):
+                if match.get_region() == region:
+                    return runtime.semantic_capture_region(match, "value")
+        return None
+
+    @staticmethod
+    def _native_sequence_strings(
+        module: p.Infra.RopeSourceModule, region: tuple[int, int]
+    ) -> tuple[str, ...] | None:
+        """Read a literal collection's captures through the native matcher/compiler."""
+        runtime = FlextInfraUtilitiesRopeRuntime
+        fragments = module.get_source_binding_index().fragments
+        value = max(
+            (fragment for fragment in fragments if (fragment.start, fragment.end) == region),
+            key=lambda fragment: fragment.depth,
+        )
+        count = sum(
+            child.depth == value.depth + 1
+            and value.start <= child.start < child.end <= value.end
+            for child in fragments
+        )
+        items = ", ".join(f"${{item{i}}}" for i in range(count))
+        patterns = (f"[{items}]", f"({items}{',' if count == 1 else ''})", f"{{{items}}}")
+        finder = runtime.semantic_finder(module, arguments={})
+        for pattern in patterns:
+            for match in finder.get_matches(pattern, {}, start=region[0], end=region[1]):
+                if match.get_region() != region:
+                    continue
+                strings: list[str] = []
+                for index in range(count):
+                    begin, end = runtime.semantic_capture_region(match, f"item{index}")
+                    item = runtime.literal_string(module.source_code[begin:end])
+                    if item is None:
+                        return ()
+                    strings.append(item)
+                return tuple(strings)
+        return None
+
+    @staticmethod
+    def _native_sequence_reference(
+        module: p.Infra.RopeSourceModule, region: tuple[int, int]
+    ) -> str:
+        """Read a sole native name or the supported one-name constructor call."""
+        runtime = FlextInfraUtilitiesRopeRuntime
+        word = runtime.runtime_callable("rope.base.worder", "Worder")(module.source_code)
+        if not isinstance(word, p.Infra.RopeWorder):
+            msg = "Native string-sequence query requires the word finder contract"
+            raise TypeError(msg)
+        if word.get_word_range(region[0]) == region:
+            return word.get_word_at(region[0])
+        finder = runtime.semantic_finder(module, arguments={})
+        for constructor in ("tuple", "list", "frozenset", "set"):
+            for match in finder.get_matches(
+                f"{constructor}(${{reference}})", {}, start=region[0], end=region[1]
+            ):
+                if match.get_region() != region:
+                    continue
+                captured = runtime.semantic_capture_region(match, "reference")
+                if word.get_word_range(captured[0]) == captured:
+                    return word.get_word_at(captured[0])
+        return ""
 
     @classmethod
     def module_mapping_assignment_source(

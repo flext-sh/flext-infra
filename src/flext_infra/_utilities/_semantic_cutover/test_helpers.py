@@ -6,16 +6,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import ast
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import override
 
-import libcst as cst
-
-from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
+from flext_infra._utilities._rope.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
+)
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -35,33 +43,6 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
     ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
-
-        class _MovedExports(cst.CSTTransformer):
-            """Retire only the original declaration's former module export."""
-
-            def __init__(self, name: str) -> None:
-                self.names = frozenset({name})
-
-            @override
-            def leave_Assign[N: (t.Infra.Cst.Assign, t.Infra.Cst.AnnAssign)](
-                self,
-                original_node: N,
-                updated_node: N,
-            ) -> N:
-                del original_node
-                return FlextInfraUtilitiesQualifiedNames.filter_exports(
-                    updated_node,
-                    self.names,
-                )
-
-            @override
-            def leave_AnnAssign(
-                self,
-                original_node: t.Infra.Cst.AnnAssign,
-                updated_node: t.Infra.Cst.AnnAssign,
-            ) -> t.Infra.Cst.AnnAssign:
-                return self.leave_Assign(original_node, updated_node)
-
         editable = {
             path.resolve(): source
             for path, source in sources.items()
@@ -111,10 +92,10 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                         working[edit.file_path] = edit.updated_source
                         changes.setdefault(edit.file_path, []).extend(edit.changes)
                     working[path] = (
-                        cst
-                        .parse_module(working[path])
-                        .visit(_MovedExports(move.class_name))
-                        .code
+                        FlextInfraUtilitiesRopeModulePatch.remove_runtime_alias_export(
+                            working[path],
+                            alias=move.class_name,
+                        )
                     )
                 finally:
                     project.close()

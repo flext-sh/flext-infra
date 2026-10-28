@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import sys
 from collections.abc import Iterator, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
@@ -199,6 +200,15 @@ class FlextInfraUtilitiesSemanticContracts(
             Edits for the selected native contract rules.
 
         """
+        rules = tuple(
+            derived
+            for rule in rules
+            for derived in (
+                cls._generic_collection_contract_rules(workspace.rope_project, rule)
+                if rule.operation == "retire-generic-typing-wrappers"
+                else (rule,)
+            )
+        )
         providers = cls._contract_receiver_sources(workspace, sources, rules)
         items = tuple(
             sorted({**dict(cls._editable_sources(sources)), **providers}.items())
@@ -223,6 +233,262 @@ class FlextInfraUtilitiesSemanticContracts(
             items,
             (working, applied, owned_modules),
         )
+
+    @classmethod
+    def _generic_collection_contract_rules(
+        cls,
+        project: p.Infra.RopeProject,
+        selection: p.Infra.RopeContractRule,
+    ) -> tuple[p.Infra.RopeContractRule, ...]:
+        """Derive native collection substitutions from one elected provider.
+
+        The provider's source-binding index elects declarations and their formal
+        regions. Native matching proves complete forwarding bodies; neither
+        alias spelling nor an independently parsed source elects a migration.
+
+        Returns:
+            Transient rules retaining exact provider and argument identities.
+
+        Raises:
+            ValueError: The selector or captured declaration is incomplete.
+            TypeError: The elected provider is not a native source class.
+
+        """
+        constraints = tuple(selection.arguments.values())
+        if (
+            len(constraints) != 1
+            or not isinstance(constraints[0], str)
+            or not constraints[0].startswith("name=")
+        ):
+            msg = f"{selection.id}: provider requires a native name constraint"
+            raise ValueError(msg)
+        identity = constraints[0].removeprefix("name=")
+        provider = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, identity
+        ).get_object()
+        if not isinstance(provider, p.Infra.RopeSourceClass):
+            msg = f"{selection.id}: provider is not a native source class"
+            raise TypeError(msg)
+        module = provider.get_module()
+        if not isinstance(module, p.Infra.RopePyModule):
+            msg = f"{selection.id}: provider has no native source module"
+            raise TypeError(msg)
+        return tuple(
+            derived
+            for fragments, parameters in cls._generic_collection_declarations(
+                module, provider
+            )
+            for derived in cls._generic_collection_body_rules(
+                selection, identity, module, fragments, parameters
+            )
+        )
+
+    @staticmethod
+    def _generic_collection_declarations(
+        module: p.Infra.RopePyModule,
+        provider: p.Infra.RopeSourceClass,
+    ) -> Iterator[
+        tuple[
+            tuple[
+                p.Infra.RopeSourceFragment,
+                p.Infra.RopeSourceFragment,
+                p.Infra.RopeSourceFragment,
+            ],
+            tuple[str, ...],
+        ]
+    ]:
+        """Elect only this provider's direct generic declarations.
+
+        Yields:
+            Declaration, name and body regions with their native formal names.
+
+        Raises:
+            ValueError: The source index has incomplete or constrained regions.
+
+        """
+        fragments = module.get_source_binding_index().fragments
+        for name in fragments:
+            if name.context.role != "type-alias-name" or (
+                name.context.structural_scope.pyobject is not provider
+            ):
+                continue
+            declarations = tuple(
+                fragment
+                for fragment in fragments
+                if fragment.depth == name.depth - 1
+                and fragment.start <= name.start < name.end <= fragment.end
+            )
+            if len(declarations) != 1:
+                msg = "generic alias has no unique native source owner"
+                raise ValueError(msg)
+            declaration = declarations[0]
+            parameters = tuple(
+                module.source_code[fragment.start : fragment.end]
+                for fragment in fragments
+                if fragment.context.role == "type-parameter-token"
+                and declaration.start
+                <= fragment.start
+                < fragment.end
+                <= declaration.end
+            )
+            if not parameters:
+                continue
+            if not all(parameter.isidentifier() for parameter in parameters):
+                msg = "unsupported constrained generic type parameter"
+                raise ValueError(msg)
+            bodies = tuple(
+                fragment
+                for fragment in fragments
+                if fragment.context.role == "type-alias-value"
+                and fragment.depth == declaration.depth + 1
+                and declaration.start
+                <= fragment.start
+                < fragment.end
+                <= declaration.end
+            )
+            if len(bodies) != 1:
+                msg = "generic alias has no unique native body"
+                raise ValueError(msg)
+            yield (declaration, name, bodies[0]), parameters
+
+    @classmethod
+    def _generic_collection_body_rules(
+        cls,
+        selection: p.Infra.RopeContractRule,
+        provider_identity: str,
+        module: p.Infra.RopePyModule,
+        fragments: tuple[
+            p.Infra.RopeSourceFragment,
+            p.Infra.RopeSourceFragment,
+            p.Infra.RopeSourceFragment,
+        ],
+        parameters: tuple[str, ...],
+    ) -> tuple[p.Infra.RopeContractRule, ...]:
+        """Prove one complete native forwarding body before deriving its rule.
+
+        Returns:
+            One identity-constrained substitution, or no rule for a domain alias.
+
+        """
+        declaration, name, body = fragments
+        origin = cls._generic_collection_origin(module, body)
+        if origin is None:
+            return ()
+        member, identity, module_name = origin
+        alias = module.source_code[name.start : name.end]
+        suffix = cls._generic_collection_forwarding_suffix(
+            module, declaration, alias, parameters, identity
+        )
+        if suffix is None:
+            return ()
+        actual = ", ".join(f"${{item{index}}}" for index in range(len(parameters)))
+        return (
+            m.Infra.RopeContractRule(
+                id=f"{selection.id}:{alias}",
+                owner_root=selection.owner_root,
+                phase=selection.phase,
+                pattern=f"${{alias}}[{actual}]",
+                goal=f"{member}[{actual}{suffix}]",
+                arguments={"alias": f"name={provider_identity}.{alias}"},
+                imports={member: f"from {module_name} import {member}"}
+                if module_name is not None
+                else {},
+                bindings={member: identity},
+                unshadowed_builtins=(member,) if module_name is None else (),
+            ),
+        )
+
+    @staticmethod
+    def _generic_collection_origin(
+        module: p.Infra.RopePyModule,
+        body: p.Infra.RopeSourceFragment,
+    ) -> tuple[str, str, str | None] | None:
+        """Resolve a direct stdlib generic origin through its lexical binding.
+
+        Returns:
+            Native member, identity and import module, or no collection origin.
+
+        Raises:
+            ValueError: A captured generic origin cannot be resolved.
+
+        """
+        origins = tuple(
+            fragment
+            for fragment in module.get_source_binding_index().fragments
+            if fragment.start == body.start
+            and fragment.end < body.end
+            and all(
+                part.isidentifier()
+                for part in module.source_code[fragment.start : fragment.end].split(".")
+            )
+        )
+        if not origins:
+            return None
+        origin = max(origins, key=lambda fragment: fragment.end)
+        binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+            origin.context.environment,
+            module.source_code[origin.start : origin.end],
+        )
+        if binding is None:
+            msg = "unresolved native generic collection origin"
+            raise ValueError(msg)
+        value = binding.get_object()
+        if not isinstance(value, p.Infra.RopeClassObject):
+            return None
+        owner = value.get_module()
+        module_name = (
+            value.builtin.__module__
+            if isinstance(value, p.Infra.RopeBuiltinClass)
+            else None
+            if owner is None
+            else owner.get_name()
+        )
+        if module_name is None or (
+            module_name.partition(".")[0] not in sys.stdlib_module_names
+        ):
+            return None
+        if "__class_getitem__" not in value.get_attributes():
+            return None
+        member = value.get_name()
+        if isinstance(binding, p.Infra.RopeImportedName):
+            module_name = binding.imported_module.module_name
+            if module_name is None:
+                msg = "relative generic collection origin is not native"
+                raise ValueError(msg)
+            return member, f"{module_name}.{binding.imported_name}", module_name
+        return member, f"__builtins__.{member}", None
+
+    @staticmethod
+    def _generic_collection_forwarding_suffix(
+        module: p.Infra.RopePyModule,
+        declaration: p.Infra.RopeSourceFragment,
+        alias: str,
+        parameters: tuple[str, ...],
+        identity: str,
+    ) -> str | None:
+        """Match the whole native declaration, retaining its argument arity.
+
+        Returns:
+            The native variadic suffix, or None for a non-forwarding domain alias.
+
+        """
+        formal = ", ".join(parameters)
+        variants = ("", ", ...") if len(parameters) == 1 else ("",)
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
+        for variadic in variants:
+            pattern = f"type {alias}[{formal}] = ${{origin}}[{formal}{variadic}]"
+            matches = finder.get_matches(
+                pattern,
+                {"origin": f"name={identity}"},
+                start=declaration.start,
+                end=declaration.end,
+            )
+            if any(
+                match.get_region() == (declaration.start, declaration.end)
+                for match in matches
+            ):
+                return variadic
+        return None
 
     @staticmethod
     def _contract_receiver_sources(
@@ -290,14 +556,10 @@ class FlextInfraUtilitiesSemanticContracts(
     ]:
         working = dict(items)
         proposed_sources = cls._ContractSources(working, sources)
-        relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
         applied: MutableMapping[Path, MutableSequence[str]] = {}
-        project: p.Infra.RopeProject | None = None
-        try:
-            project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                workspace.rope_project,
-                proposed_sources,
-            )
+        with workspace.rope_project.source_view(
+            declared_files=None, additional_source_folders=None
+        ) as project:
             owned_modules = {
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
@@ -312,67 +574,124 @@ class FlextInfraUtilitiesSemanticContracts(
                 if any(rule.ownership_transfer is not None for rule in rules)
                 and path.is_relative_to(workspace.repository_root)
             }
-            implementation_owners: MutableMapping[
-                tuple[str, str], t.Infra.RopeImplementationPaths
-            ] = {}
-            for declared_rule in rules:
-                if project is None:
-                    project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project,
-                        proposed_sources,
+        implementation_owners: MutableMapping[
+            tuple[str, str], t.Infra.RopeImplementationPaths
+        ] = {}
+        for declared_rule in rules:
+            for pattern, goal in cls._source_contract_templates(
+                workspace.rope_project,
+                declared_rule,
+                working,
+                applied,
+            ):
+                rule = (
+                    m.Infra.RopeContractRule.model_validate(
+                        declared_rule, from_attributes=True
+                    ).model_copy(update={"pattern": pattern, "goal": goal})
+                    if declared_rule.defaulted_field
+                    else declared_rule
+                )
+                with workspace.rope_project.source_view(
+                    declared_files=cls._contract_source_plans(
+                        workspace.rope_project, working, applied
+                    ),
+                    additional_source_folders=None,
+                ) as project:
+                    cls._apply_contract_members(
+                        project,
+                        rule,
+                        cls._contract_rule_members(
+                            project,
+                            rule,
+                            proposed_sources,
+                            (implementation_owners, working, owned_modules),
+                            restrictions,
+                        ),
+                        (working, applied),
                     )
-                resources = tuple(
+        return working, applied, owned_modules
+
+    @classmethod
+    def _source_contract_templates(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        sources: Mapping[Path, str],
+        applied: Mapping[Path, Sequence[str]],
+    ) -> Sequence[tuple[str, str]]:
+        """Elect templates from the same invocation's planned source binding.
+
+        Returns:
+            Native pattern and replacement pairs, without retaining the view.
+
+        """
+        with project.source_view(
+            declared_files=cls._contract_source_plans(project, sources, applied),
+            additional_source_folders=None,
+        ):
+            return cls._field_contract_templates(
+                project,
+                rule,
+                tuple(
                     project.get_resource(
                         path.relative_to(Path(project.root.real_path)).as_posix()
                     )
-                    for path in working
+                    for path in sources
+                ),
+            )
+
+    @staticmethod
+    def _contract_source_plans(
+        project: p.Infra.RopeProject,
+        sources: Mapping[Path, str],
+        applied: Mapping[Path, Sequence[str]],
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Bind changed consumers while retaining the entry provider plans.
+
+        Returns:
+            Existing plans unchanged, or their original-witness consumer updates.
+
+        """
+        if not applied:
+            return project.source_plans
+        return FlextInfraUtilitiesWorkspaceSnapshot._workspace_declared_sources(
+            Path(project.root.real_path),
+            (),
+            {path: sources[path] for path in applied},
+            source_project=project,
+        )
+
+    @staticmethod
+    def _apply_contract_members(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        members: Sequence[p.Infra.RopeChangeContents],
+        state: tuple[
+            MutableMapping[Path, str], MutableMapping[Path, MutableSequence[str]]
+        ],
+    ) -> None:
+        """Accept only captured consumer effects; provider reads are not writes.
+
+        Raises:
+            ValueError: If ``path not in working``.
+
+        """
+        working, applied = state
+        for change in members:
+            path = Path(change.resource.real_path).resolve()
+            if path not in working:
+                msg = f"{rule.id}: effect is outside captured consumers: {path}"
+                raise ValueError(msg)
+            proposed = (
+                FlextInfraUtilitiesSemanticDeclarationRelocation
+                .remove_orphaned_imports(
+                    project, change.resource, working[path], change.new_contents
                 )
-                templates = cls._field_contract_templates(
-                    project, declared_rule, resources
-                )
-                for pattern, goal in templates:
-                    rule = (
-                        m.Infra.RopeContractRule.model_validate(
-                            declared_rule, from_attributes=True
-                        ).model_copy(update={"pattern": pattern, "goal": goal})
-                        if declared_rule.defaulted_field
-                        else declared_rule
-                    )
-                    if project is None:
-                        project = (
-                            FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                                workspace.rope_project,
-                                proposed_sources,
-                            )
-                        )
-                    members = cls._contract_rule_members(
-                        project,
-                        rule,
-                        proposed_sources,
-                        (implementation_owners, working, owned_modules),
-                        restrictions,
-                    )
-                    changed = False
-                    for change in members:
-                        path = Path(change.resource.real_path).resolve()
-                        proposed = relocation.remove_orphaned_imports(
-                            project, change.resource, working[path], change.new_contents
-                        )
-                        if proposed == working[path]:
-                            continue
-                        working[path] = proposed
-                        applied.setdefault(path, []).append(rule.id)
-                        changed = True
-                    cli.display_text(
-                        f"mod: Rope contract {rule.id}: changed_files={len(members)}"
-                    )
-                    if changed:
-                        project.close()
-                        project = None
-        finally:
-            if project is not None:
-                project.close()
-        return working, applied, owned_modules
+            )
+            if proposed != working[path]:
+                working[path] = proposed
+                applied.setdefault(path, []).append(rule.id)
+        cli.display_text(f"mod: Rope contract {rule.id}: changed_files={len(members)}")
 
     @classmethod
     def _contract_rule_members(
@@ -602,7 +921,7 @@ class FlextInfraUtilitiesSemanticContracts(
             Mapping[t.Infra.RopeSourcePath, str],
         ],
     ) -> bool:
-        implementation_owners, sources = context
+        implementation_owners, _sources = context
         resource = module.get_resource()
         if rule.value_default is not None:
             default = match.get_ast(rule.value_default)
@@ -623,7 +942,6 @@ class FlextInfraUtilitiesSemanticContracts(
                     FlextInfraUtilitiesCodemodProject.implementation_owner_modules(
                         project,
                         m.Infra.CodemodPrimitiveOwner(arg=identity),
-                        sources,
                     )
                 )
             if (

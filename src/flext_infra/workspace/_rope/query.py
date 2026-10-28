@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
@@ -62,7 +71,11 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         """The run snapshot: the injected one, or one this session opens once."""
         snapshot = self._snapshot
         if snapshot is None:
-            root = self._rope_repository_root.resolve()
+            root = (
+                self._rope_repository_root.resolve()
+                if self._rope_project is None
+                else Path(self._rope_project.root.real_path)
+            )
             scope = ExitStack()
             snapshot = scope.enter_context(
                 u.Infra.workspace_snapshot(
@@ -72,8 +85,10 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
                             root,
                             *(
                                 member
-                                for member in u.Infra.discover_rope_project_roots(root)
-                                if member.resolve().is_relative_to(root)
+                                for member in u.Infra.discover_rope_project_roots(
+                                    root, source_project=self._rope_project
+                                )
+                                if member.is_relative_to(root)
                             ),
                         ))
                     ),
@@ -126,16 +141,19 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             The resource, or ``None`` when absent or outside the workspace.
 
         """
+        lexical_path = file_path.absolute()
+        root = Path(self.rope_project.root.real_path)
+        if not lexical_path.is_relative_to(root):
+            return None
         if self._owns_rope_project:
-            cache_key = str(file_path.resolve())
+            cache_key = str(self._source_path(file_path))
             cached = self._resource_cache.get(cache_key)
             if cache_key in self._resource_cache:
                 return cached
             resource = u.Infra.resolve_resource_from_path(self.rope_project, file_path)
             self._resource_cache[cache_key] = resource
             return resource
-        path = file_path.absolute()
-        root = self._rope_repository_root.resolve()
+        path = self._source_path(lexical_path)
         if not path.is_relative_to(root):
             return None
         if not self.rope_project.source_query(path, "isfile"):
@@ -164,7 +182,9 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             One indexed module entry for the requested file path.
 
         """
-        raw = self.workspace_index.modules_by_path.get(str(file_path.resolve()))
+        raw = self.workspace_index.modules_by_path.get(
+            str(self._source_path(file_path))
+        )
         if raw is None:
             return None
         validated: m.Infra.RopeModuleIndexEntry = (
@@ -179,7 +199,9 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             One indexed package entry for the requested directory.
 
         """
-        raw = self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
+        raw = self.workspace_index.packages_by_dir.get(
+            str(self._source_path(package_dir))
+        )
         if raw is None:
             return None
         validated: m.Infra.RopePackageIndexEntry = (
@@ -237,7 +259,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         if index is None:
             dependents: MutableMapping[str, set[Path]] = defaultdict(set)
             for module in self.modules():
-                file_path = module.file_path.resolve()
+                file_path = self._source_path(module.file_path)
                 for target in self.semantic(file_path).semantic_imports.values():
                     if not target:
                         continue
@@ -291,14 +313,22 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         resource = self.resource(file_path)
         if resource is not None:
             return resource
-        resolved_path = file_path.resolve()
-        if (
-            resolved_path.is_relative_to(self._rope_repository_root.resolve())
-            and not resolved_path.exists()
-        ):
+        resolved_path = self._source_path(file_path)
+        if resolved_path.is_relative_to(
+            Path(self.rope_project.root.real_path)
+        ) and not self.rope_project.source_query(resolved_path, "isfile"):
             raise FileNotFoundError(resolved_path)
         msg = f"path is outside the active rope workspace: {file_path}"
         raise ValueError(msg)
+
+    def _source_path(self, path: Path) -> Path:
+        """Use the native filesystem's captured address for this source epoch.
+
+        Returns:
+            The path elected by the same filesystem that serves source bytes.
+
+        """
+        return Path(self.rope_project.fscommands.realpath(str(path)))
 
     @classmethod
     def _reference_surface_for(cls, file_path: Path) -> str:

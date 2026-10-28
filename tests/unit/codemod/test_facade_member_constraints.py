@@ -24,7 +24,12 @@ from tests import c, t, tm, u
 
 
 def _member_search_paths() -> Sequence[str]:
-    """Resolve every governed workspace member's own source directory."""
+    """Resolve every governed workspace member's own source directory.
+
+    Returns:
+        The resulting ``Sequence[str]``.
+
+    """
     workspace = Path(__file__).resolve().parents[4]
     return tuple(
         str(path / c.Infra.DEFAULT_SRC_DIR)

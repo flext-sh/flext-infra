@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import ast
 from collections.abc import Mapping
 from itertools import chain
@@ -910,9 +919,7 @@ class FlextInfraUtilitiesModelsProtocol:
             value = binding.get_object()
             if not self.py_class(value):
                 return None
-            return self.resolve_symbol(
-                value.get_scope(), ast.parse(route, mode="eval").body
-            )
+            return self.resolve_symbol(value.get_scope(), route)
 
         def _source_class(self, binding: p.Infra.RopePyName) -> p.Infra.RopeSourceClass:
             """Require the source capability already proved by model admission.

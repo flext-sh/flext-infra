@@ -16,9 +16,9 @@ from tests import tm, u
 class TestsFlextInfraUtilitiesDocsGithubLinks:
     """Exercise Git identity, branch rewriting, and local existence evidence."""
 
+    @staticmethod
     @pytest.fixture
     def docs_repository(
-        self,
         tmp_path: Path,
     ) -> Path:
         """Create a real peripheral Git owner with an explicit integration contract.

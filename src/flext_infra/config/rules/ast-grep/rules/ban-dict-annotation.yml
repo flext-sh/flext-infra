@@ -1,75 +1,6 @@
-# A builtin `dict[K, V]` spelled in a type context outside the typings family
-# re-declares a typings member (ENFORCE-030, enforced by flext-core only at
-# runtime until now). The typings family itself declares the aliases and is out
-# of scope.
-#
-# Two targets, chosen by context, never by guess:
-# - inside a function (parameters, returns, locals) the exact concrete contract
-#   is `dict[K, V]`, the same target as the typing.Dict modernization; the
-#   rewrite preserves the concrete dict API.
-# - outside a function (model fields, class attributes, module annotations,
-#   PEP 695 aliases) the runtime model law rejects dict origins in Pydantic
-#   fields: the contract is `Mapping`/`MutableMapping` with a `u.empty`
-#   factory, which changes the default as well, so that document is
-#   detection-only and the semantic fix belongs to its owner.
-id: dict-annotation-missing-t-import
-language: python
-severity: error
-files:
-  - "**/*.py"
-ignores:
-  - "**/typings.py"
-  - "**/_typings/**"
-rule:
-  all:
-    - matches: builtin-dict-generic
-    - inside:
-        stopBy: end
-        kind: module
-        not:
-          has:
-            stopBy: end
-            matches: t-locally-bound
-message: >-
-  `dict[K, V]` in a type context must become a typings member (dict in a
-  function, Mapping in a field), but a canonical `t` binding is not
-  established. Resolve the facade binding first.
-metadata:
-  enforce: [ENFORCE-030]
----
-id: dict-annotation-to-dict-kv
-language: python
-severity: error
-files:
-  - "**/*.py"
-ignores:
-  - "**/typings.py"
-  - "**/_typings/**"
-rule:
-  all:
-    - matches: builtin-dict-generic
-    - pattern: $WHOLE
-    - inside:
-        kind: function_definition
-        stopBy: end
-    - inside:
-        stopBy: end
-        kind: module
-        has:
-          stopBy: end
-          matches: t-locally-bound
-transform:
-  NEW:
-    replace:
-      source: $WHOLE
-      replace: "^dict"
-      by: "dict"
-fix: $NEW
-message: >-
-  Replace the builtin `dict[K, V]` type with the typings member dict[K, V].
-metadata:
-  enforce: [ENFORCE-030]
----
+# Native dict annotations in functions need no rewrite or facade binding.
+# The separate model-field contract still rejects dict origins outside functions;
+# choosing Mapping/MutableMapping and its default belongs to the semantic owner.
 id: dict-annotation-field-contract
 language: python
 severity: error
@@ -85,12 +16,6 @@ rule:
         inside:
           kind: function_definition
           stopBy: end
-    - inside:
-        stopBy: end
-        kind: module
-        has:
-          stopBy: end
-          matches: t-locally-bound
 message: >-
   `dict[K, V]` declared outside a function: a field or alias contract is
   Mapping[K, V] (MutableMapping when mutated) with a `u.empty` factory,

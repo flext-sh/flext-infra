@@ -51,9 +51,9 @@ def _create_init_file(directory: Path, content: str) -> Path:
 class TestsFlextInfraCodegenLazyInit:
     """Test suite for FlextInfraCodegenLazyInit directory scanning behavior."""
 
+    @staticmethod
     @pytest.fixture
     def governed_project(
-        self,
         tmp_path: Path,
     ) -> Path:
         """Provide the project manifest every scanned package belongs to.

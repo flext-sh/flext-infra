@@ -1,25 +1,5 @@
 # Sequence abstractions lose concrete list APIs and Pydantic field semantics.
-# The exact ListOf alias preserves both; a canonical binding is still required.
-id: typing-list-missing-t-import
-language: python
-severity: error
-rule:
-  all:
-    - matches: typing-list-generic
-    - inside:
-        stopBy: end
-        kind: module
-        not:
-          has:
-            stopBy: end
-            matches: t-locally-bound
-message: >-
-  typing.List must become the exact list[T] contract, but a canonical `t`
-  binding is not established. Resolve the facade binding before rewriting;
-  Sequence and MutableSequence are not concrete list replacements.
-metadata:
-  enforce: [ENFORCE-016, ENFORCE-091, ENFORCE-092]
----
+# The native list contract preserves both without an unused facade import.
 id: typing-list-to-sequence-of
 language: python
 severity: error
@@ -27,12 +7,6 @@ rule:
   all:
     - matches: typing-list-generic
     - pattern: $WHOLE
-    - inside:
-        stopBy: end
-        kind: module
-        has:
-          stopBy: end
-          matches: t-locally-bound
 transform:
   NEW:
     replace:

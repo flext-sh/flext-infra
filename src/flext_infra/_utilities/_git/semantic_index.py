@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
@@ -30,12 +39,16 @@ class FlextInfraUtilitiesGitSemanticIndex(
         cls,
         repo_root: Path,
         relative_dir: str,
+        *,
+        revision: str = c.Infra.GIT_HEAD,
     ) -> p.Result[Mapping[str, bytes]]:
-        """Read every blob directly under ``relative_dir`` in HEAD.
+        """Read every blob directly under ``relative_dir`` at a native revision.
 
         Git objects are immutable, so the content is returned by name without
-        a physical source state. A directory absent from HEAD is the typed
+        a physical source state. A directory absent from the revision is the typed
         empty mapping; an unreadable repository or object fails loud.
+        The default is HEAD; an explicit revision never selects another object
+        after a resolution failure.
 
         Returns:
             The resulting ``p.Result[Mapping[str, bytes]]``.
@@ -45,7 +58,7 @@ class FlextInfraUtilitiesGitSemanticIndex(
         if opened.failure:
             return r[Mapping[str, bytes]].from_failure(opened)
         try:
-            tree = opened.value.head.commit.tree / relative_dir
+            tree = opened.value.commit(revision).tree / relative_dir
         except KeyError:
             # GitPython's only signal for a path absent from the tree.
             return r[Mapping[str, bytes]].ok({})

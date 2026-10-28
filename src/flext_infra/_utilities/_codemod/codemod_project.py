@@ -35,6 +35,7 @@ from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -528,7 +529,6 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         project: p.Infra.RopeProject,
         condition: p.Infra.PrimitiveOwnerCondition,
-        sources: Mapping[t.Infra.RopeSourcePath, str],
     ) -> t.Infra.RopeImplementationPaths:
         """Derive a primitive's implementation from native definitions and MRO.
 
@@ -568,7 +568,7 @@ class FlextInfraUtilitiesCodemodProject(
             if id(target) in visited:
                 continue
             visited.add(id(target))
-            discovered = cls._implementation_target(target, namespace, sources)
+            discovered = cls._implementation_target(target, namespace)
             if discovered is None:
                 continue
             path, related = discovered
@@ -580,7 +580,6 @@ class FlextInfraUtilitiesCodemodProject(
     def _implementation_target(
         target: p.Infra.RopePyObject,
         namespace: str,
-        sources: Mapping[Path, str],
     ) -> tuple[Path, list[p.Infra.RopePyObject]] | None:
         """Collect native implementation edges of one callable or class.
 
@@ -589,7 +588,6 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the declaration has no source resource.
-            TypeError: If the module has no supported AST.
 
         """
         types = FlextInfraUtilitiesTypesRopeRuntime
@@ -619,48 +617,66 @@ class FlextInfraUtilitiesCodemodProject(
         parent = scope.parent
         if parent is not None and parent.get_kind() == c.Infra.RopeScopeKind.CLASS:
             pending.append(parent.pyobject)
-        tree = module.get_ast()
-        if not isinstance(tree, ast.AST):
-            msg = "native implementation module has no supported Python AST"
-            raise TypeError(msg)
         pending.extend(
             FlextInfraUtilitiesCodemodProject._implementation_calls(
                 module,
                 scope,
-                tree,
-                sources[path] if path in sources else resource.read(),
                 namespace,
             )
         )
         return path, pending
 
-    @staticmethod
+    @classmethod
     def _implementation_calls(
+        cls,
         module: p.Infra.RopePyModule,
         scope: p.Infra.RopeScope,
-        tree: ast.AST,
-        source: str,
         namespace: str,
     ) -> list[p.Infra.RopePyObject]:
-        """Resolve same-namespace calls within one exact lexical scope.
+        """Resolve calls only within the native callable's source region.
+
+        Rope's word finder identifies calls without walking the module again;
+        its source-position lookup preserves lexical aliases and shadowing.
+        The binding index excludes nested declarations from this callable.
 
         Returns:
             Native helper declarations reachable from calls in the scope.
 
+        Raises:
+            TypeError: If Rope lacks native call or source-position lookup.
+
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        runtime = FlextInfraUtilitiesRopeRuntime
         types = FlextInfraUtilitiesTypesRopeRuntime
+        source = module.source_code
+        finder = runtime.runtime_callable("rope.base.worder", "Worder")(source)
+        if not isinstance(finder, p.Infra.RopeWorder):
+            msg = "Implementation calls require the native word finder contract"
+            raise TypeError(msg)
+        names = runtime.runtime_callable("rope.base.evaluate", "ScopeNameFinder")(
+            module
+        )
+        if not isinstance(names, p.Infra.RopeScopeNameFinder):
+            msg = "Implementation calls require native source-position lookup"
+            raise TypeError(msg)
+        index = module.get_source_binding_index()
+        region = (
+            module.lines.get_line_start(scope.get_body_start()),
+            module.lines.get_line_end(scope.get_end()),
+        )
         pending: list[p.Infra.RopePyObject] = []
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call) or not (
-                scope.get_body_start() <= node.lineno <= scope.get_end()
-            ):
+        for first, _last in runtime.word_call_regions(source, region):
+            context = index.context_at(first)
+            if context.structural_scope is not scope:
                 continue
-            offset = runtime.source_offset(source, node.func)
-            lexical = runtime.scope_at(module, offset)
-            if lexical is not scope:
+            if cls._binding_expression(finder.get_primary_at(first)) is None:
                 continue
-            binding = runtime.resolve_symbol(lexical, node.func)
+            try:
+                binding = names.get_pyname_at(first)
+            except FlextInfraUtilitiesRopeRuntime.rope_module_not_found_error_types():
+                # Rope raises for offsets on keywords / non-identifiers; such
+                # positions elect no binding.
+                continue
             if binding is None:
                 continue
             helper = binding.get_object()

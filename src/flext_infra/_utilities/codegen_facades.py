@@ -45,7 +45,9 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
 
-from flext_infra import c, config, m, p, r, t
+from flext_core import r
+
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -741,8 +743,9 @@ class FlextInfraUtilitiesCodegenFacades(
         path = directory.parent / f"{directory.name.lstrip('_')}.py"
         owners = cls.family_subfacade_owners(project, directory)
         if len(owners) > 1:
-            resolver_factory = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
-                project, sources={}
+            resolver_factory = (
+                FlextInfraUtilitiesRopeSourceBasesRuntime
+                .source_member_resolver_factory(project, sources={})
             )
             evidence: list[str] = []
             for owner_path, owner_name in owners:
@@ -3829,7 +3832,11 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @classmethod
     def facade_class_publications(
-        cls, root: Path, rows: Mapping[Path, frozenset[int]]
+        cls,
+        root: Path,
+        rows: Mapping[Path, frozenset[int]],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> frozenset[tuple[Path, int, int]]:
         """Authenticate PEP 613 facade class publications at reported rows.
 
@@ -3838,12 +3845,17 @@ class FlextInfraUtilitiesCodegenFacades(
         ``TypeAlias`` bound by the module's own ``from typing import`` and
         ``Owner`` resolving, by native Rope identity, to a class. The existing
         publication owner authenticates the exported family alias and local class
-        independently of the filename. Other classes, statements and unresolved
-        owners authenticate nothing.
+        independently of the filename. Native binding-index regions and DSL
+        captures prove direct statement membership without inspecting syntax
+        trees. Other classes, statements and unresolved owners authenticate nothing.
 
         Returns:
             Resolved path, row and one-based column of each authenticated
             publication.
+
+        Raises:
+            TypeError: If Facade publication requires a native source module.
+            ValueError: If Facade publication source is outside its native election.
 
         """
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
@@ -3851,9 +3863,15 @@ class FlextInfraUtilitiesCodegenFacades(
         if not selected:
             return frozenset()
         publications: set[tuple[Path, int, int]] = set()
-        with cls.facade_source_project(root) as (project, sources):
+        with cls.facade_source_project(root, source_project=source_project) as (
+            project,
+            sources,
+        ):
             for path, wanted in sorted(selected.items()):
-                source = sources[path]
+                if path not in sources:
+                    msg = (f"Facade publication source is outside its native election: "
+                           f"{path}")
+                    raise ValueError(msg)
                 resource = project.get_file(
                     path.relative_to(Path(project.root.real_path)).as_posix()
                 )
@@ -3864,75 +3882,142 @@ class FlextInfraUtilitiesCodegenFacades(
                 )
                 if published is None or published[0] not in families:
                     continue
-                tree = ast.parse(source, filename=str(path))
-                if not any(
-                    isinstance(node, ast.ImportFrom)
-                    and node.module == "typing"
-                    and not node.level
-                    and any(
-                        alias.name == "TypeAlias" and alias.asname is None
-                        for alias in node.names
+                runtime = FlextInfraUtilitiesRopeRuntime
+                module = project.get_pymodule(resource, force_errors=True)
+                if not runtime.source_module(module):
+                    msg = "Facade publication requires a native source module"
+                    raise TypeError(msg)
+                publications.update(
+                    (path, line, column)
+                    for line, column in cls._facade_class_publication(
+                        project, module, published[1], wanted
                     )
-                    for node in tree.body
-                ):
-                    continue
-                module_scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
-                    project,
-                    source,
-                    resource=resource,
-                ).get_scope()
-                for owner in tree.body:
-                    if not (
-                        isinstance(owner, ast.ClassDef) and owner.name == published[1]
-                    ):
-                        continue
-                    owner_scope = next(
-                        child
-                        for child in module_scope.get_scopes()
-                        if child.get_start() == owner.lineno
-                    )
-                    members: list[tuple[p.Infra.RopeScope, ast.stmt]] = [
-                        (module_scope, member) for member in owner.body
-                    ]
-                    members.extend(
-                        (owner_scope, nested_member)
-                        for nested in owner.body
-                        if isinstance(nested, ast.ClassDef)
-                        for nested_member in nested.body
-                    )
-                    for scope, member in members:
-                        if cls._facade_class_publication(scope, member, wanted):
-                            publications.add((
-                                path,
-                                member.lineno,
-                                member.col_offset + 1,
-                            ))
+                )
         return frozenset(publications)
 
     @staticmethod
     def _facade_class_publication(
-        scope: p.Infra.RopeScope, member: ast.stmt, wanted: frozenset[int]
-    ) -> bool:
-        """Authenticate a selected PEP 613 binding against its native class owner.
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        owner_name: str,
+        wanted: frozenset[int],
+    ) -> frozenset[tuple[int, int]]:
+        """Authenticate exact direct PEP 613 declarations through Rope's DSL.
 
         Returns:
-            Whether the selected statement publishes a resolved native class.
+            Selected declaration rows and columns whose values are native classes.
+
+        Raises:
+            TypeError: If Facade publication requires the native word finder contract.
 
         """
-        if not isinstance(member, ast.AnnAssign):
-            return False
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module_scope = module.get_scope()
+        alias = module_scope.get_defined_names().get("TypeAlias")
         if not (
-            member.lineno in wanted
-            and isinstance(member.target, ast.Name)
-            and isinstance(member.annotation, ast.Name)
-            and member.annotation.id == "TypeAlias"
-            and isinstance(member.value, ast.Name | ast.Attribute)
+            isinstance(alias, p.Infra.RopeImportedName)
+            and alias.imported_name == "TypeAlias"
+            and alias.imported_module.module_name == "typing"
+            and alias.imported_module.level == 0
         ):
-            return False
-        value = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, member.value)
-        return value is not None and FlextInfraUtilitiesRopeRuntime.abstract_class(
-            value.get_object()
+            return frozenset()
+        finder = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
         )
+        if not isinstance(finder, p.Infra.RopeWorder):
+            msg = "Facade publication requires the native word finder contract"
+            raise TypeError(msg)
+        index = module.get_source_binding_index()
+        imports = tuple(
+            occurrence.offset
+            for occurrence in runtime.create_occurrence_finder(
+                project, "TypeAlias", alias, imports=True, in_hierarchy=False
+            ).find_occurrences(pymodule=module)
+        )
+        if not any(
+            fragment.depth == 1
+            and finder.get_word_at(fragment.start) == "from"
+            and fragment.start <= offset < fragment.end
+            and finder.is_a_name_after_from_import(offset)
+            and not finder.is_from_aliased(offset)
+            for fragment in index.fragments
+            for offset in imports
+        ):
+            return frozenset()
+        owners = tuple(
+            scope
+            for scope in module_scope.get_scopes()
+            if scope.get_kind() == "Class" and scope.pyobject.get_name() == owner_name
+        )
+        scopes = tuple(
+            selected
+            for owner in owners
+            for selected in (
+                owner,
+                *(child for child in owner.get_scopes() if child.get_kind() == "Class"),
+            )
+        )
+        top_level = frozenset(id(owner.pyobject) for owner in owners)
+        depths = {
+            id(scope.pyobject): fragment.depth
+            for scope in scopes
+            for fragment in index.fragments
+            if module.lines.get_line_number(fragment.start) == scope.get_start()
+            and finder.get_word_at(fragment.start) == "class"
+            and fragment.depth == (1 if id(scope.pyobject) in top_level else 2)
+        }
+        selected: set[tuple[int, int]] = set()
+        matches = runtime.semantic_finder(module, arguments={}).get_matches(
+            "${target}: TypeAlias = ${value}", {}
+        )
+        for match in matches:
+            begin, end = match.get_region()
+            line = module.lines.get_line_number(begin)
+            if line not in wanted:
+                continue
+            context = index.context_at(begin)
+            depth = depths.get(id(context.structural_scope.pyobject))
+            if depth is None or not any(
+                fragment.start == begin
+                and fragment.end == end
+                and fragment.depth == depth + 1
+                for fragment in index.fragments
+            ):
+                continue
+            target_begin, target_end = runtime.semantic_capture_region(match, "target")
+            value_begin, value_end = runtime.semantic_capture_region(match, "value")
+            if finder.get_word_range(target_begin) != (target_begin, target_end):
+                continue
+            if not FlextInfraUtilitiesCodegenFacades._facade_publication_reference(
+                finder, value_begin, value_end
+            ):
+                continue
+            scope = index.context_at(value_begin).environment
+            value = runtime.expression_name(scope, finder.get_primary_at(value_end - 1))
+            if value is not None and runtime.abstract_class(value.get_object()):
+                selected.add((line, begin - module.lines.get_line_start(line) + 1))
+        return frozenset(selected)
+
+    @staticmethod
+    def _facade_publication_reference(
+        finder: p.Infra.RopeWorder, begin: int, end: int
+    ) -> bool:
+        """Require the native primary to consist only of dotted name components.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        while begin < end:
+            if finder.get_primary_range(end - 1) != (begin, end):
+                return False
+            prefix, name, position = finder.get_splitted_primary_before(end)
+            if finder.get_word_range(end - 1) != (position, end):
+                return False
+            if not prefix:
+                return finder.get_word_at(position) == name
+            end = begin + len(prefix)
+        return False
 
     @classmethod
     def _inherited_namespace_members(

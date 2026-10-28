@@ -102,9 +102,9 @@ class TestsFlextInfraTypeGates:
                 eq={"fixture-alpha", "fixture-beta"},
             )
 
+    @staticmethod
     @pytest.fixture
     def checker_context(
-        self,
         tmp_path: Path,
     ) -> m.Infra.GateContext:
         """Configure the existing real package for native checker execution.

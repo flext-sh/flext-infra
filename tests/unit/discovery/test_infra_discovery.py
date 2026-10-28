@@ -30,9 +30,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         """
         return u.Infra()
 
+    @staticmethod
     @pytest.fixture
     def workspace_with_projects(
-        self,
         tmp_path: Path,
     ) -> Path:
         """Provide ``workspace_with_projects``.

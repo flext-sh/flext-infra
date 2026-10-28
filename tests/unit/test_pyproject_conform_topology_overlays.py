@@ -9,6 +9,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from tests import t, tm, u
 from tests.unit.pyproject_conform_topology_support import (
     TestsFlextInfraPyprojectConformTopologySupport,

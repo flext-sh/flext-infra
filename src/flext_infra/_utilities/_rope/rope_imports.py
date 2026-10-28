@@ -12,11 +12,9 @@ from collections import defaultdict
 from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 
-import libcst as cst
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
@@ -1310,9 +1308,8 @@ class FlextInfraUtilitiesRopeImports:
             .encode("utf-8")[: statement.col_offset]
             .decode("utf-8")
         )
-        parsed = cst.parse_module("".join(lines)[start:end] + "\n")
         replacements = cls._relocated_import_groups(
-            parsed,
+            statement,
             target_module,
             aliases,
             f"{resource.path}:{statement.lineno}",
@@ -1326,55 +1323,42 @@ class FlextInfraUtilitiesRopeImports:
         return (
             start,
             end,
-            ("\n" + indentation).join(
-                parsed.code_for_node(replacement) for replacement in replacements
-            ),
+            ("\n" + indentation).join(replacements),
         )
 
     @staticmethod
     def _relocated_import_groups(
-        parsed: t.Infra.Cst.Module,
+        statement: ast.ImportFrom,
         target_module: str,
         aliases: frozenset[str],
         location: str,
-    ) -> list[t.Infra.Cst.ImportFrom]:
-        """Preserve alias ordering and trivia while splitting selected CST groups.
+    ) -> list[str]:
+        """Render contiguous relocated import groups preserving alias order.
 
         Returns:
-            The contiguous selected and unselected import groups.
+            The contiguous selected and unselected import statements.
 
         Raises:
-            TypeError: If CST returns an invalid import representation.
+            TypeError: If the statement is a star import or binds no module.
 
         """
-        line = parsed.body[0]
-        if not isinstance(line, c.Infra.Cst.SimpleStatementLine):
-            msg = f"unsupported Rope import statement: {location}"
-            raise TypeError(msg)
-        imported_statement = line.body[0]
-        if not isinstance(imported_statement, c.Infra.Cst.ImportFrom) or isinstance(
-            imported_statement.names,
-            c.Infra.Cst.ImportStar,
+        if statement.module is None or any(
+            alias.name == "*" for alias in statement.names
         ):
             msg = f"unsupported Rope import statement: {location}"
             raise TypeError(msg)
-        groups: list[tuple[bool, list[t.Infra.Cst.ImportAlias]]] = []
-        for alias in imported_statement.names:
-            selected = parsed.code_for_node(alias.name) in aliases
+        groups: list[tuple[bool, list[ast.alias]]] = []
+        for alias in statement.names:
+            selected = alias.name in aliases
             if groups and groups[-1][0] == selected:
                 groups[-1][1].append(alias)
             else:
                 groups.append((selected, [alias]))
+        origin = "." * statement.level + statement.module
         return [
-            imported_statement.with_changes(
-                module=cst.parse_expression(target_module)
-                if selected
-                else imported_statement.module,
-                relative=() if selected else imported_statement.relative,
-                names=FlextInfraUtilitiesQualifiedNames.normalized_import_aliases(
-                    names,
-                    parenthesized=imported_statement.lpar is not None,
-                ),
+            "from {} import {}".format(
+                target_module if selected else origin,
+                ", ".join(ast.unparse(alias) for alias in names),
             )
             for selected, names in groups
         ]

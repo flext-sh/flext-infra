@@ -7,6 +7,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -28,7 +37,7 @@ if TYPE_CHECKING:
     from flext_infra._base.projects import FlextInfraBaseProjects
     from flext_infra._config import FlextInfraConfig, config
     from flext_infra._conform.wiring import FlextInfraConformWiring
-    from flext_infra._pytest_clock import FlextInfraPytestClock
+    from flext_infra._pytest.clock import FlextInfraPytestClock
     from flext_infra._settings import FlextInfraSettings, settings
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
@@ -142,11 +151,11 @@ install_lazy_exports(
         "FlextInfraPromoted": ".promoted",
         "FlextInfraProtocols": ".protocols",
         "FlextInfraProtocolsBase": ".protocols",
-        "FlextInfraPytestClock": "._pytest_clock",
-        "FlextInfraPytestCollection": "._pytest_collection",
-        "FlextInfraPytestEntry": "._pytest_entry",
+        "FlextInfraPytestClock": "._pytest.clock",
+        "FlextInfraPytestCollection": "._pytest.collection",
+        "FlextInfraPytestEntry": "._pytest.entry",
         "FlextInfraPytestProfile": ".pytest_profile",
-        "FlextInfraPytestProfileChild": "._pytest_profile_child",
+        "FlextInfraPytestProfileChild": "._pytest.profile_child",
         "FlextInfraServiceBase": ".base",
         "FlextInfraSettings": "._settings",
         "FlextInfraTypes": ".typings",

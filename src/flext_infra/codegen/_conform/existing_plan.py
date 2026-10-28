@@ -958,7 +958,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ) as exception:
                 notes = tuple(getattr(exception, "__notes__", ()))
                 return r[Sequence[m.Infra.CodegenFilePlan]].fail(
-                    f"planned-source tooling derivation failed for {render_inputs.target.root}: "
+                    f"planned-source tooling derivation failed for "
+                    f"{render_inputs.target.root}: "
                     f"{type(exception).__name__}: {exception}; notes={notes}",
                 )
         templates = (

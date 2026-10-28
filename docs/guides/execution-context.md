@@ -449,6 +449,11 @@ its Pulumi SDK in the Infra runtime. Native extensions remain subject to the
 supplied project's declared native-module election, without an independent
 import-spec probe.
 
+The Rope DSL import organizer constructs the installed native
+`ImportOrganizer(project)` once per selected cohort and obtains each resource's
+change through `organize_imports(resource)`. File writes narrow native resources
+through the existing typed file-resource owner before publication.
+
 A DSL consumer that updates one working source binds it through the existing
 source-view owner. That binding retains the entry candidate's foreign/provider
 plans and their original witnesses and modes; an owned-source mapping must not
@@ -1160,6 +1165,13 @@ signal never qualifies. Operational errors always fail the displayed gate verdic
 a green Markdown row cannot override an error in the original typed SARIF summary.
 Receipt admission continues to consume that same phase-specific report and its
 original byte bindings, never a fabricated receipt or an older green invocation.
+
+The existing N802 settings-namespace exemption requires the callable at the exact
+reported source position to be an own property of a class derived from the native
+`typing.Protocol` identity. Its direct decorator must resolve to the builtin
+`property` identity, and its name must be a genuine immediate settings/config
+branch field. A matching field name alone never authenticates another callable,
+an ordinary class method, an imported function alias, or a shadowed decorator.
 
 Within a read-only check invocation, prerequisite gates run first, but their
 failed verdicts do not suppress the remaining requested diagnostic gates unless
@@ -2535,6 +2547,16 @@ contract for the OUD generation repair tracked in `algar-723.1`, not evidence th
 the current API or generation already satisfies it.
 
 ### cProfile Thread Isolation and Performance Diagnosis
+
+The sole clock implementation is the stdlib-only
+`flext_infra._pytest.clock` owner. Public lazy exports retain
+`FlextInfraPytestClock`; they do not require a duplicate root-level implementation.
+The profiled-child transport resolves the top-level package spec without importing
+its runtime, then follows every relative component of the configured clock module
+to its Python source file. It loads that canonical file directly, retaining the
+same signal callbacks, owning-thread profiler and native publication behavior.
+Flattening a nested module to a root filename is not a valid bootstrap route;
+missing canonical source remains an error rather than selecting an older copy.
 
 The ordinary generation handler admits `settings.Infra.profile` around its actual
 typed `codegen_generate` call. The shared profiler preserves the returned Result

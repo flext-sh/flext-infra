@@ -17,6 +17,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import ast
 import re
 from collections.abc import Mapping, Sequence
@@ -727,7 +736,6 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             closure = FlextInfraUtilitiesCodemodProject.implementation_owner_modules(
                 snapshot.engine,
                 m.Infra.CodemodPrimitiveOwner(arg=(module, primitive)),
-                {},
             )
             scopes[selector] = tuple(
                 sorted(

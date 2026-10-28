@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from pathlib import Path
 
 import pytest
@@ -196,6 +205,9 @@ class TestsFlextInfraRopeSnapshot:
             )
             tm.that(source.read_bytes(), eq=changed)
 
+class TestsFlextInfraRopeCandidateViews:
+    """Validate nested native candidate bindings and their retained witnesses."""
+
     @staticmethod
     def test_candidate_binding_reuses_native_project_and_unchanged_module(
         tmp_path: Path,
@@ -224,27 +236,16 @@ class TestsFlextInfraRopeSnapshot:
             with u.Infra.facade_source_project(
                 root, declared_files=(plan,), source_project=project
             ) as (candidate, candidate_sources):
-                tm.that(candidate, where=lambda current: current is project)
+                tm.that(candidate is project, eq=True)
                 projected_module = candidate.get_pymodule(resource, force_errors=True)
-                tm.that(
-                    projected_module,
-                    where=lambda current: current is not original_module,
-                )
-                tm.that(
-                    candidate.get_pymodule(other, force_errors=True),
-                    where=lambda current: current is independent_module,
-                )
+                tm.that(projected_module is not original_module, eq=True)
+                tm.that(candidate.get_pymodule(other, force_errors=True) is independent_module, eq=True)
                 tm.that(candidate_sources[source], eq=proposed.decode())
                 tm.that(original_sources[source], eq=physical.decode())
-                tm.that(
-                    candidate.source_state(source), where=lambda state: state is before
-                )
+                tm.that(candidate.source_state(source) is before, eq=True)
                 tm.that(source.read_bytes(), eq=physical)
             tm.that(project.source_bytes(source), eq=physical)
-            tm.that(
-                project.get_pymodule(other, force_errors=True),
-                where=lambda current: current is independent_module,
-            )
+            tm.that(project.get_pymodule(other, force_errors=True) is independent_module, eq=True)
 
     @staticmethod
     def test_planned_override_preserves_bound_foreign_candidate(tmp_path: Path) -> None:
@@ -281,17 +282,11 @@ class TestsFlextInfraRopeSnapshot:
                 planned_sources={owned: owned_proposed},
                 source_project=project,
             ) as (candidate, candidate_sources):
-                tm.that(candidate, where=lambda current: current is project)
+                tm.that(candidate is project, eq=True)
                 tm.that(candidate_sources[owned], eq=owned_proposed)
                 tm.that(candidate.source_bytes(foreign), eq=foreign_proposed)
-                tm.that(
-                    candidate.source_state(owned),
-                    where=lambda state: state is owned_before,
-                )
-                tm.that(
-                    candidate.source_state(foreign),
-                    where=lambda state: state is provider_before,
-                )
+                tm.that(candidate.source_state(owned) is owned_before, eq=True)
+                tm.that(candidate.source_state(foreign) is provider_before, eq=True)
                 tm.that(owned.read_bytes(), eq=owned_physical)
                 tm.that(foreign.read_bytes(), eq=foreign_physical)
             tm.that(project.source_bytes(owned), eq=owned_physical)
@@ -315,13 +310,8 @@ class TestsFlextInfraRopeSnapshot:
                 pytest.fail("competing owned declarations were admitted")
             tm.that(project.source_bytes(owned), eq=owned_physical)
             tm.that(project.source_bytes(foreign), eq=foreign_proposed)
-            tm.that(
-                project.source_state(owned), where=lambda state: state is owned_before
-            )
-            tm.that(
-                project.source_state(foreign),
-                where=lambda state: state is provider_before,
-            )
+            tm.that(project.source_state(owned) is owned_before, eq=True)
+            tm.that(project.source_state(foreign) is provider_before, eq=True)
         tm.that(owned.read_bytes(), eq=owned_physical)
         tm.that(foreign.read_bytes(), eq=foreign_physical)
 
@@ -356,21 +346,24 @@ class TestsFlextInfraRopeSnapshot:
             with u.Infra.facade_source_project(
                 root, declared_files=(outer_plan,), source_project=project
             ) as (parent, parent_sources):
-                with (
-                    pytest.raises(ValueError) as failure,
-                    u.Infra.facade_source_project(
-                        root, declared_files=(inner_plan,), source_project=project
-                    ) as (nested, nested_sources),
-                ):
-                    tm.that(nested, where=lambda current: current is parent)
+                with u.Infra.facade_source_project(
+                    root, declared_files=(inner_plan,), source_project=project
+                ) as (nested, nested_sources):
+                    tm.that(nested is parent, eq=True)
                     tm.that(nested_sources[source], eq=inner.decode())
                     tm.that(parent_sources[source], eq=outer.decode())
+                with (
+                    pytest.raises(ValueError, match=str(consumer_failure)) as failure,
+                    u.Infra.facade_source_project(
+                        root, declared_files=(inner_plan,), source_project=project
+                    ),
+                ):
                     raise consumer_failure
-                tm.that(failure.value, where=lambda error: error is consumer_failure)
+                tm.that(failure.value is consumer_failure, eq=True)
                 tm.that(parent.source_bytes(source), eq=outer)
                 tm.that(parent_sources[source], eq=outer.decode())
             tm.that(project.source_bytes(source), eq=physical)
-            tm.that(project.source_state(source), where=lambda state: state is before)
+            tm.that(project.source_state(source) is before, eq=True)
         tm.that(source.read_bytes(), eq=physical)
 
     @staticmethod
@@ -445,9 +438,7 @@ class TestsFlextInfraRopeSnapshot:
             ):
                 with project.source_view(additional_source_folders=roots) as candidate:
                     current_module = candidate.get_pymodule(resource, force_errors=True)
-                    tm.that(
-                        current_module, where=lambda current: current is original_module
-                    )
+                    tm.that(current_module is original_module, eq=True)
                     child = u.Infra.require_class_object(
                         current_module.get_attribute("Child").get_object(),
                         "consumer child",
@@ -487,7 +478,7 @@ class TestsFlextInfraRopeSnapshot:
                     planned_sources={source: proposed},
                     source_project=retired,
                 ) as (candidate, candidate_sources):
-                    tm.that(candidate, where=lambda current: current is project)
+                    tm.that(candidate is project, eq=True)
                     tm.that(candidate_sources[source], eq=proposed)
                     plan = next(
                         plan for plan in candidate.source_plans if plan.path == source
@@ -497,18 +488,13 @@ class TestsFlextInfraRopeSnapshot:
                         plan.desired_mode != config.Infra.codegen.modes.file_default,
                         eq=True,
                     )
-                    tm.that(plan.before, where=lambda state: state is before)
-                    tm.that(
-                        candidate.source_state(source),
-                        where=lambda state: state is before,
-                    )
+                    tm.that(plan.before is before, eq=True)
+                    tm.that(candidate.source_state(source) is before, eq=True)
                     tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
                 tm.that(retired.source_query(source, "exists"), eq=False)
                 with pytest.raises(FileNotFoundError):
                     retired.source_bytes(source)
-                tm.that(
-                    retired.source_state(source), where=lambda state: state is before
-                )
+                tm.that(retired.source_state(source) is before, eq=True)
             tm.that(project.source_bytes(source), eq=physical)
             tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
 
@@ -567,14 +553,14 @@ class TestsFlextInfraRopeSnapshot:
                 desired_mode=before.mode,
             )
             with (
-                pytest.raises(ValueError),
+                pytest.raises(ValueError, match="conflicts with captured state"),
                 u.Infra.facade_source_project(
                     root, declared_files=(conflicting,), source_project=project
                 ),
             ):
                 pytest.fail("a conflicting physical witness was admitted")
             tm.that(project.source_bytes(source), eq=physical)
-            tm.that(project.source_state(source), where=lambda state: state is before)
+            tm.that(project.source_state(source) is before, eq=True)
         tm.that(source.read_bytes(), eq=foreign)
 
     @staticmethod

@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import operator
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
@@ -230,7 +239,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             The module's index entry, or ``None`` when it is not a project module.
 
         """
-        resolved_file_path = file_path.resolve()
+        resolved_file_path = Path(rope_project.fscommands.realpath(str(file_path)))
         if cls._is_generated_init_stub(
             resolved_file_path, source_project=rope_project
         ) or not resolved_file_path.is_relative_to(resolved_root):
@@ -416,7 +425,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 key=operator.attrgetter("file_path.name"),
             ),
         )
-        init_path = (package_dir / c.Infra.INIT_PY).resolve()
+        init_path = package_dir / c.Infra.INIT_PY
         init_entry = modules_by_path.get(str(init_path))
         project_root = (
             init_entry.project_root
@@ -482,15 +491,18 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             ValueError: A supplied previous index belongs to another repository.
 
         """
-        resolved_root = repository_root.resolve()
         source_project = snapshot.engine if project is None else project
+        resolved_root = Path(source_project.fscommands.realpath(str(repository_root)))
         if previous_index is not None:
             if previous_index.repository_root != resolved_root:
                 message = "incremental Rope index belongs to another repository"
                 raise ValueError(message)
             entries = dict(previous_index.modules_by_path)
             directory_facts: MutableMapping[Path, tuple[Path | None, str]] = {}
-            changed = {path.resolve() for path in changed_paths}
+            changed = {
+                Path(source_project.fscommands.realpath(str(path)))
+                for path in changed_paths
+            }
             metadata_roots = {
                 path.parent for path in changed if path.name == c.PYPROJECT_FILENAME
             }
@@ -500,7 +512,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 if entry.project_root in metadata_roots
             )
             for path in changed:
-                resolved_path = path.resolve()
+                resolved_path = path
                 entries.pop(str(resolved_path), None)
                 if (
                     resolved_path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES

@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -210,7 +219,9 @@ class FlextInfraModelsCodemod:
         )
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
-        operation: Literal["restructure", "materialize-delegations"] = m.Field(
+        operation: Literal[
+            "restructure", "materialize-delegations", "retire-generic-typing-wrappers"
+        ] = m.Field(
             default="restructure",
             description="Native contract operation executed in the shared source epoch",
         )

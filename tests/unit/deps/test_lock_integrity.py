@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsLockIntegrity:
     """Validate committed generated lock verification through its public model."""
 
+    @staticmethod
     @pytest.fixture
     def repository(
-        self,
         tmp_path: Path,
     ) -> None:
         """Every lock scenario starts from an initialized Git repository."""

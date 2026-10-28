@@ -14,8 +14,6 @@ from difflib import SequenceMatcher
 from fnmatch import fnmatch
 from pathlib import Path
 
-import libcst as cst
-
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
@@ -1578,11 +1576,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             site.namespace.name,
         ):
             rewrites.setdefault(consumer, []).append(rewrite)
-        child_cst = cls._facade_namespace_child_cst(site, child)
+        child_source = cls._facade_namespace_child_source(site, child)
         cutover.working[destination_path] = cls._facade_namespace_child_module(
             site.tree,
             child,
-            child_cst,
+            child_source,
         )
         rewrites.setdefault(site.path, []).append(
             cls._facade_namespace_removal(site.source, child)
@@ -1636,40 +1634,39 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         return destination_path
 
     @staticmethod
-    def _facade_namespace_child_cst(
+    def _facade_namespace_child_source(
         site: m.Infra.FacadeNamespaceSite,
         child: ast.ClassDef,
-    ) -> t.Infra.Cst.ClassDef:
-        """Extract one facade child's concrete-syntax node.
+    ) -> str:
+        """Extract one facade child's original declaration text, dedented.
+
+        The child spans are read from the site's parsed tree; the facade body
+        is an indented declaration, so the child text is dedented by its own
+        column offset to relocate it at module level.
 
         Returns:
-            The child's CST class definition.
+            The child's class definition source text.
 
         Raises:
-            TypeError: If the facade body is not an indented declaration.
+            TypeError: If namespace child declaration has no complete source span.
 
         """
-        parsed = cst.parse_module(site.source)
-        facade_cst = next(
-            node
-            for node in parsed.body
-            if isinstance(node, c.Infra.Cst.ClassDef)
-            and node.name.value == site.facade.name
-        )
-        if not isinstance(facade_cst.body, c.Infra.Cst.IndentedBlock):
-            msg = "namespace facade requires an indented declaration"
+        if child.end_lineno is None:
+            msg = "namespace child declaration has no complete source span"
             raise TypeError(msg)
-        return next(
-            node
-            for node in facade_cst.body.body
-            if isinstance(node, c.Infra.Cst.ClassDef) and node.name.value == child.name
+        segment = "".join(
+            site.source.splitlines(keepends=True)[child.lineno - 1 : child.end_lineno],
+        )
+        indent = " " * child.col_offset
+        return "".join(
+            line.removeprefix(indent) for line in segment.splitlines(keepends=True)
         )
 
     @staticmethod
     def _facade_namespace_child_module(
         tree: ast.Module,
         child: ast.ClassDef,
-        child_cst: t.Infra.Cst.ClassDef,
+        child_source: str,
     ) -> str:
         """Render one relocated child module with the imports it still uses.
 
@@ -1691,7 +1688,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             "from __future__ import annotations\n\n"
             + "\n".join(ast.unparse(node) for node in imports)
             + "\n\n"
-            + cst.Module(body=(child_cst,)).code
+            + child_source
             + f"\n__all__ = [{child.name!r}]\n"
         )
 

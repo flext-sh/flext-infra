@@ -21,9 +21,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraAuditorCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
+    @staticmethod
     @pytest.fixture
     def command_contract_scope(
-        self,
         tmp_path: Path,
     ) -> m.Infra.DocScope:
         """Declare the same repository identity in Git and the typed topology.

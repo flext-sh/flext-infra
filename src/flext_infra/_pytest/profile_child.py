@@ -13,6 +13,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import atexit
 import cProfile
 import os
@@ -41,6 +50,10 @@ class FlextInfraPytestProfileChild:
     def load_clock(clock_module: str) -> ModuleType:
         """Resolve the clock module from its installed file, parent-free.
 
+        The configured module's relative components retain their directory
+        ownership beneath the top-level package; nested modules are not
+        flattened into that package's root.
+
         Returns:
             The imported clock owner module.
 
@@ -55,8 +68,10 @@ class FlextInfraPytestProfileChild:
         package = find_spec(clock_module.split(".", 1)[0])
         if package is None or package.origin is None:
             raise ModuleNotFoundError(clock_module)
-        clock_path = Path(package.origin).with_name(
-            clock_module.rsplit(".", 1)[1] + ".py"
+        clock_path = (
+            Path(package.origin)
+            .parent.joinpath(*clock_module.split(".")[1:])
+            .with_suffix(".py")
         )
         clock_spec = spec_from_file_location(clock_module, clock_path)
         if clock_spec is None or clock_spec.loader is None:

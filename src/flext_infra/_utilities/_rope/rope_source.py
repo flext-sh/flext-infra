@@ -20,6 +20,161 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
 
+    @classmethod
+    def settings_branch_fields(
+        cls,
+        source_project: p.Infra.RopeProject,
+        source_files: Sequence[Path],
+        wanted: frozenset[str],
+    ) -> frozenset[str]:
+        """Authenticate immediate annotated settings fields through native identity.
+
+        The invocation supplies its elected files and original project. Rope's
+        class graph elects the settings owners; its semantic matcher and binding
+        index distinguish direct declarations from conditional suite bindings.
+
+        Returns:
+            Requested names declared directly on genuine settings/config classes.
+
+        Raises:
+            TypeError: A canonical owner or indexed source violates its contract.
+
+        """
+        if not wanted:
+            return frozenset()
+        runtime = FlextInfraUtilitiesRopeRuntime
+        roots: list[p.Infra.RopeSourceClass] = []
+        for module_name, name in (
+            ("flext_core._settings", "FlextSettings"),
+            ("flext_core._config", "FlextConfig"),
+        ):
+            module = source_project.get_module(module_name)
+            if not runtime.source_module(module):
+                msg = f"Native settings module is not a source module: {module_name}"
+                raise TypeError(msg)
+            owner = module.get_attribute(name).get_object()
+            if not runtime.py_class(owner):
+                msg = (
+                    f"Native settings owner is not a source class: {module_name}.{name}"
+                )
+                raise TypeError(msg)
+            roots.append(owner)
+        proven: set[str] = set()
+        for path in source_files:
+            module = source_project.get_pymodule(
+                runtime.file_resource_at(source_project, path), force_errors=True
+            )
+            if not runtime.source_module(module):
+                msg = f"Settings field inventory is not a native source module: {path}"
+                raise TypeError(msg)
+            pending: list[p.Infra.RopeScope] = [module.get_scope()]
+            while pending:
+                scope = pending.pop()
+                pending.extend(scope.get_scopes())
+                if scope.get_kind() != "Class":
+                    continue
+                declared = scope.get_defined_names()
+                if not wanted.intersection(declared):
+                    continue
+                if not cls._settings_owner(scope.pyobject, roots):
+                    continue
+                proven.update(cls._direct_settings_fields(module, scope, wanted))
+        return frozenset(proven)
+
+    @staticmethod
+    def _settings_owner(
+        candidate: p.Infra.RopePyObject,
+        roots: Sequence[p.Infra.RopeSourceClass],
+    ) -> bool:
+        """Follow Rope's original superclass identities without spelling rules.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        pending = [candidate]
+        visited: set[int] = set()
+        while pending:
+            owner = pending.pop()
+            if any(owner is root for root in roots):
+                return True
+            if id(owner) in visited:
+                continue
+            visited.add(id(owner))
+            if runtime.abstract_class(owner):
+                pending.extend(owner.get_superclasses())
+        return False
+
+    @staticmethod
+    def _direct_settings_fields(
+        module: p.Infra.RopeSourceModule,
+        scope: p.Infra.RopeScope,
+        wanted: frozenset[str],
+    ) -> frozenset[str]:
+        """Query whole native annotated declarations at class-body depth.
+
+        Returns:
+            The resulting ``frozenset[str]``.
+
+        Raises:
+            TypeError: If Settings field query requires the native word finder contract.
+            ValueError: If Native settings class has no unique indexed declaration.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        index = module.get_source_binding_index()
+        finder = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(finder, p.Infra.RopeWorder):
+            msg = "Settings field query requires the native word finder contract"
+            raise TypeError(msg)
+        owners = tuple(
+            fragment
+            for fragment in index.fragments
+            if module.lines.get_line_number(fragment.start) == scope.get_start()
+            and finder.get_word_at(fragment.start) == "class"
+        )
+        if len(owners) != 1:
+            msg = "Native settings class has no unique indexed declaration"
+            raise ValueError(msg)
+        owner = owners[0]
+        direct = frozenset(
+            (fragment.start, fragment.end)
+            for fragment in index.fragments
+            if fragment.depth == owner.depth + 1
+            and owner.start < fragment.start < fragment.end <= owner.end
+            and index.context_at(fragment.start).structural_scope.pyobject
+            is scope.pyobject
+        )
+        proven: set[str] = set()
+        for name in wanted:
+            binding = scope.get_defined_names().get(name)
+            if (
+                binding is None
+                or not runtime.assigned_name(binding)
+                or not any(
+                    assignment.type_hint is not None
+                    for assignment in binding.assignments
+                )
+            ):
+                continue
+            for pattern in (
+                f"{name}: ${{annotation}}",
+                f"{name}: ${{annotation}} = ${{value}}",
+            ):
+                regions = runtime.semantic_regions(
+                    module,
+                    pattern,
+                    arguments={},
+                    start=owner.start,
+                    end=owner.end,
+                )
+                if direct.intersection(regions):
+                    proven.add(name)
+        return frozenset(proven)
+
     @staticmethod
     def discover_first_party_namespaces(
         project_dir: Path,

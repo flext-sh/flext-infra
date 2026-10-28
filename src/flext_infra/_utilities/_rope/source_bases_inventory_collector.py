@@ -3,7 +3,8 @@
 The collector is stateless: every pass is a pure function of its
 ``SourceBindingCollectorSpec`` and the per-call binding maps. The spec
 carries the injected shared inventories by reference, so no run ever owns
-mutable state.
+mutable state. Every tree it reads is the tree rope's index already parsed;
+the node vocabulary comes from rope's own ``ast`` surface.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT.
@@ -11,9 +12,10 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-import ast
 import builtins
 from collections.abc import Mapping, MutableMapping, Sequence
+
+from rope.base import ast
 
 from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime

@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import ast
 from typing import TYPE_CHECKING
 
@@ -22,6 +31,15 @@ class TestsFlextInfraClassNestingSupport:
     LOOSE_MODULE = '''"""Loose helpers of one family module."""
 
 from __future__ import annotations
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 
 from collections.abc import (
     Iterable,

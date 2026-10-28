@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
 from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
 from flext_infra._models._config.contexts import FlextInfraModelsConfigContexts

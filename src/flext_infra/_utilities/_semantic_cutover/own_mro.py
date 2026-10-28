@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
-from contextlib import AbstractContextManager
+from collections.abc import Generator, Iterator, Mapping
+from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
@@ -32,47 +33,25 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         Returns:
             The native candidate with exact lexical owner bindings.
 
+        Raises:
+            ValueError: A source binding is captured or an import is incomplete.
+
         """
         module = cls._module(source_project, file_path, source)
         declarations = cls._family_declarations(module, source_project, imports, routes)
         updated = source
         for path, (_provider, owner, suffix) in routes.items():
-            root = path[0]
-
-            def admit(
-                native: t.Infra.RopeNativeSourceModule,
-                match: p.Infra.RopeContractMatch,
-            ) -> bool:
-                scope = (
-                    native
-                    .get_source_binding_index()
-                    .context_at(match.get_region()[0])
-                    .environment
-                )
-                binding = scope.lookup(root)
-                if not isinstance(binding, p.Infra.RopeImportedName):
-                    return False
-                if (
-                    binding.imported_module.module_name != imports[root]
-                    or binding.imported_module.level
-                ):
-                    return False
-                if scope.lookup(owner) is not None:
-                    msg = "Own-family repair would capture a binding"
-                    raise ValueError(msg)
-                return True
-
             updated = cls._restructure(
                 source_project,
                 file_path,
                 updated,
                 ".".join(path),
                 f"{owner}.{suffix}",
-                admit,
+                admission=cls._family_admission(path[0], owner, imports[path[0]]),
             )
         for pattern, goal in declarations:
             updated = cls._restructure(
-                source_project, file_path, updated, pattern, goal, None
+                source_project, file_path, updated, pattern, goal, admission=None
             )
         with cls._candidate(source_project, file_path, updated):
             module = cls._module(source_project, file_path, updated)
@@ -112,7 +91,9 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             for scope in cls._scopes(module.get_scope())
             if scope.get_kind() == "Class"
             for name, binding in scope.get_defined_names().items()
-            if runtime.py_function(binding.get_object())
+            if runtime.py_function(function := binding.get_object())
+            and function.get_scope().parent is not None
+            and function.get_scope().parent.pyobject is scope.pyobject
         )
         method_order = {
             cls._scope_path(scope): scope.get_region()[1]
@@ -128,100 +109,19 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
                 owner_scope = cls._scope(
                     cls._module(source_project, file_path, updated), owner_path
                 )
-                receivers: set[str] = set()
-                for method in owner_scope.get_scopes():
-                    function = method.pyobject
-                    if runtime.py_function(function):
-                        parameters = tuple(function.get_param_names(special_args=True))
-                        receivers.add(
-                            "cls"
-                            if function.get_kind() == "function" or not parameters
-                            else parameters[0]
-                        )
-            for receiver in sorted(receivers):
+                receivers = cls._receivers(owner_scope)
+            for receiver in receivers:
                 promotions: set[t.StrTuple] = set()
-
-                def admit(
-                    native: t.Infra.RopeNativeSourceModule,
-                    match: p.Infra.RopeContractMatch,
-                ) -> bool:
-                    current_owner = cls._scope(native, owner_path)
-                    context = native.get_source_binding_index().context_at(
-                        match.get_region()[0]
-                    )
-                    if context.role not in {
-                        "function-body",
-                        "lambda-body",
-                        "comprehension-inner",
-                    }:
-                        return False
-                    binding = context.environment.lookup(owner_name)
-                    if (
-                        binding is None
-                        or binding.get_object() is not current_owner.pyobject
-                    ):
-                        return False
-                    method = cls._enclosing_method(context.structural_scope, owner_path)
-                    if method is None:
-                        return False
-                    target = current_owner.get_defined_names()[target_name].get_object()
-                    function = method.pyobject
-                    if not runtime.py_function(target) or not runtime.py_function(
-                        function
-                    ):
-                        msg = "Own MRO requires native source functions"
-                        raise TypeError(msg)
-                    if target.get_kind() == "method":
-                        msg = (
-                            "Own instance method retains an unbound reference: "
-                            f"{owner_name}.{target_name}"
-                        )
-                        raise ValueError(msg)
-                    parameters = tuple(function.get_param_names(special_args=True))
-                    if function.get_kind() == "function":
-                        if (
-                            "cls" in parameters
-                            or context.environment.lookup("cls") is not None
-                        ):
-                            msg = (
-                                "Own MRO receiver would capture a parameter: "
-                                f"{owner_name}.{function.get_name()}"
-                            )
-                            raise ValueError(msg)
-                        selected = "cls"
-                    elif parameters:
-                        selected = parameters[0]
-                    else:
-                        msg = "Own MRO method has no receiver"
-                        raise ValueError(msg)
-                    if selected != receiver:
-                        return False
-                    if function.get_kind() != "function":
-                        expected = method.get_defined_names().get(receiver)
-                        actual = context.environment.lookup(receiver)
-                        same = runtime.runtime_callable(
-                            "rope.refactor.occurrences", "same_pyname"
-                        )
-                        if (
-                            expected is None
-                            or actual is None
-                            or not same(expected, actual)
-                        ):
-                            msg = "Own MRO receiver would capture a binding"
-                            raise ValueError(msg)
-                    path = cls._scope_path(method)
-                    changed[path] = f"own-method-mro:{owner_name}.{function.get_name()}"
-                    if function.get_kind() == "function":
-                        promotions.add(path)
-                    return True
-
                 updated = cls._restructure(
                     source_project,
                     file_path,
                     updated,
                     f"{owner_name}.{target_name}",
                     f"{receiver}.{target_name}",
-                    admit,
+                    admission=cls._method_admission(
+                        (owner_path, owner_name, target_name, receiver),
+                        (changed, promotions),
+                    ),
                 )
                 if promotions:
                     updated = cls._promote(
@@ -235,7 +135,16 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
     def _module(
         project: p.Infra.RopeProject, path: Path, source: str
     ) -> p.Infra.RopeSourceModule:
-        """Require the exact active source before native change planning."""
+        """Require the exact active source before native change planning.
+
+        Returns:
+            The resulting ``p.Infra.RopeSourceModule``.
+
+        Raises:
+            TypeError: If Own MRO requires a native source module.
+            ValueError: If Own MRO source differs from its bound view.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
         if project.source_text(path) != source:
             msg = f"Own MRO source differs from its bound view: {path}"
@@ -249,31 +158,22 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         return module
 
     @staticmethod
+    @contextmanager
     def _candidate(
         project: p.Infra.RopeProject, path: Path, source: str
-    ) -> AbstractContextManager[p.Infra.RopeProject]:
-        """Retain the complete provider cohort while binding one changed file."""
-        plans = {plan.path: plan for plan in project.source_plans}
-        existing = plans.get(path)
-        if existing is None:
-            before = project.source_state(path)
-            plans[path] = m.Infra.CodegenFilePlan(
-                project=Path(project.root.real_path),
-                path=path,
-                before=before,
-                desired_content=source.encode(c.DEFAULT_ENCODING),
-                desired_mode=before.mode,
-            )
-        else:
-            plans[path] = existing.model_copy(
-                update={"desired_content": source.encode(c.DEFAULT_ENCODING)}
-            )
-        return project.source_view(
-            declared_files=tuple(plans.values()),
-            additional_source_folders=tuple(
-                folder.path for folder in project.get_source_folders()
-            ),
-        )
+    ) -> Generator[p.Infra.RopeProject]:
+        """Retain the complete provider cohort while binding one changed file.
+
+        Yields:
+            Each ``p.Infra.RopeProject``.
+
+        """
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            Path(project.root.real_path),
+            planned_sources={path: source},
+            source_project=project,
+        ) as binding:
+            yield binding[0]
 
     @classmethod
     def _restructure(
@@ -285,7 +185,16 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         goal: str,
         admission: t.Infra.RopeMatchFilter | None,
     ) -> str:
-        """Delegate matching, admission and source emission to native Restructure."""
+        """Delegate matching, admission and source emission to native Restructure.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If Own MRO received a non-content native effect.
+            ValueError: If Own MRO native change escaped its source.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
         with cls._candidate(project, path, source):
             changes = runtime.restructure_changes(
@@ -311,14 +220,27 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
 
     @classmethod
     def _scopes(cls, scope: p.Infra.RopeScope) -> Iterator[p.Infra.RopeScope]:
-        """Read the lexical hierarchy already indexed by Rope."""
+        """Read the lexical hierarchy already indexed by Rope.
+
+        Yields:
+            Each ``p.Infra.RopeScope``.
+
+        """
         yield scope
         for child in scope.get_scopes():
             yield from cls._scopes(child)
 
     @staticmethod
     def _scope_path(scope: p.Infra.RopeScope) -> t.StrTuple:
-        """Project native scope identities into a stable lexical path."""
+        """Project native scope identities into a stable lexical path.
+
+        Returns:
+            The resulting ``t.StrTuple``.
+
+        Raises:
+            ValueError: If Native lexical scope has no module owner.
+
+        """
         names: list[str] = []
         while scope.get_kind() != "Module":
             names.append(scope.pyobject.get_name())
@@ -332,25 +254,50 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
     def _scope(
         cls, module: p.Infra.RopeSourceModule, path: t.StrTuple
     ) -> p.Infra.RopeScope:
-        """Resolve exactly one declared native scope for a lexical path."""
+        """Resolve Rope's elected declaration, including overload implementations.
+
+        Returns:
+            The resulting ``p.Infra.RopeScope``.
+
+        Raises:
+            TypeError: If Own MRO binding has no source scope.
+            ValueError: If Own MRO scope has no declared binding; or if Own MRO binding
+                belongs to another declaration.
+
+        """
         scope = module.get_scope()
         for name in path:
-            matches = tuple(
-                child
-                for child in scope.get_scopes()
-                if child.pyobject.get_name() == name
+            names = (
+                scope.get_names()
+                if scope.get_kind() == "Function"
+                else scope.get_defined_names()
             )
-            if len(matches) != 1:
-                msg = f"Own MRO scope is not uniquely declared: {path}"
+            binding = names.get(name)
+            if binding is None:
+                msg = f"Own MRO scope has no declared binding: {path}"
                 raise ValueError(msg)
-            scope = matches[0]
+            definition = binding.get_object()
+            runtime = FlextInfraUtilitiesRopeRuntime
+            if not runtime.py_function(definition) and not runtime.py_class(definition):
+                msg = f"Own MRO binding has no source scope: {path}"
+                raise TypeError(msg)
+            child = definition.get_scope()
+            if child.parent is None or child.parent.pyobject is not scope.pyobject:
+                msg = f"Own MRO binding belongs to another declaration: {path}"
+                raise ValueError(msg)
+            scope = child
         return scope
 
     @classmethod
     def _enclosing_method(
         cls, scope: p.Infra.RopeScope, owner: t.StrTuple
     ) -> p.Infra.RopeScope | None:
-        """Find the enclosing method through native scope parents."""
+        """Find the enclosing method through native scope parents.
+
+        Returns:
+            The resulting ``p.Infra.RopeScope | None``.
+
+        """
         while scope.parent is not None:
             if (
                 scope.get_kind() == "Function"
@@ -368,7 +315,17 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         source: str,
         methods: set[t.StrTuple],
     ) -> str:
-        """Preserve signatures using native header coordinates and writer."""
+        """Preserve signatures using native header coordinates and writer.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If Native word finder lacks its public contract; or if Own MRO
+                promotion requires a native function.
+            ValueError: If Own MRO static decorator is not uniquely bound.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
         with cls._candidate(project, path, source):
             module = cls._module(project, path, source)
@@ -377,8 +334,12 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
                 msg = "Native word finder lacks its public contract"
                 raise TypeError(msg)
             edits: list[m.Infra.SourceRewrite] = []
-            for method in sorted(methods):
-                scope = cls._scope(module, method)
+            scopes = tuple(
+                declaration
+                for method in sorted(methods)
+                for declaration in cls._promotion_scopes(module, method)
+            )
+            for scope in scopes:
                 function = scope.pyobject
                 if not runtime.py_function(function):
                     msg = "Own MRO promotion requires a native function"
@@ -435,6 +396,71 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             ).new_contents
 
     @classmethod
+    def _promotion_scopes(
+        cls, module: p.Infra.RopeSourceModule, method: t.StrTuple
+    ) -> tuple[p.Infra.RopeScope, ...]:
+        """Include only native overload declarations of the elected method.
+
+        Returns:
+            The resulting ``tuple[p.Infra.RopeScope, ...]``.
+
+        Raises:
+            ValueError: If Own MRO promotion has no declaring owner; or if Own MRO
+                overload differs from its static implementation.
+
+        """
+        implementation = cls._scope(module, method)
+        owner = implementation.parent
+        if owner is None:
+            msg = "Own MRO promotion has no declaring owner"
+            raise ValueError(msg)
+        runtime = FlextInfraUtilitiesRopeRuntime
+        index = module.get_source_binding_index()
+        declarations: list[p.Infra.RopeScope] = []
+        siblings = sorted(
+            (
+                candidate
+                for candidate in owner.get_scopes()
+                if candidate.pyobject.get_name() == method[-1]
+                and candidate.get_start() < implementation.get_start()
+            ),
+            key=lambda candidate: candidate.get_start(),
+            reverse=True,
+        )
+        for candidate in siblings:
+            function = candidate.pyobject
+            if not runtime.py_function(function):
+                break
+            start = candidate.get_region()[0]
+            end = module.lines.get_line_start(candidate.get_start())
+            decorators = runtime.semantic_regions(
+                module,
+                "${own_overload}",
+                arguments={"own_overload": "name=typing.overload"},
+                start=start,
+                end=end,
+            )
+            fragments = tuple(
+                fragment
+                for fragment in index.fragments
+                if start <= fragment.start < fragment.end <= end
+                and index.context_at(fragment.start).role == "decorator"
+            )
+            shallowest = min((fragment.depth for fragment in fragments), default=None)
+            if not any(
+                (fragment.start, fragment.end) in decorators
+                and fragment.depth == shallowest
+                for fragment in fragments
+            ):
+                break
+            if function.get_kind() != "staticmethod":
+                msg = "Own MRO overload differs from its static implementation"
+                raise ValueError(msg)
+            declarations.append(candidate)
+        declarations.append(implementation)
+        return tuple(declarations)
+
+    @classmethod
     def _family_declarations(
         cls,
         module: p.Infra.RopeSourceModule,
@@ -442,7 +468,21 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         imports: Mapping[str, str],
         routes: Mapping[t.StrTuple, tuple[str, str, str]],
     ) -> tuple[tuple[str, str], ...]:
-        """Read scoped declarations from the native source binding index."""
+        """Read scoped declarations from the native source binding index.
+
+        Returns:
+            The resulting ``tuple[tuple[str, str], ...]``.
+
+        Raises:
+            TypeError: If Native word finder lacks its public contract; or if Rope
+                indentation query returned a non-integer.
+            ValueError: If Own-family import lacks its native binding; or if Own-family
+                import differs from its declared provider; or if Rope has no scoped
+                import declaration for the elected binding; or if Rope has no alias
+                declarations for the elected import; or if Native import aliases do not
+                prove the whole declaration.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
         finder = runtime.runtime_callable("rope.base.worder", "Worder")(
             module.source_code

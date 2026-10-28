@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 import traceback
+from itertools import islice
 from pathlib import Path
 
 import flext_infra
@@ -46,7 +47,7 @@ class FlextInfraPytestEntry:
 
         """
         # The clock module captures startup before these runtime imports.
-        mode = sys.argv[1] if len(sys.argv) > 1 else ""
+        mode = next(islice(sys.argv, 1, None), "")
         if mode == "profile":
             return cls._run_profile()
 

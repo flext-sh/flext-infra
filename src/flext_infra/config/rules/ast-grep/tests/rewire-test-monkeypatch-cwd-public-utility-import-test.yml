@@ -7,7 +7,7 @@ valid:
 
     @pytest.fixture(autouse=True)
     def isolate_cwd(test_path: Path) -> Generator[None]:
-        with u.Tests.Matchers.scope(cwd=test_path):
+        with u.scope(cwd=test_path):
             yield
 invalid:
   - |

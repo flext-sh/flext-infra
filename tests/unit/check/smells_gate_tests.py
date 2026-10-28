@@ -19,9 +19,9 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
 
+    @staticmethod
     @pytest.fixture
     def smells_project(
-        self,
         tmp_path: Path,
     ) -> Path:
         """One declared project inside ``tmp_path`` for qlty to scan.

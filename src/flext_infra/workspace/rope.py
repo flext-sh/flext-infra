@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from keyword import iskeyword
@@ -95,7 +104,9 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             rope_repository_root_override=resolved_rope_root,
         )
         if source_project is not None:
-            if Path(source_project.root.real_path) != resolved_rope_root.resolve():
+            if Path(source_project.root.real_path) != Path(
+                source_project.fscommands.realpath(str(resolved_rope_root))
+            ):
                 msg = "Rope source project does not match the declared workspace root"
                 raise ValueError(msg)
             workspace._rope_project = source_project
@@ -424,7 +435,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             One centralized project layout contract for codegen pipelines.
 
         """
-        resolved_root = project_root.resolve()
+        resolved_root = self._source_path(project_root)
         cache_key = str(resolved_root)
         if cache_key not in self._project_layout_cache:
             self._project_layout_cache[cache_key] = u.Infra.layout(
@@ -439,7 +450,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             One centralized lazy-init package context for a package dir.
 
         """
-        resolved_dir = package_dir.resolve()
+        resolved_dir = self._source_path(package_dir)
         cache_key = str(resolved_dir)
         if cache_key in self._package_context_cache:
             return self._package_context_cache[cache_key]
@@ -478,7 +489,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             The centralized naming policy for one module path.
 
         """
-        resolved_file = file_path.resolve()
+        resolved_file = self._source_path(file_path)
         resolved_rel_path = (
             rel_path if rel_path is not None else Path(resolved_file.name)
         )
@@ -515,15 +526,15 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             One unified project/package/module convention contract.
 
         """
-        resolved_file = file_path.resolve()
+        resolved_file = self._source_path(file_path)
         cache_key = f"{resolved_file}::{rel_path or ''}"
         if cache_key in self._module_convention_cache:
             return self._module_convention_cache[cache_key]
         module_entry = self.module(resolved_file)
         package_dir = (
-            module_entry.package_dir.resolve()
+            self._source_path(module_entry.package_dir)
             if module_entry is not None
-            else resolved_file.parent.resolve()
+            else resolved_file.parent
         )
         resolved_rel_path = (
             rel_path
@@ -646,7 +657,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             Rope-only discovered objects for one module path.
 
         """
-        resolved_file = file_path.resolve()
+        resolved_file = self._source_path(file_path)
         cache_key = (str(resolved_file), include_local_scopes, include_references)
         if cache_key in self._module_object_cache:
             return self._module_object_cache[cache_key]

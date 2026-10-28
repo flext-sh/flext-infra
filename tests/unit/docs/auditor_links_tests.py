@@ -197,9 +197,9 @@ class TestsFlextInfraAuditorLinks:
     class TestAuditorGithubLinks:
         """Audit and repair links through real native repository facts."""
 
+        @staticmethod
         @pytest.fixture
         def github_owner(
-            self,
             tmp_path: Path,
         ) -> m.Infra.DocsGithubRepoSpec:
             """Publish the declared GitHub owner of the fixture repository.

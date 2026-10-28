@@ -1,5 +1,5 @@
 # One owner for the builtin `dict[K, V]` generic shapes in a type context, shared
-# by the three ban-dict-annotation documents. Structural kinds, not a pattern:
+# by the model-field contract rule. Structural kinds, not a pattern:
 # a `dict[$K, $V]` pattern misses arguments that are attributes
 # (`dict[str, t.JsonValue]`), the common case in FLEXT code.
 id: builtin-dict-generic

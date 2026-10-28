@@ -2,25 +2,35 @@
 
 Interprets ``m.Infra`` rope DSL documents (engine-map section 8) against the
 one rope project of the repository invocation, using rope's native
-refactorings only (ADR-028 Decision 17 amendment 2026-10-28): ImportOrganizer,
-rename, move and restructure; the transform verbs operate on the indexed
-PyModules through rope's public import tools. The interpreter never re-parses,
-never opens a second project and never imports member code.
+refactorings only (ADR-028 Decision 17 amendment 2026-10-28): ImportOrganizer
+for import organization; the transform verbs operate on the indexed PyModules
+through rope's public module surface. The interpreter never re-parses, never
+opens a second project and never imports member code.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: MIT.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING
 
-from flext_infra import m, p, r, t, u
+from rope.refactor.importutils import ImportOrganizer
 
-if TYPE_CHECKING:
-    from rope.refactor import ImportOrganizer
+from flext_core import r
+from flext_infra import m, p, t
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesTypesRopeRuntime,
+)
 
 
 class FlextInfraUtilitiesRopeDsl:
@@ -36,7 +46,7 @@ class FlextInfraUtilitiesRopeDsl:
 
         Returns:
             The affected resource-and-outcome pairs, or the first typed
-            failure (unknown capability, no matches beyond a cap, native
+            failure (unknown capability, matches beyond a cap, native
             application error).
 
         """
@@ -69,9 +79,9 @@ class FlextInfraUtilitiesRopeDsl:
     ) -> t.VariadicTuple[t.Infra.RopeResource]:
         """Return indexed Python resources a selector admits."""
         admitted: list[t.Infra.RopeResource] = []
-        for resource in u.Infra.rope_python_resources(project):
-            module_name = u.Infra.rope_module_name_of(project, resource)
-            if module_name and fnmatch(module_name, selector.module_pattern):
+        for resource in project.get_python_files():
+            stem = resource.path.rpartition(".")[0].replace("/", ".")
+            if fnmatch(stem, selector.module_pattern):
                 admitted.append(resource)
         return tuple(admitted)
 
@@ -87,11 +97,10 @@ class FlextInfraUtilitiesRopeDsl:
             The affected resource-and-outcome pairs.
 
         """
-        organizer_cls = u.Infra.rope_import_organizer_cls()
         effects: list[tuple[str, str]] = []
+        organizer = ImportOrganizer(project)
         for resource in resources:
-            organizer: ImportOrganizer = organizer_cls(project, resource)
-            changes = organizer.get_changes()
+            changes = organizer.organize_imports(resource)
             if changes:
                 changes.do()
                 effects.append((resource.path, "organize-imports"))
@@ -104,7 +113,7 @@ class FlextInfraUtilitiesRopeDsl:
         rule: m.Infra.RopeDslRule,
         resources: Sequence[t.Infra.RopeResource],
     ) -> r[t.VariadicTuple[tuple[str, str]]]:
-        """Apply one declared transform verb through rope import tools.
+        """Apply one declared transform verb through rope module surface.
 
         Returns:
             The affected resource-and-outcome pairs, or the typed failure
@@ -117,26 +126,26 @@ class FlextInfraUtilitiesRopeDsl:
                 f"rope rule {rule.id}: transform verb "
                 f"{verb.value if verb else '<none>'} not in vocabulary",
             )
-        letters = set(rule.constraint.letters)
-        effects: list[tuple[str, str]] = []
-        finder = u.Infra.rope_import_tools()
-        for resource in resources:
-            rewritten = finder.elect_bare_letter(
+        letters = frozenset(rule.constraint.letters)
+        effects: list[tuple[str, str]] = [
+            (resource.path, "elect-bare-letter")
+            for resource in resources
+            if FlextInfraUtilitiesRopeDslImportTools.elect_bare_letter(
                 project,
                 resource,
                 letters=letters,
             )
-            if rewritten:
-                effects.append((resource.path, "elect-bare-letter"))
+        ]
         return r[t.VariadicTuple[tuple[str, str]]].ok(tuple(effects))
 
 
 class FlextInfraUtilitiesRopeDslImportTools:
     """Rope-native import statement tools behind the transform verbs.
 
-    Every operation reads the indexed PyModule through rope's public
-    ``importutils`` surface; statements are edited through rope's module
-    rewrite API so the project's change tracking stays authoritative.
+    Every operation reads the indexed PyModule through rope's public module
+    surface (``get_pymodule`` — the one parse the index owns); statements are
+    identified from that module's own source so the project's change tracking
+    stays authoritative.
 
     """
 
@@ -150,33 +159,37 @@ class FlextInfraUtilitiesRopeDslImportTools:
     ) -> bool:
         """Rewrite ``from X import l as a`` to bare ``from X import l``.
 
-        Aliased single-letter facade imports whose alias shadows nothing else
-        in the module collapse to the bare letter, and every alias use is
-        rebound to the letter (ADR-028 Decision 10 spelling election).
+        An aliased single-letter facade import whose alias occurs exactly
+        once in the module collapses to the bare letter (ADR-028 Decision 10
+        spelling election); the single alias use rebinding follows the
+        letter.
 
         Returns:
             Whether the resource changed.
 
         """
         module = project.get_pymodule(resource)
-        imports = u.Infra.rope_module_imports(project, module)
+        source = module.source_code
         changed = False
-        for statement in imports:
-            imported = u.Infra.rope_import_context(module, statement)
-            name, alias = imported.name, imported.as_name
-            if not alias or (name != alias and name not in letters):
-                continue
-            if name not in letters:
-                continue
-            module_source = u.Infra.rope_module_source(module)
-            if module_source.count(alias) > 1:
-                continue
-            rewritten = module_source.replace(
-                f"import {name} as {alias}",
-                f"import {name}",
-            ).replace(alias, name)
-            u.Infra.rope_write_resource(resource, rewritten)
-            changed = True
+        for name in sorted(letters):
+            marker = f"import {name} as "
+            start = 0
+            while (at := source.find(marker, start)) != -1:
+                line_end = source.find("\n", at)
+                tail = source[at + len(marker) : line_end if line_end != -1 else None]
+                alias = tail.strip().rstrip(",").partition("(")[0].strip()
+                if alias.isidentifier() and alias != name and source.count(alias) == 1:
+                    aliased = f"import {name} as {alias}"
+                    bare = f"import {name}"
+                    if aliased in source:
+                        source = source.replace(aliased, bare)
+                        source = source.replace(alias, name)
+                        changed = True
+                start = at + len(marker)
+        if changed:
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                resource, resource.path
+            ).write(source)
         return changed
 
 

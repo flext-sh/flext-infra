@@ -43,9 +43,6 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
-    FlextInfraUtilitiesDeclarationPayload,
-)
 
 
 class FlextInfraUtilitiesFacadeComponents:
@@ -332,91 +329,103 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(holders)
 
     @staticmethod
+    @staticmethod
+    def _component_base_names(holder: p.Infra.RopeClassObject) -> t.StrSequence:
+        """Return the superclass references exactly as the class header names them.
+
+        Rope owns every parse in this engine; the header text is read through
+        the rope-parsed class node, never through a second parser.
+
+        Returns:
+            The dotted base references in declaration order.
+
+        """
+        node = holder.get_ast()
+        bases = getattr(node, "bases", ())
+        names: list[str] = []
+        for base in bases:
+            head = getattr(base, "id", None) or getattr(base, "attr", None)
+            if head is None and (value := getattr(base, "value", None)) is not None:
+                head = getattr(value, "id", None) or getattr(value, "attr", None)
+            names.append(head if head is not None else "")
+        return tuple(names)
+
+    @staticmethod
     def _component_lexical_base(
-        owner: p.Infra.RopeClassObject, index: int
-    ) -> p.Infra.RopeClassObject | None:
-        """Re-resolve one superclass through its declaring module, rope natively.
+        owner: p.Infra.RopeClassObject, name: str
+    ) -> p.Infra.RopeClassObject:
+        """Resolve one superclass through its declaring module, rope natively.
 
         The generated lazy initializer re-exports facade components through
         ``install_lazy_exports``; import inference through that indirection is
         view-order dependent. The class header names every base lexically, so
         the declaring module is resolved through the native import map and the
-        class attribute is read from it directly.
+        class attribute is read from it directly. This is the single ancestry
+        route of the engine: no inference retry, no fallback.
 
         Returns:
-            The native base class, or ``None`` when the header does not name
-            the base index.
+            The native base class.
+
+        Raises:
+            TypeError: The reference does not name a native class.
 
         """
         module = owner.get_module()
         if not isinstance(module, p.Infra.RopeSourceModule):
-            return None
-        node = owner.get_ast()
-        if not isinstance(node, ast.ClassDef) or index >= len(node.bases):
-            return None
-        reference = ast.unparse(node.bases[index]).partition(".")[0]
-        resource = module.pycore.project.find_module(reference)
-        if resource is None:
-            return None
-        declared = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-            module.pycore.project, resource
+            msg = f"lexical ancestry requires a source module: {owner.get_name()}"
+            raise TypeError(msg)
+        project = module.pycore.project
+        head, _, tail = name.partition(".")
+        resource = project.find_module(head)
+        declared = (
+            FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(project, resource)
+            if resource is not None
+            else module
         )
-        _head, _, tail = ast.unparse(node.bases[index]).partition(".")
-        binding = declared.get_object()
-        for attribute in tail.split(".") if tail else []:
-            binding = binding[attribute].get_object()
-        try:
-            return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-                binding, "lexical facade component ancestry"
-            )
-        except TypeError:
-            return None
+        binding = declared
+        if resource is not None and tail:
+            binding = declared.get_attribute(tail).get_object()
+        elif resource is None:
+            binding = module.get_attribute(name).get_object()
+        return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+            binding, "lexical facade component ancestry"
+        )
 
     @staticmethod
     def _component_ancestors(
         holder: p.Infra.RopeClassObject,
     ) -> tuple[p.Infra.RopeClassObject, ...]:
-        """Traverse native ancestry without electing a second method order.
+        """Traverse native ancestry through the single lexical route.
 
-        Every inferred ancestor must satisfy the native class contract before
-        contributing members; incomplete ancestry fails without a partial result.
+        Every base is resolved exactly as the header names it; a reference
+        that does not name a native class fails without a partial result.
 
         Returns:
             The resulting ``tuple[p.Infra.RopeClassObject, ...]``.
 
-        Raises:
-            TypeError: An inferred ancestor is not a native class object.
-
         """
         pending = [
-            (holder, index, candidate)
-            for index, candidate in enumerate(
-                FlextInfraUtilitiesDeclarationPayload.direct_bases(holder)
-            )
+            (holder, name)
+            for name in holder
+            and FlextInfraUtilitiesFacadeComponents._component_base_names(holder)
         ]
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
         while pending:
-            owner, index, candidate = pending.pop()
-            try:
-                base = FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-                    candidate, "facade component ancestry"
-                )
-            except TypeError:
-                lexical = FlextInfraUtilitiesFacadeComponents._component_lexical_base(
-                    owner, index
-                )
-                if lexical is None:
-                    raise
-                base = lexical
+            owner, name = pending.pop()
+            if not name:
+                continue
+            base = FlextInfraUtilitiesFacadeComponents._component_lexical_base(
+                owner, name
+            )
             if base in seen:
                 continue
             seen.add(base)
             ancestors.append(base)
             pending.extend(
-                (base, index, candidate)
-                for index, candidate in enumerate(
-                    FlextInfraUtilitiesDeclarationPayload.direct_bases(base)
+                (base, base_name)
+                for base_name in FlextInfraUtilitiesFacadeComponents._component_base_names(
+                    base
                 )
             )
         return tuple(ancestors)

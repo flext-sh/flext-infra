@@ -930,6 +930,9 @@ class FlextInfraPytestRunnerExecution(
         Returns:
             The resulting ``p.Result[int]``.
 
+        Raises:
+            ValueError: If incremental pytest requires its external Testmon database.
+
         """
         database = self.testmon_db
         if database is None:

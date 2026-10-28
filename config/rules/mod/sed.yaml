@@ -126,7 +126,7 @@ rules:
 - id: topology-pending-workspace-local-contract
   include: [ src/flext_infra/workspace/detector.py ]
   find: 't\.Pair\[t\.VariadicTuple\[m\.Infra\.RepositoryRef\], t\.VariadicTuple\[Path\]\]|tuple\[tuple\[m\.Infra\.RepositoryRef, \.\.\.\], t\.VariadicTuple\[Path\]\]'
-  replace: 'tuple[t.VariadicTuple[m.Infra.RepositoryRef], t.VariadicTuple[Path], t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]'
+  replace: 'tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...], tuple[m.Infra.GitSubmoduleDeclaration, ...]]'
 - id: topology-pending-workspace-accounting
   include: [ src/flext_infra/workspace/detector.py ]
   find: '(?m)^(        external: list\[Path\] = \[\]\n)(?!        pending:)'

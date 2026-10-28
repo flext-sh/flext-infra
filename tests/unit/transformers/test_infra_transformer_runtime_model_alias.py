@@ -15,6 +15,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import sys
 from typing import TYPE_CHECKING
 
@@ -28,6 +37,15 @@ _MODULE_IMPORT = f"from {c.Infra.PKG_CORE_UNDERSCORE} import t\n"
 
 _MODEL_USES_ALIAS = f"""\
 from __future__ import annotations
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 
 from collections.abc import (
     Iterable,
@@ -56,6 +74,15 @@ class _Row(m.BaseModel):
 
 _TYPE_CHECKING_USES_ALIAS = """\
 from __future__ import annotations
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 
 from collections.abc import (
     Iterable,
@@ -96,6 +123,15 @@ from collections.abc import (
     Sequence,
 )
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import re
 from collections.abc import (
     Iterable,
@@ -117,6 +153,15 @@ class Helper:
 
 _NO_TYPE_CHECKING_BLOCK = """\
 from __future__ import annotations
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 
 from collections.abc import (
     Iterable,
