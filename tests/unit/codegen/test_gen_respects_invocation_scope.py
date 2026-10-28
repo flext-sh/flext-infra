@@ -29,8 +29,8 @@ _MEMBER = "fixture-member"
 class TestsFlextInfraGenRespectsInvocationScope:
     """`gen` delegates the complete composition through exactly one root."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def rendered_makefile(tmp_path: Path) -> str:
         """Render the workspace Makefile through the conform owner.
 

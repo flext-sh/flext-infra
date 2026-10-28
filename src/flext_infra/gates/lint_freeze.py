@@ -10,9 +10,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_cli import u
-
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 from flext_infra.gates import FlextInfraGate
 
 
@@ -47,7 +45,9 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
         """
         catalog = cls._catalog_path(root)
         digests = {
-            str(state.pyproject_path): cls._table_digest(state.payload)
+            cls._catalog_key(Path(state.pyproject_path).parent): cls._table_digest(
+                state.payload,
+            )
             for state in states
             if cls._frozen_tables(state.payload)
         }

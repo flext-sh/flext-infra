@@ -24,8 +24,8 @@ _OWNED_CI_LINE = (
 class TestsFlextInfraSymbolicBindingPublication:
     """Binding evidence must survive until the guarded phase's source barrier."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def symbolic_workspace(mod_workspace: Path) -> Path:
         """Provide real Python modules consumed by the native engine and interpreter.
 

@@ -163,8 +163,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tm.fail(u.Cli.process_succeeded(receipt.output.outcome))
         tm.that(u.Infra.lint_new_errors(snapshot, snapshot), eq={})
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def provisioned_workspace(tmp_path: Path) -> None:
         """The edited workspace is a checkout whose environment owns the tools."""
         (tmp_path / c.PYPROJECT_FILENAME).write_text(

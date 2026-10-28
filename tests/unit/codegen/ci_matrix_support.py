@@ -80,8 +80,8 @@ class TestsFlextInfraCodegenCiMatrixSupport:
             )
         return root
 
-    @staticmethod
     @pytest.fixture(scope="class")
+    @staticmethod
     def rendered_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
         """Render one fresh internal_flext project for the class's read-only cases.
 

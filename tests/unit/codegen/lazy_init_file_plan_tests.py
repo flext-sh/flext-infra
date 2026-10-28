@@ -209,8 +209,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(source, has="retained = 'unchanged'")
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def seed_conform_scope_repositories(
         tmp_path: Path,
         scope: c.Infra.CodegenConformScope,

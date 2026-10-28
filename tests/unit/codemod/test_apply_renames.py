@@ -59,8 +59,8 @@ class TestsFlextInfraApplyRenames:
                 ("models.FlextInfraModels", "m"),
             )
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def campaign_runtime(mod_workspace: Path) -> None:
         """Every publication consumes its checkout's independently owned runtime."""
         u.Tests.provision_checkout(mod_workspace)

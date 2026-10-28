@@ -154,8 +154,8 @@ class TestsFlextInfraCodegenConform:
             )
         )
 
-    @staticmethod
     @pytest.fixture(scope="module")
+    @staticmethod
     def conformed_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
         """Conform one real seed tree once per module; each scenario clones it.
 

@@ -18,8 +18,8 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraInfraSelection:
     """Test suite for u.Infra."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def workspace_with_projects(tmp_path: Path) -> Path:
         """Create a temporary workspace with test projects.
 
@@ -47,8 +47,8 @@ class TestsFlextInfraInfraSelection:
         )
         return tmp_path
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def selector() -> type[u.Infra]:
         """Provide project selector utilities class.
 
@@ -59,8 +59,8 @@ class TestsFlextInfraInfraSelection:
         selector_cls: type[u.Infra] = u.Infra
         return selector_cls
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def workspace_with_declared_names(tmp_path: Path) -> Path:
         """Create projects whose declared names differ from directory names.
 
@@ -94,8 +94,8 @@ class TestsFlextInfraInfraSelection:
         )
         return tmp_path
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def workspace_with_nested_members(tmp_path: Path) -> Path:
         """Provide ``workspace_with_nested_members``.
 
