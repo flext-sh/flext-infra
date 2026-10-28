@@ -31,7 +31,7 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraTypesUtilitiesSemanticNesting,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
@@ -654,7 +654,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         resource = cls._resource(
             composed, Path(composed.root.real_path).resolve(), paths[2]
         )
-        before_scopes = cls._module_scopes(modules[0])
+        # The before state is the consumer's pre-move text parsed in the same
+        # composed basis as the after state: staged sibling plans (for example a
+        # sanctioned class rename from another pipeline stage) are present on
+        # both sides, so this comparison isolates only this move's own effects.
+        before_module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            composed, text, resource=resource
+        )
+        before_scopes = cls._module_scopes(before_module)
         current_scopes = cls._module_scopes(module)
         cls._validate_module_quoted_scopes(
             before_scopes, current_scopes, paths, identities[0]
@@ -688,7 +695,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return selected
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        rewritten = FlextInfraTypesUtilitiesSemanticNesting.rewrite_quoted_types(
+        rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
             composed, resource, text, replacement
         )
         if binding is not None:
@@ -777,7 +784,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         """
         paths, identities, destination = destination_info
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraTypesUtilitiesSemanticNesting
+        types = FlextInfraUtilitiesTypesSemanticNesting
         parts = expression.split(".")
         for count in range(1, len(parts) + 1):
             prefix = ".".join(parts[:count])
@@ -919,7 +926,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 raise ValueError(msg)
             seen.add(key)
 
-        FlextInfraTypesUtilitiesSemanticNesting.quoted_type_edits(
+        FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
             project, resource, text, validate
         )
         if seen != set(required):

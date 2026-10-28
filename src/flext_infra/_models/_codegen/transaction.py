@@ -16,7 +16,7 @@ from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsRope
 from flext_infra._models._config import FlextInfraModelsConfig
 
 
-class FlextInfraModelsModelsCodegenTransaction:
+class FlextInfraModelsCodegenTransaction:
     """Source candidate models for the codegen pipeline."""
 
     class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
@@ -110,7 +110,7 @@ class FlextInfraModelsModelsCodegenTransaction:
     class SemanticSourcePlan(m.ImmutableValueModel):
         """Authenticated source campaign independent of explicit rename intent."""
 
-        candidate: FlextInfraModelsModelsCodegenTransaction.StageSourcePlan = m.Field(
+        candidate: FlextInfraModelsCodegenTransaction.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )
         consumer_roots: t.VariadicTuple[Path] = m.Field(
@@ -119,4 +119,4 @@ class FlextInfraModelsModelsCodegenTransaction:
         )
 
 
-__all__: list[str] = ["FlextInfraModelsModelsCodegenTransaction"]
+__all__: list[str] = ["FlextInfraModelsCodegenTransaction"]

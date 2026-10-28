@@ -12,7 +12,6 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
-    FlextInfraModelsUtilitiesProtocol,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -21,6 +20,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
@@ -47,7 +47,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraModelsUtilitiesProtocol,
+    FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,

@@ -14,17 +14,17 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from tests.unit.test_pytest_markdown_models import (
-        TestsFlextInfraPytestMarkdownModels,
+        TestsFlextInfraModelsPytestMarkdown,
     )
 
 
-__all__: tuple[str, ...] = ("TestsFlextInfraPytestMarkdownModels",)
+__all__: tuple[str, ...] = ("TestsFlextInfraModelsPytestMarkdown",)
 
 install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "TestsFlextInfraPytestMarkdownModels": ".test_pytest_markdown_models",
+        "TestsFlextInfraModelsPytestMarkdown": ".test_pytest_markdown_models",
     }),
     public_exports=__all__,
 )

@@ -20,14 +20,14 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
-class FlextInfraTypesUtilitiesSemanticNesting(
+class FlextInfraUtilitiesTypesSemanticNesting(
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 ):
     """Share native annotation regions and original lexical binding identity."""
@@ -44,7 +44,7 @@ class FlextInfraTypesUtilitiesSemanticNesting(
     ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -210,7 +210,7 @@ class FlextInfraTypesUtilitiesSemanticNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = expression.partition(".")[0]
         module = scope.pyobject.get_module()
-        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             msg = "quoted type scope has no declaring module"
             raise ValueError(msg)
         local = runtime.expression_name(scope, root)
@@ -223,4 +223,4 @@ class FlextInfraTypesUtilitiesSemanticNesting(
         return expression
 
 
-__all__: list[str] = ["FlextInfraTypesUtilitiesSemanticNesting"]
+__all__: list[str] = ["FlextInfraUtilitiesTypesSemanticNesting"]

@@ -13,7 +13,7 @@ from __future__ import annotations
 from tests import c, m, tm
 
 
-class TestsFlextInfraCodegenCensusModels:
+class TestsFlextInfraModelsCodegenCensus:
     """Violation pattern and census report model contracts."""
 
     @staticmethod

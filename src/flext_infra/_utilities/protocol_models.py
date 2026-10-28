@@ -27,7 +27,7 @@ from flext_infra._utilities._semantic_cutover import (
 )
 
 
-class FlextInfraModelsUtilitiesProtocol:
+class FlextInfraUtilitiesModelsProtocol:
     """Restore the source projection removed in 7a76fa5a9c, without its CLI."""
 
     @classmethod
@@ -932,4 +932,4 @@ class FlextInfraModelsUtilitiesProtocol:
             return value
 
 
-__all__: list[str] = ["FlextInfraModelsUtilitiesProtocol"]
+__all__: list[str] = ["FlextInfraUtilitiesModelsProtocol"]

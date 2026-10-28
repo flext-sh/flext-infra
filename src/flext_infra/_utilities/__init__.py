@@ -119,7 +119,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protected_edit_writes import (
         FlextInfraUtilitiesProtectedEditWrites,
     )
-    from flext_infra._utilities.protocol_models import FlextInfraModelsUtilitiesProtocol
+    from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
@@ -157,7 +157,6 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
-    "FlextInfraModelsUtilitiesProtocol",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacadeSyntax",
@@ -189,6 +188,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesMiseBinary",
+    "FlextInfraUtilitiesModelsProtocol",
     "FlextInfraUtilitiesMypy",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNativeTooling",
@@ -286,7 +286,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditLinting": ".protected_edit_linting",
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
-        "FlextInfraModelsUtilitiesProtocol": ".protocol_models",
+        "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",

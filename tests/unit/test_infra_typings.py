@@ -14,7 +14,7 @@ from flext_infra import config
 from tests import c, t, tm, u
 
 
-class TestsFlextInfraInfraTypings:
+class TestsFlextInfraTypingsInfra:
     """Validate public adapters exposed by ``t``."""
 
     @staticmethod

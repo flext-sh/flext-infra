@@ -19,15 +19,15 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraTypesUtilitiesSemanticNesting,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
 class FlextInfraUtilitiesSemanticHelperReferences(
-    FlextInfraTypesUtilitiesSemanticNesting,
+    FlextInfraUtilitiesTypesSemanticNesting,
 ):
     """Plan quoted references while the declaration still has its original identity."""
 
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         resource = project.get_resource(path.relative_to(root).as_posix())
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -327,7 +327,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         project = request.rope_project
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )

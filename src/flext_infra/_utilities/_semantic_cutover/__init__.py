@@ -107,7 +107,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesSemanticCutoverNestingReferences,
     )
     from flext_infra._utilities._semantic_cutover.nesting_types import (
-        FlextInfraTypesUtilitiesSemanticNesting,
+        FlextInfraUtilitiesTypesSemanticNesting,
     )
     from flext_infra._utilities._semantic_cutover.own_mro import (
         FlextInfraUtilitiesSemanticCutoverOwnMro,
@@ -127,7 +127,6 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
-    "FlextInfraTypesUtilitiesSemanticNesting",
     "FlextInfraUtilitiesDeclarationPayload",
     "FlextInfraUtilitiesSemanticComposition",
     "FlextInfraUtilitiesSemanticConstantConsumers",
@@ -164,6 +163,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticHelperReferences",
     "FlextInfraUtilitiesSemanticModelAliases",
     "FlextInfraUtilitiesSemanticTestHelpers",
+    "FlextInfraUtilitiesTypesSemanticNesting",
 )
 
 install_lazy_exports(
@@ -209,7 +209,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
-        "FlextInfraTypesUtilitiesSemanticNesting": ".nesting_types",
+        "FlextInfraUtilitiesTypesSemanticNesting": ".nesting_types",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
     }),
     public_exports=__all__,

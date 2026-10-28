@@ -14,7 +14,7 @@ import pytest
 from tests import c, m, p, t, tm
 
 
-class TestsFlextInfraLiteralConstants:
+class TestsFlextInfraConstantsLiteral:
     """Exercise the constants phase through its public planning boundary."""
 
     @staticmethod

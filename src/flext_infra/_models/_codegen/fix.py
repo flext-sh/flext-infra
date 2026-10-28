@@ -14,38 +14,34 @@ from typing_extensions import TypeForm
 
 from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen import FlextInfraModelsModelsCodegenScaffold
+from flext_infra._models._codegen import FlextInfraModelsCodegenScaffold
 
 
-class FlextInfraModelsModelsCodegenFix:
+class FlextInfraModelsCodegenFix:
     """Auto-fix, consolidation, and namespace policy models."""
 
     class AutoFixResult(FlextInfraModelsMixins.ProjectNameMixin, m.ArbitraryTypesModel):
         """Result of auto-fixing namespace violations for a project."""
 
         violations_fixed: Annotated[
-            t.MutableSequenceOf[FlextInfraModelsModelsCodegenScaffold.CensusViolation],
+            t.MutableSequenceOf[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(description="Fixed violations"),
         ] = m.Field(
             default_factory=u.empty(
                 TypeForm(
-                    t.MutableSequenceOf[
-                        FlextInfraModelsModelsCodegenScaffold.CensusViolation
-                    ]
+                    t.MutableSequenceOf[FlextInfraModelsCodegenScaffold.CensusViolation]
                 )
             )
         )
         violations_skipped: Annotated[
-            t.MutableSequenceOf[FlextInfraModelsModelsCodegenScaffold.CensusViolation],
+            t.MutableSequenceOf[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(
                 description="Skipped violations (not auto-fixable)",
             ),
         ] = m.Field(
             default_factory=u.empty(
                 TypeForm(
-                    t.MutableSequenceOf[
-                        FlextInfraModelsModelsCodegenScaffold.CensusViolation
-                    ]
+                    t.MutableSequenceOf[FlextInfraModelsCodegenScaffold.CensusViolation]
                 )
             )
         )
@@ -86,7 +82,7 @@ class FlextInfraModelsModelsCodegenFix:
             m.Field(description="Total files reverted"),
         ] = 0
         files: Annotated[
-            t.SequenceOf[FlextInfraModelsModelsCodegenFix.ConsolidatorFileResult],
+            t.SequenceOf[FlextInfraModelsCodegenFix.ConsolidatorFileResult],
             m.Field(description="Per-file processing results"),
         ] = m.Field(default_factory=tuple)
 
@@ -215,27 +211,23 @@ class FlextInfraModelsModelsCodegenFix:
         """
 
         violations_fixed: Annotated[
-            t.MutableSequenceOf[FlextInfraModelsModelsCodegenScaffold.CensusViolation],
+            t.MutableSequenceOf[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(
-                default_factory=list[
-                    FlextInfraModelsModelsCodegenScaffold.CensusViolation
-                ],
+                default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
                 description="List of violations that were fixed",
             ),
         ] = m.Field(
-            default_factory=list[FlextInfraModelsModelsCodegenScaffold.CensusViolation],
+            default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
             description="List of violations that were fixed",
         )
         violations_skipped: Annotated[
-            t.MutableSequenceOf[FlextInfraModelsModelsCodegenScaffold.CensusViolation],
+            t.MutableSequenceOf[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(
-                default_factory=list[
-                    FlextInfraModelsModelsCodegenScaffold.CensusViolation
-                ],
+                default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
                 description="List of violations that were skipped",
             ),
         ] = m.Field(
-            default_factory=list[FlextInfraModelsModelsCodegenScaffold.CensusViolation],
+            default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
             description="List of violations that were skipped",
         )
         files_modified: Annotated[
@@ -257,7 +249,7 @@ class FlextInfraModelsModelsCodegenFix:
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
             """Skip."""
             self.violations_skipped.append(
-                FlextInfraModelsModelsCodegenScaffold.CensusViolation(
+                FlextInfraModelsCodegenScaffold.CensusViolation(
                     module=module,
                     rule=rule,
                     line=line,
@@ -269,7 +261,7 @@ class FlextInfraModelsModelsCodegenFix:
         def fix(self, *, module: str, rule: str, line: int, message: str) -> None:
             """Fix."""
             self.violations_fixed.append(
-                FlextInfraModelsModelsCodegenScaffold.CensusViolation(
+                FlextInfraModelsCodegenScaffold.CensusViolation(
                     module=module,
                     rule=rule,
                     line=line,
@@ -300,4 +292,4 @@ class FlextInfraModelsModelsCodegenFix:
             return hash((self.module, self.rule, self.content_hash))
 
 
-__all__: list[str] = ["FlextInfraModelsModelsCodegenFix"]
+__all__: list[str] = ["FlextInfraModelsCodegenFix"]

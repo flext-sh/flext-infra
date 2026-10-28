@@ -12,7 +12,7 @@ from pathlib import Path
 from tests import c, m, p, t, tm
 
 
-class TestsFlextInfraImmutableConstants:
+class TestsFlextInfraConstantsImmutable:
     """Observe exact scalar types and construction identity after public plans."""
 
     @staticmethod

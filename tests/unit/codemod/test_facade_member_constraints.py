@@ -302,9 +302,7 @@ class TestsFlextInfraFacadeMemberConstraints:
             module = u.Infra.require_semantic_module(
                 snapshot.engine.get_module(module_name)
             )
-            owner = module.get_attributes()[
-                "FlextInfraModelsModelsCodegenFix"
-            ].get_object()
+            owner = module.get_attributes()["FlextInfraModelsCodegenFix"].get_object()
             policy = owner.get_attributes()["NamespaceModulePolicy"].get_object()
             if not u.Infra.abstract_class(policy):
                 pytest.fail("NamespaceModulePolicy must resolve to a native class")

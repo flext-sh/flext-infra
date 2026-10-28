@@ -16,7 +16,7 @@ from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
 
 
-class FlextInfraModelsModelsCodegenScaffold:
+class FlextInfraModelsCodegenScaffold:
     """Census and scaffold models for the codegen pipeline."""
 
     class CensusViolation(
@@ -34,7 +34,7 @@ class FlextInfraModelsModelsCodegenScaffold:
         """Aggregated census report for a single project."""
 
         violations: Annotated[
-            Sequence[FlextInfraModelsModelsCodegenScaffold.CensusViolation],
+            Sequence[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(description="Detected violations"),
         ] = m.Field(default_factory=tuple)
         total: Annotated[t.NonNegativeInt, m.Field(description="Total violation count")]
@@ -103,4 +103,4 @@ class FlextInfraModelsModelsCodegenScaffold:
         ]
 
 
-__all__: list[str] = ["FlextInfraModelsModelsCodegenScaffold"]
+__all__: list[str] = ["FlextInfraModelsCodegenScaffold"]

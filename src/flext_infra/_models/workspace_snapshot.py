@@ -13,7 +13,7 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsRefactorGrep
-from flext_infra._models._codegen import FlextInfraModelsModelsCodegenLazyInit
+from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 
 
 class FlextInfraModelsWorkspaceSnapshot:
@@ -87,7 +87,7 @@ class FlextInfraModelsWorkspaceSnapshot:
             t.Port[
                 dict[
                     t.Infra.RopeNativeParsedModule,
-                    FlextInfraModelsModelsCodegenLazyInit.PythonModuleFacts,
+                    FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
                 ]
             ],
             m.Field(

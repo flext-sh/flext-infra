@@ -24,7 +24,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._rope.source_bases_aliases import (
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             text = sources.get(path)
             if text is not None:
                 return path, text
-            if not FlextInfraTypesUtilitiesRopeRuntime.file_resource(resource):
+            if not FlextInfraUtilitiesTypesRopeRuntime.file_resource(resource):
                 return None
             return path, resource.read()
 
@@ -252,7 +252,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             """
             imported = binding.imported_module.get_object()
             imported = imported.get_module()
-            if not FlextInfraTypesUtilitiesRopeRuntime.source_module(imported):
+            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(imported):
                 return False
             key = (
                 binding.imported_module.importing_module.get_name(),
@@ -266,7 +266,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return False
             imported_text = chain[1]
             value = binding.get_object()
-            if FlextInfraTypesUtilitiesRopeRuntime.pymodule(value) and (
+            if FlextInfraUtilitiesTypesRopeRuntime.pymodule(value) and (
                 value.get_name() == f"{imported.get_name()}.{binding.imported_name}"
             ):
                 # A from-import may publish a submodule without a declaration in
@@ -308,7 +308,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if (
                 holder_context is None
                 or isinstance(binding, p.Infra.RopeImportedModule)
-                or FlextInfraTypesUtilitiesRopeRuntime.parameter_name(binding)
+                or FlextInfraUtilitiesTypesRopeRuntime.parameter_name(binding)
             ):
                 return holder_context is not None
             holder, line, holder_text = holder_context
@@ -385,7 +385,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if holder is None:
                 return None
             holder = holder.get_module()
-            if not FlextInfraTypesUtilitiesRopeRuntime.source_module(holder):
+            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(holder):
                 return None
             chain = cls._chain_module_text(holder, sources)
             if chain is None:
@@ -543,7 +543,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 c.Infra.StatementCategory.FROM_IMPORT,
             }:
                 return False
-            if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
+            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
                 msg = "native import occurrence has no source-module graph"
                 raise TypeError(msg)
             runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -566,7 +566,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 The declarations of the expression's spelling at the scope frame.
 
             """
-            if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
+            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
                 return ()
             source = module.source_code
             runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -642,7 +642,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
             parameter = (
                 binding is not None
-                and FlextInfraTypesUtilitiesRopeRuntime.parameter_name(binding)
+                and FlextInfraUtilitiesTypesRopeRuntime.parameter_name(binding)
             )
             found_scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
                 module,

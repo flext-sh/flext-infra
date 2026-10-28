@@ -9,7 +9,7 @@ from __future__ import annotations
 from tests import m, tm
 
 
-class TestsFlextInfraDepsDetectorModels:
+class TestsFlextInfraModelsDepsDetector:
     """Test flext infra deps detector models behavior."""
 
     @staticmethod

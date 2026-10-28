@@ -24,7 +24,7 @@ from flext_infra._models._config import (
 )
 
 
-class FlextInfraModelsModelsCodegenPipeline:
+class FlextInfraModelsCodegenPipeline:
     """Phase analysis and pipeline state models."""
 
     class CodegenCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
@@ -160,7 +160,7 @@ class FlextInfraModelsModelsCodegenPipeline:
         """The generation plan and the files its publication changed."""
 
         plan: Annotated[
-            FlextInfraModelsModelsCodegenPipeline.CodegenPlan,
+            FlextInfraModelsCodegenPipeline.CodegenPlan,
             m.Field(description="The plan actually used by the producer"),
         ]
         written_files: t.VariadicTuple[Path] = m.Field(
@@ -289,4 +289,4 @@ class FlextInfraModelsModelsCodegenPipeline:
         )
 
 
-__all__: list[str] = ["FlextInfraModelsModelsCodegenPipeline"]
+__all__: list[str] = ["FlextInfraModelsCodegenPipeline"]

@@ -14,18 +14,12 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._models._codegen.base import FlextInfraCodegen
-    from flext_infra._models._codegen.fix import FlextInfraModelsModelsCodegenFix
-    from flext_infra._models._codegen.lazy_init import (
-        FlextInfraModelsModelsCodegenLazyInit,
-    )
-    from flext_infra._models._codegen.pipeline import (
-        FlextInfraModelsModelsCodegenPipeline,
-    )
-    from flext_infra._models._codegen.scaffold import (
-        FlextInfraModelsModelsCodegenScaffold,
-    )
+    from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFix
+    from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInit
+    from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipeline
+    from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffold
     from flext_infra._models._codegen.transaction import (
-        FlextInfraModelsModelsCodegenTransaction,
+        FlextInfraModelsCodegenTransaction,
     )
     from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
     from flext_infra._models._config.base import FlextInfraModelsConfig
@@ -127,8 +121,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
+    "FlextInfraModelsCodegenFix",
+    "FlextInfraModelsCodegenLazyInit",
+    "FlextInfraModelsCodegenPipeline",
     "FlextInfraModelsCodegenRender",
+    "FlextInfraModelsCodegenScaffold",
     "FlextInfraModelsCodegenToolchain",
+    "FlextInfraModelsCodegenTransaction",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsConfig",
     "FlextInfraModelsConfigArtifact",
@@ -176,11 +175,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsMiseToolchainBase",
     "FlextInfraModelsMiseToolchainRepair",
     "FlextInfraModelsMixins",
-    "FlextInfraModelsModelsCodegenFix",
-    "FlextInfraModelsModelsCodegenLazyInit",
-    "FlextInfraModelsModelsCodegenPipeline",
-    "FlextInfraModelsModelsCodegenScaffold",
-    "FlextInfraModelsModelsCodegenTransaction",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsPromoted",
     "FlextInfraModelsRefactor",
@@ -226,13 +220,13 @@ install_lazy_exports(
         "FlextInfraModelsBase": ".base",
         "FlextInfraModelsCensus": ".census",
         "FlextInfraModelsCheck": ".check",
-        "FlextInfraModelsModelsCodegenFix": "._codegen.fix",
-        "FlextInfraModelsModelsCodegenLazyInit": "._codegen.lazy_init",
-        "FlextInfraModelsModelsCodegenPipeline": "._codegen.pipeline",
+        "FlextInfraModelsCodegenFix": "._codegen.fix",
+        "FlextInfraModelsCodegenLazyInit": "._codegen.lazy_init",
+        "FlextInfraModelsCodegenPipeline": "._codegen.pipeline",
         "FlextInfraModelsCodegenRender": ".codegen_render",
-        "FlextInfraModelsModelsCodegenScaffold": "._codegen.scaffold",
+        "FlextInfraModelsCodegenScaffold": "._codegen.scaffold",
         "FlextInfraModelsCodegenToolchain": ".codegen_toolchain",
-        "FlextInfraModelsModelsCodegenTransaction": "._codegen.transaction",
+        "FlextInfraModelsCodegenTransaction": "._codegen.transaction",
         "FlextInfraModelsCodemod": ".codemod",
         "FlextInfraModelsCore": ".validate",
         "FlextInfraModelsDeps": ".deps",

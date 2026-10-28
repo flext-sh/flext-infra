@@ -22,7 +22,7 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 .get_attribute("s")
                 .get_object()
             )
-            if not FlextInfraTypesUtilitiesRopeRuntime.py_class(kernel):
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(kernel):
                 message = "upstream service alias has no native class declaration"
                 raise ValueError(message)
             for path, declaration in candidates.items():
@@ -188,7 +188,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             ),
         )
         value = module.get_attribute(declaration.name).get_object()
-        if not FlextInfraTypesUtilitiesRopeRuntime.py_class(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             return None
         provider, scope = value.get_module(), value.get_scope()
         origin = provider.get_resource()

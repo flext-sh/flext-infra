@@ -21,7 +21,7 @@ from flext_infra._utilities._rope.rope_runtime_base import (
     FlextInfraUtilitiesRopeRuntimeBase,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 
 
@@ -44,8 +44,8 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         module, line = binding.get_definition_location()
         if (
             line is not None
-            or not FlextInfraTypesUtilitiesRopeRuntime.source_module(module)
-            or not FlextInfraTypesUtilitiesRopeRuntime.assigned_name(binding)
+            or not FlextInfraUtilitiesTypesRopeRuntime.source_module(module)
+            or not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
             or not binding.assignments
         ):
             return module, line
@@ -67,7 +67,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         """
         if not (
-            FlextInfraTypesUtilitiesRopeRuntime.abstract_class(candidate)
+            FlextInfraUtilitiesTypesRopeRuntime.abstract_class(candidate)
             and isinstance(candidate, p.Infra.RopeBuiltinClass)
         ):
             return False
@@ -521,7 +521,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             native,
             {},
         )
-        if not FlextInfraTypesUtilitiesRopeRuntime.abstract_class(wrapped):
+        if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(wrapped):
             msg = "Rope native class factory did not return a class"
             raise TypeError(msg)
         if (

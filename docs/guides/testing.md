@@ -145,14 +145,17 @@ To execute every collected case, use the separate public operation:
 make tests-full
 ```
 
-For each repository in the declared dependency order, this operation first executes
-the same incremental operation as `make tests`, then the existing native `FULL`
-operation. Both use one project context, runner, external database and operation
-deadline. The runtime and declared configuration inputs must remain unchanged
-between operations, and both operations retain the original source-admission guard.
-An incremental failure stops that repository before its full operation; its original
-native status remains the operation's first failure. An incremental cache hit is
-reported as such, while the full operation must provide actual execution accounting.
+For each repository in the declared dependency order, this explicit operation
+executes the complete applicable suite once through the existing native runner.
+It does not first execute `make tests` or an incremental phase. It does not load
+pytest-testmon, pass its options or database environment, acquire its cache lease,
+inspect the database or publish a cache receipt. The existing persistent database
+is preserved untouched for later incremental runs. This is the operator's
+2026-10-28 clarification recorded in
+[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
+The full operation retains original source admission, runtime/input identity,
+deadline and complete collection/execution accounting. Empty collection and
+unexplained nonexecution fail; a Testmon cache hit never proves a full run.
 CI and pre-push retain their declared workflow; pre-commit runs no tests. No file
 selectors or alternate databases belong to either Make operation.
 
@@ -162,8 +165,10 @@ prove the omitted service works. Marker applicability belongs to typed configura
 and the runner records every excluded item. An exclusion is never a passed test. A
 runner that violates this contract is repaired at its owner and rerun through Make.
 
-Each phase retains its mode, database, raw process outcome, collection manifest, and
+Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.
+Incremental phases also retain their original Testmon database and cache accounting;
+full phases explicitly record no Testmon database, lease or cache publication.
 Warning totals include selection, inventory, and suite occurrences, with blocking and
 explicitly suspended warnings reported separately. The existing non-strict MRO
 enforcement suspension remains visible in those receipts. Unexpected skips block

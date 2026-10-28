@@ -22,7 +22,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -366,7 +366,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         builtin = (
-            FlextInfraTypesUtilitiesRopeRuntime
+            FlextInfraUtilitiesTypesRopeRuntime
             .require_semantic_module(project.get_module("__builtin__"))
             .get_attributes()
             .get(keyword.value.id)

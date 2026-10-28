@@ -18,7 +18,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -28,7 +28,7 @@ from flext_infra._utilities._semantic_cutover import (
 
 class FlextInfraUtilitiesDeclarationPayload(
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 ):
     """Identify inherited declarations without parsing or spelling heuristics."""
 
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             if current in found:
                 continue
             found.append(current)
-            if FlextInfraTypesUtilitiesRopeRuntime.abstract_class(current):
+            if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(current):
                 pending.extend(cls.direct_bases(current))
         return found
 
@@ -201,11 +201,11 @@ class FlextInfraUtilitiesDeclarationPayload(
 
         """
         bases = list(
-            FlextInfraTypesUtilitiesRopeRuntime.require_class_object(
+            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                 value, "declaration ancestry"
             ).get_superclasses()
         )
-        if not FlextInfraTypesUtilitiesRopeRuntime.py_class(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             return bases
         scope, module = value.get_scope(), value.get_module()
         if not isinstance(module, p.Infra.RopeSourceModule):
@@ -312,7 +312,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             return None
         owner = binding.get_object()
         return (
-            owner if FlextInfraTypesUtilitiesRopeRuntime.abstract_class(owner) else None
+            owner if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(owner) else None
         )
 
     @staticmethod
@@ -326,7 +326,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             TypeError: If the reader does not satisfy the declared Rope contract.
 
         """
-        words = FlextInfraTypesUtilitiesRopeRuntime.runtime_callable(
+        words = FlextInfraUtilitiesTypesRopeRuntime.runtime_callable(
             "rope.base.worder",
             "Worder",
         )(source, handle_ignores=True)
@@ -351,7 +351,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             Every qualified class declaration matching the supplied short name.
 
         """
-        resource = FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
+        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -441,7 +441,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if resolved is None:
             return None
         module, binding = resolved
-        value = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
+        value = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
             binding.get_object(), qualified_name
         )
         scope = value.get_scope()
@@ -516,7 +516,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             The native module and class binding, or ``None`` for a non-class.
 
         """
-        resource = FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
+        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -537,7 +537,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if binding is None:
             return None
         value = binding.get_object()
-        if not FlextInfraTypesUtilitiesRopeRuntime.abstract_class(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
             return None
         return module, binding
 
@@ -597,7 +597,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if resolved is None:
             return None
         _module, binding = resolved
-        value = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
+        value = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
             binding.get_object(), qualified_name
         )
         base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()

@@ -675,10 +675,10 @@ class TestsFlextInfraCodegenLazyInitService:
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
             "    from flext_test_project import m\n\n"
-            "class FlextTestsBaseConstants:\n"
+            "class FlextTestsConstantsBase:\n"
             '    """Base constants class."""\n\n'
             '    VALUE: str = ""\n\n\n'
-            '__all__: list[str] = ["FlextTestsBaseConstants"]\n',
+            '__all__: list[str] = ["FlextTestsConstantsBase"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
         init_path = nested_root / c.Infra.INIT_PY
@@ -697,7 +697,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.ok(apply_result.success)
         tm.ok(check_result.success)
         tm.that(u.Tests.lazy_init_effects(check_service.plan_files()), eq=())
-        tm.that(applied_init, contains="FlextTestsBaseConstants")
+        tm.that(applied_init, contains="FlextTestsConstantsBase")
         # The inherited root alias is a redundant upstream re-export, not a
         # local owner of this nested package: it stays out of __all__.
         tm.that(applied_init, lacks='"m",')

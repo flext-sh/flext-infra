@@ -16,7 +16,7 @@ from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 
 
-class FlextInfraModelsModelsCodegenLazyInit:
+class FlextInfraModelsCodegenLazyInit:
     """Lazy-init planning and quality-gate models."""
 
     class PythonModuleFacts(m.ContractModel):
@@ -104,7 +104,7 @@ class FlextInfraModelsModelsCodegenLazyInit:
             t.Port[
                 MutableMapping[
                     t.Infra.RopeNativeParsedModule,
-                    FlextInfraModelsModelsCodegenLazyInit.PythonModuleFacts,
+                    FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
                 ]
             ],
             m.Field(
@@ -152,7 +152,7 @@ class FlextInfraModelsModelsCodegenLazyInit:
     class LazyInitPlan(m.ContractModel):
         """Immutable resolved decision and its original source consumption."""
 
-        context: FlextInfraModelsModelsCodegenLazyInit.LazyInitPackageContext = m.Field(
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext = m.Field(
             description="Discovered package context.",
         )
         action: Annotated[
@@ -217,4 +217,4 @@ class FlextInfraModelsModelsCodegenLazyInit:
         ]
 
 
-__all__: list[str] = ["FlextInfraModelsModelsCodegenLazyInit"]
+__all__: list[str] = ["FlextInfraModelsCodegenLazyInit"]

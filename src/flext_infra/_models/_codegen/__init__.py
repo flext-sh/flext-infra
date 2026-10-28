@@ -14,22 +14,20 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._codegen.base import FlextInfraCodegen
-    from flext_infra._codegen.fix import FlextInfraModelsModelsCodegenFix
-    from flext_infra._codegen.lazy_init import FlextInfraModelsModelsCodegenLazyInit
-    from flext_infra._codegen.pipeline import FlextInfraModelsModelsCodegenPipeline
-    from flext_infra._codegen.scaffold import FlextInfraModelsModelsCodegenScaffold
-    from flext_infra._codegen.transaction import (
-        FlextInfraModelsModelsCodegenTransaction,
-    )
+    from flext_infra._codegen.fix import FlextInfraModelsCodegenFix
+    from flext_infra._codegen.lazy_init import FlextInfraModelsCodegenLazyInit
+    from flext_infra._codegen.pipeline import FlextInfraModelsCodegenPipeline
+    from flext_infra._codegen.scaffold import FlextInfraModelsCodegenScaffold
+    from flext_infra._codegen.transaction import FlextInfraModelsCodegenTransaction
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraCodegen",
-    "FlextInfraModelsModelsCodegenFix",
-    "FlextInfraModelsModelsCodegenLazyInit",
-    "FlextInfraModelsModelsCodegenPipeline",
-    "FlextInfraModelsModelsCodegenScaffold",
-    "FlextInfraModelsModelsCodegenTransaction",
+    "FlextInfraModelsCodegenFix",
+    "FlextInfraModelsCodegenLazyInit",
+    "FlextInfraModelsCodegenPipeline",
+    "FlextInfraModelsCodegenScaffold",
+    "FlextInfraModelsCodegenTransaction",
 )
 
 install_lazy_exports(
@@ -37,11 +35,11 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraCodegen": ".base",
-        "FlextInfraModelsModelsCodegenFix": ".fix",
-        "FlextInfraModelsModelsCodegenLazyInit": ".lazy_init",
-        "FlextInfraModelsModelsCodegenPipeline": ".pipeline",
-        "FlextInfraModelsModelsCodegenScaffold": ".scaffold",
-        "FlextInfraModelsModelsCodegenTransaction": ".transaction",
+        "FlextInfraModelsCodegenFix": ".fix",
+        "FlextInfraModelsCodegenLazyInit": ".lazy_init",
+        "FlextInfraModelsCodegenPipeline": ".pipeline",
+        "FlextInfraModelsCodegenScaffold": ".scaffold",
+        "FlextInfraModelsCodegenTransaction": ".transaction",
     }),
     public_exports=__all__,
 )

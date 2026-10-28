@@ -15,7 +15,7 @@ from flext_infra._utilities._rope.rope_runtime_base import (
 )
 
 
-class FlextInfraTypesUtilitiesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
+class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
     """Expose typed predicates for Rope runtime objects."""
 
     @classmethod
@@ -294,4 +294,4 @@ class FlextInfraTypesUtilitiesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         return (cls._exception_type("rope.base.exceptions", "AttributeNotFoundError"),)
 
 
-__all__: list[str] = ["FlextInfraTypesUtilitiesRopeRuntime"]
+__all__: list[str] = ["FlextInfraUtilitiesTypesRopeRuntime"]

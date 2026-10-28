@@ -15,8 +15,8 @@ from flext_cli import m
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
 from flext_infra._models._codegen import (
-    FlextInfraModelsModelsCodegenFix,
-    FlextInfraModelsModelsCodegenLazyInit,
+    FlextInfraModelsCodegenFix,
+    FlextInfraModelsCodegenLazyInit,
 )
 
 
@@ -554,17 +554,15 @@ class FlextInfraModelsRope:
             m.Field(description="The repository's shared source inventory"),
         ]
         model: Annotated[
-            FlextInfraModelsModelsCodegenLazyInit.PythonModelRun,
+            FlextInfraModelsCodegenLazyInit.PythonModelRun,
             m.Field(description="The run's parse-once static Python model"),
         ]
         plans: Annotated[
-            t.Port[dict[Path, FlextInfraModelsModelsCodegenLazyInit.LazyInitPlan]],
+            t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]],
             m.Field(exclude=True, description="Decided plans, children first"),
         ]
         contexts: Annotated[
-            t.Port[
-                dict[Path, FlextInfraModelsModelsCodegenLazyInit.LazyInitPackageContext]
-            ],
+            t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPackageContext]],
             m.Field(exclude=True, description="Package contexts by directory"),
         ]
         parents: Annotated[
@@ -639,11 +637,11 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package directory containing the module"),
         ]
         package_context: Annotated[
-            FlextInfraModelsModelsCodegenLazyInit.LazyInitPackageContext,
+            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
             m.Field(description="Resolved lazy-init package context for the module"),
         ]
         module_policy: Annotated[
-            FlextInfraModelsModelsCodegenFix.NamespaceModulePolicy,
+            FlextInfraModelsCodegenFix.NamespaceModulePolicy,
             m.Field(description="Canonical module policy derived for the module"),
         ]
         project_layout: Annotated[

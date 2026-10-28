@@ -15,7 +15,7 @@ from flext_infra import config
 from tests import c, m, tm, u
 
 
-class TestsFlextInfraInfraConstantsExtra:
+class TestsFlextInfraConstantsInfraExtra:
     """Tests for Check namespace constants."""
 
     @staticmethod

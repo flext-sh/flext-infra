@@ -27,7 +27,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -592,7 +592,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             project, source, resource=resource
         )
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
-        typing = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
+        typing = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
             project.get_module("typing")
         )
         selection = cls._nesting_selection(module, facts, definitions)

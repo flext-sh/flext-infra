@@ -25,7 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen import FlextInfraModelsModelsCodegenTransaction
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransaction
 
 
 class FlextInfraModelsRefactor(
@@ -210,9 +210,7 @@ class FlextInfraModelsRefactor(
             description="Explicit external consumer checkout roots for this run",
         )
 
-    class SemanticRenamePlan(
-        FlextInfraModelsModelsCodegenTransaction.SemanticSourcePlan
-    ):
+    class SemanticRenamePlan(FlextInfraModelsCodegenTransaction.SemanticSourcePlan):
         """Reversible native rename artifact with its complete authenticated closure."""
 
         decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameDecision] = (

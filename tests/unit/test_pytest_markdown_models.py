@@ -11,7 +11,7 @@ import pytest
 from tests import m, tm
 
 
-class TestsFlextInfraPytestMarkdownModels:
+class TestsFlextInfraModelsPytestMarkdown:
     """Markdown observation models keep typed, session-local collections."""
 
     @staticmethod
@@ -59,4 +59,4 @@ class TestsFlextInfraPytestMarkdownModels:
             )
 
 
-__all__: list[str] = ["TestsFlextInfraPytestMarkdownModels"]
+__all__: list[str] = ["TestsFlextInfraModelsPytestMarkdown"]

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
+class TestsFlextInfraModelsRefactorInfraRefactorCliWorkflow:
     """Behavior contract for test_infra_refactor_cli_models_workflow."""
 
     @staticmethod

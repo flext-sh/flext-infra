@@ -20,11 +20,11 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraTypesUtilitiesSemanticNesting,
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         assignments: tuple[ast.Assign, ...],
     ) -> tuple[dict[str, p.Infra.RopePyName], dict[str, tuple[str, str]]] | None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        namespace = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
+        namespace = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
             wrapper.get_object(), str(path)
         )
         scope = namespace.get_scope()
@@ -194,7 +194,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             ):
                 msg = f"unresolved model alias target identity: {path}:{alias}"
                 raise ValueError(msg)
-            if not FlextInfraTypesUtilitiesRopeRuntime.py_class(value):
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
                 return None
             provider = value.get_module()
             provider_resource = provider.get_resource()
@@ -414,7 +414,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         targets: t.MappingKV[str, t.Pair[str, str]],
         sources: t.MutableMappingKV[Path, str],
     ) -> frozenset[Path]:
-        name = FlextInfraTypesUtilitiesRopeRuntime.require_named_object(
+        name = FlextInfraUtilitiesTypesRopeRuntime.require_named_object(
             wrapper.get_object(), "model alias namespace"
         ).get_name()
         observed = dict(sources)
@@ -635,7 +635,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 project, scope, expression, (path, required), context
             )
 
-        rewritten = FlextInfraTypesUtilitiesSemanticNesting.rewrite_quoted_types(
+        rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
             project, resource, source, quoted
         )
         if rewritten == source:

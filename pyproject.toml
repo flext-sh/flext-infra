@@ -647,7 +647,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.FlextInfraModelsMixins.RequiredNonNegativeLineMixin",
   "flext_infra._models.FlextInfraModelsMixins.VersionTagMixin",
   "flext_infra._models.FlextInfraModelsMixins.WriteMixin",
-  "flext_infra._models._codegen.FlextInfraModelsModelsCodegenTransaction.SemanticSourcePlan",
+  "flext_infra._models._codegen.FlextInfraModelsCodegenTransaction.SemanticSourcePlan",
   "flext_infra._models._codegen.pipeline.CodegenCommand",
   "flext_infra._models._config.FlextInfraModelsConfigContract.ConfigContract",
   "flext_infra._models._config.artifact.CodegenArtifactScopeSpec",

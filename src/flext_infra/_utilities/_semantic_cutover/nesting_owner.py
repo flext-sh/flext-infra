@@ -23,7 +23,7 @@ from flext_infra._utilities._rope._analysis.exports import (
 )
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraTypesUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -71,7 +71,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         owner = next(iter(definitions.values()))
         binding = module.get_scope().get_defined_names().get(owner)
         scope = (
-            FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
                 binding.get_object(), owner
             ).get_scope()
             if binding is not None
@@ -205,7 +205,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         if not cls._pytest_name_matches(name, patterns):
             return False
         definition = binding.get_object()
-        if not FlextInfraTypesUtilitiesRopeRuntime.py_class(definition):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(definition):
             return False
         scope = definition.get_scope()
         if scope.get_kind() != "Class":
@@ -685,7 +685,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         ):
             return None
         owner = module.get_attribute(node.name).get_object()
-        runtime = FlextInfraTypesUtilitiesRopeRuntime
+        runtime = FlextInfraUtilitiesTypesRopeRuntime
         if not runtime.py_class(owner):
             return None
         names = cls._model_namespace_payloads(project, owner)
@@ -715,7 +715,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             return None
         child = children[0].pyobject
         if (
-            not FlextInfraTypesUtilitiesRopeRuntime.py_class(child)
+            not FlextInfraUtilitiesTypesRopeRuntime.py_class(child)
             or child.get_name() != node.name
         ):
             return None
@@ -733,7 +733,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             Nested model names, or no admission for an entity or custom base.
 
         """
-        runtime = FlextInfraTypesUtilitiesRopeRuntime
+        runtime = FlextInfraUtilitiesTypesRopeRuntime
         if not runtime.py_class(owner):
             return ()
         node = owner.get_ast()
@@ -808,7 +808,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
                 file_path.relative_to(Path(project.root.real_path)).as_posix()
             ),
         )
-        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             message = (
                 f"Singleton model owner requires a native source module: {file_path}"
             )
@@ -833,7 +833,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         parents = tuple(
             (item.get_module().get_name(), item.get_name())
             for item in ancestry[:8]
-            if FlextInfraTypesUtilitiesRopeRuntime.py_class(item)
+            if FlextInfraUtilitiesTypesRopeRuntime.py_class(item)
         )
         u.Cli.info(
             f"  stage=singleton-model-detection module={module.get_name()} "
