@@ -17,6 +17,7 @@ import ast
 import builtins
 import re
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import c, config, p, t
 from flext_infra._utilities import (
@@ -54,6 +55,17 @@ from flext_infra._utilities._semantic_cutover.declaration_payload import (
 
 class FlextInfraUtilitiesFacadeMembers:
     """Derive facade member kinds and their single owner letter."""
+
+    _census_cache: ClassVar[
+        dict[
+            tuple[str, int],
+            t.Triple[
+                t.StrSequence,
+                t.MappingKV[str, frozenset[str]],
+                t.MappingKV[str, frozenset[str]],
+            ],
+        ]
+    ] = {}
 
     @classmethod
     def facade_member_kind(
@@ -859,6 +871,9 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
+        cache_key = (str(project.resolve()), id(source_project))
+        if cache_key in cls._census_cache:
+            return cls._census_cache[cache_key]
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         lineage = cls.facade_member_lineage(
             package, letters, source_project=source_project
@@ -914,11 +929,13 @@ class FlextInfraUtilitiesFacadeMembers:
                 declarations=declarations,
             ):
                 references.setdefault(owner, set()).add(reference)
-        return (
+        result = (
             lineage,
             {owner: frozenset(found) for owner, found in sorted(references.items())},
             {letter: frozenset(found) for letter, found in sorted(names.items())},
         )
+        cls._census_cache[cache_key] = result
+        return result
 
     @classmethod
     def facade_member_lineage(

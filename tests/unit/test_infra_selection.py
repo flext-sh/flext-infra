@@ -19,8 +19,7 @@ class TestsFlextInfraInfraSelection:
     """Test suite for u.Infra."""
 
     @pytest.fixture
-    @staticmethod
-    def workspace_with_projects(tmp_path: Path) -> Path:
+    def workspace_with_projects(self: Path) -> Path:
         """Create a temporary workspace with test projects.
 
         Returns:
@@ -28,7 +27,7 @@ class TestsFlextInfraInfraSelection:
 
         """
         for name in ["alpha", "beta", "gamma"]:
-            proj = tmp_path / name
+            proj = self / name
             proj.mkdir()
             (proj / c.GIT_DIR_NAME).mkdir()
             (proj / "Makefile").touch()
@@ -38,18 +37,17 @@ class TestsFlextInfraInfraSelection:
             package_dir = proj / "src" / name.replace("-", "_")
             package_dir.mkdir(parents=True)
             (package_dir / "__init__.py").write_text("")
-        (tmp_path / ".gitmodules").write_text(
+        (self / ".gitmodules").write_text(
             "".join(
                 f'[submodule "{name}"]\n\tpath = {name}\n'
                 f"\turl = https://github.com/flext-sh/{name}.git\n"
                 for name in ("alpha", "beta", "gamma")
             ),
         )
-        return tmp_path
+        return self
 
     @pytest.fixture
-    @staticmethod
-    def selector() -> type[u.Infra]:
+    def selector(self) -> type[u.Infra]:
         """Provide project selector utilities class.
 
         Returns:
@@ -60,8 +58,7 @@ class TestsFlextInfraInfraSelection:
         return selector_cls
 
     @pytest.fixture
-    @staticmethod
-    def workspace_with_declared_names(tmp_path: Path) -> Path:
+    def workspace_with_declared_names(self: Path) -> Path:
         """Create projects whose declared names differ from directory names.
 
         Returns:
@@ -72,7 +69,7 @@ class TestsFlextInfraInfraSelection:
             ("core-alias", "flext-core"),
             ("cli-alias", "flext-cli"),
         ]:
-            proj = tmp_path / directory_name
+            proj = self / directory_name
             proj.mkdir()
             (proj / c.GIT_DIR_NAME).mkdir()
             (proj / "Makefile").touch()
@@ -82,7 +79,7 @@ class TestsFlextInfraInfraSelection:
                 f'[project]\nname = "{project_name}"\ndependencies = ["flext-core"]\n',
             )
             (package_dir / "__init__.py").write_text("")
-        (tmp_path / ".gitmodules").write_text(
+        (self / ".gitmodules").write_text(
             "".join(
                 f'[submodule "{directory}"]\n\tpath = {directory}\n'
                 f"\turl = https://github.com/flext-sh/{project}.git\n"
@@ -92,33 +89,32 @@ class TestsFlextInfraInfraSelection:
                 )
             ),
         )
-        return tmp_path
+        return self
 
     @pytest.fixture
-    @staticmethod
-    def workspace_with_nested_members(tmp_path: Path) -> Path:
+    def workspace_with_nested_members(self: Path) -> Path:
         """Provide ``workspace_with_nested_members``.
 
         Returns:
             The resulting ``Path``.
 
         """
-        (tmp_path / c.GIT_DIR_NAME).mkdir()
-        (tmp_path / "Makefile").touch()
-        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+        (self / c.GIT_DIR_NAME).mkdir()
+        (self / "Makefile").touch()
+        (self / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "workspace"\ndependencies = ["flext-core"]\n',
         )
-        (tmp_path / ".gitmodules").write_text(
+        (self / ".gitmodules").write_text(
             '[submodule "member-one"]\n\tpath = apps/member-one\n'
             "\turl = https://github.com/flext-sh/member-one.git\n"
             '[submodule "member-two"]\n\tpath = apps/member-two\n'
             "\turl = https://github.com/flext-sh/member-two.git\n",
         )
-        root_package = tmp_path / "src" / "workspace"
+        root_package = self / "src" / "workspace"
         root_package.mkdir(parents=True)
         (root_package / "__init__.py").touch()
         for name in ("member-one", "member-two"):
-            project = tmp_path / "apps" / name
+            project = self / "apps" / name
             project.mkdir(parents=True)
             (project / "Makefile").touch()
             (project / c.PYPROJECT_FILENAME).write_text(
@@ -127,7 +123,7 @@ class TestsFlextInfraInfraSelection:
             package = project / "src" / name.replace("-", "_")
             package.mkdir(parents=True)
             (package / "__init__.py").touch()
-        return tmp_path
+        return self
 
     @staticmethod
     def test_resolve_projects_all_projects(

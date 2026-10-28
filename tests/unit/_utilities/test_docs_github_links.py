@@ -17,15 +17,14 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
     """Exercise Git identity, branch rewriting, and local existence evidence."""
 
     @pytest.fixture
-    @staticmethod
-    def docs_repository(tmp_path: Path) -> Path:
+    def docs_repository(self: Path) -> Path:
         """Create a real peripheral Git owner with an explicit integration contract.
 
         Returns:
             The resulting ``Path``.
 
         """
-        root = tmp_path / "docs-owner"
+        root = self / "docs-owner"
         root.mkdir()
         u.Tests.initialize_git_repo(
             root,

@@ -27,8 +27,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     }
 
     @pytest.fixture
-    @staticmethod
-    def doc() -> t.Cli.TomlDocument:
+    def doc(self) -> t.Cli.TomlDocument:
         """Provide a mutable TOML document fixture.
 
         Returns:

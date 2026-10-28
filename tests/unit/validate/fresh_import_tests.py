@@ -25,8 +25,7 @@ class TestsFlextInfraFreshImport:
     """Fresh-process import smoke test suite."""
 
     @pytest.fixture
-    @staticmethod
-    def v() -> FlextInfraValidateFreshImport:
+    def v(self) -> FlextInfraValidateFreshImport:
         """Shared validator instance.
 
         Returns:

@@ -43,8 +43,7 @@ class TestsFlextInfraDepsExtraPathsSync:
     """Behavior contract for test_extra_paths_sync."""
 
     @pytest.fixture
-    @staticmethod
-    def pyright_content() -> str:
+    def pyright_content(self) -> str:
         """Provide minimal Pyright configuration content.
 
         Returns:

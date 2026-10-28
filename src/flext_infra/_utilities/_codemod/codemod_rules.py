@@ -611,7 +611,10 @@ class FlextInfraUtilitiesCodemodRules(
             shadows = (
                 shadows | frozenset(local) if isinstance(local, Mapping) else shadows
             )
-            if isinstance(local, Mapping) and set(aliases.values()).intersection(local):
+            qualified_aliases = {
+                alias for origin, alias in aliases.items() if origin != alias
+            }
+            if isinstance(local, Mapping) and qualified_aliases.intersection(local):
                 msg = "qualified global utility conflicts with a native local utility"
                 raise ValueError(msg)
             return {

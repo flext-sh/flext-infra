@@ -124,8 +124,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
 
     @pytest.fixture
-    @staticmethod
-    def ci_mode() -> bool:
+    def ci_mode(self) -> bool:
         """Read the hosted-runner contract used by the public consumer.
 
         Returns:
@@ -151,8 +150,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         return u.Infra.runtime_environment_dir(root, runtime_root=root)
 
     @pytest.fixture
-    @staticmethod
-    def site_packages(tmp_path: Path) -> Path:
+    def site_packages(self: Path) -> Path:
         """Isolate metadata inside the locked workspace's owned environment.
 
         Returns:
@@ -160,7 +158,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
         """
         owned = TestsFlextInfraWorkspaceEnvironmentProvenance._owned_environment(
-            TestsFlextInfraWorkspaceEnvironmentProvenance._locked_root(tmp_path),
+            TestsFlextInfraWorkspaceEnvironmentProvenance._locked_root(self),
         )
         return owned / "site-packages"
 

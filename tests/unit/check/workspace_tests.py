@@ -25,8 +25,7 @@ class TestsFlextInfraWorkspaceChecker:
     pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
 
     @pytest.fixture
-    @staticmethod
-    def _clear_make_ci_token() -> Iterator[None]:
+    def _clear_make_ci_token(self) -> Iterator[None]:
         with u.Tests.env_vars_context(vars_to_clear=(c.Infra.PYTEST_ENV_CI,)):
             yield
 

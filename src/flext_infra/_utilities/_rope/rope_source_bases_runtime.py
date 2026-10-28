@@ -307,6 +307,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 str,
                 t.MappingKV[str, m.Infra.SourceClassReference | None],
             ] = {}
+            self._lazy_declarations: t.MutableMappingKV[
+                str,
+                t.MappingKV[str, m.Infra.SourceClassReference | None],
+            ] = {}
             self._providers: t.MutableMappingKV[str, t.Infra.RopePyModule] = {}
             self._namespaces: set[str] = set()
             self._module_aliases: t.MutableMappingKV[
@@ -1101,6 +1105,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The declared reference, or None when nothing is declared.
 
             """
+            if module_name in self._lazy_declarations:
+                return self._lazy_declarations[module_name].get(name)
             if resource is None or not resource.exists():
                 return None
             source_path = Path(resource.real_path)
@@ -1117,15 +1123,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 required_line=None,
                 allow_conditional=False,
             )
-            declared = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+            inventory = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
                 request, self._definitions, provider=None
-            ).get(name)
-            u.Cli.info(
-                "lazy declared probe "
-                f"module={module_name} exists={resource.exists()} "
-                f"source_len={len(source)} declared={declared is not None}"
             )
-            return declared
+            self._lazy_declarations[module_name] = inventory
+            return inventory.get(name)
 
         def _provider_reference(
             self,

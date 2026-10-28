@@ -20,8 +20,7 @@ class TestsFlextInfraCliRepositoryRootContract:
     """Tests for ``FlextInfraCliRepositoryRootContract``."""
 
     @pytest.fixture
-    @staticmethod
-    def rendered_makefile(tmp_path: Path) -> str:
+    def rendered_makefile(self: Path) -> str:
         """Use the conform owner and typed fixtures, not a copied Make recipe.
 
         Returns:
@@ -30,14 +29,14 @@ class TestsFlextInfraCliRepositoryRootContract:
         """
         repository = u.Tests.repository_ref("scope-contract-fixture")
         request = u.Tests.conform_request(
-            tmp_path,
+            self,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
         plan = tm.ok(
             FlextInfraCodegenConform.Generate(
-                repository_root=tmp_path,
+                repository_root=self,
                 state=m.Infra.CodegenConformState(
-                    repository_root=tmp_path,
+                    repository_root=self,
                     request=request,
                     initial_workspace=u.Tests.workspace_spec(
                         repository,

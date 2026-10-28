@@ -25,9 +25,8 @@ class TestsFlextInfraCodegenSetupSubmodules:
     """Tests for ``FlextInfraCodegenSetupSubmodules``."""
 
     @pytest.fixture
-    @staticmethod
     def generated_project_template(
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        self: t.MappingKV[c.Infra.MakeProfile, Path],
     ) -> Path:
         """Return the run's standalone consumer, resolved once by ``make upg``.
 
@@ -35,7 +34,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
             The run's standalone consumer, resolved once by ``make upg``.
 
         """
-        return resolved_make_templates[c.Infra.MakeProfile.STANDALONE]
+        return self[c.Infra.MakeProfile.STANDALONE]
 
     @staticmethod
     def _git(root: Path, *arguments: str) -> str:

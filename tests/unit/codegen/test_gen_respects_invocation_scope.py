@@ -30,8 +30,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
     """`gen` delegates the complete composition through exactly one root."""
 
     @pytest.fixture
-    @staticmethod
-    def rendered_makefile(tmp_path: Path) -> str:
+    def rendered_makefile(self: Path) -> str:
         """Render the workspace Makefile through the conform owner.
 
         Returns:
@@ -39,7 +38,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
 
         """
         return u.Tests.scaffold_text(
-            tmp_path / "fixture-project",
+            self / "fixture-project",
             c.Infra.MAKEFILE_FILENAME,
             members=(_MEMBER,),
         )

@@ -25,15 +25,14 @@ class TestsFlextInfraSymbolicBindingPublication:
     """Binding evidence must survive until the guarded phase's source barrier."""
 
     @pytest.fixture
-    @staticmethod
-    def symbolic_workspace(mod_workspace: Path) -> Path:
+    def symbolic_workspace(self: Path) -> Path:
         """Provide real Python modules consumed by the native engine and interpreter.
 
         Returns:
             The resulting ``Path``.
 
         """
-        tests = mod_workspace / "tests"
+        tests = self / "tests"
         (tests / "unit" / "codegen").mkdir(parents=True)
         (tests / "__init__.py").write_text(
             "from tests.utilities import TestsFlextInfraUtilities as u\n",
@@ -46,7 +45,7 @@ class TestsFlextInfraSymbolicBindingPublication:
             "            value = 'owned'\n",
             encoding="utf-8",
         )
-        return mod_workspace
+        return self
 
     @staticmethod
     @pytest.mark.slow

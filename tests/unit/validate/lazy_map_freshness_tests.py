@@ -26,8 +26,7 @@ class TestsFlextInfraLazyMapFreshness:
     """Wrapper semantics: runs the check-only generator and formats the report."""
 
     @pytest.fixture
-    @staticmethod
-    def v() -> FlextInfraValidateLazyMapFreshness:
+    def v(self) -> FlextInfraValidateLazyMapFreshness:
         """Shared validator instance.
 
         Returns:

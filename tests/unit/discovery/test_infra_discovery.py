@@ -19,8 +19,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     """Tests for ``FlextInfraDiscoveryInfraDiscovery``."""
 
     @pytest.fixture
-    @staticmethod
-    def service() -> u.Infra:
+    def service(self) -> u.Infra:
         """Provide ``service``.
 
         Returns:
@@ -30,19 +29,18 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         return u.Infra()
 
     @pytest.fixture
-    @staticmethod
-    def workspace_with_projects(tmp_path: Path) -> Path:
+    def workspace_with_projects(self: Path) -> Path:
         """Provide ``workspace_with_projects``.
 
         Returns:
             The resulting ``Path``.
 
         """
-        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+        (self / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\n",
             encoding="utf-8",
         )
-        proj1 = tmp_path / "project1"
+        proj1 = self / "project1"
         proj1.mkdir()
         (proj1 / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='project1'\nversion='0.1.0'\n"
@@ -51,30 +49,30 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         )
         (proj1 / "src").mkdir()
         (proj1 / "tests").mkdir()
-        proj2 = tmp_path / "project2"
+        proj2 = self / "project2"
         proj2.mkdir()
         (proj2 / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='project2'\n",
             encoding="utf-8",
         )
-        invalid = tmp_path / "invalid"
+        invalid = self / "invalid"
         invalid.mkdir()
         (invalid / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='invalid'\n",
             encoding="utf-8",
         )
-        hidden = tmp_path / ".hidden"
+        hidden = self / ".hidden"
         hidden.mkdir()
         (hidden / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='hidden'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
-        (tmp_path / ".gitmodules").write_text(
+        (self / ".gitmodules").write_text(
             '[submodule "project1"]\n\tpath = project1\n\turl = https://github.com/flext-sh/project1.git\n'
             '[submodule "project2"]\n\tpath = project2\n\turl = https://github.com/flext-sh/project2.git\n',
             encoding="utf-8",
         )
-        return tmp_path
+        return self
 
     @staticmethod
     def test_discover_projects_happy_path(

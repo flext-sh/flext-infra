@@ -210,9 +210,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
     @pytest.fixture
-    @staticmethod
     def seed_conform_scope_repositories(
-        tmp_path: Path,
+        self: Path,
         scope: c.Infra.CodegenConformScope,
         session_runtime: p.Tests.SessionRuntime,
     ) -> tuple[Path, Path, list[Path]]:
@@ -223,7 +222,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             root, the member repository and the seeded package paths.
 
         """
-        root = tmp_path / "flext-scope-root"
+        root = self / "flext-scope-root"
         member = root / "apps" / "flext-scope-member"
         packages: list[Path] = []
         for repository in (root, member):

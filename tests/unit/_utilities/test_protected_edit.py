@@ -164,14 +164,13 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(u.Infra.lint_new_errors(snapshot, snapshot), eq={})
 
     @pytest.fixture
-    @staticmethod
-    def provisioned_workspace(tmp_path: Path) -> None:
+    def provisioned_workspace(self: Path) -> None:
         """The edited workspace is a checkout whose environment owns the tools."""
-        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+        (self / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'sample'\nversion = '1.0.0'\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        u.Tests.provision_checkout(tmp_path)
+        u.Tests.provision_checkout(self)
 
     @staticmethod
     @pytest.mark.parametrize(c.ProcessingMode.BATCH, [False, True])

@@ -23,8 +23,7 @@ class TestsFlextInfraBuilder:
     """Core build invocation tests."""
 
     @pytest.fixture
-    @staticmethod
-    def builder() -> FlextInfraDocBuilder:
+    def builder(self) -> FlextInfraDocBuilder:
         """Provide the public documentation builder service.
 
         Returns:

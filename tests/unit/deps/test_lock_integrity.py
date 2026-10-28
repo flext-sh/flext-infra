@@ -23,10 +23,9 @@ class TestsFlextInfraDepsLockIntegrity:
     """Validate committed generated lock verification through its public model."""
 
     @pytest.fixture
-    @staticmethod
-    def repository(tmp_path: Path) -> None:
+    def repository(self: Path) -> None:
         """Every lock scenario starts from an initialized Git repository."""
-        u.Tests.initialize_git_repo(tmp_path)
+        u.Tests.initialize_git_repo(self)
 
     @staticmethod
     def _write_uv_lock(root: Path, content: str) -> None:

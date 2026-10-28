@@ -26,8 +26,7 @@ class TestsFlextInfraDuplicationGate:
     """
 
     @pytest.fixture
-    @staticmethod
-    def _ci_context() -> Generator[None]:
+    def _ci_context(self) -> Generator[None]:
         ci = config.Infra.codegen.make.ci
         with u.Tests.env_vars_context({ci.variable: ci.value}):
             yield

@@ -52,8 +52,7 @@ class TestsFlextInfraCodegenLazyInit:
     """Test suite for FlextInfraCodegenLazyInit directory scanning behavior."""
 
     @pytest.fixture
-    @staticmethod
-    def governed_project(tmp_path: Path) -> Path:
+    def governed_project(self: Path) -> Path:
         """Provide the project manifest every scanned package belongs to.
 
         Lazy-init plans a package only inside a physical project, and the
@@ -63,13 +62,13 @@ class TestsFlextInfraCodegenLazyInit:
             The resulting ``Path``.
 
         """
-        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+        (self / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "test-helpers"\nversion = "0.1.0"\n'
             f'license = "{u.Tests.project_spec("test-helpers").license}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n',
             encoding="utf-8",
         )
-        return tmp_path
+        return self
 
     class TestsAllDirectoriesScanned:
         """All standard directories are always scanned."""

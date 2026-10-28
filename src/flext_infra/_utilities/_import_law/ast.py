@@ -255,7 +255,9 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
             Whether the binding has at least one runtime read.
 
         """
-        return bool(cls._import_law_runtime_reads(state, name))
+        return name in state.scope.own_exports or bool(
+            cls._import_law_runtime_reads(state, name)
+        )
 
     @classmethod
     def _import_law_runtime_reads(
