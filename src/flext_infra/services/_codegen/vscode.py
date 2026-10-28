@@ -20,7 +20,7 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import FlextRuntime
+from flext_core import u
 from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, r, t, u
@@ -169,7 +169,7 @@ class FlextInfraCodegenVscodeMixin:
         if read_result.failure:
             return r[str].from_failure(read_result)
         settings: t.MutableJsonMapping = {
-            key: FlextRuntime.normalize_to_json_value(value)
+            key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
         if codegen is None:
@@ -362,7 +362,7 @@ class FlextInfraCodegenVscodeMixin:
         spec = codegen.vscode if spec is None else spec
         changed = cls._apply_union_settings(settings, spec.map_union_settings)
         for key, value in cls.vscode_settings(spec).items():
-            normalized = FlextRuntime.normalize_to_json_value(value)
+            normalized = u.normalize_to_json_value(value)
             if key not in settings or settings[key] != normalized:
                 settings[key] = normalized
                 changed = True
@@ -374,7 +374,7 @@ class FlextInfraCodegenVscodeMixin:
         artifacts_changed = False
         for key, canonical_map in artifact_maps.items():
             canonical = {
-                name: FlextRuntime.normalize_to_json_value(value)
+                name: u.normalize_to_json_value(value)
                 for name, value in canonical_map.items()
             }
             if settings.get(key) == canonical:
@@ -395,7 +395,7 @@ class FlextInfraCodegenVscodeMixin:
                     if name not in retired
                 }
                 if retained != current:
-                    settings[key] = FlextRuntime.normalize_to_json_value(retained)
+                    settings[key] = u.normalize_to_json_value(retained)
                     stripped_changed = True
         return r[bool].ok(
             artifacts_changed or stripped_changed or changed,
@@ -451,7 +451,7 @@ class FlextInfraCodegenVscodeMixin:
             current = settings.get(key)
             existing: t.MutableJsonMapping = (
                 {
-                    name: FlextRuntime.normalize_to_json_value(value)
+                    name: u.normalize_to_json_value(value)
                     for name, value in current.items()
                 }
                 if isinstance(current, Mapping)
@@ -460,7 +460,7 @@ class FlextInfraCodegenVscodeMixin:
             merged = {
                 **dict(existing),
                 **{
-                    name: FlextRuntime.normalize_to_json_value(value)
+                    name: u.normalize_to_json_value(value)
                     for name, value in canonical_map.items()
                 },
             }

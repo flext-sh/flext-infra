@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import FlextRuntime
+from flext_core import u
 
 from flext_infra import c, m, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
@@ -558,9 +558,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             toml.SetOp(
                 key="executionEnvironments",
                 value=[
-                    FlextRuntime.normalize_to_json_value(
-                        self._environment_payload(expected_env)
-                    )
+                    u.normalize_to_json_value(self._environment_payload(expected_env))
                     for expected_env in expected_envs
                 ],
             ),
@@ -620,7 +618,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 operations=(
                     m.Infra.DepsToml.SetOp(
                         key=c.Infra.PYRIGHT,
-                        value=FlextRuntime.normalize_to_json_value(table),
+                        value=u.normalize_to_json_value(table),
                     ),
                 ),
             ),
@@ -663,9 +661,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         expected = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT))
         if expected is None:
             return r[str].fail("Pyright projection produced no analyzer table")
-        ordered = u.Cli.json_dumps(
-            FlextRuntime.normalize_to_json_value(expected), sort_keys=True
-        )
+        ordered = u.Cli.json_dumps(u.normalize_to_json_value(expected), sort_keys=True)
         if ordered.failure:
             return r[str].from_failure(ordered)
         # This table is generated in full. Replacing its value also normalizes

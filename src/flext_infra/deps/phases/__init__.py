@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.deps.phases package.
+"""Phases package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,19 +13,13 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.deps.phases.consolidate_groups import (
-        FlextInfraConsolidateGroupsPhase,
-    )
-    from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
-    from flext_infra.deps.phases.ensure_pyrefly import (
-        FlextInfraEnsurePyreflyConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_pyright import (
-        FlextInfraEnsurePyrightConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-    from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-    from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+    from flext_infra.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
+    from flext_infra.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+    from flext_infra.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+    from flext_infra.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+    from flext_infra.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+    from flext_infra.phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.phases.tool_tables import FlextInfraToolTablesPhase
 
 
 __all__: tuple[str, ...] = (

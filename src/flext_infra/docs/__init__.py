@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.docs package.
+"""Docs package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,11 +13,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.docs._auditor import (
-        FlextInfraDocsAuditorChecks,
-        FlextInfraDocsAuditorReport,
-    )
-    from flext_infra.docs._generator import FlextInfraDocsGeneratorBundle
+    from flext_infra.docs._auditor.checks import FlextInfraDocsAuditorChecks
+    from flext_infra.docs._auditor.report import FlextInfraDocsAuditorReport
+    from flext_infra.docs._generator.bundle import FlextInfraDocsGeneratorBundle
     from flext_infra.docs.auditor import FlextInfraDocAuditor
     from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
     from flext_infra.docs.base import FlextInfraDocServiceBase
@@ -51,18 +49,18 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraDocAuditor": ".auditor",
-        "FlextInfraDocsAuditorChecks": "._auditor_checks",
         "FlextInfraDocAuditorMixin": ".auditor_mixin",
-        "FlextInfraDocsAuditorReport": "._auditor_report",
         "FlextInfraDocBuilder": ".builder",
         "FlextInfraDocCollector": ".collector",
         "FlextInfraDocFixer": ".fixer",
         "FlextInfraDocFormatter": ".formatter",
         "FlextInfraDocGenerator": ".generator",
-        "FlextInfraDocsGeneratorBundle": "._generator_bundle",
         "FlextInfraDocServer": ".server",
         "FlextInfraDocServiceBase": ".base",
         "FlextInfraDocValidator": ".validator",
+        "FlextInfraDocsAuditorChecks": "._auditor.checks",
+        "FlextInfraDocsAuditorReport": "._auditor.report",
+        "FlextInfraDocsGeneratorBundle": "._generator.bundle",
     }),
     public_exports=__all__,
 )

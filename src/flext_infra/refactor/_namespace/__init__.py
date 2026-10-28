@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Internal package for namespace.
+"""namespace package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.refactor._namespace.enforcer_project import (
+    from flext_infra._namespace.enforcer_project import (
         FlextInfraRefactorNamespaceEnforcerProject,
     )
+
 
 __all__: tuple[str, ...] = ("FlextInfraRefactorNamespaceEnforcerProject",)
 

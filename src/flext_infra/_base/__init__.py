@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Internal package for base.
+"""base package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,6 +15,7 @@ from flext_core.lazy import install_lazy_exports
 if TYPE_CHECKING:
     from flext_infra._base.payload import FlextInfraBasePayload
     from flext_infra._base.projects import FlextInfraBaseProjects
+
 
 __all__: tuple[str, ...] = (
     "FlextInfraBasePayload",

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import FlextRuntime
+from flext_core import u
 
 import flext_infra
 from flext_infra import c, check, m, p, r, t, u, workspace
@@ -94,7 +94,7 @@ class FlextInfraWorkspaceRoutes:
             The canonical JSON text of the payload.
 
         """
-        encoded = u.Cli.json_dumps(FlextRuntime.normalize_to_json_value(payload))
+        encoded = u.Cli.json_dumps(u.normalize_to_json_value(payload))
         if encoded.failure:
             return encoded.error or "command payload serialization failed"
         return encoded.value

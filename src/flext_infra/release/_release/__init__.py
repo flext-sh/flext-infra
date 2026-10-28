@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Internal package for release.
+"""release package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,14 +13,15 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.release._release.artifact import FlextInfraReleaseReleaseArtifact
-    from flext_infra.release._release.boundary import FlextInfraReleaseReleaseBoundary
-    from flext_infra.release._release.build import FlextInfraReleaseReleaseBuild
-    from flext_infra.release._release.metadata import FlextInfraReleaseReleaseMetadata
-    from flext_infra.release._release.plan import FlextInfraReleaseReleasePlan
-    from flext_infra.release._release.project import FlextInfraReleaseReleaseProject
-    from flext_infra.release._release.publish import FlextInfraReleaseReleasePublish
-    from flext_infra.release._release.source import FlextInfraReleaseReleaseSource
+    from flext_infra._release.artifact import FlextInfraReleaseReleaseArtifact
+    from flext_infra._release.boundary import FlextInfraReleaseReleaseBoundary
+    from flext_infra._release.build import FlextInfraReleaseReleaseBuild
+    from flext_infra._release.metadata import FlextInfraReleaseReleaseMetadata
+    from flext_infra._release.plan import FlextInfraReleaseReleasePlan
+    from flext_infra._release.project import FlextInfraReleaseReleaseProject
+    from flext_infra._release.publish import FlextInfraReleaseReleasePublish
+    from flext_infra._release.source import FlextInfraReleaseReleaseSource
+
 
 __all__: tuple[str, ...] = (
     "FlextInfraReleaseReleaseArtifact",

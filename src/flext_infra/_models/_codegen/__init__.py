@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra. Models. Codegen package.
+"""codegen package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,18 +13,12 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._models._codegen.base import FlextInfraCodegen
-    from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-    from flext_infra._models._codegen.lazy_init import (
-        FlextInfraModelsCodegenLazyInitModels,
-    )
-    from flext_infra._models._codegen.pipeline import (
-        FlextInfraModelsCodegenPipelineModels,
-    )
-    from flext_infra._models._codegen.scaffold import (
-        FlextInfraModelsCodegenScaffoldModels,
-    )
-    from flext_infra._models._codegen.transaction import (
+    from flext_infra._codegen.base import FlextInfraCodegen
+    from flext_infra._codegen.fix import FlextInfraModelsCodegenFixModels
+    from flext_infra._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+    from flext_infra._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
+    from flext_infra._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
+    from flext_infra._codegen.transaction import (
         FlextInfraModelsCodegenTransactionModels,
     )
 

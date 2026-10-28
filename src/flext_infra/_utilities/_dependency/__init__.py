@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Internal package for dependency.
+"""dependency package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,9 +13,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._utilities._dependency.deptry import (
-        FlextInfraUtilitiesDependencyDeptry,
-    )
+    from flext_infra._dependency.deptry import FlextInfraUtilitiesDependencyDeptry
+
 
 __all__: tuple[str, ...] = ("FlextInfraUtilitiesDependencyDeptry",)
 

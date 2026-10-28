@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.refactor package.
+"""Refactor package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,40 +13,48 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.refactor._accessor import (
+    from flext_infra.refactor._accessor.expression import (
         FlextInfraRefactorAccessorExpression,
-        FlextInfraRefactorAccessorOrigin,
-        FlextInfraRefactorAccessorReport,
-        FlextInfraRefactorAccessorRewrite,
+    )
+    from flext_infra.refactor._accessor.origin import FlextInfraRefactorAccessorOrigin
+    from flext_infra.refactor._accessor.report import FlextInfraRefactorAccessorReport
+    from flext_infra.refactor._accessor.rewrite import FlextInfraRefactorAccessorRewrite
+    from flext_infra.refactor._accessor.warnings import (
         FlextInfraRefactorAccessorWarnings,
     )
-    from flext_infra.refactor._census import (
-        FlextInfraRefactorCensusCollect,
+    from flext_infra.refactor._census.collect import FlextInfraRefactorCensusCollect
+    from flext_infra.refactor._census.collect_helpers import (
         FlextInfraRefactorCensusCollectHelpers,
-        FlextInfraRefactorCensusFilters,
-        FlextInfraRefactorCensusObjects,
-        FlextInfraRefactorCensusProject,
-        FlextInfraRefactorCensusRemoval,
-        FlextInfraRefactorCensusRender,
     )
-    from flext_infra.refactor._namespace import (
+    from flext_infra.refactor._census.filters import FlextInfraRefactorCensusFilters
+    from flext_infra.refactor._census.objects import FlextInfraRefactorCensusObjects
+    from flext_infra.refactor._census.project import FlextInfraRefactorCensusProject
+    from flext_infra.refactor._census.removal import FlextInfraRefactorCensusRemoval
+    from flext_infra.refactor._census.render import FlextInfraRefactorCensusRender
+    from flext_infra.refactor._namespace.enforcer_project import (
         FlextInfraRefactorNamespaceEnforcerProject,
     )
-    from flext_infra.refactor._project import (
+    from flext_infra.refactor._project.classifier_deps import (
         FlextInfraRefactorProjectClassifierDeps,
+    )
+    from flext_infra.refactor._project.classifier_family import (
         FlextInfraRefactorProjectClassifierFamily,
     )
-    from flext_infra.refactor._wrapper import FlextInfraRefactorWrapperRewrite
+    from flext_infra.refactor._wrapper.rewrite import FlextInfraRefactorWrapperRewrite
+    from flext_infra.refactor.accessor import FlextInfraRefactorAccessor
     from flext_infra.refactor.accessor_migration import (
         FlextInfraAccessorMigrationOrchestrator,
     )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
+    from flext_infra.refactor.namespace import FlextInfraRefactorNamespace
     from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from flext_infra.refactor.namespace_relocations import (
         FlextInfraNamespaceRelocationCascade,
     )
+    from flext_infra.refactor.project import FlextInfraRefactorProject
     from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
     from flext_infra.refactor.violations_sweep import FlextInfraRefactorViolationsSweep
+    from flext_infra.refactor.wrapper import FlextInfraRefactorWrapper
     from flext_infra.refactor.wrapper_root_namespace import (
         FlextInfraWrapperRootNamespaceRefactor,
     )
@@ -57,6 +65,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceRelocationCascade",
     "FlextInfraProjectClassifier",
+    "FlextInfraRefactorAccessor",
     "FlextInfraRefactorAccessorExpression",
     "FlextInfraRefactorAccessorOrigin",
     "FlextInfraRefactorAccessorReport",
@@ -70,10 +79,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCensusProject",
     "FlextInfraRefactorCensusRemoval",
     "FlextInfraRefactorCensusRender",
+    "FlextInfraRefactorNamespace",
     "FlextInfraRefactorNamespaceEnforcerProject",
+    "FlextInfraRefactorProject",
     "FlextInfraRefactorProjectClassifierDeps",
     "FlextInfraRefactorProjectClassifierFamily",
     "FlextInfraRefactorViolationsSweep",
+    "FlextInfraRefactorWrapper",
     "FlextInfraRefactorWrapperRewrite",
     "FlextInfraWrapperRootNamespaceRefactor",
 )
@@ -82,29 +94,33 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraRefactorAccessorExpression": "._accessor_expression",
         "FlextInfraAccessorMigrationOrchestrator": ".accessor_migration",
-        "FlextInfraRefactorAccessorReport": "._accessor_report",
-        "FlextInfraRefactorAccessorRewrite": "._accessor_rewrite",
-        "FlextInfraRefactorAccessorWarnings": "._accessor_warnings",
-        "FlextInfraRefactorAccessorOrigin": "._accessor_origin",
         "FlextInfraNamespaceEnforcer": ".namespace_enforcer",
-        "FlextInfraRefactorNamespaceEnforcerProject": "._namespace_enforcer_project",
         "FlextInfraNamespaceRelocationCascade": ".namespace_relocations",
         "FlextInfraProjectClassifier": ".project_classifier",
-        "FlextInfraRefactorProjectClassifierDeps": "._project_classifier_deps",
-        "FlextInfraRefactorProjectClassifierFamily": "._project_classifier_family",
+        "FlextInfraRefactorAccessor": ".accessor",
+        "FlextInfraRefactorAccessorExpression": "._accessor.expression",
+        "FlextInfraRefactorAccessorOrigin": "._accessor.origin",
+        "FlextInfraRefactorAccessorReport": "._accessor.report",
+        "FlextInfraRefactorAccessorRewrite": "._accessor.rewrite",
+        "FlextInfraRefactorAccessorWarnings": "._accessor.warnings",
         "FlextInfraRefactorCensus": ".census",
-        "FlextInfraRefactorCensusCollectHelpers": "._census_collect_helpers",
-        "FlextInfraRefactorCensusCollect": "._census_collect",
-        "FlextInfraRefactorCensusFilters": "._census_filters",
-        "FlextInfraRefactorCensusObjects": "._census_objects",
-        "FlextInfraRefactorCensusProject": "._census_project",
-        "FlextInfraRefactorCensusRemoval": "._census_removal",
-        "FlextInfraRefactorCensusRender": "._census_render",
+        "FlextInfraRefactorCensusCollect": "._census.collect",
+        "FlextInfraRefactorCensusCollectHelpers": "._census.collect_helpers",
+        "FlextInfraRefactorCensusFilters": "._census.filters",
+        "FlextInfraRefactorCensusObjects": "._census.objects",
+        "FlextInfraRefactorCensusProject": "._census.project",
+        "FlextInfraRefactorCensusRemoval": "._census.removal",
+        "FlextInfraRefactorCensusRender": "._census.render",
+        "FlextInfraRefactorNamespace": ".namespace",
+        "FlextInfraRefactorNamespaceEnforcerProject": "._namespace.enforcer_project",
+        "FlextInfraRefactorProject": ".project",
+        "FlextInfraRefactorProjectClassifierDeps": "._project.classifier_deps",
+        "FlextInfraRefactorProjectClassifierFamily": "._project.classifier_family",
         "FlextInfraRefactorViolationsSweep": ".violations_sweep",
+        "FlextInfraRefactorWrapper": ".wrapper",
+        "FlextInfraRefactorWrapperRewrite": "._wrapper.rewrite",
         "FlextInfraWrapperRootNamespaceRefactor": ".wrapper_root_namespace",
-        "FlextInfraRefactorWrapperRewrite": "._wrapper_rewrite",
     }),
     public_exports=__all__,
 )

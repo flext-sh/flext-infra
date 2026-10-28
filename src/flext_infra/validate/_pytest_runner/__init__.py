@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.validate. Pytest Runner package.
+"""pytest runner package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,16 +13,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.validate._pytest_runner.base import FlextInfraPytestRunnerBase
-    from flext_infra.validate._pytest_runner.command import (
-        FlextInfraPytestRunnerCommand,
-    )
-    from flext_infra.validate._pytest_runner.execution import (
-        FlextInfraPytestRunnerExecution,
-    )
-    from flext_infra.validate._pytest_runner.reports import (
-        FlextInfraPytestRunnerReports,
-    )
+    from flext_infra._pytest_runner.base import FlextInfraPytestRunnerBase
+    from flext_infra._pytest_runner.command import FlextInfraPytestRunnerCommand
+    from flext_infra._pytest_runner.execution import FlextInfraPytestRunnerExecution
+    from flext_infra._pytest_runner.reports import FlextInfraPytestRunnerReports
 
 
 __all__: tuple[str, ...] = (

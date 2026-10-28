@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Internal package for preview.
+"""preview package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,6 +14,7 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._preview.wiring import FlextInfraPreviewWiring
+
 
 __all__: tuple[str, ...] = ("FlextInfraPreviewWiring",)
 

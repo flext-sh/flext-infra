@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import ClassVar, override
 from uuid import uuid4
 
-from flext_core import FlextRuntime
+from flext_core import u
 
 from flext_infra import c, config, m, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
@@ -131,7 +131,7 @@ class FlextInfraDepsGate(FlextInfraGate):
             return ()
         payload = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
-            FlextRuntime.normalize_to_json_value(document.unwrap()),
+            u.normalize_to_json_value(document.unwrap()),
         ).unwrap()
         changes = tuple(
             change

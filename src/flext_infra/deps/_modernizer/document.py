@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from flext_core import FlextRuntime
+from flext_core import u
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
 from flext_infra._models.deps import (
@@ -135,7 +135,7 @@ class FlextInfraPyprojectModernizerDocument(
         document = u.Cli.toml_parse_text(recovered.value)
         if document is None:
             return result_type.fail(f"invalid TOML: {path}")
-        payload_source = FlextRuntime.normalize_to_json_value(document.unwrap())
+        payload_source = u.normalize_to_json_value(document.unwrap())
         validated: p.Result[t.MutableJsonMapping] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
             payload_source,

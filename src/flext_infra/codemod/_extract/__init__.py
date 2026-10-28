@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Internal package for extract.
+"""extract package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codemod._extract.duplicate import FlextInfraCodemodExtractDuplicate
+    from flext_infra._extract.duplicate import FlextInfraCodemodExtractDuplicate
+
 
 __all__: tuple[str, ...] = ("FlextInfraCodemodExtractDuplicate",)
 
