@@ -26,6 +26,28 @@ from flext_infra._models._config import (
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
 
+    class ModelProtocolRenderContext(m.ContractModel):
+        """Exact declaration text supplied to the protocol module template."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            str_strip_whitespace=False,
+        )
+
+        header: str = m.Field(description="Existing generated-source ownership header")
+        copyright_notice: str = m.Field(description="The owning project's legal notice")
+        imports: tuple[str, ...] = m.Field(description="Ordered declaration imports")
+        sibling_import_lines: tuple[str, ...] = m.Field(
+            description="Canonical import lines for referenced protocol owners"
+        )
+        owner: t.NonEmptyStr = m.Field(description="The declaring protocol namespace")
+        name: t.NonEmptyStr = m.Field(description="The nested structural contract")
+        type_parameters: tuple[str, ...] = m.Field(
+            description="Complete parameter declarations with bounds and defaults"
+        )
+        declarations: tuple[str, ...] = m.Field(
+            description="Field declarations retaining their annotation metadata"
+        )
+
     class GithubWorkflowRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 

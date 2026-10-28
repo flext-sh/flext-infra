@@ -460,32 +460,54 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     ) -> frozenset[tuple[int, int]]:
         """Protect Literal values and Annotated metadata in every alias form.
 
-        Selection uses the same resolved typing identities as quoted rewrites;
-        an ordinary runtime assignment is not implicitly a type declaration.
+        The ranges come from the rope-parsed module tree in one walk: every
+        subscript whose head is ``Literal`` protects its whole payload, and
+        every ``Annotated`` protects its metadata arguments (all but the
+        first). Rope owns the parse, so multiline and nested forms carry
+        their exact native positions; no capture machinery is involved.
 
         Returns:
             The resulting ``frozenset[tuple[int, int]]``.
 
         """
+        line_starts = [0]
+        for line in source.splitlines(keepends=True):
+            line_starts.append(line_starts[-1] + len(line))
+
+        def offset(line: int, column: int) -> int:
+            return line_starts[line - 1] + column
+
+        def span(node: object) -> tuple[int, int]:
+            return (
+                offset(getattr(node, "lineno", 1), getattr(node, "col_offset", 0)),
+                offset(
+                    getattr(node, "end_lineno", 1),
+                    getattr(node, "end_col_offset", 0),
+                ),
+            )
+
         protected: set[tuple[int, int]] = set()
-        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        finder = refactors.semantic_finder(module)
-        for owner in ("Literal", "Annotated"):
-            variable = f"payload_{owner}"
-            pattern = "${" + variable + "}[${payload_arguments}]"
-            for match in finder.get_matches(
-                pattern,
-                args={variable: f"name=typing.{owner}"},
-            ):
-                begin, end = refactors.semantic_capture_region(
-                    match,
-                    "payload_arguments",
-                )
-                if owner == "Literal":
-                    protected.add((begin, end))
-                    continue
-                arguments = cls.expression_segments(source, begin, end, ",")
-                protected.update(arguments[1:])
+        pending: list[object] = [module.get_ast()]
+        while pending:
+            node = pending.pop()
+            for field in getattr(node, "_fields", ()):
+                child = getattr(node, field, None)
+                if isinstance(child, (list, tuple)):
+                    pending.extend(item for item in child if hasattr(item, "_fields"))
+                elif hasattr(child, "_fields"):
+                    pending.append(child)
+            value = getattr(node, "value", None)
+            head = getattr(value, "id", None) or getattr(value, "attr", None)
+            if head not in {"Literal", "Annotated"}:
+                continue
+            elements = getattr(getattr(node, "slice", None), "elts", None)
+            if elements is None:
+                protected.add(span(node.slice))
+                continue
+            if head == "Literal":
+                protected.update(span(item) for item in elements)
+            else:
+                protected.update(span(item) for item in elements[1:])
         return frozenset(protected)
 
     @classmethod

@@ -210,10 +210,9 @@ class FlextInfraModelsCodemod:
         )
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
-        operation: Literal[
-            "restructure", "materialize-delegations", "retire-generic-typing-wrappers"
-        ] = m.Field(
-            default="restructure",
+        operation: c.Infra.RopeContractOperation = m.Field(
+            default=c.Infra.RopeContractOperation.RESTRUCTURE,
+            strict=False,
             description="Native contract operation executed in the shared source epoch",
         )
         source_revision: t.NonEmptyStr | None = m.Field(

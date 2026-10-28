@@ -10,11 +10,16 @@ from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
 
-from flext_infra import c, p, t
+from flext_cli import u
+
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesLazyInitRender,
+    FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesSemanticCutover,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
@@ -126,103 +131,71 @@ class FlextInfraUtilitiesModelsProtocol:
             directory = self.package / (
                 FlextInfraUtilitiesCodegenNamespace.facade_families()["p"].directory
             )
-            body = FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef(
-                name=route.rpartition(".")[2],
-                bases=[
-                    FlextInfraUtilitiesRopeAnalysis.Tree.Name(
-                        id="Protocol", ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load()
-                    )
-                ],
-                keywords=[],
-                body=declaration or [FlextInfraUtilitiesRopeAnalysis.Tree.Pass()],
-                decorator_list=[
-                    FlextInfraUtilitiesRopeAnalysis.Tree.Name(
-                        id="runtime_checkable",
-                        ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
-                    )
-                ],
-                type_params=self.type_parameters[route],
-            )
             owner = self.references[route].partition(".")[0]
-            wrapper = FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef(
-                name=owner,
-                bases=[],
-                keywords=[],
-                body=[body],
-                decorator_list=[],
-                type_params=[],
-            )
-            exports = FlextInfraUtilitiesRopeAnalysis.Tree.Assign(
-                targets=[
-                    FlextInfraUtilitiesRopeAnalysis.Tree.Name(
-                        id="__all__", ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Store()
-                    )
-                ],
-                value=FlextInfraUtilitiesRopeAnalysis.Tree.List(
-                    elts=[FlextInfraUtilitiesRopeAnalysis.Tree.Constant(value=owner)],
-                    ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
-                ),
-            )
-            siblings = sorted(
-                {
-                    self.references[dependency].partition(".")[0]
-                    for dependency in dependencies
-                }
-                - {owner}
-            )
-            statements = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
-                "\n".join(sorted(set(imports.values())))
-            ).body
-            if siblings:
-                statements.extend((
-                    FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom(
-                        module="typing",
-                        names=[
-                            FlextInfraUtilitiesRopeAnalysis.Tree.Alias(
-                                name="TYPE_CHECKING"
-                            )
-                        ],
-                        level=0,
-                    ),
-                    FlextInfraUtilitiesRopeAnalysis.Tree.If(
-                        test=FlextInfraUtilitiesRopeAnalysis.Tree.Name(
-                            id="TYPE_CHECKING",
-                            ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
-                        ),
-                        body=[
-                            FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom(
-                                module=f"{self.package_name}.{directory.name}",
-                                names=[
-                                    FlextInfraUtilitiesRopeAnalysis.Tree.Alias(
-                                        name=name
-                                    )
-                                    for name in siblings
-                                ],
-                                level=0,
-                            )
-                        ],
-                        orelse=[],
-                    ),
-                ))
-            statements.extend((wrapper, exports))
-            content = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
-                FlextInfraUtilitiesRopeAnalysis.Tree.fix_missing_locations(
-                    FlextInfraUtilitiesRopeAnalysis.Tree.Module(
-                        body=statements, type_ignores=[]
-                    )
+            siblings = tuple(
+                sorted(
+                    {
+                        self.references[dependency].partition(".")[0]
+                        for dependency in dependencies
+                    }
+                    - {owner}
                 )
             )
             token = route.replace(".", "_").lower()
-            return (
-                (
-                    directory
-                    / (
-                        f"generated_models_{token}.py"
-                        if token
-                        else "generated_models.py"
+            destination = directory / (
+                f"generated_models_{token}.py" if token else "generated_models.py"
+            )
+            selected_imports = dict(imports)
+            if siblings:
+                selected_imports["protocol"] = (
+                    "from typing import TYPE_CHECKING, Protocol, runtime_checkable"
+                )
+            # Field extraction still supplies legacy expression nodes. Convert
+            # them once at this boundary; module structure is template-owned.
+            context = m.Infra.ModelProtocolRenderContext(
+                header=c.Infra.AUTOGEN_HEADER,
+                copyright_notice=FlextInfraUtilitiesLintRecipes.copyright_notice(
+                    self.package,
+                    module=destination,
+                    source_project=self.project,
+                ),
+                imports=tuple(sorted(set(selected_imports.values()))),
+                sibling_import_lines=tuple(
+                    FlextInfraUtilitiesLazyInitRender.source_import_lines(
+                        "    ", f"{self.package_name}.{directory.name}", siblings
                     )
-                ).relative_to(self.workspace.repository_root),
-                f"{c.Infra.AUTOGEN_HEADER}\n{content}\n",
+                )
+                if siblings
+                else (),
+                owner=owner,
+                name=route.rpartition(".")[2],
+                type_parameters=tuple(
+                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
+                        FlextInfraUtilitiesRopeAnalysis.Tree.fix_missing_locations(
+                            parameter
+                        )
+                    )
+                    for parameter in self.type_parameters[route]
+                ),
+                declarations=tuple(
+                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
+                        FlextInfraUtilitiesRopeAnalysis.Tree.fix_missing_locations(
+                            field
+                        )
+                    )
+                    for field in declaration
+                ),
+            )
+            template = (
+                FlextInfraUtilitiesGitignore.codegen_templates_root(
+                    config.Infra.codegen
+                )
+                / c.Infra.TEMPLATE_MODEL_PROTOCOL
+            )
+            content = u.Cli.template_render(template, context).unwrap()
+            return (
+                destination.relative_to(self.workspace.repository_root),
+                content,
             )
 
         def _inventory(self) -> None:

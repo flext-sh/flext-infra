@@ -412,8 +412,7 @@ class FlextInfraUtilitiesDocsApi:
         cls,
         binding: tuple[Path, p.Infra.RopeProject],
         *,
-        module_name: str,
-        source: str,
+        source_module: p.Infra.RopeSourceModule,
         symbol_name: str,
         visited: frozenset[str],
     ) -> bool:
@@ -424,41 +423,26 @@ class FlextInfraUtilitiesDocsApi:
 
         """
         project_root, rope_project = binding
-        if not FlextInfraUtilitiesRopeAnalysis.class_declared_source(
-            source,
-            symbol_name,
-        ):
+        runtime = FlextInfraUtilitiesRopeRuntime
+        declared = source_module.get_attributes().get(symbol_name)
+        if declared is None or not runtime.defined_name(declared):
             return False
-        for base_name in FlextInfraUtilitiesRopeAnalysis.class_bases_source(
-            source,
-            symbol_name,
-        ):
-            base_symbol = base_name.split(".")[-1]
-            if not base_symbol or base_symbol in {"ABC", "Generic", "Protocol", "Self"}:
+        owner = declared.get_object()
+        if not runtime.py_class(owner):
+            return False
+        declaring_scope = owner.get_scope().parent
+        if declaring_scope is None or declaring_scope.pyobject is not source_module:
+            return False
+        for base in owner.get_superclasses():
+            if not runtime.py_class(base):
                 continue
-            imported_module, imported_symbol = (
-                FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
-                    source,
-                    current_module=module_name,
-                    symbol_name=base_symbol,
-                    package_module=cls._module_file(project_root, module_name).name
-                    == c.Infra.INIT_PY,
-                )
-            )
-            if imported_module:
-                if cls._has_exported_symbol_docstring(
-                    project_root,
-                    module_name=imported_module,
-                    symbol_name=imported_symbol or base_symbol,
-                    visited=visited,
-                    rope_project=rope_project,
-                ):
-                    return True
+            base_module = base.get_module()
+            if not runtime.source_module(base_module):
                 continue
             if cls._has_exported_symbol_docstring(
                 project_root,
-                module_name=module_name,
-                symbol_name=base_symbol,
+                module_name=base_module.get_name(),
+                symbol_name=base.get_name(),
                 visited=visited,
                 rope_project=rope_project,
             ):
@@ -496,8 +480,7 @@ class FlextInfraUtilitiesDocsApi:
         key = f"{module_name}:{symbol_name}"
         if cls._has_flext_docstring(
             binding,
-            module_name=module_name,
-            source=source,
+            source_module=source_module,
             symbol_name=symbol_name,
             visited=visited | frozenset({key}),
         ):

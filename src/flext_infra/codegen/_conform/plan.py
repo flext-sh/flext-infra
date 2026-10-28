@@ -1189,6 +1189,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         u.Cli.info(
             f"stage=repository state=start repository={task.repository.name} "
             f"root={(task.root / task.repository.path).resolve()} "
+            f"source_root={snapshot.engine.root.real_path} "
             f"surface={task.surface} role={task.repository.role.value}"
         )
         try:

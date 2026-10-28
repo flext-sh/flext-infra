@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import time
 import traceback
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, contextmanager
@@ -14,7 +15,6 @@ from pathlib import Path
 
 from flext_infra import (
     c,
-    d,
     deps as dependency_services,
     m,
     p,
@@ -110,7 +110,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         root = target.root
-        repository = target.repository
         self.state.completed_source_plans = None
         surface_plans = self._plan_existing_contract_surface(
             target,
@@ -120,7 +119,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         if surface_plans is not None:
             return surface_plans
-        u.Cli.info(f"  stage=pyproject repository={repository.name}")
         pyproject = root / c.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return r[Sequence[m.Infra.CodegenFilePlan]].fail(
@@ -236,7 +234,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             plans.append(planned.value)
         return self._artifact_dependency_plans(codegen, target.root, plans)
 
-    @d.log_operation("existing_managed_plan", track_perf=True)
     def _plan_existing_managed(
         self,
         target: m.Infra.RepositoryConformTarget,
@@ -1649,7 +1646,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             render_inputs.planned_direct_sources = names.value
         return planned
 
-    @d.log_operation("custom_facades_plan", track_perf=True)
     def _plan_existing_custom(
         self,
         root: Path,
@@ -1672,6 +1668,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             The custom Make and facade plans, or a typed validation failure.
 
         """
+        started = time.monotonic()
+        u.Cli.info(f"stage=facades state=start root={root}")
         policy = config.make.custom_handler_policies.get(
             profile or "",
             config.make.custom_handler_policy,
@@ -1705,6 +1703,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if recursive.failure:
                 return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(recursive)
             plans.extend(recursive.value)
+        u.Cli.info(
+            f"stage=facades state=end root={root} "
+            f"elapsed={time.monotonic() - started:.3f}s files={len(plans)}"
+        )
         return r[Sequence[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     def _validated_custom_make_plan(

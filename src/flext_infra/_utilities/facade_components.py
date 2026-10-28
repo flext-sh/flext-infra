@@ -32,14 +32,9 @@ from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackage,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCorePyModule
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
 
@@ -323,320 +318,31 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(holders)
 
     @staticmethod
-    @staticmethod
-    def _component_base_names(holder: p.Infra.RopeClassObject) -> t.StrSequence:
-        """Return the superclass references exactly as the class header names them.
-
-        Rope owns every parse in this engine; the header text is read through
-        the rope-parsed class node, never through a second parser.
-
-        Returns:
-            The dotted base references in declaration order.
-
-        """
-        node = holder.get_ast()
-        bases = getattr(node, "bases", ())
-        names: list[str] = []
-        for base in bases:
-            head = getattr(base, "id", None) or getattr(base, "attr", None)
-            if head is None and (value := getattr(base, "value", None)) is not None:
-                head = getattr(value, "id", None) or getattr(value, "attr", None)
-            names.append(head if head is not None else "")
-        return tuple(names)
-
-    @staticmethod
-    def component_import_origin(
-        module: p.Infra.RopeSourceModule, name: str
-    ) -> str | None:
-        """Return the imported module path that binds ``name`` in ``module``.
-
-        The import statements are read from the rope-parsed module node; no
-        second parser and no inference are involved.
-
-        Returns:
-            The dotted module path, or ``None`` when no import binds the name.
-
-        """
-        for statement in getattr(module.get_ast(), "body", ()):
-            if type(statement).__name__ != "ImportFrom":
-                continue
-            module_path = getattr(statement, "module", None) or ""
-            for alias in getattr(statement, "names", ()):
-                bound = getattr(alias, "asname", None) or getattr(alias, "name", "")
-                if bound != name:
-                    continue
-                if getattr(statement, "level", 0):
-                    resource = module.get_resource()
-                    name = module.get_name()
-                    base = (
-                        name
-                        if resource is not None and resource.is_folder()
-                        else name.removesuffix(".__init__").rpartition(".")[0]
-                        or name.removesuffix(".__init__")
-                    )
-                    return f"{base}.{module_path}" if module_path else base
-                return module_path
-        return None
-
-    @staticmethod
-    def component_imported_name(
-        module: p.Infra.RopeSourceModule, name: str
-    ) -> str | None:
-        """Return the original bound name when ``name`` is an import alias.
-
-        Returns:
-            The declaring module's own attribute name, or ``None`` when the
-            import binds the name unchanged.
-
-        """
-        for statement in getattr(module.get_ast(), "body", ()):
-            if type(statement).__name__ != "ImportFrom":
-                continue
-            for alias in getattr(statement, "names", ()):
-                asname = getattr(alias, "asname", None)
-                if asname == name:
-                    return getattr(alias, "name", None)
-        return None
-
-    @staticmethod
-    def _component_lexical_base(
-        owner: p.Infra.RopeClassObject, name: str
-    ) -> p.Infra.RopeClassObject:
-        """Resolve one superclass through its declaring module, rope natively.
-
-        The generated lazy initializer re-exports facade components through
-        ``install_lazy_exports``; import inference through that indirection is
-        view-order dependent. The class header names every base lexically, so
-        the single route is: a dotted reference resolves the head as a module
-        and reads the tail attribute; a bare reference resolves through the
-        declaring module's own import map to the origin module and reads the
-        original bound attribute. Rope owns every parse; no inference, no
-        fallback.
-
-        Returns:
-            The native base class.
-
-        Raises:
-            TypeError: The reference does not name a native class.
-
-        """
-        components = FlextInfraUtilitiesFacadeComponents
-        module = owner.get_module()
-        if not isinstance(module, p.Infra.RopeSourceModule):
-            msg = f"lexical ancestry requires a source module: {owner.get_name()}"
-            raise TypeError(msg)
-        project = module.pycore.project
-        head, _, tail = name.partition(".")
-        origin_head = components.component_import_origin(module, head)
-        origin_name = components.component_imported_name(module, head)
-        resource = project.find_module(origin_head or head)
-        if resource is None:
-            binding = module.get_attribute(name).get_object()
-            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(binding):
-                # The name is bound by the package's generated lazy
-                # initializer (install_lazy_exports); one deterministic hop
-                # through the lazy map reaches the declaring module's class.
-                binding = (
-                    components.component_lazy_binding(project, module, head) or binding
-                )
-            return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-                binding, "lexical facade component ancestry"
-            )
-        declared = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-            project, resource
-        )
-        if tail:
-            binding = declared.get_attribute(tail).get_object()
-        elif origin_head is not None and origin_name is not None:
-            binding = declared.get_attribute(origin_name).get_object()
-            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(binding):
-                # The origin re-exports the class from a sibling module; one
-                # hop through the origin's own import map reaches the declarer.
-                binding = (
-                    components.component_sibling_binding(project, declared, origin_name)
-                    or binding
-                )
-        else:
-            binding = module.get_attribute(name).get_object()
-            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(binding):
-                # Rope inference is not stable across a transaction's proposed
-                # source swaps; the package initializer's declared lazy route
-                # is the SSOT for re-exported names.
-                binding = (
-                    components.component_declared_package_binding(
-                        project, origin_head or head, name
-                    )
-                    or binding
-                )
-        return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-            binding,
-            f"lexical facade component ancestry: base {name!r} of "
-            f"{owner.get_name()} in {module.get_name()}",
-        )
-
-    @staticmethod
-    def component_declared_package_binding(
-        project: p.Infra.RopeProject,
-        package: str,
-        name: str,
-    ) -> p.Infra.RopePyObject | None:
-        """Resolve a name re-exported by the named package's lazy initializer.
-
-        The ``install_lazy_exports`` literal of ``package`` is the
-        declaration SSOT; rope inference over a proposed source swap can
-        return an unresolved object where the declared route is exact.
-
-        Returns:
-            The declaring module's binding, or none when the package does not
-            declare the name or the provider does not resolve.
-
-        """
-        init_resource = project.find_module(package)
-        if init_resource is None:
-            return None
-        init = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-            project, init_resource
-        )
-        components = FlextInfraUtilitiesFacadeComponents
-        for target in components.lazy_export_targets(init, name):
-            target_resource = project.find_module(f"{package}{target}")
-            if target_resource is None:
-                continue
-            target_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-                project, target_resource
-            )
-            declared = components.component_imported_name(target_module, name)
-            return target_module.get_attribute(declared or name).get_object()
-        return None
-
-    @staticmethod
-    def component_lazy_binding(
-        project: p.Infra.RopeProject,
-        module: p.Infra.RopeSourceModule,
-        name: str,
-    ) -> p.Infra.RopePyObject | None:
-        """Resolve a lazy-exported name to its declaring module's binding.
-
-        The generated package initializer binds the name through
-        ``install_lazy_exports`` with a relative target (``".module"``);
-        one deterministic hop reads that target from the initializer's
-        mapping literal and resolves the class in the target module —
-        the same module the runtime would import on first attribute access.
-
-        Returns:
-            The declarer's binding, or none when no lazy map names it.
-
-        """
-        components = FlextInfraUtilitiesFacadeComponents
-        package = module.get_name().rpartition(".")[0]
-        init_resource = project.find_module(package)
-        if init_resource is None:
-            return None
-        init = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-            project, init_resource
-        )
-        for target in components.lazy_export_targets(init, name):
-            target_resource = project.find_module(f"{package}{target}")
-            if target_resource is None:
-                continue
-            target_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-                project, target_resource
-            )
-            declared = components.component_imported_name(target_module, name)
-            return target_module.get_attribute(declared or name).get_object()
-        return None
-
-    @staticmethod
-    def lazy_export_targets(init: p.Infra.RopePyModule, name: str) -> list[str]:
-        """Read the lazy-export targets one initializer's map declares for a name.
-
-        Returns:
-            The relative target module paths bound to the name.
-
-        """
-        targets: list[str] = []
-        for statement in getattr(init.get_ast(), "body", ()):
-            if type(statement).__name__ != "Call":
-                continue
-            if getattr(getattr(statement, "func", None), "id", "") != (
-                "install_lazy_exports"
-            ):
-                continue
-            for argument in getattr(statement, "args", ()):
-                mapping = getattr(argument, "value", None)
-                if mapping is None or type(mapping).__name__ != "Dict":
-                    continue
-                for key, value in zip(
-                    getattr(mapping, "keys", ()),
-                    getattr(mapping, "values", ()),
-                    strict=False,
-                ):
-                    target = getattr(value, "value", "")
-                    if getattr(key, "value", None) == name and target.startswith("."):
-                        targets.append(target)
-        return targets
-
-    @staticmethod
-    def component_sibling_binding(
-        project: p.Infra.RopeProject,
-        declared: p.Infra.RopePyModule,
-        origin_name: str,
-    ) -> p.Infra.RopePyObject | None:
-        """Resolve a re-exported class through its origin module's import map.
-
-        Returns:
-            The declarer's binding, or none when no sibling module declares it.
-
-        """
-        sibling = FlextInfraUtilitiesFacadeComponents.component_import_origin(
-            declared, origin_name
-        )
-        if sibling is None:
-            return None
-        sibling_resource = project.find_module(sibling)
-        if sibling_resource is None:
-            return None
-        sibling_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-            project, sibling_resource
-        )
-        sibling_name = FlextInfraUtilitiesFacadeComponents.component_imported_name(
-            declared, origin_name
-        )
-        return sibling_module.get_attribute(sibling_name or origin_name).get_object()
-
-    @staticmethod
     def _component_ancestors(
         holder: p.Infra.RopeClassObject,
     ) -> tuple[p.Infra.RopeClassObject, ...]:
-        """Traverse native ancestry through the single lexical route.
-
-        Every base is resolved exactly as the header names it; a reference
-        that does not name a native class fails without a partial result.
+        """Traverse source and builtin superclass identities through native Rope.
 
         Returns:
-            The resulting ``tuple[p.Infra.RopeClassObject, ...]``.
+            Every native ancestor once, in superclass traversal order.
 
         """
-        pending = [
-            (holder, name)
-            for name in holder
-            and FlextInfraUtilitiesFacadeComponents._component_base_names(holder)
-        ]
+        pending = list(holder.get_superclasses())
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
         while pending:
-            owner, name = pending.pop()
-            if not name:
+            candidate = pending.pop()
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(candidate):
+                # Library and unresolved bases (captured-source mode cannot
+                # infer every external root) contribute no owned lineage;
+                # they are traversal leaves, not ancestry errors.
                 continue
-            base = FlextInfraUtilitiesFacadeComponents._component_lexical_base(
-                owner, name
-            )
+            base = candidate
             if base in seen:
                 continue
             seen.add(base)
             ancestors.append(base)
-            base_names = FlextInfraUtilitiesFacadeComponents._component_base_names
-            pending.extend((base, base_name) for base_name in base_names(base))
+            pending.extend(base.get_superclasses())
         return tuple(ancestors)
 
     @classmethod

@@ -161,9 +161,16 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         owner_module, owner = resolved
         if owner == letter:
             return None
+        owner_resource = project.find_module(owner_module)
+        if owner_resource is None:
+            # Namespace packages (no ``__init__``) resolve through their
+            # resource, never through ``get_module``'s importable-module law.
+            return None
         exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
             FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                project.get_module(owner_module)
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    project, owner_resource
+                )
             ),
         )
         if letter not in exports or owner not in exports:

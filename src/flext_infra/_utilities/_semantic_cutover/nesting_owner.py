@@ -860,21 +860,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             )
             raise ValueError(message)
         ancestry = payloads.class_ancestry(owner)
-        parents = tuple(
-            (item.get_module().get_name(), item.get_name())
-            for item in ancestry[:8]
-            if FlextInfraUtilitiesTypesRopeRuntime.py_class(item)
-        )
         cls._singleton_model_detection_record(
             module.get_name(),
             native=model.get_object() in ancestry,
-            ancestry_depth=len(parents),
-        )
-        u.Cli.debug(
-            f"  stage=singleton-model-detection module={module.get_name()} "
-            f"owner={name} native_model={model.get_object() in ancestry} "
-            f"model_config={c.Infra.MODEL_CONFIG_ATTRIBUTE in owner.get_attributes()} "
-            f"ancestry={parents}"
+            ancestry_depth=len(ancestry),
         )
         return {name: name} if model.get_object() in ancestry else {}
 

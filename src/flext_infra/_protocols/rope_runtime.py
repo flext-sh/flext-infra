@@ -460,7 +460,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def fragments(
             self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeSourceFragment]: ...
+        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeSourceFragment]: ...
 
     @runtime_checkable
     class RopeSourceMemberResolver(Protocol):
@@ -785,6 +785,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Native Rope match coordinates without exposing syntax trees."""
 
         def get_region(self) -> tuple[int, int]: ...
+
+        def get_capture_region(self, name: str) -> tuple[int, int]: ...
 
         def get_ast(self, name: str) -> p.AttributeProbe | None: ...
 

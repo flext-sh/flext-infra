@@ -192,8 +192,13 @@ class FlextInfraUtilitiesRopeSource:
     ) -> tuple[tuple[int, int], ...]:
         """Retain native PEP 695 declarations, including their bounds/defaults.
 
+        Rope records the complete parameter node in ``fragments`` under the
+        ``type-parameter-token`` role. Its separate ``token_bindings`` index
+        contains only the identifier. These fragment regions therefore retain
+        unpacking prefixes, bounds and defaults without parsing their text.
+
         Returns:
-            Type-parameter regions in the original declaration order.
+            Complete type-parameter regions in their original declaration order.
 
         Raises:
             TypeError: The declaring module is not a native source module.
@@ -288,7 +293,7 @@ class FlextInfraUtilitiesRopeSource:
         return roots
 
     @staticmethod
-    def _class_scopes(module: p.Infra.RopePyModule) -> list[p.Infra.RopeScope]:
+    def _class_scopes(module: p.Infra.RopeSourceModule) -> list[p.Infra.RopeScope]:
         """Collect every class scope of one module.
 
         Returns:

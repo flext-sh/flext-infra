@@ -463,6 +463,12 @@ rendered source enters the same invocation project's candidate binding before
 module lookup and export reading; that binding restores its entry candidate on
 exit. A detached string module or a second project cannot supply this identity.
 
+Semantic rules use the existing native contract catalog and its typed models,
+protocols and constants vocabulary. The unconnected second Rope DSL interpreter,
+its private declaration model and its unused operation enums are retired; they
+had no Make entry point or configured consumers. New rules extend the active
+owner instead of creating another execution pipeline.
+
 Private-import export discovery receives the active workspace project through
 its planner. Documentation contract extraction opens its existing native project
 once for export assignments and symbol validation, passing that project through
@@ -479,6 +485,8 @@ ownership, so unrelated declarations cannot trigger superclass inference.
 Documentation reads module, class and function docstrings from their elected
 native objects' `get_doc()` methods. Local declaration admission still excludes
 imported bindings; recursive public-symbol documentation owns import traversal.
+Inherited class documentation follows the elected class's native superclass
+identities, not a second parse of class headers and imported base spellings.
 The rendered summary keeps its existing whitespace normalization at the docs
 rendering owner. Source-only wrappers for those three SDK capabilities are retired.
 The unused source-only class-base parsing wrapper is also retired; active
@@ -722,6 +730,10 @@ their source and canonical regeneration.
 
 Shared TOML ingress owns Pydantic mapping validation. Pyproject, documentation and
 text-rule consumers reuse its validated output directly.
+
+Rope DSL closed operation and transform vocabularies belong to `c.Infra`;
+`m` validates the composed declarations, while `p` defines injected ports consumed
+through Pydantic `t.Port` fields.
 
 Family-base import enforcement covers both `from` imports and module imports,
 including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
@@ -2741,6 +2753,10 @@ deadline when the native operation has none; do not allocate a fresh budget to
 each stage. Capture repair alone proves neither a timing improvement nor a green
 generation, modification or gate result.
 
+Rendering and filesystem preparation preserve their original exceptions and
+tracebacks. Publication returns the existing atomic writer's typed Result
+directly, without rebuilding its success payload or failure metadata.
+
 The transport delegates directly to the single native capture owner. Existing
 run receipts remain with their producer; there is no separate command-context
 model, writer or receipt-admission branch. An older capture without a receipt
@@ -3878,6 +3894,12 @@ project's elected package resources, including the consumer's admitted editable
 suppliers. They remain read-only inputs, never additional plan targets. Namespace
 spelling does not establish a sibling directory; do not construct substitute
 paths or run another ambient-import election beside the native source model.
+Native match capture regions use the SDK's `get_capture_region(name)` boundary:
+half-open character coordinates, with a missing capture remaining its native
+failure. Infra does not expose or traverse captured Python AST nodes to obtain
+those regions. The selected SDK artifact must provide that capability before
+consumer qualification; no site-package patch or old-API fallback supplies it.
+
 The codemod generic-specialization fact is declaration-only, before migration:
 it passes the injected `snapshot.engine` to the facade-member owner, resolves
 the published `p` and `t` classes and their inherited members through native

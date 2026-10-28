@@ -1082,57 +1082,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return ("", "")
 
     @staticmethod
-    def _top_level_class(source: str, class_name: str) -> ast.ClassDef | None:
-        """Return the top-level class statement named ``class_name``.
-
-        Returns:
-            The top-level class statement named ``class_name``.
-
-        """
-        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(
-            source
-        ).body:
-            if isinstance(node, ast.ClassDef) and node.name == class_name:
-                return node
-        return None
-
-    @staticmethod
-    def class_bases_source(source: str, class_name: str) -> Sequence[str]:
-        """Return declared base names for one class in source.
-
-        Returns:
-            Declared base names for one class in source.
-
-        """
-        node = FlextInfraUtilitiesRopeAnalysisSourceScan._top_level_class(
-            source,
-            class_name,
-        )
-        if node is None:
-            return ()
-        return tuple(
-            base_name
-            for base in node.bases
-            if (base_name := FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(base))
-        )
-
-    @staticmethod
-    def class_declared_source(source: str, class_name: str) -> bool:
-        """Return whether one class is declared at the top level of source.
-
-        Returns:
-            Whether one class is declared at the top level of source.
-
-        """
-        return (
-            FlextInfraUtilitiesRopeAnalysisSourceScan._top_level_class(
-                source,
-                class_name,
-            )
-            is not None
-        )
-
-    @staticmethod
     def _module_mapping_binding(source: str, reference: str) -> ast.Dict | None:
         """Resolve one module-level mapping binding to its literal dict node.
 

@@ -123,12 +123,12 @@ class TestsFlextInfraPytestCollectionPolicy:
     ) -> None:
         """Serial collection blocks on every warning, MRO violations included."""
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        category = c.FlextSmellViolation.__name__ if homonym else "ConsumerNotice"
+        category = c.FlextSmellViolationError.__name__ if homonym else "ConsumerNotice"
         declaration = (
             f"class {category}(UserWarning):\n    pass\n"
             if homonym
             else f"from flext_core import c\n\nclass {category}"
-            "(c.FlextSmellViolation):\n    pass\n"
+            "(c.FlextSmellViolationError):\n    pass\n"
         )
         (
             cached_runner_project

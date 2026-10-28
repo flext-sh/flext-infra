@@ -190,7 +190,7 @@ class FlextInfraUtilitiesLazyInitRender:
         ), export != imported
 
     @classmethod
-    def _lazy_init_import(
+    def source_import_lines(
         cls, indent: str, module: str, parts: Sequence[str]
     ) -> Sequence[str]:
         """Emit one Ruff-canonical ``from`` import.
@@ -221,7 +221,7 @@ class FlextInfraUtilitiesLazyInitRender:
 
         """
         return "\n".join(
-            cls._lazy_init_import(
+            cls.source_import_lines(
                 "",
                 c.Infra.LAZY_BOOTSTRAP_MODULE,
                 helpers or ("install_lazy_exports",),
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesLazyInitRender:
             (
                 (
                     cls._lazy_init_section(module, first_party),
-                    cls._lazy_init_import(
+                    cls.source_import_lines(
                         "    ",
                         module,
                         tuple(
@@ -345,7 +345,7 @@ class FlextInfraUtilitiesLazyInitRender:
                 for name, attr in sorted(items, key=cls._lazy_init_item_key)
             )
         )
-        return cls._lazy_init_import("    ", module, parts) if parts else ()
+        return cls.source_import_lines("    ", module, parts) if parts else ()
 
     @classmethod
     def _lazy_init_exports_tuple(cls, names: Sequence[str]) -> str:

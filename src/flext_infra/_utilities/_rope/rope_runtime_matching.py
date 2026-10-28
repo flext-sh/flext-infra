@@ -168,25 +168,8 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         Returns:
             The start and end character positions of the captured region.
 
-        Raises:
-            ValueError: If the specified variable is not captured in the match.
-            TypeError: If the captured region does not conform to the expected format.
-
         """
-        captured = match.get_ast(variable)
-        if captured is None:
-            message = f"Rope match has no captured variable: {variable}"
-            raise ValueError(message)
-        region = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "node_region",
-        )(captured)
-        match region:
-            case tuple((int(begin), int(end))):
-                return begin, end
-            case _:
-                message = "Rope capture does not expose its native character region"
-                raise TypeError(message)
+        return match.get_capture_region(variable)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeMatching"]

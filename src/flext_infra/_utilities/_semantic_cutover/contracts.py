@@ -202,7 +202,8 @@ class FlextInfraUtilitiesSemanticContracts(
         inserted: dict[Path, tuple[str, ...]] = {}
         for selection in rules:
             if (
-                selection.operation == "retire-generic-typing-wrappers"
+                selection.operation
+                is c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
                 and selection.source_revision is not None
             ):
                 path, candidate, names = cls._generic_collection_history(
@@ -247,7 +248,8 @@ class FlextInfraUtilitiesSemanticContracts(
             for rule in rules
             for derived in (
                 cls._generic_collection_contract_rules(workspace.rope_project, rule)
-                if rule.operation == "retire-generic-typing-wrappers"
+                if rule.operation
+                is c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
                 else (rule,)
             )
         )
@@ -559,25 +561,9 @@ class FlextInfraUtilitiesSemanticContracts(
             TypeError: The elected provider is not a native source class.
 
         """
-        constraints = tuple(selection.arguments.values())
-        if (
-            len(constraints) != 1
-            or not isinstance(constraints[0], str)
-            or not constraints[0].startswith("name=")
-        ):
-            msg = f"{selection.id}: provider requires a native name constraint"
-            raise ValueError(msg)
-        identity = constraints[0].removeprefix("name=")
-        provider = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-            project, identity
-        ).get_object()
-        if not isinstance(provider, p.Infra.RopeSourceClass):
-            msg = f"{selection.id}: provider is not a native source class"
-            raise TypeError(msg)
-        module = provider.get_module()
-        if not isinstance(module, p.Infra.RopePyModule):
-            msg = f"{selection.id}: provider has no native source module"
-            raise TypeError(msg)
+        identity, provider, module, _resource = cls._generic_history_provider(
+            project, selection
+        )
         return tuple(
             derived
             for fragments, parameters in cls._generic_collection_declarations(
@@ -1043,7 +1029,7 @@ class FlextInfraUtilitiesSemanticContracts(
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
-        if rule.operation == "materialize-delegations":
+        if rule.operation is c.Infra.RopeContractOperation.MATERIALIZE_DELEGATIONS:
             return FlextInfraUtilitiesSemanticDelegations.materialize_delegations(
                 project, sources, tuple(context[1]), rule.id
             )
@@ -1158,9 +1144,10 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         )
         working.update((path, retirement_sources[path]) for path in working)
-        if any(rule.operation == "materialize-delegations" for rule in rules) and any(
-            working[path] != source for path, source in items
-        ):
+        if any(
+            rule.operation is c.Infra.RopeContractOperation.MATERIALIZE_DELEGATIONS
+            for rule in rules
+        ) and any(working[path] != source for path, source in items):
             FlextInfraUtilitiesSemanticDeclarationRelocation.preflight_semantic_import_graph(
                 workspace, sources, retirement_sources
             )

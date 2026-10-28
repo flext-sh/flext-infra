@@ -242,6 +242,8 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     "Scaffold module-skeleton template (replaces the legacy f-string)."
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
+    TEMPLATE_MODEL_PROTOCOL: ClassVar[str] = "model_protocol.py.j2"
+    "Protocol module template consumed by the existing source projector."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
     INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"

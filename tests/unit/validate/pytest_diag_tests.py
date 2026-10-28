@@ -413,7 +413,7 @@ class TestsFlextInfraPytestDiag:
         junit.write_text('<testsuites><testsuite name="t"/></testsuites>')
         log = tmp_path / "pytest.log"
         log.write_text("1 warning")
-        category = c.FlextSmellViolation.__name__
+        category = c.FlextSmellViolationError.__name__
         extractor = self._extractor(
             junit,
             log,
@@ -424,14 +424,14 @@ class TestsFlextInfraPytestDiag:
                 identities=self._identity(
                     category,
                     "enforcement evidence",
-                    module=c.FlextSmellViolation.__module__,
+                    module=c.FlextSmellViolationError.__module__,
                 ),
             ),
         )
         report = tm.ok(extractor.extract(junit, log, report_log=extractor.report_log))
         tm.that(report.warning_count, eq=1)
         tm.that(report.warning_lines[0], contains="enforcement evidence")
-        tm.that(report.warning_lines[0], contains=c.FlextSmellViolation.__module__)
+        tm.that(report.warning_lines[0], contains=c.FlextSmellViolationError.__module__)
 
     @pytest.mark.parametrize(
         "events",

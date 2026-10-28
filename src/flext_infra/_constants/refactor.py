@@ -262,6 +262,14 @@ class FlextInfraConstantsRefactor:
     "Canonical public family compose leaf names (the static compose surface)."
 
     @unique
+    class RopeContractOperation(StrEnum):
+        """Closed operations admitted by the native contract catalog."""
+
+        RESTRUCTURE = "restructure"
+        MATERIALIZE_DELEGATIONS = "materialize-delegations"
+        RETIRE_GENERIC_TYPING_WRAPPERS = "retire-generic-typing-wrappers"
+
+    @unique
     class SemanticCutoverPhase(StrEnum):
         """Semantic ``make mod`` cutovers planned by ``u.Infra``."""
 

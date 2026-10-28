@@ -356,16 +356,10 @@ class FlextInfraCProfileReport(s[bool]):
         """
         if not self.profile.is_file():
             return r[bool].fail(f"cProfile artifact does not exist: {self.profile}")
-        try:
-            stream = io.StringIO()
-            self._render_profiles(stream)
-            self.output.parent.mkdir(parents=True, exist_ok=True)
-        except (OSError, ValueError, TypeError) as exc:
-            return r[bool].fail(f"render cProfile report failed: {exc}", exception=exc)
-        written = u.Cli.atomic_write_text_file(self.output, stream.getvalue())
-        if written.failure:
-            return r[bool].from_failure(written)
-        return r[bool].ok(value=True)
+        stream = io.StringIO()
+        self._render_profiles(stream)
+        self.output.parent.mkdir(parents=True, exist_ok=True)
+        return u.Cli.atomic_write_text_file(self.output, stream.getvalue())
 
     def _render_profiles(self, stream: io.StringIO) -> None:
         """Render every cProfile artifact into the shared stream."""

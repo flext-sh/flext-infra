@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import ast
 import sys
+import time
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
+from contextlib import nullcontext
 from importlib.util import resolve_name
 from pathlib import Path
 from typing import Literal, override
@@ -102,11 +104,19 @@ class FlextInfraUtilitiesCodegenFacades(
             Explicit public names from the candidate source epoch.
 
         """
-        with cls.facade_source_project(
-            Path(project.root.real_path),
-            planned_sources={path: source},
-            source_project=project,
-        ) as (candidate, _sources):
+        with (
+            nullcontext(project)
+            if project.source_text(path) == source
+            else project.source_view(
+                declared_files=cls.workspace_declared_sources(
+                    Path(project.root.real_path),
+                    (),
+                    {path: source},
+                    source_project=project,
+                ),
+                additional_source_folders=None,
+            )
+        ) as candidate:
             module = cls.require_source_module(
                 candidate.get_pymodule(cls.file_resource_at(candidate, path))
             )
@@ -1429,15 +1439,28 @@ class FlextInfraUtilitiesCodegenFacades(
                 for plan, family in roots.value
                 if family is c.Infra.FacadeFamily.U
             )
+            started = time.monotonic()
+            u.Cli.info(f"stage=facade-consumers state=start root={root}")
             consumers = cls._component_consumer_plans(
                 root, utility_paths, staged, source_view=source_view
             )
+            u.Cli.info(
+                f"stage=facade-consumers state=end root={root} "
+                f"elapsed={time.monotonic() - started:.3f}s files={len(consumers)}"
+            )
             cls._component_stage_plans(planned, staged, consumers)
+            started = time.monotonic()
+            u.Cli.info(f"stage=facade-initializers state=start root={root}")
             initializers = initializer_planner(
                 root,
                 declared_files=tuple(staged.values()),
                 snapshot=snapshot,
                 selection=selection,
+            )
+            u.Cli.info(
+                f"stage=facade-initializers state=end root={root} "
+                f"elapsed={time.monotonic() - started:.3f}s "
+                f"failed={initializers.failure}"
             )
             if initializers.failure:
                 return r[bool].from_failure(initializers)
@@ -1766,11 +1789,20 @@ class FlextInfraUtilitiesCodegenFacades(
             families = cls._component_root_families(
                 root, snapshot, binding, selection=selection
             )
-        for package, family in families:
+        for index, (package, family) in enumerate(families, start=1):
+            started = time.monotonic()
+            u.Cli.info(
+                f"stage=facade-family state=start root={root} package={package} "
+                f"family={family} item={index}/{len(families)}"
+            )
             with source_view(root, declared_files=tuple(staged.values())) as binding:
                 final = cls._component_root_facade(
                     root, package, family, binding[0], binding[1]
                 )
+            u.Cli.info(
+                f"stage=facade-family state=end package={package} family={family} "
+                f"elapsed={time.monotonic() - started:.3f}s planned={final is not None}"
+            )
             selection_error = cls._component_selection_error(selection, final)
             if selection_error is not None:
                 return result_type.fail(selection_error)
@@ -3084,6 +3116,29 @@ class FlextInfraUtilitiesCodegenFacades(
         return occupied
 
     @staticmethod
+    def _publisher_public_exports(
+        project: p.Infra.RopeProject,
+        package: p.Infra.RopeResource,
+        publisher: str,
+    ) -> frozenset[str]:
+        """Read one publishing package's public export inventory.
+
+        Returns:
+            The package initializer's exported public names.
+
+        """
+        initializer = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+            package.get_child(c.Infra.INIT_PY) if package.is_folder() else package,
+            publisher,
+        )
+        package_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project, initializer
+        )
+        return FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+            FlextInfraUtilitiesRopeRuntime.require_source_module(package_module)
+        )
+
+    @staticmethod
     def _upstream_base_publication(
         view: _UpstreamSourceView,
         path: Path,
@@ -3125,17 +3180,8 @@ class FlextInfraUtilitiesCodegenFacades(
         if package is None:
             message = f"Facade base has no publishing package: {origin}"
             raise ValueError(message)
-        initializer = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-            package.get_child(c.Infra.INIT_PY) if package.is_folder() else package,
-            publisher,
-        )
-        package_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            view.project, initializer
-        )
-        public_exports = (
-            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                FlextInfraUtilitiesRopeRuntime.require_source_module(package_module)
-            )
+        public_exports = FlextInfraUtilitiesCodegenFacades._publisher_public_exports(
+            view.project, package, publisher
         )
         exported = (
             view.resolve(
@@ -4154,8 +4200,8 @@ class FlextInfraUtilitiesCodegenFacades(
             for fragment in index.fragments
         ):
             return None
-        target_begin, target_end = runtime.semantic_capture_region(match, "target")
-        value_begin, value_end = runtime.semantic_capture_region(match, "value")
+        target_begin, target_end = match.semantic_capture_region("target")
+        value_begin, value_end = match.semantic_capture_region(", "value")
         authentic = cls._facade_publication_reference(finder, value_begin, value_end)
         if finder.get_word_range(target_begin) != (target_begin, target_end) or not (
             authentic
