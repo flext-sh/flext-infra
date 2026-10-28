@@ -146,6 +146,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         cls,
         cross_owner_statements: tuple[str, ...],
         sources: Mapping[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> tuple[
         Mapping[str, tuple[tuple[ast.Module, str, str, str], ...]],
         tuple[
@@ -179,6 +181,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         export_bindings, declared_exports = (
             FlextInfraUtilitiesPrivateImportFacades.declared_exports(
                 discovery_sources,
+                project=project,
             )
         )
         return (
@@ -356,6 +359,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         root: Path,
         sources: Mapping[Path, str],
         findings: Sequence[m.Infra.ModOccurrence],
+        *,
+        project: p.Infra.RopeProject,
     ) -> t.Infra.PrivateImportReferences:
         """Resolve every reported cross-owner private import to its public owner.
 
@@ -372,6 +377,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         facades, bindings = cls._resolved_facades(
             cross_owner_statements,
             sources,
+            project=project,
         )
         specs, direct_specs = cls._finding_import_specs(
             root,
@@ -420,6 +426,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         root: Path,
         sources: Mapping[Path, str],
         findings: Sequence[m.Infra.ModOccurrence],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan binding-aware public import rewrites.
 
@@ -432,6 +440,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             root,
             sources,
             findings,
+            project=project,
         )
         missing = sorted(str(path) for path in specs if path not in sources)
         if missing:

@@ -18,6 +18,7 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._import_law._policy.namespace import (
     FlextInfraUtilitiesImportLawPolicyNamespace,
@@ -27,6 +28,9 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 
 
@@ -103,6 +107,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         module: str,
         name: str,
         *,
+        source_project: p.Infra.RopeProject,
         sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Return the nearest package that lazily publishes one leaf object.
@@ -114,7 +119,9 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         package = module.rpartition(".")[0]
         directory = cls.import_package_dir(scope.project_root, module, sources=sources)
         if directory is not None:
-            return cls._declared_subpackage_source(scope, module, name, sources=sources)
+            return cls._declared_subpackage_source(
+                scope, module, name, source_project=source_project, sources=sources
+            )
         if not package or scope.module in {module, package}:
             return None
         if (
@@ -134,6 +141,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         module: str,
         name: str,
         *,
+        source_project: p.Infra.RopeProject,
         sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Discover a unique source declaration published by its own package.
@@ -178,9 +186,23 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 if sources is None
                 else sources[source_path]
             )
-            if name not in (
-                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
-            ):
+            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                Path(source_project.root.real_path),
+                planned_sources={source_path: source},
+                source_project=source_project,
+            ) as (bound_project, _captured):
+                native = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    bound_project.get_pymodule(
+                        FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                            bound_project, source_path
+                        ),
+                        force_errors=True,
+                    )
+                )
+                exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                    native
+                )
+            if name not in exports:
                 continue
             declaration = cls._module_bindings(ast.parse(source)).get(name)
             if not isinstance(
@@ -510,9 +532,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             module=module_name,
             layer=cls.module_import_layer(module_name),
             own_exports=frozenset(
-                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                    module.source_code
-                )
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(module)
             ),
             family_letter=letter,
         )
@@ -585,13 +605,21 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             f"{provider.get_name()}."
         ).partition(".")
         if not separator or owner not in (
-            FlextInfraUtilitiesRopeAnalysis.public_export_names_source(sources[path])
+            FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(provider)
+            )
         ):
             return None
         owner_binding = FlextInfraUtilitiesRopeRuntime.qualified_name(
             project, f"{provider.get_name()}.{owner}"
         )
-        package = cls.lazy_source(context, provider.get_name(), owner, sources=sources)
+        package = cls.lazy_source(
+            context,
+            provider.get_name(),
+            owner,
+            source_project=project,
+            sources=sources,
+        )
         local = cls._family_owner_spelling(module.get_scope(), owner_binding, owner)
         if package is None and not FlextInfraUtilitiesRopeRuntime.same_name(
             owner_binding, module.get_scope().get_names().get(local)

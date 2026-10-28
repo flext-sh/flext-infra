@@ -47,7 +47,9 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             reference_evidence_collected=evidence_collected,
         )
 
-    def test_zero_references_without_evidence_is_not_unused(self) -> None:
+    def test_zero_references_without_evidence_is_not_unused(
+        self, tmp_path: Path
+    ) -> None:
         """An unanchored search never yields an unused classification."""
         record = self._object(
             name="PublicThing",
@@ -55,9 +57,15 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=False,
         )
 
-        tm.that(FlextInfraRefactorCensus.unused(record), eq=False)
+        with infra.rope_workspace(tmp_path) as workspace:
+            tm.that(
+                FlextInfraRefactorCensus.unused(
+                    record, source_project=workspace.rope_project
+                ),
+                eq=False,
+            )
 
-    def test_zero_references_with_evidence_is_unused(self) -> None:
+    def test_zero_references_with_evidence_is_unused(self, tmp_path: Path) -> None:
         """A completed search over zero references classifies the definition."""
         record = self._object(
             name="PublicThing",
@@ -65,9 +73,15 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        tm.that(FlextInfraRefactorCensus.unused(record), eq=True)
+        with infra.rope_workspace(tmp_path) as workspace:
+            tm.that(
+                FlextInfraRefactorCensus.unused(
+                    record, source_project=workspace.rope_project
+                ),
+                eq=True,
+            )
 
-    def test_referenced_definition_is_never_unused(self) -> None:
+    def test_referenced_definition_is_never_unused(self, tmp_path: Path) -> None:
         """Collected references keep the definition classified as used."""
         record = self._object(
             name="PublicThing",
@@ -75,7 +89,13 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        tm.that(FlextInfraRefactorCensus.unused(record), eq=False)
+        with infra.rope_workspace(tmp_path) as workspace:
+            tm.that(
+                FlextInfraRefactorCensus.unused(
+                    record, source_project=workspace.rope_project
+                ),
+                eq=False,
+            )
 
     @staticmethod
     def test_service_composes_validated_options(tmp_path: Path) -> None:

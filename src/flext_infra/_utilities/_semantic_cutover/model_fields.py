@@ -10,12 +10,11 @@ import ast
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-import libcst as cst
-from libcst.codemod import CodemodContext
-from libcst.codemod.visitors import AddImportsVisitor
-
 from flext_infra import c
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
+from flext_infra._utilities._rope.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
+)
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -426,12 +425,10 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls._require_unshadowed_guard(tree)
         for start, end, replacement in sorted(replacements, reverse=True):
             lines[start:end] = [replacement]
-        context = CodemodContext()
-        AddImportsVisitor.add_needed_import(context, "flext_core", "u")
-        updated = (
-            AddImportsVisitor(context)
-            .transform_module(cst.parse_module("".join(lines)))
-            .code
+        updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
+            "".join(lines),
+            module="flext_core",
+            name="u",
         )
         return updated, ("narrowed untrusted model-class boundaries",)
 

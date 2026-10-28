@@ -208,7 +208,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         attributes = module.get_attributes()
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            module.source_code,
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module),
         )
         aliases: set[str] = set()
         for node in tree.body:

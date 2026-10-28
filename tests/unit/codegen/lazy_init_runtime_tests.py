@@ -169,10 +169,25 @@ class TestsFlextInfraLazyInitRuntime:
         ],
     )
     def test_export_metadata_has_one_declaration_owner(
-        source: str, expected: tuple[str, ...]
+        tmp_path: Path, source: str, expected: tuple[str, ...]
     ) -> None:
         """Only explicit module metadata or a single root's metadata publishes."""
-        tm.that(u.Infra.public_export_names_source(source), eq=expected)
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-export-metadata",
+            package_name="flext_export_metadata",
+        )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(repository) as workspace:
+            module = u.Infra.resolve_pymodule(
+                workspace.rope_project,
+                workspace.rope_project.get_file(
+                    initializer.relative_to(repository).as_posix()
+                ),
+            )
+            assert isinstance(module, p.Infra.RopeSourceModule)
+            tm.that(u.Infra.public_export_names_source(module), eq=expected)
         tm.that(
             u.Infra.module_export_names_source(
                 source,
@@ -316,7 +331,16 @@ class TestsFlextInfraLazyInitRuntime:
                 ),
                 eq=1,
             )
-            tm.ok(bool(u.Infra.public_export_names_source(source)))
+        with infra.rope_workspace(repository) as workspace:
+            for generated_path in generated:
+                native = u.Infra.resolve_pymodule(
+                    workspace.rope_project,
+                    workspace.rope_project.get_file(
+                        generated_path.relative_to(repository).as_posix()
+                    ),
+                )
+                assert isinstance(native, p.Infra.RopeSourceModule)
+                tm.ok(bool(u.Infra.public_export_names_source(native)))
         initializer = testing / c.Infra.INIT_PY
         source = initializer.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(
@@ -713,9 +737,22 @@ class TestsFlextInfraLazyInitRuntime:
             if plan.path.suffix == c.Infra.EXT_PYTHON
             and plan.desired_content is not None
         }
-        exports = u.Infra.public_export_names_source(
-            planned[(family / c.Infra.INIT_PY).resolve()],
-        )
+        with (
+            infra.rope_workspace(repository) as workspace,
+            u.Infra.facade_source_project(
+                repository,
+                planned_sources=planned,
+                source_project=workspace.rope_project,
+            ) as (project, _captured),
+        ):
+            module = u.Infra.resolve_pymodule(
+                project,
+                project.get_file(
+                    (family / c.Infra.INIT_PY).relative_to(repository).as_posix()
+                ),
+            )
+            assert isinstance(module, p.Infra.RopeSourceModule)
+            exports = u.Infra.public_export_names_source(module)
         tm.ok("FlextStaleErrors" in exports)
         derived = u.Infra.runtime_evaluated_base_classes(repository, planned, roots)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)

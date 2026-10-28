@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
@@ -60,7 +59,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self.selected: set[str] = set()
             self.references: dict[str, str] = {}
             self.parameters: set[str] = set()
-            self.type_parameters: dict[str, list[ast.type_param]] = {}
+            self.type_parameters: dict[str, list[t.Infra.AstTypeParameter]] = {}
             self.dependencies: set[str] = set()
             self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
 
@@ -78,7 +77,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if self.package is None or not {"m", "p"}.issubset(self.facades):
                 return {}
             self.selected.update(self._consumed())
-            declarations: dict[str, list[ast.stmt]] = {}
+            declarations: dict[str, list[t.Infra.AstStatement]] = {}
             imports: dict[str, dict[str, str]] = {}
             dependencies: dict[str, set[str]] = {}
             while pending := sorted(self.selected - declarations.keys()):
@@ -108,7 +107,7 @@ class FlextInfraUtilitiesModelsProtocol:
         def _render_route(
             self,
             route: str,
-            declaration: list[ast.stmt],
+            declaration: list[t.Infra.AstStatement],
             imports: dict[str, str],
             dependencies: set[str],
         ) -> tuple[Path, str]:
@@ -127,16 +126,25 @@ class FlextInfraUtilitiesModelsProtocol:
             directory = self.package / (
                 FlextInfraUtilitiesCodegenNamespace.facade_families()["p"].directory
             )
-            body = ast.ClassDef(
+            body = FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef(
                 name=route.rpartition(".")[2],
-                bases=[ast.Name(id="Protocol", ctx=ast.Load())],
+                bases=[
+                    FlextInfraUtilitiesRopeAnalysis.Tree.Name(
+                        id="Protocol", ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load()
+                    )
+                ],
                 keywords=[],
-                body=declaration or [ast.Pass()],
-                decorator_list=[ast.Name(id="runtime_checkable", ctx=ast.Load())],
+                body=declaration or [FlextInfraUtilitiesRopeAnalysis.Tree.Pass()],
+                decorator_list=[
+                    FlextInfraUtilitiesRopeAnalysis.Tree.Name(
+                        id="runtime_checkable",
+                        ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
+                    )
+                ],
                 type_params=self.type_parameters[route],
             )
             owner = self.references[route].partition(".")[0]
-            wrapper = ast.ClassDef(
+            wrapper = FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef(
                 name=owner,
                 bases=[],
                 keywords=[],
@@ -144,9 +152,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 decorator_list=[],
                 type_params=[],
             )
-            exports = ast.Assign(
-                targets=[ast.Name(id="__all__", ctx=ast.Store())],
-                value=ast.List(elts=[ast.Constant(value=owner)], ctx=ast.Load()),
+            exports = FlextInfraUtilitiesRopeAnalysis.Tree.Assign(
+                targets=[
+                    FlextInfraUtilitiesRopeAnalysis.Tree.Name(
+                        id="__all__", ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Store()
+                    )
+                ],
+                value=FlextInfraUtilitiesRopeAnalysis.Tree.List(
+                    elts=[FlextInfraUtilitiesRopeAnalysis.Tree.Constant(value=owner)],
+                    ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
+                ),
             )
             siblings = sorted(
                 {
@@ -155,20 +170,34 @@ class FlextInfraUtilitiesModelsProtocol:
                 }
                 - {owner}
             )
-            statements = ast.parse("\n".join(sorted(set(imports.values())))).body
+            statements = FlextInfraUtilitiesRopeAnalysis.parsed_module(
+                "\n".join(sorted(set(imports.values())))
+            ).body
             if siblings:
                 statements.extend((
-                    ast.ImportFrom(
+                    FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom(
                         module="typing",
-                        names=[ast.alias(name="TYPE_CHECKING")],
+                        names=[
+                            FlextInfraUtilitiesRopeAnalysis.Tree.Alias(
+                                name="TYPE_CHECKING"
+                            )
+                        ],
                         level=0,
                     ),
-                    ast.If(
-                        test=ast.Name(id="TYPE_CHECKING", ctx=ast.Load()),
+                    FlextInfraUtilitiesRopeAnalysis.Tree.If(
+                        test=FlextInfraUtilitiesRopeAnalysis.Tree.Name(
+                            id="TYPE_CHECKING",
+                            ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
+                        ),
                         body=[
-                            ast.ImportFrom(
+                            FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom(
                                 module=f"{self.package_name}.{directory.name}",
-                                names=[ast.alias(name=name) for name in siblings],
+                                names=[
+                                    FlextInfraUtilitiesRopeAnalysis.Tree.Alias(
+                                        name=name
+                                    )
+                                    for name in siblings
+                                ],
                                 level=0,
                             )
                         ],
@@ -176,8 +205,12 @@ class FlextInfraUtilitiesModelsProtocol:
                     ),
                 ))
             statements.extend((wrapper, exports))
-            content = ast.unparse(
-                ast.fix_missing_locations(ast.Module(body=statements, type_ignores=[]))
+            content = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
+                FlextInfraUtilitiesRopeAnalysis.Tree.fix_missing_locations(
+                    FlextInfraUtilitiesRopeAnalysis.Tree.Module(
+                        body=statements, type_ignores=[]
+                    )
+                )
             )
             token = route.replace(".", "_").lower()
             return (
@@ -235,7 +268,10 @@ class FlextInfraUtilitiesModelsProtocol:
                     self.project, resource
                 )
                 if not self.source_module(module):
-                    message = f"indexed protocol file is not a source module: {entry.file_path}"
+                    message = (
+                        f"indexed protocol file is not a source module: "
+                        f"{entry.file_path}"
+                    )
                     raise TypeError(message)
                 if not {"m", "p"}.intersection(
                     FlextInfraUtilitiesRopeAnalysis.public_export_names_source(module)
@@ -345,7 +381,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         selected.add(route)
             return selected
 
-        def _fields(self, binding: p.Infra.RopePyName) -> list[ast.stmt]:
+        def _fields(self, binding: p.Infra.RopePyName) -> list[t.Infra.AstStatement]:
             """Retain inherited annotated data, never defaults or model methods.
 
             Returns:
@@ -355,29 +391,36 @@ class FlextInfraUtilitiesModelsProtocol:
                 TypeError: If a model declaration is absent.
 
             """
-            fields: dict[str, ast.stmt] = {}
+            fields: dict[str, t.Infra.AstStatement] = {}
             definition = self._source_class(binding).get_ast()
-            if not isinstance(definition, ast.ClassDef):
+            if not isinstance(
+                definition, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef
+            ):
                 message = "model has no authenticated class declaration"
                 raise TypeError(message)
             self.parameters = {
                 parameter.name
                 for parameter in definition.type_params
-                if isinstance(parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+                if isinstance(
+                    parameter,
+                    FlextInfraUtilitiesRopeAnalysis.Tree.TypeVar
+                    | FlextInfraUtilitiesRopeAnalysis.Tree.ParamSpec
+                    | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVarTuple,
+                )
             }
             for ancestor in reversed(self._lineage(binding.get_object(), ())):
                 if not self.py_class(ancestor):
                     continue
                 node, lexical = ancestor.get_ast(), ancestor.get_scope()
-                if not isinstance(node, ast.ClassDef):
+                if not isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                     message = "model ancestor has no authenticated class declaration"
                     raise TypeError(message)
                 self._collect_fields(node, lexical, fields)
             return list(fields.values())
 
         def _field_declaration(
-            self, statement: ast.stmt, scope: p.Infra.RopeScope
-        ) -> tuple[str, ast.expr] | None:
+            self, statement: t.Infra.AstStatement, scope: p.Infra.RopeScope
+        ) -> tuple[str, t.Infra.AstExpression] | None:
             """Select annotated storage or a native computed field's return type.
 
             Returns:
@@ -387,13 +430,19 @@ class FlextInfraUtilitiesModelsProtocol:
                 TypeError: If a computed field has no return annotation.
 
             """
-            if isinstance(statement, ast.AnnAssign) and isinstance(
-                statement.target, ast.Name
+            if isinstance(
+                statement, FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign
+            ) and isinstance(
+                statement.target, FlextInfraUtilitiesRopeAnalysis.Tree.Name
             ):
                 return statement.target.id, statement.annotation
-            if not isinstance(statement, ast.FunctionDef) or not any(
+            if not isinstance(
+                statement, FlextInfraUtilitiesRopeAnalysis.Tree.FunctionDef
+            ) or not any(
                 self._denotes(
-                    decorator.func if isinstance(decorator, ast.Call) else decorator,
+                    decorator.func
+                    if isinstance(decorator, FlextInfraUtilitiesRopeAnalysis.Tree.Call)
+                    else decorator,
                     scope,
                     "pydantic",
                     "computed_field",
@@ -408,9 +457,9 @@ class FlextInfraUtilitiesModelsProtocol:
 
         def _collect_fields(
             self,
-            node: ast.ClassDef,
+            node: t.Infra.AstClassDefinition,
             scope: p.Infra.RopeScope,
-            fields: dict[str, ast.stmt],
+            fields: dict[str, t.Infra.AstStatement],
         ) -> None:
             """Apply one native declaration's field overrides in C3 collection order."""
             for statement in node.body:
@@ -421,22 +470,26 @@ class FlextInfraUtilitiesModelsProtocol:
                 if name.startswith("_") or name == "model_config":
                     continue
                 if isinstance(
-                    statement, ast.AnnAssign
+                    statement, FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign
                 ) and self._declares_class_storage(self.project, scope, statement):
                     fields.pop(name, None)
                     continue
-                if isinstance(annotation, ast.Subscript) and self._denotes(
-                    annotation.value, scope, "typing", "Final"
-                ):
+                if isinstance(
+                    annotation, FlextInfraUtilitiesRopeAnalysis.Tree.Subscript
+                ) and self._denotes(annotation.value, scope, "typing", "Final"):
                     annotation = annotation.slice
-                fields[name] = ast.AnnAssign(
-                    target=ast.Name(id=name, ctx=ast.Store()),
+                fields[name] = FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign(
+                    target=FlextInfraUtilitiesRopeAnalysis.Tree.Name(
+                        id=name, ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Store()
+                    ),
                     annotation=self._annotation(annotation, scope, ()),
                     value=None,
                     simple=1,
                 )
 
-        def _type_parameters(self, binding: p.Infra.RopePyName) -> list[ast.type_param]:
+        def _type_parameters(
+            self, binding: p.Infra.RopePyName
+        ) -> list[t.Infra.AstTypeParameter]:
             """Rebind parameter bounds without mutating the engine's cached AST.
 
             Returns:
@@ -448,14 +501,17 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             source = self._source_class(binding)
             node = source.get_ast()
-            if not isinstance(node, ast.ClassDef):
+            if not isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                 message = "model parameters have no native class declaration"
                 raise TypeError(message)
             scope = source.get_scope()
-            parameters: list[ast.type_param] = []
+            parameters: list[t.Infra.AstTypeParameter] = []
             for parameter in node.type_params:
                 if not isinstance(
-                    parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple
+                    parameter,
+                    FlextInfraUtilitiesRopeAnalysis.Tree.TypeVar
+                    | FlextInfraUtilitiesRopeAnalysis.Tree.ParamSpec
+                    | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVarTuple,
                 ):
                     message = "model has an unsupported native type parameter"
                     raise TypeError(message)
@@ -464,24 +520,30 @@ class FlextInfraUtilitiesModelsProtocol:
                     if parameter.default_value is not None
                     else None
                 )
-                if isinstance(parameter, ast.TypeVar):
+                if isinstance(parameter, FlextInfraUtilitiesRopeAnalysis.Tree.TypeVar):
                     bound = (
                         self._annotation(parameter.bound, scope, ())
                         if parameter.bound is not None
                         else None
                     )
                     parameters.append(
-                        ast.TypeVar(
+                        FlextInfraUtilitiesRopeAnalysis.Tree.TypeVar(
                             name=parameter.name, bound=bound, default_value=default
                         )
                     )
-                elif isinstance(parameter, ast.ParamSpec):
+                elif isinstance(
+                    parameter, FlextInfraUtilitiesRopeAnalysis.Tree.ParamSpec
+                ):
                     parameters.append(
-                        ast.ParamSpec(name=parameter.name, default_value=default)
+                        FlextInfraUtilitiesRopeAnalysis.Tree.ParamSpec(
+                            name=parameter.name, default_value=default
+                        )
                     )
                 else:
                     parameters.append(
-                        ast.TypeVarTuple(name=parameter.name, default_value=default)
+                        FlextInfraUtilitiesRopeAnalysis.Tree.TypeVarTuple(
+                            name=parameter.name, default_value=default
+                        )
                     )
             return parameters
 
@@ -520,34 +582,48 @@ class FlextInfraUtilitiesModelsProtocol:
             return (value, *(owners[identity] for identity in merged))
 
         def _annotation(
-            self, node: ast.expr, scope: p.Infra.RopeScope, visiting: t.StrTuple
-        ) -> ast.expr:
+            self,
+            node: t.Infra.AstExpression,
+            scope: p.Infra.RopeScope,
+            visiting: t.StrTuple,
+        ) -> t.Infra.AstExpression:
             """Restore source-bound annotation closure without target imports.
 
             Returns:
                 A structural annotation with model dependencies projected to p.
 
             """
-            if isinstance(node, ast.Name) and node.id in self.parameters:
+            if (
+                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                and node.id in self.parameters
+            ):
                 return node
-            if isinstance(node, ast.Constant):
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Constant):
                 if isinstance(node.value, str):
                     return self._annotation(
-                        ast.parse(node.value, mode="eval").body, scope, visiting
+                        FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
+                            node.value
+                        ),
+                        scope,
+                        visiting,
                     )
                 return node
-            if isinstance(node, ast.Subscript):
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Subscript):
                 return self._annotation_subscript(node, scope, visiting)
-            if isinstance(node, ast.Name | ast.Attribute):
+            if isinstance(
+                node,
+                FlextInfraUtilitiesRopeAnalysis.Tree.Name
+                | FlextInfraUtilitiesRopeAnalysis.Tree.Attribute,
+            ):
                 return self._annotation_symbol(node, scope, visiting)
             return self._annotation_container(node, scope, visiting)
 
         def _annotation_subscript(
             self,
-            node: ast.Subscript,
+            node: t.Infra.AstSubscript,
             scope: p.Infra.RopeScope,
             visiting: t.StrTuple,
-        ) -> ast.expr:
+        ) -> t.Infra.AstExpression:
             """Retain generic arguments without interpreting literal or metadata data.
 
             Returns:
@@ -558,26 +634,28 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             if self._denotes(node.value, scope, "typing", "Annotated"):
-                if not isinstance(node.slice, ast.Tuple):
+                if not isinstance(
+                    node.slice, FlextInfraUtilitiesRopeAnalysis.Tree.Tuple
+                ):
                     message = "Annotated has no native payload"
                     raise ValueError(message)
                 return self._annotation(node.slice.elts[0], scope, visiting)
-            return ast.Subscript(
+            return FlextInfraUtilitiesRopeAnalysis.Tree.Subscript(
                 value=self._annotation(node.value, scope, visiting),
                 slice=(
                     node.slice
                     if self._denotes(node.value, scope, "typing", "Literal")
                     else self._annotation(node.slice, scope, visiting)
                 ),
-                ctx=ast.Load(),
+                ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
             )
 
         def _annotation_container(
             self,
-            node: ast.expr,
+            node: t.Infra.AstExpression,
             scope: p.Infra.RopeScope,
             visiting: t.StrTuple,
-        ) -> ast.expr:
+        ) -> t.Infra.AstExpression:
             """Project native union, sequence and unpacking annotation shapes.
 
             Returns:
@@ -587,33 +665,46 @@ class FlextInfraUtilitiesModelsProtocol:
                 TypeError: If the native shape is unsupported.
 
             """
-            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-                return ast.BinOp(
+            if isinstance(
+                node, FlextInfraUtilitiesRopeAnalysis.Tree.BinOp
+            ) and isinstance(node.op, FlextInfraUtilitiesRopeAnalysis.Tree.BitOr):
+                return FlextInfraUtilitiesRopeAnalysis.Tree.BinOp(
                     left=self._annotation(node.left, scope, visiting),
-                    op=ast.BitOr(),
+                    op=FlextInfraUtilitiesRopeAnalysis.Tree.BitOr(),
                     right=self._annotation(node.right, scope, visiting),
                 )
-            if isinstance(node, ast.Tuple | ast.List):
+            if isinstance(
+                node,
+                FlextInfraUtilitiesRopeAnalysis.Tree.Tuple
+                | FlextInfraUtilitiesRopeAnalysis.Tree.List,
+            ):
                 values = [self._annotation(item, scope, visiting) for item in node.elts]
                 return (
-                    ast.Tuple(elts=values, ctx=ast.Load())
-                    if isinstance(node, ast.Tuple)
-                    else ast.List(elts=values, ctx=ast.Load())
+                    FlextInfraUtilitiesRopeAnalysis.Tree.Tuple(
+                        elts=values, ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load()
+                    )
+                    if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Tuple)
+                    else FlextInfraUtilitiesRopeAnalysis.Tree.List(
+                        elts=values, ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load()
+                    )
                 )
-            if isinstance(node, ast.Starred):
-                return ast.Starred(
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Starred):
+                return FlextInfraUtilitiesRopeAnalysis.Tree.Starred(
                     value=self._annotation(node.value, scope, visiting),
-                    ctx=ast.Load(),
+                    ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
                 )
-            message = f"unsupported native model annotation: {ast.unparse(node)}"
+            message = (
+                f"unsupported native model annotation: "
+                f"{FlextInfraUtilitiesRopeAnalysis.Tree.unparse(node)}"
+            )
             raise TypeError(message)
 
         def _annotation_symbol(
             self,
-            node: ast.Name | ast.Attribute,
+            node: t.Infra.AstExpression,
             scope: p.Infra.RopeScope,
             visiting: t.StrTuple,
-        ) -> ast.expr:
+        ) -> t.Infra.AstExpression:
             """Resolve model, authored port and alias identities in the native scope.
 
             Returns:
@@ -629,7 +720,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 node, scope, "typing", "Any"
             ):
                 message = (
-                    f"forbidden generated protocol annotation: {ast.unparse(node)}"
+                    f"forbidden generated protocol annotation: "
+                    f"{FlextInfraUtilitiesRopeAnalysis.Tree.unparse(node)}"
                 )
                 raise TypeError(message)
             projected = self._model_annotation(node, scope, binding)
@@ -650,22 +742,29 @@ class FlextInfraUtilitiesModelsProtocol:
                     return self._annotation(
                         declaration.value, lexical, (*visiting, name)
                     )
-            root = ast.unparse(node).partition(".")[0]
+            root = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(node).partition(".")[0]
             if binding is not None and self.same_name(
                 self.facades["p"], self.expression_name(scope, root)
             ):
-                return self._declared_port(binding, ast.unparse(node).partition(".")[2])
-            source = ast.unparse(node)
+                return self._declared_port(
+                    binding,
+                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(node).partition(".")[
+                        2
+                    ],
+                )
+            source = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(node)
             aliases = self._imports(source, scope)
             renamed = aliases.get(root, root)
-            return ast.parse(f"{renamed}{source[len(root) :]}", mode="eval").body
+            return FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
+                f"{renamed}{source[len(root) :]}"
+            )
 
         def _model_annotation(
             self,
-            node: ast.Name | ast.Attribute,
+            node: t.Infra.AstExpression,
             scope: p.Infra.RopeScope,
             binding: p.Infra.RopePyName | None,
-        ) -> ast.expr | None:
+        ) -> t.Infra.AstExpression | None:
             """Select a consumed model dependency or preserve its authored port.
 
             Returns:
@@ -673,7 +772,9 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             for route, model in self.models.items():
-                root, separator, tail = ast.unparse(node).partition(".")
+                root, separator, tail = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
+                    node
+                ).partition(".")
                 future_port = (
                     separator
                     and tail == route
@@ -694,10 +795,14 @@ class FlextInfraUtilitiesModelsProtocol:
                         return self._declared_port(port, route)
                     self.selected.add(route)
                     self.dependencies.add(route)
-                    return ast.parse(self.references[route], mode="eval").body
+                    return FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
+                        self.references[route]
+                    )
             return None
 
-        def _declared_port(self, binding: p.Infra.RopePyName, route: str) -> ast.expr:
+        def _declared_port(
+            self, binding: p.Infra.RopePyName, route: str
+        ) -> t.Infra.AstExpression:
             """Retain an authored contract through its nearest family export.
 
             Returns:
@@ -738,11 +843,13 @@ class FlextInfraUtilitiesModelsProtocol:
                 module.get_name(), resource
             )
             self.imports[names[0]] = f"from {package} import {names[0]}"
-            return ast.parse(".".join(names), mode="eval").body
+            return FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
+                ".".join(names)
+            )
 
         def _inherited_port(
             self, binding: p.Infra.RopePyName, route: str
-        ) -> ast.expr | None:
+        ) -> t.Infra.AstExpression | None:
             """Retain upstream namespaces through their native published p alias.
 
             Returns:
@@ -775,7 +882,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 provider = module.get_name().rpartition(".")[0]
                 alias = f"{provider.replace('.', '_')}_p"
                 self.imports[alias] = f"from {provider} import p as {alias}"
-                return ast.parse(f"{alias}.{route}", mode="eval").body
+                return FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
+                    f"{alias}.{route}"
+                )
             return None
 
         def _imports(self, source: str, scope: p.Infra.RopeScope) -> Mapping[str, str]:
@@ -899,7 +1008,11 @@ class FlextInfraUtilitiesModelsProtocol:
             )
 
         def _denotes(
-            self, node: ast.expr, scope: p.Infra.RopeScope, module: str, name: str
+            self,
+            node: t.Infra.AstExpression,
+            scope: p.Infra.RopeScope,
+            module: str,
+            name: str,
         ) -> bool:
             return self.same_name(
                 self.qualified_name(self.project, name, module_name=module),

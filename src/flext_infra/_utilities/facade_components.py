@@ -18,10 +18,6 @@ import sys
 from collections.abc import Mapping, Sequence
 from importlib.metadata import packages_distributions
 from pathlib import Path
-from typing import override
-
-from libcst import Attribute, CSTTransformer, Module, parse_expression, parse_module
-from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
@@ -39,6 +35,9 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
@@ -136,42 +135,49 @@ class FlextInfraUtilitiesFacadeComponents:
                 for node, _original, destination in calls
             }
             source = module.source_code
-            wrapper = MetadataWrapper(parse_module(source))
-            elected = cls._component_elected_attributes(wrapper, source, replacements)
-            if len(elected) != len(replacements):
-                msg = f"component reference differs from its candidate: {path}"
-                raise ValueError(msg)
-
-            class Rewrite(CSTTransformer):
-                """Apply all identity-proven references in one source traversal."""
-
-                @override
-                def leave_Attribute(
-                    self,
-                    original_node: t.Infra.Cst.Attribute,
-                    updated_node: t.Infra.Cst.Attribute,
-                    *,
-                    destinations: Mapping[t.Infra.Cst.Attribute, str] = elected,
-                ) -> t.Infra.Cst.BaseExpression:
-                    destination = destinations.get(original_node)
-                    return (
-                        parse_expression(destination)
-                        if destination is not None
-                        else updated_node
-                    )
-
-            updated = wrapper.module.visit(Rewrite())
-            if not isinstance(updated, Module):
+            tree = module.get_ast()
+            if not isinstance(tree, ast.Module):
                 msg = f"component rewrite lost its source module: {path}"
                 raise TypeError(msg)
-            if updated.code != source:
+            present = {
+                (node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Attribute)
+            }
+            if not set(replacements) <= present:
+                msg = f"component reference differs from its candidate: {path}"
+                raise ValueError(msg)
+            lines = source.splitlines(keepends=True)
+            rewrites = tuple(
+                m.Infra.SourceRewrite(
+                    start=FlextInfraUtilitiesFacadeComponents._span_char_offset(
+                        lines, start_line, start_column
+                    ),
+                    end=FlextInfraUtilitiesFacadeComponents._span_char_offset(
+                        lines, end_line, end_column
+                    ),
+                    text=destination,
+                )
+                for (
+                    start_line,
+                    start_column,
+                    end_line,
+                    end_column,
+                ), destination in sorted(replacements.items())
+            )
+            updated = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                resource,
+                source,
+                rewrites,
+            ).new_contents
+            if updated != source:
                 plans.append(
                     FlextInfraUtilitiesCodegenFilePlan.source_file_plan_from_edit(
                         root,
                         m.Infra.SemanticMigrationEdit(
                             file_path=path,
                             original_source=source,
-                            updated_source=updated.code,
+                            updated_source=updated,
                         ),
                         source_project=source_project,
                         declared_files=declared,
@@ -180,31 +186,19 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(plans)
 
     @staticmethod
-    def _component_elected_attributes(
-        wrapper: t.Infra.CstMetadata,
-        source: str,
-        replacements: Mapping[tuple[int, int, int | None, int | None], str],
-    ) -> dict[t.Infra.Cst.Attribute, str]:
-        """Match native byte spans to concrete syntax nodes without changing text.
+    def _span_char_offset(
+        lines: Sequence[str],
+        line_number: int,
+        byte_column: int,
+    ) -> int:
+        """Resolve one AST byte column to its character offset in source.
 
         Returns:
-            The identity-proven replacements on this exact wrapped source tree.
+            The absolute character offset of the span corner.
 
         """
-        lines = source.splitlines()
-        elected: dict[t.Infra.Cst.Attribute, str] = {}
-        for node, span in wrapper.resolve(PositionProvider).items():
-            if not isinstance(node, Attribute):
-                continue
-            key = (
-                span.start.line,
-                len(lines[span.start.line - 1][: span.start.column].encode("utf-8")),
-                span.end.line,
-                len(lines[span.end.line - 1][: span.end.column].encode("utf-8")),
-            )
-            if key in replacements:
-                elected[node] = replacements[key]
-        return elected
+        prefix = lines[line_number - 1].encode("utf-8")[:byte_column].decode("utf-8")
+        return sum(len(line) for line in lines[: line_number - 1]) + len(prefix)
 
     @classmethod
     def assert_provider_publications_closed(
@@ -422,12 +416,8 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             seen.add(base)
             ancestors.append(base)
-            pending.extend(
-                (base, base_name)
-                for base_name in FlextInfraUtilitiesFacadeComponents._component_base_names(
-                    base
-                )
-            )
+            base_names = FlextInfraUtilitiesFacadeComponents._component_base_names
+            pending.extend((base, base_name) for base_name in base_names(base))
         return tuple(ancestors)
 
     @classmethod

@@ -9,12 +9,8 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, u
 
 
 class FlextInfraRefactorCensusObjects:
@@ -65,7 +61,7 @@ class FlextInfraRefactorCensusObjects:
         )
 
     @staticmethod
-    def unused(item: m.Infra.Object) -> bool:
+    def unused(item: m.Infra.Object, *, source_project: p.Infra.RopeProject) -> bool:
         """Report a public object with collected evidence of zero references.
 
         Returns:
@@ -78,15 +74,22 @@ class FlextInfraRefactorCensusObjects:
             and item.references_count == 0
             and not item.name.startswith("_")
             and not FlextInfraRefactorCensusObjects._is_pytest_entry_point(item)
-            and not FlextInfraRefactorCensusObjects._is_published_export(item)
+            and not FlextInfraRefactorCensusObjects._is_published_export(
+                item, source_project=source_project
+            )
         )
 
     @staticmethod
-    def _is_published_export(item: m.Infra.Object) -> bool:
+    def _is_published_export(
+        item: m.Infra.Object, *, source_project: p.Infra.RopeProject
+    ) -> bool:
         """Keep package ABI bindings even when Rope sees only typing imports.
 
         Returns:
             The resulting ``bool``.
+
+        Raises:
+            TypeError: If Census publication requires native source.
 
         """
         if item.scope_path != item.name:
@@ -96,10 +99,20 @@ class FlextInfraRefactorCensusObjects:
         while package_name:
             init_path = package_dir / c.Infra.INIT_PY
             if init_path.is_file():
-                source = init_path.read_text(encoding="utf-8")
-                for export_name in u.Infra.public_export_names_source(source):
+                module = u.Infra.resolve_pymodule(
+                    source_project,
+                    source_project.get_file(
+                        init_path.relative_to(
+                            Path(source_project.root.real_path)
+                        ).as_posix()
+                    ),
+                )
+                if not isinstance(module, p.Infra.RopeSourceModule):
+                    msg = f"Census publication requires native source: {init_path}"
+                    raise TypeError(msg)
+                for export_name in u.Infra.public_export_names_source(module):
                     module_name, original_name = u.Infra.imported_symbol_binding_source(
-                        source,
+                        module.source_code,
                         current_module=package_name,
                         symbol_name=export_name,
                         package_module=True,
@@ -135,6 +148,7 @@ class FlextInfraRefactorCensusObjects:
         item: m.Infra.Object,
         *,
         include_unused: bool,
+        unused: bool,
     ) -> m.Infra.RemovalCandidate | None:
         """Build a removal candidate for an object.
 
@@ -142,7 +156,7 @@ class FlextInfraRefactorCensusObjects:
             The resulting ``m.Infra.RemovalCandidate | None``.
 
         """
-        if include_unused and cls.unused(item):
+        if include_unused and unused:
             reason, suggested_action = "unused", "delete_object_definition"
         else:
             return None

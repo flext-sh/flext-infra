@@ -51,6 +51,24 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @staticmethod
+    def _unique_class_binding_root(
+        bindings: MutableSequence[ast.Assign | ast.AnnAssign],
+    ) -> ast.expr | None:
+        """Return the root expression of one unambiguous module binding.
+
+        Returns:
+            The root expression below attribute access, or ``None`` when the
+            name has no single binding carrying a value.
+
+        """
+        if len(bindings) != 1 or bindings[0].value is None:
+            return None
+        root: ast.expr = bindings[0].value
+        while isinstance(root, ast.Attribute):
+            root = root.value
+        return root
+
+    @staticmethod
     def facade_letter_names_at(
         project: p.Infra.RopeProject,
         path: Path,
@@ -111,12 +129,9 @@ class FlextInfraUtilitiesRopeModulePatch:
         ):
             if not name.islower() or name.startswith("_"):
                 continue
-            bindings = bindings_by_name.get(name, [])
-            if len(bindings) != 1 or bindings[0].value is None:
-                continue
-            root = bindings[0].value
-            while isinstance(root, ast.Attribute):
-                root = root.value
+            root = FlextInfraUtilitiesRopeModulePatch._unique_class_binding_root(
+                bindings_by_name.get(name, []),
+            )
             if isinstance(root, ast.Name) and root.id in class_names:
                 letters.add(name)
         return frozenset(letters)
@@ -223,6 +238,42 @@ class FlextInfraUtilitiesRopeModulePatch:
             message = "__all__ declaration shares a source line with another statement"
             raise ValueError(message)
         lines[declaration.lineno - 1 : declaration.end_lineno] = [rendered]
+        return "".join(lines)
+
+    @staticmethod
+    def ensure_from_import(source: str, *, module: str, name: str) -> str:
+        """Insert one top-level from-import after the module header when absent.
+
+        The module header is the leading docstring and import block; the
+        from-import joins its end. A binding already present at module scope
+        leaves the source untouched.
+
+        Returns:
+            Source with ``from <module> import <name>`` present at module scope.
+
+        """
+        for statement in ast.parse(source).body:
+            if (
+                isinstance(statement, ast.ImportFrom)
+                and statement.level == 0
+                and statement.module == module
+                and any(alias.name == name for alias in statement.names)
+            ):
+                return source
+        lines = source.splitlines(keepends=True)
+        header_end = 0
+        for statement in ast.parse(source).body:
+            is_docstring = (
+                isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Constant)
+                and isinstance(statement.value.value, str)
+            )
+            if not is_docstring and not isinstance(
+                statement, ast.Import | ast.ImportFrom
+            ):
+                break
+            header_end = statement.end_lineno or statement.lineno
+        lines.insert(header_end, f"from {module} import {name}\n")
         return "".join(lines)
 
 

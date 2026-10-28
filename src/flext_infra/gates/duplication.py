@@ -14,10 +14,12 @@ from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_infra import c, config, m, r, u
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
-from flext_infra.gates import FlextInfraGate
-from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
-from flext_infra.gates.duplication_report import FlextInfraDuplicationReport
+from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
+from flext_infra.gates import (
+    FlextInfraDuplicationEvidence,
+    FlextInfraDuplicationReport,
+    FlextInfraGate,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p

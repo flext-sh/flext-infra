@@ -38,6 +38,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
@@ -406,6 +407,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         modules: Mapping[str, tuple[str, bool]],
         utility_directory: str,
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> tuple[
         Mapping[tuple[str, str], Sequence[tuple[str, str]]],
         frozenset[tuple[str, str, str, str]],
@@ -423,7 +426,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if utility_directory not in parts:
                 continue
             tree = ast.parse(source)
-            exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
+            exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    source_project.get_module(module)
+                )
+            )
             for declaration in tree.body:
                 if (
                     not isinstance(declaration, ast.ClassDef)
@@ -668,12 +675,18 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for project_root, owner_sources in owners.items():
             modules = cls.behavior_source_modules({**production, **owner_sources})
-            ownership = cls.behavior_utility_owners(
-                modules,
-                FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
-                    c.Infra.UTILITIES_PY
-                ).directory,
-            )
+            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                Path(source_project.root.real_path),
+                planned_sources={**production, **owner_sources},
+                source_project=source_project,
+            ) as (bound_project, _captured):
+                ownership = cls.behavior_utility_owners(
+                    modules,
+                    FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
+                        c.Infra.UTILITIES_PY
+                    ).directory,
+                    source_project=bound_project,
+                )
 
             def rewrite(
                 path: Path,

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import (
     Iterable,
     Mapping,
@@ -17,8 +16,9 @@ from collections.abc import (
 from importlib.util import resolve_name
 from pathlib import Path
 
-from flext_infra import c
+from flext_infra import c, p, t
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesPrivateImportFacades:
@@ -83,7 +83,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
         reverse: MutableMapping[str, set[str]] = {}
         for module, (source, is_package) in sources.items():
             package = module if is_package else module.rpartition(".")[0]
-            for node in ast.walk(ast.parse(source, filename=module)):
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+                FlextInfraUtilitiesRopeAnalysis.parsed_module(source, filename=module)
+            ):
                 for imported in (
                     FlextInfraUtilitiesPrivateImportFacades._statement_imported_modules(
                         node,
@@ -102,8 +104,12 @@ class FlextInfraUtilitiesPrivateImportFacades:
             {
                 node.module
                 for statement in statements
-                for node in ast.walk(ast.parse(statement))
-                if isinstance(node, ast.ImportFrom) and not node.level and node.module
+                for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+                    FlextInfraUtilitiesRopeAnalysis.parsed_module(statement)
+                )
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom)
+                and not node.level
+                and node.module
             },
         )
         return {
@@ -112,7 +118,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
     @staticmethod
     def _statement_imported_modules(
-        node: ast.AST,
+        node: t.Infra.RopeAstNode,
         package: str,
         sources: Mapping[str, tuple[str, bool]],
     ) -> tuple[str, ...]:
@@ -123,9 +129,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
         """
         imported_modules: set[str] = set()
-        if isinstance(node, ast.Import):
+        if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Import):
             imported_modules.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom):
+        elif isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom):
             if node.level > len(package.split(".")):
                 # This import has no absolute module identity. It cannot
                 # connect the module to any requested private owner.
@@ -186,6 +192,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def declared_exports(
         sources: Mapping[str, tuple[str, bool]],
+        *,
+        project: p.Infra.RopeProject,
     ) -> tuple[MutableMapping[str, set[str]], MutableMapping[str, set[str]]]:
         """Index declared public exports and module/class binding identities.
 
@@ -193,14 +201,29 @@ class FlextInfraUtilitiesPrivateImportFacades:
             The resulting ``tuple[MutableMapping[str, set[str]], MutableMapping[str,
                 set[str]]]``.
 
+        Raises:
+            ValueError: A declared module has no native source resource.
+
         """
         bindings: MutableMapping[str, set[str]] = {}
         exports: MutableMapping[str, set[str]] = {}
         for module, (source, is_package) in sorted(sources.items()):
             package = module if is_package else module.rpartition(".")[0]
-            tree = ast.parse(source, filename=module)
+            tree = FlextInfraUtilitiesRopeAnalysis.parsed_module(
+                source, filename=module
+            )
+            native = project.get_module(module)
+            resource = native.get_resource()
+            if resource is None:
+                message = f"declared export module has no source: {module}"
+                raise ValueError(message)
+            if resource.is_folder():
+                resource = project.get_resource(f"{resource.path}/{c.Infra.INIT_PY}")
+            source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                project.get_pymodule(resource)
+            )
             public_names = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                source,
+                source_module,
             )
             lazy_exports, lazy_name = (
                 FlextInfraUtilitiesRopeAnalysis.lazy_public_exports_source(source)
@@ -238,19 +261,19 @@ class FlextInfraUtilitiesPrivateImportFacades:
             self.lazy_exports, self.lazy_name = lazy
             self.scope = scope or module
 
-        def collect(self, statements: Sequence[ast.stmt]) -> None:
+        def collect(self, statements: Sequence[t.Infra.AstStatement]) -> None:
             """Index every binding one statement suite declares."""
             for node in statements:
-                if isinstance(node, ast.ImportFrom):
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom):
                     self._bind_import(node)
                 elif isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                     self._bind_definition(node)
                 elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
                     self._bind_assignment(node)
-                elif isinstance(node, ast.If):
+                elif isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.If):
                     self._collect_branches(node)
 
-        def _bind_import(self, node: ast.ImportFrom) -> None:
+        def _bind_import(self, node: t.Infra.AstImportFrom) -> None:
             """Bind every non-star import alias to its resolved source module."""
             imported_module = (
                 resolve_name("." * node.level + (node.module or ""), self.package)
@@ -266,7 +289,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
         def _bind_definition(
             self,
-            node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            node: t.Infra.AstClassDefinition | t.Infra.AstFunctionDefinition,
         ) -> None:
             """Bind one runtime declaration over any earlier imported name.
 
@@ -276,7 +299,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             """
             identity = f"{self.scope}.{node.name}"
             self.bindings[identity] = {identity}
-            if isinstance(node, ast.ClassDef):
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                 FlextInfraUtilitiesPrivateImportFacades._ExportBindingCollector(
                     self.bindings,
                     package=self.package,
@@ -285,7 +308,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     scope=identity,
                 ).collect(node.body)
 
-        def _bind_assignment(self, node: ast.Assign | ast.AnnAssign) -> None:
+        def _bind_assignment(self, node: t.Infra.AstAssignment) -> None:
             """Bind one module or class assignment to its last declaration.
 
             Assignments are runtime rebinding, not an additional
@@ -294,17 +317,23 @@ class FlextInfraUtilitiesPrivateImportFacades:
             """
             if node.value is None:
                 return
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            targets = (
+                node.targets
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Assign)
+                else [node.target]
+            )
             for target in targets:
-                if isinstance(target, ast.Name):
+                if isinstance(target, FlextInfraUtilitiesRopeAnalysis.Tree.Name):
                     identity = f"{self.scope}.{target.id}"
                     value = node.value
                     parts: list[str] = []
-                    while isinstance(value, ast.Attribute):
+                    while isinstance(
+                        value, FlextInfraUtilitiesRopeAnalysis.Tree.Attribute
+                    ):
                         parts.insert(0, value.attr)
                         value = value.value
                     destination = identity
-                    if isinstance(value, ast.Name):
+                    if isinstance(value, FlextInfraUtilitiesRopeAnalysis.Tree.Name):
                         local = f"{self.scope}.{value.id}"
                         root = (
                             local
@@ -314,10 +343,11 @@ class FlextInfraUtilitiesPrivateImportFacades:
                         destination = ".".join((root, *parts))
                     self.bindings[identity] = {destination}
 
-        def _collect_branches(self, node: ast.If) -> None:
+        def _collect_branches(self, node: t.Infra.AstIfStatement) -> None:
             """Enter conditional branches outside type-only lazy facades."""
             type_only = (
-                isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
+                isinstance(node.test, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                and node.test.id == "TYPE_CHECKING"
             )
             if not type_only or self.lazy_exports or self.lazy_name:
                 self.collect(node.body)
@@ -454,24 +484,30 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def discover(
         sources: Mapping[str, tuple[str, bool]],
-    ) -> Mapping[str, tuple[tuple[ast.Module, str, str, str], ...]]:
+    ) -> Mapping[str, tuple[tuple[t.Infra.AstModule, str, str, str], ...]]:
         """Discover facade aliases and roots from live source assignments.
 
         Returns:
-            The resulting ``Mapping[str, tuple[tuple[ast.Module, str,
+            The resulting ``Mapping[str, tuple[tuple[t.Infra.AstModule, str,
                 str, str], ...]]``.
 
         """
-        discovered: MutableMapping[str, list[tuple[ast.Module, str, str, str]]] = {}
+        discovered: MutableMapping[
+            str, list[tuple[t.Infra.AstModule, str, str, str]]
+        ] = {}
         for module, (source, is_package) in sorted(sources.items()):
             if is_package:
                 continue
             package, _, name = module.rpartition(".")
             if not package:
                 continue
-            tree = ast.parse(source, filename=module)
+            tree = FlextInfraUtilitiesRopeAnalysis.parsed_module(
+                source, filename=module
+            )
             class_names = {
-                node.name for node in tree.body if isinstance(node, ast.ClassDef)
+                node.name
+                for node in tree.body
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef)
             }
             for alias, root_name in sorted(
                 FlextInfraUtilitiesPrivateImportFacades._facade_owners(
@@ -491,22 +527,25 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
     @staticmethod
     def assigned_target_value(
-        node: ast.stmt,
-    ) -> tuple[ast.expr | None, ast.expr | None]:
+        node: t.Infra.AstStatement,
+    ) -> tuple[t.Infra.AstExpression | None, t.Infra.AstExpression | None]:
         """Return one single-target assignment's target and value, if any.
 
         Returns:
             The resulting ``(target, value)`` pair.
 
         """
-        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+        if (
+            isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Assign)
+            and len(node.targets) == 1
+        ):
             return node.targets[0], node.value
-        if isinstance(node, ast.AnnAssign):
+        if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign):
             return node.target, node.value
         return None, None
 
     @staticmethod
-    def facade_class_name(value: ast.expr | None) -> str | None:
+    def facade_class_name(value: t.Infra.AstExpression | None) -> str | None:
         """Return the facade class one declaration value names, if any.
 
         The canonical facade singleton form is
@@ -516,12 +555,12 @@ class FlextInfraUtilitiesPrivateImportFacades:
             The resulting ``str | None``.
 
         """
-        if isinstance(value, ast.Name):
+        if isinstance(value, FlextInfraUtilitiesRopeAnalysis.Tree.Name):
             return value.id
         if (
-            isinstance(value, ast.Call)
-            and isinstance(value.func, ast.Attribute)
-            and isinstance(value.func.value, ast.Name)
+            isinstance(value, FlextInfraUtilitiesRopeAnalysis.Tree.Call)
+            and isinstance(value.func, FlextInfraUtilitiesRopeAnalysis.Tree.Attribute)
+            and isinstance(value.func.value, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
         ):
             return value.func.value.id
         return None
@@ -529,7 +568,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @classmethod
     def _facade_owners(
         cls,
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         class_names: AbstractSet[str],
     ) -> set[tuple[str, str]]:
         """Collect the single-letter facade aliases one module declares.
@@ -543,7 +582,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             target, value = cls.assigned_target_value(node)
             facade_class = cls.facade_class_name(value)
             if (
-                isinstance(target, ast.Name)
+                isinstance(target, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
                 and len(target.id) == 1
                 and target.id.islower()
                 and facade_class is not None
@@ -556,7 +595,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     def public_reference(
         cls,
         *,
-        owners: Sequence[tuple[ast.Module, str, str, str]],
+        owners: Sequence[tuple[t.Infra.AstModule, str, str, str]],
         package: str,
         qualified: str,
         bindings: Mapping[str, set[str]],
@@ -587,7 +626,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 (
                     node
                     for node in tree.body
-                    if isinstance(node, ast.ClassDef) and node.name == root_name
+                    if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef)
+                    and node.name == root_name
                 ),
                 None,
             )
@@ -676,7 +716,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             Mapping[str, tuple[str, ...]],
             str,
         ],
-        node: ast.ClassDef,
+        node: t.Infra.AstClassDefinition,
         public_path: str,
         identity: str,
     ) -> None:
@@ -697,7 +737,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         ):
             references.add(public_path)
         for child in node.body:
-            if isinstance(child, ast.ClassDef):
+            if isinstance(child, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                 cls._collect_facade_references(
                     references,
                     resolvers,
@@ -720,7 +760,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             Mapping[str, tuple[str, ...]],
             str,
         ],
-        child: ast.Assign | ast.AnnAssign,
+        child: t.Infra.AstAssignment,
         public_path: str,
         identity: str,
     ) -> None:
@@ -729,10 +769,14 @@ class FlextInfraUtilitiesPrivateImportFacades:
         ``resolvers`` carries ``(bindings, class_bases, qualified)``.
         """
         bindings, class_bases, qualified = resolvers
-        targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+        targets = (
+            child.targets
+            if isinstance(child, FlextInfraUtilitiesRopeAnalysis.Tree.Assign)
+            else [child.target]
+        )
         for target in targets:
             if (
-                isinstance(target, ast.Name)
+                isinstance(target, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
                 and not target.id.startswith("_")
                 and cls._inherits_facade(
                     bindings,
@@ -747,7 +791,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def facade_alias_binding(
         *,
-        owners: Sequence[tuple[ast.Module, str, str, str]],
+        owners: Sequence[tuple[t.Infra.AstModule, str, str, str]],
         alias: str | None,
     ) -> str | None:
         """Return the alias when the owning package publishes it as a facade.
@@ -775,7 +819,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def public_root_name(
         *,
-        owners: Sequence[tuple[ast.Module, str, str, str]],
+        owners: Sequence[tuple[t.Infra.AstModule, str, str, str]],
         facade_alias: str,
     ) -> str | None:
         """Return the public long name assigned to a canonical facade alias.
@@ -800,7 +844,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @classmethod
     def require_unshadowed_alias(
         cls,
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         package: str,
         alias: str,
         file_path: Path,
@@ -814,8 +858,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
         """
         allowed_imports = {
             id(node)
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom)
             and any(
                 (
                     node.module == package
@@ -833,15 +877,18 @@ class FlextInfraUtilitiesPrivateImportFacades:
         }
         rewritten_bindings = {
             imported.asname or imported.name
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom)
             and node.module is not None
             and node.module in removals
             for imported in node.names
             if imported.name in removals[node.module]
         }
         for node in cls._lexical_binding_nodes(tree, rewritten_bindings):
-            if isinstance(node, ast.Global) and alias in node.names:
+            if (
+                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Global)
+                and alias in node.names
+            ):
                 break
             if isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 if id(node) in allowed_imports:
@@ -852,19 +899,22 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 ):
                     break
             elif (
-                isinstance(node, ast.Name)
-                and isinstance(node.ctx, ast.Store)
+                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                and isinstance(node.ctx, FlextInfraUtilitiesRopeAnalysis.Tree.Store)
                 and node.id == alias
-            ) or (isinstance(node, ast.arg) and node.arg == alias):
+            ) or (
+                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Argument)
+                and node.arg == alias
+            ):
                 break
             elif isinstance(
                 node,
-                ast.FunctionDef
-                | ast.AsyncFunctionDef
-                | ast.ClassDef
-                | ast.TypeVar
-                | ast.TypeVarTuple
-                | ast.ParamSpec,
+                FlextInfraUtilitiesRopeAnalysis.Tree.FunctionDef
+                | FlextInfraUtilitiesRopeAnalysis.Tree.AsyncFunctionDef
+                | FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef
+                | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVar
+                | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVarTuple
+                | FlextInfraUtilitiesRopeAnalysis.Tree.ParamSpec,
             ):
                 if node.name == alias:
                     break
@@ -876,18 +926,18 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @classmethod
     def _lexical_binding_nodes(
         cls,
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         rewritten_bindings: AbstractSet[str],
-    ) -> Iterable[ast.AST]:
+    ) -> Iterable[t.Infra.RopeAstNode]:
         """Exclude class attributes, but retain lexical bindings in methods.
 
         Yields:
             Nodes whose bindings can capture a public module facade.
 
         """
-        pending: list[tuple[ast.AST, bool]] = [(tree, False)]
+        pending: list[tuple[t.Infra.RopeAstNode, bool]] = [(tree, False)]
         deferred_annotations = any(
-            isinstance(statement, ast.ImportFrom)
+            isinstance(statement, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom)
             and statement.module == "__future__"
             and any(imported.name == "annotations" for imported in statement.names)
             for statement in tree.body
@@ -896,7 +946,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             node, class_scope = pending.pop()
             # Class dictionaries are not enclosing lexical scopes of methods.
             child_scope = class_scope
-            if isinstance(node, ast.ClassDef):
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                 child_scope = not cls._class_body_references(
                     node,
                     rewritten_bindings,
@@ -904,14 +954,21 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 )
             elif isinstance(node, c.Infra.AST_CALLABLE_TYPES):
                 child_scope = False
-            pending.extend((child, child_scope) for child in ast.iter_child_nodes(node))
-            if not class_scope or isinstance(node, ast.Global | ast.type_param):
+            pending.extend(
+                (child, child_scope)
+                for child in FlextInfraUtilitiesRopeAnalysis.Tree.child_nodes(node)
+            )
+            if not class_scope or isinstance(
+                node,
+                FlextInfraUtilitiesRopeAnalysis.Tree.Global
+                | FlextInfraUtilitiesRopeAnalysis.Tree.TypeParameter,
+            ):
                 yield node
 
     @classmethod
     def _class_body_references(
         cls,
-        declaration: ast.ClassDef,
+        declaration: t.Infra.AstClassDefinition,
         bindings: AbstractSet[str],
         *,
         deferred_annotations: bool,
@@ -922,10 +979,13 @@ class FlextInfraUtilitiesPrivateImportFacades:
             Whether a rewritten binding is evaluated in the class body.
 
         """
-        pending: list[ast.AST] = list(declaration.body)
+        pending: list[t.Infra.RopeAstNode] = list(declaration.body)
         while pending:
             node = pending.pop()
-            if isinstance(node, ast.Name) and node.id in bindings:
+            if (
+                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                and node.id in bindings
+            ):
                 return True
             pending.extend(
                 cls._class_evaluation_children(
@@ -937,17 +997,17 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
     @staticmethod
     def _class_evaluation_children(
-        node: ast.AST,
+        node: t.Infra.RopeAstNode,
         *,
         deferred_annotations: bool,
-    ) -> Iterable[ast.AST]:
+    ) -> Iterable[t.Infra.RopeAstNode]:
         """Select expressions that retain the enclosing class namespace.
 
         Yields:
             Definition expressions, excluding bodies and postponed annotations.
 
         """
-        if isinstance(node, ast.ClassDef):
+        if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
             yield from node.decorator_list
             yield from node.bases
             yield from (keyword.value for keyword in node.keywords)
@@ -966,14 +1026,14 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     for expression in (node.args.vararg, node.args.kwarg, node.returns):
                         if expression is not None:
                             yield expression
-        elif isinstance(node, ast.AnnAssign):
+        elif isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign):
             yield node.target
             if node.value is not None:
                 yield node.value
             if node.simple and not deferred_annotations:
                 yield node.annotation
         else:
-            yield from ast.iter_child_nodes(node)
+            yield from FlextInfraUtilitiesRopeAnalysis.Tree.child_nodes(node)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPrivateImportFacades"]

@@ -36,15 +36,34 @@ class TestsFlextInfraRopeContractCatalog:
     )
     def test_export_retirement_refuses_shared_lines_and_chained_targets(
         source: str,
+        tmp_path: Path,
     ) -> None:
         """The owned writer cannot discard effects or another public binding."""
-        with pytest.raises(ValueError, match=r"__all__|exports"):
-            u.Infra.remove_runtime_alias_export(source, alias="u")
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text(source, encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            with pytest.raises(ValueError, match=r"__all__|exports"):
+                u.Infra.remove_runtime_alias_export(module, alias="u")
 
     @staticmethod
-    def test_export_retirement_keeps_an_explicit_empty_literal() -> None:
+    def test_export_retirement_keeps_an_explicit_empty_literal(tmp_path: Path) -> None:
         """Empty literal exports stay explicit, so unrelated statements stay intact."""
-        updated = u.Infra.remove_runtime_alias_export("__all__ = ['u']\n", alias="u")
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text("__all__ = ['u']\n", encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            updated = u.Infra.remove_runtime_alias_export(module, alias="u")
         declarations = u.Infra.runtime_alias_bindings(updated, alias="__all__")
         tm.that(len(declarations), eq=1)
         value = declarations[0].value

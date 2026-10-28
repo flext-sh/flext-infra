@@ -106,6 +106,7 @@ class FlextInfraRefactorCensusCollect(
                 findings=findings,
                 duplicate_keys=duplicate_keys,
                 scan_config=scan_config,
+                source_project=rope.rope_project,
             )
             for project in sorted(
                 findings.report_projects | set(findings.project_objects),

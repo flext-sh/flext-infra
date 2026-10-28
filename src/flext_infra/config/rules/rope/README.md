@@ -35,6 +35,15 @@ the catalogue composes packaged rules first, then that overlay, and a duplicate
 rule id fails loud. A packaged rule naming one project's identity would fail every
 consumer that cannot import it, so project rules never live here.
 
+Framework-foundation migrations use this existing packaged catalog when their
+provider is a declared dependency of Infra itself, as with the existing
+`flext_core.FlextModels.Field` constraints. The generic collection-wrapper cutover
+is shared foundation policy: elect its provider once, authenticate declarations
+through native bindings and consume the same rule in workspace and independent
+projects. Do not copy it into each consumer or discover sibling checkouts. A
+historical declaration revision is explicit provenance for analysis, never a
+replacement runtime or permission to publish an external provider.
+
 The contract-normalization phase consumes its `phase` rows in `contracts.yaml`
 through the canonical semantic-phase enum; constant-consumers consumes its own
 rows through the same typed catalog and native planner. Unknown phases fail

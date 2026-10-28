@@ -120,7 +120,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         origin, original_owner = original
         inventory, public_resource = public_inventory
         bindings, exports = FlextInfraUtilitiesPrivateImportFacades.declared_exports(
-            inventory
+            inventory, project=project
         )
         qualified = f"{origin.get_name()}.{owner}"
         declared = FlextInfraUtilitiesPrivateImportFacades.declared_public_reference(

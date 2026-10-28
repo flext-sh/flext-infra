@@ -868,6 +868,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         Returns:
             The text with an authenticated exported module name updated.
 
+        Raises:
+            TypeError: If Quoted module exports require their original native source
+                module.
+
         """
         source, target, _path = paths
         if not FlextInfraUtilitiesRopeRuntime.source_module(original):

@@ -181,7 +181,11 @@ class FlextInfraUtilitiesImportLawRoutes(
                 routed.setdefault(
                     root
                     or cls.lazy_source(
-                        state.scope, node.module, alias.name, sources=sources
+                        state.scope,
+                        node.module,
+                        alias.name,
+                        source_project=rope_project,
+                        sources=sources,
                     )
                     or node.module,
                     [],

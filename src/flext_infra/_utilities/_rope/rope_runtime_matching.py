@@ -39,6 +39,9 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
             A context whose native matcher caches cannot escape to another epoch.
 
         """
+        if cls._semantic_finders.get() is not None:
+            yield
+            return
         token = cls._semantic_finders.set({})
         try:
             yield

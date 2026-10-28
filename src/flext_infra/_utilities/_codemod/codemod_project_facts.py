@@ -135,7 +135,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
                     FlextInfraUtilitiesWorkspaceSnapshot.workspace_source(
                         snapshot, initializer
-                    ).text,
+                    ),
                 )
             )
         return {

@@ -463,6 +463,21 @@ rendered source enters the same invocation project's candidate binding before
 module lookup and export reading; that binding restores its entry candidate on
 exit. A detached string module or a second project cannot supply this identity.
 
+Private-import export discovery receives the active workspace project through
+its planner. Documentation contract extraction opens its existing native project
+once for export assignments and symbol validation, passing that project through
+recursive imported-assignment resolution.
+
+Assignment docstrings likewise consume the source module elected for the
+documentation check, preserving that project through recursive symbol and
+inherited-documentation checks instead of reparsing assignment source text.
+
+Documentation reads module, class and function docstrings from their elected
+native objects' `get_doc()` methods. Local declaration admission still excludes
+imported bindings; recursive public-symbol documentation owns import traversal.
+The rendered summary keeps its existing whitespace normalization at the docs
+rendering owner. Source-only wrappers for those three SDK capabilities are retired.
+
 A DSL consumer that updates one working source binds it through the existing
 source-view owner. That binding retains the entry candidate's foreign/provider
 plans and their original witnesses and modes; an owned-source mapping must not
@@ -4061,6 +4076,12 @@ Own-method MRO promotion authenticates builtin decorators by native identity,
 including imported aliases. The emitted classmethod decorator must retain the
 builtin identity in its actual lexical scope; a shadowed same-spelled name does
 not satisfy the publication contract.
+The existing native import owner elects a deterministic capability-derived alias
+only when the canonical member binding is shadowed in a participating lexical
+scope. It checks native bindings for each candidate spelling, publishes the
+elected alias through native import operations, and authenticates the rebound
+candidate before publication. This is source-local collision avoidance, not a
+registry, compatibility alias, or alternate import pipeline.
 Documentation collection and pytest collection publish distinct manifest methods;
 their different inputs must not collide in the composed utilities facade.
 

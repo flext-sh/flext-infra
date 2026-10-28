@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests import c, m, tm, u
 
@@ -77,7 +78,10 @@ __all__ = ["documented_fn", "undocumented_fn"]
         project = self._write_project(tmp_path)
         contract = u.Infra.public_contract(project, "flext_demo")
 
-        coverage = u.Infra.docstring_coverage(project, contract)
+        with FlextInfraUtilitiesRopeCore.open_project(project) as rope_project:
+            coverage = u.Infra.docstring_coverage(
+                project, contract, rope_project=rope_project
+            )
 
         tm.ok(coverage.checked > 0)
         tm.ok(coverage.documented > 0)
@@ -90,7 +94,10 @@ __all__ = ["documented_fn", "undocumented_fn"]
     @staticmethod
     def test_empty_contract_reports_full_coverage(tmp_path: Path) -> None:
         """Test empty contract reports full coverage."""
-        coverage = u.Infra.docstring_coverage(tmp_path, {})
+        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+            coverage = u.Infra.docstring_coverage(
+                tmp_path, {}, rope_project=rope_project
+            )
 
         tm.that(coverage.checked, eq=0)
         tm.that(coverage.documented, eq=0)

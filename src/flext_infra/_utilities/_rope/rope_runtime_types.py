@@ -295,7 +295,10 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
             Rope exceptions for unresolved importable modules.
 
         """
-        return (cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),)
+        return (
+            cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
+            cls._exception_type("rope.base.exceptions", "BadIdentifierError"),
+        )
 
     @classmethod
     def rope_attribute_not_found_error_types(

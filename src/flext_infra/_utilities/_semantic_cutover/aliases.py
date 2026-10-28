@@ -14,6 +14,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCompatibilityAliasValidation,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -53,16 +54,31 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
         """
         candidates: MutableMapping[Path, ast.ClassDef] = {}
-        for path, source in cls._editable_sources(sources):
-            if (
-                not path.is_relative_to(workspace.repository_root)
-                or path.parent.parent.name != c.Infra.DEFAULT_SRC_DIR
-                or path.parent / c.Infra.INIT_PY not in sources
-            ):
-                continue
-            declaration = cls._local_service_declaration(path, source)
-            if declaration is not None:
-                candidates[path] = declaration
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            Path(workspace.rope_project.root.real_path),
+            planned_sources=sources,
+            source_project=workspace.rope_project,
+        ) as (source_project, _captured):
+            for path, source in cls._editable_sources(sources):
+                if (
+                    not path.is_relative_to(workspace.repository_root)
+                    or path.parent.parent.name != c.Infra.DEFAULT_SRC_DIR
+                    or path.parent / c.Infra.INIT_PY not in sources
+                ):
+                    continue
+                module = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    source_project.get_pymodule(
+                        FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                            source_project, path
+                        ),
+                        force_errors=True,
+                    )
+                )
+                declaration = cls._local_service_declaration(
+                    path, source, module=module
+                )
+                if declaration is not None:
+                    candidates[path] = declaration
         if not candidates:
             return {}, {}
         # Native ancestry sees the pre-rebind declaration, never a self-reference.
@@ -112,7 +128,9 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         return selected, graph
 
     @staticmethod
-    def _local_service_declaration(path: Path, source: str) -> ast.ClassDef | None:
+    def _local_service_declaration(
+        path: Path, source: str, *, module: p.Infra.RopeSourceModule
+    ) -> ast.ClassDef | None:
         """Find an unambiguous exported local declaration replacing the kernel alias.
 
         Returns:
@@ -123,7 +141,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
         """
         tree = ast.parse(source)
-        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
+        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(module)
         declarations = {
             node.name: node for node in tree.body if isinstance(node, ast.ClassDef)
         }

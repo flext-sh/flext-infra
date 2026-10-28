@@ -148,7 +148,7 @@ class FlextInfraRefactorProjectClassifierFamily(
             The resulting ``str``.
 
         """
-        normalized = self._normalize_dependency_name(dependency)
+        normalized = u.norm_str(dependency, case="lower").replace("_", "-")
         if normalized == c.Infra.PKG_CORE:
             return "Flext"
         if normalized.startswith(c.Infra.PKG_PREFIX_HYPHEN):

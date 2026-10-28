@@ -18,10 +18,7 @@ from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-import libcst as cst
 from flext_cli import u
-from libcst.codemod import CodemodContext
-from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_infra import c, codegen, config, gates, m, r, t
 from flext_infra._utilities import (
@@ -500,8 +497,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 )
         return r[bool].ok(value=True)
 
-    @staticmethod
-    def remove_orphaned_text_imports(original: str, proposed: str) -> str:
+    @classmethod
+    def remove_orphaned_text_imports(cls, original: str, proposed: str) -> str:
         """Remove only imports whose last executable use the transformation removed.
 
         Returns:
@@ -526,34 +523,86 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
         lost = {name for name in lost if not any(name in value for value in strings)}
         # No executable use was lost, so no import can have become orphaned and
-        # the libcst transform would return the proposal byte for byte.
+        # the alias-stripping pass would return the proposal byte for byte.
         if not lost:
             return proposed
-        context = CodemodContext()
-        for imported in ast.walk(after):
+        return cls._strip_lost_import_aliases(
+            proposed,
+            after,
+            frozenset(lost),
+        )
+
+    @classmethod
+    def _strip_lost_import_aliases(
+        cls,
+        proposed: str,
+        tree: ast.Module,
+        lost: frozenset[str],
+    ) -> str:
+        """Remove import statements whose aliases all lost their executable use.
+
+        Returns:
+            The candidate without the orphaned import statements.
+
+        Raises:
+            ValueError: If a partially orphaned import has no complete span.
+
+        """
+
+        def selected_alias(alias: ast.alias) -> bool:
+            return (alias.asname or alias.name.split(".")[0]) in lost
+
+        lines = proposed.splitlines(keepends=True)
+        plans: list[tuple[int, int, str | None]] = []
+        for imported in ast.walk(tree):
             if not isinstance(imported, c.Infra.AST_IMPORT_TYPES):
                 continue
-            for alias in imported.names:
-                if (alias.asname or alias.name.split(".")[0]) not in lost:
-                    continue
-                module = (
-                    "." * imported.level + (imported.module or "")
-                    if isinstance(imported, ast.ImportFrom)
-                    else alias.name
+            selected = [alias for alias in imported.names if selected_alias(alias)]
+            if not selected:
+                continue
+            if imported.end_lineno is None or imported.end_col_offset is None:
+                msg = "orphaned import statement has no complete source span"
+                raise ValueError(msg)
+            start, end = imported.lineno, imported.end_lineno
+            if len(selected) == len(imported.names) and cls._spans_whole_lines(
+                lines, imported
+            ):
+                plans.append((start, end, None))
+                continue
+            indent = lines[start - 1][: imported.col_offset]
+            retained = [alias for alias in imported.names if not selected_alias(alias)]
+            reduced = (
+                ast.ImportFrom(
+                    level=imported.level,
+                    module=imported.module,
+                    names=retained,
                 )
-                RemoveImportsVisitor.remove_unused_import(
-                    context,
-                    module,
-                    alias.name if isinstance(imported, ast.ImportFrom) else None,
-                    alias.asname,
-                )
-        return (
-            RemoveImportsVisitor(context)
-            .transform_module(
-                cst.parse_module(proposed),
+                if isinstance(imported, ast.ImportFrom)
+                else ast.Import(names=retained)
             )
-            .code
+            plans.append((start, end, f"{indent}{ast.unparse(reduced)}\n"))
+        for start, end, replacement in sorted(plans, reverse=True):
+            lines[start - 1 : end] = [replacement] if replacement is not None else []
+        return "".join(lines)
+
+    @staticmethod
+    def _spans_whole_lines(
+        lines: Sequence[str],
+        statement: ast.stmt,
+    ) -> bool:
+        """Return whether one import statement occupies its lines completely.
+
+        Returns:
+            Whether nothing but whitespace and comments shares its lines.
+
+        """
+        head = lines[statement.lineno - 1][: statement.col_offset]
+        tail = (
+            lines[statement.end_lineno - 1][statement.end_col_offset :]
+            if statement.end_lineno is not None and statement.end_col_offset is not None
+            else ""
         )
+        return not head.strip() and (not tail.strip() or tail.strip().startswith("#"))
 
     @classmethod
     def normalize_touched_files(

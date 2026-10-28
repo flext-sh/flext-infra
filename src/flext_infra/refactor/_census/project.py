@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.refactor import (
     FlextInfraRefactorCensusFilters,
     FlextInfraRefactorCensusObjects,
@@ -32,6 +32,7 @@ class FlextInfraRefactorCensusProject(
         findings: m.Infra.ScanFindings,
         duplicate_keys: frozenset[str],
         scan_config: m.Infra.ScanConfig,
+        source_project: p.Infra.RopeProject,
     ) -> m.Infra.ProjectReport:
         """Project report.
 
@@ -61,7 +62,7 @@ class FlextInfraRefactorCensusProject(
         unused_count = 0
         removal_candidates: list[m.Infra.RemovalCandidate] = []
         for item in objects:
-            unused = self.unused(item)
+            unused = self.unused(item, source_project=source_project)
             if include_duplicate and self._object_key(item) in duplicate_keys:
                 violations.append(
                     self._violation(
@@ -95,7 +96,9 @@ class FlextInfraRefactorCensusProject(
                         ),
                     ),
                 )
-            candidate = self._removal_candidate(item, include_unused=include_unused)
+            candidate = self._removal_candidate(
+                item, include_unused=include_unused, unused=unused
+            )
             if candidate is not None:
                 removal_candidates.append(candidate)
         return m.Infra.ProjectReport(

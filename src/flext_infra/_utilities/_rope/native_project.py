@@ -103,10 +103,7 @@ class FlextInfraRopeNativeProject(Project):
             # elects stdlib modules only. Governed member modules resolve
             # through this project's own index — never through the shared
             # environment, where divergent member libraries would leak in.
-            try:
-                spec = importlib.util.find_spec(name)
-            except ModuleNotFoundError:
-                spec = None
+            spec = importlib.util.find_spec(name)
             if spec is not None and isinstance(
                 spec.loader, importlib.machinery.ExtensionFileLoader
             ):

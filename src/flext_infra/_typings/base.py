@@ -41,6 +41,30 @@ class FlextInfraTypesBase:
     "How a module binds one top-level name: imported, assigned, or defined."
     type AstModule = _ast.Module
     "The one stdlib syntax tree of one exact module source in a generation run."
+    type AstStatement = _ast.stmt
+    "One statement node of a rope-parsed module tree."
+    type AstExpression = _ast.expr
+    "One expression node of a rope-parsed module tree."
+    type AstSubscript = _ast.Subscript
+    "One subscript expression node of a rope-parsed module tree."
+    type AstClassDefinition = _ast.ClassDef
+    "One class declaration node of a rope-parsed module tree."
+    type AstFunctionDefinition = _ast.FunctionDef | _ast.AsyncFunctionDef
+    "One function declaration node of a rope-parsed module tree."
+    type AstFunctionArgument = _ast.arg
+    "One function argument node of a rope-parsed module tree."
+    type AstTypeParameter = _ast.type_param
+    "One PEP 695 type parameter node of a rope-parsed module tree."
+    type AstAssignment = _ast.Assign | _ast.AnnAssign
+    "One plain or annotated assignment statement node of a rope-parsed tree."
+    type AstImportFrom = _ast.ImportFrom
+    "One ``from`` import statement node of a rope-parsed module tree."
+    type AstIfStatement = _ast.If
+    "One ``if`` statement node of a rope-parsed module tree."
+    type AstRaiseStatement = _ast.Raise
+    "One raise statement node of a rope-parsed module tree."
+    type AstExpressionStatement = _ast.Expr
+    "One expression statement node of a rope-parsed module tree."
 
     type Path = pathlib.Path
     "Unconstrained native filesystem path, independent of existence and kind."

@@ -101,21 +101,9 @@ class FlextInfraRefactorProjectClassifierDeps:
 
         """
         keys = list(raw_mapping.keys())
-        if self._mapping_order_is_trusted(raw_mapping):
+        if isinstance(raw_mapping, dict):
             return keys
         return sorted(keys)
-
-    @staticmethod
-    def _mapping_order_is_trusted(
-        raw_mapping: Mapping[str, t.JsonValue],
-    ) -> bool:
-        """Check whether the mapping order is trusted.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        return isinstance(raw_mapping, dict)
 
     @staticmethod
     def _append_unique_dependency(
@@ -164,18 +152,7 @@ class FlextInfraRefactorProjectClassifierDeps:
         if "/" in base_token:
             path = Path(base_token)
             base_token = path.name
-        return self._normalize_dependency_name(base_token)
-
-    @staticmethod
-    def _normalize_dependency_name(raw_name: str) -> str:
-        """Normalize dependency name.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        normalized: str = u.norm_str(raw_name, case="lower").replace("_", "-")
-        return normalized.strip("./")
+        return u.norm_str(base_token, case="lower").replace("_", "-")
 
 
 __all__: list[str] = ["FlextInfraRefactorProjectClassifierDeps"]

@@ -711,9 +711,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             return None
         node = classes[0]
         if node.name not in (
-            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                module.source_code
-            )
+            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(module)
         ):
             return None
         owner = module.get_attribute(node.name).get_object()
@@ -848,7 +846,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         if (
             name
             not in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                module.source_code
+                module
             )
         ):
             return {}

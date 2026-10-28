@@ -243,7 +243,7 @@ class FlextInfraCodemodSemanticApply(
         with FlextInfraRopeWorkspace.open_workspace(
             root, rope_repository_root=root
         ) as workspace:
-            packages = cls._package_naming_candidates(root, sources)
+            packages = cls._package_naming_candidates(root, sources, workspace)
             candidates = packages or cls._module_naming_candidates(
                 root, sources, workspace
             )
@@ -352,11 +352,17 @@ class FlextInfraCodemodSemanticApply(
             # singletons) cannot also be a submodule: importing the submodule
             # rebinds the parent attribute and shadows the lazy export.
             parent_init = path.parent / c.Infra.INIT_PY
-            parent_source = sources.get(parent_init)
-            if parent_source is None and parent_init.is_file():
-                parent_source = parent_init.read_text(encoding=c.DEFAULT_ENCODING)
-            if parent_source is not None and replacement in (
-                u.Infra.public_export_names_source(parent_source)
+            parent_resource = workspace.rope_project.get_file(
+                parent_init.relative_to(root).as_posix()
+            )
+            if parent_resource.exists() and replacement in (
+                u.Infra.public_export_names_source(
+                    u.Infra.require_source_module(
+                        workspace.rope_project.get_pymodule(
+                            parent_resource, force_errors=True
+                        )
+                    )
+                )
             ):
                 continue
             if not replacement.isidentifier() or keyword.iskeyword(replacement):
@@ -508,6 +514,7 @@ class FlextInfraCodemodSemanticApply(
     def _package_naming_candidates(
         root: Path,
         sources: Mapping[Path, str],
+        workspace: p.Infra.RopeWorkspaceDsl,
     ) -> tuple[tuple[Path, str], ...]:
         """Select shallowest split packages owned by an actual facade declaration.
 
@@ -541,7 +548,15 @@ class FlextInfraCodemodSemanticApply(
                 )
                 raise ValueError(msg)
             owned = any(
-                letter in u.Infra.public_export_names_source(sources[facade])
+                letter
+                in u.Infra.public_export_names_source(
+                    u.Infra.require_source_module(
+                        workspace.rope_project.get_pymodule(
+                            u.Infra.file_resource_at(workspace.rope_project, facade),
+                            force_errors=True,
+                        )
+                    )
+                )
                 for ancestor in (directory, *directory.parents)
                 if ancestor.is_relative_to(root.resolve())
                 for letter, family in families.items()

@@ -117,7 +117,7 @@ class FlextInfraProjectClassifier(
         """
         raw_name = raw_mapping.get(c.Infra.NAME)
         if isinstance(raw_name, str):
-            return self._normalize_dependency_name(raw_name)
+            return u.norm_str(raw_name, case="lower").replace("_", "-")
         return ""
 
 

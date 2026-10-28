@@ -216,6 +216,11 @@ class FlextInfraModelsCodemod:
             default="restructure",
             description="Native contract operation executed in the shared source epoch",
         )
+        source_revision: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Explicit Git revision authenticating retired provider "
+            "declarations",
+        )
         phase: c.Infra.SemanticCutoverPhase = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
             strict=False,

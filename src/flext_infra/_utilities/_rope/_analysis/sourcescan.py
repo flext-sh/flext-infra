@@ -30,63 +30,130 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     Every ``*_source`` reader parses the module through rope's parse and reads
     the node it needs; source that does not parse raises its ``SyntaxError``.
-    The class also carries the rope-owned syntax-tree vocabulary (node classes,
-    parse, walk, unparse) that ``u``-family consumers outside the ``_rope``
-    family consume in place of any interpreter import of their own.
+    The nested ``Tree`` capability carries the rope-owned syntax-tree
+    vocabulary (node classes, expression parse, unparse, dump) that
+    ``u``-family consumers outside the ``_rope`` family consume in place of
+    any interpreter import of their own.
     """
 
     _INSTALL_LAZY_IMPORTS_ARG_INDEX: ClassVar[int] = 2
 
-    # Rope-owned syntax-tree node vocabulary for u-family consumers. Each
-    # attribute is rope's own node class (the classes of the trees rope's
-    # index parses); consumers use them for isinstance checks, class patterns
-    # and node construction without naming the interpreter.
-    Alias: ClassVar[type[ast.alias]] = ast.alias
-    AnnAssign: ClassVar[type[ast.AnnAssign]] = ast.AnnAssign
-    Argument: ClassVar[type[ast.arg]] = ast.arg
-    Assign: ClassVar[type[ast.Assign]] = ast.Assign
-    AsyncFor: ClassVar[type[ast.AsyncFor]] = ast.AsyncFor
-    AsyncFunctionDef: ClassVar[type[ast.AsyncFunctionDef]] = ast.AsyncFunctionDef
-    Attribute: ClassVar[type[ast.Attribute]] = ast.Attribute
-    AugAssign: ClassVar[type[ast.AugAssign]] = ast.AugAssign
-    Await: ClassVar[type[ast.Await]] = ast.Await
-    BinOp: ClassVar[type[ast.BinOp]] = ast.BinOp
-    BitOr: ClassVar[type[ast.BitOr]] = ast.BitOr
-    Break: ClassVar[type[ast.Break]] = ast.Break
-    Call: ClassVar[type[ast.Call]] = ast.Call
-    ClassDef: ClassVar[type[ast.ClassDef]] = ast.ClassDef
-    Constant: ClassVar[type[ast.Constant]] = ast.Constant
-    Continue: ClassVar[type[ast.Continue]] = ast.Continue
-    Del: ClassVar[type[ast.Del]] = ast.Del
-    ExceptHandler: ClassVar[type[ast.ExceptHandler]] = ast.ExceptHandler
-    Expression: ClassVar[type[ast.expr]] = ast.expr
-    For: ClassVar[type[ast.For]] = ast.For
-    FunctionDef: ClassVar[type[ast.FunctionDef]] = ast.FunctionDef
-    Global: ClassVar[type[ast.Global]] = ast.Global
-    If: ClassVar[type[ast.If]] = ast.If
-    Import: ClassVar[type[ast.Import]] = ast.Import
-    ImportFrom: ClassVar[type[ast.ImportFrom]] = ast.ImportFrom
-    JoinedStr: ClassVar[type[ast.JoinedStr]] = ast.JoinedStr
-    Lambda: ClassVar[type[ast.Lambda]] = ast.Lambda
-    List: ClassVar[type[ast.List]] = ast.List
-    Load: ClassVar[type[ast.Load]] = ast.Load
-    Module: ClassVar[type[ast.Module]] = ast.Module
-    Name: ClassVar[type[ast.Name]] = ast.Name
-    NamedExpr: ClassVar[type[ast.NamedExpr]] = ast.NamedExpr
-    Nonlocal: ClassVar[type[ast.Nonlocal]] = ast.Nonlocal
-    ParamSpec: ClassVar[type[ast.ParamSpec]] = ast.ParamSpec
-    Pass: ClassVar[type[ast.Pass]] = ast.Pass
-    Raise: ClassVar[type[ast.Raise]] = ast.Raise
-    Return: ClassVar[type[ast.Return]] = ast.Return
-    Statement: ClassVar[type[ast.stmt]] = ast.stmt
-    Starred: ClassVar[type[ast.Starred]] = ast.Starred
-    Store: ClassVar[type[ast.Store]] = ast.Store
-    Subscript: ClassVar[type[ast.Subscript]] = ast.Subscript
-    Tuple: ClassVar[type[ast.Tuple]] = ast.Tuple
-    TypeVar: ClassVar[type[ast.TypeVar]] = ast.TypeVar
-    TypeVarTuple: ClassVar[type[ast.TypeVarTuple]] = ast.TypeVarTuple
-    Yield: ClassVar[type[ast.Yield]] = ast.Yield
-    YieldFrom: ClassVar[type[ast.YieldFrom]] = ast.YieldFrom
+    class Tree:
+        """Rope-owned syntax-tree surface for ``u``-family consumers.
+
+        Rope is the only Python interpreter: every attribute and function
+        comes from rope's own ``ast`` surface (``rope.base.ast``) — the same
+        surface that parses the trees the index serves — so consumers run
+        isinstance checks, node construction and rendering without ever
+        naming or driving the interpreter themselves (ADR-028 Decision 15).
+        """
+
+        Alias: ClassVar[type[ast.alias]] = ast.alias
+        AnnAssign: ClassVar[type[ast.AnnAssign]] = ast.AnnAssign
+        Argument: ClassVar[type[ast.arg]] = ast.arg
+        Assign: ClassVar[type[ast.Assign]] = ast.Assign
+        AsyncFor: ClassVar[type[ast.AsyncFor]] = ast.AsyncFor
+        AsyncFunctionDef: ClassVar[type[ast.AsyncFunctionDef]] = ast.AsyncFunctionDef
+        Attribute: ClassVar[type[ast.Attribute]] = ast.Attribute
+        AugAssign: ClassVar[type[ast.AugAssign]] = ast.AugAssign
+        Await: ClassVar[type[ast.Await]] = ast.Await
+        BinOp: ClassVar[type[ast.BinOp]] = ast.BinOp
+        BitOr: ClassVar[type[ast.BitOr]] = ast.BitOr
+        Break: ClassVar[type[ast.Break]] = ast.Break
+        Call: ClassVar[type[ast.Call]] = ast.Call
+        ClassDef: ClassVar[type[ast.ClassDef]] = ast.ClassDef
+        Constant: ClassVar[type[ast.Constant]] = ast.Constant
+        Continue: ClassVar[type[ast.Continue]] = ast.Continue
+        ExceptHandler: ClassVar[type[ast.ExceptHandler]] = ast.ExceptHandler
+        Expr: ClassVar[type[ast.Expr]] = ast.Expr
+        For: ClassVar[type[ast.For]] = ast.For
+        FunctionDef: ClassVar[type[ast.FunctionDef]] = ast.FunctionDef
+        Global: ClassVar[type[ast.Global]] = ast.Global
+        If: ClassVar[type[ast.If]] = ast.If
+        Import: ClassVar[type[ast.Import]] = ast.Import
+        ImportFrom: ClassVar[type[ast.ImportFrom]] = ast.ImportFrom
+        JoinedStr: ClassVar[type[ast.JoinedStr]] = ast.JoinedStr
+        Lambda: ClassVar[type[ast.Lambda]] = ast.Lambda
+        List: ClassVar[type[ast.List]] = ast.List
+        Load: ClassVar[type[ast.Load]] = ast.Load
+        Module: ClassVar[type[ast.Module]] = ast.Module
+        Name: ClassVar[type[ast.Name]] = ast.Name
+        NamedExpr: ClassVar[type[ast.NamedExpr]] = ast.NamedExpr
+        Nonlocal: ClassVar[type[ast.Nonlocal]] = ast.Nonlocal
+        ParamSpec: ClassVar[type[ast.ParamSpec]] = ast.ParamSpec
+        Pass: ClassVar[type[ast.Pass]] = ast.Pass
+        Raise: ClassVar[type[ast.Raise]] = ast.Raise
+        Return: ClassVar[type[ast.Return]] = ast.Return
+        Statement: ClassVar[type[ast.stmt]] = ast.stmt
+        Starred: ClassVar[type[ast.Starred]] = ast.Starred
+        Store: ClassVar[type[ast.Store]] = ast.Store
+        Subscript: ClassVar[type[ast.Subscript]] = ast.Subscript
+        Tuple: ClassVar[type[ast.Tuple]] = ast.Tuple
+        TypeVar: ClassVar[type[ast.TypeVar]] = ast.TypeVar
+        TypeParameter: ClassVar[type[ast.type_param]] = ast.type_param
+        TypeVarTuple: ClassVar[type[ast.TypeVarTuple]] = ast.TypeVarTuple
+        Yield: ClassVar[type[ast.Yield]] = ast.Yield
+        YieldFrom: ClassVar[type[ast.YieldFrom]] = ast.YieldFrom
+
+        @staticmethod
+        def parse_expression_source(source: str) -> t.Infra.RopeAstNode:
+            """Parse one expression source through rope's parse surface.
+
+            Returns:
+                The parsed expression node.
+
+            """
+            return ast.parse(source, mode="eval").body
+
+        @staticmethod
+        def unparse(node: p.AttributeProbe) -> str:
+            """Unparse one rope-owned tree node through rope's surface.
+
+            Returns:
+                The source text of the node.
+
+            """
+            return ast.unparse(node)
+
+        @staticmethod
+        def dump(node: p.AttributeProbe) -> str:
+            """Return the canonical structural digest of one rope-owned node.
+
+            Returns:
+                The canonical structural digest of one rope-owned node.
+
+            """
+            return ast.dump(node)
+
+        @staticmethod
+        def fix_missing_locations(module: p.AttributeProbe) -> t.Infra.AstModule:
+            """Fill the location fields of one freshly built rope tree.
+
+            Returns:
+                The module with every missing location filled.
+
+            """
+            return ast.fix_missing_locations(module)
+
+        @staticmethod
+        def docstring(node: p.AttributeProbe) -> str | None:
+            """Return the docstring of one definition node, rope's reader.
+
+            Returns:
+                The docstring of one definition node, rope's reader.
+
+            """
+            return ast.get_docstring(node)
+
+        @staticmethod
+        def child_nodes(node: p.AttributeProbe) -> Sequence[t.Infra.RopeAstNode]:
+            """Return the direct children of one rope-owned tree node.
+
+            Returns:
+                The direct children of one rope-owned tree node.
+
+            """
+            return tuple(ast.iter_child_nodes(node))
 
     @staticmethod
     @cache
@@ -102,81 +169,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
         """
         return ast.parse(source, filename=filename)
-
-    @staticmethod
-    def parse_expression_source(source: str) -> t.Infra.RopeAstNode:
-        """Parse one expression source through rope's parse surface.
-
-        Returns:
-            The parsed expression node.
-
-        """
-        return ast.parse(source, mode="eval").body
-
-    @staticmethod
-    def unparse_node(node: p.AttributeProbe) -> str:
-        """Unparse one rope-owned tree node through rope's surface.
-
-        Returns:
-            The source text of the node.
-
-        """
-        return ast.unparse(node)
-
-    @staticmethod
-    def dump_node(node: p.AttributeProbe) -> str:
-        """Return the canonical structural digest of one rope-owned node.
-
-        Returns:
-            The canonical structural digest of one rope-owned node.
-
-        """
-        return ast.dump(node)
-
-    @staticmethod
-    def dump_statements(statements: Sequence[t.Infra.RopeAstNode]) -> str:
-        """Return the canonical structural digest of one statement list.
-
-        The module wrapper rope's dump needs is built from rope's own node
-        vocabulary; callers never construct an interpreter tree themselves.
-
-        Returns:
-            The canonical structural digest of one statement list.
-
-        """
-        return ast.dump(
-            ast.Module(body=[*statements], type_ignores=[]),
-        )
-
-    @staticmethod
-    def fix_missing_locations(module: p.AttributeProbe) -> t.Infra.AstModule:
-        """Fill the location fields of one freshly built rope tree.
-
-        Returns:
-            The module with every missing location filled.
-
-        """
-        return ast.fix_missing_locations(module)
-
-    @staticmethod
-    def get_docstring(node: p.AttributeProbe) -> str | None:
-        """Return the docstring of one definition node, rope's reader.
-
-        Returns:
-            The docstring of one definition node, rope's reader.
-
-        """
-        return ast.get_docstring(node)
-
-    @staticmethod
-    def iter_child_nodes(node: p.AttributeProbe) -> Sequence[t.Infra.RopeAstNode]:
-        """Return the direct children of one rope-owned tree node.
-
-        Returns:
-            The direct children of one rope-owned tree node.
-
-        """
-        return tuple(ast.iter_child_nodes(node))
 
     @staticmethod
     @cache
@@ -516,6 +508,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return cls.module_assignment_strings(source_module, name)
 
     @classmethod
+    @FlextInfraUtilitiesRopeRuntime.semantic_matching_context()
     def module_assignment_strings(
         cls, source_module: p.Infra.RopeSourceModule, name: str
     ) -> Sequence[str]:
@@ -534,7 +527,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         """
         module_scope = source_module.get_scope()
         scope = module_scope
-        region = cls._native_assignment_region(source_module, scope, name, depth=1)
+        region = cls.module_assignment_region(source_module, scope, name, depth=1)
         if region is None and name == c.Infra.DUNDER_ALL:
             index = source_module.get_source_binding_index()
             roots = tuple(
@@ -550,7 +543,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             )
             if len(roots) == 1:
                 scope = roots[0]
-                region = cls._native_assignment_region(
+                region = cls.module_assignment_region(
                     source_module, scope, name, depth=2
                 )
         visited: set[str] = set()
@@ -568,13 +561,13 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             name = cls._native_sequence_reference(source_module, value)
             if not name:
                 return ()
-            region = cls._native_assignment_region(
+            region = cls.module_assignment_region(
                 source_module, module_scope, name, depth=1
             )
         return ()
 
     @staticmethod
-    def _native_assignment_region(
+    def module_assignment_region(
         module: p.Infra.RopeSourceModule,
         scope: p.Infra.RopeScope,
         name: str,
@@ -586,25 +579,34 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         Returns:
             The resulting ``tuple[int, int] | None``.
 
+        Raises:
+            TypeError: If Native assignment query requires the word finder contract.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntime
-        binding = scope.get_defined_names().get(name)
-        if binding is None:
-            return None
         index = module.get_source_binding_index()
-        occurrences = tuple(
-            occurrence.offset
-            for occurrence in runtime.create_occurrence_finder(
-                scope.pycore.project, name, binding, imports=False, in_hierarchy=False
-            ).find_occurrences(pymodule=module)
+        word = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(word, p.Infra.RopeWorder):
+            msg = "Native assignment query requires the word finder contract"
+            raise TypeError(msg)
+        named = tuple(
+            child
+            for child in index.fragments
+            if child.depth == depth + 1
+            and word.get_word_at(child.start) == name
+            and word.get_word_range(child.start) == (child.start, child.end)
         )
         direct = tuple(
             fragment
             for fragment in index.fragments
             if fragment.depth == depth
-            and index.context_at(fragment.start).structural_scope.pyobject
-            is scope.pyobject
-            and any(fragment.start <= offset < fragment.end for offset in occurrences)
+            and fragment.context.structural_scope.pyobject is scope.pyobject
+            and any(
+                fragment.start <= child.start < child.end <= fragment.end
+                for child in named
+            )
         )
         for fragment in direct:
             arity = sum(
@@ -686,13 +688,13 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return None
 
     @staticmethod
-    def _native_sequence_strings(
+    def _native_sequence_items(
         module: p.Infra.RopeSourceModule, region: tuple[int, int]
-    ) -> tuple[str, ...] | None:
-        """Read a literal collection's captures through the native matcher/compiler.
+    ) -> tuple[tuple[int, int], ...] | None:
+        """Capture immediate literal collection items through the native DSL.
 
         Returns:
-            The resulting ``tuple[str, ...] | None``.
+            Immediate native item regions, or no literal collection shape.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
@@ -723,29 +725,182 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             ):
                 if match.get_region() != region:
                     continue
-                strings: list[str] = []
-                for index in range(count):
-                    begin, end = runtime.semantic_capture_region(match, f"item{index}")
-                    candidate = module.source_code[begin:end]
-                    literals = runtime.ignored_regions(candidate)
-                    position = 0
-                    residue: list[str] = []
-                    for left, right, _metadata in literals:
-                        residue.append(candidate[position:left])
-                        position = right
-                    residue.append(candidate[position:])
-                    if not literals or "".join(residue).strip():
-                        return ()
-                    item = runtime.literal_string(candidate)
-                    if item is None:
-                        return ()
-                    if (begin, end) not in runtime.semantic_regions(
-                        module, repr(item), arguments={}, start=begin, end=end
-                    ):
-                        return ()
-                    strings.append(item)
-                return tuple(strings)
+                return tuple(
+                    runtime.semantic_capture_region(match, f"item{index}")
+                    for index in range(count)
+                )
         return None
+
+    @classmethod
+    def _native_sequence_strings(
+        cls, module: p.Infra.RopeSourceModule, region: tuple[int, int]
+    ) -> tuple[str, ...] | None:
+        """Decode only native constant-string items of a literal collection.
+
+        Returns:
+            The resulting ``tuple[str, ...] | None``.
+
+        """
+        items = cls._native_sequence_items(module, region)
+        if items is None:
+            return None
+        strings: list[str] = []
+        for begin, end in items:
+            item = cls.literal_string_region(module, (begin, end))
+            if item is None:
+                return ()
+            strings.append(item)
+        return tuple(strings)
+
+    @staticmethod
+    def literal_string_region(
+        module: p.Infra.RopeSourceModule, region: tuple[int, int]
+    ) -> str | None:
+        """Decode a lexer-owned string only after native constant-shape proof.
+
+        Returns:
+            The resulting ``str | None``.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        begin, end = region
+        candidate = module.source_code[begin:end]
+        literals = runtime.ignored_regions(candidate)
+        position = 0
+        residue: list[str] = []
+        for left, right, _metadata in literals:
+            residue.append(candidate[position:left])
+            position = right
+        residue.append(candidate[position:])
+        if not literals or "".join(residue).strip():
+            return None
+        item = runtime.literal_string(candidate)
+        if item is None or region not in runtime.semantic_regions(
+            module, repr(item), arguments={}, start=begin, end=end
+        ):
+            return None
+        return item
+
+    @classmethod
+    def statement_declaration_names(
+        cls,
+        module: p.Infra.RopeSourceModule,
+        region: tuple[int, int],
+        *,
+        include_augmented: bool = False,
+    ) -> tuple[str, ...]:
+        """Read native assignment/lazy-alias target names, including unpacking.
+
+        Returns:
+            The resulting ``tuple[str, ...]``.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        fragments = module.get_source_binding_index().fragments
+        statement = min(
+            (
+                fragment
+                for fragment in fragments
+                if (fragment.start, fragment.end) == region
+            ),
+            key=lambda fragment: fragment.depth,
+        )
+        children = tuple(
+            child
+            for child in fragments
+            if child.depth == statement.depth + 1
+            and statement.start <= child.start < child.end <= statement.end
+        )
+        alias_names = tuple(
+            cls._declaration_target_names(module, (child.start, child.end))
+            for child in children
+            if child.context.role == "type-alias-name"
+        )
+        if alias_names:
+            return tuple(name for names in alias_names for name in names)
+        if not any(child.start == statement.start for child in children):
+            return ()
+        patterns = [
+            ("${target0}: ${annotation}", 1),
+            ("${target0}: ${annotation} = ${value}", 1),
+        ]
+        if len(children) > 1:
+            targets = len(children) - 1
+            patterns.append((
+                " = ".join((*(f"${{target{i}}}" for i in range(targets)), "${value}")),
+                targets,
+            ))
+        if include_augmented:
+            patterns.extend(
+                (f"${{target0}} {operator}= ${{value}}", 1)
+                for operator in (
+                    "+",
+                    "-",
+                    "*",
+                    "/",
+                    "//",
+                    "%",
+                    "**",
+                    "<<",
+                    ">>",
+                    "|",
+                    "^",
+                    "&",
+                    "@",
+                )
+            )
+        finder = runtime.semantic_finder(module, arguments={})
+        for pattern, count in patterns:
+            for match in finder.get_matches(
+                pattern, {}, start=region[0], end=region[1]
+            ):
+                if match.get_region() == region:
+                    return tuple(
+                        name
+                        for index in range(count)
+                        for name in cls._declaration_target_names(
+                            module,
+                            runtime.semantic_capture_region(match, f"target{index}"),
+                        )
+                    )
+        return ()
+
+    @classmethod
+    def _declaration_target_names(
+        cls, module: p.Infra.RopeSourceModule, region: tuple[int, int]
+    ) -> tuple[str, ...]:
+        """Query native name leaves and tuple/list target shapes recursively.
+
+        Returns:
+            The resulting ``tuple[str, ...]``.
+
+        Raises:
+            TypeError: If Native target query requires the word finder contract.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        word = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(word, p.Infra.RopeWorder):
+            msg = "Native target query requires the word finder contract"
+            raise TypeError(msg)
+        name = word.get_word_at(region[0])
+        if word.get_word_range(region[0]) == region and name.isidentifier():
+            return (
+                (name,)
+                if region
+                in runtime.semantic_regions(
+                    module, name, arguments={}, start=region[0], end=region[1]
+                )
+                else ()
+            )
+        items = cls._native_sequence_items(module, region)
+        return tuple(
+            name
+            for item in items or ()
+            for name in cls._declaration_target_names(module, item)
+        )
 
     @staticmethod
     def _native_sequence_reference(

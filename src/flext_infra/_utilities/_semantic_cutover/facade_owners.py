@@ -24,6 +24,9 @@ from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesTypesRopeRuntime,
+)
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
@@ -72,7 +75,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         classes: MutableMapping[str, str] = {}
         with FlextInfraUtilitiesRopeCore.open_import_project(source_root) as project:
             for name in FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                indexed[0],
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    project.get_module(package)
+                ),
             ):
                 owner = cls._facade_letter_class(
                     modules, package, name, project=project
@@ -105,10 +110,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         if resolved is not None and resolved[1] == letter:
             owner_module, owner_name = resolved
             exported_here = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                modules[module][0],
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    project.get_module(module)
+                ),
             )
             exported_owner = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                modules[owner_module][0],
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    project.get_module(owner_module)
+                ),
             )
             owner = (
                 owner_name
@@ -153,7 +162,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         if owner == letter:
             return None
         exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-            modules[owner_module][0],
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                project.get_module(owner_module)
+            ),
         )
         if letter not in exports or owner not in exports:
             return None

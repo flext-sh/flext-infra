@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -464,17 +465,29 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 source, alias="__all__"
             )
         ):
-            source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
-                source,
-                names=[
-                    name
-                    for name in (
-                        FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                            source
+            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                Path(project.root.real_path),
+                planned_sources={**proposed, path: source},
+                source_project=project,
+            ) as (bound_project, _captured):
+                export_module = (
+                    FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                        bound_project.get_pymodule(
+                            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                                bound_project, path
+                            ),
+                            force_errors=True,
                         )
                     )
-                    if name != target.name
-                ],
+                )
+                exports = (
+                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        export_module
+                    )
+                )
+            source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
+                source,
+                names=[name for name in exports if name != target.name],
             )
         proposed[path] = source
         cls._drop_changed_orphaned_imports(project, proposed)
@@ -777,10 +790,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         owner_path: Path,
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        path, source = entry
+        path, _source = entry
         binding, container = owners
         for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            source
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
         ):
             exported = module.get_attributes().get(name)
             if path != owner_path and (

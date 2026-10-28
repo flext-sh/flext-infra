@@ -883,6 +883,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         module: p.Infra.RopeParsedModule,
         module_name: str,
         name: str | None,
+        *,
+        binding_scopes: Sequence[p.Infra.RopeScope] = (),
     ) -> tuple[str, str]:
         """Plan an import and use the expression elected by Rope's import owner.
 
@@ -900,6 +902,10 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if not FlextInfraUtilitiesTypesRopeRuntime.source_module(source_module):
             message = "Rope import insertion requires a source module"
             raise TypeError(message)
+        if binding_scopes and name is not None:
+            return cls._scoped_import_binding(
+                project, source_module, (module_name, name), binding_scopes
+            )
         result = cls.runtime_callable(c.Infra.ROPE_IMPORTUTILS_MODULE, "add_import")(
             project,
             source_module,
@@ -920,6 +926,35 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             msg = "Rope add_import returned non-text source or binding"
             raise TypeError(msg)
         return (source, binding)
+
+    @classmethod
+    def _scoped_import_binding(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        imported: tuple[str, str],
+        scopes: Sequence[p.Infra.RopeScope],
+    ) -> tuple[str, str]:
+        """Elect a capture-free import binding through native lexical names.
+
+        Returns:
+            The native candidate and its elected member expression.
+
+        """
+        provider, name = imported
+        target = cls.qualified_name(project, f"{provider}.{name}").get_object()
+        if all(
+            (binding := scope.lookup(name)) is not None
+            and binding.get_object() is target
+            for scope in scopes
+        ):
+            return module.source_code, name
+        alias = name
+        while any(scope.lookup(alias) is not None for scope in scopes):
+            alias += "_"
+        imports = cls.module_imports_for_pymodule(project, module)
+        imports.add_import(cls.from_import(provider, 0, ((name, alias),)))
+        return imports.get_changed_source(), alias
 
     @classmethod
     def file_resource_at(

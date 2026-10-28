@@ -82,8 +82,6 @@ class FlextInfraPytestEntry:
             status = runner.execute_file().unwrap()
         elif mode in {"full", "full-slow"}:
             status = runner.execute_full().unwrap()
-        elif mode == "global":
-            status = runner.execute_global().unwrap()
         else:
             status = runner.execute().unwrap()
         return status

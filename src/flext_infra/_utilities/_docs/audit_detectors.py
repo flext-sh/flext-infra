@@ -19,6 +19,7 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsScope,
 )
 from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesDocsAuditDetectors:
@@ -255,11 +256,15 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         """
         if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
-        contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path,
-            scope.package_name,
-        )
-        return FlextInfraUtilitiesDocsApi.docstring_issues(scope.path, contract)
+        with FlextInfraUtilitiesRopeCore.open_project(scope.path) as rope_project:
+            contract = FlextInfraUtilitiesDocsApi.public_contract(
+                scope.path,
+                scope.package_name,
+                rope_project=rope_project,
+            )
+            return FlextInfraUtilitiesDocsApi.docstring_issues(
+                scope.path, contract, rope_project=rope_project
+            )
 
     @staticmethod
     def docs_public_docstring_coverage(
@@ -273,11 +278,15 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         """
         if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return None
-        contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path,
-            scope.package_name,
-        )
-        return FlextInfraUtilitiesDocsApi.docstring_coverage(scope.path, contract)
+        with FlextInfraUtilitiesRopeCore.open_project(scope.path) as rope_project:
+            contract = FlextInfraUtilitiesDocsApi.public_contract(
+                scope.path,
+                scope.package_name,
+                rope_project=rope_project,
+            )
+            return FlextInfraUtilitiesDocsApi.docstring_coverage(
+                scope.path, contract, rope_project=rope_project
+            )
 
     @staticmethod
     def docs_python_codeblock_issues(

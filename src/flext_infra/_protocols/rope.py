@@ -97,6 +97,9 @@ class FlextInfraProtocolsRope(Protocol):
         def operation(self) -> str: ...
 
         @property
+        def source_revision(self) -> str | None: ...
+
+        @property
         def call_target(self) -> str | None: ...
 
         @property

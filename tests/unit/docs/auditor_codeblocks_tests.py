@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -192,13 +193,15 @@ class TestsFlextInfraAuditorCodeblocks:
             encoding="utf-8",
         )
 
-        issues = u.Infra.docstring_issues(
-            tmp_path,
-            {
-                "package_name": "demo_pkg",
-                "modules": ["demo_pkg.lazy"],
-                "target_map": {"lazy": "demo_pkg.lazy"},
-            },
-        )
+        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+            issues = u.Infra.docstring_issues(
+                tmp_path,
+                {
+                    "package_name": "demo_pkg",
+                    "modules": ["demo_pkg.lazy"],
+                    "target_map": {"lazy": "demo_pkg.lazy"},
+                },
+                rope_project=rope_project,
+            )
 
         tm.that(issues, eq=[])
