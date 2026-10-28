@@ -765,8 +765,10 @@ class FlextInfraUtilitiesCodegenFacades(
         path = directory.parent / f"{directory.name.lstrip('_')}.py"
         owners = cls.family_subfacade_owners(project, directory)
         if len(owners) > 1:
-            resolver_factory = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
-                project, sources={}
+            factory = FlextInfraUtilitiesRopeSourceBasesRuntime
+            resolver_factory = factory.source_member_resolver_factory(
+                project,
+                sources={},
             )
             evidence: list[str] = []
             for owner_path, owner_name in owners:
@@ -906,9 +908,7 @@ class FlextInfraUtilitiesCodegenFacades(
                         path == canonical
                         or (
                             model not in cls.class_ancestry(supplier)
-                            and cls._subfacade_namespace_supplier(
-                                supplier, project=project
-                            )
+                            and cls._subfacade_namespace_supplier(supplier)
                         )
                     )
                     for supplier in declared_suppliers
@@ -958,8 +958,6 @@ class FlextInfraUtilitiesCodegenFacades(
     def _subfacade_namespace_supplier(
         cls,
         supplier: p.Infra.RopeSourceClass,
-        *,
-        project: p.Infra.RopeProject,
     ) -> bool:
         """Prove that a consumed class is its module's exported namespace holder.
 
@@ -3042,7 +3040,9 @@ class FlextInfraUtilitiesCodegenFacades(
         )
         public_exports = (
             FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                cls.require_source_module(package_module)
+                FlextInfraUtilitiesRopeRuntime.require_source_module(
+                    package_module
+                )
             )
         )
         exported = (
@@ -3061,7 +3061,9 @@ class FlextInfraUtilitiesCodegenFacades(
                 declaring = owner.get_module()
                 declared_exports = (
                     FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                        cls.require_source_module(declaring)
+                        FlextInfraUtilitiesRopeRuntime.require_source_module(
+                            declaring
+                        )
                     )
                 )
                 if letter in declared_exports:
@@ -3932,15 +3934,6 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
-        module_scope = module.get_scope()
-        alias = module_scope.get_defined_names().get("TypeAlias")
-        if not (
-            isinstance(alias, p.Infra.RopeImportedName)
-            and alias.imported_name == "TypeAlias"
-            and alias.imported_module.module_name == "typing"
-            and alias.imported_module.level == 0
-        ):
-            return frozenset()
         finder = runtime.runtime_callable("rope.base.worder", "Worder")(
             module.source_code
         )
@@ -3948,13 +3941,55 @@ class FlextInfraUtilitiesCodegenFacades(
             msg = "Facade publication requires the native word finder contract"
             raise TypeError(msg)
         index = module.get_source_binding_index()
+        if not FlextInfraUtilitiesCodegenFacades._facade_alias_import_evidence(
+            project, module, finder, index
+        ):
+            return frozenset()
+        depths = FlextInfraUtilitiesCodegenFacades._facade_class_depths(
+            module, finder, index, owner_name
+        )
+        selected: set[tuple[int, int]] = set()
+        matches = runtime.semantic_finder(module, arguments={}).get_matches(
+            "${target}: TypeAlias = ${value}", {}
+        )
+        for match in matches:
+            hit = FlextInfraUtilitiesCodegenFacades._facade_publication_hit(
+                match, (module, finder, index), depths, wanted
+            )
+            if hit is not None:
+                selected.add(hit)
+        return frozenset(selected)
+
+    @classmethod
+    def _facade_alias_import_evidence(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        finder: p.Infra.RopeWorder,
+        index: object,
+    ) -> bool:
+        """Prove the module imports ``TypeAlias`` from typing, unaliased.
+
+        Returns:
+            Whether the native unaliased typing import is present.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        alias = module.get_scope().get_defined_names().get("TypeAlias")
+        if not (
+            isinstance(alias, p.Infra.RopeImportedName)
+            and alias.imported_name == "TypeAlias"
+            and alias.imported_module.module_name == "typing"
+            and alias.imported_module.level == 0
+        ):
+            return False
         imports = tuple(
             occurrence.offset
             for occurrence in runtime.create_occurrence_finder(
                 project, "TypeAlias", alias, imports=True, in_hierarchy=False
             ).find_occurrences(pymodule=module)
         )
-        if not any(
+        return any(
             fragment.depth == 1
             and finder.get_word_at(fragment.start) == "from"
             and fragment.start <= offset < fragment.end
@@ -3962,8 +3997,22 @@ class FlextInfraUtilitiesCodegenFacades(
             and not finder.is_from_aliased(offset)
             for fragment in index.fragments
             for offset in imports
-        ):
-            return frozenset()
+        )
+
+    @staticmethod
+    def _facade_class_depths(
+        module: p.Infra.RopeSourceModule,
+        finder: p.Infra.RopeWorder,
+        index: object,
+        owner_name: str,
+    ) -> dict[int, int]:
+        """Map each declared class scope to its native fragment depth.
+
+        Returns:
+            Scope identity to fragment depth for the owner and nested classes.
+
+        """
+        module_scope = module.get_scope()
         owners = tuple(
             scope
             for scope in module_scope.get_scopes()
@@ -3978,7 +4027,7 @@ class FlextInfraUtilitiesCodegenFacades(
             )
         )
         top_level = frozenset(id(owner.pyobject) for owner in owners)
-        depths = {
+        return {
             id(scope.pyobject): fragment.depth
             for scope in scopes
             for fragment in index.fragments
@@ -3986,37 +4035,49 @@ class FlextInfraUtilitiesCodegenFacades(
             and finder.get_word_at(fragment.start) == "class"
             and fragment.depth == (1 if id(scope.pyobject) in top_level else 2)
         }
-        selected: set[tuple[int, int]] = set()
-        matches = runtime.semantic_finder(module, arguments={}).get_matches(
-            "${target}: TypeAlias = ${value}", {}
+
+    @classmethod
+    def _facade_publication_hit(
+        cls,
+        match: object,
+        view: tuple[p.Infra.RopeSourceModule, p.Infra.RopeWorder, object],
+        depths: Mapping[int, int],
+        wanted: frozenset[int],
+    ) -> tuple[int, int] | None:
+        """Authenticate one PEP 613 declaration match against native scopes.
+
+        Returns:
+            The selected (line, column) row, or no authenticated declaration.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module, finder, index = view
+        begin, end = match.get_region()
+        line = module.lines.get_line_number(begin)
+        if line not in wanted:
+            return None
+        depth = depths.get(id(index.context_at(begin).structural_scope.pyobject))
+        if depth is None or not any(
+            fragment.start == begin
+            and fragment.end == end
+            and fragment.depth == depth + 1
+            for fragment in index.fragments
+        ):
+            return None
+        target_begin, target_end = runtime.semantic_capture_region(match, "target")
+        value_begin, value_end = runtime.semantic_capture_region(match, "value")
+        authentic = cls._facade_publication_reference(finder, value_begin, value_end)
+        if finder.get_word_range(target_begin) != (target_begin, target_end) or not (
+            authentic
+        ):
+            return None
+        value = runtime.expression_name(
+            index.context_at(value_begin).environment,
+            finder.get_primary_at(value_end - 1),
         )
-        for match in matches:
-            begin, end = match.get_region()
-            line = module.lines.get_line_number(begin)
-            if line not in wanted:
-                continue
-            context = index.context_at(begin)
-            depth = depths.get(id(context.structural_scope.pyobject))
-            if depth is None or not any(
-                fragment.start == begin
-                and fragment.end == end
-                and fragment.depth == depth + 1
-                for fragment in index.fragments
-            ):
-                continue
-            target_begin, target_end = runtime.semantic_capture_region(match, "target")
-            value_begin, value_end = runtime.semantic_capture_region(match, "value")
-            if finder.get_word_range(target_begin) != (target_begin, target_end):
-                continue
-            if not FlextInfraUtilitiesCodegenFacades._facade_publication_reference(
-                finder, value_begin, value_end
-            ):
-                continue
-            scope = index.context_at(value_begin).environment
-            value = runtime.expression_name(scope, finder.get_primary_at(value_end - 1))
-            if value is not None and runtime.abstract_class(value.get_object()):
-                selected.add((line, begin - module.lines.get_line_start(line) + 1))
-        return frozenset(selected)
+        if value is None or not runtime.abstract_class(value.get_object()):
+            return None
+        return (line, begin - module.lines.get_line_start(line) + 1)
 
     @staticmethod
     def _facade_publication_reference(

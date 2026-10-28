@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import closing
 from pathlib import Path
 

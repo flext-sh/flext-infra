@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -246,7 +245,7 @@ class TestsFlextInfraAuditorStaleSymbols:
         tm.that(exports, has="LiveSymbol")
         tm.that(public_symbols, has="LiveSymbol")
 
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             issues = u.Infra.docstring_issues(
                 tmp_path, contract, rope_project=rope_project
             )
@@ -298,7 +297,7 @@ class TestsFlextInfraAuditorStaleSymbols:
         contract = u.Infra.public_contract(tmp_path, "demo_pkg")
 
         tm.that(contract["target_map"], eq={"LiveSymbol": "demo_pkg.facade"})
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             tm.that(
                 u.Infra.docstring_issues(tmp_path, contract, rope_project=rope_project),
                 eq=[],
@@ -338,7 +337,7 @@ class TestsFlextInfraAuditorStaleSymbols:
         )
 
         contract = u.Infra.public_contract(tmp_path, "demo_pkg")
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             issues = u.Infra.docstring_issues(
                 tmp_path, contract, rope_project=rope_project
             )
@@ -370,7 +369,7 @@ class TestsFlextInfraAuditorStaleSymbols:
         )
 
         contract = u.Infra.public_contract(tmp_path, "demo_pkg")
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             issues = u.Infra.docstring_issues(
                 tmp_path, contract, rope_project=rope_project
             )

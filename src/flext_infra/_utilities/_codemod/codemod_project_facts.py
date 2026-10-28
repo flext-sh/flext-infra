@@ -42,6 +42,7 @@ from flext_infra._utilities._codemod import (
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._rope._analysis import (
@@ -133,8 +134,11 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 continue
             exports[package] = frozenset(
                 FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                    FlextInfraUtilitiesWorkspaceSnapshot.workspace_source(
-                        snapshot, initializer
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        snapshot.engine,
+                        FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                            snapshot.engine, initializer
+                        ),
                     ),
                 )
             )

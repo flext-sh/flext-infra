@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import ClassVar
 
-from flext_core import u
-
 from flext_infra import c, infra, m, u
 from flext_infra.docs import (
     FlextInfraDocAuditor,

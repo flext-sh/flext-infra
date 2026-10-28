@@ -141,7 +141,8 @@ class FlextInfraRefactorProjectClassifierFamily(
                 expected.append(candidate)
         return expected
 
-    def _dependency_to_class_stem(self, dependency: str) -> str:
+    @staticmethod
+    def _dependency_to_class_stem(dependency: str) -> str:
         """Dependency to class stem.
 
         Returns:

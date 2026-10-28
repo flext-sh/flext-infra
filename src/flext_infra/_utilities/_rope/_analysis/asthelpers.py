@@ -264,6 +264,32 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return (lineno, col_offset, end_lineno, end_col_offset)
 
     @staticmethod
+    def node_span_offsets(
+        source: str,
+        node: p.AttributeProbe,
+    ) -> tuple[int, int] | None:
+        """Resolve one AST node's start and end character offsets in source.
+
+        Returns:
+            The start and end character offsets, or ``None`` without a span.
+
+        """
+        span = FlextInfraUtilitiesRopeAnalysisAstHelpers.line_col_range(node)
+        if span is None:
+            return None
+        start_line, start_column, end_line, end_column = span
+        lines = source.splitlines(keepends=True)
+        prefix = lines[start_line - 1].encode(c.DEFAULT_ENCODING)[:start_column]
+        suffix = lines[end_line - 1].encode(c.DEFAULT_ENCODING)[:end_column]
+        start = sum(len(line) for line in lines[: start_line - 1]) + len(
+            prefix.decode(c.DEFAULT_ENCODING)
+        )
+        end = sum(len(line) for line in lines[: end_line - 1]) + len(
+            suffix.decode(c.DEFAULT_ENCODING)
+        )
+        return start, end
+
+    @staticmethod
     def assignment_target_names(node: p.AttributeProbe) -> Sequence[str]:
         """Return direct assignment target names represented by one AST node.
 

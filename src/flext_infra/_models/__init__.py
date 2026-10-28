@@ -234,8 +234,12 @@ install_lazy_exports(
         "FlextInfraModelsDepsToolConfig": ".deps_tool_config",
         "FlextInfraModelsDepsToolConfigLinters": ".deps_tool_config_linters",
         "FlextInfraModelsDepsToolConfigProject": ".deps_tool_config_project",
-        "FlextInfraModelsDepsToolConfigProjectArtifacts": ".deps_tool_config_project_artifacts",
-        "FlextInfraModelsDepsToolConfigProjectGitignore": ".deps_tool_config_project_gitignore",
+        "FlextInfraModelsDepsToolConfigProjectArtifacts": (
+            ".deps_tool_config_project_artifacts"
+        ),
+        "FlextInfraModelsDepsToolConfigProjectGitignore": (
+            ".deps_tool_config_project_gitignore"
+        ),
         "FlextInfraModelsDepsToolConfigProjectMise": ".deps_tool_config_project_mise",
         "FlextInfraModelsDepsToolConfigTypeCheckers": ".deps_tool_config_type_checkers",
         "FlextInfraModelsDocs": ".docs",

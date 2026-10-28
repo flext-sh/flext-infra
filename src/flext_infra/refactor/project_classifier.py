@@ -105,8 +105,8 @@ class FlextInfraProjectClassifier(
         )
         return (project_name, dependencies)
 
+    @staticmethod
     def _normalized_name_from_mapping(
-        self,
         raw_mapping: Mapping[str, t.JsonValue],
     ) -> str:
         """Return the normalized name from a mapping.

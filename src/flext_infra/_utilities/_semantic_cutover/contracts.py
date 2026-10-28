@@ -217,7 +217,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
                 analysis_sources[path] = candidate
                 inserted[path] = names
-        plans = FlextInfraUtilitiesWorkspaceSnapshot._workspace_declared_sources(
+        plans = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(workspace.rope_project.root.real_path),
             (),
             analysis_sources,
@@ -227,7 +227,7 @@ class FlextInfraUtilitiesSemanticContracts(
             declared_files=plans, additional_source_folders=None
         ):
             return cls._plan_bound_contract_rules(
-                workspace, sources, rules, options, analysis_sources, inserted
+                workspace, sources, rules, options, (analysis_sources, inserted)
             )
 
     @classmethod
@@ -237,10 +237,20 @@ class FlextInfraUtilitiesSemanticContracts(
         sources: Mapping[Path, str],
         rules: Sequence[p.Infra.RopeContractRule],
         options: m.Infra.ContractAdmissionOptions | None,
-        analysis_sources: Mapping[Path, str],
-        inserted: Mapping[Path, tuple[str, ...]],
+        witnesses: tuple[
+            Mapping[Path, str], Mapping[Path, tuple[str, ...]]
+        ],
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
-        """Plan effects from current consumers, retaining analysis-only witnesses."""
+        """Plan effects from current consumers, retaining analysis-only witnesses.
+
+        Returns:
+            The planned semantic migration edits.
+
+        Raises:
+            ValueError: If a contract transfer is not owned or a witness is lost.
+
+        """
+        analysis_sources, inserted = witnesses
         rules = tuple(
             derived
             for rule in rules
@@ -338,7 +348,81 @@ class FlextInfraUtilitiesSemanticContracts(
         project: p.Infra.RopeProject,
         selection: p.Infra.RopeContractRule,
     ) -> tuple[Path, str, tuple[str, ...]]:
-        """Compose authenticated historical declarations into an analysis-only view."""
+        """Compose authenticated historical declarations into an analysis-only view.
+
+        Returns:
+            The historical path, source text and declared names.
+
+        """
+        provider, module, resource = cls._authenticated_generic_provider(
+            project, selection
+        )
+        path = Path(resource.real_path).resolve()
+        current = module.source_code
+        current_names = frozenset(provider.get_attributes())
+        anchor, indentation = cls._generic_history_anchor(
+            current, module.get_source_binding_index().fragments, provider
+        )
+        historical = cls._generic_history_source(path, selection)
+        with project.source_view(
+            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path),
+                (),
+                {path: historical},
+                source_project=project,
+            ),
+            additional_source_folders=None,
+        ):
+            declarations, names, imports = cls._generic_history_declarations(
+                cls._generic_history_module(project, selection), current_names
+            )
+        candidate = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource,
+            current,
+            (
+                m.Infra.SourceRewrite(
+                    start=anchor.start,
+                    end=anchor.start,
+                    text=("\n" + indentation).join(declarations) + "\n" + indentation,
+                ),
+            )
+            if declarations
+            else (),
+        ).new_contents
+        for import_module, members in imports.items():
+            plans = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path),
+                (),
+                {path: candidate},
+                source_project=project,
+            )
+            with project.source_view(
+                declared_files=plans, additional_source_folders=None
+            ):
+                imported = FlextInfraUtilitiesRopeImports.add_import(
+                    project, resource, import_module, tuple(members), apply=False
+                )
+                if imported is not None:
+                    candidate = imported
+        return path, candidate, tuple(names)
+
+    @classmethod
+    def _generic_history_provider(
+        cls,
+        project: p.Infra.RopeProject,
+        selection: p.Infra.RopeContractRule,
+    ) -> tuple[str, p.Infra.RopeSourceClass, p.Infra.RopePyModule, object]:
+        """Authenticate the elected provider, its module and its resource.
+
+        Returns:
+            The identity constraint, provider class, module and resource.
+
+        Raises:
+            TypeError: If the provider is not a native source class or module.
+
+            ValueError: If the constraint or the resource is missing.
+
+        """
         (constraint,) = selection.arguments.values()
         if not isinstance(constraint, str) or not constraint.startswith("name="):
             msg = f"{selection.id}: provider requires a native name constraint"
@@ -355,13 +439,23 @@ class FlextInfraUtilitiesSemanticContracts(
             msg = f"{selection.id}: provider has no native source module"
             raise TypeError(msg)
         resource = module.get_resource()
-        if resource is None or selection.source_revision is None:
+        if resource is None:
             msg = f"{selection.id}: historical provider requires source and revision"
             raise ValueError(msg)
-        path = Path(resource.real_path).resolve()
-        current = module.source_code
-        current_names = frozenset(provider.get_attributes())
-        native = module.get_source_binding_index().fragments
+        return identity, provider, module, resource
+
+    @staticmethod
+    def _generic_history_anchor(
+        current: str,
+        native: Sequence[p.Infra.RopeSourceFragment],
+        provider: p.Infra.RopeSourceClass,
+    ) -> tuple[p.Infra.RopeSourceFragment, str]:
+        """Elect the provider's type-alias anchor and its source indentation.
+
+        Returns:
+            The anchor fragment and the indentation text before it.
+
+        """
         name = next(
             fragment
             for fragment in native
@@ -375,9 +469,23 @@ class FlextInfraUtilitiesSemanticContracts(
             and fragment.start <= name.start < name.end <= fragment.end
         )
         indentation = current[current.rfind("\n", 0, anchor.start) + 1 : anchor.start]
+        return anchor, indentation
+
+    @staticmethod
+    def _generic_history_source(
+        path: Path,
+        selection: p.Infra.RopeContractRule,
+    ) -> str:
+        """Read the provider's committed source at the selection's revision.
+
+        Returns:
+            The historical source text of the provider's file.
+
+        """
         root = (
-            FlextInfraUtilitiesGit
-            .git_identity(m.Infra.GitRepoRequest(repo_root=path.parent))
+            FlextInfraUtilitiesGit.git_identity(
+                m.Infra.GitRepoRequest(repo_root=path.parent)
+            )
             .unwrap()
             .repository_root
         )
@@ -386,83 +494,106 @@ class FlextInfraUtilitiesSemanticContracts(
             path.parent.relative_to(root).as_posix(),
             revision=selection.source_revision,
         ).unwrap()
-        historical = blobs[path.name].decode(c.DEFAULT_ENCODING)
-        plans = FlextInfraUtilitiesWorkspaceSnapshot._workspace_declared_sources(
-            Path(project.root.real_path), (), {path: historical}, source_project=project
+        return blobs[path.name].decode(c.DEFAULT_ENCODING)
+
+    @classmethod
+    def _authenticated_generic_provider(
+        cls,
+        project: p.Infra.RopeProject,
+        selection: p.Infra.RopeContractRule,
+    ) -> tuple[p.Infra.RopeSourceClass, p.Infra.RopePyModule, object]:
+        """Authenticate the provider and return it with its module and resource.
+
+        Returns:
+            The provider class, its module and its resource.
+
+        """
+        _identity, provider, module, resource = cls._generic_history_provider(
+            project, selection
         )
+        return provider, module, resource
+
+    @classmethod
+    def _generic_history_module(
+        cls,
+        project: p.Infra.RopeProject,
+        selection: p.Infra.RopeContractRule,
+    ) -> p.Infra.RopePyModule:
+        """Authenticate the historical provider's module inside the view.
+
+        Returns:
+            The historical native module.
+
+        Raises:
+            TypeError: If the historical provider has no native module.
+
+        """
+        identity, provider, module, resource = cls._generic_history_provider(
+            project, selection
+        )
+        del provider, module, resource
+        historical = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, identity
+        ).get_object()
+        if not isinstance(historical, p.Infra.RopeSourceClass):
+            msg = f"{selection.id}: historical provider identity is not a source class"
+            raise TypeError(msg)
+        historical_module = historical.get_module()
+        if not isinstance(historical_module, p.Infra.RopePyModule):
+            msg = f"{selection.id}: historical provider has no native module"
+            raise TypeError(msg)
+        return historical_module
+
+    @classmethod
+    def _generic_history_declarations(
+        cls,
+        historical_module: p.Infra.RopePyModule,
+        current_names: frozenset[str],
+    ) -> tuple[list[str], list[str], dict[str, set[str]]]:
+        """Compose forwarding declarations from the historical module.
+
+        Returns:
+            The declaration texts, their alias names and required imports.
+
+        """
         declarations: list[str] = []
         names: list[str] = []
         imports: dict[str, set[str]] = {}
-        with project.source_view(declared_files=plans, additional_source_folders=None):
-            historical_provider = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                project, identity
-            ).get_object()
-            if not isinstance(historical_provider, p.Infra.RopeSourceClass):
-                msg = f"{selection.id}: historical provider identity is not a source class"
-                raise TypeError(msg)
-            historical_module = historical_provider.get_module()
-            if not isinstance(historical_module, p.Infra.RopePyModule):
-                msg = f"{selection.id}: historical provider has no native module"
-                raise TypeError(msg)
-            for (
+        for (
+            declaration,
+            alias,
+            body,
+        ), parameters in cls._generic_collection_declarations(
+            historical_module,
+            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                historical_module,
+                historical_module.get_name() or "",
+            ).get_object(),
+        ):
+            alias_name = historical_module.source_code[alias.start : alias.end]
+            if alias_name in current_names:
+                continue
+            origin = cls._generic_collection_origin(historical_module, body)
+            if origin is None:
+                continue
+            member, native_identity, import_module = origin
+            suffix = cls._generic_collection_forwarding_suffix(
+                historical_module,
                 declaration,
-                alias,
-                body,
-            ), parameters in cls._generic_collection_declarations(
-                historical_module, historical_provider
-            ):
-                alias_name = historical_module.source_code[alias.start : alias.end]
-                if alias_name in current_names:
-                    continue
-                origin = cls._generic_collection_origin(historical_module, body)
-                if origin is None:
-                    continue
-                member, native_identity, import_module = origin
-                suffix = cls._generic_collection_forwarding_suffix(
-                    historical_module,
-                    declaration,
-                    alias_name,
-                    parameters,
-                    native_identity,
-                )
-                if suffix is None:
-                    continue
-                formal = ", ".join(parameters)
-                declarations.append(
-                    f"type {alias_name}[{formal}] = {member}[{formal}{suffix}]"
-                )
-                names.append(alias_name)
-                if import_module is not None:
-                    imports.setdefault(import_module, set()).add(member)
-        candidate = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-            resource,
-            current,
-            (
-                m.Infra.SourceRewrite(
-                    start=anchor.start,
-                    end=anchor.start,
-                    text=("\n" + indentation).join(declarations) + "\n" + indentation,
-                ),
+                alias_name,
+                parameters,
+                native_identity,
             )
-            if declarations
-            else (),
-        ).new_contents
-        for import_module, members in imports.items():
-            plans = FlextInfraUtilitiesWorkspaceSnapshot._workspace_declared_sources(
-                Path(project.root.real_path),
-                (),
-                {path: candidate},
-                source_project=project,
+            if suffix is None:
+                continue
+            formal = ", ".join(parameters)
+            declarations.append(
+                f"type {alias_name}[{formal}] = {member}[{formal}{suffix}]"
             )
-            with project.source_view(
-                declared_files=plans, additional_source_folders=None
-            ):
-                imported = FlextInfraUtilitiesRopeImports.add_import(
-                    project, resource, import_module, tuple(members), apply=False
-                )
-                if imported is not None:
-                    candidate = imported
-        return path, candidate, tuple(names)
+            names.append(alias_name)
+            if import_module is not None:
+                imports.setdefault(import_module, set()).add(member)
+        return declarations, names, imports
 
     @classmethod
     def _generic_collection_contract_rules(
@@ -628,8 +759,9 @@ class FlextInfraUtilitiesSemanticContracts(
             ),
         )
 
-    @staticmethod
+    @classmethod
     def _generic_collection_origin(
+        cls,
         module: p.Infra.RopePyModule,
         body: p.Infra.RopeSourceFragment,
     ) -> tuple[str, str, str | None] | None:
@@ -637,6 +769,47 @@ class FlextInfraUtilitiesSemanticContracts(
 
         Returns:
             Native member, identity and import module, or no collection origin.
+
+        Raises:
+            ValueError: A captured generic origin cannot be resolved.
+
+        """
+        elected = cls._generic_origin_class(module, body)
+        if elected is None:
+            return None
+        value, binding = elected
+        owner = value.get_module()
+        module_name = (
+            value.builtin.__module__
+            if isinstance(value, p.Infra.RopeBuiltinClass)
+            else None
+            if owner is None
+            else owner.get_name()
+        )
+        member = value.get_name()
+        if isinstance(binding, p.Infra.RopeImportedName):
+            module_name = binding.imported_module.module_name
+            if module_name is None:
+                msg = "relative generic collection origin is not native"
+                raise ValueError(msg)
+            return member, f"{module_name}.{binding.imported_name}", module_name
+        if isinstance(value, p.Infra.RopeBuiltinClass):
+            return member, f"__builtins__.{member}", None
+        if owner is None:
+            msg = "native collection class has no declaring module"
+            raise ValueError(msg)
+        return member, f"{owner.get_name()}.{member}", owner.get_name()
+
+    @classmethod
+    def _generic_origin_class(
+        cls,
+        module: p.Infra.RopePyModule,
+        body: p.Infra.RopeSourceFragment,
+    ) -> tuple[p.Infra.RopeClassObject, p.Infra.RopePyName] | None:
+        """Elect the stdlib generic origin class behind one lexical binding.
+
+        Returns:
+            The bound class object and its name binding, or no origin class.
 
         Raises:
             ValueError: A captured generic origin cannot be resolved.
@@ -665,13 +838,12 @@ class FlextInfraUtilitiesSemanticContracts(
         value = binding.get_object()
         if not isinstance(value, p.Infra.RopeClassObject):
             return None
-        owner = value.get_module()
         module_name = (
             value.builtin.__module__
             if isinstance(value, p.Infra.RopeBuiltinClass)
             else None
-            if owner is None
-            else owner.get_name()
+            if value.get_module() is None
+            else value.get_module().get_name()
         )
         if module_name is None or (
             module_name.partition(".")[0] not in sys.stdlib_module_names
@@ -679,19 +851,7 @@ class FlextInfraUtilitiesSemanticContracts(
             return None
         if "__class_getitem__" not in value.get_attributes():
             return None
-        member = value.get_name()
-        if isinstance(binding, p.Infra.RopeImportedName):
-            module_name = binding.imported_module.module_name
-            if module_name is None:
-                msg = "relative generic collection origin is not native"
-                raise ValueError(msg)
-            return member, f"{module_name}.{binding.imported_name}", module_name
-        if isinstance(value, p.Infra.RopeBuiltinClass):
-            return member, f"__builtins__.{member}", None
-        if owner is None:
-            msg = "native collection class has no declaring module"
-            raise ValueError(msg)
-        return member, f"{owner.get_name()}.{member}", owner.get_name()
+        return value, binding
 
     @staticmethod
     def _generic_collection_forwarding_suffix(
@@ -889,7 +1049,7 @@ class FlextInfraUtilitiesSemanticContracts(
         """
         if not applied:
             return project.source_plans
-        return FlextInfraUtilitiesWorkspaceSnapshot._workspace_declared_sources(
+        return FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(project.root.real_path),
             (),
             {path: sources[path] for path in applied},
@@ -917,7 +1077,8 @@ class FlextInfraUtilitiesSemanticContracts(
             if path not in working:
                 msg = f"{rule.id}: effect is outside captured consumers: {path}"
                 raise ValueError(msg)
-            proposed = FlextInfraUtilitiesSemanticDeclarationRelocation.remove_orphaned_imports(
+            relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
+            proposed = relocation.remove_orphaned_imports(
                 project, change.resource, working[path], change.new_contents
             )
             if proposed != working[path]:

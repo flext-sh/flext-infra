@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import builtins
 import hashlib
 import operator
@@ -30,6 +29,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 
 class FlextInfraCodemodExtractDuplicate:
@@ -217,7 +217,7 @@ class FlextInfraCodemodExtractDuplicate:
             The rewritten source, or ``None`` when no reported span is safe.
 
         """
-        tree = ast.parse(source)
+        tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
         parents = u.Infra.ast_parent_map(tree)
         for span in spans:
             rewritten = cls._plan_span(source, tree, parents, span)
@@ -229,7 +229,7 @@ class FlextInfraCodemodExtractDuplicate:
     def _plan_span(
         cls,
         source: str,
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         parents: Mapping[int, t.Infra.RopeAstNode],
         span: tuple[int, int, int, int],
     ) -> str | None:
@@ -265,8 +265,8 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _pair_matches(
         cls,
-        first_block: Sequence[ast.stmt],
-        second_block: Sequence[ast.stmt],
+        first_block: Sequence[t.Infra.AstStatement],
+        second_block: Sequence[t.Infra.AstStatement],
     ) -> bool:
         """Return whether two statement slices are one safe, repeatable block.
 
@@ -284,22 +284,26 @@ class FlextInfraCodemodExtractDuplicate:
 
     @staticmethod
     def _statement_slice(
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         start: int,
         end: int,
-    ) -> tuple[ast.stmt, ...] | None:
+    ) -> tuple[t.Infra.AstStatement, ...] | None:
         """Return the exact contiguous statement slice covering ``[start, end]``.
 
         Returns:
             The tightest matching statement tuple, or ``None``.
 
         """
-        best: tuple[ast.stmt, ...] | None = None
-        for node in ast.walk(tree):
-            raw: Sequence[ast.AST] | None = getattr(node, "body", None)
+        best: tuple[t.Infra.AstStatement, ...] | None = None
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):
+            raw: Sequence[t.Infra.RopeAstNode] | None = getattr(node, "body", None)
             if not isinstance(raw, list) or not raw:
                 continue
-            statements = [child for child in raw if isinstance(child, ast.stmt)]
+            statements = [
+                child
+                for child in raw
+                if isinstance(child, FlextInfraUtilitiesRopeAnalysis.Tree.Statement)
+            ]
             if len(statements) != len(raw):
                 continue
             for index, first in enumerate(statements):
@@ -314,17 +318,21 @@ class FlextInfraCodemodExtractDuplicate:
         return best
 
     @classmethod
-    def _dump(cls, block: Sequence[ast.stmt]) -> str:
+    def _dump(cls, block: Sequence[t.Infra.AstStatement]) -> str:
         """Return the statement list's canonical structural digest.
 
         Returns:
             The statement list's canonical structural digest.
 
         """
-        return ast.dump(ast.Module(body=list(block), type_ignores=[]))
+        return FlextInfraUtilitiesRopeAnalysis.Tree.dump(
+            FlextInfraUtilitiesRopeAnalysis.Tree.Module(
+                body=list(block), type_ignores=[]
+            )
+        )
 
     @classmethod
-    def _block_is_safe(cls, block: Sequence[ast.stmt]) -> bool:
+    def _block_is_safe(cls, block: Sequence[t.Infra.AstStatement]) -> bool:
         """Return whether the block survives extraction without behavior change.
 
         Returns:
@@ -332,33 +340,38 @@ class FlextInfraCodemodExtractDuplicate:
 
         """
         unsafe = (
-            ast.Return,
-            ast.Yield,
-            ast.YieldFrom,
-            ast.Break,
-            ast.Continue,
-            ast.Nonlocal,
-            ast.Global,
-            ast.Await,
-            ast.NamedExpr,
-            ast.Import,
-            ast.ImportFrom,
-            ast.FunctionDef,
-            ast.AsyncFunctionDef,
-            ast.ClassDef,
-            ast.Lambda,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Return,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Yield,
+            FlextInfraUtilitiesRopeAnalysis.Tree.YieldFrom,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Break,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Continue,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Nonlocal,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Global,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Await,
+            FlextInfraUtilitiesRopeAnalysis.Tree.NamedExpr,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Import,
+            FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom,
+            FlextInfraUtilitiesRopeAnalysis.Tree.FunctionDef,
+            FlextInfraUtilitiesRopeAnalysis.Tree.AsyncFunctionDef,
+            FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef,
+            FlextInfraUtilitiesRopeAnalysis.Tree.Lambda,
         )
         for statement in block:
-            for node in ast.walk(statement):
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(statement):
                 if isinstance(node, unsafe):
                     return False
-                if isinstance(node, ast.Starred) and isinstance(node.ctx, ast.Store):
-                    return False
-                if isinstance(node, ast.Name) and node.id == "__class__":
+                if isinstance(
+                    node, FlextInfraUtilitiesRopeAnalysis.Tree.Starred
+                ) and isinstance(node.ctx, FlextInfraUtilitiesRopeAnalysis.Tree.Store):
                     return False
                 if (
-                    isinstance(node, ast.Call)
-                    and isinstance(node.func, ast.Name)
+                    isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                    and node.id == "__class__"
+                ):
+                    return False
+                if (
+                    isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Call)
+                    and isinstance(node.func, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
                     and node.func.id == "super"
                     and not node.args
                     and not node.keywords
@@ -367,7 +380,7 @@ class FlextInfraCodemodExtractDuplicate:
         return True
 
     @classmethod
-    def _block_bindings(cls, block: Sequence[ast.stmt]) -> frozenset[str]:
+    def _block_bindings(cls, block: Sequence[t.Infra.AstStatement]) -> frozenset[str]:
         """Return every name the block binds.
 
         Returns:
@@ -376,22 +389,27 @@ class FlextInfraCodemodExtractDuplicate:
         """
         bound: set[str] = set()
         for statement in block:
-            for node in ast.walk(statement):
-                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(statement):
+                if isinstance(
+                    node, FlextInfraUtilitiesRopeAnalysis.Tree.Name
+                ) and isinstance(node.ctx, FlextInfraUtilitiesRopeAnalysis.Tree.Store):
                     bound.add(node.id)
-                elif isinstance(node, ast.arg):
+                elif isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Argument):
                     bound.add(node.arg)
-                elif isinstance(node, ast.ExceptHandler) and node.name:
+                elif (
+                    isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ExceptHandler)
+                    and node.name
+                ):
                     bound.add(node.name)
-                elif isinstance(node, ast.alias):
+                elif isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Alias):
                     bound.add((node.asname or node.name).split(".")[0])
         return frozenset(bound)
 
     @classmethod
     def _bindings_escape(
         cls,
-        tree: ast.Module,
-        block: Sequence[ast.stmt],
+        tree: t.Infra.AstModule,
+        block: Sequence[t.Infra.AstStatement],
         bound: frozenset[str],
     ) -> bool:
         """Return whether any name the block binds is read outside the block.
@@ -402,20 +420,24 @@ class FlextInfraCodemodExtractDuplicate:
         """
         if not bound:
             return False
-        inside = {id(node) for statement in block for node in ast.walk(statement)}
+        inside = {
+            id(node)
+            for statement in block
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(statement)
+        }
         return any(
-            isinstance(node, ast.Name)
-            and isinstance(node.ctx, ast.Load)
+            isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+            and isinstance(node.ctx, FlextInfraUtilitiesRopeAnalysis.Tree.Load)
             and node.id in bound
             and id(node) not in inside
-            for node in ast.walk(tree)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
         )
 
     @staticmethod
     def _enclosing_class(
         parents: Mapping[int, t.Infra.RopeAstNode],
-        node: ast.stmt,
-    ) -> ast.ClassDef | None:
+        node: t.Infra.AstStatement,
+    ) -> t.Infra.AstClassDefinition | None:
         """Return the innermost class enclosing ``node``, if any.
 
         Returns:
@@ -424,7 +446,7 @@ class FlextInfraCodemodExtractDuplicate:
         """
         current = parents.get(id(node))
         while current is not None:
-            if isinstance(current, ast.ClassDef):
+            if isinstance(current, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                 return current
             current = parents.get(id(current))
         return None
@@ -433,7 +455,7 @@ class FlextInfraCodemodExtractDuplicate:
     def _class_is_module_level(
         cls,
         parents: Mapping[int, t.Infra.RopeAstNode],
-        owner: ast.ClassDef,
+        owner: t.Infra.AstClassDefinition,
     ) -> bool:
         """Return whether the class name resolves as a module global.
 
@@ -455,15 +477,15 @@ class FlextInfraCodemodExtractDuplicate:
     def _enclosing_functions(
         cls,
         parents: Mapping[int, t.Infra.RopeAstNode],
-        node: ast.stmt,
-    ) -> tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]:
+        node: t.Infra.AstStatement,
+    ) -> tuple[t.Infra.AstFunctionDefinition, ...]:
         """Return the enclosing functions of ``node``, innermost first.
 
         Returns:
             The enclosing functions of ``node``, innermost first.
 
         """
-        chain: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+        chain: list[t.Infra.AstFunctionDefinition] = []
         current = parents.get(id(node))
         while current is not None:
             if isinstance(current, c.Infra.AST_FUNCTION_TYPES):
@@ -474,9 +496,9 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _free_parameters(
         cls,
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         parents: Mapping[int, t.Infra.RopeAstNode],
-        block: Sequence[ast.stmt],
+        block: Sequence[t.Infra.AstStatement],
     ) -> tuple[tuple[str, str], ...] | None:
         """Return the typed parameters the helper needs, or ``None`` if untypable.
 
@@ -493,8 +515,9 @@ class FlextInfraCodemodExtractDuplicate:
         for statement in block:
             loaded.update(
                 node.id
-                for node in ast.walk(statement)
-                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+                for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(statement)
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                and isinstance(node.ctx, FlextInfraUtilitiesRopeAnalysis.Tree.Load)
             )
         free = sorted(loaded - cls._block_bindings(block) - cls._BUILTIN_NAMES)
         chain = cls._enclosing_functions(parents, block[0])
@@ -520,8 +543,8 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _helper_name(
         cls,
-        tree: ast.Module,
-        block: Sequence[ast.stmt],
+        tree: t.Infra.AstModule,
+        block: Sequence[t.Infra.AstStatement],
     ) -> str:
         """Return a deterministic helper name that is not already bound.
 
@@ -530,9 +553,15 @@ class FlextInfraCodemodExtractDuplicate:
 
         """
         digest = hashlib.sha256(cls._dump(block).encode()).hexdigest()
-        used = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+        used = {
+            node.id
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+        }
         used.update(
-            node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+            node.name
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.FunctionDef)
         )
         for width in (10, 16, 32):
             candidate = f"{cls._HELPER_PREFIX}{digest[:width]}"
@@ -548,11 +577,11 @@ class FlextInfraCodemodExtractDuplicate:
         source: str,
         span: tuple[int, int, int, int],
         plan: tuple[
-            ast.ClassDef,
+            t.Infra.AstClassDefinition,
             str,
             tuple[tuple[str, str], ...],
         ],
-        block: Sequence[ast.stmt],
+        block: Sequence[t.Infra.AstStatement],
     ) -> str | None:
         """Render the helper and rewire both occurrences to a single call.
 
@@ -599,11 +628,11 @@ class FlextInfraCodemodExtractDuplicate:
         ):
             lines[start:end] = replacement
         rendered = "".join(lines)
-        ast.parse(rendered)
+        FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(rendered)
         return rendered
 
     @staticmethod
-    def _has_multiline_string(block: Sequence[ast.stmt]) -> bool:
+    def _has_multiline_string(block: Sequence[t.Infra.AstStatement]) -> bool:
         """Return whether the block holds a multi-line string literal.
 
         Re-indenting a block whose indentation already matches the helper body
@@ -615,18 +644,18 @@ class FlextInfraCodemodExtractDuplicate:
 
         """
         return any(
-            isinstance(node, ast.Constant)
+            isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Constant)
             and isinstance(node.value, str)
             and "\n" in node.value
             for statement in block
-            for node in ast.walk(statement)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(statement)
         )
 
     @staticmethod
     def _call_lines(
         lines: Sequence[str],
         start: int,
-        owner: ast.ClassDef,
+        owner: t.Infra.AstClassDefinition,
         helper_name: str,
         arguments: str,
     ) -> list[str]:
@@ -691,7 +720,7 @@ class FlextInfraCodemodExtractDuplicate:
         ]
 
     @classmethod
-    def _insertion_index(cls, owner: ast.ClassDef) -> int:
+    def _insertion_index(cls, owner: t.Infra.AstClassDefinition) -> int:
         """Return the 0-based line index before the class body's first member.
 
         The helper is declared after the class docstring and before the first
@@ -701,11 +730,13 @@ class FlextInfraCodemodExtractDuplicate:
             The 0-based insertion index.
 
         """
-        members: list[ast.stmt] = list(owner.body)
+        members: list[t.Infra.AstStatement] = list(owner.body)
         if (
             members
-            and isinstance(members[0], ast.Expr)
-            and isinstance(members[0].value, ast.Constant)
+            and isinstance(members[0], FlextInfraUtilitiesRopeAnalysis.Tree.Expr)
+            and isinstance(
+                members[0].value, FlextInfraUtilitiesRopeAnalysis.Tree.Constant
+            )
             and isinstance(members[0].value.value, str)
         ):
             members = members[1:]
@@ -724,7 +755,7 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _scope_bindings(
         cls,
-        func: ast.FunctionDef | ast.AsyncFunctionDef,
+        func: t.Infra.AstFunctionDefinition,
     ) -> frozenset[str]:
         """Return an over-approximation of one function's local bindings.
 
@@ -736,19 +767,24 @@ class FlextInfraCodemodExtractDuplicate:
 
         """
         bound: set[str] = {arg.arg for arg in cls._function_arguments(func)}
-        for node in ast.walk(func):
-            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(func):
+            if isinstance(
+                node, FlextInfraUtilitiesRopeAnalysis.Tree.Name
+            ) and isinstance(node.ctx, FlextInfraUtilitiesRopeAnalysis.Tree.Store):
                 bound.add(node.id)
-            elif isinstance(node, ast.alias):
+            elif isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Alias):
                 bound.add((node.asname or node.name).split(".")[0])
-            elif isinstance(node, ast.ExceptHandler) and node.name:
+            elif (
+                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ExceptHandler)
+                and node.name
+            ):
                 bound.add(node.name)
         return frozenset(bound)
 
     @staticmethod
     def _function_arguments(
-        func: ast.FunctionDef | ast.AsyncFunctionDef,
-    ) -> tuple[ast.arg, ...]:
+        func: t.Infra.AstFunctionDefinition,
+    ) -> tuple[t.Infra.AstFunctionArgument, ...]:
         """Return every parameter argument of a function.
 
         Returns:
@@ -767,7 +803,7 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _annotation_for(
         cls,
-        locals_of: Sequence[ast.FunctionDef | ast.AsyncFunctionDef],
+        locals_of: Sequence[t.Infra.AstFunctionDefinition],
         name: str,
     ) -> str | None:
         """Return the source annotation binding ``name`` in the enclosing chain.
@@ -779,14 +815,16 @@ class FlextInfraCodemodExtractDuplicate:
         for func in locals_of:
             for arg in cls._function_arguments(func):
                 if arg.arg == name and arg.annotation is not None:
-                    return ast.unparse(arg.annotation)
-            for node in ast.walk(func):
+                    return FlextInfraUtilitiesRopeAnalysis.Tree.unparse(arg.annotation)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(func):
                 if (
-                    isinstance(node, ast.AnnAssign)
-                    and isinstance(node.target, ast.Name)
+                    isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign)
+                    and isinstance(
+                        node.target, FlextInfraUtilitiesRopeAnalysis.Tree.Name
+                    )
                     and node.target.id == name
                 ):
-                    return ast.unparse(node.annotation)
+                    return FlextInfraUtilitiesRopeAnalysis.Tree.unparse(node.annotation)
         return None
 
     @classmethod
@@ -801,15 +839,17 @@ class FlextInfraCodemodExtractDuplicate:
             Whether every name in an annotation resolves at module scope.
 
         """
-        parsed = ast.parse(annotation, mode="eval")
+        parsed = FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
+            annotation
+        )
         return all(
             node.id in module_bound or node.id in cls._BUILTIN_NAMES
-            for node in ast.walk(parsed)
-            if isinstance(node, ast.Name)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(parsed)
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
         )
 
     @classmethod
-    def _module_bindings(cls, tree: ast.Module) -> frozenset[str]:
+    def _module_bindings(cls, tree: t.Infra.AstModule) -> frozenset[str]:
         """Return the names bound at the module's top-level scope.
 
         Returns:
@@ -823,7 +863,7 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _collect_module_bindings(
         cls,
-        statements: Sequence[ast.stmt],
+        statements: Sequence[t.Infra.AstStatement],
         bound: set[str],
     ) -> None:
         """Accumulate top-level bindings without descending into definitions."""
@@ -842,37 +882,49 @@ class FlextInfraCodemodExtractDuplicate:
                 cls._collect_module_bindings(body, bound)
 
     @staticmethod
-    def _nested_bodies(statement: ast.stmt) -> Sequence[tuple[ast.stmt, ...]]:
+    def _nested_bodies(
+        statement: t.Infra.AstStatement,
+    ) -> Sequence[tuple[t.Infra.AstStatement, ...]]:
         """Return the nested statement bodies owned by one compound statement.
 
         Returns:
             The nested statement bodies owned by one compound statement.
 
         """
-        bodies: list[tuple[ast.stmt, ...]] = []
-        for child in ast.iter_child_nodes(statement):
-            raw: Sequence[ast.AST] | None = getattr(child, "body", None)
+        bodies: list[tuple[t.Infra.AstStatement, ...]] = []
+        for child in FlextInfraUtilitiesRopeAnalysis.Tree.child_nodes(statement):
+            raw: Sequence[t.Infra.RopeAstNode] | None = getattr(child, "body", None)
             if not isinstance(raw, list) or not raw:
                 continue
-            candidate = tuple(item for item in raw if isinstance(item, ast.stmt))
+            candidate = tuple(
+                item
+                for item in raw
+                if isinstance(item, FlextInfraUtilitiesRopeAnalysis.Tree.Statement)
+            )
             if len(candidate) != len(raw):
                 continue
             bodies.append(candidate)
         return tuple(bodies)
 
     @staticmethod
-    def _statement_targets(statement: ast.stmt) -> Sequence[str]:
+    def _statement_targets(statement: t.Infra.AstStatement) -> Sequence[str]:
         """Return names bound by one statement's own (non-nested) targets.
 
         Returns:
             Names bound by one statement's own targets.
 
         """
-        targets: list[ast.AST] = []
-        if isinstance(statement, ast.Assign):
+        targets: list[t.Infra.RopeAstNode] = []
+        if isinstance(statement, FlextInfraUtilitiesRopeAnalysis.Tree.Assign):
             targets = list(statement.targets)
         elif isinstance(
-            statement, (ast.AnnAssign, ast.AugAssign, ast.For, ast.AsyncFor)
+            statement,
+            (
+                FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign,
+                FlextInfraUtilitiesRopeAnalysis.Tree.AugAssign,
+                FlextInfraUtilitiesRopeAnalysis.Tree.For,
+                FlextInfraUtilitiesRopeAnalysis.Tree.AsyncFor,
+            ),
         ):
             targets = [statement.target]
         elif isinstance(statement, c.Infra.AST_WITH_TYPES):
@@ -884,7 +936,9 @@ class FlextInfraCodemodExtractDuplicate:
         names: list[str] = []
         for target in targets:
             names.extend(
-                node.id for node in ast.walk(target) if isinstance(node, ast.Name)
+                node.id
+                for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(target)
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
             )
         return tuple(names)
 

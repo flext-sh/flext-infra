@@ -1414,7 +1414,7 @@ class FlextInfraCodemodSemanticApply(
         )
 
     @classmethod
-    def _verify_Sequences(
+    def _verify_phase_sequences(
         cls,
         sources: Mapping[Path, str],
         rope_workspace: p.Infra.RopeWorkspaceDsl,

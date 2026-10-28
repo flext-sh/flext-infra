@@ -10,22 +10,113 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
-class FlextInfraCodegenConsolidator:
-    """Facade for consolidator."""
-
-    """Value-map build + per-file scan/match/apply for constants consolidation.
-
-    Composed into FlextInfraCodegenConsolidator via FLEXT; self-contained (no
-    facade state), so the facade's ``execute`` orchestrator only sequences
-    these workers across selected projects.
-    """
+class FlextInfraCodegenConsolidator(s[str]):
+    """Consolidate inline constants into canonical ``c.*`` references."""
 
     _ALL_LINT_GATES: ClassVar[Sequence[str]] = tuple(
         entry[0] for entry in c.Infra.LINT_TOOLS
     )
+
+    project_name: str | None = None
+    """Single project to consolidate; ``None`` selects every discovered project."""
+
+    def execute(self) -> p.Result[str]:
+        """Execute constants consolidation with normalized command context."""
+        output_lines: MutableSequence[str] = (
+            ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
+        )
+        found = applied = failed = 0
+        file_results: MutableSequence[Mapping[str, object]] = []
+        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+            projects_result = self._selected_projects(rope)
+            if projects_result.failure:
+                return r[str].fail(projects_result.error or "project discovery failed")
+            for project in projects_result.unwrap():
+                project_layout = u.Infra.layout(project.path)
+                if project_layout is None or not project_layout.init_path.is_file():
+                    continue
+                constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
+                value_map = self._build_value_map_from_constants_file(constants_file)
+                if value_map.failure or not value_map.value:
+                    continue
+                for python_file in (
+                    path
+                    for path in u.Infra.iter_directory_python_files(
+                        project_layout.package_dir,
+                    )
+                    if "_constants" not in path.parts
+                ):
+                    scanned = self._scan_file(
+                        rope.rope_project, python_file, value_map.value
+                    )
+                    if scanned is None:
+                        continue
+                    found += len(scanned.matches)
+                    rel_path = python_file.relative_to(self.workspace_root)
+                    if self.dry_run:
+                        output_lines.extend(
+                            f"  {rel_path}:{symbol.line}"
+                            f"  {symbol.name} = {value} -> {ref}"
+                            for symbol, ref, value in scanned.matches
+                        )
+                        continue
+                    ok, changes, lines = self._apply_and_validate(
+                        rope.rope_project,
+                        scanned,
+                        python_file,
+                        self.workspace_root,
+                        project_layout.package_name,
+                    )
+                    output_lines.extend(lines)
+                    file_results.append({
+                        "file": str(rel_path),
+                        "status": "applied" if ok else "reverted",
+                        "changes": list(changes),
+                    })
+                    if ok:
+                        applied += len(changes)
+                    else:
+                        failed += 1
+        summary = (
+            f"Found {found} canonical matches across the selected projects"
+            if self.dry_run
+            else f"Applied {applied} replacements, {failed} files reverted"
+        )
+        output_lines.extend(("", summary))
+        if self.output_format == c.Cli.OutputFormats.JSON:
+            payload = {
+                "total_found": found,
+                "total_applied": applied,
+                "total_failed": failed,
+                "files": list(file_results),
+            }
+            normalized = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+            return r[str].ok(
+                t.Infra.INFRA_MAPPING_ADAPTER.dump_json(normalized).decode(),
+            )
+        return r[str].ok("\n".join(output_lines))
+
+    def _selected_projects(
+        self,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
+        """Select the consolidation targets under the workspace root."""
+        _ = rope_workspace
+        discovered = u.Infra.projects(self.workspace_root)
+        if discovered.failure:
+            return r[Sequence[p.Infra.ProjectInfo]].fail(
+                discovered.error or "project discovery failed",
+            )
+        selected = tuple(
+            project
+            for project in discovered.unwrap()
+            if self.project_name is None or project.name == self.project_name
+        )
+        return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
 
     @classmethod
     def _build_value_map_from_constants_file(

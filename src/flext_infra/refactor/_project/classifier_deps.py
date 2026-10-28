@@ -90,8 +90,8 @@ class FlextInfraRefactorProjectClassifierDeps:
                 dependencies=dependencies,
             )
 
+    @staticmethod
     def _ordered_mapping_keys(
-        self,
         raw_mapping: Mapping[str, t.JsonValue],
     ) -> Sequence[str]:
         """Ordered mapping keys.
@@ -135,7 +135,8 @@ class FlextInfraRefactorProjectClassifierDeps:
             and dependency != project_name
         ]
 
-    def _extract_dependency_name(self, raw_dependency: str) -> str:
+    @staticmethod
+    def _extract_dependency_name(raw_dependency: str) -> str:
         """Extract dependency name.
 
         Returns:

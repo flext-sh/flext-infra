@@ -42,16 +42,14 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         updated = source
         for path, (_provider, owner, suffix) in routes.items():
             updated = cls._restructure(
-                source_project,
-                file_path,
-                updated,
+                (source_project, file_path, updated),
                 ".".join(path),
                 f"{owner}.{suffix}",
                 admission=cls._family_admission(path[0], owner, imports[path[0]]),
             )
         for pattern, goal in declarations:
             updated = cls._restructure(
-                source_project, file_path, updated, pattern, goal, admission=None
+                (source_project, file_path, updated), pattern, goal, admission=None
             )
         with cls._candidate(source_project, file_path, updated):
             module = cls._module(source_project, file_path, updated)
@@ -113,9 +111,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             for receiver in receivers:
                 promotions: set[t.StrTuple] = set()
                 updated = cls._restructure(
-                    source_project,
-                    file_path,
-                    updated,
+                    (source_project, file_path, updated),
                     f"{owner_name}.{target_name}",
                     f"{receiver}.{target_name}",
                     admission=cls._method_admission(
@@ -357,9 +353,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
     @classmethod
     def _restructure(
         cls,
-        project: p.Infra.RopeProject,
-        path: Path,
-        source: str,
+        context: tuple[p.Infra.RopeProject, Path, str],
         pattern: str,
         goal: str,
         *,
@@ -376,6 +370,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
+        project, path, source = context
         with cls._candidate(project, path, source):
             changes = runtime.restructure_changes(
                 project,

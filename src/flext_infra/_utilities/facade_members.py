@@ -681,62 +681,87 @@ class FlextInfraUtilitiesFacadeMembers:
             pymodule=parsed,
         )
         exports = frozenset(
-            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                parsed.source_code
-            )
+            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(parsed)
         )
         facades: dict[str, p.Infra.RopeClassObject] = {}
+        view = (source_project, package, module, parsed, routes, exports)
         for letter in letters:
-            route = routes.get(letter)
-            if route is not None and not route.attributes:
-                message = (
-                    f"specialization facade publishes a module: {package}.{letter}"
-                )
-                raise ValueError(message)
-            binding = (
-                FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                    source_project,
-                    ".".join(route.attributes),
-                    module_name=route.target,
-                )
-                if route is not None
-                else module.get_attributes().get(letter)
+            target = FlextInfraUtilitiesFacadeMembers._published_letter_facade(
+                view, letter
             )
-            if binding is None:
-                unpublished = (
-                    letter not in exports
-                    and letter not in routes
-                    and "__getattr__" not in parsed.get_attributes()
-                )
-                if unpublished:
-                    continue
-            target = None if binding is None else binding.get_object()
-            if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(target):
-                message = f"unresolved specialization facade: {package}.{letter}"
-                raise ValueError(message)
-            owner = target.get_module()
-            observed_owner = (
-                FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
-                    source_project,
-                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
-                        None if owner is None else owner.get_resource(),
-                        f"{package}.{letter}",
-                    ),
-                )
-            )
-            expected_owner = (letter, target.get_name())
-            if observed_owner != expected_owner:
-                message = f"unproven specialization publication: {package}.{letter}"
-                failure = ValueError(message)
-                failure.add_note(
-                    f"route_target={None if route is None else route.target}; "
-                    f"route_attributes={None if route is None else route.attributes}; "
-                    f"binding_type={type(binding).__qualname__}; "
-                    f"expected_owner={expected_owner}; observed_owner={observed_owner}"
-                )
-                raise failure
-            facades[letter] = target
+            if target is not None:
+                facades[letter] = target
         return facades
+
+    @staticmethod
+    def _published_letter_facade(
+        view: tuple[
+            p.Infra.RopeProject,
+            str,
+            p.Infra.RopePyModule,
+            p.Infra.RopeSourceModule,
+            Mapping[str, object],
+            frozenset[str],
+        ],
+        letter: str,
+    ) -> p.Infra.RopeClassObject | None:
+        """Authenticate one letter's specialization facade publication.
+
+        Returns:
+            The published native facade class, or an unpublished letter.
+
+        Raises:
+            ValueError: A receiver is a module or lacks a proven publication.
+
+        """
+        source_project, package, module, parsed, routes, exports = view
+        route = routes.get(letter)
+        if route is not None and not route.attributes:
+            message = f"specialization facade publishes a module: {package}.{letter}"
+            raise ValueError(message)
+        binding = (
+            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                source_project,
+                ".".join(route.attributes),
+                module_name=route.target,
+            )
+            if route is not None
+            else module.get_attributes().get(letter)
+        )
+        if binding is None:
+            unpublished = (
+                letter not in exports
+                and letter not in routes
+                and "__getattr__" not in parsed.get_attributes()
+            )
+            if unpublished:
+                return None
+        target = None if binding is None else binding.get_object()
+        if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(target):
+            message = f"unresolved specialization facade: {package}.{letter}"
+            raise ValueError(message)
+        owner = target.get_module()
+        observed_owner = (
+            FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
+                source_project,
+                FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                    None if owner is None else owner.get_resource(),
+                    f"{package}.{letter}",
+                ),
+            )
+        )
+        expected_owner = (letter, target.get_name())
+        if observed_owner != expected_owner:
+            message = f"unproven specialization publication: {package}.{letter}"
+            failure = ValueError(message)
+            failure.add_note(
+                f"route_target={None if route is None else route.target}; "
+                f"route_attributes={None if route is None else route.attributes}; "
+                f"binding_type={type(binding).__qualname__}; "
+                f"expected_owner={expected_owner}; observed_owner={observed_owner}"
+            )
+            raise failure
+        return target
 
     @staticmethod
     def _specialization_alias_matches(
@@ -1005,7 +1030,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
                     continue
                 exports = FlextInfraUtilitiesRopeAnalysisExports
-                exported = exports.public_export_names_source(module.source_code)
+                exported = exports.public_export_names_source(module)
                 if not frozenset(letters).intersection(exported):
                     continue
                 state = FlextInfraUtilitiesRopeAnalysisImportState

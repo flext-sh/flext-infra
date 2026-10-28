@@ -12,28 +12,11 @@ from typing import override
 
 from libcst import (
     Arg,
-    Attribute,
-    BaseExpression,
     ClassDef,
-    Comma,
-    CSTNode,
     CSTTransformer,
-    CSTVisitor,
-    If,
     ImportFrom,
     ImportStar,
-    IndentedBlock,
-    LeftParen,
-    MaybeSentinel,
     Name,
-    ParenthesizedWhitespace,
-    Pass,
-    RemovalSentinel,
-    RemoveFromParent,
-    RightParen,
-    SimpleStatementLine,
-    SimpleStatementSuite,
-    SimpleWhitespace,
     parse_expression,
     parse_module,
 )
@@ -55,169 +38,104 @@ from flext_infra._utilities import (
 class FlextInfraUtilitiesCodegenFacadeSyntax:
     """Preserve facade syntax while composing declared owners."""
 
-    class WrapImports(CSTTransformer):
-        """Wrap emitted imports using the declared module and line budget."""
+    @classmethod
+    def _is_type_checking_test(cls, test: ast.expr) -> bool:
+        """Return whether one condition tests the typing guard name.
 
-        def __init__(self, module: t.Infra.CstModule, line_length: int) -> None:
-            super().__init__()
-            self._module = module
-            self._line_length = line_length
+        Returns:
+            Whether the test is the bare or ``typing``-qualified guard name.
 
-        @override
-        def leave_ImportFrom(
-            self,
-            original_node: t.Infra.CstImport,
-            updated_node: t.Infra.CstImport,
-        ) -> t.Infra.CstImport:
-            """Preserve bindings and wrap only imports exceeding the budget.
+        """
+        if isinstance(test, ast.Name):
+            return test.id == c.Infra.TYPING_GUARD_NAME
+        return (
+            isinstance(test, ast.Attribute)
+            and test.attr == c.Infra.TYPING_GUARD_NAME
+            and isinstance(test.value, ast.Name)
+            and test.value.id == c.Infra.TYPING_GUARD_MODULE
+        )
 
-            Returns:
-                The original import or its parenthesized equivalent.
+    @classmethod
+    def _drop_empty_type_checking_blocks(cls, source: str) -> str:
+        """Delete every empty guard block's complete source lines.
 
-            """
-            if (
-                isinstance(updated_node.names, ImportStar)
-                or "\n" in self._module.code_for_node(original_node)
-                or len(self._module.code_for_node(original_node)) <= self._line_length
-            ):
-                return updated_node
-            return updated_node.with_changes(
-                lpar=LeftParen(
-                    whitespace_after=ParenthesizedWhitespace(
-                        last_line=SimpleWhitespace("    "),
-                    ),
-                ),
-                names=tuple(
-                    alias.with_changes(
-                        comma=Comma(
-                            whitespace_after=ParenthesizedWhitespace(
-                                last_line=SimpleWhitespace(
-                                    "    "
-                                    if index < len(updated_node.names) - 1
-                                    else "",
-                                ),
-                            ),
-                        ),
-                    )
-                    for index, alias in enumerate(updated_node.names)
-                ),
-                rpar=RightParen(),
+        Returns:
+            The source without ``if TYPE_CHECKING: pass`` blocks.
+
+        """
+        spans = {
+            (node.lineno, node.end_lineno or node.lineno)
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.If)
+            and cls._is_type_checking_test(node.test)
+            and len(node.body) == 1
+            and isinstance(node.body[0], ast.Pass)
+        }
+        lines = source.splitlines(keepends=True)
+        for start, end in sorted(spans, reverse=True):
+            del lines[start - 1 : end]
+        return "".join(lines)
+
+    @classmethod
+    def _drop_orphan_type_checking_import(cls, source: str, tree: ast.Module) -> str:
+        """Strip the guard name from its import when no guard survives.
+
+        Returns:
+            The source without the orphan guard import alias.
+
+        """
+        lines = source.splitlines(keepends=True)
+        plans: list[tuple[int, int, str | None]] = [
+            cls._import_replacement_plan(
+                lines,
+                node,
+                [
+                    alias
+                    for alias in node.names
+                    if alias.name != c.Infra.TYPING_GUARD_NAME
+                ],
             )
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and cls._is_orphan_guard_import(node)
+        ]
+        for start, end, replacement in sorted(plans, reverse=True):
+            lines[start - 1 : end] = [replacement] if replacement is not None else []
+        return "".join(lines)
 
-    class DeadTypeCheckingScaffold(CSTTransformer):
-        """Remove ``if TYPE_CHECKING:`` blocks whose body is only ``pass``."""
+    @staticmethod
+    def _is_orphan_guard_import(node: ast.AST) -> bool:
+        """Return whether one node imports the guard name from typing.
 
-        @override
-        def leave_If(
-            self,
-            original_node: If,
-            updated_node: If,
-        ) -> If | RemovalSentinel:
-            """Drop an empty guard block and keep every other conditional.
+        Returns:
+            Whether the node is an absolute typing import binding the guard.
 
-            Returns:
-                The removal sentinel for an empty guard, else the node.
+        """
+        return (
+            isinstance(node, ast.ImportFrom)
+            and node.level == 0
+            and node.module == c.Infra.TYPING_GUARD_MODULE
+            and any(alias.name == c.Infra.TYPING_GUARD_NAME for alias in node.names)
+        )
 
-            """
-            del original_node
-            body = updated_node.body
-            statements = (
-                body.body
-                if isinstance(body, SimpleStatementSuite | IndentedBlock)
-                else ()
-            )
-            inner = (
-                statements[0].body
-                if len(statements) == 1
-                and isinstance(statements[0], SimpleStatementLine)
-                else ()
-            )
-            if (
-                isinstance(updated_node.test, Name)
-                and updated_node.test.value == c.Infra.TYPING_GUARD_NAME
-                and len(inner) == 1
-                and isinstance(inner[0], Pass)
-            ):
-                return RemoveFromParent()
-            return updated_node
+    @classmethod
+    def _import_replacement_plan(
+        cls,
+        lines: Sequence[str],
+        node: ast.ImportFrom,
+        kept: Sequence[ast.alias],
+    ) -> tuple[int, int, str | None]:
+        """Plan one import statement's replacement after alias removal.
 
-    class TypeCheckingGuardScanner(CSTVisitor):
-        """Detect a surviving bare or ``typing``-qualified guard test."""
+        Returns:
+            The line range and its replacement, or ``None`` text to delete.
 
-        def __init__(self) -> None:
-            """Start unguarded."""
-            super().__init__()
-            self.guarded = False
-
-        @override
-        def on_visit(self, node: CSTNode) -> bool:
-            """Flag the first surviving guard test.
-
-            Returns:
-                Always ``True`` so descendant nodes stay on the scan path.
-
-            """
-            if isinstance(node, If) and self._guard_test(node.test):
-                self.guarded = True
-            return True
-
-        @staticmethod
-        def _guard_test(test: BaseExpression) -> bool:
-            return (
-                isinstance(test, Name) and test.value == c.Infra.TYPING_GUARD_NAME
-            ) or (
-                isinstance(test, Attribute)
-                and test.attr.value == c.Infra.TYPING_GUARD_NAME
-                and isinstance(test.value, Name)
-                and test.value.value == c.Infra.TYPING_GUARD_MODULE
-            )
-
-    class OrphanTypeCheckingImport(CSTTransformer):
-        """Drop the ``TYPE_CHECKING`` import once no guard reads the name."""
-
-        def __init__(self, *, guarded: bool) -> None:
-            """Bind whether a surviving guard still reads the name."""
-            super().__init__()
-            self._guarded = guarded
-
-        @override
-        def leave_ImportFrom(
-            self,
-            original_node: ImportFrom,
-            updated_node: ImportFrom,
-        ) -> ImportFrom | RemovalSentinel:
-            """Strip the guard name from an orphan ``typing`` import.
-
-            Returns:
-                The import without the guard name, the removal sentinel, or
-                the unchanged import.
-
-            """
-            del original_node
-            module = updated_node.module
-            names = updated_node.names
-            if (
-                self._guarded
-                or not (
-                    isinstance(module, Name)
-                    and module.value == c.Infra.TYPING_GUARD_MODULE
-                )
-                or isinstance(names, ImportStar)
-            ):
-                return updated_node
-            kept = tuple(
-                alias
-                for alias in names
-                if not (
-                    isinstance(alias.name, Name)
-                    and alias.name.value == c.Infra.TYPING_GUARD_NAME
-                )
-            )
-            if len(kept) == len(names):
-                return updated_node
-            if not kept:
-                return RemoveFromParent()
-            return updated_node.with_changes(names=kept)
+        """
+        end = node.end_lineno or node.lineno
+        if not kept:
+            return (node.lineno, end, None)
+        indent = lines[node.lineno - 1][: node.col_offset]
+        members = ", ".join(ast.unparse(alias) for alias in kept)
+        return (node.lineno, end, f"{indent}from {node.module} import {members}\n")
 
     class OwnPackageUnalias(CSTTransformer):
         """Rename own-package alias references to their imported identity."""
@@ -322,8 +240,8 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
             .code
         )
 
-    @staticmethod
-    def strip_type_checking_scaffold(source: str) -> str:
+    @classmethod
+    def strip_type_checking_scaffold(cls, source: str) -> str:
         """Drop empty ``TYPE_CHECKING`` blocks, then their orphan guard import.
 
         The guard import survives while any guard still reads the name;
@@ -334,40 +252,36 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
             The source without empty guard blocks or an orphan guard import.
 
         """
-        syntax = FlextInfraUtilitiesCodegenFacadeSyntax
-        module = parse_module(source).visit(syntax.DeadTypeCheckingScaffold())
-        scanner = syntax.TypeCheckingGuardScanner()
-        module.visit(scanner)
-        return module.visit(
-            syntax.OrphanTypeCheckingImport(guarded=scanner.guarded)
-        ).code
+        stripped = cls._drop_empty_type_checking_blocks(source)
+        tree = ast.parse(stripped)
+        guarded = any(
+            isinstance(node, ast.If) and cls._is_type_checking_test(node.test)
+            for node in ast.walk(tree)
+        )
+        if guarded:
+            return stripped
+        return cls._drop_orphan_type_checking_import(stripped, tree)
 
     @staticmethod
-    def _mergeable_import(
-        module: t.Infra.CstModule,
-        statement: t.Infra.CstStatement,
-    ) -> tuple[str, t.Infra.CstImport] | None:
-        """Return the module name and node of one absolute member import.
+    def _mergeable_import(statement: ast.stmt) -> str | None:
+        """Return the module name of one absolute member import statement.
 
         Returns:
-            The imported module spelling and its node, or None for any other
-            statement (relative, star and module imports keep their form).
+            The imported module spelling, or None for any other statement
+            (relative, star and module imports keep their form).
 
         """
-        if not isinstance(statement, SimpleStatementLine) or len(statement.body) != 1:
-            return None
-        node = statement.body[0]
         if (
-            not isinstance(node, ImportFrom)
-            or isinstance(node.names, ImportStar)
-            or node.relative
-            or node.module is None
+            not isinstance(statement, ast.ImportFrom)
+            or statement.level
+            or statement.module is None
+            or any(alias.name == "*" for alias in statement.names)
         ):
             return None
-        return module.code_for_node(node.module), node
+        return statement.module
 
-    @staticmethod
-    def _merged_facade_imports(source: str) -> str:
+    @classmethod
+    def _merged_facade_imports(cls, source: str) -> str:
         """Normalize absolute from-imports into one Ruff isort block per module.
 
         The package-form rewrite leaves one statement per owner bound from the
@@ -382,76 +296,90 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
             Source whose absolute from-imports appear once per module.
 
         """
-        module = parse_module(source)
-        mergeable = FlextInfraUtilitiesCodegenFacadeSyntax._mergeable_import
-        members: MutableMapping[str, MutableMapping[str, t.Infra.CstImportAlias]] = {}
-        for statement in module.body:
-            found = mergeable(module, statement)
-            if found is None or isinstance(found[1].names, ImportStar):
+        tree = ast.parse(source)
+        members: MutableMapping[str, MutableMapping[str, str]] = {}
+        for statement in tree.body:
+            module_name = cls._mergeable_import(statement)
+            if module_name is None:
                 continue
-            bucket = members.setdefault(found[0], {})
-            for item in tuple(found[1].names):
-                plain = item.with_changes(comma=MaybeSentinel.DEFAULT)
-                bucket.setdefault(module.code_for_node(plain), plain)
-        body: list[t.Infra.CstStatement] = []
+            bucket = members.setdefault(module_name, {})
+            for alias in statement.names:
+                bucket.setdefault(ast.unparse(alias), alias.name)
+        plans: list[tuple[int, int, str | None]] = []
         emitted: set[str] = set()
-        for statement in module.body:
-            found = mergeable(module, statement)
-            if found is None:
-                body.append(statement)
+        for statement in tree.body:
+            module_name = cls._mergeable_import(statement)
+            if module_name is None:
                 continue
-            name, node = found
-            if name in emitted:
+            if module_name in emitted:
+                plans.append((statement.lineno, statement.end_lineno, None))
                 continue
-            emitted.add(name)
+            emitted.add(module_name)
             ordered = sorted(
-                members[name].values(),
+                members[module_name].items(),
                 key=lambda item: (
-                    FlextInfraUtilitiesCodegenNamespace.isort_member_key(
-                        module.code_for_node(item.name),
-                    ),
-                    item.asname is not None,
+                    FlextInfraUtilitiesCodegenNamespace.isort_member_key(item[1]),
+                    " as " in item[0],
                 ),
             )
-            names = (
-                *tuple(
-                    item.with_changes(
-                        comma=Comma(whitespace_after=SimpleWhitespace(" "))
-                    )
-                    for item in ordered[:-1]
-                ),
-                ordered[-1],
-            )
-            body.append(
-                statement.with_changes(
-                    body=(
-                        node.with_changes(
-                            names=names,
-                            lpar=None,
-                            rpar=None,
-                        ),
-                    ),
-                ),
-            )
-        return module.with_changes(body=tuple(body)).code
+            rendered = ", ".join(alias for alias, _name in ordered)
+            plans.append((
+                statement.lineno,
+                statement.end_lineno,
+                f"from {module_name} import {rendered}\n",
+            ))
+        lines = source.splitlines(keepends=True)
+        for start, end, replacement in sorted(plans, reverse=True):
+            lines[start - 1 : end] = [replacement] if replacement is not None else []
+        return "".join(lines)
 
-    @staticmethod
-    def _wrap_facade_imports(source: str) -> str:
+    @classmethod
+    def _wrap_facade_imports(cls, source: str) -> str:
         """Keep projected imports inside the configured Ruff line budget.
 
         Returns:
             Source with long single-line from-imports parenthesized.
 
         """
-        module = parse_module(source)
-        return module.visit(
-            FlextInfraUtilitiesCodegenFacadeSyntax.WrapImports(
-                module,
-                FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
-                    config.Infra.tooling, "ruff", "line-length", int
-                ),
-            ),
-        ).code
+        line_length = FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+            config.Infra.tooling,
+            "ruff",
+            "line-length",
+            int,
+        )
+        plans: list[tuple[int, int, str]] = []
+        for statement in ast.parse(source).body:
+            if not isinstance(statement, ast.ImportFrom):
+                continue
+            prefix = cls._import_prefix(statement)
+            members = [ast.unparse(alias) for alias in statement.names]
+            if (
+                statement.end_lineno != statement.lineno
+                or "*" in members
+                or len(f"{prefix} {', '.join(members)}") <= line_length
+            ):
+                continue
+            wrapped = (
+                f"{prefix} (\n"
+                + "".join(f"    {member},\n" for member in members)
+                + ")"
+            )
+            plans.append((statement.lineno, statement.end_lineno, wrapped))
+        lines = source.splitlines(keepends=True)
+        for start, end, replacement in sorted(plans, reverse=True):
+            lines[start - 1 : end] = [f"{replacement}\n"]
+        return "".join(lines)
+
+    @staticmethod
+    def _import_prefix(statement: ast.ImportFrom) -> str:
+        """Render one import statement's ``from ... import`` header.
+
+        Returns:
+            The header text ending in the ``import`` keyword.
+
+        """
+        module = f"{'.' * statement.level}{statement.module or ''}"
+        return f"from {module} import"
 
     @staticmethod
     def _declared_facade_bases(

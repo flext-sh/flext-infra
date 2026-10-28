@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -193,7 +192,7 @@ class TestsFlextInfraAuditorCodeblocks:
             encoding="utf-8",
         )
 
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             issues = u.Infra.docstring_issues(
                 tmp_path,
                 {

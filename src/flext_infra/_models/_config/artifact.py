@@ -980,8 +980,8 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             expressed in the SSOT survives the projection intact.
 
             Returns:
-                The resulting
-                    ``tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...]``.
+                The resulting tuple of
+                ``FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec``.
 
             """
             scaffold_sections = self.scaffold.gitignore_sections

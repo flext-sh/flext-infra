@@ -155,20 +155,20 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             """
             return tuple(ast.iter_child_nodes(node))
 
-    @staticmethod
-    @cache
-    def parsed_module(source: str, filename: str = "<string>") -> ast.Module:
-        """Parse one module source once per exact content through rope.
+        @staticmethod
+        @cache
+        def parse_module_source(source: str, filename: str = "<string>") -> ast.Module:
+            """Parse one module source once per exact content through rope.
 
-        Every reader only inspects the tree, so one rope parse serves each
-        repeated query over the same source; a source that does not parse
-        raises its ``SyntaxError`` on every call.
+            Every reader only inspects the tree, so one rope parse serves each
+            repeated query over the same source; a source that does not parse
+            raises its ``SyntaxError`` on every call.
 
-        Returns:
-            The parsed module.
+            Returns:
+                The parsed module.
 
-        """
-        return ast.parse(source, filename=filename)
+            """
+            return ast.parse(source, filename=filename)
 
     @staticmethod
     @cache
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
         """
         return FlextInfraUtilitiesRopeAnalysisSourceScan.module_class_base_names(
-            FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+            FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(source)
         )
 
     @staticmethod
@@ -237,7 +237,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
         """
         return FlextInfraUtilitiesRopeAnalysisSourceScan.module_absolute_import_roots(
-            FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+            FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(source)
         )
 
     @staticmethod
@@ -444,7 +444,8 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
         """
         return FlextInfraUtilitiesRopeAnalysisSourceScan._module_top_level_value(
-            FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source), name
+            FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(source),
+            name,
         )
 
     @staticmethod
@@ -1054,7 +1055,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return (tuple(entries), tuple(dict.fromkeys(refs)))
 
     @staticmethod
-    def relative_import_module_name(
+    def _relative_import_module_name(
         *,
         current_module: str,
         imported_module: str,
@@ -1093,7 +1094,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             (
                 node
                 for node in ast.walk(
-                    FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+                    FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(
+                        source
+                    )
                 )
                 if isinstance(node, ast.ImportFrom)
             ),
@@ -1103,7 +1106,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             for alias in node.names:
                 if (alias.asname or alias.name) != symbol_name:
                     continue
-                relative_module_name = cls.relative_import_module_name
+                relative_module_name = cls._relative_import_module_name
                 module_name = relative_module_name(
                     current_module=current_module,
                     imported_module=node.module or "",
@@ -1121,7 +1124,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             The top-level class statement named ``class_name``.
 
         """
-        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(
+        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(
             source
         ).body:
             if isinstance(node, ast.ClassDef) and node.name == class_name:
@@ -1181,7 +1184,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
         """
         try:
-            tree = FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+            tree = FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(
+                source
+            )
         except SyntaxError:
             return None
         for node in tree.body:
@@ -1287,7 +1292,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             (
                 node
                 for node in ast.walk(
-                    FlextInfraUtilitiesRopeAnalysisSourceScan.parsed_module(source)
+                    FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(
+                        source
+                    )
                 )
                 if isinstance(node, ast.Call)
                 and FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(node.func)

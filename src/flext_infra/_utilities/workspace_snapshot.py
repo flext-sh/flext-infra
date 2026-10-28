@@ -80,7 +80,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                     )
                 )
             if planned_sources is not None:
-                declared_files = cls._workspace_declared_sources(
+                declared_files = cls.workspace_declared_sources(
                     root,
                     declared_files,
                     planned_sources,
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         )
 
     @staticmethod
-    def _workspace_declared_sources(
+    def workspace_declared_sources(
         root: Path,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         planned_sources: Mapping[Path, str | None],

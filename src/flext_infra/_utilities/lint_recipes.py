@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import io
 import re
 import textwrap
@@ -29,7 +28,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r
+from flext_infra import c, config, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
     FlextInfraUtilitiesLintSourcePositions,
@@ -272,7 +271,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             The repaired module source.
 
         """
-        tree = ast.parse(source)
+        tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
         lines = source.splitlines(keepends=True)
         sections, removed, summaries, wants_notice = cls._collected_sections(
             tree,
@@ -609,11 +608,16 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         bases: MutableMapping[str, set[str]] = {}
         methods: MutableMapping[str, set[str]] = {}
         for source in sources:
-            for node in ast.walk(ast.parse(source)):
-                if not isinstance(node, ast.ClassDef):
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+                FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
+            ):
+                if not isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                     continue
                 bases.setdefault(node.name, set()).update(
-                    ast.unparse(base).rsplit(".", maxsplit=1)[-1] for base in node.bases
+                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(base).rsplit(
+                        ".", maxsplit=1
+                    )[-1]
+                    for base in node.bases
                 )
                 methods.setdefault(node.name, set()).update(
                     item.name
@@ -676,7 +680,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         *,
         path: Path,
         recipes: Mapping[str, c.Infra.LintFixRecipe],
-    ) -> tuple[tuple[p.Infra.Issue, ast.ClassDef, t.Infra.AstFunctionDefinition], ...]:
+    ) -> tuple[
+        tuple[p.Infra.Issue, t.Infra.AstClassDefinition, t.Infra.AstFunctionDefinition],
+        ...,
+    ]:
         """Pair each static-method finding with its owner and method.
 
         Returns:
@@ -684,7 +691,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             targets.
 
         """
-        tree = ast.parse(source)
+        tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
         return tuple(
             (issue, owner, method)
             for issue in issues
@@ -705,9 +712,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         """
         receiver = (*method.args.posonlyargs, *method.args.args)[0].arg
         return any(
-            isinstance(node, ast.Name) and node.id in {receiver, "super", "__class__"}
+            isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+            and node.id in {receiver, "super", "__class__"}
             for statement in method.body
-            for node in ast.walk(statement)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(statement)
         )
 
     @classmethod
@@ -752,7 +760,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         for base in owner.bases:
-            root = ast.unparse(base).split("[", maxsplit=1)[0]
+            root = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(base).split(
+                "[", maxsplit=1
+            )[0]
             if root.rsplit(".", maxsplit=1)[-1].strip() in c.Infra.SERVICE_BASE_ROOTS:
                 return True
         return False
@@ -762,7 +772,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         tree: t.Infra.AstModule,
         issue: p.Infra.Issue,
         path: Path,
-    ) -> tuple[ast.ClassDef, t.Infra.AstFunctionDefinition]:
+    ) -> tuple[t.Infra.AstClassDefinition, t.Infra.AstFunctionDefinition]:
         """Return the class method Ruff reports as never reading its receiver.
 
         Ruff reports the finding at the method's name on its ``def`` line and
@@ -775,8 +785,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             ValueError: If no class method with a receiver matches the finding.
 
         """
-        for owner in ast.walk(tree):
-            if not isinstance(owner, ast.ClassDef):
+        for owner in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):
+            if not isinstance(owner, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                 continue
             for method in owner.body:
                 if (
@@ -944,14 +954,17 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             The resulting ``str``.
 
         """
-        summary = (ast.get_docstring(function) or "").splitlines()[0]
+        summary = (
+            FlextInfraUtilitiesRopeAnalysis.Tree.docstring(function) or ""
+        ).splitlines()[0]
         match = re.match(r"(?i)returns?\s+(?P<rest>.+)", summary.strip().rstrip("."))
         if match:
             rest = match.group("rest")
             return f"{rest[:1].upper()}{rest[1:]}."
         if function.returns is None:
             return "The resulting value."
-        return f"The resulting ``{ast.unparse(function.returns)}``."
+        rendered = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(function.returns)
+        return f"The resulting ``{rendered}``."
 
     @staticmethod
     def _yields_entry(function: t.Infra.AstFunctionDefinition) -> str:
@@ -961,11 +974,14 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             The resulting ``str``.
 
         """
-        if isinstance(function.returns, ast.Subscript):
+        if isinstance(function.returns, FlextInfraUtilitiesRopeAnalysis.Tree.Subscript):
             element = function.returns.slice
-            if isinstance(element, ast.Tuple) and element.elts:
+            if (
+                isinstance(element, FlextInfraUtilitiesRopeAnalysis.Tree.Tuple)
+                and element.elts
+            ):
                 element = element.elts[0]
-            return f"Each ``{ast.unparse(element)}``."
+            return f"Each ``{FlextInfraUtilitiesRopeAnalysis.Tree.unparse(element)}``."
         return "Each yielded value."
 
     @classmethod
@@ -993,8 +1009,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(function)
         clauses = [
             cls._raise_condition(function, raised, parents)
-            for raised in ast.walk(function)
-            if isinstance(raised, ast.Raise)
+            for raised in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(function)
+            if isinstance(raised, FlextInfraUtilitiesRopeAnalysis.Tree.Raise)
             and name.rsplit(".", maxsplit=1)[-1] in cls._raised_names(raised, parents)
         ]
         if not clauses:
@@ -1034,18 +1050,34 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         if raised.exc is not None:
-            target = raised.exc.func if isinstance(raised.exc, ast.Call) else raised.exc
-            return frozenset({ast.unparse(target).rsplit(".", maxsplit=1)[-1]})
+            target = (
+                raised.exc.func
+                if isinstance(raised.exc, FlextInfraUtilitiesRopeAnalysis.Tree.Call)
+                else raised.exc
+            )
+            return frozenset({
+                FlextInfraUtilitiesRopeAnalysis.Tree.unparse(target).rsplit(
+                    ".", maxsplit=1
+                )[-1]
+            })
         node: t.Infra.RopeAstNode = raised
         while (parent := parents.get(id(node))) is not None:
-            if isinstance(parent, ast.ExceptHandler) and parent.type is not None:
+            if (
+                isinstance(parent, FlextInfraUtilitiesRopeAnalysis.Tree.ExceptHandler)
+                and parent.type is not None
+            ):
                 caught = (
                     parent.type.elts
-                    if isinstance(parent.type, ast.Tuple)
+                    if isinstance(
+                        parent.type, FlextInfraUtilitiesRopeAnalysis.Tree.Tuple
+                    )
                     else (parent.type,)
                 )
                 return frozenset(
-                    ast.unparse(item).rsplit(".", maxsplit=1)[-1] for item in caught
+                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(item).rsplit(
+                        ".", maxsplit=1
+                    )[-1]
+                    for item in caught
                 )
             node = parent
         return frozenset()
@@ -1065,16 +1097,20 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             exception; else ``always``, for a raise the body always reaches.
 
         """
-        if isinstance(raised.exc, ast.Call) and raised.exc.args:
+        if (
+            isinstance(raised.exc, FlextInfraUtilitiesRopeAnalysis.Tree.Call)
+            and raised.exc.args
+        ):
             message = raised.exc.args[0]
-            if isinstance(message, ast.Name):
+            if isinstance(message, FlextInfraUtilitiesRopeAnalysis.Tree.Name):
                 assigned = [
                     node.value
-                    for node in ast.walk(function)
-                    if isinstance(node, ast.Assign)
+                    for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(function)
+                    if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Assign)
                     and node.lineno < raised.lineno
                     and any(
-                        isinstance(target, ast.Name) and target.id == message.id
+                        isinstance(target, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                        and target.id == message.id
                         for target in node.targets
                     )
                 ]
@@ -1093,13 +1129,17 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 return f"if {stated}"
         node: t.Infra.RopeAstNode = raised
         while (parent := parents.get(id(node))) is not None and parent is not function:
-            if isinstance(parent, ast.If):
-                test = ast.unparse(parent.test)
+            if isinstance(parent, FlextInfraUtilitiesRopeAnalysis.Tree.If):
+                test = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(parent.test)
                 return (
                     f"if ``{test}``" if node in parent.body else f"if ``not ({test})``"
                 )
-            if isinstance(parent, ast.ExceptHandler) and parent.type is not None:
-                return f"if a ``{ast.unparse(parent.type)}`` is caught"
+            if (
+                isinstance(parent, FlextInfraUtilitiesRopeAnalysis.Tree.ExceptHandler)
+                and parent.type is not None
+            ):
+                caught = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(parent.type)
+                return f"if a ``{caught}`` is caught"
             node = parent
         return "always"
 
@@ -1111,12 +1151,17 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             The literal prefix of a string or f-string expression.
 
         """
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        if isinstance(
+            node, FlextInfraUtilitiesRopeAnalysis.Tree.Constant
+        ) and isinstance(node.value, str):
             return node.value
-        if isinstance(node, ast.JoinedStr):
+        if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.JoinedStr):
             prefix: list[str] = []
             for part in node.values:
-                if not (isinstance(part, ast.Constant) and isinstance(part.value, str)):
+                if not (
+                    isinstance(part, FlextInfraUtilitiesRopeAnalysis.Tree.Constant)
+                    and isinstance(part.value, str)
+                ):
                     break
                 prefix.append(part.value)
             return "".join(prefix)
@@ -1133,7 +1178,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         name = definition.name
-        if isinstance(definition, ast.ClassDef):
+        if isinstance(definition, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
             return (
                 f"Tests for ``{name.removeprefix('Tests')}``."
                 if name.startswith("Tests") and name != "Tests"
@@ -1244,7 +1289,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 carries no notice.
 
         """
-        docstring = cls._docstring_expr(ast.parse(source, filename=str(path)))
+        docstring = cls._docstring_expr(
+            FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
+                source, filename=str(path)
+            )
+        )
         if docstring is None:
             msg = f"{path}: module has no docstring carrying a notice"
             raise ValueError(msg)
@@ -1261,7 +1310,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         text = f"{before}\n\n{after}" if before.strip() else after
         updated = cls._with_notice(f'{prefix}"""{text}"""', inner[first:last].strip())
         rewritten = f"{source[:start]}{updated}{source[end:]}"
-        ast.parse(rewritten, filename=str(path))
+        FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
+            rewritten, filename=str(path)
+        )
         return rewritten
 
     @classmethod
@@ -1319,7 +1370,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             ValueError: If a repair would change the module AST.
 
         """
-        before = ast.dump(ast.parse(source))
+        before = FlextInfraUtilitiesRopeAnalysis.Tree.dump(
+            FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
+        )
         lines = source.splitlines(keepends=True)
         tokens = tuple(tokenize.generate_tokens(io.StringIO(source).readline))
         for number in sorted(set(line_numbers), reverse=True):
@@ -1335,7 +1388,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             if replacement is not None:
                 lines[number - 1] = replacement
         repaired = "".join(lines)
-        if ast.dump(ast.parse(repaired)) != before:
+        if (
+            FlextInfraUtilitiesRopeAnalysis.Tree.dump(
+                FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(repaired)
+            )
+            != before
+        ):
             msg = "line wrap changed the module AST"
             raise ValueError(msg)
         return repaired

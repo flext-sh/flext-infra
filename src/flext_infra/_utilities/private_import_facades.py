@@ -84,7 +84,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
         for module, (source, is_package) in sources.items():
             package = module if is_package else module.rpartition(".")[0]
             for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                FlextInfraUtilitiesRopeAnalysis.parsed_module(source, filename=module)
+                FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
+                    source, filename=module
+                )
             ):
                 for imported in (
                     FlextInfraUtilitiesPrivateImportFacades._statement_imported_modules(
@@ -105,7 +107,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 node.module
                 for statement in statements
                 for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                    FlextInfraUtilitiesRopeAnalysis.parsed_module(statement)
+                    FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(statement)
                 )
                 if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom)
                 and not node.level
@@ -209,7 +211,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         exports: MutableMapping[str, set[str]] = {}
         for module, (source, is_package) in sorted(sources.items()):
             package = module if is_package else module.rpartition(".")[0]
-            tree = FlextInfraUtilitiesRopeAnalysis.parsed_module(
+            tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
                 source, filename=module
             )
             native = project.get_module(module)
@@ -501,7 +503,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             package, _, name = module.rpartition(".")
             if not package:
                 continue
-            tree = FlextInfraUtilitiesRopeAnalysis.parsed_module(
+            tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
                 source, filename=module
             )
             class_names = {

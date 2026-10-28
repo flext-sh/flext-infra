@@ -170,7 +170,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 }
                 - {owner}
             )
-            statements = FlextInfraUtilitiesRopeAnalysis.parsed_module(
+            statements = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
                 "\n".join(sorted(set(imports.values())))
             ).body
             if siblings:
