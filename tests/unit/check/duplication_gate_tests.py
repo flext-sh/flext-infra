@@ -506,7 +506,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         runs = u.Cli.json_as_mapping(
             u.Cli.json_parse(sarif.read_text(encoding="utf-8")).unwrap()
         ).get("runs")
-        tm.ok(runs is not None and len(runs) >= 1)
+        tm.ok(isinstance(runs, list) and len(runs) >= 1)
 
     def test_absent_comparison_root_degrades_with_a_recorded_note(
         self, tmp_path: Path

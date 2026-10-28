@@ -1,0 +1,25 @@
+id: railroad-guard-identity-passthrough
+valid:
+  - return result
+  - |
+    if result.failure:
+        return r[int].from_failure(result)
+    return r[int].ok(result.value + 1)
+  - |
+    if result.failure:
+        return r[int].from_failure(result)
+    else:
+        return r[int].ok(result.value + 1)
+invalid:
+  - |
+    def run(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return r[str].from_failure(result)
+        return r[str].ok(result.value)
+  - |
+    def run_direct(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        return outcome.ok(result.value)

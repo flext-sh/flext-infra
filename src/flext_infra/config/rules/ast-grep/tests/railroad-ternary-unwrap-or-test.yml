@@ -1,0 +1,11 @@
+id: railroad-ternary-unwrap-or
+valid:
+  - return result.unwrap_or(default_value)
+  - return result.value if other.success else default_value
+  - return result.error if result.failure else "ok"
+  - return parsed.value if parsed.success else ()
+  - return None if parsed.failure else parsed.value
+invalid:
+  - return result.value if result.success else default_value
+  - return default_value if result.failure else result.value
+  - return parsed.value if parsed.success else "fallback"

@@ -1,0 +1,26 @@
+id: railroad-ifelse-identity-passthrough
+snapshots:
+  "if result.failure:\n    return r[str].from_failure(result)\nelse:\n    return r[str].ok(result.value)\n":
+    fixed: |
+      return result
+    labels:
+    - source: |-
+        if result.failure:
+            return r[str].from_failure(result)
+        else:
+            return r[str].ok(result.value)
+      style: primary
+      start: 0
+      end: 98
+  "if result.success:\n    return r[str].ok(result.value)\nelse:\n    return r.from_failure(result)\n":
+    fixed: |
+      return result
+    labels:
+    - source: |-
+        if result.success:
+            return r[str].ok(result.value)
+        else:
+            return r.from_failure(result)
+      style: primary
+      start: 0
+      end: 93

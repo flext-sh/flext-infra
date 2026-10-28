@@ -114,7 +114,10 @@ class FlextInfraConfigModelsProvider:
                     "integrate on. Baseline resolution checks exactly this "
                     "line against published Git and fails loud otherwise: "
                     "no conventional-name list is probed, and no release "
-                    "name is hardcoded in the package."
+                    "name is hardcoded in the package. A consumer may "
+                    "declare a recorded release tag (for example a "
+                    "``v0.12.x`` ref) instead of a branch; a name published "
+                    "as both branch and tag fails loud as ambiguous."
                 ),
             ),
         ]

@@ -605,9 +605,21 @@ Infra:
         # each pattern against one token, and a docstring line is one token,
         # so each header line has its own pattern (any year); the docstring
         # summary and the import block that follows stay scanned.
+        # Operator extension 2026-10-28 (task "arrume todos os problemas de
+        # duplicacao"): the module preamble and the generated lazy-init
+        # boilerplate lines below repeat in every module by the same contract
+        # (import law mandates `from __future__ import annotations`; the
+        # lazy-export law mandates the initializer's MappingProxyType /
+        # TYPE_CHECKING / install_lazy_exports scaffolding), so they are
+        # mandated boilerplate, not clones to repair. Per-package import
+        # lists and every non-mandated line stay scanned.
         ignore-patterns:
           - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
           - "SPDX-License-Identifier: MIT"
+          - "from __future__ import annotations"
+          - "from typing import TYPE_CHECKING"
+          - "from types import MappingProxyType"
+          - "from flext_core.lazy import install_lazy_exports"
 
     lazy-init:
       # Canonical import layer order of the FLEXT import law

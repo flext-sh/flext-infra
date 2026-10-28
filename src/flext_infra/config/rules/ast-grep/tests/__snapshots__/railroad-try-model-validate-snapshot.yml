@@ -1,0 +1,26 @@
+id: railroad-try-model-validate
+snapshots:
+  "try:\n    return r[m.Sample].ok(m.Sample.model_validate(payload))\nexcept Exception as err:\n    return r[m.Sample].fail(str(err), exception=err)\n":
+    fixed: |
+      return r[m.Sample].from_validation(payload, m.Sample)
+    labels:
+    - source: |-
+        try:
+            return r[m.Sample].ok(m.Sample.model_validate(payload))
+        except Exception as err:
+            return r[m.Sample].fail(str(err), exception=err)
+      style: primary
+      start: 0
+      end: 142
+  "try:\n    return r[m.Sample].ok(m.Sample.model_validate(payload))\nexcept ValidationError as err:\n    return r.fail(str(err), exception=err)\n":
+    fixed: |
+      return r[m.Sample].from_validation(payload, m.Sample)
+    labels:
+    - source: |-
+        try:
+            return r[m.Sample].ok(m.Sample.model_validate(payload))
+        except ValidationError as err:
+            return r.fail(str(err), exception=err)
+      style: primary
+      start: 0
+      end: 138

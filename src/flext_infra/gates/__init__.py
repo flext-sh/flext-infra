@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.base_gate import FlextInfraGate
     from flext_infra.gates.codemod import FlextInfraCodemodGate
     from flext_infra.gates.conflict_markers import FlextInfraConflictMarkersGate
+    from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
     from flext_infra.gates.deps import FlextInfraDepsGate
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate

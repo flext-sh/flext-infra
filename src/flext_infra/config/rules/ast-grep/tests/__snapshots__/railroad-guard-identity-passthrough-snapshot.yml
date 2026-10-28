@@ -1,0 +1,30 @@
+id: railroad-guard-identity-passthrough
+snapshots:
+  "def run(self) -> p.Result[str]:\n    result = self._load()\n    if result.failure:\n        return r[str].from_failure(result)\n    return r[str].ok(result.value)\n":
+    fixed: |
+      def run(self) -> p.Result[str]:
+          result = self._load()
+          return result
+    labels:
+    - source: |-
+        result = self._load()
+            if result.failure:
+                return r[str].from_failure(result)
+            return r[str].ok(result.value)
+      style: primary
+      start: 36
+      end: 158
+  "def run_direct(self) -> p.Result[str]:\n    result = self._load()\n    if result.failure:\n        return result\n    return outcome.ok(result.value)\n":
+    fixed: |
+      def run_direct(self) -> p.Result[str]:
+          result = self._load()
+          return result
+    labels:
+    - source: |-
+        result = self._load()
+            if result.failure:
+                return result
+            return outcome.ok(result.value)
+      style: primary
+      start: 43
+      end: 145

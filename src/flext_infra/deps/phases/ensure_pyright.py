@@ -547,9 +547,13 @@ class FlextInfraEnsurePyrightConfigPhase:
                 ),
             )
         operations.append(toml.RemoveOp(key="stubPath"))
-        # Make and the editor bind their interpreter at execution time. A tracked
-        # analyzer manifest must not depend on the generating checkout's venv.
-        operations.extend((toml.RemoveOp(key="venv"), toml.RemoveOp(key="venvPath")))
+        # The tracked manifest binds the workspace venv with checkout-relative
+        # paths (operator order 2026-10-28, pyright incident): every governed
+        # member resolves its dependencies through the shared workspace
+        # environment, so direct analyzer runs evaluate flext code instead of
+        # cascading Unknown imports. Never emit an absolute checkout path here.
+        operations.append(toml.SetOp(key="venv", value=".venv"))
+        operations.append(toml.SetOp(key="venvPath", value=".."))
         operations.append(
             toml.SetOp(
                 key="executionEnvironments",

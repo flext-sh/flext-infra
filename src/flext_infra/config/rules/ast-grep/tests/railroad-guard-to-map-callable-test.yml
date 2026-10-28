@@ -1,0 +1,22 @@
+id: railroad-guard-to-map-callable
+valid:
+  - return result.map(self._normalize)
+  - |
+    def run(self) -> p.Result[int]:
+        result = self._load()
+        if result.failure:
+            return r[int].from_failure(result)
+        return r[int].ok(result.value + 1)
+invalid:
+  - |
+    def run(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return r[str].from_failure(result)
+        return r[str].ok(self._normalize(result.value))
+  - |
+    def run_tuple(self) -> p.Result[tuple[str, ...]]:
+        result = self._load()
+        if result.failure:
+            return result
+        return outcome.ok(tuple(result.value))

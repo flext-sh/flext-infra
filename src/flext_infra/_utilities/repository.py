@@ -982,7 +982,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         if baseline.success:
             return r[str].ok(baseline.value)
         return r[str].fail(
-            "integration branch must be published by Git: "
+            "integration line must be published by Git: "
             f"{repository_root}: {baseline.error}",
         )
 
@@ -1063,23 +1063,45 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
 
         One declared line, one Git fact: the workspace declares its versioned
         integration line (``codegen.branch_policy.integration_branch``), and
-        this check reads the live remote-tracking ref for exactly that line.
-        A repository that does not publish it has no integration baseline and
+        this check reads the live ref for exactly that name — either the
+        published remote-tracking branch or the recorded release tag of the
+        same name (a consumer may pin a recorded ``v0.12.x`` tag). A name
+        published as both branch and tag is ambiguous and fails loud, and a
+        repository that publishes neither has no integration baseline and
         fails loud — there is no name list to guess from and no default to
         invent.
 
         Returns:
-            The declared integration branch the repository publishes.
+            The declared integration line the repository publishes.
 
         """
-        reference = f"refs/remotes/origin/{declared_branch}"
-        resolved = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
-            m.Infra.GitRefRequest(repo_root=repository_root, reference=reference),
+        branch_probe = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
+            m.Infra.GitRefRequest(
+                repo_root=repository_root,
+                reference=f"refs/remotes/origin/{declared_branch}",
+            ),
         )
-        if resolved.success and resolved.value.value:
+        if branch_probe.failure:
+            return r[str].from_failure(branch_probe)
+        tag_probe = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
+            m.Infra.GitRefRequest(
+                repo_root=repository_root,
+                reference=f"refs/tags/{declared_branch}",
+            ),
+        )
+        if tag_probe.failure:
+            return r[str].from_failure(tag_probe)
+        branch_exists = branch_probe.value.value
+        tag_exists = tag_probe.value.value
+        if branch_exists and tag_exists:
+            return r[str].fail(
+                "declared integration line is ambiguous: published as both "
+                f"branch and tag ({declared_branch}): {repository_root}",
+            )
+        if branch_exists or tag_exists:
             return r[str].ok(declared_branch)
         return r[str].fail(
-            "repository publishes no integration branch "
+            "repository publishes no integration branch or release tag "
             f"(declared {declared_branch}): {repository_root}",
         )
 

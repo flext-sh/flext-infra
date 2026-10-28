@@ -32,6 +32,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     SMELLS: ClassVar[str] = "smells"
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
+    LINT_CONFIG_FREEZE: ClassVar[str] = "lint-config-freeze"
     DEPS: ClassVar[str] = "deps"
     RUNTIME_INTEGRITY: ClassVar[str] = "runtime-integrity"
     ENFORCEMENT_CATALOG: ClassVar[str] = "enforcement-catalog"
@@ -130,6 +131,13 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",
+                False,
+                False,
+                FlextInfraConstantsConfig.GateStage.COMMIT,
+            ),
+            LINT_CONFIG_FREEZE: (
+                "Flext Lint-Config Freeze",
+                "internal://flext-infra/lint-config-freeze",
                 False,
                 False,
                 FlextInfraConstantsConfig.GateStage.COMMIT,

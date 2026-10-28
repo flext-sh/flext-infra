@@ -504,6 +504,15 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                         original_text,
                         package=package,
                         moves={expected.get_name(): destination},
+                        exports={
+                            destination: frozenset(
+                                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                                    candidate[target]
+                                )
+                            )
+                        }
+                        if target in candidate
+                        else {},
                     )
                     candidate[path] = consumer_text
                 # A quoted prefix resolves to the moved module object only through

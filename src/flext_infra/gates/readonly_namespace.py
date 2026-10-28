@@ -90,7 +90,7 @@ class FlextInfraReadonlyNamespace:
         for finding in findings:
             if finding.code != "invalid-function-name":
                 continue
-            name = finding.message.partition("`")[2].partition("`")[0]
+            name = finding.message.split("`")[1].partition("`")[0]
             wanted.setdefault(name, []).append((
                 Path(finding.file).resolve(),
                 finding.line,

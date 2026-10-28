@@ -119,7 +119,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             return {}
         # The bindings are a pure function of the initializer text, so one
         # read per distinct text serves every facade render of the process.
-        key = (module, str(path), source)
+        key = (str(project), module, str(path), source)
         if pymodule is None and key in cls._export_bindings_memo:
             return dict(cls._export_bindings_memo[key])
         parsed = cls._parsed_initializer(project, source, pymodule)

@@ -5,25 +5,56 @@
 - [Runtime is the authority](#runtime-is-the-authority)
   - [Post-install cold atomic resource ownership](#post-install-cold-atomic-resource-ownership)
   - [Native-bootstrap task route: flext-0029c](#native-bootstrap-task-route-flext-0029c)
+  - [Catalog, Templates, and Semantic Refactoring Boundaries](#catalog-templates-and-semantic-refactoring-boundaries)
 - [Canonical architecture checkpoints](#canonical-architecture-checkpoints)
+  - [Mod Service, Workspace Sessions, and Receipt Verification](#mod-service-workspace-sessions-and-receipt-verification)
+  - [Governance, Layer-0 Config, and Toolchain Repair](#governance-layer-0-config-and-toolchain-repair)
+  - [Facade Projection and Model-to-Protocol Generation](#facade-projection-and-model-to-protocol-generation)
+  - [Provider Election, Source Bindings, and Native Module Resolution](#provider-election-source-bindings-and-native-module-resolution)
+  - [Recursive Component Composition and Holder Election](#recursive-component-composition-and-holder-election)
 - [Namespace migration](#namespace-migration)
+  - [Incremental Testmon and Primary Check Admission (ADR-029)](#incremental-testmon-and-primary-check-admission-adr-029)
 - [New projects](#new-projects)
 - [Environment activation](#environment-activation)
+  - [Make Activation, Packaged Resources, and Hatch Wheel Packaging](#make-activation-packaged-resources-and-hatch-wheel-packaging)
+  - [Producer Authentication and Cold-Import Verification](#producer-authentication-and-cold-import-verification)
+  - [Editor Settings, Pyright Environments, and Tooling YAML Pairs](#editor-settings-pyright-environments-and-tooling-yaml-pairs)
+  - [Mise PATH Composition and Beads Server Environment](#mise-path-composition-and-beads-server-environment)
 - [Dependency locks](#dependency-locks)
+  - [Member Lock Composition and Upgrade Guard (ADR-030)](#member-lock-composition-and-upgrade-guard-adr-030)
+  - [Development Groups, Typing Policy, and Git Requirement Lines](#development-groups-typing-policy-and-git-requirement-lines)
+  - [Deptry Detection, Dependency Repair, and Cold Initialization](#deptry-detection-dependency-repair-and-cold-initialization)
 - [Runtime environment](#runtime-environment)
   - [Check engine contract](#check-engine-contract)
 - [Mise toolchain](#mise-toolchain)
+  - [Self-Managed Mise and Reality Proof (`mise-proof`)](#self-managed-mise-and-reality-proof-mise-proof)
+  - [Generation Staging, Transaction Journals, and Modernization](#generation-staging-transaction-journals-and-modernization)
 - [SonarCloud exclusions](#sonarcloud-exclusions)
 - [Bootstrap credentials](#bootstrap-credentials)
 - [Evidence and checkpoints](#evidence-and-checkpoints)
+  - [Publication Receipts, Pytest Profiles, and Testmon Leases](#publication-receipts-pytest-profiles-and-testmon-leases)
+  - [Architecture Checkpoints and AST Rule Catalogs](#architecture-checkpoints-and-ast-rule-catalogs)
+  - [Rope Superclass Resolution, Lazy-Init Planners, and Candidate Overlays](#rope-superclass-resolution-lazy-init-planners-and-candidate-overlays)
+  - [cProfile Thread Isolation and Performance Diagnosis](#cprofile-thread-isolation-and-performance-diagnosis)
+  - [Candidate File-Effect Composition and Constant/Model Normalization](#candidate-file-effect-composition-and-constantmodel-normalization)
+  - [Lazy Initializer Ownership and Transaction Failure Recovery](#lazy-initializer-ownership-and-transaction-failure-recovery)
 - [Check gate partitions](#check-gate-partitions)
+  - [File Gate, Pyright Diagnosis, and Stage Partitioning](#file-gate-pyright-diagnosis-and-stage-partitioning)
+  - [CI Setup, Early Bootstrap Receipts, and Git Reference Migration](#ci-setup-early-bootstrap-receipts-and-git-reference-migration)
+  - [Testmon/Toolchain Caching, SSH Gate Attestations, and Smells Enforcement](#testmontoolchain-caching-ssh-gate-attestations-and-smells-enforcement)
 - [Census consumer evidence](#census-consumer-evidence)
 - [Bounded Mypy failure status](#bounded-mypy-failure-status)
 - [Abstraction-boundary project identity](#abstraction-boundary-project-identity)
 - [Service foundation](#service-foundation)
+- [Import normalization](#import-normalization)
 - [Codemod scanner contract](#codemod-scanner-contract)
+  - [`ast-grep` Scanner, Binding Inference, and Source Previews](#ast-grep-scanner-binding-inference-and-source-previews)
+  - [Journal Footprint, Child Profiling, and CLI Route Selection](#journal-footprint-child-profiling-and-cli-route-selection)
+  - [SARIF Receipts, Pytest Deadlines, and Duplication Assessment](#sarif-receipts-pytest-deadlines-and-duplication-assessment)
 - [Workspace snapshot and analysis engine](#workspace-snapshot-and-analysis-engine)
+  - [Single-Project Repository Snapshot and Memoized Facts (ADR-028)](#single-project-repository-snapshot-and-memoized-facts-adr-028)
   - [Profiling a root verb](#profiling-a-root-verb)
+- [Related Documentation](#related-documentation)
 
 <!-- TOC END -->
 
@@ -150,10 +181,12 @@ generated package export that prevents the generator itself from importing. Keep
 the public facade and component behavior unchanged; regenerate package exports
 through their owner rather than hand-editing a generated initializer.
 
-The root has one native uv workspace and lock. Root CI checks out its declared
-submodules and installs that same workspace noneditable; `--no-editable` changes
-installation mode, not dependency origins. Independent checkouts retain their own
-native project contracts. Their locks pin the FLEXT distributions they consume.
+The root has one native uv workspace and composes member locks per
+[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md).
+Root CI checks out its declared submodules and installs that same composed workspace
+noneditable; `--no-editable` changes installation mode, not dependency origins.
+Independent checkouts and member CI retain their own native project contracts and
+committed member locks. Their locks pin the FLEXT distributions they consume.
 To develop against a FLEXT checkout, a standalone member or external consumer runs
 `make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
 `operator-ruling-2026-10-24-setup-flext-editable-param`). After the frozen sync,
@@ -300,6 +333,8 @@ it executes its applicable persistent-testmon selection once. Historical command
 are receipts for their own source epochs, not aliases or executable instructions
 for this catalog. An undeclared old target is corrected at the documentation
 owner, never bypassed through raw pytest or another dispatcher.
+
+### Catalog, Templates, and Semantic Refactoring Boundaries
 
 The Make catalog owns public builtin names, descriptions, profile applicability and
 named inputs. General help and builtin `OPTIONS=Y`/`HELP=Y` views project those inputs
@@ -530,6 +565,8 @@ integration tip of every repository involved.
 
 ## Canonical architecture checkpoints
 
+### Mod Service, Workspace Sessions, and Receipt Verification
+
 The public `mod` handler is inherited by the API from
 `services/mod.py`; `FlextInfraCodemodBatchApply` remains its sole execution
 engine. The CLI validates the request with `m.Infra.ModCommand`, while consumers
@@ -570,6 +607,8 @@ and decoder. Re-derivation compares every persisted field, including exact
 payload bytes, rather than comparing excluded per-effect runtime dependencies.
 Those dependencies are reconstructed from the authenticated aggregate inputs
 before publication; they are not duplicated into the serialized artifact.
+
+### Governance, Layer-0 Config, and Toolchain Repair
 
 For every bounded engine, generation or namespace repair, compose the
 branch-matched workspace law, router and skills from the
@@ -662,6 +701,8 @@ Native checker caches remain owned by their existing runtime/cache owners. Nativ
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
 
+### Facade Projection and Model-to-Protocol Generation
+
 Facade projection composes constants, utilities and models from the exports and
 base order declared in their configured private family. Protocol facade projection
 composes authored consumer-owned `p` contracts through the same native declaration
@@ -745,12 +786,15 @@ planned project view. Local scope, value shadowing, module-as-base, cyclic route
 and unknown bindings retain their native failure; spelling alone never proves
 that a base can be dropped. No private import or live-disk replacement may bypass
 that public source provenance.
-Upstream import bindings follow ADR-028 Decision 10: preserve a used bare letter
+Upstream import bindings follow [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 10: preserve a used bare letter
 or a source-proven existing alias according to the declaration's header references.
 A later publication of the package's own letter does not alone require aliasing the
 upstream import. Diagnose a static/runtime binding disagreement against the same
 captured declarations and lazy exports before changing that election; an inferred
 duplicate base does not prove that distinct native components may be removed.
+
+### Provider Election, Source Bindings, and Native Module Resolution
+
 The runtime-base inventory retains its exact native declaring module by reference
 through binding lookup. A native module display name is not an import path:
 search-root election may shorten it or collide with another package. Captured
@@ -859,6 +903,8 @@ must not introduce a new import root during the recursive projection pass.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
+
+### Recursive Component Composition and Holder Election
 
 Recursive private domains use the same composition owner for every declared
 `c`, `t`, `p`, `m`, and `u` family. A domain directory publishes through its
@@ -989,8 +1035,11 @@ Rule definitions and their generated baselines ship in the same producer artifac
 Refresh them with `make mod-snapshots`; a source-checkout receipt does not validate a
 wheel that still contains older baselines. After adopting a new plugin declaration,
 reconcile installed metadata through `make setup` before running its consumer tests.
+
+### Incremental Testmon and Primary Check Admission (ADR-029)
+
 `make tests` uses the persistent Testmon owner's native incremental selection over
-the complete applicable population. The 2026-10-26 operator order supersedes the
+the complete applicable population ([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)). The 2026-10-26 operator order supersedes the
 forced complete-run behavior: unchanged tests are not rerun merely because the
 verb was invoked again. Selection and execution share one persistent database and
 aggregate deadline, with no second execution pass. The common catalog has no manual
@@ -1073,6 +1122,8 @@ paths require a physical environment and retain interpreter, directory-identity,
 and sealed-source authentication.
 
 ## Environment activation
+
+### Make Activation, Packaged Resources, and Hatch Wheel Packaging
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
 Make verbs declare their activation requirement in `make.verbs`; activation is
@@ -1224,6 +1275,8 @@ unrelated generated functions do not participate in class-state writer capture.
 Declared staging-path mappings apply
 to wrapper storage and nested code units as well as direct function evidence; a
 filename change outside those mappings remains observable.
+
+### Producer Authentication and Cold-Import Verification
 
 Producer authentication starts with a passive observation of the original process.
 Source preflight elects providers and pins their physical source, resource, metadata
@@ -1391,6 +1444,8 @@ with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
 initializer.
 
+### Editor Settings, Pyright Environments, and Tooling YAML Pairs
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
@@ -1468,6 +1523,8 @@ own loader available before child projections are repaired. Recovery uses the
 same guarded `make gen` transaction and its post-generation runtime provenance
 check; it does not disable the environment guard or replace the generator.
 
+### Mise PATH Composition and Beads Server Environment
+
 Activation loads the native `mise env --shell bash` output, which puts the
 installed tool directories ahead of the host's shared shims. This includes the
 self-managed Mise executable: a shim named `mise` otherwise invokes the host
@@ -1510,6 +1567,8 @@ template and regenerate; never initialize an embedded database or write host and
 by hand.
 
 ## Dependency locks
+
+### Member Lock Composition and Upgrade Guard (ADR-030)
 
 Installed interpreter and distribution fingerprints belong to workspace
 environment provenance. Gate receipts and testmon consume that same identity;
@@ -1623,6 +1682,8 @@ inside upgrade. The declared lock platforms and release cooldown remain owned by
 the typed toolchain. Consumer convergence and runtime acceptance are tracked
 separately in `algar-723.1`; this contract is not a publication receipt.
 
+### Development Groups, Typing Policy, and Git Requirement Lines
+
 `codegen.scaffold.project.retired_dev` declares development distributions that
 must no longer reach managed `dev` or `codegen` groups. Conformance filters them
 from existing groups and member contributions;
@@ -1714,6 +1775,8 @@ distribution. Dependency-floor updates rewrite only the selected target's PEP 62
 requirements and dependency groups, retaining markers, extras, direct sources and
 comments. They never write the installed generator's configuration or another
 checkout's declarations.
+
+### Deptry Detection, Dependency Repair, and Cold Initialization
 
 Deptry checking and dependency detection consume one capture owner. It records the
 exact settings, native process outcome, fresh report and one physical production
@@ -1873,6 +1936,8 @@ gate's own invocation in the real tree under the project configuration.
 
 ## Mise toolchain
 
+### Self-Managed Mise and Reality Proof (`mise-proof`)
+
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
 release as a `[tools]` entry, and `mise.lock` pins it like every other tool. Setup
 provisions its recorded release asset and verifies the checksum before entering
@@ -1950,6 +2015,8 @@ Only successful resolution, installation and generation establish alignment.
 The platforms declared by `toolchain.mise_lockfile_platforms` compose the lock
 together with the platform of the machine running the upgrade, which Mise always
 includes.
+
+### Generation Staging, Transaction Journals, and Modernization
 
 The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
 with `all` scope locally and `self` scope in its declared CI context. A local
@@ -2071,6 +2138,8 @@ the variable or a BuildKit secret explicitly.
 
 ## Evidence and checkpoints
 
+### Publication Receipts, Pytest Profiles, and Testmon Leases
+
 Each piece of evidence identifies command, directory, observed revision, exit code, and
 decisive result. A run that is in progress, interrupted, or missing its exit code is not
 green. Concurrent changes require a fresh read before writing and revalidation of the
@@ -2157,6 +2226,8 @@ runner requests a stop through its real `shouldstop` field and leaves shutdown
 to xdist. A present incompatible controller fails instead of taking the serial
 session path. Plugin autoload and enforcement remain active.
 
+### Architecture Checkpoints and AST Rule Catalogs
+
 For namespace automation, investigate catalog, classifier, transformation, publication,
 and consumers in that order. The namespace laws are codemod catalog rules, so the
 codemod gate is their one verdict. Preserve mutability, inheritance, imports, and
@@ -2211,6 +2282,8 @@ selection authority for that invocation.
 Catalog election and staging share the same YAML ingress. Validated streams are
 memoized by their exact text as immutable JSON; each caller receives fresh mappings.
 Current file reads and canonical rule digests still detect drift before publication.
+
+### Rope Superclass Resolution, Lazy-Init Planners, and Candidate Overlays
 
 Generated facades compose declarations published by their current private family.
 Explicit class-owner recognition and rendering resolve each declaration through
@@ -2345,6 +2418,8 @@ merge a parallel path/text map. Final candidate planning, source-publication
 verification and physical CAS remain required. This is the derivation acceptance
 contract for the OUD generation repair tracked in `algar-723.1`, not evidence that
 the current API or generation already satisfies it.
+
+### cProfile Thread Isolation and Performance Diagnosis
 
 The ordinary generation handler admits `settings.Infra.profile` around its actual
 typed `codegen_generate` call. The shared profiler preserves the returned Result
@@ -2529,6 +2604,8 @@ and canonical defaults; closed domains use `c.StrEnum`, while free-form text sta
 open. Type narrowing and redundant conversions are not transport mechanisms.
 Conflicting observations still fail.
 
+### Candidate File-Effect Composition and Constant/Model Normalization
+
 Candidate file-effect admission reports duplicate destination paths with bounded
 producer ownership, original and desired byte digests, modes and tracking metadata,
 never source payloads. This diagnostic consumes the declared plans already in memory;
@@ -2642,6 +2719,8 @@ positional correspondence; Rope's cached synthetic comprehension scopes are
 excluded by their native AST identity, and every declaration, ordering, capture
 and module-identity change still fails the move.
 
+### Lazy Initializer Ownership and Transaction Failure Recovery
+
 Lazy initializer planning publishes only explicit exports of a package's direct
 declaring modules. A child's `__all__` never adds symbols to an ancestor
 initializer, regardless of the family, source tier or directory depth.
@@ -2697,6 +2776,8 @@ An invalid replacement returns a failed result carrying the original `SyntaxErro
 including its filename and source text. The complete batch remains unchanged.
 
 ## Check gate partitions
+
+### File Gate, Pyright Diagnosis, and Stage Partitioning
 
 `make file-gate FILE=<repository-relative path>` delegates to the existing
 `check run --file` owner, never bare analyzers or a second gate engine. The raw
@@ -2790,10 +2871,14 @@ partition. Audit is read-only conformance and installed-lock provenance, not
 generation or a dirty-tree check; legitimate staged changes are not rejected simply
 for being staged.
 
+### CI Setup, Early Bootstrap Receipts, and Git Reference Migration
+
 CI setup reconciles the owned physical environment through locked, noneditable
 installation, including an existing venv. Root CI checks out declared members
-before installing the same native workspace/lock as local execution; standalone
-CI retains its own project contract. The CI token does not replace native source
+before installing the composed workspace lock per
+[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md);
+member and standalone CI retain their own committed member lock and project contract.
+The CI token does not replace native source
 declarations or select a synthetic resolver. Only explicit upgrade resolves or
 writes locks; setup preserves the first install error without another lock mode.
 
@@ -2851,7 +2936,9 @@ runtime-floor phases. A partial request fails before writing; `--check` audits
 the same transition without mutation. The consumer's own `make upg` then owns
 resolution and lock publication.
 
-Normal test verbs remain incremental testmon only and omit the configured slow
+### Testmon/Toolchain Caching, SSH Gate Attestations, and Smells Enforcement
+
+Normal test verbs remain incremental testmon only ([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)) and omit the configured slow
 markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
@@ -3158,6 +3245,8 @@ at its namespace root, not a similarly named test category such as
 
 ## Codemod scanner contract
 
+### `ast-grep` Scanner, Binding Inference, and Source Previews
+
 Source-file discovery uses one pruned traversal per selected project, without a
 preliminary walk to elect directories or repeated ancestor checks for every file.
 The same walker handles filesystem and authenticated Rope reads. Nested repositories,
@@ -3255,6 +3344,8 @@ the guarded candidate consumer. Reusing a sealed receipt never removes that
 operation's selected preparation or admission policy. Both operations retain
 source, membership, inode, candidate-tree, lease and journal verification. The
 independent `make check` surface continues to own its complete configured gates.
+
+### Journal Footprint, Child Profiling, and CLI Route Selection
 
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;
@@ -3360,6 +3451,8 @@ window, so comparable generation measurements also record external elapsed time.
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases
 or inheritance, and it does not rewrite initializer projections.
+
+### SARIF Receipts, Pytest Deadlines, and Duplication Assessment
 
 `GateExecution.issues` retains each finding's original file, position, rule, message,
 and severity. SARIF reports each finding at its native level. Raw scanner output
@@ -3493,8 +3586,10 @@ candidate before runtime acceptance.
 
 | Infra declaration | FLEXT architectural declaration |
 | --- | --- |
-| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17) |
-| ADR backlink to this exact Infra section. | [ADR-028 bidirectional traceability](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#bidirectional-traceability) |
+| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
+| ADR backlink to this exact Infra section. | [ADR-028 bidirectional traceability](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
+
+### Single-Project Repository Snapshot and Memoized Facts (ADR-028)
 
 Generation and modification run through one workspace organizer. It loops over the
 selected repositories in dependency order without worker pools; each repository
@@ -3749,3 +3844,15 @@ reuse or waive the existing post-publication scan and cycle checks.
 Current state (2026-10-25): the root `rename-plan` closure and the quadratic
 scan-target discovery of the semantic source closure are being reduced under epic
 `flext-1engx`.
+
+## Related Documentation
+
+- [Make Commands Guide](../../../docs/guides/make-commands.md)
+- [Codemod Rules Guide](../../../docs/guides/codemod-rules.md)
+- [CSV Rename Campaigns](csv-campaigns.md)
+- [Repository Configuration and Local Overrides](local-config-overrides.md)
+- [Model-Class Boundary Migration](model-fields-migration.md)
+- [Git State Capture](git-state-capture.md)
+- [Plan Collection](plan-collection.md)
+- [Recovery Runbook](recovery.md)
+- [ADR Index](../../../docs/architecture/adr/README.md)

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Mapping
+from collections.abc import Mapping, Set as AbstractSet
 from types import MappingProxyType
 from typing import Final, override
 
@@ -25,6 +25,7 @@ class FlextInfraUtilitiesRopeMovePublication:
         *,
         package: str,
         moves: Mapping[str, str],
+        exports: Mapping[str, AbstractSet[str]] | None = None,
     ) -> str:
         """Carry exact native module relocations into existing lazy publication data.
 
@@ -32,11 +33,19 @@ class FlextInfraUtilitiesRopeMovePublication:
         exact import providers and literal installer module targets, preserving
         import aliases, export attributes and all unrelated string payloads.
 
+        When ``exports`` names the relocated module's published keys, a lazy
+        entry whose key the destination does not publish keeps its original
+        provider: the relocation must never route a publication at a module
+        that does not export it, because the family facade's canonical copy
+        carries only its own family's names.
+
         Returns:
             Source with unchanged publication keys and relocated module targets.
 
         """
-        return cst.parse_module(source).visit(cls._Relocate(package, moves)).code
+        return (
+            cst.parse_module(source).visit(cls._Relocate(package, moves, exports)).code
+        )
 
     class _Publication:
         """Decode the installer's literal provider contract for both CST passes."""
@@ -113,9 +122,17 @@ class FlextInfraUtilitiesRopeMovePublication:
             )
 
     class _Relocate(_Publication, cst.CSTTransformer):
-        def __init__(self, package: str, moves: Mapping[str, str]) -> None:
+        def __init__(
+            self,
+            package: str,
+            moves: Mapping[str, str],
+            exports: Mapping[str, AbstractSet[str]] | None,
+        ) -> None:
             self.package: Final = package
             self.moves: Final = MappingProxyType(dict(moves))
+            self.exports: Final = (
+                MappingProxyType({}) if exports is None else MappingProxyType(exports)
+            )
 
         @override
         def leave_ImportFrom(
@@ -185,8 +202,20 @@ class FlextInfraUtilitiesRopeMovePublication:
 
         def _entry(self, entry: cst.BaseDictElement) -> cst.BaseDictElement:
             module, _attribute = self._target(entry)
-            relocated = self.moves.get(self._absolute(module, self.package))
+            absolute = self._absolute(module, self.package)
+            relocated = self.moves.get(absolute)
             if relocated is None or not isinstance(entry, cst.DictElement):
+                return entry
+            key = entry.key
+            if not isinstance(key, cst.SimpleString):
+                return entry
+            if self.exports and (
+                key.evaluated_value not in self.exports.get(relocated, ())
+            ):
+                # The destination module does not publish this key: keep the
+                # original provider, which still physically exports it inside
+                # this transaction; routing it at the canonical copy would
+                # resolve a publication to a module that lacks the name.
                 return entry
             replacement = (
                 "." + relocated[len(self.package) + 1 :]

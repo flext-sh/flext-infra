@@ -1109,18 +1109,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             source = self._sources.get(
                 module_name, (source_path, provider.source_code)
             )[1]
-            declared = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                module_name,
-                source_path,
-                source,
+            request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
+                module=module_name,
+                path=source_path,
+                source=source,
+                required_line=None,
+                allow_conditional=False,
             )
+            declared = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+                request, self._definitions, provider=None
+            ).get(name)
             u.Cli.info(
                 "lazy declared probe "
                 f"module={module_name} exists={resource.exists()} "
-                f"source_len={len(source)} declared={sorted(declared)}"
+                f"source_len={len(source)} declared={declared is not None}"
             )
-            return declared.get(name)
+            return declared
 
         def _provider_reference(
             self,
@@ -1861,12 +1866,22 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if resource.is_folder():
                 source_path /= c.Infra.INIT_PY
             captured = self._sources.get(module, (source_path, ""))
-            return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                module,
-                source_path,
-                captured[1],
+            request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
+                module=module,
+                path=source_path,
+                source=captured[1],
+                required_line=None,
+                allow_conditional=False,
+            )
+            declared = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+                request, self._definitions, provider=None
             ).get(name)
+            u.Cli.info(
+                "planned lazy probe "
+                f"module={module} name={name} declared={declared is not None}"
+            )
+            return declared
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.

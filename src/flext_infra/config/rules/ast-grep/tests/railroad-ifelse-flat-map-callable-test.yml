@@ -1,0 +1,24 @@
+id: railroad-ifelse-flat-map-callable
+valid:
+  - |
+    def process(self) -> p.Result[str]:
+        return result.flat_map(self._next_step)
+  - |
+    def process_raw(self) -> str:
+        if result.failure:
+            return r.from_failure(result)
+        else:
+            return self._next_step(result.value)
+invalid:
+  - |
+    def process(self) -> p.Result[str]:
+        if result.failure:
+            return r[str].from_failure(result)
+        else:
+            return self._next_step(result.value)
+  - |
+    def process_success(self) -> r[int]:
+        if result.success:
+            return parse_int(result.value)
+        else:
+            return r.from_failure(result)

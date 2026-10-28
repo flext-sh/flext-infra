@@ -1,0 +1,19 @@
+id: railroad-ifelse-map-callable
+valid:
+  - return result.map(self._normalize)
+  - |
+    if result.failure:
+        return r.from_failure(result)
+    else:
+        return r[int].ok(result.value + 1)
+invalid:
+  - |
+    if result.failure:
+        return r[str].from_failure(result)
+    else:
+        return r[str].ok(self._normalize(result.value))
+  - |
+    if result.success:
+        return outcome.ok(tuple(result.value))
+    else:
+        return outcome.from_failure(result)

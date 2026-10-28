@@ -66,9 +66,10 @@ requires real cold and repeated setup proof; it is not a recovery acceptance cla
 ## Install-mode mismatch
 
 `verify-environment` rejects a checkout synced in the other mode (CI's
-locked noneditable build vs the local editable binding). Root CI checks out
-declared submodules and uses the same native workspace and lock as local execution;
-independent checkouts retain their own native contracts. Operation prerequisites
+locked noneditable build vs the local editable binding). Per
+[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md),
+root CI checks out declared submodules and installs the composed workspace lock, while
+member CI and standalone checkouts install their own committed member lock. Operation prerequisites
 require the selected physical interpreter; they do not install or retry setup.
 Run setup explicitly to consume the declared locked inputs and verify the
 result. Under the confirmed native flow, physical ownership and symlink refusal

@@ -1,0 +1,23 @@
+id: railroad-ternary-unwrap-or
+snapshots:
+  return default_value if result.failure else result.value:
+    fixed: return result.unwrap_or(default_value)
+    labels:
+    - source: return default_value if result.failure else result.value
+      style: primary
+      start: 0
+      end: 56
+  return parsed.value if parsed.success else "fallback":
+    fixed: return parsed.unwrap_or("fallback")
+    labels:
+    - source: return parsed.value if parsed.success else "fallback"
+      style: primary
+      start: 0
+      end: 53
+  return result.value if result.success else default_value:
+    fixed: return result.unwrap_or(default_value)
+    labels:
+    - source: return result.value if result.success else default_value
+      style: primary
+      start: 0
+      end: 56
