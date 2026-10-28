@@ -66,6 +66,8 @@ class FlextInfraConstantsCodegenLazy:
     "Root import surfaces generated as private lazy plumbing, not public ABI."
     WRAPPER_NAMESPACE_DEPTH: ClassVar[int] = 2
     "Dotted depth of a namespace package under a governed wrapper surface."
+    DUUNDER_ASSIGNMENT_FRAGMENT_DEPTH: ClassVar[int] = 3
+    "Fragment depth of a module-level dunder assignment inside its class scope."
     LAZY_BOOTSTRAP_ROOT_PACKAGE: ClassVar[str] = "flext_core"
     LAZY_BOOTSTRAP_MODULE: ClassVar[str] = "flext_core.lazy"
     "Defining module imported directly only by the bootstrap root initializer."

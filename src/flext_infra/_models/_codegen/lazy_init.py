@@ -112,10 +112,6 @@ class FlextInfraModelsCodegenLazyInit:
                 description="Facts of each parsed module, keyed by the run's parse",
             ),
         ]
-        ancestors: Annotated[
-            t.Port[dict[str, frozenset[str]]],
-            m.Field(exclude=True, description="Resolved class ancestry by path"),
-        ]
         project_notices: Annotated[
             t.Port[dict[Path, tuple[t.Infra.DocumentationLanguage, str]]],
             m.Field(

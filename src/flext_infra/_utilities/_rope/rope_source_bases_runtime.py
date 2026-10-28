@@ -974,9 +974,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             try:
                 return module.get_attribute(name)
-            except (
-                FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types()
-            ) as exc:
+            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types() as exc:
                 resource = module.get_resource()
                 exc.add_note(
                     f"Provider base reference: {target}; source="
@@ -1543,9 +1541,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
                         self._project.get_module(target)
                     )
-                except (
-                    FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types()
-                ):
+                except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
                     # Rope dropped this star import because the module does not
                     # resolve; that node cannot bind the requested name.
                     continue

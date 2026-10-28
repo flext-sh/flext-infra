@@ -38,9 +38,7 @@ class FlextInfraModelsConfigStatic:
             t.JsonMapping | None,
             m.Field(description="Applied-change record; none outside application"),
         ]
-        applied: Annotated[
-            int, m.Field(description="Replacements applied to the file")
-        ]
+        applied: Annotated[int, m.Field(description="Replacements applied to the file")]
 
 
 __all__: list[str] = ["FlextInfraModelsConfigStatic"]

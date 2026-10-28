@@ -311,13 +311,13 @@ class TestsFlextInfraLazyInitRuntime:
             )
             tm.ok(isinstance(module, p.Infra.RopeSourceModule))
             tm.that(u.Infra.public_export_names_source(module), eq=expected)
-        tm.that(
-            u.Infra.module_export_names_source(
-                source,
-                export_options=m.Infra.ExportOptions(require_explicit_all=True),
-            ),
-            eq=expected,
-        )
+            tm.that(
+                u.Infra.module_export_names_source(
+                    module,
+                    export_options=m.Infra.ExportOptions(require_explicit_all=True),
+                ),
+                eq=expected,
+            )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -332,7 +332,8 @@ class TestsFlextInfraLazyInitRuntime:
         published_alias: bool,
     ) -> None:
         """Generated initializers propagate precise aliases at module scope."""
-        repository, declaration = TestsFlextInfraLazyInitRuntime._write_alias_generation_fixture(
+        fixture = TestsFlextInfraLazyInitRuntime._write_alias_generation_fixture
+        repository, declaration = fixture(
             tmp_path, imported_alias=imported_alias, published_alias=published_alias
         )
         testing = repository / c.Infra.DIR_TESTS
@@ -374,7 +375,9 @@ class TestsFlextInfraLazyInitRuntime:
         generated = {path: path.read_bytes() for path in testing.rglob(c.Infra.INIT_PY)}
         tm.that(len(generated), eq=2)
         for content in generated.values():
-            TestsFlextInfraLazyInitRuntime._assert_initializer_shape(content.decode(c.DEFAULT_ENCODING))
+            TestsFlextInfraLazyInitRuntime._assert_initializer_shape(
+                content.decode(c.DEFAULT_ENCODING)
+            )
         TestsFlextInfraLazyInitRuntime._assert_generated_exports(repository, generated)
         initializer = testing / c.Infra.INIT_PY
         source = initializer.read_text(encoding=c.DEFAULT_ENCODING)

@@ -150,7 +150,17 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = u.Tests.generated_init(package_root)
-        has_all, exports = u.Tests.extract_lazy_init_exports(generated)
+        with u.Infra.facade_source_project(repository_root) as (project, _sources):
+            native = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(
+                        (package_root / c.Infra.INIT_PY)
+                        .relative_to(repository_root)
+                        .as_posix()
+                    )
+                )
+            )
+            has_all, exports = u.Tests.extract_lazy_init_exports(native)
 
         tm.ok(has_all)
         tm.that(exports, eq=("FlextDemoConstants", "FlextDemoLazy", "c"))
@@ -487,7 +497,17 @@ class TestsFlextInfraLazyInitHelpers:
         ruff_ordered_aliases = ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x")
         for alias_name in ruff_ordered_aliases:
             tm.that(init_content, has=f'    "{alias_name}",')
-        has_all, public_exports = u.Tests.extract_lazy_init_exports(init_content)
+        with u.Infra.facade_source_project(repository_root) as (project, _sources):
+            native = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(
+                        (package_root / c.Infra.INIT_PY)
+                        .relative_to(repository_root)
+                        .as_posix()
+                    )
+                )
+            )
+            has_all, public_exports = u.Tests.extract_lazy_init_exports(native)
         tm.ok(has_all)
         # __all__ follows RUF022; dependency order remains
         # exclusively in the static facade imports.
@@ -682,7 +702,17 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = u.Tests.generated_init(package_root)
-        has_all, public_exports = u.Tests.extract_lazy_init_exports(generated)
+        with u.Infra.facade_source_project(repository_root) as (project, _sources):
+            native = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(
+                        (package_root / c.Infra.INIT_PY)
+                        .relative_to(repository_root)
+                        .as_posix()
+                    )
+                )
+            )
+            has_all, public_exports = u.Tests.extract_lazy_init_exports(native)
 
         tm.ok(has_all)
         published_aliases = c.Infra.ALIAS_NAMES.intersection(flext_infra.__all__)

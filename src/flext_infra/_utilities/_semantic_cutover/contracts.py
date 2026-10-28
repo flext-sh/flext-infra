@@ -230,9 +230,7 @@ class FlextInfraUtilitiesSemanticContracts(
         sources: Mapping[Path, str],
         rules: Sequence[p.Infra.RopeContractRule],
         options: m.Infra.ContractAdmissionOptions | None,
-        witnesses: tuple[
-            Mapping[Path, str], Mapping[Path, tuple[str, ...]]
-        ],
+        witnesses: tuple[Mapping[Path, str], Mapping[Path, tuple[str, ...]]],
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan effects from current consumers, retaining analysis-only witnesses.
 
@@ -356,21 +354,20 @@ class FlextInfraUtilitiesSemanticContracts(
         anchor, indentation = cls._generic_history_anchor(
             current, module.get_source_binding_index().fragments, provider
         )
-        historical = cls._generic_history_source(path, selection)
         with project.source_view(
             declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
                 Path(project.root.real_path),
                 (),
-                {path: historical},
+                {path: cls._generic_history_source(path, selection)},
                 source_project=project,
             ),
             additional_source_folders=None,
         ):
-            _identity, historical_provider, historical_module, _resource = (
-                cls._generic_history_provider(project, selection)
+            _identity, provider, module, _resource = cls._generic_history_provider(
+                project, selection
             )
             declarations, names, imports = cls._generic_history_declarations(
-                historical_module, historical_provider, current_names
+                module, provider, current_names
             )
         candidate = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,
@@ -386,14 +383,14 @@ class FlextInfraUtilitiesSemanticContracts(
             else (),
         ).new_contents
         for import_module, members in imports.items():
-            plans = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-                Path(project.root.real_path),
-                (),
-                {path: candidate},
-                source_project=project,
-            )
             with project.source_view(
-                declared_files=plans, additional_source_folders=None
+                declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                    Path(project.root.real_path),
+                    (),
+                    {path: candidate},
+                    source_project=project,
+                ),
+                additional_source_folders=None,
             ):
                 imported = FlextInfraUtilitiesRopeImports.add_import(
                     project, resource, import_module, tuple(members), apply=False
@@ -481,9 +478,8 @@ class FlextInfraUtilitiesSemanticContracts(
 
         """
         root = (
-            FlextInfraUtilitiesGit.git_identity(
-                m.Infra.GitRepoRequest(repo_root=path.parent)
-            )
+            FlextInfraUtilitiesGit
+            .git_identity(m.Infra.GitRepoRequest(repo_root=path.parent))
             .unwrap()
             .repository_root
         )

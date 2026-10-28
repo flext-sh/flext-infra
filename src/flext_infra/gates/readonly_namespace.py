@@ -103,10 +103,9 @@ class FlextInfraReadonlyNamespace:
         if not selected:
             return ()
         runtime = FlextInfraUtilitiesRopeRuntime
-        typing_module = source_project.get_module("typing")
-        if not isinstance(typing_module, p.Infra.RopePyObject):
-            msg = "Protocol owner requires a native module attribute contract"
-            raise TypeError(msg)
+        typing_module = runtime.require_semantic_module(
+            source_project.get_module("typing")
+        )
         protocol = typing_module.get_attribute("Protocol").get_object()
         modules: dict[Path, p.Infra.RopeSourceModule] = {}
         wanted: dict[str, list[tuple[Path, int, int]]] = {}
@@ -142,7 +141,7 @@ class FlextInfraReadonlyNamespace:
         module: p.Infra.RopeSourceModule,
         offset: int,
         line: int,
-    ) -> tuple[p.Infra.RopeScope, p.Infra.RopePyObject, p.Infra.RopeScope] | None:
+    ) -> tuple[p.Infra.RopeScope, p.Infra.RopeSourceFunction, p.Infra.RopeScope] | None:
         """Elect a class-owned function scope at one source offset.
 
         Returns:
@@ -160,9 +159,10 @@ class FlextInfraReadonlyNamespace:
             or owner.get_kind() != "Class"
         ):
             return None
-        if function.get_scope().parent is None:
+        declaring_scope = function.get_scope().parent
+        if declaring_scope is None:
             return None
-        if function.get_scope().parent.pyobject is not owner.pyobject:
+        if declaring_scope.pyobject is not owner.pyobject:
             return None
         return scope, function, owner
 
@@ -170,7 +170,6 @@ class FlextInfraReadonlyNamespace:
     def _protocol_owns_member(
         owner: p.Infra.RopePyObject,
         protocol: p.Infra.RopePyObject,
-        runtime: type,
     ) -> bool:
         """Walk the owner's ancestry until the protocol is reached.
 
@@ -187,7 +186,7 @@ class FlextInfraReadonlyNamespace:
             if id(ancestor) in visited:
                 continue
             visited.add(id(ancestor))
-            if runtime.abstract_class(ancestor):
+            if FlextInfraUtilitiesRopeRuntime.abstract_class(ancestor):
                 pending.extend(ancestor.get_superclasses())
         return False
 
@@ -228,7 +227,7 @@ class FlextInfraReadonlyNamespace:
         binding = owner.get_defined_names().get(name)
         if binding is None or binding.get_object() is not function:
             return None
-        if not cls._protocol_owns_member(owner.pyobject, protocol, runtime):
+        if not cls._protocol_owns_member(owner.pyobject, protocol):
             return None
         start = scope.get_region()[0]
         end = module.lines.get_line_start(scope.get_start())
@@ -246,7 +245,7 @@ class FlextInfraReadonlyNamespace:
     @staticmethod
     def _protocol_has_property_decorator(
         module: p.Infra.RopeSourceModule,
-        decorators: set[tuple[int, int]],
+        decorators: Sequence[tuple[int, int]],
         start: int,
         end: int,
     ) -> bool:
@@ -261,7 +260,7 @@ class FlextInfraReadonlyNamespace:
             fragment
             for fragment in index.fragments
             if start <= fragment.start < fragment.end <= end
-            and index.context_at(fragment.start).role == "decorator"
+            and fragment.context.role == "decorator"
         )
         shallowest = min((fragment.depth for fragment in fragments), default=None)
         return any(

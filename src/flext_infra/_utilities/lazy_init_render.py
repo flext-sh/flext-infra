@@ -434,18 +434,6 @@ class FlextInfraUtilitiesLazyInitRender:
             return "." * (len(current_parts) - common + 1) + ".".join(
                 module_parts[common:]
             )
-        if module.startswith("_"):
-            return f".{module}"
-        internal = frozenset(current.split(".")[1:])
-        first = module.split(".", 1)[0]
-        if internal & c.Infra.LOCAL_INFERRED_SEGMENTS:
-            return module
-        if first in internal or (
-            current == root
-            and "." in module
-            and first in c.Infra.LOCAL_INFERRED_SEGMENTS
-        ):
-            return f".{module}"
         return module
 
 

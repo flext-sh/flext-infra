@@ -135,10 +135,19 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         tm.that(self._top_level(nested), eq=(owner, "__all__"))
         exports = tm.instance(ast.parse(nested).body[-1], ast.AnnAssign)
         tm.that(ast.unparse(exports.annotation), eq="list[str]")
-        tm.that(
-            u.Infra.module_assignment_strings_source(nested, c.Infra.DUNDER_ALL),
-            eq=(owner,),
-        )
+        with u.Infra.facade_source_project(root, planned_sources={module: nested}) as (
+            project,
+            _sources,
+        ):
+            native = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(module.relative_to(root).as_posix())
+                )
+            )
+            tm.that(
+                u.Infra.module_assignment_strings_source(native, c.Infra.DUNDER_ALL),
+                eq=(owner,),
+            )
         for fragment in expected:
             tm.that(
                 nested,

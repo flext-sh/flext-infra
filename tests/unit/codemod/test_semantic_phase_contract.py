@@ -655,13 +655,15 @@ class TestsFlextInfraSemanticPhaseContract:
             )
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
-        tm.that(
-            u.Infra.public_export_names_source(
-                sources[utility_directory / "parser.py"],
-            ),
-            eq=(parser_owner,),
-        )
         with infra.rope_workspace(root) as rope:
+            native = u.Infra.require_source_module(
+                rope.rope_project.get_pymodule(
+                    rope.rope_project.get_resource(
+                        (utility_directory / "parser.py").relative_to(root).as_posix()
+                    )
+                )
+            )
+            tm.that(u.Infra.public_export_names_source(native), eq=(parser_owner,))
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,

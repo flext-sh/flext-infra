@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import time
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,7 +18,7 @@ from typing import Annotated, override
 
 from flext_cli import u
 
-from flext_infra import FlextInfraUtilities, c, d, m, p, r
+from flext_infra import FlextInfraUtilities, c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -178,7 +179,6 @@ class FlextInfraCodegenLazyInit(
             )
         return r[bool].ok(value=True)
 
-    @d.log_operation("lazy_init_plan", track_perf=True)
     def plan_files(
         self,
         *,
@@ -197,6 +197,8 @@ class FlextInfraCodegenLazyInit(
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         message = c.Infra.LazyInitMessage
         workspace = self.repository_root.resolve()
+        started = time.monotonic()
+        u.Cli.info(f"stage=lazy-init state=start root={workspace}")
         scoped = self.project_scope_roots is not None
         roots = tuple(
             sorted({root.resolve() for root in self.project_scope_roots or ()})
@@ -258,15 +260,16 @@ class FlextInfraCodegenLazyInit(
                             message.CONFLICTING_PLANS.format(path=file_plan.path)
                         )
         files = tuple(by_path[path] for path in sorted(by_path))
-        u.Cli.info(
-            message.PLAN_SUMMARY.format(
-                effects=sum(
-                    map(
-                        FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect,
-                        files,
-                    )
-                )
+        effects = sum(
+            map(
+                FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect,
+                files,
             )
+        )
+        u.Cli.info(
+            f"stage=lazy-init state=end root={workspace} "
+            f"elapsed={time.monotonic() - started:.3f}s files={len(files)} "
+            f"effects={effects}"
         )
         return result_type.ok(files)
 

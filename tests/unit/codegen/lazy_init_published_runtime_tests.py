@@ -515,9 +515,15 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         # The facet declares no letter, so the generator leaves it untouched:
         # no runtime-alias repair may invent a local binding for one.
         tm.that(facet.read_text(encoding=c.DEFAULT_ENCODING), eq=facet_source)
-        exports = u.Infra.public_export_names_source(
-            examples.joinpath("__init__.py").read_text(encoding=c.DEFAULT_ENCODING),
-        )
+        with u.Infra.facade_source_project(repository) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(
+                        (examples / c.Infra.INIT_PY).relative_to(repository).as_posix()
+                    )
+                )
+            )
+            exports = u.Infra.public_export_names_source(module)
         tm.ok("c" in exports)
         probe = (
             "import examples as generated\n"

@@ -109,8 +109,7 @@ class FlextInfraCodegenConsolidator(s[str]):
             return m.Infra.ConsolidationOutcome(
                 found=len(scanned.matches),
                 lines=tuple(
-                    f"  {rel_path}:{symbol.line}"
-                    f"  {symbol.name} = {value} -> {ref}"
+                    f"  {rel_path}:{symbol.line}  {symbol.name} = {value} -> {ref}"
                     for symbol, ref, value in scanned.matches
                 ),
                 record=None,

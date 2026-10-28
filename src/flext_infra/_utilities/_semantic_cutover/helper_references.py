@@ -154,9 +154,11 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                     request.source_file.relative_to(root).as_posix()
                 ),
             )
-            line = FlextInfraUtilitiesSemanticHelperReferences._helper_declaration_scope(
-                origin, request.class_name
-            ).get_start()
+            line = (
+                FlextInfraUtilitiesSemanticHelperReferences._helper_declaration_scope(
+                    origin, request.class_name
+                ).get_start()
+            )
             moved = FlextInfraUtilitiesRopeClassMove.plan_class_move(
                 m.Infra.ClassMoveRequest(
                     rope_project=snapshot,
@@ -305,15 +307,24 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     def _helper_declaration_scope(
         module: p.Infra.RopePyModule, name: str
     ) -> p.Infra.RopeScope:
-        """Require exactly one original class identity in the native module scope."""
+        """Require exactly one original declaration identity in the native scope.
+
+        Returns:
+            The unique class scope declaring the helper identity.
+
+        Raises:
+            ValueError: If the identity is declared zero or multiple times.
+
+        """
         declarations = tuple(
             scope
             for scope in module.get_scope().get_scopes()
-            if scope.get_kind() == "Class" and scope.pyobject.get_name() == name
+            if scope.get_kind() in {"Class", "Function"}
+            and scope.pyobject.get_name() == name
         )
         if len(declarations) != 1:
             msg = (
-                "shared helper requires one native class declaration: "
+                "shared helper requires one native declaration: "
                 f"{module.get_name()}:{name}"
             )
             raise ValueError(msg)

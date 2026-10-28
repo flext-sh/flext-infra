@@ -2725,6 +2725,7 @@ class FlextInfraUtilitiesCodegenFacades(
         context = CodemodContext(full_package_name=module.get_name().rpartition(".")[0])
         elected: dict[str, p.Infra.RopePyObject] = {}
         imports: set[tuple[str, str]] = set()
+        retired_imports: set[tuple[str, str, str | None]] = set()
         removed_import = False
         for (
             publication,
@@ -2732,6 +2733,7 @@ class FlextInfraUtilitiesCodegenFacades(
             original_import,
         ) in cls._upstream_base_imports(view, path, module, letter, context):
             if not names:
+                retired_imports.add(original_import)
                 removed_import = True
                 continue
             occupied = cls._upstream_letter_occupied(
@@ -2783,6 +2785,7 @@ class FlextInfraUtilitiesCodegenFacades(
             if original_import == (publication[0], letter, import_alias):
                 continue
             RemoveImportsVisitor.remove_unused_import(context, *original_import)
+            retired_imports.add(original_import)
             references.update(
                 ((node.lineno, node.col_offset), destination) for node in names
             )
@@ -2796,13 +2799,100 @@ class FlextInfraUtilitiesCodegenFacades(
                     asname=import_alias,
                 )
                 imports.add(request)
-        return (
+        rewritten = (
             cls._rewrite_upstream_references(
                 context, source, references, binding=(view.project, path)
             )
             if imports or removed_import
             else source
         )
+        return cls._upstream_retired_imports(
+            view.project, path, rewritten, retired_imports
+        )
+
+    @classmethod
+    def _upstream_retired_imports(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+        retired: set[tuple[str, str, str | None]],
+    ) -> str:
+        """Remove only import bindings superseded by the native reference election.
+
+        Native used-import facts protect live code references. Imported or unknown
+        final bindings also retain imports referenced in strings, exports or comments
+        through Rope's documented occurrence mode. A final local publication owns
+        those late references independently of its superseded header import.
+
+        Returns:
+            The candidate with exact retired imports removed, retaining aliases.
+
+        Raises:
+            TypeError: If Rope import cleanup lacks native occurrence finders.
+
+        """
+        if not retired:
+            return source
+        with cls.facade_source_project(
+            Path(project.root.real_path),
+            planned_sources={path: source},
+            source_project=project,
+        ) as (candidate, _sources):
+            module = cls.require_source_module(
+                candidate.get_pymodule(cls.file_resource_at(candidate, path))
+            )
+            imports = cls.module_imports_for_pymodule(candidate, module)
+            used = {
+                (info.module_name, name, alias)
+                for info in imports.get_used_imports(module)
+                if cls.from_import_info(info)
+                for name, alias in info.names_and_aliases
+            }
+            removable: set[tuple[str, str, str | None]] = set()
+            for original in sorted(
+                retired - used, key=lambda item: (item[0], item[1], item[2] or "")
+            ):
+                bound = original[2] or original[1]
+                binding = module.get_attributes().get(bound)
+                if binding is None or isinstance(binding, p.Infra.RopeImportedName):
+                    finder_type = cls.runtime_callable(
+                        "rope.refactor.occurrences", "Finder"
+                    )
+                    lexical = finder_type(candidate, bound)
+                    documented = finder_type(candidate, bound, docs=True)
+                    if not (
+                        isinstance(lexical, p.Infra.RopeOccurrenceFinder)
+                        and isinstance(documented, p.Infra.RopeOccurrenceFinder)
+                    ):
+                        message = (
+                            "Rope import cleanup requires native occurrence finders"
+                        )
+                        raise TypeError(message)
+                    lexical_offsets = {
+                        occurrence.get_word_range()
+                        for occurrence in lexical.find_occurrences(pymodule=module)
+                    }
+                    if any(
+                        occurrence.get_word_range() not in lexical_offsets
+                        for occurrence in documented.find_occurrences(pymodule=module)
+                    ):
+                        continue
+                removable.add(original)
+            for statement in imports.imports:
+                info = statement.import_info
+                if not cls.from_import_info(info) or info.level != 0:
+                    continue
+                kept = [
+                    (name, alias)
+                    for name, alias in info.names_and_aliases
+                    if (info.module_name, name, alias) not in removable
+                ]
+                if len(kept) != len(info.names_and_aliases):
+                    statement.import_info = cls.from_import(
+                        info.module_name, info.level, kept
+                    )
+            return imports.get_changed_source()
 
     @classmethod
     def _upstream_reference_names(
@@ -3035,14 +3125,16 @@ class FlextInfraUtilitiesCodegenFacades(
         if package is None:
             message = f"Facade base has no publishing package: {origin}"
             raise ValueError(message)
+        initializer = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+            package.get_child(c.Infra.INIT_PY) if package.is_folder() else package,
+            publisher,
+        )
         package_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            view.project, package
+            view.project, initializer
         )
         public_exports = (
             FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                FlextInfraUtilitiesRopeRuntime.require_source_module(
-                    package_module
-                )
+                FlextInfraUtilitiesRopeRuntime.require_source_module(package_module)
             )
         )
         exported = (
@@ -3061,9 +3153,7 @@ class FlextInfraUtilitiesCodegenFacades(
                 declaring = owner.get_module()
                 declared_exports = (
                     FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                        FlextInfraUtilitiesRopeRuntime.require_source_module(
-                            declaring
-                        )
+                        FlextInfraUtilitiesRopeRuntime.require_source_module(declaring)
                     )
                 )
                 if letter in declared_exports:

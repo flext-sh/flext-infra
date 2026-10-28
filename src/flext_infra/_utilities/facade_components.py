@@ -458,11 +458,56 @@ class FlextInfraUtilitiesFacadeComponents:
                 )
         else:
             binding = module.get_attribute(name).get_object()
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(binding):
+                # Rope inference is not stable across a transaction's proposed
+                # source swaps; the package initializer's declared lazy route
+                # is the SSOT for re-exported names.
+                binding = (
+                    components.component_declared_package_binding(
+                        project, origin_head or head, name
+                    )
+                    or binding
+                )
         return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
             binding,
             f"lexical facade component ancestry: base {name!r} of "
             f"{owner.get_name()} in {module.get_name()}",
         )
+
+    @staticmethod
+    def component_declared_package_binding(
+        project: p.Infra.RopeProject,
+        package: str,
+        name: str,
+    ) -> p.Infra.RopePyObject | None:
+        """Resolve a name re-exported by the named package's lazy initializer.
+
+        The ``install_lazy_exports`` literal of ``package`` is the
+        declaration SSOT; rope inference over a proposed source swap can
+        return an unresolved object where the declared route is exact.
+
+        Returns:
+            The declaring module's binding, or none when the package does not
+            declare the name or the provider does not resolve.
+
+        """
+        init_resource = project.find_module(package)
+        if init_resource is None:
+            return None
+        init = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            project, init_resource
+        )
+        components = FlextInfraUtilitiesFacadeComponents
+        for target in components.lazy_export_targets(init, name):
+            target_resource = project.find_module(f"{package}{target}")
+            if target_resource is None:
+                continue
+            target_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                project, target_resource
+            )
+            declared = components.component_imported_name(target_module, name)
+            return target_module.get_attribute(declared or name).get_object()
+        return None
 
     @staticmethod
     def component_lazy_binding(

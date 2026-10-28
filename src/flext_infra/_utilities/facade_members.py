@@ -831,7 +831,6 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: Mapping[str, p.Infra.RopeClassObject],
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         scope: t.Infra.FacadeMemberScope,
-
     ) -> c.Infra.FacadeMemberPlacement | None:
         """Classify a foreign member's actual placement through native bindings.
 
@@ -873,11 +872,7 @@ class FlextInfraUtilitiesFacadeMembers:
             raise
         members: Mapping[str, p.Infra.RopePyName] = bindings.get(owner, {})
         bound = member in members
-        if (
-            owner != letter
-            and bound
-            and cls._same_binding(members[member], value)
-        ):
+        if owner != letter and bound and cls._same_binding(members[member], value):
             return c.Infra.FacadeMemberPlacement.EXPOSED
         kind = cls.facade_member_kind(
             value,
@@ -1077,7 +1072,6 @@ class FlextInfraUtilitiesFacadeMembers:
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
         scope: t.Infra.FacadeMemberScope,
-
     ) -> Sequence[tuple[str, str]]:
         """Reference every owned member through each other letter of ``root``.
 
@@ -1098,10 +1092,7 @@ class FlextInfraUtilitiesFacadeMembers:
             )
             for letter, members in bindings.items()
             if letter != owner
-            and (
-                member not in members
-                or cls._same_binding(members[member], value)
-            )
+            and (member not in members or cls._same_binding(members[member], value))
         )
 
     @classmethod
@@ -1112,7 +1103,6 @@ class FlextInfraUtilitiesFacadeMembers:
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
         scope: t.Infra.FacadeMemberScope,
-
     ) -> Sequence[tuple[str, p.Infra.RopePyName, str]]:
         """Collect each public member a letter of ``root`` declares as owner.
 

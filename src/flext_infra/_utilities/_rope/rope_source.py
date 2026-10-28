@@ -80,7 +80,9 @@ class FlextInfraUtilitiesRopeSource:
                 if index.context_at(region[0]).structural_scope.pyobject is owner:
                     regions.add(region)
             if len(regions) > 1:
-                message = f"Competing native field annotations: {owner.get_name()}.{name}"
+                message = (
+                    f"Competing native field annotations: {owner.get_name()}.{name}"
+                )
                 raise ValueError(message)
             if regions:
                 fields[name] = next(iter(regions))
@@ -115,8 +117,7 @@ class FlextInfraUtilitiesRopeSource:
             region
             for region in regions
             if not any(
-                other != region
-                and other[0] <= region[0] < region[1] <= other[1]
+                other != region and other[0] <= region[0] < region[1] <= other[1]
                 for other in regions
             )
         )
@@ -124,6 +125,66 @@ class FlextInfraUtilitiesRopeSource:
             message = f"Competing native return annotations: {owner.get_name()}"
             raise ValueError(message)
         return roots[0] if roots else None
+
+    @staticmethod
+    def source_parameter_annotations(
+        owner: p.Infra.RopeSourceFunction,
+    ) -> Mapping[str, tuple[int, int]]:
+        """Associate native parameter-annotation regions with native formal names.
+
+        Returns:
+            Annotated parameter names and their exact annotation regions.
+
+        Raises:
+            TypeError: The module or word finder lacks its native contract.
+            ValueError: A parameter has competing native annotation roots.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Parameter annotations require a native source module"
+            raise TypeError(message)
+        word = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(word, p.Infra.RopeWorder):
+            message = "Parameter annotations require the native word finder"
+            raise TypeError(message)
+        fragments = module.get_source_binding_index().fragments
+        annotations: dict[str, tuple[int, int]] = {}
+        for _kind, name in owner.get_parameter_layout():
+            formals = tuple(
+                fragment
+                for fragment in fragments
+                if fragment.context.role == "formal-token"
+                and fragment.context.structural_scope.pyobject is owner
+                and word.get_word_at(fragment.start) == name
+            )
+            regions = frozenset(
+                (fragment.start, fragment.end)
+                for fragment in fragments
+                if fragment.context.role == "parameter-annotation"
+                and fragment.context.structural_scope.pyobject is owner
+                and any(
+                    formal.start <= fragment.start < fragment.end <= formal.end
+                    for formal in formals
+                )
+            )
+            roots = tuple(
+                region
+                for region in regions
+                if not any(
+                    other != region and other[0] <= region[0] < region[1] <= other[1]
+                    for other in regions
+                )
+            )
+            if len(roots) > 1:
+                message = f"Competing native parameter annotations: {name}"
+                raise ValueError(message)
+            if roots:
+                annotations[name] = roots[0]
+        return annotations
 
     @staticmethod
     def source_type_parameters(
@@ -185,10 +246,11 @@ class FlextInfraUtilitiesRopeSource:
                 msg = f"Settings field inventory is not a native source module: {path}"
                 raise TypeError(msg)
             proven.update(
-                cls._direct_settings_fields(module, scope, wanted)
+                name
                 for scope in cls._class_scopes(module)
                 if wanted.intersection(scope.get_defined_names())
                 and cls._settings_owner(scope.pyobject, roots)
+                for name in cls._direct_settings_fields(module, scope, wanted)
             )
         return frozenset(proven)
 

@@ -107,10 +107,10 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
         selected = Path(editor_interpreter.replace("${workspaceFolder}", str(project)))
         tm.that(selected.parent.resolve(), eq=interpreter.parent.resolve())
         tm.that(selected.name, eq=interpreter.name)
-        mypy_interpreters = u.Tests.toml_strings(
-            document["mypy-type-checker.interpreter"]
+        tm.that(
+            tuple(u.Tests.toml_strings(document["mypy-type-checker.interpreter"])),
+            eq=(editor_interpreter,),
         )
-        tm.that(tuple(mypy_interpreters), eq=(editor_interpreter,))
         executed = tm.ok(
             u.Cli.capture(
                 (str(selected), "-c", "import sys; print(sys.prefix)"),

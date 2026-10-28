@@ -39,13 +39,11 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     _INSTALL_LAZY_IMPORTS_ARG_INDEX: ClassVar[int] = 2
 
     class Tree:
-        """Rope-owned syntax-tree surface for ``u``-family consumers.
+        """Legacy syntax-tree surface pending complete native consumer migration.
 
-        Rope is the only Python interpreter: every attribute and function
-        comes from rope's own ``ast`` surface (``rope.base.ast``) — the same
-        surface that parses the trees the index serves — so consumers run
-        isinstance checks, node construction and rendering without ever
-        naming or driving the interpreter themselves (ADR-028 Decision 15).
+        Importing syntax nodes from Rope still exposes AST interpretation in
+        FLEXT. This surface does not satisfy the native DSL contract and must
+        disappear together with its remaining consumers.
         """
 
         Alias: ClassVar[type[ast.alias]] = ast.alias
@@ -203,23 +201,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                     if isinstance(child, ast.stmt | ast.excepthandler | ast.match_case):
                         pending.append(child)
         return tuple(found)
-
-    @staticmethod
-    @cache
-    def absolute_import_roots(source: str) -> frozenset[str]:
-        """Name the top-level packages one module source imports absolutely.
-
-        Imports are statements, so only statement bodies are traversed:
-        nested function, class, conditional and handler bodies included,
-        expressions never. One traversal serves each exact content.
-
-        Returns:
-            The distinct top-level module names, without relative imports.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysisSourceScan.module_absolute_import_roots(
-            FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(source)
-        )
 
     @staticmethod
     def module_absolute_import_roots(module: ast.Module) -> frozenset[str]:
@@ -455,28 +436,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 return node.value
         return None
 
-    @staticmethod
-    def _sequence_constructor_ref(value: ast.expr | None) -> str:
-        """Return the name a value binds directly or wraps in one sequence constructor.
-
-        Returns:
-            The name a value binds directly or wraps in one sequence constructor.
-
-        """
-        if isinstance(value, ast.Name):
-            return value.id
-        if (
-            isinstance(value, ast.Call)
-            and isinstance(value.func, ast.Name)
-            and value.func.id in {"tuple", c.Action.LIST, "frozenset", "set"}
-            and len(value.args) == 1
-            and not value.keywords
-        ):
-            wrapped = value.args[0]
-            if isinstance(wrapped, ast.Name):
-                return wrapped.id
-        return ""
-
     @classmethod
     def module_assignment_strings_source(
         cls, source_module: p.Infra.RopeSourceModule, name: str
@@ -520,7 +479,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 msg = "Native assignment query requires the word finder contract"
                 raise TypeError(msg)
             if not any(
-                fragment.depth == 3
+                fragment.depth == c.Infra.DUUNDER_ASSIGNMENT_FRAGMENT_DEPTH
                 and word.get_word_at(fragment.start) == name
                 and word.get_word_range(fragment.start)
                 == (fragment.start, fragment.end)
@@ -614,8 +573,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 for child in index.fragments
             )
             patterns = (
-                f"{name}: ${{annotation}}",
-                f"{name}: ${{annotation}} = ${{value}}",
                 *(
                     (
                         " = ".join((
@@ -630,6 +587,8 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                     if arity > 1
                     else ()
                 ),
+                f"{name}: ${{annotation}}",
+                f"{name}: ${{annotation}} = ${{value}}",
             )
             for pattern in patterns:
                 if (fragment.start, fragment.end) in runtime.semantic_regions(
@@ -665,7 +624,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             for child in fragments
         )
         patterns = (
-            "${target}: ${annotation} = ${value}",
             *(
                 (
                     " = ".join((
@@ -676,6 +634,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 if arity > 1
                 else ()
             ),
+            "${target}: ${annotation} = ${value}",
         )
         finder = runtime.semantic_finder(module, arguments={})
         for pattern in patterns:

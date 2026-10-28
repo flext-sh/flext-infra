@@ -1186,12 +1186,23 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         started = time.monotonic()
+        u.Cli.info(
+            f"stage=repository state=start repository={task.repository.name} "
+            f"root={(task.root / task.repository.path).resolve()} "
+            f"surface={task.surface} role={task.repository.role.value}"
+        )
         try:
-            return cls._plan_repository_task(task, snapshot)
+            outcome = cls._plan_repository_task(task, snapshot)
         except (OSError, ValueError) as exc:
-            return cls._failed_outcome(
+            outcome = cls._failed_outcome(
                 task.repository.name, exc, time.monotonic() - started
             )
+        u.Cli.info(
+            f"stage=repository state=end repository={task.repository.name} "
+            f"surface={task.surface} elapsed={time.monotonic() - started:.3f}s "
+            f"files={len(outcome.files)} failed={outcome.failed}"
+        )
+        return outcome
 
     @classmethod
     def _plan_repository_task(
@@ -1210,10 +1221,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         started = time.monotonic()
         repository = task.repository
-        u.Cli.info(
-            f"  stage=topology repository={repository.name} "
-            f"role={repository.role.value} kind={repository.kind.value}",
-        )
         planner = cls(
             repository_root=task.current_target.toolchain_root,
             state=m.Infra.CodegenConformState(

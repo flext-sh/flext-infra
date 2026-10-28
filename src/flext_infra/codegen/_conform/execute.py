@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Self, override
@@ -224,10 +225,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The plan, or its planning failure.
 
         """
+        started = time.monotonic()
+        u.Cli.info(f"stage=planning state=start root={request.root}")
         planned = (
             self._plan_single_surface(request)
             if request.what in c.Infra.FILE_ONLY_SURFACES
             else self.plan(request)
+        )
+        u.Cli.info(
+            f"stage=planning state=end root={request.root} "
+            f"elapsed={time.monotonic() - started:.3f}s "
+            f"files={len(planned.value.files) if planned.success else 0} "
+            f"failed={planned.failure}"
         )
         if (
             planned.success
@@ -264,8 +273,25 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return result_type.fail(
                 "conformance requires facade-wired file publication"
             )
-        published = self._admitted_plans(request, plan).flat_map(
-            lambda files: ports.file_publisher.publish_codegen_plans(root, files)
+        started = time.monotonic()
+        u.Cli.info(f"stage=admission state=start root={root} files={len(plan.files)}")
+        admitted = self._admitted_plans(request, plan)
+        u.Cli.info(
+            f"stage=admission state=end root={root} "
+            f"elapsed={time.monotonic() - started:.3f}s failed={admitted.failure}"
+        )
+        if admitted.failure:
+            return result_type.from_failure(admitted)
+        started = time.monotonic()
+        u.Cli.info(
+            f"stage=publication state=start root={root} files={len(admitted.value)}"
+        )
+        published = ports.file_publisher.publish_codegen_plans(root, admitted.value)
+        u.Cli.info(
+            f"stage=publication state=end root={root} "
+            f"elapsed={time.monotonic() - started:.3f}s "
+            f"written={len(published.value) if published.success else 0} "
+            f"failed={published.failure}"
         )
         if published.failure:
             return result_type.from_failure(published)

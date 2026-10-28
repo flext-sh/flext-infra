@@ -483,6 +483,8 @@ The rendered summary keeps its existing whitespace normalization at the docs
 rendering owner. Source-only wrappers for those three SDK capabilities are retired.
 The unused source-only class-base parsing wrapper is also retired; active
 declaration readers retain their own elected native source boundary.
+Unused source-only import-root and sequence-constructor parsing helpers are
+retired as their active consumers already use the elected native query owners.
 Inline-import hoisting is planned by its existing candidate owner and published
 through that transaction; the unused direct filesystem-writing wrapper is retired.
 

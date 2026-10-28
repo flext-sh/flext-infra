@@ -558,14 +558,18 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         return package_root, init_path, service
 
     @staticmethod
-    def extract_lazy_init_exports(source: str) -> tuple[bool, Sequence[str]]:
+    def extract_lazy_init_exports(
+        source_module: p.Infra.RopeSourceModule,
+    ) -> tuple[bool, Sequence[str]]:
         """Read the published lazy export contract through the public source reader.
 
         Returns:
             The resulting ``tuple[bool, Sequence[str]]``.
 
         """
-        exports = u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)
+        exports = u.Infra.module_assignment_strings_source(
+            source_module, c.Infra.DUNDER_ALL
+        )
         return (bool(exports), exports)
 
     @staticmethod

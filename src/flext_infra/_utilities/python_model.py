@@ -17,6 +17,7 @@ from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -45,7 +46,6 @@ class FlextInfraUtilitiesPythonModel:
             source_project=source_project,
             module_files=module_files,
             modules=module_facts if module_facts is not None else {},
-            ancestors={},
             project_notices={},
         )
 
@@ -421,18 +421,6 @@ class FlextInfraUtilitiesPythonModel:
         )
 
     @staticmethod
-    def python_model_import_target(module: m.Infra.PythonModuleFacts, name: str) -> str:
-        """Return the dotted target a name is imported from.
-
-        Returns:
-            The import target, or ``""`` when the module binds ``name`` itself.
-
-        """
-        return (
-            module.imports.get(name, "") if module.members.get(name) == "alias" else ""
-        )
-
-    @staticmethod
     def python_model_defines(module: m.Infra.PythonModuleFacts, name: str) -> bool:
         """Return whether a module binds ``name`` itself (not through an import).
 
@@ -510,59 +498,71 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_resolve(cls, run: m.Infra.PythonModelRun, dotted: str) -> str:
-        """Follow import bindings from a dotted name to its defining module.
+        """Resolve the defining identity through the invocation's native model.
 
         Returns:
-            The canonical ``module.name`` path, or ``dotted`` when unresolvable.
+            The canonical module/name path, or the unelected source identity.
+
+        Raises:
+            TypeError: If the elected binding has no named native declaration.
 
         """
-        seen: set[str] = set()
-        while dotted not in seen:
-            seen.add(dotted)
-            module_name, _, name = dotted.rpartition(".")
-            module = cls.python_model_module(run, module_name) if module_name else None
-            target = (
-                "" if module is None else cls.python_model_import_target(module, name)
-            )
-            if not target:
-                return dotted
-            dotted = target
-        return dotted
+        module_name, _, name = dotted.rpartition(".")
+        path = run.module_files.get(module_name)
+        if path is None:
+            return dotted
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            run.source_project,
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                run.source_project, path
+            ),
+        )
+        value = module.get_attribute(name).get_object()
+        if not isinstance(value, p.Infra.RopeNamedObject):
+            msg = f"published binding has no native declaration: {dotted}"
+            raise TypeError(msg)
+        owner = value.get_module()
+        if owner is None:
+            msg = f"published declaration has no native module: {dotted}"
+            raise TypeError(msg)
+        return f"{owner.get_name()}.{value.get_name()}"
 
     @classmethod
     def python_model_ancestors(
         cls, run: m.Infra.PythonModelRun, dotted: str
     ) -> frozenset[str]:
-        """Return the canonical paths of every class a class inherits from.
-
-        Local bases resolve to their module; bases bound to no import or local
-        class stay unresolved and are omitted.
+        """Read transitive class ancestry from the invocation's native objects.
 
         Returns:
             The transitive base class paths of ``dotted``.
 
         """
-        cached = run.ancestors.get(dotted)
-        if cached is not None:
-            return cached
-        run.ancestors[dotted] = frozenset()
         module_name, _, name = dotted.rpartition(".")
-        module = cls.python_model_module(run, module_name) if module_name else None
-        if module is None:
+        path = run.module_files.get(module_name)
+        if path is None:
             return frozenset()
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            run.source_project,
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                run.source_project, path
+            ),
+        )
+        pending = [module.get_attribute(name).get_object()]
+        visited: set[int] = set()
         found: set[str] = set()
-        for base in module.classes.get(name, ()):
-            head, _, tail = base.partition(".")
-            target = module.imports.get(head) or (
-                f"{module_name}.{head}" if head in module.members else ""
-            )
-            if target:
-                resolved = cls.python_model_resolve(
-                    run, f"{target}.{tail}" if tail else target
-                )
-                found.update((resolved, *cls.python_model_ancestors(run, resolved)))
-        run.ancestors[dotted] = frozenset(found)
-        return run.ancestors[dotted]
+        while pending:
+            value = pending.pop()
+            if id(value) in visited:
+                continue
+            visited.add(id(value))
+            if isinstance(value, p.Infra.RopeClassObject):
+                for base in value.get_superclasses():
+                    if isinstance(base, p.Infra.RopeNamedObject):
+                        owner = base.get_module()
+                        if owner is not None:
+                            found.add(f"{owner.get_name()}.{base.get_name()}")
+                    pending.append(base)
+        return frozenset(found)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPythonModel"]
