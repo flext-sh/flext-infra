@@ -953,8 +953,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     source_project=source_project,
                 )
             except (
-                *FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types(),
-                *FlextInfraUtilitiesRopeRuntime.rope_module_not_found_error_types(),
+                *FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types(),
+                *FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types(),
             ) as exception:
                 notes = tuple(getattr(exception, "__notes__", ()))
                 return r[Sequence[m.Infra.CodegenFilePlan]].fail(

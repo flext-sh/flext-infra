@@ -975,7 +975,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             try:
                 return module.get_attribute(name)
             except (
-                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
+                FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types()
             ) as exc:
                 resource = module.get_resource()
                 exc.add_note(
@@ -1424,7 +1424,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 native_target = self._provider_name(
                     self._provider_module(binding.imported_module)
                 )
-            except FlextInfraUtilitiesRopeRuntime.rope_module_not_found_error_types():
+            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
                 # An import Rope cannot resolve elects no native provider; the
                 # completed source declaration is the authority for that name.
                 native_target = None
@@ -1544,7 +1544,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         self._project.get_module(target)
                     )
                 except (
-                    FlextInfraUtilitiesRopeRuntime.rope_module_not_found_error_types()
+                    FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types()
                 ):
                     # Rope dropped this star import because the module does not
                     # resolve; that node cannot bind the requested name.

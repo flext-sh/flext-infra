@@ -345,7 +345,7 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(names)
 
     @staticmethod
-    def _component_import_origin(
+    def component_import_origin(
         module: p.Infra.RopeSourceModule, name: str
     ) -> str | None:
         """Return the imported module path that binds ``name`` in ``module``.
@@ -366,14 +366,20 @@ class FlextInfraUtilitiesFacadeComponents:
                 if bound != name:
                     continue
                 if getattr(statement, "level", 0):
-                    package = module.get_name().removesuffix(".__init__")
-                    prefix = package.rpartition(".")[0] or package
-                    return f"{prefix}.{module_path}" if module_path else prefix
+                    resource = module.get_resource()
+                    name = module.get_name()
+                    base = (
+                        name
+                        if resource is not None and resource.is_folder()
+                        else name.removesuffix(".__init__").rpartition(".")[0]
+                        or name.removesuffix(".__init__")
+                    )
+                    return f"{base}.{module_path}" if module_path else base
                 return module_path
         return None
 
     @staticmethod
-    def _component_imported_name(
+    def component_imported_name(
         module: p.Infra.RopeSourceModule, name: str
     ) -> str | None:
         """Return the original bound name when ``name`` is an import alias.
@@ -421,8 +427,8 @@ class FlextInfraUtilitiesFacadeComponents:
             raise TypeError(msg)
         project = module.pycore.project
         head, _, tail = name.partition(".")
-        origin_head = components._component_import_origin(module, head)
-        origin_name = components._component_imported_name(module, head)
+        origin_head = components.component_import_origin(module, head)
+        origin_name = components.component_imported_name(module, head)
         resource = project.find_module(origin_head or head)
         if resource is None:
             binding = module.get_attribute(name).get_object()
@@ -436,11 +442,47 @@ class FlextInfraUtilitiesFacadeComponents:
             binding = declared.get_attribute(tail).get_object()
         elif origin_head is not None and origin_name is not None:
             binding = declared.get_attribute(origin_name).get_object()
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(binding):
+                # The origin re-exports the class from a sibling module; one
+                # hop through the origin's own import map reaches the declarer.
+                binding = components.component_sibling_binding(
+                    project, declared, origin_name
+                ) or binding
         else:
             binding = module.get_attribute(name).get_object()
         return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-            binding, "lexical facade component ancestry"
+            binding,
+            f"lexical facade component ancestry: base {name!r} of "
+            f"{owner.get_name()} in {module.get_name()}",
         )
+
+    @staticmethod
+    def component_sibling_binding(
+        project: p.Infra.RopeProject,
+        declared: p.Infra.RopePyModule,
+        origin_name: str,
+    ) -> p.Infra.RopePyObject | None:
+        """Resolve a re-exported class through its origin module's import map.
+
+        Returns:
+            The declarer's binding, or none when no sibling module declares it.
+
+        """
+        sibling = FlextInfraUtilitiesFacadeComponents.component_import_origin(
+            declared, origin_name
+        )
+        if sibling is None:
+            return None
+        sibling_resource = project.find_module(sibling)
+        if sibling_resource is None:
+            return None
+        sibling_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            project, sibling_resource
+        )
+        sibling_name = FlextInfraUtilitiesFacadeComponents.component_imported_name(
+            declared, origin_name
+        )
+        return sibling_module.get_attribute(sibling_name or origin_name).get_object()
 
     @staticmethod
     def _component_ancestors(

@@ -75,8 +75,12 @@ install_lazy_exports(
         "FlextInfraWorkspaceEnvironment": ".environment",
         "FlextInfraWorkspaceEnvironmentContracts": ".environment_contracts",
         "FlextInfraWorkspaceEnvironmentProvenance": ".environment_provenance",
-        "FlextInfraWorkspaceEnvironmentProvenanceEditable": "._environment.provenance_editable",
-        "FlextInfraWorkspaceEnvironmentProvenanceModuleSource": "._environment.provenance_module_source",
+        "FlextInfraWorkspaceEnvironmentProvenanceEditable": (
+            "._environment.provenance_editable"
+        ),
+        "FlextInfraWorkspaceEnvironmentProvenanceModuleSource": (
+            "._environment.provenance_module_source"
+        ),
         "FlextInfraWorkspaceFleetGaps": ".fleet_gaps",
         "FlextInfraWorkspaceFlextEditable": ".flext_editable",
         "FlextInfraWorkspaceGovernance": ".governance",

@@ -99,7 +99,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         name: str,
     ) -> None:
         """An observed private parent is not an invented module-level export."""
-        with pytest.raises(u.Infra.rope_attribute_not_found_error_types()) as failure:
+        with pytest.raises(u.Infra.rope_unresolved_error_types()) as failure:
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path,
                 {
@@ -515,7 +515,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             "import absent_provider_contract as missing\n"
             "class Invalid(RuntimeRoot, missing.Required): pass\n"
         )
-        with pytest.raises(u.Infra.rope_module_not_found_error_types()):
+        with pytest.raises(u.Infra.rope_unresolved_error_types()):
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path,
                 {tmp_path / "src" / "missing_contract" / "models.py": source},

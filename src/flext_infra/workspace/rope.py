@@ -311,19 +311,48 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             for entry in index.modules_by_path.values()
             if entry.project_root in metadata_roots
         )
-        roots = {
-            entry.project_root
-            for index in (previous_index, self._workspace_index)
-            if index is not None
-            for path in affected_names
-            if (entry := index.modules_by_path.get(path)) is not None
-            and entry.project_root is not None
-        }
+        roots = self._invalidation_roots(affected_names, previous_index)
         roots.update(metadata_roots)
         for root in roots:
             self._project_layout_cache.pop(str(root), None)
         if affected and not roots:
             self._project_layout_cache.clear()
+        self._invalidate_module_caches(affected_names)
+        self._invalidate_package_contexts(changed, metadata_roots)
+        for path in affected_names:
+            self._resource_cache.pop(path, None)
+        if changed:
+            # This legacy query is global. Its owner must rebuild its derived
+            # occurrence facts; it is not the native structural/module index.
+            self._name_index = None
+        if self._codegen_projects_stale(changed, previous_index):
+            self._codegen_projects = None
+
+    def _invalidation_roots(
+        self,
+        affected_names: set[str],
+        previous_index: m.Infra.RopeWorkspaceIndex | None,
+    ) -> set[Path]:
+        """Collect project roots owning any affected module.
+
+        Returns:
+            The project roots whose layout facts are stale.
+
+        """
+        roots: set[Path] = set()
+        for index in (previous_index, self._workspace_index):
+            if index is None:
+                continue
+            roots.update(
+                entry.project_root
+                for path in affected_names
+                if (entry := index.modules_by_path.get(path)) is not None
+                and entry.project_root is not None
+            )
+        return roots
+
+    def _invalidate_module_caches(self, affected_names: set[str]) -> None:
+        """Drop module-object, policy and convention facts of affected modules."""
         for key in tuple(self._module_object_cache):
             # Reference counts/sites are workspace-wide facts: a changed use
             # affects a provider even when its own declaration is unchanged.
@@ -335,6 +364,13 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         for key in tuple(self._module_convention_cache):
             if any(key.startswith(f"{path}::") for path in affected_names):
                 del self._module_convention_cache[key]
+
+    def _invalidate_package_contexts(
+        self,
+        changed: Sequence[Path],
+        metadata_roots: set[Path],
+    ) -> None:
+        """Drop package-context facts under changed directories or metadata roots."""
         directories = {path.parent for path in changed}
         for key in tuple(self._package_context_cache):
             package = Path(key)
@@ -342,20 +378,25 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                 directory.is_relative_to(package) for directory in directories
             ) or any(package.is_relative_to(root) for root in metadata_roots):
                 del self._package_context_cache[key]
-        for path in affected_names:
-            self._resource_cache.pop(path, None)
-        if changed:
-            # This legacy query is global. Its owner must rebuild its derived
-            # occurrence facts; it is not the native structural/module index.
-            self._name_index = None
-        if changed and (
+
+    def _codegen_projects_stale(
+        self,
+        changed: Sequence[Path],
+        previous_index: m.Infra.RopeWorkspaceIndex | None,
+    ) -> bool:
+        """Decide whether derived codegen projects must be rebuilt.
+
+        Returns:
+            Whether the codegen project cache is stale.
+
+        """
+        return bool(changed) and (
             previous_index is None
             or self._workspace_index is not previous_index
             or any(
                 path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES for path in changed
             )
-        ):
-            self._codegen_projects = None
+        )
 
     def refresh(
         self,

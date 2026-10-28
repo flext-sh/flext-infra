@@ -31,7 +31,9 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraWorkspaceEnvironmentProvenanceEditable": ".provenance_editable",
-        "FlextInfraWorkspaceEnvironmentProvenanceModuleSource": ".provenance_module_source",
+        "FlextInfraWorkspaceEnvironmentProvenanceModuleSource": (
+            ".provenance_module_source"
+        ),
     }),
     public_exports=__all__,
 )

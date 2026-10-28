@@ -627,7 +627,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             composed, (original, module), text, paths, (identities, destination)
         )
         return cls._module_quoted_exports(
-            original, text, rewritten, paths, identities[0]
+            original, rewritten, paths, identities[0]
         ), required
 
     @classmethod
@@ -858,7 +858,6 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @staticmethod
     def _module_quoted_exports(
         original: p.Infra.RopeParsedModule,
-        text: str,
         rewritten: str,
         paths: tuple[Path, Path, Path],
         expected: int,

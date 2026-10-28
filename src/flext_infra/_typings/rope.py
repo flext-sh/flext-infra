@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from ast import ClassDef, Import, ImportFrom
-from collections.abc import Callable, MutableMapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import libcst
@@ -31,6 +31,12 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
 
     type RopeSourceMemberResolverFactory = Callable[
         [], FlextInfraProtocolsRopeRuntime.RopeSourceMemberResolver
+    ]
+
+    type FacadeMemberScope = tuple[
+        Callable[[], FlextInfraProtocolsRopeRuntime.RopeSourceMemberResolver],
+        RopeProject,
+        Mapping[str, Mapping[str, Sequence[RopePyObject]]] | None,
     ]
 
     class Cst:

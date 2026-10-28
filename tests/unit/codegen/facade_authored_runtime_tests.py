@@ -682,7 +682,7 @@ class TestsFlextInfraGeneratedRuntime:
             if not declared:
                 stack.enter_context(
                     pytest.raises(
-                        u.Infra.rope_attribute_not_found_error_types(),
+                        u.Infra.rope_unresolved_error_types(),
                         match="Attribute ProviderBase not found",
                     )
                 )

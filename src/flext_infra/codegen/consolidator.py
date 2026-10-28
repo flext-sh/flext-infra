@@ -25,7 +25,12 @@ class FlextInfraCodegenConsolidator(s[str]):
     """Single project to consolidate; ``None`` selects every discovered project."""
 
     def execute(self) -> p.Result[str]:
-        """Execute constants consolidation with normalized command context."""
+        """Execute constants consolidation with normalized command context.
+
+        Returns:
+            The consolidated command report text.
+
+        """
         output_lines: MutableSequence[str] = (
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )
@@ -50,37 +55,18 @@ class FlextInfraCodegenConsolidator(s[str]):
                     )
                     if "_constants" not in path.parts
                 ):
-                    scanned = self._scan_file(
-                        rope.rope_project, python_file, value_map.value
-                    )
-                    if scanned is None:
-                        continue
-                    found += len(scanned.matches)
-                    rel_path = python_file.relative_to(self.workspace_root)
-                    if self.dry_run:
-                        output_lines.extend(
-                            f"  {rel_path}:{symbol.line}"
-                            f"  {symbol.name} = {value} -> {ref}"
-                            for symbol, ref, value in scanned.matches
-                        )
-                        continue
-                    ok, changes, lines = self._apply_and_validate(
+                    outcome = self._consolidate_python_file(
                         rope.rope_project,
-                        scanned,
                         python_file,
-                        self.workspace_root,
-                        project_layout.package_name,
+                        value_map.value,
+                        project_layout,
                     )
-                    output_lines.extend(lines)
-                    file_results.append({
-                        "file": str(rel_path),
-                        "status": "applied" if ok else "reverted",
-                        "changes": list(changes),
-                    })
-                    if ok:
-                        applied += len(changes)
-                    else:
-                        failed += 1
+                    found += outcome.found
+                    output_lines.extend(outcome.lines)
+                    if outcome.record is not None:
+                        file_results.append(outcome.record)
+                        applied += outcome.applied
+                        failed += 0 if outcome.applied else 1
         summary = (
             f"Found {found} canonical matches across the selected projects"
             if self.dry_run
@@ -100,11 +86,64 @@ class FlextInfraCodegenConsolidator(s[str]):
             )
         return r[str].ok("\n".join(output_lines))
 
+    def _consolidate_python_file(
+        self,
+        rope_project: p.Infra.RopeProject,
+        python_file: Path,
+        value_map: Mapping[str, str],
+        project_layout: object,
+    ) -> m.Infra.ConsolidationOutcome:
+        """Scan and consolidate one Python file against the constants map.
+
+        Returns:
+            The scan outcome with dry-run lines or an applied record.
+
+        """
+        scanned = self._scan_file(rope_project, python_file, value_map)
+        rel_path = python_file.relative_to(self.workspace_root)
+        if scanned is None:
+            return m.Infra.ConsolidationOutcome(
+                found=0, lines=(), record=None, applied=0
+            )
+        if self.dry_run:
+            return m.Infra.ConsolidationOutcome(
+                found=len(scanned.matches),
+                lines=tuple(
+                    f"  {rel_path}:{symbol.line}"
+                    f"  {symbol.name} = {value} -> {ref}"
+                    for symbol, ref, value in scanned.matches
+                ),
+                record=None,
+                applied=0,
+            )
+        ok, changes, lines = self._apply_and_validate(
+            rope_project,
+            scanned,
+            python_file,
+            self.workspace_root,
+            project_layout.package_name,
+        )
+        return m.Infra.ConsolidationOutcome(
+            found=len(scanned.matches),
+            lines=tuple(lines),
+            record={
+                "file": str(rel_path),
+                "status": "applied" if ok else "reverted",
+                "changes": list(changes),
+            },
+            applied=len(changes) if ok else 0,
+        )
+
     def _selected_projects(
         self,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
-        """Select the consolidation targets under the workspace root."""
+        """Select the consolidation targets under the workspace root.
+
+        Returns:
+            The discovered consolidation target projects.
+
+        """
         _ = rope_workspace
         discovered = u.Infra.projects(self.workspace_root)
         if discovered.failure:

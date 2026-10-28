@@ -25,5 +25,22 @@ class FlextInfraModelsConfigStatic:
             m.Field(description="Ordered production source directory names"),
         ]
 
+    class ConsolidationOutcome(FlextInfraModelsConfigContract.ConfigContract):
+        """Per-file constants consolidation outcome."""
+
+        found: Annotated[
+            int, m.Field(description="Canonical matches found in the file")
+        ]
+        lines: Annotated[
+            tuple[str, ...], m.Field(description="Report lines for the file")
+        ]
+        record: Annotated[
+            t.JsonMapping | None,
+            m.Field(description="Applied-change record; none outside application"),
+        ]
+        applied: Annotated[
+            int, m.Field(description="Replacements applied to the file")
+        ]
+
 
 __all__: list[str] = ["FlextInfraModelsConfigStatic"]

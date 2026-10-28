@@ -830,10 +830,8 @@ class FlextInfraUtilitiesFacadeMembers:
         *,
         facades: Mapping[str, p.Infra.RopeClassObject],
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
-        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
-        source_project: p.Infra.RopeProject,
-        declarations: Mapping[str, Mapping[str, Sequence[p.Infra.RopePyObject]]]
-        | None = None,
+        scope: t.Infra.FacadeMemberScope,
+
     ) -> c.Infra.FacadeMemberPlacement | None:
         """Classify a foreign member's actual placement through native bindings.
 
@@ -850,6 +848,7 @@ class FlextInfraUtilitiesFacadeMembers:
             ValueError: A facade member has no proven native declaration kind.
 
         """
+        resolver_factory, source_project, declarations = scope
         package, letter, member = reference
         if member.startswith("_"):
             return None
@@ -877,7 +876,7 @@ class FlextInfraUtilitiesFacadeMembers:
         if (
             owner != letter
             and bound
-            and cls._same_binding(members[member], value, source_project=source_project)
+            and cls._same_binding(members[member], value)
         ):
             return c.Infra.FacadeMemberPlacement.EXPOSED
         kind = cls.facade_member_kind(
@@ -973,9 +972,7 @@ class FlextInfraUtilitiesFacadeMembers:
                             (root, letter, member),
                             facades=facades,
                             bindings=bindings,
-                            resolver_factory=resolver_factory,
-                            source_project=source_project,
-                            declarations=declarations,
+                            scope=(resolver_factory, source_project, declarations),
                         )
                         is not c.Infra.FacadeMemberPlacement.EXPOSED
                     ):
@@ -992,9 +989,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 root,
                 facades,
                 bindings,
-                resolver_factory=resolver_factory,
-                source_project=source_project,
-                declarations=declarations,
+                scope=(resolver_factory, source_project, declarations),
             ):
                 references.setdefault(owner, set()).add(reference)
         return (
@@ -1081,10 +1076,8 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: Mapping[str, p.Infra.RopeClassObject],
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
-        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
-        source_project: p.Infra.RopeProject,
-        declarations: Mapping[str, Mapping[str, Sequence[p.Infra.RopePyObject]]]
-        | None = None,
+        scope: t.Infra.FacadeMemberScope,
+
     ) -> Sequence[tuple[str, str]]:
         """Reference every owned member through each other letter of ``root``.
 
@@ -1101,17 +1094,13 @@ class FlextInfraUtilitiesFacadeMembers:
                 root,
                 facades,
                 bindings,
-                resolver_factory=resolver_factory,
-                source_project=source_project,
-                declarations=declarations,
+                scope=scope,
             )
             for letter, members in bindings.items()
             if letter != owner
             and (
                 member not in members
-                or cls._same_binding(
-                    members[member], value, source_project=source_project
-                )
+                or cls._same_binding(members[member], value)
             )
         )
 
@@ -1122,10 +1111,8 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: Mapping[str, p.Infra.RopeClassObject],
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
-        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
-        source_project: p.Infra.RopeProject,
-        declarations: Mapping[str, Mapping[str, Sequence[p.Infra.RopePyObject]]]
-        | None = None,
+        scope: t.Infra.FacadeMemberScope,
+
     ) -> Sequence[tuple[str, p.Infra.RopePyName, str]]:
         """Collect each public member a letter of ``root`` declares as owner.
 
@@ -1133,6 +1120,7 @@ class FlextInfraUtilitiesFacadeMembers:
             The owner letter, the bound object and the member name.
 
         """
+        resolver_factory, source_project, declarations = scope
         owned: list[tuple[str, p.Infra.RopePyName, str]] = []
         for owner, facade in facades.items():
             for member, value in bindings[owner].items():
@@ -1292,8 +1280,7 @@ class FlextInfraUtilitiesFacadeMembers:
                     (package, letter, member),
                     facades=facades,
                     bindings=bindings,
-                    resolver_factory=resolver_factory,
-                    source_project=source_project,
+                    scope=(resolver_factory, source_project, None),
                 )
                 is c.Infra.FacadeMemberPlacement.MISSING
             )
@@ -1680,8 +1667,6 @@ class FlextInfraUtilitiesFacadeMembers:
     def _same_binding(
         left: p.Infra.RopePyName,
         right: p.Infra.RopePyName,
-        *,
-        source_project: p.Infra.RopeProject,
     ) -> bool:
         """Prove declaration or nominal identity without erasing generic arguments.
 
@@ -1689,7 +1674,6 @@ class FlextInfraUtilitiesFacadeMembers:
             Whether both names have the exact same proven source identity.
 
         """
-        del source_project
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesTypesRopeRuntime
         aliases = tuple(

@@ -69,9 +69,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodImportLawRules": ".codemod_import_law_rules",
         "FlextInfraUtilitiesCodemodNativeCascade": ".codemod_native_cascade",
-        "FlextInfraUtilitiesCodemodNativePackage": (
-            ".codemod_native_package_utilities"
-        ),
+        "FlextInfraUtilitiesCodemodNativePackage": ".codemod_native_package_utilities",
         "FlextInfraUtilitiesCodemodNative": ".codemod_native_utilities",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodProjectFacts": ".codemod_project_facts",

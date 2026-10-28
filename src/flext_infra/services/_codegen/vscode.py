@@ -364,6 +364,36 @@ class FlextInfraCodegenVscode:
         spec = codegen.vscode if spec is None else spec
         changed = cls._apply_union_settings(settings, spec.map_union_settings)
         token = spec.runtime_environment_token
+        changed |= cls._apply_declared_settings(settings, spec, repository_root, token)
+        # The three exclude maps are complete projections of the artifact SSOT.
+        # Replacing them removes retired artifacts instead of preserving stale
+        # generated keys forever. Only explicitly declared non-artifact maps use
+        # merge semantics.
+        artifacts_changed = cls._replace_artifact_maps(settings, codegen)
+        # Stripped keys are owned canonically by pyproject.toml [tool.pyright];
+        # keeping them in settings.json makes Pylance emit settingsNotOverridable
+        # warnings. Actively delete every retired key so existing files converge
+        # to a warning-free projection.
+        stripped_changed = cls._strip_retired_keys(settings, spec.stripped_keys)
+        stripped_changed |= cls._strip_retired_map_keys(settings, spec)
+        return r[bool].ok(
+            artifacts_changed or stripped_changed or changed,
+        )
+
+    @classmethod
+    def _apply_declared_settings(
+        cls,
+        settings: t.MutableJsonMapping,
+        spec: m.Infra.CodegenVscodeSpec,
+        repository_root: Path,
+        token: str | None,
+    ) -> bool:
+        """Merge declared settings with environment binding into the mapping.
+
+        Returns:
+            Whether any declared setting changed.
+
+        """
         environment = (
             "${workspaceFolder}/"
             + u.Infra
@@ -373,6 +403,7 @@ class FlextInfraCodegenVscode:
             if token is not None
             else ""
         )
+        changed = False
         for key, value in cls.vscode_settings(spec).items():
             normalized = u.normalize_to_json_value(value)
             if token is not None:
@@ -382,12 +413,21 @@ class FlextInfraCodegenVscode:
             if key not in settings or settings[key] != normalized:
                 settings[key] = normalized
                 changed = True
-        # The three exclude maps are complete projections of the artifact SSOT.
-        # Replacing them removes retired artifacts instead of preserving stale
-        # generated keys forever. Only explicitly declared non-artifact maps use
-        # merge semantics.
-        artifact_maps = cls._artifact_settings(codegen)
-        artifacts_changed = False
+        return changed
+
+    @staticmethod
+    def _replace_artifact_maps(
+        settings: t.MutableJsonMapping,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> bool:
+        """Replace the artifact-owned exclude maps with their canonical values.
+
+        Returns:
+            Whether any artifact map changed.
+
+        """
+        changed = False
+        artifact_maps = FlextInfraCodegenVscode._artifact_settings(codegen)
         for key, canonical_map in artifact_maps.items():
             canonical = {
                 name: u.normalize_to_json_value(value)
@@ -396,12 +436,21 @@ class FlextInfraCodegenVscode:
             if settings.get(key) == canonical:
                 continue
             settings[key] = canonical
-            artifacts_changed = True
-        # Stripped keys are owned canonically by pyproject.toml [tool.pyright];
-        # keeping them in settings.json makes Pylance emit settingsNotOverridable
-        # warnings. Actively delete every retired key so existing files converge
-        # to a warning-free projection.
-        stripped_changed = cls._strip_retired_keys(settings, spec.stripped_keys)
+            changed = True
+        return changed
+
+    @staticmethod
+    def _strip_retired_map_keys(
+        settings: t.MutableJsonMapping,
+        spec: m.Infra.CodegenVscodeSpec,
+    ) -> bool:
+        """Drop retired names from non-artifact maps the spec declares.
+
+        Returns:
+            Whether any retired map entry was removed.
+
+        """
+        changed = False
         for key, retired in spec.stripped_map_keys.items():
             current = settings.get(key)
             if isinstance(current, Mapping):
@@ -412,10 +461,8 @@ class FlextInfraCodegenVscode:
                 }
                 if retained != current:
                     settings[key] = u.normalize_to_json_value(retained)
-                    stripped_changed = True
-        return r[bool].ok(
-            artifacts_changed or stripped_changed or changed,
-        )
+                    changed = True
+        return changed
 
     @classmethod
     def _bind_environment_value(

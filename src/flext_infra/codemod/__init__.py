@@ -81,8 +81,12 @@ install_lazy_exports(
         "FlextInfraCodemodLoop": ".loop",
         "FlextInfraCodemodLoopPhaseAccessorRename": "._loop.phase_accessor_rename",
         "FlextInfraCodemodLoopPhaseDuplicateApply": "._loop.phase_duplicate_apply",
-        "FlextInfraCodemodLoopPhaseImportNormalization": "._loop.phase_import_normalization",
-        "FlextInfraCodemodLoopPhaseNamespaceRelocation": "._loop.phase_namespace_relocation",
+        "FlextInfraCodemodLoopPhaseImportNormalization": (
+            "._loop.phase_import_normalization"
+        ),
+        "FlextInfraCodemodLoopPhaseNamespaceRelocation": (
+            "._loop.phase_namespace_relocation"
+        ),
         "FlextInfraCodemodRename": ".rename",
         "FlextInfraCodemodRenameSources": "._rename.sources",
         "FlextInfraCodemodRenameSymbols": "._rename.symbols",

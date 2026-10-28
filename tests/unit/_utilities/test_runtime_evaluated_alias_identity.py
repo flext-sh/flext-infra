@@ -69,7 +69,7 @@ class TestsFlextInfraRuntimeEvaluatedAliasIdentity:
             f"{mutation}\nclass Consumer(Contract): pass\n"
         )
         expected = (
-            u.Infra.rope_attribute_not_found_error_types()
+            u.Infra.rope_unresolved_error_types()
             if mutation == "del Contract"
             else (ValueError,)
         )

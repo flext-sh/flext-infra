@@ -288,29 +288,21 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_module_not_found_error_types(cls) -> tuple[type[BaseException], ...]:
-        """Return Rope exceptions for unresolved importable modules.
+    def rope_unresolved_error_types(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for statically unresolved modules or attributes.
 
         Returns:
-            Rope exceptions for unresolved importable modules.
+            Rope exceptions raised when a native lookup resolves nothing.
 
         """
-        return (
-            cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
-            cls._exception_type("rope.base.exceptions", "BadIdentifierError"),
+        return tuple(
+            cls._exception_type("rope.base.exceptions", name)
+            for name in (
+                "ModuleNotFoundError",
+                "BadIdentifierError",
+                "AttributeNotFoundError",
+            )
         )
-
-    @classmethod
-    def rope_attribute_not_found_error_types(
-        cls,
-    ) -> tuple[type[BaseException], ...]:
-        """Return Rope exceptions for statically unresolved attributes.
-
-        Returns:
-            Rope exceptions for statically unresolved attributes.
-
-        """
-        return (cls._exception_type("rope.base.exceptions", "AttributeNotFoundError"),)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesTypesRopeRuntime"]

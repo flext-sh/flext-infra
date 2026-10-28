@@ -673,7 +673,7 @@ class FlextInfraUtilitiesCodemodProject(
                 continue
             try:
                 binding = names.get_pyname_at(first)
-            except FlextInfraUtilitiesRopeRuntime.rope_module_not_found_error_types():
+            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
                 # Rope raises for offsets on keywords / non-identifiers; such
                 # positions elect no binding.
                 continue

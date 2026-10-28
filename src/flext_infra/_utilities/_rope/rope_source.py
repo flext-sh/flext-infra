@@ -43,6 +43,38 @@ class FlextInfraUtilitiesRopeSource:
         if not wanted:
             return frozenset()
         runtime = FlextInfraUtilitiesRopeRuntime
+        roots = cls._settings_owner_roots(source_project)
+        proven: set[str] = set()
+        for path in source_files:
+            module = source_project.get_pymodule(
+                runtime.file_resource_at(source_project, path), force_errors=True
+            )
+            if not runtime.source_module(module):
+                msg = f"Settings field inventory is not a native source module: {path}"
+                raise TypeError(msg)
+            proven.update(
+                cls._direct_settings_fields(module, scope, wanted)
+                for scope in cls._class_scopes(module)
+                if wanted.intersection(scope.get_defined_names())
+                and cls._settings_owner(scope.pyobject, roots)
+            )
+        return frozenset(proven)
+
+    @classmethod
+    def _settings_owner_roots(
+        cls,
+        source_project: p.Infra.RopeProject,
+    ) -> list[p.Infra.RopeSourceClass]:
+        """Authenticate the canonical settings owner classes in flext-core.
+
+        Returns:
+            The native settings and config owner classes.
+
+        Raises:
+            TypeError: A canonical owner violates its native class contract.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
         roots: list[p.Infra.RopeSourceClass] = []
         for module_name, name in (
             ("flext_core._settings", "FlextSettings"),
@@ -59,27 +91,24 @@ class FlextInfraUtilitiesRopeSource:
                 )
                 raise TypeError(msg)
             roots.append(owner)
-        proven: set[str] = set()
-        for path in source_files:
-            module = source_project.get_pymodule(
-                runtime.file_resource_at(source_project, path), force_errors=True
-            )
-            if not runtime.source_module(module):
-                msg = f"Settings field inventory is not a native source module: {path}"
-                raise TypeError(msg)
-            pending: list[p.Infra.RopeScope] = [module.get_scope()]
-            while pending:
-                scope = pending.pop()
-                pending.extend(scope.get_scopes())
-                if scope.get_kind() != "Class":
-                    continue
-                declared = scope.get_defined_names()
-                if not wanted.intersection(declared):
-                    continue
-                if not cls._settings_owner(scope.pyobject, roots):
-                    continue
-                proven.update(cls._direct_settings_fields(module, scope, wanted))
-        return frozenset(proven)
+        return roots
+
+    @staticmethod
+    def _class_scopes(module: p.Infra.RopePyModule) -> list[p.Infra.RopeScope]:
+        """Collect every class scope of one module.
+
+        Returns:
+            The module's class scopes.
+
+        """
+        scopes: list[p.Infra.RopeScope] = []
+        pending: list[p.Infra.RopeScope] = [module.get_scope()]
+        while pending:
+            scope = pending.pop()
+            pending.extend(scope.get_scopes())
+            if scope.get_kind() == "Class":
+                scopes.append(scope)
+        return scopes
 
     @staticmethod
     def _settings_owner(
