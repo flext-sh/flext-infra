@@ -14,13 +14,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, s, t, u
-from flext_infra.validate import FlextInfraPytestDiagXmlMixin
+from flext_infra.validate import FlextInfraValidatePytest
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
+class FlextInfraPytestDiagExtractor(
+    FlextInfraValidatePytest,
+    s[bool],
+):
     """Extracts pytest diagnostics from the runner's required report artifacts.
 
     Parses required JUnit XML for structured failure/error/skip/timing data

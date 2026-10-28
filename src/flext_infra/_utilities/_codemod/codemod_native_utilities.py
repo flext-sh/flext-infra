@@ -33,14 +33,12 @@ from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodRules,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
-)
-from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 
 
 class FlextInfraUtilitiesCodemodNativeUtilities:

@@ -10,11 +10,11 @@ import ast
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra._utilities._semantic_cutover import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
+from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

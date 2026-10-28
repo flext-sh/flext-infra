@@ -12,11 +12,12 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCompatibilityAliasValidation,
-    FlextInfraUtilitiesProjectDiscovery,
-)
-from flext_infra._utilities._codemod.codemod_project import (
     FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesCompatibilityAliasValidation,
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesSemanticCutoverAliasCst,
+    FlextInfraUtilitiesSemanticCutoverEdits,
 )
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
@@ -25,11 +26,6 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticCutoverAliasCst,
-    FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
 

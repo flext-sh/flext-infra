@@ -24,14 +24,16 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
-from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.refactor import FlextInfraRefactorCensus
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping, MutableSet
 
 
-class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
+class FlextInfraCodemodDuplicateApply(
+    FlextInfraRefactorCensus,
+):
     """Unify identity-proven duplicate objects; plan every structural clone.
 
     The owner is the definition in the lowest workspace layer (repository root
@@ -981,14 +983,18 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 ),
             )
 
-        return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-            plans,
-            repository_root=root,
-            options=m.Infra.SemanticPublicationOptions(
-                validator=verify,
-                projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
-            ),
-        ).map(bool)
+        return (
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                plans,
+                repository_root=root,
+                options=m.Infra.SemanticPublicationOptions(
+                    validator=verify,
+                    projection_roots=tuple(
+                        sorted(u.Infra.governed_project_roots(root))
+                    ),
+                ),
+            ).map(bool)
+        )
 
     @staticmethod
     def _publication_projects(

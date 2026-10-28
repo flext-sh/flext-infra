@@ -14,10 +14,10 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, r, t
+from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._git.requirement_source import (
     FlextInfraUtilitiesGitRequirementSource,
 )
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

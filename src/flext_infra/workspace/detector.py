@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, settings, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.workspace import FlextInfraWorkspaceGovernanceMixin
+from flext_infra.workspace import FlextInfraWorkspaceGovernance
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
 class FlextInfraWorkspaceDetector(
-    FlextInfraWorkspaceGovernanceMixin,
+    FlextInfraWorkspaceGovernance,
     FlextInfraServiceBase[c.Infra.MakeProfile],
 ):
     """Classify a repository only from files and Git facts inside that checkout."""

@@ -12,14 +12,14 @@ from typing import Annotated, override
 from flext_cli import cli
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
-from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
+from flext_infra.refactor import FlextInfraRefactorAccessor
 
 
 class FlextInfraAccessorMigrationOrchestrator(
     FlextInfraProjectSelectionServiceBase[m.Infra.AccessorMigrationReport],
     m.Infra.ModuleSelectionMixin,
     m.Infra.NamespaceSelectionMixin,
-    FlextInfraAccessorMigrationReportMixin,
+    FlextInfraRefactorAccessor,
 ):
     """Dry-run/apply orchestrator for public accessor migration candidates."""
 

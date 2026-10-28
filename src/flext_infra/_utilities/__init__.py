@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra. Utilities package.
+"""Internal package for utilities.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,19 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._utilities._codemod_rules_distributions import (
-        FlextInfraUtilitiesCodemodRulesDistributionsMixin,
-    )
-    from flext_infra._utilities._dependency_deptry import (
-        FlextInfraUtilitiesDependencyDeptryMixin,
-    )
-    from flext_infra._utilities._project_discovery_candidates import (
-        FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
-    )
-    from flext_infra._utilities._project_discovery_shape import (
-        FlextInfraUtilitiesProjectDiscoveryShapeMixin,
-    )
-    from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -36,6 +23,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codegen_file_plan import (
         FlextInfraUtilitiesCodegenFilePlan,
     )
+    from flext_infra._utilities.codemod import FlextInfraUtilitiesCodemod
     from flext_infra._utilities.compatibility_alias_validation import (
         FlextInfraUtilitiesCompatibilityAliasValidation,
     )
@@ -128,6 +116,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protected_edit_writes import (
         FlextInfraUtilitiesProtectedEditWrites,
     )
+    from flext_infra._utilities.protocol_models import FlextInfraUtilitiesProtocolModels
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
@@ -163,7 +152,6 @@ if TYPE_CHECKING:
         FlextInfraWorktreeProvisioning,
     )
 
-
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
@@ -171,11 +159,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
-    "FlextInfraUtilitiesCodemodRulesDistributionsMixin",
+    "FlextInfraUtilitiesCodemod",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
     "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
     "FlextInfraUtilitiesDependencies",
-    "FlextInfraUtilitiesDependencyDeptryMixin",
     "FlextInfraUtilitiesDependencyRequirements",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -204,8 +191,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPrivateImportValidation",
     "FlextInfraUtilitiesProcess",
     "FlextInfraUtilitiesProjectDiscovery",
-    "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
-    "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
     "FlextInfraUtilitiesProjectManagedArtifacts",
     "FlextInfraUtilitiesPromoted",
     "FlextInfraUtilitiesProtectedEdit",
@@ -213,7 +198,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditLinting",
     "FlextInfraUtilitiesProtectedEditPreview",
     "FlextInfraUtilitiesProtectedEditWrites",
-    "FlextInfraUtilitiesPyprojectConform",
+    "FlextInfraUtilitiesProtocolModels",
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
     "FlextInfraUtilitiesPytestCollection",
@@ -248,17 +233,10 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
-        "FlextInfraUtilitiesCodemodRulesDistributionsMixin": (
-            "._codemod_rules_distributions"
-        ),
-        "FlextInfraUtilitiesCompatibilityAliasValidation": (
-            ".compatibility_alias_validation"
-        ),
-        "FlextInfraUtilitiesDeferredSelfReferenceRewrite": (
-            ".deferred_self_reference_rewrite"
-        ),
+        "FlextInfraUtilitiesCodemod": ".codemod",
+        "FlextInfraUtilitiesCompatibilityAliasValidation": ".compatibility_alias_validation",
+        "FlextInfraUtilitiesDeferredSelfReferenceRewrite": ".deferred_self_reference_rewrite",
         "FlextInfraUtilitiesDependencies": ".dependencies",
-        "FlextInfraUtilitiesDependencyDeptryMixin": "._dependency_deptry",
         "FlextInfraUtilitiesDependencyRequirements": ".dependency_requirements",
         "FlextInfraUtilitiesDiscovery": ".discovery",
         "FlextInfraUtilitiesDocs": ".docs",
@@ -287,10 +265,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesPrivateImportValidation": ".private_import_validation",
         "FlextInfraUtilitiesProcess": ".process",
         "FlextInfraUtilitiesProjectDiscovery": ".project_discovery",
-        "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin": (
-            "._project_discovery_candidates"
-        ),
-        "FlextInfraUtilitiesProjectDiscoveryShapeMixin": "._project_discovery_shape",
         "FlextInfraUtilitiesProjectManagedArtifacts": ".project_managed_artifacts",
         "FlextInfraUtilitiesPromoted": ".promoted",
         "FlextInfraUtilitiesProtectedEdit": ".protected_edit",
@@ -298,7 +272,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditLinting": ".protected_edit_linting",
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
-        "FlextInfraUtilitiesPyprojectConform": "._pyproject",
+        "FlextInfraUtilitiesProtocolModels": ".protocol_models",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",

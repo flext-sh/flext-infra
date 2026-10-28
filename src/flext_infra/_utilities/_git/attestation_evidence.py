@@ -12,8 +12,8 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesBase
-from flext_infra._utilities._git import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitSemanticIdentityMixin,
 )

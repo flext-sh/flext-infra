@@ -10,10 +10,10 @@ import os
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.deps import FlextInfraDependencyDetectorRuntimeSteps
+from flext_infra.deps import FlextInfraDepsDetectorRuntimeSteps
 
 
-class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSteps):
+class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
     """Runtime executor for dependency detection pipeline."""
 
     def __init__(

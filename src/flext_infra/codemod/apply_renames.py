@@ -12,8 +12,11 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod import FlextInfraRenameSources, FlextInfraRenameSymbols
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.codemod import (
+    FlextInfraCodemodRenameSources,
+    FlextInfraCodemodRenameSymbols,
+)
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraApplyRenames:
@@ -99,7 +102,7 @@ class FlextInfraApplyRenames:
                 if not old.startswith(qualifier):
                     continue
                 for owner in owners:
-                    binding = FlextInfraRenameSymbols.resolve_member(
+                    binding = FlextInfraCodemodRenameSymbols.resolve_member(
                         project,
                         owner,
                         old.removeprefix(qualifier),
@@ -132,7 +135,7 @@ class FlextInfraApplyRenames:
         selected = set(candidates) | cls._definition_resource_paths(
             params, pairs, project
         )
-        return FlextInfraRenameSymbols.plan(
+        return FlextInfraCodemodRenameSymbols.plan(
             project,
             python,
             (pairs, params.bindings),
@@ -200,7 +203,7 @@ class FlextInfraApplyRenames:
             The authenticated states keyed by path and the scanned-file count.
 
         """
-        exclusions = FlextInfraRenameSources.exclusions(params)
+        exclusions = FlextInfraCodemodRenameSources.exclusions(params)
         needles = (
             tuple(old for old, _new in pairs)
             if cls._identifier_campaign(params, pairs)
@@ -228,7 +231,7 @@ class FlextInfraApplyRenames:
                 else source.state.model_copy(update={"content": content})
             )
         if params.text_globs:
-            text_states, text_scanned = FlextInfraRenameSources.inventory(
+            text_states, text_scanned = FlextInfraCodemodRenameSources.inventory(
                 snapshot.members, params, python_sources=False
             )
             states.update(text_states)
@@ -259,7 +262,7 @@ class FlextInfraApplyRenames:
             if path.suffix == c.Infra.EXT_PYTHON
         }
         candidates = (
-            FlextInfraRenameSources.symbol_paths(
+            FlextInfraCodemodRenameSources.symbol_paths(
                 python, frozenset(old for old, _new in pairs)
             )
             if cls._identifier_campaign(params, pairs)
@@ -336,10 +339,10 @@ class FlextInfraApplyRenames:
         if path in python_paths:
             if params.python_documentation and declared_text:
                 edits.extend(
-                    FlextInfraRenameSources.documentation_edits(source, pairs),
+                    FlextInfraCodemodRenameSources.documentation_edits(source, pairs),
                 )
         elif declared_text:
-            edits.extend(FlextInfraRenameSources.text_edits(source, pairs))
+            edits.extend(FlextInfraCodemodRenameSources.text_edits(source, pairs))
         desired = inventory[path].content
         if edits:
             resource = project.get_resource(path.relative_to(root).as_posix())
@@ -447,23 +450,25 @@ class FlextInfraApplyRenames:
                 )
             return r[bool].ok(value=True)
 
-        publication = FlextInfraSemanticPublication.publish_semantic_file_plans(
-            plans,
-            repository_root=publication_root,
-            options=m.Infra.SemanticPublicationOptions(
-                plan_validator=verify,
-                projection_roots=tuple(
-                    path
-                    for path in roots
-                    if params.bindings
-                    and u.Infra.layout(path) is not None
-                    and any(
-                        plan.desired_content is not None
-                        and plan.path.is_relative_to(path)
-                        for plan in plans
-                    )
+        publication = (
+            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+                plans,
+                repository_root=publication_root,
+                options=m.Infra.SemanticPublicationOptions(
+                    plan_validator=verify,
+                    projection_roots=tuple(
+                        path
+                        for path in roots
+                        if params.bindings
+                        and u.Infra.layout(path) is not None
+                        and any(
+                            plan.desired_content is not None
+                            and plan.path.is_relative_to(path)
+                            for plan in plans
+                        )
+                    ),
                 ),
-            ),
+            )
         )
         if publication.failure:
             return r[t.Pair[t.SequenceOf[Path], int]].from_failure(publication)
@@ -490,7 +495,7 @@ class FlextInfraApplyRenames:
             return r[m.Infra.ApplyRenamesReport].fail(
                 f"rename CSV disappeared: {csv_path}",
             )
-        pairs = FlextInfraRenameSources.pairs(
+        pairs = FlextInfraCodemodRenameSources.pairs(
             driver.content.decode(c.DEFAULT_ENCODING),
         )
         changed: t.SequenceOf[Path] = ()

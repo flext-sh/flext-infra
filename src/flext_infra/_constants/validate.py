@@ -230,7 +230,7 @@ class FlextInfraConstantsSharedInfra:
     # The origin gate runs inside the same probe namespace as the export
     # resolution, so its loop names must never rebind the probed ``module``.
     FRESH_IMPORT_ORIGIN_CODE: ClassVar[str] = (
-        "from flext_infra.workspace.environment_provenance import "
+        "from flext_infra.workspace import "
         "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
         "for loaded_name in tuple(sys.modules):\n"
         "    for package, directory in {origins!r}:\n"

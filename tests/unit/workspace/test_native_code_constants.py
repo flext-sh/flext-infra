@@ -43,7 +43,7 @@ class TestsNativeCodeConstants:
         u.Tests.run_lazy_init_probe(
             """from flext_infra import m
 from flext_tests import tm
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module

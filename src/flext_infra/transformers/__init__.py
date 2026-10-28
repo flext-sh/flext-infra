@@ -13,15 +13,15 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.transformers._semantic_publication import (
-        FlextInfraSemanticPublication,
+    from flext_infra.transformers._semantic import (
+        FlextInfraTransformersSemanticPublication,
     )
     from flext_infra.transformers.rope_transformer import FlextInfraRopeTransformer
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraRopeTransformer",
-    "FlextInfraSemanticPublication",
+    "FlextInfraTransformersSemanticPublication",
 )
 
 install_lazy_exports(
@@ -29,7 +29,7 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraRopeTransformer": ".rope_transformer",
-        "FlextInfraSemanticPublication": "._semantic_publication",
+        "FlextInfraTransformersSemanticPublication": "._semantic_publication",
     }),
     public_exports=__all__,
 )

@@ -12,7 +12,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesSemanticFamilyReferences,
+)
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -24,9 +27,6 @@ from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticFamilyReferences,
-)
 
 
 class FlextInfraUtilitiesSemanticFamilyFlatten(

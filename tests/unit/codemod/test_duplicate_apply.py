@@ -15,7 +15,7 @@ import pytest
 from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
-    FlextInfraDuplicateApplyPhase,
+    FlextInfraCodemodLoopPhaseDuplicateApply,
     FlextInfraModGateEngine,
 )
 from tests import c, m, tm, u
@@ -260,12 +260,12 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
         with infra.rope_workspace(root) as rope:
             first = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(
+                FlextInfraCodemodLoopPhaseDuplicateApply.apply(
                     root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
                 ),
             )
             second = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(
+                FlextInfraCodemodLoopPhaseDuplicateApply.apply(
                     root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
                 ),
             )

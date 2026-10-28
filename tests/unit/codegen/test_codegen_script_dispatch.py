@@ -342,7 +342,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(profile_test, has='database="$(FLEXT_PYTEST_TESTMON_DATABASE)";')
         tm.that(profile_test, has=f'{datafile}="$$database"')
         # The thin entry delegates profiling to the execution adapter.
-        tm.that(profile_test, has="-m flext_infra._pytest_entry profile")
+        tm.that(profile_test, has="-m flext_infra._pytest.entry profile")
         tm.that(profile_test, lacks="import cProfile")
         tm.that(profile_test, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
         # Only the bounded gate adds the outer hard wall clock wrapper.
@@ -352,7 +352,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             "\n\n",
             1,
         )[0]
-        tm.that(report, has="flext_infra._cprofile_entry")
+        tm.that(report, has="flext_infra._cprofile.entry")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats.json")
 
@@ -374,7 +374,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             report,
             has=(
                 '\t@cd "$(PROJECT_ROOT)" || exit $$?; \\\n'
-                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \\\n"
+                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile.entry \\\n"
                 '\t\t"$(PROFILE_REPORTS_DIR)/mod.pstats"'
             ),
         )
@@ -444,8 +444,8 @@ class TestsFlextInfraScriptDispatchMakefile:
                 f'{cache.database_environment_variable}="$$database"',
             ],
         )
-        tm.that(full.count("-m flext_infra._pytest_entry"), eq=1)
-        tm.ok(full.rstrip().endswith("-m flext_infra._pytest_entry full"))
+        tm.that(full.count("-m flext_infra._pytest.entry"), eq=1)
+        tm.ok(full.rstrip().endswith("-m flext_infra._pytest.entry full"))
         tm.that(full, lacks="PYTEST_BOUNDED")
         tm.that(
             full,

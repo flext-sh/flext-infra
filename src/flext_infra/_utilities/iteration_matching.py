@@ -11,8 +11,10 @@ import os
 import re
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
-from flext_infra._utilities._git import FlextInfraUtilitiesGitScopeMixin
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,7 +22,9 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraUtilitiesIterationMatching(FlextInfraUtilitiesGitScopeMixin):
+class FlextInfraUtilitiesIterationMatching(
+    FlextInfraUtilitiesGit,
+):
     """Static helpers for matching files by include/exclude glob patterns."""
 
     @classmethod

@@ -13,11 +13,12 @@ from textwrap import dedent, indent
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-)
-from flext_infra._utilities._codemod.codemod_project import (
-    FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesSemanticCutoverEdits,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
@@ -33,11 +34,6 @@ from flext_infra._utilities._rope.rope_runtime_types import (
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticCutoverEdits,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 

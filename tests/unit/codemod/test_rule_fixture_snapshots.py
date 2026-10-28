@@ -556,7 +556,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         """Parse sequential pinned-engine outputs and prove both fixed points."""
         owner = Path(__file__).resolve().parents[3]
         private_import = (
-            "from flext_infra._utilities.project_managed_artifacts import "
+            "from flext_infra._utilities import "
             "FlextInfraUtilitiesProjectManagedArtifacts"
         )
         source = (

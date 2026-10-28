@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r
-from flext_infra._utilities._git import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesGitSemanticPublishMixin,
     FlextInfraUtilitiesGitSemanticRefsMixin,
     FlextInfraUtilitiesGitWorktreeRemovalMixin,

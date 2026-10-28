@@ -48,7 +48,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
         consumer = (
             "from typing import Annotated\n"
             "from annotated_types import Ge\n"
-            "from flext_infra.workspace.native_reference import "
+            "from flext_infra.workspace import "
             "FlextInfraWorkspaceNativeReference as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('static_reference_provider')\n"
@@ -93,7 +93,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
         )
         consumer = (
             "from gc import get_referents\n"
-            "from flext_infra.workspace.native_reference import "
+            "from flext_infra.workspace import "
             "FlextInfraWorkspaceNativeReference as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('native_wrapper_provider')\n"
@@ -220,7 +220,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
             "from flext_infra import m\n"
             "from flext_infra.workspace import "
             "FlextInfraWorkspaceEnvironmentProvenance as environment\n"
-            "from flext_infra.workspace.native_reference import "
+            "from flext_infra.workspace import "
             "FlextInfraWorkspaceNativeReference as producer\n"
             "root = pathlib.Path(sys.argv[1])\n"
             "module = importlib.import_module(sys.argv[2])\n"

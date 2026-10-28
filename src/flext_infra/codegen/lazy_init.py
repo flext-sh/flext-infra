@@ -17,26 +17,26 @@ from typing import Annotated, override
 
 from flext_cli import u
 
-from flext_infra import c, d, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra import FlextInfraUtilities, c, d, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesLazyInitPlan,
+    FlextInfraUtilitiesLazyInitRender,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
-from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra._utilities.lazy_init_plan import FlextInfraUtilitiesLazyInitPlan
-from flext_infra._utilities.lazy_init_render import FlextInfraUtilitiesLazyInitRender
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
-)
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
+from flext_infra.codegen import FlextInfraCodegenExecution
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 
 class FlextInfraCodegenLazyInit(
-    FlextInfraCodegenExecutionBase[bool],
+    FlextInfraCodegenExecution[bool],
     m.Infra.ModuleSelectionMixin,
-    FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilities,
 ):
     """Plan every generated ``__init__.py`` of the selected repositories."""
 

@@ -13,10 +13,10 @@ from types import TracebackType
 from typing import Annotated, Self, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.workspace import FlextInfraRopeQueryMixin
+from flext_infra.workspace import FlextInfraWorkspaceRopeQuery
 
 
-class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
+class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     """Open one shared Rope workspace with cached public DSL methods."""
 
     rope_repository_root_override: Annotated[

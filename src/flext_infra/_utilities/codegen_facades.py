@@ -50,14 +50,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesWorkspaceSnapshot,
-)
-from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeCore,
@@ -65,14 +63,13 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesInventory,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+    FlextInfraUtilitiesSemanticCutover,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
     FlextInfraUtilitiesRopeAnalysisImportState,
     FlextInfraUtilitiesRopeAnalysisSourceScan,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
 )
 
 
@@ -82,7 +79,7 @@ class FlextInfraUtilitiesCodegenFacades(
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesWorkspaceSnapshot,
 ):
     """Compose declared facade owners and resolve consumed protocols."""

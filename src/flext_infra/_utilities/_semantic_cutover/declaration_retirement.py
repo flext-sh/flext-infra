@@ -14,6 +14,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+    FlextInfraUtilitiesSemanticNestingTypes,
+)
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -32,11 +37,6 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticDeclarationRelocation,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-    FlextInfraUtilitiesSemanticNestingTypes,
 )
 
 

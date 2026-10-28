@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 
 from flext_infra import c, m, t
-from flext_infra._utilities._git import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
     FlextInfraUtilitiesGitSemanticIndexMixin,
 )

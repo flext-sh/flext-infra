@@ -17,16 +17,14 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._dependency_deptry import (
-    FlextInfraUtilitiesDependencyDeptryMixin,
-)
-from flext_infra._utilities.dependency_requirements import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependency,
     FlextInfraUtilitiesDependencyRequirements,
 )
 
 
 class FlextInfraUtilitiesDependencies(
-    FlextInfraUtilitiesDependencyDeptryMixin,
+    FlextInfraUtilitiesDependency,
     FlextInfraUtilitiesDependencyRequirements,
 ):
     """Workspace dependency policy composed over independent requirement parsing."""

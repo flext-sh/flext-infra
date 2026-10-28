@@ -10,10 +10,10 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.deps import FlextInfraDependencyDetectionRunnersMixin
+from flext_infra.deps import FlextInfraDepsDetectionRunners
 
 
-class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionRunnersMixin):
+class FlextInfraDependencyDetectionService(FlextInfraDepsDetectionRunners):
     """Runtime vs dev dependency detector using deptry and pip-check."""
 
     _log = u.fetch_logger(__name__)

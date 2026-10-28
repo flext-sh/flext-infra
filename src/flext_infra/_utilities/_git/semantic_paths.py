@@ -14,7 +14,7 @@ from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, 
 from gitdb.util import LockedFD
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesGitSemanticPublishMixin,
     FlextInfraUtilitiesGitStateFilesMixin,
 )

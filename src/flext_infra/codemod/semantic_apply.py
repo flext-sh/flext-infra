@@ -19,13 +19,15 @@ from flext_cli import cli
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
-from flext_infra.codemod._rename_sources import FlextInfraRenameSources
-from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.codemod import FlextInfraCodemodRename
+from flext_infra.codemod._rename import FlextInfraCodemodRenameSymbols
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
-class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
+class FlextInfraCodemodSemanticApply(
+    FlextInfraCodemodRename,
+):
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
 
     @classmethod
@@ -293,7 +295,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         if module is None:
             msg = f"module naming requires an inventoried module: {path}"
             raise ValueError(msg)
-        declaration = FlextInfraRenameSymbols.inventoried_declaration(
+        declaration = FlextInfraCodemodRenameSymbols.inventoried_declaration(
             workspace, module.module_name
         )
         if Path(declaration.file_path) != path:
@@ -673,13 +675,15 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         """
         decisions = tuple(
             m.Infra.SemanticRenameDecision(
-                declaration=FlextInfraRenameSymbols.inventoried_declaration(
+                declaration=FlextInfraCodemodRenameSymbols.inventoried_declaration(
                     workspace, selection.qualified_name
                 ),
                 replacement_name=selection.replacement_name,
                 reason=selection.reason,
                 contracts=tuple(
-                    FlextInfraRenameSymbols.inventoried_declaration(workspace, identity)
+                    FlextInfraCodemodRenameSymbols.inventoried_declaration(
+                        workspace, identity
+                    )
                     for identity in selection.contracts
                 ),
             )
@@ -771,7 +775,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 )
                 for project in live
             )
-            updates, moves = FlextInfraRenameSymbols.plan_native_candidates(
+            updates, moves = FlextInfraCodemodRenameSymbols.plan_native_candidates(
                 snapshots, original, decisions
             )
         staged_inputs = cls._staged_inputs(moves, captured.states)
@@ -1235,18 +1239,20 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
             for path, source in updates.items()
         )
-        return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-            plans,
-            repository_root=u.Infra.import_project_roots(root)[0].resolve(),
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=tuple(
-                    sorted({
-                        root,
-                        *(u.Infra.project_root(path) or root for path in updates),
-                    })
+        return (
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                plans,
+                repository_root=u.Infra.import_project_roots(root)[0].resolve(),
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=tuple(
+                        sorted({
+                            root,
+                            *(u.Infra.project_root(path) or root for path in updates),
+                        })
+                    ),
                 ),
-            ),
-            publish=publish,
+                publish=publish,
+            )
         )
 
     @classmethod
@@ -2124,19 +2130,21 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     else config.Infra.codegen.modes.file_default,
                 )
             )
-        return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-            plans,
-            repository_root=root,
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=tuple(
-                    sorted({
-                        *u.Infra.governed_project_roots(root),
-                        *(plan.project for plan in plans),
-                    })
+        return (
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                plans,
+                repository_root=root,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=tuple(
+                        sorted({
+                            *u.Infra.governed_project_roots(root),
+                            *(plan.project for plan in plans),
+                        })
+                    ),
+                    validator=validator,
                 ),
-                validator=validator,
-            ),
-        ).map(lambda _: True)
+            ).map(lambda _: True)
+        )
 
     @staticmethod
     def _path_key(path: Path) -> t.Pair[bool, str]:

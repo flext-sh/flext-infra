@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, deps as dependency_services, m, p, r, t, u
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform.existing_plan import (
     FlextInfraCodegenConformExistingPlan,
 )
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):

@@ -11,10 +11,13 @@ from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
-from flext_infra.release import FlextInfraReleasePlanMixin
+from flext_infra.release import FlextInfraReleaseRelease
 
 
-class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseOptions):
+class FlextInfraReleaseOrchestrator(
+    FlextInfraReleaseRelease,
+    m.Infra.ReleaseOptions,
+):
     """Run one phase of the release protocol against the repository root.
 
     The version lives only in ``pyproject.toml``; the protocol derives every

@@ -41,7 +41,7 @@ class TestsNativeObservationScaling:
         )
         u.Tests.run_lazy_init_probe(
             f"""from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -81,7 +81,7 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
         )
         u.Tests.run_lazy_init_probe(
             """from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -120,7 +120,7 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
 from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -167,7 +167,7 @@ assert native.compare(before, native.capture(selection, paths=mapping).unwrap())
         )
         u.Tests.run_lazy_init_probe(
             """from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -206,7 +206,7 @@ assert native.compare(before, native.capture(selection).unwrap()).unwrap() is Tr
         )
         u.Tests.run_lazy_init_probe(
             f"""from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -246,7 +246,7 @@ assert native.compare(deep, native.capture(large).unwrap()).failure
         u.Tests.run_lazy_init_probe(
             """from types import CodeType
 from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module

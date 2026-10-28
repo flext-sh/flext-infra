@@ -12,9 +12,7 @@ from pathlib import Path
 from typing import Annotated, Self
 
 from flext_infra import c, config, m, settings, t, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra.base import s
 
 

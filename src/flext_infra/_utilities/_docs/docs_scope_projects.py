@@ -15,13 +15,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
 )
-from flext_infra._utilities._docs._docs_scope_policy import (
-    FlextInfraUtilitiesDocsScopePolicyMixin,
-)
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopePolicy
 
 
 class FlextInfraUtilitiesDocsScopeProjectsMixin(
-    FlextInfraUtilitiesDocsScopePolicyMixin,
+    FlextInfraUtilitiesDocsScopePolicy,
 ):
     """Discover governed projects from the authenticated workspace topology."""
 

@@ -10,14 +10,14 @@ from typing import Self, override
 
 from flext_core import FlextService
 
-from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra import FlextInfraBasePayload, c, m, p, r, settings, t
+from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
 class FlextInfraServiceBase[TDomainResult](
     FlextService[TDomainResult],
     m.Infra.CommandContext,
-    FlextInfraCommandPayloadMixin,
+    FlextInfraBasePayload,
 ):
     """Domain command context shared by all flext-infra CLI services.
 

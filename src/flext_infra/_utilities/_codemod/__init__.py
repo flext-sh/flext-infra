@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra. Utilities. Codemod package.
+"""Internal package for codemod.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -43,7 +43,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._codemod.codemod_type_set_rules import (
         FlextInfraUtilitiesCodemodTypeSetRules,
     )
-
+    from flext_infra._utilities._codemod.rules_distributions import (
+        FlextInfraUtilitiesCodemodRulesDistributions,
+    )
 
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodemodBindingChain",
@@ -54,6 +56,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodProjectFacts",
     "FlextInfraUtilitiesCodemodRules",
+    "FlextInfraUtilitiesCodemodRulesDistributions",
     "FlextInfraUtilitiesCodemodScopes",
     "FlextInfraUtilitiesCodemodTypeSetRules",
 )
@@ -65,13 +68,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodImportLawRules": ".codemod_import_law_rules",
         "FlextInfraUtilitiesCodemodNativeCascade": ".codemod_native_cascade",
-        "FlextInfraUtilitiesCodemodNativePackageUtilities": (
-            ".codemod_native_package_utilities"
-        ),
+        "FlextInfraUtilitiesCodemodNativePackageUtilities": ".codemod_native_package_utilities",
         "FlextInfraUtilitiesCodemodNativeUtilities": ".codemod_native_utilities",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodProjectFacts": ".codemod_project_facts",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
+        "FlextInfraUtilitiesCodemodRulesDistributions": ".rules_distributions",
         "FlextInfraUtilitiesCodemodScopes": ".codemod_scopes",
         "FlextInfraUtilitiesCodemodTypeSetRules": ".codemod_type_set_rules",
     }),

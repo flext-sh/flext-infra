@@ -13,57 +13,53 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codegen._consolidator_steps import (
-        FlextInfraCodegenConsolidatorStepsMixin,
-    )
-    from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-    from flext_infra.codegen._fixer_passes import FlextInfraCodegenFixerPassesMixin
-    from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
-    from flext_infra.codegen._fixer_workspace import (
-        FlextInfraCodegenFixerWorkspaceMixin,
-    )
-    from flext_infra.codegen._layout_apply import FlextInfraCodegenLayoutApplyMixin
-    from flext_infra.codegen._layout_files import FlextInfraCodegenLayoutFilesMixin
-    from flext_infra.codegen._layout_gitignore import (
-        FlextInfraCodegenLayoutGitignoreMixin,
-    )
-    from flext_infra.codegen._layout_plan import FlextInfraCodegenLayoutPlanMixin
-    from flext_infra.codegen.census import FlextInfraCodegenCensus
-    from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-    from flext_infra.codegen.conform import FlextInfraCodegenConform
-    from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-    from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-    from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-    from flext_infra.codegen.layout import FlextInfraCodegenLayout
-    from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-    from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
-    from flext_infra.codegen.mise_toolchain_proof import (
+    from flext_infra.codegen import (
+        FlextInfraCodegenCensus,
+        FlextInfraCodegenConform,
+        FlextInfraCodegenConsolidator,
+        FlextInfraCodegenConsolidatorSteps,
+        FlextInfraCodegenExecution,
+        FlextInfraCodegenFixer,
+        FlextInfraCodegenLayout,
+        FlextInfraCodegenLazyInit,
+        FlextInfraCodegenMakeBootstrap,
         FlextInfraCodegenMiseToolchainProof,
-    )
-    from flext_infra.codegen.mise_toolchain_repair import (
         FlextInfraCodegenMiseToolchainRepair,
+        FlextInfraCodegenPreconditions,
+        FlextInfraCodegenPyTyped,
+        FlextInfraCodegenQualityGate,
+        FlextInfraCodegenScaffolder,
+        FlextInfraCodegenVersionFile,
+        FlextInfraStagedPackage,
     )
-    from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-    from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-    from flext_infra.codegen.staged_package import FlextInfraStagedPackage
-    from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
+    from flext_infra.codegen._fixer import (
+        FlextInfraCodegenFixerPasses,
+        FlextInfraCodegenFixerResults,
+        FlextInfraCodegenFixerWorkspace,
+    )
+    from flext_infra.codegen._layout import (
+        FlextInfraCodegenLayoutApply,
+        FlextInfraCodegenLayoutFiles,
+        FlextInfraCodegenLayoutGitignore,
+        FlextInfraCodegenLayoutPlan,
+    )
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConsolidator",
-    "FlextInfraCodegenConsolidatorStepsMixin",
-    "FlextInfraCodegenExecutionBase",
+    "FlextInfraCodegenConsolidatorSteps",
+    "FlextInfraCodegenExecution",
     "FlextInfraCodegenFixer",
-    "FlextInfraCodegenFixerPassesMixin",
-    "FlextInfraCodegenFixerResultsMixin",
-    "FlextInfraCodegenFixerWorkspaceMixin",
+    "FlextInfraCodegenFixerPasses",
+    "FlextInfraCodegenFixerResults",
+    "FlextInfraCodegenFixerWorkspace",
     "FlextInfraCodegenLayout",
-    "FlextInfraCodegenLayoutApplyMixin",
-    "FlextInfraCodegenLayoutFilesMixin",
-    "FlextInfraCodegenLayoutGitignoreMixin",
-    "FlextInfraCodegenLayoutPlanMixin",
+    "FlextInfraCodegenLayoutApply",
+    "FlextInfraCodegenLayoutFiles",
+    "FlextInfraCodegenLayoutGitignore",
+    "FlextInfraCodegenLayoutPlan",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseToolchainProof",
@@ -83,17 +79,17 @@ install_lazy_exports(
         "FlextInfraCodegenCensus": ".census",
         "FlextInfraCodegenConform": ".conform",
         "FlextInfraCodegenConsolidator": ".consolidator",
-        "FlextInfraCodegenConsolidatorStepsMixin": "._consolidator_steps",
-        "FlextInfraCodegenExecutionBase": "._execution",
+        "FlextInfraCodegenConsolidatorSteps": "._consolidator_steps",
+        "FlextInfraCodegenExecution": "._execution",
         "FlextInfraCodegenFixer": ".fixer",
-        "FlextInfraCodegenFixerPassesMixin": "._fixer_passes",
-        "FlextInfraCodegenFixerResultsMixin": "._fixer_results",
-        "FlextInfraCodegenFixerWorkspaceMixin": "._fixer_workspace",
+        "FlextInfraCodegenFixerPasses": "._fixer_passes",
+        "FlextInfraCodegenFixerResults": "._fixer_results",
+        "FlextInfraCodegenFixerWorkspace": "._fixer_workspace",
         "FlextInfraCodegenLayout": ".layout",
-        "FlextInfraCodegenLayoutApplyMixin": "._layout_apply",
-        "FlextInfraCodegenLayoutFilesMixin": "._layout_files",
-        "FlextInfraCodegenLayoutGitignoreMixin": "._layout_gitignore",
-        "FlextInfraCodegenLayoutPlanMixin": "._layout_plan",
+        "FlextInfraCodegenLayoutApply": "._layout_apply",
+        "FlextInfraCodegenLayoutFiles": "._layout_files",
+        "FlextInfraCodegenLayoutGitignore": "._layout_gitignore",
+        "FlextInfraCodegenLayoutPlan": "._layout_plan",
         "FlextInfraCodegenLazyInit": ".lazy_init",
         "FlextInfraCodegenMakeBootstrap": ".make_bootstrap",
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",

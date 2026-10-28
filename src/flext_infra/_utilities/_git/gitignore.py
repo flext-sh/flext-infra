@@ -13,8 +13,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 
 class FlextInfraUtilitiesGitignore:

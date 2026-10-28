@@ -33,7 +33,7 @@ def replacement(args):
             """import importlib
 import threading
 from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -110,7 +110,7 @@ def replacement(value: int) -> None:
         )
         u.Tests.run_lazy_init_probe(
             """from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -147,7 +147,7 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
             """from pathlib import Path
 from git import Git
 from flext_infra import m, u
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 selection = (m.Infra.SourceClassReference(target="git.cmd", attributes=("Git",)),)
@@ -171,7 +171,7 @@ assert compared.success, compared.error
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
 from flext_infra import m, u
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 selection = (m.Infra.SourceClassReference(
@@ -247,7 +247,7 @@ class Consumer:
         u.Tests.run_lazy_init_probe(
             f"""from typing import get_args, get_origin
 from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
@@ -342,7 +342,7 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
         )
         u.Tests.run_lazy_init_probe(
             f"""from flext_infra import m
-from flext_infra.workspace.native_reference import (
+from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module

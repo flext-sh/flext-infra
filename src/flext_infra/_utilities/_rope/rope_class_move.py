@@ -16,7 +16,10 @@ from typing import Final
 from flext_cli import u
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesSemanticNestingTypes,
+)
 from flext_infra._utilities._rope.move_publication import (
     FlextInfraUtilitiesRopeMovePublication,
 )
@@ -31,9 +34,6 @@ from flext_infra._utilities._rope.rope_module_patch import (
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticNestingTypes,
 )
 
 

@@ -19,7 +19,14 @@ import libcst as cst
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesPrivateImportFacades,
+    FlextInfraUtilitiesSemanticCutoverClassScope,
+    FlextInfraUtilitiesSemanticCutoverEdits,
+    FlextInfraUtilitiesSemanticCutoverNestingCst,
+    FlextInfraUtilitiesSemanticCutoverNestingOwner,
+    FlextInfraUtilitiesSemanticFamilyFlatten,
+    FlextInfraUtilitiesSemanticTestHelpers,
 )
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -35,15 +42,6 @@ from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticCutoverClassScope,
-    FlextInfraUtilitiesSemanticCutoverEdits,
-    FlextInfraUtilitiesSemanticCutoverNestingCst,
-    FlextInfraUtilitiesSemanticCutoverNestingOwner,
-    FlextInfraUtilitiesSemanticFamilyFlatten,
-    FlextInfraUtilitiesSemanticTestHelpers,
-)
 
 
 class FlextInfraUtilitiesSemanticCutoverNesting(

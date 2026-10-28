@@ -12,11 +12,11 @@ import pytest
 
 from flext_infra import config, infra, m, p
 from flext_infra.codemod import (
-    FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
+    FlextInfraCodemodLoopPhaseAccessorRename,
+    FlextInfraCodemodLoopPhaseNamespaceRelocation,
     FlextInfraModGateEngine,
-    FlextInfraNamespaceRelocationPhase,
 )
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
@@ -123,7 +123,9 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
         ).map(lambda report: bool(report.automated_change_count))
     with infra.rope_workspace(project) as rope:
         preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-        return FlextInfraAccessorRenamePhase().apply(project, preflight, rope)
+        return FlextInfraCodemodLoopPhaseAccessorRename().apply(
+            project, preflight, rope
+        )
 
 
 class TestsFlextInfraCodemodLoopPhases:
@@ -159,7 +161,7 @@ class TestsFlextInfraCodemodLoopPhases:
         )
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraNamespaceRelocationPhase()
+            phase = FlextInfraCodemodLoopPhaseNamespaceRelocation()
             states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in u.Infra.iter_python_files(
@@ -205,7 +207,7 @@ class TestsFlextInfraCodemodLoopPhases:
         )
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraAccessorRenamePhase()
+            phase = FlextInfraCodemodLoopPhaseAccessorRename()
 
             changed = phase.apply(project, preflight, rope)
 
@@ -341,8 +343,8 @@ class TestsFlextInfraCodemodLoopPhases:
                 rope=rope,
                 rename_inputs=(),
                 phase_callbacks=(
-                    FlextInfraNamespaceRelocationPhase(),
-                    FlextInfraAccessorRenamePhase(),
+                    FlextInfraCodemodLoopPhaseNamespaceRelocation(),
+                    FlextInfraCodemodLoopPhaseAccessorRename(),
                 ),
             ).execute()
 

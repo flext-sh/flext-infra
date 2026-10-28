@@ -13,8 +13,8 @@ from typing import override
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import (
+    FlextInfraCodemodLoopPhaseImportNormalization,
     FlextInfraCodemodSemanticApply,
-    FlextInfraImportNormalizationPhase,
     FlextInfraModGateEngine,
     FlextInfraModReplacements,
     FlextInfraModTextGateEngine,
@@ -632,7 +632,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return self._plan_phase_callbacks(
             root,
             text_preparation.value,
-            callbacks=(FlextInfraImportNormalizationPhase(),),
+            callbacks=(FlextInfraCodemodLoopPhaseImportNormalization(),),
         )
 
     def _plan_semantic_phase(

@@ -19,23 +19,15 @@ from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodemodNativePackageUtilities,
+    FlextInfraUtilitiesCodemodNativeUtilities,
+    FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
-)
-from flext_infra._utilities._codemod.codemod_native_package_utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-)
-from flext_infra._utilities._codemod.codemod_native_utilities import (
-    FlextInfraUtilitiesCodemodNativeUtilities,
-)
-from flext_infra._utilities._codemod.codemod_project import (
-    FlextInfraUtilitiesCodemodProject,
-)
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
 )
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,

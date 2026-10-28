@@ -13,12 +13,12 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities._git import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
     FlextInfraUtilitiesGitSemanticIndexMixin,
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+    FlextInfraUtilitiesProjectDiscovery,
 )
 
 if TYPE_CHECKING:

@@ -11,15 +11,13 @@ from itertools import chain
 from pathlib import Path
 
 from flext_infra import c, p, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._rope import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -40,7 +38,9 @@ class FlextInfraUtilitiesProtocolModels:
         """
         return cls._ModelProtocolProjection(workspace).render()
 
-    class _ModelProtocolProjection(FlextInfraUtilitiesDeclarationPayload):
+    class _ModelProtocolProjection(
+        FlextInfraUtilitiesSemanticCutover,
+    ):
         """Bind the retired native inventory and renderer to one source candidate."""
 
         def __init__(self, workspace: p.Infra.RopeWorkspaceDsl) -> None:

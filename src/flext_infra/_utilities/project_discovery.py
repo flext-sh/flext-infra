@@ -18,17 +18,17 @@ from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIterationDirectory,
-    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
+    FlextInfraUtilitiesMiseBinary,
+    FlextInfraUtilitiesProject,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
 class FlextInfraUtilitiesProjectDiscovery(
-    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
+    FlextInfraUtilitiesProject,
 ):
     """Static helpers for discovering governed project roots in a workspace."""
 

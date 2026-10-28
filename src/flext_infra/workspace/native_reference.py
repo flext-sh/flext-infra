@@ -162,10 +162,9 @@ class FlextInfraWorkspaceNativeReference:
     def _declared_class_names(
         cls,
         supplier: str,
-        path: Path,
         qualname: str,
         namespace: t.MappingKV[str, t.Infra.NativeOperand],
-        compiled: t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations],
+        context: m.Infra.NativeObservationContext,
     ) -> p.Result[t.VariadicTuple[frozenset[str]]]:
         """Separate authored class bindings from a metaclass's operational outputs.
 
@@ -176,9 +175,10 @@ class FlextInfraWorkspaceNativeReference:
             Zero or one authored store sets, or the source admission failure.
 
         """
+        path = context.origins[supplier]
         if path.suffix != c.Infra.EXT_PYTHON:
             return r.ok(())
-        if path not in compiled:
+        if path not in context.compiled:
             before = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             if before.content is None:
                 return r[t.VariadicTuple[frozenset[str]]].fail(
@@ -199,8 +199,8 @@ class FlextInfraWorkspaceNativeReference:
                 return r[t.VariadicTuple[frozenset[str]]].fail(
                     f"native class declaration source changed: {path}"
                 )
-            compiled[path] = declarations
-        candidates = compiled[path].get(qualname, ())
+            context.compiled[path] = declarations
+        candidates = context.compiled[path].get(qualname, ())
         if len(candidates) > 1:
             candidates = tuple(
                 declaration
@@ -216,7 +216,240 @@ class FlextInfraWorkspaceNativeReference:
         return r.ok(tuple(names for _, names in candidates[:1]))
 
     @staticmethod
+    def _binding_function(
+        member: t.Infra.NativeOperand,
+    ) -> FunctionType | None:
+        """Unwrap one namespace member to its function, or ``None``.
+
+        Returns:
+            The function behind a plain/class/static method binding or a raw
+            function, else ``None``.
+
+        """
+        if FlextInfraWorkspaceNativeReference._is_function_binding(member):
+            function = member.__func__
+        elif FlextInfraWorkspaceNativeReference._is_native(member, FunctionType):
+            function = member
+        else:
+            return None
+        return (
+            function
+            if FlextInfraWorkspaceNativeReference._is_native(function, FunctionType)
+            else None
+        )
+
+    @staticmethod
+    def _class_method_receiver(
+        member: t.Infra.NativeOperand,
+        function: FunctionType,
+    ) -> str | None:
+        """Return the ``cls`` variable name of a class method with parameters.
+
+        Returns:
+            The first argument name of a non-empty class method, else ``None``.
+
+        """
+        if not FlextInfraWorkspaceNativeReference._native_type(member, classmethod):
+            return None
+        return function.__code__.co_varnames[0]
+
+    @staticmethod
+    def _fast_stores_touch_receiver(
+        instructions: t.SequenceOf[Instruction],
+        receiver: str,
+    ) -> bool:
+        """Whether any fast-store or fast-delete names the ``cls`` receiver.
+
+        Returns:
+            Whether the receiver binding is written, directly or as a tuple
+            member.
+
+        """
+        return any(
+            (
+                instruction.opname.startswith(c.Infra.OpCode.STORE_FAST)
+                or instruction.opname == c.Infra.OpCode.DELETE_FAST
+            )
+            and (
+                instruction.argval == receiver
+                or (
+                    FlextInfraWorkspaceNativeReference._is_operand_tuple(
+                        instruction.argval
+                    )
+                    and receiver in instruction.argval
+                )
+            )
+            for instruction in instructions
+        )
+
+    @staticmethod
+    def _global_receiver_facts(
+        instructions: t.SequenceOf[Instruction],
+        function: FunctionType,
+        owner: t.Infra.NativeOperand,
+    ) -> t.Pair[frozenset[str], frozenset[str]]:
+        """Split loaded globals into the owner receiver and rebound names.
+
+        Returns:
+            The names loading the exact owner and the globals the function
+            rebinds or deletes.
+
+        """
+        global_receivers = frozenset(
+            instruction.argval
+            for instruction in instructions
+            if instruction.opname == c.Infra.OpCode.LOAD_GLOBAL
+            and isinstance(instruction.argval, str)
+            and function.__globals__.get(instruction.argval) is owner
+        )
+        rebound_globals = frozenset(
+            instruction.argval
+            for instruction in instructions
+            if instruction.opname in {"STORE_GLOBAL", "DELETE_GLOBAL"}
+        )
+        return global_receivers, rebound_globals
+
+    @staticmethod
+    def _loads_receiver(
+        instruction: Instruction,
+        receiver: str | None,
+        global_receivers: frozenset[str],
+        rebound_globals: frozenset[str],
+    ) -> bool:
+        """Whether one instruction loads the receiver this store writes through.
+
+        Returns:
+            Whether a fast or global load names the receiver immediately
+            before an attribute store.
+
+        """
+        if receiver is not None:
+            if instruction.opname == c.Infra.OpCode.LOAD_FAST and (
+                instruction.argval == receiver
+            ):
+                return True
+            if instruction.opname == c.Infra.OpCode.LOAD_FAST_LOAD_FAST and (
+                FlextInfraWorkspaceNativeReference._is_operand_tuple(instruction.argval)
+                and instruction.argval[-1] == receiver
+            ):
+                return True
+        return (
+            instruction.opname == c.Infra.OpCode.LOAD_GLOBAL
+            and instruction.argval in global_receivers - rebound_globals
+        )
+
+    @classmethod
+    def _declared_attr_stores(
+        cls,
+        instructions: t.SequenceOf[Instruction],
+        declarations: frozenset[str],
+        receiver: str | None,
+        receiver_facts: t.Pair[frozenset[str], frozenset[str]],
+    ) -> frozenset[str]:
+        """Collect declared fields stored through the proven receiver.
+
+        Returns:
+            The declared names of ``STORE_ATTR`` writes preceded by a
+            receiver load.
+
+        """
+        global_receivers, rebound_globals = receiver_facts
+        return frozenset(
+            instruction.argval
+            for previous, instruction in itertools.pairwise(instructions)
+            if instruction.opname == c.Infra.OpCode.STORE_ATTR
+            and isinstance(instruction.argval, str)
+            and instruction.argval in declarations
+            and cls._loads_receiver(
+                previous, receiver, global_receivers, rebound_globals
+            )
+        )
+
+    @staticmethod
+    def _augmented_attr_stores(
+        instructions: t.SequenceOf[Instruction],
+        declarations: frozenset[str],
+        global_receivers: frozenset[str],
+        rebound_globals: frozenset[str],
+    ) -> frozenset[str]:
+        """Collect declared fields written by augmented global assignment.
+
+        ``Owner.field += value`` loads the global receiver, copies it to read
+        the field, and swaps it back under the result before storing.
+
+        Returns:
+            The declared names of swap-backed ``STORE_ATTR`` writes.
+
+        """
+        return frozenset(
+            instruction.argval
+            for index, instruction in enumerate(instructions)
+            if instruction.opname == c.Infra.OpCode.STORE_ATTR
+            and isinstance(instruction.argval, str)
+            and instruction.argval in declarations
+            and index > 0
+            and instructions[index - 1].opname == c.Infra.OpCode.SWAP
+            and any(
+                load.opname == c.Infra.OpCode.LOAD_GLOBAL
+                and load.argval in global_receivers - rebound_globals
+                and copy.opname == c.Infra.OpCode.COPY
+                and read.opname == c.Infra.OpCode.LOAD_ATTR
+                and read.argval == instruction.argval
+                for load, copy, read in zip(
+                    instructions[:index],
+                    instructions[1:index],
+                    instructions[2:index],
+                    strict=False,
+                )
+            )
+        )
+
+    @classmethod
+    def _classified_writer(
+        cls,
+        member_facts: t.Triple[str | None, t.Infra.NativeOperand, FunctionType],
+        state_facts: t.Triple[
+            t.Infra.NativeOperand,
+            frozenset[str],
+            t.Infra.NativeInstructionFacts,
+        ],
+    ) -> t.Triple[str, p.AttributeProbe, frozenset[str]] | None:
+        """Prove one member's state writes through the exact native receiver.
+
+        Args:
+            member_facts: The member name, operand and unwrapped function.
+            state_facts: The owning class, declared fields and the
+                instruction cache.
+
+        Returns:
+            The writer binding and declared fields it modifies, or ``None``
+            when the member provably writes no declared state.
+
+        """
+        name, member, function = member_facts
+        owner, declarations, instruction_cache = state_facts
+        if not declarations.intersection(function.__code__.co_names):
+            return None
+        if cls._native_type(member, classmethod) and not function.__code__.co_argcount:
+            return None
+        receiver = cls._class_method_receiver(member, function)
+        instructions = cls._instructions(function.__code__, instruction_cache)
+        if receiver is not None and cls._fast_stores_touch_receiver(
+            instructions, receiver
+        ):
+            return None
+        receiver_facts = cls._global_receiver_facts(instructions, function, owner)
+        fields = cls._declared_attr_stores(
+            instructions, declarations, receiver, receiver_facts
+        ) | cls._augmented_attr_stores(instructions, declarations, *receiver_facts)
+        if not fields:
+            return None
+        symbol = cls._symbol(function) if name is None else name
+        return (symbol, member, fields)
+
+    @classmethod
     def _class_state_writers(
+        cls,
         owner: t.Infra.NativeOperand,
         namespace: t.MappingKV[str, t.Infra.NativeOperand],
         declarations: frozenset[str],
@@ -230,11 +463,7 @@ class FlextInfraWorkspaceNativeReference:
 
         """
         own_functions = {
-            id(
-                member.__func__
-                if FlextInfraWorkspaceNativeReference._is_function_binding(member)
-                else member
-            )
+            id(member.__func__ if cls._is_function_binding(member) else member)
             for member in namespace.values()
         }
         # Supplier functions are unwrapped: only an exact global receiver can
@@ -244,128 +473,26 @@ class FlextInfraWorkspaceNativeReference:
             *(
                 (None, function)
                 for function in supplier_functions
-                if FlextInfraWorkspaceNativeReference._is_native(function, FunctionType)
+                if cls._is_native(function, FunctionType)
                 and id(function) not in own_functions
             ),
         )
         writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
         supplier_writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
         for name, member in members:
-            # A plain method writes class state only through the global class
-            # name; a class or static method may also write through ``cls``.
-            if FlextInfraWorkspaceNativeReference._is_function_binding(member):
-                function = member.__func__
-            elif FlextInfraWorkspaceNativeReference._is_native(member, FunctionType):
-                function = member
+            function = cls._binding_function(member)
+            if function is None:
+                continue
+            writer = cls._classified_writer(
+                (name, member, function),
+                (owner, declarations, instruction_cache),
+            )
+            if writer is None:
+                continue
+            if name is None:
+                supplier_writers.append(writer)
             else:
-                continue
-            if not FlextInfraWorkspaceNativeReference._is_native(
-                function, FunctionType
-            ):
-                continue
-            if not declarations.intersection(function.__code__.co_names):
-                continue
-            if (
-                FlextInfraWorkspaceNativeReference._native_type(member, classmethod)
-                and not function.__code__.co_argcount
-            ):
-                continue
-            receiver = (
-                function.__code__.co_varnames[0]
-                if FlextInfraWorkspaceNativeReference._native_type(member, classmethod)
-                else None
-            )
-            instructions = FlextInfraWorkspaceNativeReference._instructions(
-                function.__code__, instruction_cache
-            )
-            if receiver is not None and any(
-                (
-                    instruction.opname.startswith(c.Infra.OpCode.STORE_FAST)
-                    or instruction.opname == c.Infra.OpCode.DELETE_FAST
-                )
-                and (
-                    instruction.argval == receiver
-                    or (
-                        FlextInfraWorkspaceNativeReference._is_operand_tuple(
-                            instruction.argval
-                        )
-                        and receiver in instruction.argval
-                    )
-                )
-                for instruction in instructions
-            ):
-                continue
-            global_receivers = {
-                instruction.argval
-                for instruction in instructions
-                if instruction.opname == c.Infra.OpCode.LOAD_GLOBAL
-                and isinstance(instruction.argval, str)
-                and function.__globals__.get(instruction.argval) is owner
-            }
-            rebound_globals = {
-                instruction.argval
-                for instruction in instructions
-                if instruction.opname in {"STORE_GLOBAL", "DELETE_GLOBAL"}
-            }
-            fields = frozenset(
-                instruction.argval
-                for previous, instruction in itertools.pairwise(instructions)
-                if instruction.opname == c.Infra.OpCode.STORE_ATTR
-                and isinstance(instruction.argval, str)
-                and instruction.argval in declarations
-                and (
-                    (
-                        receiver is not None
-                        and previous.opname == c.Infra.OpCode.LOAD_FAST
-                        and previous.argval == receiver
-                    )
-                    or (
-                        receiver is not None
-                        and previous.opname == c.Infra.OpCode.LOAD_FAST_LOAD_FAST
-                        and FlextInfraWorkspaceNativeReference._is_operand_tuple(
-                            previous.argval
-                        )
-                        and previous.argval[-1] == receiver
-                    )
-                    or (
-                        previous.opname == c.Infra.OpCode.LOAD_GLOBAL
-                        and previous.argval in global_receivers - rebound_globals
-                    )
-                )
-            )
-            # ``Owner.field += value`` loads the global receiver, copies it to
-            # read the field, and swaps it back under the result before storing.
-            augmented = frozenset(
-                instruction.argval
-                for index, instruction in enumerate(instructions)
-                if instruction.opname == c.Infra.OpCode.STORE_ATTR
-                and isinstance(instruction.argval, str)
-                and instruction.argval in declarations
-                and index > 0
-                and instructions[index - 1].opname == c.Infra.OpCode.SWAP
-                and any(
-                    load.opname == c.Infra.OpCode.LOAD_GLOBAL
-                    and load.argval in global_receivers - rebound_globals
-                    and copy.opname == c.Infra.OpCode.COPY
-                    and read.opname == c.Infra.OpCode.LOAD_ATTR
-                    and read.argval == instruction.argval
-                    for load, copy, read in zip(
-                        instructions[:index],
-                        instructions[1:index],
-                        instructions[2:index],
-                        strict=False,
-                    )
-                )
-            )
-            if fields | augmented:
-                if name is None:
-                    supplier_writers.append((
-                        FlextInfraWorkspaceNativeReference._symbol(function),
-                        member,
-                        fields | augmented,
-                    ))
-                else:
-                    writers.append((name, member, fields | augmented))
+                writers.append(writer)
         return (*writers, *sorted(supplier_writers, key=itemgetter(0)))
 
     @classmethod
@@ -3522,9 +3649,7 @@ class FlextInfraWorkspaceNativeReference:
             )
             cls._enqueue_class_members(context, value, binding, identity)
             return r.ok(value=True)
-        declarations = cls._declared_class_names(
-            supplier, context.origins[supplier], qualname, namespace, context.compiled
-        )
+        declarations = cls._declared_class_names(supplier, qualname, namespace, context)
         if declarations.failure:
             return r[bool].from_failure(declarations)
         declaration = cls._class_declaration(namespace, declarations.value)

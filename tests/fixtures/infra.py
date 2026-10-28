@@ -67,7 +67,7 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
         "from flext_infra import m\n"
         "from flext_infra.codegen import FlextInfraCodegenPreconditions as "
         "preconditions\n"
-        "from flext_infra.workspace.native_reference import "
+        "from flext_infra.workspace import "
         "FlextInfraWorkspaceNativeReference as native\n"
         f"runtime_root = Path({str(runtime)!r})\n"
     )

@@ -22,13 +22,11 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, settings, t
-from flext_infra._utilities._codemod.codemod_rules import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodemodRules,
-)
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.protected_edit_linting import (
+    FlextInfraUtilitiesMiseBinary,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
 )
 

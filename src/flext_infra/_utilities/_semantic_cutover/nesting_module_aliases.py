@@ -10,6 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesQualifiedNames,
@@ -20,9 +21,6 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
 )
 
 

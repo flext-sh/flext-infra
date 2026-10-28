@@ -9,7 +9,7 @@ from __future__ import annotations
 from flext_cli import u
 
 from flext_infra import c, codegen, deps, infra, m, p, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
 class FlextInfraCodegenRoutes:

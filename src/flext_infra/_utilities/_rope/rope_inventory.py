@@ -13,6 +13,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 from flext_infra._utilities._rope.inventory_sites import (
     FlextInfraUtilitiesRopeInventorySitesMixin,
 )
@@ -23,10 +27,6 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 
 
 class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySitesMixin):

@@ -16,9 +16,11 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, deps, m, p, t, workspace
-from flext_infra._utilities._docs.docs_scope_projects import (
-    FlextInfraUtilitiesDocsScopeProjectsMixin,
+from flext_infra._utilities import (
+    FlextInfraUtilitiesNativeTooling,
+    FlextInfraUtilitiesProjectDiscovery,
 )
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeProjectsMixin
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
@@ -26,8 +28,6 @@ from flext_infra._utilities._pyproject.toml_phases import (
     FlextInfraUtilitiesPyprojectTomlPhases,
 )
 from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraToolTablesPhase:

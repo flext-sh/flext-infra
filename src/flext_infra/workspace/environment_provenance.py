@@ -21,19 +21,13 @@ from flext_infra import c, config, m, p, r, t, u
 from flext_infra.workspace import (
     FlextInfraBindingService,
     FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironment,
     FlextInfraWorkspaceFlextEditable,
-)
-from flext_infra.workspace._environment_provenance_editable import (
-    FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
-)
-from flext_infra.workspace._environment_provenance_module_source import (
-    FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
 )
 
 
 class FlextInfraWorkspaceEnvironmentProvenance(
-    FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
-    FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
+    FlextInfraWorkspaceEnvironment,
 ):
     """Bind installed packages to live local or immutable CI workspace sources."""
 

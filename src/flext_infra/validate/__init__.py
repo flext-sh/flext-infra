@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
-    from flext_infra.validate._skill_rule_runner import FlextInfraSkillRuleRunnerMixin
+    from flext_infra.validate._pytest import FlextInfraValidatePytestDiagXml
+    from flext_infra.validate._skill import FlextInfraValidateSkillRuleRunner
     from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
     from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
     from flext_infra.validate.inventory import FlextInfraInventoryService
@@ -40,15 +40,15 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualCommandValidator",
     "FlextInfraNamespaceValidator",
     "FlextInfraPytestDiagExtractor",
-    "FlextInfraPytestDiagXmlMixin",
     "FlextInfraPytestRunner",
-    "FlextInfraSkillRuleRunnerMixin",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
     "FlextInfraTestmonDbInspector",
     "FlextInfraTextPatternScanner",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateLazyMapFreshness",
+    "FlextInfraValidatePytestDiagXml",
+    "FlextInfraValidateSkillRuleRunner",
     "FlextInfraValidateTestImportDag",
 )
 
@@ -62,9 +62,9 @@ install_lazy_exports(
         "FlextInfraManualCommandValidator": ".manual_command",
         "FlextInfraNamespaceValidator": ".namespace_validator",
         "FlextInfraPytestDiagExtractor": ".pytest_diag",
-        "FlextInfraPytestDiagXmlMixin": "._pytest_diag_xml",
+        "FlextInfraValidatePytestDiagXml": "._pytest_diag_xml",
         "FlextInfraPytestRunner": ".pytest_runner",
-        "FlextInfraSkillRuleRunnerMixin": "._skill_rule_runner",
+        "FlextInfraValidateSkillRuleRunner": "._skill_rule_runner",
         "FlextInfraSkillValidator": ".skill_validator",
         "FlextInfraStubSupplyChain": ".stub_chain",
         "FlextInfraTestmonDbInspector": ".testmon_db",

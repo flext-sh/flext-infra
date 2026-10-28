@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
-from flext_infra.release import FlextInfraReleaseBuildMixin
+from flext_infra.release import FlextInfraReleaseReleaseBuild
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 
@@ -541,7 +541,7 @@ source = { registry = "https://pypi.org/simple" }
                 lock_body,
             )
 
-            result = FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
+            result = FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)
 
             tm.ok(result, eq={"flext-api": "0.12.0"})
 
@@ -549,7 +549,7 @@ source = { registry = "https://pypi.org/simple" }
         def test_missing_lock_fails_loud(tmp_path: Path) -> None:
             """Release pins require the lock owned by dependency resolution."""
             u.Tests.initialize_git_repo(tmp_path)
-            result = FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
+            result = FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)
 
             tm.fail(result)
             tm.that(result.error or "", has=c.Infra.UV_LOCK_FILENAME)
@@ -563,7 +563,7 @@ source = { registry = "https://pypi.org/simple" }
                 "not [ valid toml",
             )
 
-            result = FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
+            result = FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)
 
             tm.fail(result)
             tm.that(result.error or "", has=c.Infra.UV_LOCK_FILENAME)
@@ -578,4 +578,4 @@ source = { registry = "https://pypi.org/simple" }
             )
 
             with pytest.raises(c.ValidationError):
-                FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
+                FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)

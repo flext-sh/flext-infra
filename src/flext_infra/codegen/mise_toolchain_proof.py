@@ -32,10 +32,10 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra.codegen import FlextInfraCodegenExecution
 
 
-class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
+class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
     """Prove every declared fleet tool is the self-contained locked release."""
 
     uv_executable: Annotated[

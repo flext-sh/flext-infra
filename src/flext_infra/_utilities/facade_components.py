@@ -26,15 +26,12 @@ from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodNativePackageUtilities,
+    FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyprojectConform,
-)
-from flext_infra._utilities._codemod.codemod_native_package_utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-)
-from flext_infra._utilities._codemod.codemod_native_utilities import (
-    FlextInfraUtilitiesCodemodNativeUtilities,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -44,9 +41,6 @@ from flext_infra._utilities._rope.rope_runtime_types import (
 )
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
-)
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 
 

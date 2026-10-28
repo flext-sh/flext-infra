@@ -32,13 +32,11 @@ from flext_cli import u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
+    FlextInfraUtilitiesLintSourcePositions,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.lint_source_positions import (
-    FlextInfraUtilitiesLintSourcePositions,
-)
 
 
 class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):

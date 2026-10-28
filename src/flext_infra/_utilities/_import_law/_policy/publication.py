@@ -16,15 +16,13 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
-)
-from flext_infra._utilities._import_law._policy.namespace import (
-    FlextInfraUtilitiesImportLawPolicyNamespace,
-)
-from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
+from flext_infra._utilities._import_law._policy.namespace import (
+    FlextInfraUtilitiesImportLawPolicyNamespace,
 )
 
 

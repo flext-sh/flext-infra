@@ -11,8 +11,28 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
-from flext_infra._config_make_contract import FlextInfraMakeContract
-from flext_infra._utilities._git.gitignore import FlextInfraUtilitiesGitignore
+from flext_infra._config import FlextInfraConfigMakeContract
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesProtocolModels,
+    FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesRepository,
+    FlextInfraUtilitiesSemanticCutover,
+    FlextInfraUtilitiesVersioning,
+    FlextInfraUtilitiesWorkspaceInventory,
+    FlextInfraUtilitiesWorkspaceManifest,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
@@ -26,40 +46,11 @@ from flext_infra._utilities._rope.rope_module_patch import (
     FlextInfraUtilitiesRopeModulePatch,
 )
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._semantic_cutover.facade_owners import (
-    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
-)
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
-from flext_infra._utilities.protocol_models import FlextInfraUtilitiesProtocolModels
-from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
-from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
-from flext_infra._utilities.workspace_manifest import (
-    FlextInfraUtilitiesWorkspaceManifest,
-)
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
-)
 
 
 class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesBase,
-    FlextInfraMakeContract,
+    FlextInfraConfigMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
@@ -69,7 +60,6 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesProtocolModels,
     FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
@@ -83,7 +73,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
     FlextInfraUtilitiesWorkspaceSnapshot,
-    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
+    FlextInfraUtilitiesSemanticCutover,
 ):
     """Compose the source helpers consumed by the generation operation."""
 

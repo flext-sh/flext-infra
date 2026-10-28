@@ -24,13 +24,13 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_infra import c, codegen, config, gates, m, r, t
-from flext_infra._utilities._git import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesGitMutationScopeMixin,
     FlextInfraUtilitiesGitSemanticPathsMixin,
+    FlextInfraUtilitiesProcess,
+    FlextInfraUtilitiesResourceLimits,
 )
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.process import FlextInfraUtilitiesProcess
-from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
 if TYPE_CHECKING:
     from flext_infra import p

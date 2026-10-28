@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -175,14 +175,16 @@ class FlextInfraNamespaceRelocationCascade:
                 )
             )
 
-        return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-            plans,
-            repository_root=project_root,
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=(project_root,),
-                validator=verify if gates is not None else None,
-            ),
-        ).map(bool)
+        return (
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                plans,
+                repository_root=project_root,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(project_root,),
+                    validator=verify if gates is not None else None,
+                ),
+            ).map(bool)
+        )
 
     def plan(
         self,

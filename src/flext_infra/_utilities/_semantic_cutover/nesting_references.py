@@ -25,9 +25,11 @@ from libcst.metadata import (
 )
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities._codemod.codemod_binding_chain import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesQualifiedNames,
+    FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
+    FlextInfraUtilitiesSemanticNestingTypes,
 )
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -35,10 +37,6 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
-    FlextInfraUtilitiesSemanticNestingTypes,
 )
 
 

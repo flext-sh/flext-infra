@@ -15,16 +15,14 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._codemod.codemod_scopes import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodemodRulesDistributions,
     FlextInfraUtilitiesCodemodScopes,
-)
-from flext_infra._utilities._codemod_rules_distributions import (
-    FlextInfraUtilitiesCodemodRulesDistributionsMixin,
 )
 
 
 class FlextInfraUtilitiesCodemodRules(
-    FlextInfraUtilitiesCodemodRulesDistributionsMixin,
+    FlextInfraUtilitiesCodemodRulesDistributions,
 ):
     """Resolve universal, runtime-transitive, and local ast-grep rule layers."""
 

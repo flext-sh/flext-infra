@@ -12,9 +12,11 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, r, t
-from flext_infra._utilities._docs.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities import FlextInfraUtilitiesDocs
+from flext_infra._utilities._docs import (
+    FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsScope,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

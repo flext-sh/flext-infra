@@ -19,7 +19,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from pathlib import Path

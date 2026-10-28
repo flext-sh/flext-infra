@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, p, r, t, u, workspace as workspace_services
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform.scaffold_plan import (
     FlextInfraCodegenConformScaffoldPlan,
 )
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):

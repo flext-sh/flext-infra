@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.gates.direnv import FlextInfraDirenvGate
-from flext_infra.workspace.environment_contracts import (
-    FlextInfraWorkspaceEnvironmentContracts,
-)
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:

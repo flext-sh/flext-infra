@@ -9,13 +9,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor import FlextInfraProjectClassifierFamilyMixin
+from flext_infra.refactor import FlextInfraRefactorProject
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraProjectClassifier(FlextInfraProjectClassifierFamilyMixin):
+class FlextInfraProjectClassifier(
+    FlextInfraRefactorProject,
+):
     """Classify a project by kind and discover FLEXT family chains."""
 
     def __init__(

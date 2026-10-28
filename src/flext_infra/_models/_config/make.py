@@ -13,7 +13,7 @@ from typing import Annotated, Literal, Self
 from flext_cli import m, t
 
 from flext_infra import c
-from flext_infra._config_make_contract import FlextInfraMakeContract
+from flext_infra._config import FlextInfraConfigMakeContract
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.external_cache import (
@@ -990,7 +990,7 @@ class FlextInfraConfigModelsMake(
             admissible = {
                 verb.name
                 for verb in self.verbs
-                if FlextInfraMakeContract.make_verb_supports_profiles(
+                if FlextInfraConfigMakeContract.make_verb_supports_profiles(
                     verb.profiles,
                     tuple(FlextInfraConstantsConfig.MakeProfile),
                 )

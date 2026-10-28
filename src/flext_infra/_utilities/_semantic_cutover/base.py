@@ -10,11 +10,8 @@ from contextlib import closing
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
-from flext_infra._utilities._rope.rope_runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._semantic_cutover import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticContracts,
     FlextInfraUtilitiesSemanticCutoverAliases,
@@ -25,6 +22,9 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
+)
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover.model_aliases import (
     FlextInfraUtilitiesSemanticModelAliases,

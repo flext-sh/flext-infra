@@ -167,10 +167,10 @@ class FlextInfraModHandlers:
                 rope=rope,
                 rename_inputs=campaigns,
                 phase_callbacks=(
-                    codemod.FlextInfraImportNormalizationPhase(),
-                    codemod.FlextInfraNamespaceRelocationPhase(),
-                    codemod.FlextInfraDuplicateApplyPhase(),
-                    codemod.FlextInfraAccessorRenamePhase(),
+                    codemod.FlextInfraCodemodLoopPhaseImportNormalization(),
+                    codemod.FlextInfraCodemodLoopPhaseNamespaceRelocation(),
+                    codemod.FlextInfraCodemodLoopPhaseDuplicateApply(),
+                    codemod.FlextInfraCodemodLoopPhaseAccessorRename(),
                 ),
             ).execute()
 

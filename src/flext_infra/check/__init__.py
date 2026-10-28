@@ -13,9 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.check._workspace_check_reports import (
-        FlextInfraWorkspaceCheckReportsMixin,
-    )
+    from flext_infra.check._workspace import FlextInfraCheckWorkspaceCheckReports
     from flext_infra.check.gate_registry import FlextInfraGateRegistry
     from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
     from flext_infra.check.workspace_check_gates import (
@@ -27,9 +25,9 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraCheckWorkspaceCheckReports",
     "FlextInfraGateRegistry",
     "FlextInfraWorkspaceCheckGatesMixin",
-    "FlextInfraWorkspaceCheckReportsMixin",
     "FlextInfraWorkspaceCheckUnionMixin",
     "FlextInfraWorkspaceChecker",
 )
@@ -40,7 +38,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraGateRegistry": ".gate_registry",
         "FlextInfraWorkspaceCheckGatesMixin": ".workspace_check_gates",
-        "FlextInfraWorkspaceCheckReportsMixin": "._workspace_check_reports",
+        "FlextInfraCheckWorkspaceCheckReports": "._workspace_check_reports",
         "FlextInfraWorkspaceCheckUnionMixin": ".workspace_check_union",
         "FlextInfraWorkspaceChecker": ".workspace_check",
     }),

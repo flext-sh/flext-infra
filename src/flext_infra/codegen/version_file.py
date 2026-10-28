@@ -20,13 +20,13 @@ from typing import TYPE_CHECKING, override
 from flext_core.__version__ import FlextVersion
 
 from flext_infra import c, config, m, r, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra.codegen import FlextInfraCodegenExecution
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraCodegenVersionFile(FlextInfraCodegenExecutionBase[bool]):
+class FlextInfraCodegenVersionFile(FlextInfraCodegenExecution[bool]):
     """Generate ``__version__.py`` for every workspace project.
 
     Projects whose derived version class name equals ``FlextVersion``

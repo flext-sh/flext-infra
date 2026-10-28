@@ -11,10 +11,13 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
-from flext_infra.deps import FlextInfraConfigFixerSteps
+from flext_infra.deps import FlextInfraDepsPyrefly
 
 
-class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bool]):
+class FlextInfraConfigFixer(
+    FlextInfraDepsPyrefly,
+    FlextInfraServiceBase[bool],
+):
     """Fix pyrefly configuration across workspace projects."""
 
     _repository_root: Path

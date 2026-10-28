@@ -20,24 +20,21 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._git import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGitSemanticPublishMixin,
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
-)
-from flext_infra._utilities._git.requirement_source import (
-    FlextInfraUtilitiesGitRequirementSource,
+    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 
 
-class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
+class FlextInfraUtilitiesRepository(
+    FlextInfraUtilitiesGit,
+):
     """Resolve detected identity and branch policy for one governed repository."""
 
     @classmethod

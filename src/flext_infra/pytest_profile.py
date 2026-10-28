@@ -15,7 +15,7 @@ from pathlib import Path
 from types import FrameType
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra._pytest_clock import FlextInfraPytestClock
+from flext_infra._pytest import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
 

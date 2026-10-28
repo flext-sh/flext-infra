@@ -16,7 +16,10 @@ import libcst as cst
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities import (
+    FlextInfraUtilitiesQualifiedNames,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
@@ -27,9 +30,6 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 
 
 class FlextInfraUtilitiesRopeImports:

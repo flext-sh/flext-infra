@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra. Utilities. Docs package.
+"""Internal package for docs.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,44 +13,11 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._utilities._docs._docs_audit_detectors import (
-        FlextInfraUtilitiesDocsAuditDetectorsMixin,
+    from flext_infra._utilities._docs.audit_detectors import (
+        FlextInfraUtilitiesDocsAuditDetectors,
     )
-    from flext_infra._utilities._docs._docs_command_contract import (
-        FlextInfraUtilitiesDocsCommandContractMixin,
-    )
-    from flext_infra._utilities._docs._docs_generate_plan import (
-        FlextInfraUtilitiesDocsGeneratePlanMixin,
-    )
-    from flext_infra._utilities._docs._docs_generate_project import (
-        FlextInfraUtilitiesDocsGenerateProjectMixin,
-    )
-    from flext_infra._utilities._docs._docs_generate_root import (
-        FlextInfraUtilitiesDocsGenerateRootMixin,
-    )
-    from flext_infra._utilities._docs._docs_generate_sources import (
-        FlextInfraUtilitiesDocsGenerateSourcesMixin,
-    )
-    from flext_infra._utilities._docs._docs_github_links import (
-        FlextInfraUtilitiesDocsGithubLinks,
-    )
-    from flext_infra._utilities._docs._docs_guides import (
-        FlextInfraUtilitiesDocsGuidesMixin,
-    )
-    from flext_infra._utilities._docs._docs_scope_build import (
-        FlextInfraUtilitiesDocsScopeBuildMixin,
-    )
-    from flext_infra._utilities._docs._docs_scope_paths import (
-        FlextInfraUtilitiesDocsScopePathsMixin,
-    )
-    from flext_infra._utilities._docs._docs_scope_policy import (
-        FlextInfraUtilitiesDocsScopePolicyMixin,
-    )
-    from flext_infra._utilities._docs._docs_scope_selection import (
-        FlextInfraUtilitiesDocsScopeSelectionMixin,
-    )
-    from flext_infra._utilities._docs._docs_scope_state import (
-        FlextInfraUtilitiesDocsScopeStateMixin,
+    from flext_infra._utilities._docs.command_contract import (
+        FlextInfraUtilitiesDocsCommandContract,
     )
     from flext_infra._utilities._docs.docs_api import FlextInfraUtilitiesDocsApi
     from flext_infra._utilities._docs.docs_audit import FlextInfraUtilitiesDocsAudit
@@ -76,33 +43,63 @@ if TYPE_CHECKING:
     from flext_infra._utilities._docs.docs_validate import (
         FlextInfraUtilitiesDocsValidate,
     )
-
+    from flext_infra._utilities._docs.generate_plan import (
+        FlextInfraUtilitiesDocsGeneratePlan,
+    )
+    from flext_infra._utilities._docs.generate_project import (
+        FlextInfraUtilitiesDocsGenerateProject,
+    )
+    from flext_infra._utilities._docs.generate_root import (
+        FlextInfraUtilitiesDocsGenerateRoot,
+    )
+    from flext_infra._utilities._docs.generate_sources import (
+        FlextInfraUtilitiesDocsGenerateSources,
+    )
+    from flext_infra._utilities._docs.github_links import (
+        FlextInfraUtilitiesDocsGithubLinks,
+    )
+    from flext_infra._utilities._docs.guides import FlextInfraUtilitiesDocsGuides
+    from flext_infra._utilities._docs.scope_build import (
+        FlextInfraUtilitiesDocsScopeBuild,
+    )
+    from flext_infra._utilities._docs.scope_paths import (
+        FlextInfraUtilitiesDocsScopePaths,
+    )
+    from flext_infra._utilities._docs.scope_policy import (
+        FlextInfraUtilitiesDocsScopePolicy,
+    )
+    from flext_infra._utilities._docs.scope_selection import (
+        FlextInfraUtilitiesDocsScopeSelection,
+    )
+    from flext_infra._utilities._docs.scope_state import (
+        FlextInfraUtilitiesDocsScopeState,
+    )
 
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsApi",
     "FlextInfraUtilitiesDocsAudit",
-    "FlextInfraUtilitiesDocsAuditDetectorsMixin",
+    "FlextInfraUtilitiesDocsAuditDetectors",
     "FlextInfraUtilitiesDocsBuild",
     "FlextInfraUtilitiesDocsCollection",
     "FlextInfraUtilitiesDocsCollectionSources",
-    "FlextInfraUtilitiesDocsCommandContractMixin",
+    "FlextInfraUtilitiesDocsCommandContract",
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
     "FlextInfraUtilitiesDocsGenerate",
-    "FlextInfraUtilitiesDocsGeneratePlanMixin",
-    "FlextInfraUtilitiesDocsGenerateProjectMixin",
-    "FlextInfraUtilitiesDocsGenerateRootMixin",
-    "FlextInfraUtilitiesDocsGenerateSourcesMixin",
+    "FlextInfraUtilitiesDocsGeneratePlan",
+    "FlextInfraUtilitiesDocsGenerateProject",
+    "FlextInfraUtilitiesDocsGenerateRoot",
+    "FlextInfraUtilitiesDocsGenerateSources",
     "FlextInfraUtilitiesDocsGithubLinks",
-    "FlextInfraUtilitiesDocsGuidesMixin",
+    "FlextInfraUtilitiesDocsGuides",
     "FlextInfraUtilitiesDocsRender",
     "FlextInfraUtilitiesDocsScope",
-    "FlextInfraUtilitiesDocsScopeBuildMixin",
-    "FlextInfraUtilitiesDocsScopePathsMixin",
-    "FlextInfraUtilitiesDocsScopePolicyMixin",
+    "FlextInfraUtilitiesDocsScopeBuild",
+    "FlextInfraUtilitiesDocsScopePaths",
+    "FlextInfraUtilitiesDocsScopePolicy",
     "FlextInfraUtilitiesDocsScopeProjectsMixin",
-    "FlextInfraUtilitiesDocsScopeSelectionMixin",
-    "FlextInfraUtilitiesDocsScopeStateMixin",
+    "FlextInfraUtilitiesDocsScopeSelection",
+    "FlextInfraUtilitiesDocsScopeState",
     "FlextInfraUtilitiesDocsValidate",
 )
 
@@ -112,28 +109,28 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraUtilitiesDocsApi": ".docs_api",
         "FlextInfraUtilitiesDocsAudit": ".docs_audit",
-        "FlextInfraUtilitiesDocsAuditDetectorsMixin": "._docs_audit_detectors",
+        "FlextInfraUtilitiesDocsAuditDetectors": ".audit_detectors",
         "FlextInfraUtilitiesDocsBuild": ".docs_build",
         "FlextInfraUtilitiesDocsCollection": ".docs_collection",
         "FlextInfraUtilitiesDocsCollectionSources": ".docs_collection_sources",
-        "FlextInfraUtilitiesDocsCommandContractMixin": "._docs_command_contract",
+        "FlextInfraUtilitiesDocsCommandContract": ".command_contract",
         "FlextInfraUtilitiesDocsContract": ".docs_contract",
         "FlextInfraUtilitiesDocsFix": ".docs_fix",
         "FlextInfraUtilitiesDocsGenerate": ".docs_generate",
-        "FlextInfraUtilitiesDocsGeneratePlanMixin": "._docs_generate_plan",
-        "FlextInfraUtilitiesDocsGenerateProjectMixin": "._docs_generate_project",
-        "FlextInfraUtilitiesDocsGenerateRootMixin": "._docs_generate_root",
-        "FlextInfraUtilitiesDocsGenerateSourcesMixin": "._docs_generate_sources",
-        "FlextInfraUtilitiesDocsGithubLinks": "._docs_github_links",
-        "FlextInfraUtilitiesDocsGuidesMixin": "._docs_guides",
+        "FlextInfraUtilitiesDocsGeneratePlan": ".generate_plan",
+        "FlextInfraUtilitiesDocsGenerateProject": ".generate_project",
+        "FlextInfraUtilitiesDocsGenerateRoot": ".generate_root",
+        "FlextInfraUtilitiesDocsGenerateSources": ".generate_sources",
+        "FlextInfraUtilitiesDocsGithubLinks": ".github_links",
+        "FlextInfraUtilitiesDocsGuides": ".guides",
         "FlextInfraUtilitiesDocsRender": ".docs_render",
         "FlextInfraUtilitiesDocsScope": ".docs_scope",
-        "FlextInfraUtilitiesDocsScopeBuildMixin": "._docs_scope_build",
-        "FlextInfraUtilitiesDocsScopePathsMixin": "._docs_scope_paths",
-        "FlextInfraUtilitiesDocsScopePolicyMixin": "._docs_scope_policy",
+        "FlextInfraUtilitiesDocsScopeBuild": ".scope_build",
+        "FlextInfraUtilitiesDocsScopePaths": ".scope_paths",
+        "FlextInfraUtilitiesDocsScopePolicy": ".scope_policy",
         "FlextInfraUtilitiesDocsScopeProjectsMixin": ".docs_scope_projects",
-        "FlextInfraUtilitiesDocsScopeSelectionMixin": "._docs_scope_selection",
-        "FlextInfraUtilitiesDocsScopeStateMixin": "._docs_scope_state",
+        "FlextInfraUtilitiesDocsScopeSelection": ".scope_selection",
+        "FlextInfraUtilitiesDocsScopeState": ".scope_state",
         "FlextInfraUtilitiesDocsValidate": ".docs_validate",
     }),
     public_exports=__all__,

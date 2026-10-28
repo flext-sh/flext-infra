@@ -35,9 +35,7 @@ from pathlib import Path
 from typing import TypeGuard, TypeIs
 
 from flext_infra import c, p, t
-from flext_infra._utilities._codemod.codemod_native_package_utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-)
+from flext_infra._utilities import FlextInfraUtilitiesCodemodNativePackageUtilities
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )

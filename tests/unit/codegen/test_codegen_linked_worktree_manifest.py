@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import infra, m
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, tm, u
 
 

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r, t
-from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
+from flext_infra._utilities import FlextInfraUtilitiesMiseBinary
 
 if TYPE_CHECKING:
     from flext_infra import p

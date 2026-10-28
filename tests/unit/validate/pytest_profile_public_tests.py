@@ -515,13 +515,13 @@ class TestsFlextInfraPytestProfile:
             "from flext_infra import FlextInfraPytestProfile\n"
             + c.Infra.PYTEST_PROFILE_BOOTSTRAP
             + "os.environ['PROFILE_PARENT_PID'] = str(os.getpid())\n"
-            "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
+            "sys.argv = ['flext_infra._pytest.entry', 'profile', sys.argv[1]]\n"
             "def interrupt(event, arguments):\n"
             "    if event in {'os.rename', 'os.link'} and "
             "Path(arguments[1]).name == 'command.txt':\n"
             "        os.kill(os.getpid(), signal.SIGTERM)\n"
             + ("sys.addaudithook(interrupt)\n" if phase == "between_children" else "")
-            + "runpy.run_module('flext_infra._pytest_entry', run_name='__main__')\n"
+            + "runpy.run_module('flext_infra._pytest.entry', run_name='__main__')\n"
         )
         result = tm.ok(
             u.Cli.run_raw(
@@ -622,7 +622,7 @@ class TestsFlextInfraPytestProfile:
             "import os, runpy, sys\n"
             "from flext_infra import FlextInfraPytestProfile\n"
             + c.Infra.PYTEST_PROFILE_BOOTSTRAP
-            + "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
+            + "sys.argv = ['flext_infra._pytest.entry', 'profile', sys.argv[1]]\n"
             "def close_diagnostic(event, arguments):\n"
             "    if event in {'os.rename', 'os.link'} and Path(arguments[1]).name == "
             f"{output.with_suffix('.pstats.json').name!r}:\n"
@@ -632,7 +632,7 @@ class TestsFlextInfraPytestProfile:
                 if publication_error == "stderr"
                 else ""
             )
-            + "runpy.run_module('flext_infra._pytest_entry', run_name='__main__')\n"
+            + "runpy.run_module('flext_infra._pytest.entry', run_name='__main__')\n"
         )
         result = tm.ok(
             u.Cli.run_raw(

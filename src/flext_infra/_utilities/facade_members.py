@@ -22,12 +22,10 @@ from typing import ClassVar
 from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyprojectConform,
-)
-from flext_infra._utilities._codemod.codemod_native_utilities import (
-    FlextInfraUtilitiesCodemodNativeUtilities,
 )
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,

@@ -12,13 +12,13 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, p, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
-from flext_infra._utilities._rope import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
 
 
 class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):

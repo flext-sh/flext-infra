@@ -22,7 +22,7 @@ from flext_infra.refactor import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
 from flext_infra.services import FlextInfraCliModProgress
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraRefactorRoutes:
@@ -114,14 +114,12 @@ class FlextInfraRefactorRoutes:
                 if any(not plan.path.is_relative_to(root) for plan in plans):
                     msg = "exact module move effects escape the declared repository"
                     raise ValueError(msg)
-                published = (
-                    FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-                        plans,
-                        repository_root=root,
-                        options=m.Infra.SemanticPublicationOptions(
-                            projection_roots=(root,),
-                        ),
-                    )
+                published = FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                    plans,
+                    repository_root=root,
+                    options=m.Infra.SemanticPublicationOptions(
+                        projection_roots=(root,),
+                    ),
                 )
                 if published.failure:
                     return r[t.Cli.ResultValue].from_failure(published)

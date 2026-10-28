@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_core import c
 
 from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
+from flext_infra._pytest import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -296,7 +296,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
     PYTEST_SELECTION_PROFILE_FILENAME: ClassVar[str] = "testmon-selection.pstats"
     PYTEST_INVENTORY_PROFILE_FILENAME: ClassVar[str] = "testmon-inventory.pstats"
-    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = "flext_infra._pytest_clock"
+    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = "flext_infra._pytest.clock"
     PYTEST_PROFILE_BOOTSTRAP: ClassVar[str] = (
         FlextInfraPytestProfileChild.bootstrap_stub(PYTEST_PROFILE_CLOCK_MODULE)
     )

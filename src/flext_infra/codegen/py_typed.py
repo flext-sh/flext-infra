@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, r, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra.codegen import FlextInfraCodegenExecution
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraCodegenPyTyped(FlextInfraCodegenExecutionBase[bool]):
+class FlextInfraCodegenPyTyped(FlextInfraCodegenExecution[bool]):
     """Creates and removes PEP 561 ``py.typed`` markers across workspace packages."""
 
     _PY_TYPED_FILENAME: str = c.Infra.PY_TYPED

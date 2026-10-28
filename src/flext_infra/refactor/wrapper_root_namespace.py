@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
-from flext_infra.refactor import FlextInfraWrapperRootNamespaceRewriteMixin
+from flext_infra.refactor import FlextInfraRefactorWrapper
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class FlextInfraWrapperRootNamespaceRefactor(
     FlextInfraProjectSelectionServiceBase[t.JsonPayload],
-    FlextInfraWrapperRootNamespaceRewriteMixin,
+    FlextInfraRefactorWrapper,
 ):
     """Refactor wrapper alias imports and deprecated ``*.Core.Tests`` paths."""
 

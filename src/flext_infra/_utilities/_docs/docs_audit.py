@@ -12,23 +12,19 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, t
-from flext_infra._utilities._docs._docs_audit_detectors import (
-    FlextInfraUtilitiesDocsAuditDetectorsMixin,
-)
-from flext_infra._utilities._docs._docs_command_contract import (
-    FlextInfraUtilitiesDocsCommandContractMixin,
-)
-from flext_infra._utilities._docs._docs_github_links import (
+from flext_infra._utilities import FlextInfraUtilitiesDocs
+from flext_infra._utilities._docs import (
+    FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsAuditDetectors,
+    FlextInfraUtilitiesDocsCommandContract,
     FlextInfraUtilitiesDocsGithubLinks,
+    FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 
 class FlextInfraUtilitiesDocsAudit(
-    FlextInfraUtilitiesDocsAuditDetectorsMixin,
-    FlextInfraUtilitiesDocsCommandContractMixin,
+    FlextInfraUtilitiesDocsAuditDetectors,
+    FlextInfraUtilitiesDocsCommandContract,
 ):
     """Reusable audit helpers exposed through ``u.Infra``."""
 

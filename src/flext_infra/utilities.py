@@ -14,6 +14,7 @@ from flext_cli import u as flext_cli_u
 
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegen,
+    FlextInfraUtilitiesCodemod,
     FlextInfraUtilitiesCompatibilityAliasValidation,
     FlextInfraUtilitiesDeferredSelfReferenceRewrite,
     FlextInfraUtilitiesDocs,
@@ -47,36 +48,6 @@ from flext_infra._utilities import (
     FlextInfraWorktreeLifecycle,
     FlextInfraWorktreeProvisioning,
 )
-from flext_infra._utilities._codemod.codemod_binding_chain import (
-    FlextInfraUtilitiesCodemodBindingChain,
-)
-from flext_infra._utilities._codemod.codemod_import_law_rules import (
-    FlextInfraUtilitiesCodemodImportLawRules,
-)
-from flext_infra._utilities._codemod.codemod_project import (
-    FlextInfraUtilitiesCodemodProject,
-)
-from flext_infra._utilities._codemod.codemod_project_facts import (
-    FlextInfraUtilitiesCodemodProjectFacts,
-)
-from flext_infra._utilities._codemod.codemod_scopes import (
-    FlextInfraUtilitiesCodemodScopes,
-)
-from flext_infra._utilities._codemod.codemod_type_set_rules import (
-    FlextInfraUtilitiesCodemodTypeSetRules,
-)
-from flext_infra._utilities._docs._docs_github_links import (
-    FlextInfraUtilitiesDocsGithubLinks,
-)
-from flext_infra._utilities._docs.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities._docs.docs_audit import FlextInfraUtilitiesDocsAudit
-from flext_infra._utilities._docs.docs_build import FlextInfraUtilitiesDocsBuild
-from flext_infra._utilities._docs.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities._docs.docs_fix import FlextInfraUtilitiesDocsFix
-from flext_infra._utilities._docs.docs_generate import FlextInfraUtilitiesDocsGenerate
-from flext_infra._utilities._docs.docs_render import FlextInfraUtilitiesDocsRender
-from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities._docs.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities._rope._analysis.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
@@ -149,26 +120,11 @@ class FlextInfraUtilities(flext_cli_u):
         FlextInfraUtilitiesTransformerHeader,
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
-        FlextInfraUtilitiesDocsGithubLinks,
         FlextInfraUtilitiesRopeSourceBasesAliases,
         FlextInfraUtilitiesRopeSourceBasesInventory,
         FlextInfraUtilitiesRopeSourceBindingCollector,
         FlextInfraUtilitiesRopeSourceBasesRuntime,
-        FlextInfraUtilitiesCodemodBindingChain,
-        FlextInfraUtilitiesCodemodImportLawRules,
-        FlextInfraUtilitiesCodemodProject,
-        FlextInfraUtilitiesCodemodProjectFacts,
-        FlextInfraUtilitiesCodemodScopes,
-        FlextInfraUtilitiesCodemodTypeSetRules,
-        FlextInfraUtilitiesDocsApi,
-        FlextInfraUtilitiesDocsAudit,
-        FlextInfraUtilitiesDocsBuild,
-        FlextInfraUtilitiesDocsContract,
-        FlextInfraUtilitiesDocsFix,
-        FlextInfraUtilitiesDocsGenerate,
-        FlextInfraUtilitiesDocsRender,
-        FlextInfraUtilitiesDocsScope,
-        FlextInfraUtilitiesDocsValidate,
+        FlextInfraUtilitiesCodemod,
         FlextInfraUtilitiesPytest,
         FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRopeCore,

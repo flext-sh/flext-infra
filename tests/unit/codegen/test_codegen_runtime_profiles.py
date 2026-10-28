@@ -14,7 +14,7 @@ from packaging.requirements import Requirement
 
 from flext_infra import config, m
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, t, tm, u
 
 

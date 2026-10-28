@@ -11,7 +11,7 @@ from functools import lru_cache
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
 class FlextInfraUtilitiesManagedConflicts:

@@ -9,11 +9,13 @@ from __future__ import annotations
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesManagedConflicts,
+)
 from flext_infra._utilities._pyproject.requirements import (
     FlextInfraUtilitiesPyprojectRequirements,
 )
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
 
 
 class FlextInfraUtilitiesPyprojectOverlay:

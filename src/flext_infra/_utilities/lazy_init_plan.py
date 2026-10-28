@@ -17,12 +17,14 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra._utilities.lazy_init_letters import FlextInfraUtilitiesLazyInitLetters
-from flext_infra._utilities.lazy_init_render import FlextInfraUtilitiesLazyInitRender
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesLazyInitLetters,
+    FlextInfraUtilitiesLazyInitRender,
+    FlextInfraUtilitiesPythonModel,
+)
 
 
 class FlextInfraUtilitiesLazyInitPlan:

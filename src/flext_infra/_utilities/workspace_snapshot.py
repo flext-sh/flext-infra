@@ -21,6 +21,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
@@ -30,7 +31,6 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 from flext_infra._utilities._rope.rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesWorkspaceSnapshot:

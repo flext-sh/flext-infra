@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import m, u
 from flext_infra.docs import (
-    FlextInfraDocAuditorChecksMixin,
     FlextInfraDocAuditorMixin,
-    FlextInfraDocAuditorReportMixin,
+    FlextInfraDocsAuditorChecks,
+    FlextInfraDocsAuditorReport,
     FlextInfraDocServiceBase,
 )
 
@@ -25,8 +25,8 @@ if TYPE_CHECKING:
 class FlextInfraDocAuditor(
     FlextInfraDocServiceBase,
     FlextInfraDocAuditorMixin,
-    FlextInfraDocAuditorChecksMixin,
-    FlextInfraDocAuditorReportMixin,
+    FlextInfraDocsAuditorChecks,
+    FlextInfraDocsAuditorReport,
 ):
     """Audit governed docs scopes; every finding is reported.
 

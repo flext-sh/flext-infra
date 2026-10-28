@@ -218,7 +218,7 @@ class TestsFlextInfraTypeGates:
         [
             ("flext_infra", "FlextInfraServiceBase"),
             ("flext_infra", "FlextInfraProjectSelectionServiceBase"),
-            ("flext_infra.codegen", "FlextInfraCodegenExecutionBase"),
+            ("flext_infra.codegen", "FlextInfraCodegenExecution"),
         ],
     )
     def test_mypy_public_service_payload_bound(

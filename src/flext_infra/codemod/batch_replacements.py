@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -106,8 +106,10 @@ class FlextInfraModReplacements:
                     continue
                 return r[bool].from_failure(plan)
             plans.append(plan.value)
-        published = FlextInfraSemanticPublication.publish_semantic_file_plans(
-            plans, repository_root=root
+        published = (
+            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+                plans, repository_root=root
+            )
         )
         if published.failure:
             return r[bool].from_failure(published)

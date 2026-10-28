@@ -13,21 +13,17 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codemod._extract_duplicate import FlextInfraExtractDuplicatePhase
-    from flext_infra.codemod._loop_phase_accessor_rename import (
-        FlextInfraAccessorRenamePhase,
+    from flext_infra.codemod._extract import FlextInfraCodemodExtractDuplicate
+    from flext_infra.codemod._loop import (
+        FlextInfraCodemodLoopPhaseAccessorRename,
+        FlextInfraCodemodLoopPhaseDuplicateApply,
+        FlextInfraCodemodLoopPhaseImportNormalization,
+        FlextInfraCodemodLoopPhaseNamespaceRelocation,
     )
-    from flext_infra.codemod._loop_phase_duplicate_apply import (
-        FlextInfraDuplicateApplyPhase,
+    from flext_infra.codemod._rename import (
+        FlextInfraCodemodRenameSources,
+        FlextInfraCodemodRenameSymbols,
     )
-    from flext_infra.codemod._loop_phase_import_normalization import (
-        FlextInfraImportNormalizationPhase,
-    )
-    from flext_infra.codemod._loop_phase_namespace_relocation import (
-        FlextInfraNamespaceRelocationPhase,
-    )
-    from flext_infra.codemod._rename_sources import FlextInfraRenameSources
-    from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
     from flext_infra.codemod.apply_renames import FlextInfraApplyRenames
     from flext_infra.codemod.ast_scan import FlextInfraCodemodAstScan
     from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
@@ -43,30 +39,30 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
-    "FlextInfraAccessorRenamePhase",
     "FlextInfraApplyRenames",
     "FlextInfraCodemodAstScan",
     "FlextInfraCodemodBatchApply",
     "FlextInfraCodemodDuplicateApply",
+    "FlextInfraCodemodExtractDuplicate",
+    "FlextInfraCodemodLoopPhaseAccessorRename",
+    "FlextInfraCodemodLoopPhaseDuplicateApply",
+    "FlextInfraCodemodLoopPhaseImportNormalization",
+    "FlextInfraCodemodLoopPhaseNamespaceRelocation",
+    "FlextInfraCodemodRenameSources",
+    "FlextInfraCodemodRenameSymbols",
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCodemodSnapshotRefresh",
-    "FlextInfraDuplicateApplyPhase",
-    "FlextInfraExtractDuplicatePhase",
-    "FlextInfraImportNormalizationPhase",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
     "FlextInfraModTextGateEngine",
-    "FlextInfraNamespaceRelocationPhase",
-    "FlextInfraRenameSources",
-    "FlextInfraRenameSymbols",
 )
 
 install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraAccessorRenamePhase": "._loop_phase_accessor_rename",
+        "FlextInfraCodemodLoopPhaseAccessorRename": "._loop_phase_accessor_rename",
         "FlextInfraApplyRenames": ".apply_renames",
         "FlextInfraCodemodAstScan": ".ast_scan",
         "FlextInfraCodemodBatchApply": ".batch_apply",
@@ -74,15 +70,15 @@ install_lazy_exports(
         "FlextInfraCodemodSemanticApply": ".semantic_apply",
         "FlextInfraCodemodSnapshotReconciler": ".snapshot_reconciler",
         "FlextInfraCodemodSnapshotRefresh": ".snapshot_refresh",
-        "FlextInfraDuplicateApplyPhase": "._loop_phase_duplicate_apply",
-        "FlextInfraExtractDuplicatePhase": "._extract_duplicate",
-        "FlextInfraImportNormalizationPhase": "._loop_phase_import_normalization",
+        "FlextInfraCodemodLoopPhaseDuplicateApply": "._loop_phase_duplicate_apply",
+        "FlextInfraCodemodExtractDuplicate": "._extract_duplicate",
+        "FlextInfraCodemodLoopPhaseImportNormalization": "._loop_phase_import_normalization",
         "FlextInfraModGateEngine": ".batch_gates",
         "FlextInfraModReplacements": ".batch_replacements",
         "FlextInfraModTextGateEngine": ".text_gates",
-        "FlextInfraNamespaceRelocationPhase": "._loop_phase_namespace_relocation",
-        "FlextInfraRenameSources": "._rename_sources",
-        "FlextInfraRenameSymbols": "._rename_symbols",
+        "FlextInfraCodemodLoopPhaseNamespaceRelocation": "._loop_phase_namespace_relocation",
+        "FlextInfraCodemodRenameSources": "._rename_sources",
+        "FlextInfraCodemodRenameSymbols": "._rename_symbols",
     }),
     public_exports=__all__,
 )

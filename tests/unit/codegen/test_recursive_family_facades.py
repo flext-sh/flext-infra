@@ -11,8 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
 from tests import c, m, p, tm, u
 
 

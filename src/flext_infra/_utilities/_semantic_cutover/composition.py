@@ -15,6 +15,7 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, m, r
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -27,7 +28,6 @@ from flext_infra._utilities._semantic_cutover.edits import (
 from flext_infra._utilities._semantic_cutover.own_mro import (
     FlextInfraUtilitiesSemanticCutoverOwnMro,
 )
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

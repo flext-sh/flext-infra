@@ -17,12 +17,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
     FlextInfraUtilitiesProjectDiscovery,
-)
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
 )
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from pathlib import Path

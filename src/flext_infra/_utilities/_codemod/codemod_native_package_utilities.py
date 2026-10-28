@@ -25,13 +25,11 @@ from flext_cli import u
 from flext_infra import FlextInfraConfig, c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesPythonModel,
     FlextInfraUtilitiesWorkspaceSnapshot,
-)
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
 )
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,

@@ -25,13 +25,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesSemanticCutoverBindings,
+    FlextInfraUtilitiesSemanticCutoverEdits,
 )
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverBindings,
-    FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
 if TYPE_CHECKING:

@@ -11,6 +11,12 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import c, config, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesWorkspaceInventory,
+)
 from flext_infra._utilities._rope.pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )
@@ -18,14 +24,6 @@ from flext_infra._utilities._rope.rope_core_resources import (
     FlextInfraUtilitiesRopeCoreResourcesMixin,
 )
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
 
 
 class FlextInfraUtilitiesRopeCore(

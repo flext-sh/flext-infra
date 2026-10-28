@@ -17,11 +17,16 @@ from typing_extensions import TypeForm
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-)
-from flext_infra._utilities._codemod.codemod_project import (
-    FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesSemanticCutoverClassScope,
+    FlextInfraUtilitiesSemanticCutoverModelFields,
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+    FlextInfraUtilitiesSemanticDeclarationRetirement,
+    FlextInfraUtilitiesSemanticDelegations,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope._analysis.exports import (
@@ -36,15 +41,6 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticCutoverClassScope,
-    FlextInfraUtilitiesSemanticCutoverModelFields,
-    FlextInfraUtilitiesSemanticDeclarationRelocation,
-    FlextInfraUtilitiesSemanticDeclarationRetirement,
-    FlextInfraUtilitiesSemanticDelegations,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 

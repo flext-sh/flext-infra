@@ -13,15 +13,15 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDependencyRequirements,
+)
 from flext_infra._utilities._git.requirement_source import (
     FlextInfraUtilitiesGitRequirementSource,
 )
 from flext_infra._utilities._pyproject.requirements import (
     FlextInfraUtilitiesPyprojectRequirements,
-)
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.dependency_requirements import (
-    FlextInfraUtilitiesDependencyRequirements,
 )
 
 

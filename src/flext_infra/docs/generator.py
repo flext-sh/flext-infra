@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
-from flext_infra.docs import FlextInfraDocGeneratorBundleMixin, FlextInfraDocServiceBase
+from flext_infra.docs import FlextInfraDocServiceBase, FlextInfraDocsGeneratorBundle
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class FlextInfraDocGenerator(
     FlextInfraDocServiceBase[m.Infra.DocsPhaseReports],
-    FlextInfraDocGeneratorBundleMixin,
+    FlextInfraDocsGeneratorBundle,
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
 

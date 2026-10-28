@@ -44,15 +44,16 @@ if TYPE_CHECKING:
         __version__,
         __version_info__,
     )
-    from flext_infra._base_payload import FlextInfraCommandPayloadMixin
-    from flext_infra._base_projects import FlextInfraProjectSelectionMixin
+    from flext_infra._base import FlextInfraBasePayload, FlextInfraBaseProjects
     from flext_infra._config import FlextInfraConfig, config
-    from flext_infra._conform_wiring import FlextInfraConformWiring
-    from flext_infra._preview_wiring import FlextInfraPreviewWiring
-    from flext_infra._pytest_clock import FlextInfraPytestClock
-    from flext_infra._pytest_collection import FlextInfraPytestCollection
-    from flext_infra._pytest_entry import FlextInfraPytestEntry
-    from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
+    from flext_infra._conform import FlextInfraConformWiring
+    from flext_infra._preview import FlextInfraPreviewWiring
+    from flext_infra._pytest import (
+        FlextInfraPytestClock,
+        FlextInfraPytestCollection,
+        FlextInfraPytestEntry,
+        FlextInfraPytestProfileChild,
+    )
     from flext_infra._settings import FlextInfraSettings, settings
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
@@ -72,8 +73,9 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfra",
+    "FlextInfraBasePayload",
+    "FlextInfraBaseProjects",
     "FlextInfraCli",
-    "FlextInfraCommandPayloadMixin",
     "FlextInfraConfig",
     "FlextInfraConformWiring",
     "FlextInfraConstants",
@@ -81,7 +83,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraGitService",
     "FlextInfraModels",
     "FlextInfraPreviewWiring",
-    "FlextInfraProjectSelectionMixin",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraPromoted",
     "FlextInfraProtocols",
@@ -139,7 +140,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfra": ".api",
         "FlextInfraCli": ".cli",
-        "FlextInfraCommandPayloadMixin": "._base_payload",
+        "FlextInfraBasePayload": "._base_payload",
         "FlextInfraConfig": "._config",
         "FlextInfraConformWiring": "._conform_wiring",
         "FlextInfraConstants": ".constants",
@@ -147,7 +148,7 @@ install_lazy_exports(
         "FlextInfraGitService": ".git",
         "FlextInfraModels": ".models",
         "FlextInfraPreviewWiring": "._preview_wiring",
-        "FlextInfraProjectSelectionMixin": "._base_projects",
+        "FlextInfraBaseProjects": "._base_projects",
         "FlextInfraProjectSelectionServiceBase": ".base_selection",
         "FlextInfraPromoted": ".promoted",
         "FlextInfraProtocols": ".protocols",

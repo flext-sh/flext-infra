@@ -397,7 +397,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         module.write_text(normalized, encoding="utf-8")
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=project,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(project,)),

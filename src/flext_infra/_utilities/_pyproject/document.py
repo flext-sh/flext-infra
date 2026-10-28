@@ -16,17 +16,17 @@ from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra._utilities._pyproject.overlay import (
     FlextInfraUtilitiesPyprojectOverlay,
 )
 from flext_infra._utilities._pyproject.uv_sources import (
     FlextInfraUtilitiesPyprojectUvSources,
-)
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 
 

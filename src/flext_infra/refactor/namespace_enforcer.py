@@ -12,12 +12,12 @@ from flext_cli import cli
 
 from flext_infra import c, m, r, u
 from flext_infra.codemod import (
-    FlextInfraImportNormalizationPhase,
+    FlextInfraCodemodLoopPhaseImportNormalization,
     FlextInfraModGateEngine,
 )
 from flext_infra.refactor import (
-    FlextInfraNamespaceEnforcerProjectMixin,
     FlextInfraNamespaceRelocationCascade,
+    FlextInfraRefactorNamespace,
 )
 
 if TYPE_CHECKING:
@@ -26,7 +26,9 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
+class FlextInfraNamespaceEnforcer(
+    FlextInfraRefactorNamespace,
+):
     """Orchestrate namespace enforcement across a workspace."""
 
     def __init__(self, *, repository_root: Path) -> None:
@@ -107,7 +109,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         if apply:
             for project_root, py_files in files_by_project.items():
                 if module is not None:
-                    FlextInfraImportNormalizationPhase.apply_files(
+                    FlextInfraCodemodLoopPhaseImportNormalization.apply_files(
                         project_root, py_files
                     )
                 relocation_ids = tuple(cascade.relocation_by_rule(project_root))

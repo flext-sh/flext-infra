@@ -23,7 +23,11 @@ from flext_cli import cli
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesSemanticConstantSources,
+    FlextInfraUtilitiesSemanticContracts,
+    FlextInfraUtilitiesSemanticCutoverEdits,
 )
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -36,12 +40,6 @@ from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticConstantSources,
-    FlextInfraUtilitiesSemanticContracts,
-    FlextInfraUtilitiesSemanticCutoverEdits,
-)
 
 
 class FlextInfraUtilitiesSemanticConstantConsumers(

@@ -142,7 +142,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     (
                         sys.executable,
                         "-m",
-                        "flext_infra._pytest_entry",
+                        "flext_infra._pytest.entry",
                         "profile",
                         str(output),
                     ),

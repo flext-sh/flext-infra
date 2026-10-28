@@ -15,9 +15,7 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
-)
+from flext_infra._utilities import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,

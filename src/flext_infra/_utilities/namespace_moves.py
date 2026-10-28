@@ -18,6 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesRefactorNamespaceCommon,
+    FlextInfraUtilitiesTransformerHeader,
 )
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -27,9 +28,6 @@ from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra._utilities.transformer_header import (
-    FlextInfraUtilitiesTransformerHeader,
-)
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:

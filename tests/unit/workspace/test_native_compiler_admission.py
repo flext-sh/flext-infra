@@ -36,7 +36,7 @@ class TestsNativeCompilerAdmission:
             ),
         )
         consumer = (
-            "from flext_infra.workspace.native_reference import "
+            "from flext_infra.workspace import "
             "FlextInfraWorkspaceNativeReference as native\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('supplier_contract_provider')\n"

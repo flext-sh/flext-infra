@@ -17,15 +17,13 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, config, m, t
-from flext_infra._utilities._docs._docs_scope_state import (
-    FlextInfraUtilitiesDocsScopeStateMixin,
-)
-from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
-from flext_infra._utilities.project_managed_artifacts import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesNativeTooling,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
 
 
 class FlextInfraUtilitiesLazyInitRender:
@@ -128,7 +126,7 @@ class FlextInfraUtilitiesLazyInitRender:
         if known is None:
             view = model.source_project
             artifacts = FlextInfraUtilitiesProjectManagedArtifacts
-            scope_state = FlextInfraUtilitiesDocsScopeStateMixin
+            scope_state = FlextInfraUtilitiesDocsScopeState
             declaration = artifacts.load_repository_declaration_inputs(
                 project_root, source_project=view
             ).unwrap()

@@ -13,13 +13,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.deps._detection_runners import (
-        FlextInfraDependencyDetectionRunnersMixin,
-    )
-    from flext_infra.deps._detector_runtime_steps import (
-        FlextInfraDependencyDetectorRuntimeSteps,
-    )
-    from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
+    from flext_infra.deps._detection import FlextInfraDepsDetectionRunners
+    from flext_infra.deps._detector import FlextInfraDepsDetectorRuntimeSteps
+    from flext_infra.deps._pyrefly import FlextInfraDepsPyreflyFixSteps
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
@@ -44,12 +40,12 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraConfigFixer",
-    "FlextInfraConfigFixerSteps",
     "FlextInfraConsolidateGroupsPhase",
-    "FlextInfraDependencyDetectionRunnersMixin",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
-    "FlextInfraDependencyDetectorRuntimeSteps",
+    "FlextInfraDepsDetectionRunners",
+    "FlextInfraDepsDetectorRuntimeSteps",
+    "FlextInfraDepsPyreflyFixSteps",
     "FlextInfraEnsurePackagingPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
     "FlextInfraEnsurePyrightConfigPhase",
@@ -67,12 +63,12 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraConfigFixer": ".fix_pyrefly_config",
-        "FlextInfraConfigFixerSteps": "._pyrefly_fix_steps",
+        "FlextInfraDepsPyreflyFixSteps": "._pyrefly_fix_steps",
         "FlextInfraConsolidateGroupsPhase": ".phases.consolidate_groups",
-        "FlextInfraDependencyDetectionRunnersMixin": "._detection_runners",
+        "FlextInfraDepsDetectionRunners": "._detection_runners",
         "FlextInfraDependencyDetectionService": ".detection",
         "FlextInfraDependencyDetectorRuntime": ".detector_runtime",
-        "FlextInfraDependencyDetectorRuntimeSteps": "._detector_runtime_steps",
+        "FlextInfraDepsDetectorRuntimeSteps": "._detector_runtime_steps",
         "FlextInfraEnsurePackagingPhase": ".phases.ensure_packaging",
         "FlextInfraEnsurePyreflyConfigPhase": ".phases.ensure_pyrefly",
         "FlextInfraEnsurePyrightConfigPhase": ".phases.ensure_pyright",

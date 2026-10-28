@@ -29,27 +29,21 @@ from packaging.utils import canonicalize_name
 from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesFacadeMembers,
-    FlextInfraUtilitiesImportLaw,
-    FlextInfraUtilitiesWorkspaceSnapshot,
-)
-from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackageUtilities,
     FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesCodemodScopes,
-)
-from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesFacadeMembers,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
 )
 
 

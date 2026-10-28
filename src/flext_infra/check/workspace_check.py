@@ -13,20 +13,20 @@ from typing import ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.check import (
+    FlextInfraCheckWorkspace,
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
-    FlextInfraWorkspaceCheckReportsMixin,
 )
-from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_infra.workspace.runtime_dependencies import (
+from flext_infra.workspace import (
     FlextInfraRuntimeDependencyCollector,
+    FlextInfraWorkspaceDetector,
 )
 
 
 class FlextInfraWorkspaceChecker(
     FlextInfraServiceBase[bool],
     FlextInfraWorkspaceCheckGatesMixin,
-    FlextInfraWorkspaceCheckReportsMixin,
+    FlextInfraCheckWorkspace,
 ):
     """Run workspace quality gates and generate reports.
 
