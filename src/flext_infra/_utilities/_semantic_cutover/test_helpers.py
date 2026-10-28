@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
@@ -128,20 +127,25 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             project.get_resource(item.relative_to(root).as_posix())
             for item in sorted(editable)
         )
+        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            project, resource
+        )
         declarations = tuple(
-            node
-            for node in ast.parse(sources[path]).body
-            if isinstance(node, ast.ClassDef)
+            scope
+            for scope in module.get_scope().get_scopes()
+            if scope.get_kind() == "Class"
         )
         for declaration in declarations:
-            name = declaration.name
+            name = declaration.pyobject.get_name()
+            members = cls._helper_callable_scopes(declaration)
             if not any(
-                isinstance(member, c.Infra.AST_FUNCTION_TYPES)
-                for member in ast.walk(declaration)
+                member.get_kind() == "Function" for member in members
             ) or any(
-                member.name.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
-                for member in ast.walk(declaration)
-                if isinstance(member, c.Infra.AST_FUNCTION_TYPES)
+                member.pyobject.get_name().startswith(
+                    c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX
+                )
+                for member in members
+                if member.get_kind() == "Function"
             ):
                 continue
             find_offset = (
@@ -149,7 +153,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             )
             offset = find_offset(
                 sources[path].splitlines(keepends=True),
-                line=declaration.lineno,
+                line=declaration.get_start(),
                 symbol=name,
             )
             if offset is None:
@@ -188,10 +192,21 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 source_file=path,
                 target_file=target,
                 class_name=name,
-                line=declaration.lineno,
+                line=declaration.get_start(),
                 apply=False,
             )
         return None
+
+    @classmethod
+    def _helper_callable_scopes(
+        cls, scope: p.Infra.RopeScope
+    ) -> tuple[p.Infra.RopeScope, ...]:
+        """Traverse source-owned scopes without exposing syntax nodes."""
+        return tuple(
+            descendant
+            for child in scope.get_scopes()
+            for descendant in (child, *cls._helper_callable_scopes(child))
+        )
 
     @staticmethod
     def _destination_imports_moving_declaration(

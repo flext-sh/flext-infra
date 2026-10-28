@@ -380,22 +380,8 @@ class FlextInfraUtilitiesPythonModel:
             The module facts, or ``None`` for a name without a Python source.
 
         """
-        path = cls.python_model_locate(run, name)
+        path = run.module_files.get(name)
         return None if path is None else cls.python_model_module_at(run, path, name)
-
-    @classmethod
-    def python_model_locate(cls, run: m.Infra.PythonModelRun, name: str) -> Path | None:
-        """Resolve a dotted module name through this run's one indexed tree.
-
-        Per-repository resolution law: a name absent from the run's single
-        rope-project index resolves nowhere. Installed environments are never
-        consulted, where divergent member libraries would leak into the plan.
-
-        Returns:
-            The module's source file, or ``None`` when no source declares it.
-
-        """
-        return run.module_files.get(name)
 
     @staticmethod
     def python_model_exports(
@@ -435,26 +421,6 @@ class FlextInfraUtilitiesPythonModel:
         )
 
     @staticmethod
-    def python_model_members(module: m.Infra.PythonModuleFacts) -> frozenset[str]:
-        """Return every name a module binds, defined or imported.
-
-        Returns:
-            The module's bound names.
-
-        """
-        return frozenset(module.members)
-
-    @staticmethod
-    def python_model_imports(module: m.Infra.PythonModuleFacts) -> Mapping[str, str]:
-        """Return every imported name with its dotted import target.
-
-        Returns:
-            The import targets keyed by local name.
-
-        """
-        return module.imports
-
-    @staticmethod
     def python_model_import_target(module: m.Infra.PythonModuleFacts, name: str) -> str:
         """Return the dotted target a name is imported from.
 
@@ -475,18 +441,6 @@ class FlextInfraUtilitiesPythonModel:
 
         """
         return module.members.get(name) not in {None, "alias"}
-
-    @staticmethod
-    def python_model_class_bases(
-        module: m.Infra.PythonModuleFacts,
-    ) -> Mapping[str, Sequence[str]]:
-        """Return each top-level class with its base expressions as written.
-
-        Returns:
-            The base expressions keyed by class name.
-
-        """
-        return module.classes
 
     @staticmethod
     def python_model_value_root(module: m.Infra.PythonModuleFacts, name: str) -> str:

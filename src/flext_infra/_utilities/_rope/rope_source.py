@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import textwrap
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 
@@ -19,6 +19,138 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 
 class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
+
+    @staticmethod
+    def source_declaration_region(
+        module: p.Infra.RopeSourceModule,
+        node: p.Infra.RopeAstNode,
+    ) -> tuple[int, int]:
+        """Read an opaque native node's exact region through its SDK index.
+
+        Returns:
+            The original inclusive/exclusive character offsets.
+
+        Raises:
+            ValueError: The native declaration has no valid source region.
+
+        """
+        start, end = module.get_source_binding_index().lines[node]
+        if (
+            start is None
+            or end is None
+            or not 0 <= start < end <= len(module.source_code)
+        ):
+            message = "Native declaration has no valid source region"
+            raise ValueError(message)
+        return start, end
+
+    @classmethod
+    def source_class_fields(
+        cls, owner: p.Infra.RopeSourceClass
+    ) -> Mapping[str, tuple[int, int]]:
+        """Describe direct annotated fields through native class bindings.
+
+        Inherited field precedence belongs to the native class-order owner.
+        This query neither duplicates that order nor interprets syntax nodes.
+
+        Returns:
+            Declared field names mapped to their annotation source regions.
+
+        Raises:
+            TypeError: The declaring module is not a native source module.
+            ValueError: A direct field has competing annotated declarations.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Class field declarations require a native source module"
+            raise TypeError(message)
+        scope = owner.get_scope()
+        fields: dict[str, tuple[int, int]] = {}
+        index = module.get_source_binding_index()
+        for name, binding in scope.get_defined_names().items():
+            if not runtime.assigned_name(binding):
+                continue
+            regions: set[tuple[int, int]] = set()
+            for assignment in binding.assignments:
+                if assignment.type_hint is None:
+                    continue
+                region = cls.source_declaration_region(module, assignment.type_hint)
+                if index.context_at(region[0]).structural_scope.pyobject is owner:
+                    regions.add(region)
+            if len(regions) > 1:
+                message = f"Competing native field annotations: {owner.get_name()}.{name}"
+                raise ValueError(message)
+            if regions:
+                fields[name] = next(iter(regions))
+        return fields
+
+    @staticmethod
+    def source_return_annotation(
+        owner: p.Infra.RopeSourceFunction,
+    ) -> tuple[int, int] | None:
+        """Select the complete return annotation already classified by Rope.
+
+        Returns:
+            Its source region, or ``None`` for an unannotated function.
+
+        Raises:
+            TypeError: The declaring module is not a native source module.
+            ValueError: Rope reports competing return-annotation roots.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Return annotations require a native source module"
+            raise TypeError(message)
+        regions = frozenset(
+            (fragment.start, fragment.end)
+            for fragment in module.get_source_binding_index().fragments
+            if fragment.context.role == "return-annotation"
+            and fragment.context.structural_scope.pyobject is owner
+        )
+        roots = tuple(
+            region
+            for region in regions
+            if not any(
+                other != region
+                and other[0] <= region[0] < region[1] <= other[1]
+                for other in regions
+            )
+        )
+        if len(roots) > 1:
+            message = f"Competing native return annotations: {owner.get_name()}"
+            raise ValueError(message)
+        return roots[0] if roots else None
+
+    @staticmethod
+    def source_type_parameters(
+        owner: p.Infra.RopeSourceObject,
+    ) -> tuple[tuple[int, int], ...]:
+        """Retain native PEP 695 declarations, including their bounds/defaults.
+
+        Returns:
+            Type-parameter regions in the original declaration order.
+
+        Raises:
+            TypeError: The declaring module is not a native source module.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Type parameters require a native source module"
+            raise TypeError(message)
+        return tuple(
+            sorted({
+                (fragment.start, fragment.end)
+                for fragment in module.get_source_binding_index().fragments
+                if fragment.context.role == "type-parameter-token"
+                and fragment.context.structural_scope.pyobject is owner
+            })
+        )
 
     @classmethod
     def settings_branch_fields(
@@ -303,33 +435,6 @@ class FlextInfraUtilitiesRopeSource:
                 continue
             result.append((candidate, candidate))
         return result
-
-    @classmethod
-    def hoist_inline_imports(
-        cls,
-        file_path: Path,
-        statement_lines: Sequence[t.IntPair],
-    ) -> bool:
-        """Move function-local import statements to the module import block.
-
-        ``statement_lines`` holds the 1-based inclusive line span of each
-        import statement a rule found. The statements are removed from their
-        function bodies and their dedented text is added once after the
-        module's last top-level import. A body left empty, or a result that no
-        longer parses, raises: the move is never half-applied.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        if not statement_lines:
-            return False
-        source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
-        updated = cls.plan_hoist_inline_imports(file_path, source, statement_lines)
-        if updated == source:
-            return False
-        file_path.write_text(updated, encoding=c.DEFAULT_ENCODING)
-        return True
 
     @classmethod
     def plan_hoist_inline_imports(

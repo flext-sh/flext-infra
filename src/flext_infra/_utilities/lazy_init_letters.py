@@ -223,9 +223,7 @@ class FlextInfraUtilitiesLazyInitLetters:
             module = FlextInfraUtilitiesPythonModel.python_model_module_at(
                 run.model, child, f"{context.current_pkg}.{child.stem}"
             )
-            for name, target in FlextInfraUtilitiesPythonModel.python_model_imports(
-                module
-            ).items():
+            for name, target in module.imports.items():
                 provider, _, attribute = target.rpartition(".")
                 if (
                     provider in {upstream, context.current_pkg}
@@ -365,10 +363,10 @@ class FlextInfraUtilitiesLazyInitLetters:
         module = python.python_model_module_at(
             run.model, path, entry.module_name if entry else current
         )
-        imports = python.python_model_imports(module)
+        imports = module.imports
         targets = tuple(
             f"{target}.{tail}" if tail else target
-            for name, bases in python.python_model_class_bases(module).items()
+            for name, bases in module.classes.items()
             if c.Infra.LAZY_INIT_CONSTANTS_MARKER in name
             for base in bases
             for head, _, tail in (base.partition("."),)

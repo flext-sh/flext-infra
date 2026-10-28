@@ -432,6 +432,13 @@ class FlextInfraUtilitiesFacadeComponents:
         resource = project.find_module(origin_head or head)
         if resource is None:
             binding = module.get_attribute(name).get_object()
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(binding):
+                # The name is bound by the package's generated lazy
+                # initializer (install_lazy_exports); one deterministic hop
+                # through the lazy map reaches the declaring module's class.
+                binding = (
+                    components.component_lazy_binding(project, module, head) or binding
+                )
             return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                 binding, "lexical facade component ancestry"
             )
@@ -445,9 +452,10 @@ class FlextInfraUtilitiesFacadeComponents:
             if not FlextInfraUtilitiesTypesRopeRuntime.py_class(binding):
                 # The origin re-exports the class from a sibling module; one
                 # hop through the origin's own import map reaches the declarer.
-                binding = components.component_sibling_binding(
-                    project, declared, origin_name
-                ) or binding
+                binding = (
+                    components.component_sibling_binding(project, declared, origin_name)
+                    or binding
+                )
         else:
             binding = module.get_attribute(name).get_object()
         return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
@@ -455,6 +463,73 @@ class FlextInfraUtilitiesFacadeComponents:
             f"lexical facade component ancestry: base {name!r} of "
             f"{owner.get_name()} in {module.get_name()}",
         )
+
+    @staticmethod
+    def component_lazy_binding(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        name: str,
+    ) -> p.Infra.RopePyObject | None:
+        """Resolve a lazy-exported name to its declaring module's binding.
+
+        The generated package initializer binds the name through
+        ``install_lazy_exports`` with a relative target (``".module"``);
+        one deterministic hop reads that target from the initializer's
+        mapping literal and resolves the class in the target module —
+        the same module the runtime would import on first attribute access.
+
+        Returns:
+            The declarer's binding, or none when no lazy map names it.
+
+        """
+        components = FlextInfraUtilitiesFacadeComponents
+        package = module.get_name().rpartition(".")[0]
+        init_resource = project.find_module(package)
+        if init_resource is None:
+            return None
+        init = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            project, init_resource
+        )
+        for target in components.lazy_export_targets(init, name):
+            target_resource = project.find_module(f"{package}{target}")
+            if target_resource is None:
+                continue
+            target_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                project, target_resource
+            )
+            declared = components.component_imported_name(target_module, name)
+            return target_module.get_attribute(declared or name).get_object()
+        return None
+
+    @staticmethod
+    def lazy_export_targets(init: p.Infra.RopePyModule, name: str) -> list[str]:
+        """Read the lazy-export targets one initializer's map declares for a name.
+
+        Returns:
+            The relative target module paths bound to the name.
+
+        """
+        targets: list[str] = []
+        for statement in getattr(init.get_ast(), "body", ()):
+            if type(statement).__name__ != "Call":
+                continue
+            if getattr(getattr(statement, "func", None), "id", "") != (
+                "install_lazy_exports"
+            ):
+                continue
+            for argument in getattr(statement, "args", ()):
+                mapping = getattr(argument, "value", None)
+                if mapping is None or type(mapping).__name__ != "Dict":
+                    continue
+                for key, value in zip(
+                    getattr(mapping, "keys", ()),
+                    getattr(mapping, "values", ()),
+                    strict=False,
+                ):
+                    target = getattr(value, "value", "")
+                    if getattr(key, "value", None) == name and target.startswith("."):
+                        targets.append(target)
+        return targets
 
     @staticmethod
     def component_sibling_binding(

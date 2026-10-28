@@ -171,25 +171,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             return ast.parse(source, filename=filename)
 
     @staticmethod
-    @cache
-    def class_base_names(
-        source: str,
-    ) -> tuple[tuple[str, frozenset[str]], ...]:
-        """Name every class one module source declares with its base spellings.
-
-        Classes are statements, so only statement bodies are traversed;
-        nested class, function, conditional and handler bodies included. A
-        base is spelled by its last name (``m.Base[T]`` spells ``Base``).
-
-        Returns:
-            Each declared class name with the names its bases spell.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysisSourceScan.module_class_base_names(
-            FlextInfraUtilitiesRopeAnalysisSourceScan.Tree.parse_module_source(source)
-        )
-
-    @staticmethod
     def module_class_base_names(
         module: ast.Module,
     ) -> tuple[tuple[str, frozenset[str]], ...]:
@@ -523,6 +504,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             The declared strings using the source reader's export semantics.
 
         Raises:
+            TypeError: The native assignment query has no word finder contract.
             ValueError: If Cyclic native string-sequence declaration.
 
         """
@@ -531,6 +513,20 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         region = cls.module_assignment_region(source_module, scope, name, depth=1)
         if region is None and name == c.Infra.DUNDER_ALL:
             index = source_module.get_source_binding_index()
+            word = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+                "rope.base.worder", "Worder"
+            )(source_module.source_code)
+            if not isinstance(word, p.Infra.RopeWorder):
+                msg = "Native assignment query requires the word finder contract"
+                raise TypeError(msg)
+            if not any(
+                fragment.depth == 3
+                and word.get_word_at(fragment.start) == name
+                and word.get_word_range(fragment.start)
+                == (fragment.start, fragment.end)
+                for fragment in index.fragments
+            ):
+                return ()
             roots = tuple(
                 child
                 for child in module_scope.get_scopes()
@@ -599,15 +595,17 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             and word.get_word_at(child.start) == name
             and word.get_word_range(child.start) == (child.start, child.end)
         )
+        if not named:
+            return None
         direct = tuple(
             fragment
             for fragment in index.fragments
             if fragment.depth == depth
-            and fragment.context.structural_scope.pyobject is scope.pyobject
             and any(
                 fragment.start <= child.start < child.end <= fragment.end
                 for child in named
             )
+            and fragment.context.structural_scope.pyobject is scope.pyobject
         )
         for fragment in direct:
             arity = sum(
@@ -789,6 +787,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         region: tuple[int, int],
         *,
         include_augmented: bool = False,
+        unpack_targets: bool = True,
     ) -> tuple[str, ...]:
         """Read native assignment/lazy-alias target names, including unpacking.
 
@@ -862,13 +861,18 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                         for name in cls._declaration_target_names(
                             module,
                             runtime.semantic_capture_region(match, f"target{index}"),
+                            unpack_targets=unpack_targets,
                         )
                     )
         return ()
 
     @classmethod
     def _declaration_target_names(
-        cls, module: p.Infra.RopeSourceModule, region: tuple[int, int]
+        cls,
+        module: p.Infra.RopeSourceModule,
+        region: tuple[int, int],
+        *,
+        unpack_targets: bool = True,
     ) -> tuple[str, ...]:
         """Query native name leaves and tuple/list target shapes recursively.
 
@@ -896,6 +900,8 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 )
                 else ()
             )
+        if not unpack_targets:
+            return ()
         items = cls._native_sequence_items(module, region)
         return tuple(
             name

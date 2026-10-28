@@ -211,6 +211,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_param_names(self, *, special_args: bool = True) -> Sequence[str]: ...
 
+        def get_parameter_layout(self) -> tuple[tuple[str, str], ...]: ...
+
+        def get_parameter_defaults(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsRopeRuntime.RopeAstNode]: ...
+
         def get_parameters(
             self,
         ) -> Mapping[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
@@ -431,12 +437,25 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         context: FlextInfraProtocolsRopeRuntime.RopeSourceBindingContext
 
     @runtime_checkable
+    class RopeSourceDeclarationLines(Protocol):
+        """Exact character regions elected by Rope for its opaque source nodes."""
+
+        def __getitem__(
+            self, node: FlextInfraProtocolsRopeRuntime.RopeAstNode
+        ) -> tuple[int, int] | tuple[None, None]: ...
+
+    @runtime_checkable
     class RopeSourceBindingIndex(Protocol):
         """Native source binding index, including PEP 695 type parameters."""
 
         def context_at(
             self, offset: int
         ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingContext: ...
+
+        @property
+        def lines(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSourceDeclarationLines: ...
 
         @property
         def fragments(

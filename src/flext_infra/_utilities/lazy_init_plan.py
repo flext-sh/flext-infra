@@ -689,7 +689,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             for module_name, _attr in (a, b)
         )
         if any(
-            module is None or target[1] not in python.python_model_members(module)
+            module is None or target[1] not in module.members
             for module, target in zip(modules, (a, b), strict=True)
         ):
             return None
@@ -704,7 +704,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 a if b_def in python.python_model_ancestors(run.model, a_def) else None
             )
         a_init, b_init = (
-            (path := python.python_model_locate(run.model, target[0])) is not None
+            (path := run.model.module_files.get(target[0])) is not None
             and path.name == c.Infra.INIT_PY
             for target in (a, b)
         )

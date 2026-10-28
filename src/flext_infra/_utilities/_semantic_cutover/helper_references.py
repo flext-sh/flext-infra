@@ -6,11 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p
+from flext_infra import m, p
 from flext_infra._utilities._rope.rope_class_move import (
     FlextInfraUtilitiesRopeClassMove,
 )
@@ -103,14 +102,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             origin_module=origin.get_name(),
             target_module=target.get_name(),
         )
-        declaration = next(
-            node
-            for node in ast.parse(sources[request.source_file]).body
-            if isinstance(node, ast.ClassDef) and node.name == request.class_name
-        )
-        if declaration.end_lineno is None:
-            msg = "shared helper declaration has no complete source range"
-            raise ValueError(msg)
+        declaration = cls._helper_declaration_scope(origin, request.class_name)
         prepared = dict(sources)
         quoted_imports: MutableMapping[Path, str] = {}
         for path, source in sources.items():
@@ -119,7 +111,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 project,
                 path,
                 source,
-                protected=(declaration.lineno, declaration.end_lineno)
+                protected=(declaration.get_start(), declaration.get_end())
                 if path == request.source_file
                 else None,
             )
@@ -155,11 +147,16 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         root = Path(request.rope_project.root.real_path)
         snapshot = runtime.snapshot_project(request.rope_project, prepared)
         try:
-            line = next(
-                node.lineno
-                for node in ast.parse(prepared[request.source_file]).body
-                if isinstance(node, ast.ClassDef) and node.name == request.class_name
+            origin = runtime.build_string_module(
+                snapshot,
+                prepared[request.source_file],
+                resource=snapshot.get_resource(
+                    request.source_file.relative_to(root).as_posix()
+                ),
             )
+            line = FlextInfraUtilitiesSemanticHelperReferences._helper_declaration_scope(
+                origin, request.class_name
+            ).get_start()
             moved = FlextInfraUtilitiesRopeClassMove.plan_class_move(
                 m.Infra.ClassMoveRequest(
                     rope_project=snapshot,
@@ -276,22 +273,14 @@ class FlextInfraUtilitiesSemanticHelperReferences(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        body = ast.parse(source).body
-        declared = {
-            target.id
-            for node in body
-            for target in (
-                node.targets
-                if isinstance(node, ast.Assign)
-                else (node.target,)
-                if isinstance(node, ast.AnnAssign)
-                else ()
-            )
-            if isinstance(target, ast.Name)
-        } | {
-            node.name for node in body if isinstance(node, c.Infra.AST_DEFINITION_TYPES)
-        }
         module = runtime.build_string_module(project, source, resource=resource)
+        declared = {
+            name
+            for name, binding in module.get_scope().get_defined_names().items()
+            if not isinstance(
+                binding, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
+            )
+        }
         imports = runtime.module_imports_for_pymodule(project, module)
         changed = False
         for statement in tuple(imports.imports):
@@ -311,6 +300,24 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 )
                 changed = True
         return imports.get_changed_source() if changed else source
+
+    @staticmethod
+    def _helper_declaration_scope(
+        module: p.Infra.RopePyModule, name: str
+    ) -> p.Infra.RopeScope:
+        """Require exactly one original class identity in the native module scope."""
+        declarations = tuple(
+            scope
+            for scope in module.get_scope().get_scopes()
+            if scope.get_kind() == "Class" and scope.pyobject.get_name() == name
+        )
+        if len(declarations) != 1:
+            msg = (
+                "shared helper requires one native class declaration: "
+                f"{module.get_name()}:{name}"
+            )
+            raise ValueError(msg)
+        return declarations[0]
 
     @classmethod
     def _moved_quoted_source(

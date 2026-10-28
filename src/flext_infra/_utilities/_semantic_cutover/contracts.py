@@ -155,22 +155,15 @@ class FlextInfraUtilitiesSemanticContracts(
                 message = f"Rope contract catalogue disappeared: {catalogue}"
                 raise ValueError(message)
             parsed = u.Cli.yaml_parse(state.content.decode(c.DEFAULT_ENCODING)).unwrap()
-            declared = m.Infra.RopeContractRules.model_validate_json(
-                u.json_mapping_adapter().dump_json({
-                    **parsed,
-                    "rules": [
-                        {
-                            **rule,
-                            "owner_root": None
-                            if owner_root is None
-                            else str(owner_root),
-                        }
-                        for rule in u.json_mapping_sequence_adapter().validate_python(
-                            parsed.get("rules")
-                        )
-                    ],
-                })
-            )
+            declared = m.Infra.RopeContractRules.model_validate({
+                **parsed,
+                "rules": [
+                    {**rule, "owner_root": owner_root}
+                    for rule in u.json_mapping_sequence_adapter().validate_python(
+                        parsed.get("rules")
+                    )
+                ],
+            })
             for rule in declared.rules:
                 if rule.ownership_transfer is not None and owner_root is None:
                     message = (
@@ -354,7 +347,7 @@ class FlextInfraUtilitiesSemanticContracts(
             The historical path, source text and declared names.
 
         """
-        provider, module, resource = cls._authenticated_generic_provider(
+        _identity, provider, module, resource = cls._generic_history_provider(
             project, selection
         )
         path = Path(resource.real_path).resolve()
@@ -373,8 +366,11 @@ class FlextInfraUtilitiesSemanticContracts(
             ),
             additional_source_folders=None,
         ):
+            _identity, historical_provider, historical_module, _resource = (
+                cls._generic_history_provider(project, selection)
+            )
             declarations, names, imports = cls._generic_history_declarations(
-                cls._generic_history_module(project, selection), current_names
+                historical_module, historical_provider, current_names
             )
         candidate = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,
@@ -411,7 +407,9 @@ class FlextInfraUtilitiesSemanticContracts(
         cls,
         project: p.Infra.RopeProject,
         selection: p.Infra.RopeContractRule,
-    ) -> tuple[str, p.Infra.RopeSourceClass, p.Infra.RopePyModule, object]:
+    ) -> tuple[
+        str, p.Infra.RopeSourceClass, p.Infra.RopePyModule, p.Infra.RopeResource
+    ]:
         """Authenticate the elected provider, its module and its resource.
 
         Returns:
@@ -497,57 +495,10 @@ class FlextInfraUtilitiesSemanticContracts(
         return blobs[path.name].decode(c.DEFAULT_ENCODING)
 
     @classmethod
-    def _authenticated_generic_provider(
-        cls,
-        project: p.Infra.RopeProject,
-        selection: p.Infra.RopeContractRule,
-    ) -> tuple[p.Infra.RopeSourceClass, p.Infra.RopePyModule, object]:
-        """Authenticate the provider and return it with its module and resource.
-
-        Returns:
-            The provider class, its module and its resource.
-
-        """
-        _identity, provider, module, resource = cls._generic_history_provider(
-            project, selection
-        )
-        return provider, module, resource
-
-    @classmethod
-    def _generic_history_module(
-        cls,
-        project: p.Infra.RopeProject,
-        selection: p.Infra.RopeContractRule,
-    ) -> p.Infra.RopePyModule:
-        """Authenticate the historical provider's module inside the view.
-
-        Returns:
-            The historical native module.
-
-        Raises:
-            TypeError: If the historical provider has no native module.
-
-        """
-        identity, provider, module, resource = cls._generic_history_provider(
-            project, selection
-        )
-        del provider, module, resource
-        historical = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-            project, identity
-        ).get_object()
-        if not isinstance(historical, p.Infra.RopeSourceClass):
-            msg = f"{selection.id}: historical provider identity is not a source class"
-            raise TypeError(msg)
-        historical_module = historical.get_module()
-        if not isinstance(historical_module, p.Infra.RopePyModule):
-            msg = f"{selection.id}: historical provider has no native module"
-            raise TypeError(msg)
-        return historical_module
-
-    @classmethod
     def _generic_history_declarations(
         cls,
         historical_module: p.Infra.RopePyModule,
+        provider: p.Infra.RopeSourceClass,
         current_names: frozenset[str],
     ) -> tuple[list[str], list[str], dict[str, set[str]]]:
         """Compose forwarding declarations from the historical module.
@@ -565,10 +516,7 @@ class FlextInfraUtilitiesSemanticContracts(
             body,
         ), parameters in cls._generic_collection_declarations(
             historical_module,
-            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                historical_module,
-                historical_module.get_name() or "",
-            ).get_object(),
+            provider,
         ):
             alias_name = historical_module.source_code[alias.start : alias.end]
             if alias_name in current_names:

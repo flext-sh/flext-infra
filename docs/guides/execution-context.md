@@ -471,12 +471,20 @@ recursive imported-assignment resolution.
 Assignment docstrings likewise consume the source module elected for the
 documentation check, preserving that project through recursive symbol and
 inherited-documentation checks instead of reparsing assignment source text.
+Their existing admission covers simple assignment names; the native reader
+does not expand that documentation surface while replacing its parser.
+Assignment lookup elects matching native name spans before resolving lexical
+ownership, so unrelated declarations cannot trigger superclass inference.
 
 Documentation reads module, class and function docstrings from their elected
 native objects' `get_doc()` methods. Local declaration admission still excludes
 imported bindings; recursive public-symbol documentation owns import traversal.
 The rendered summary keeps its existing whitespace normalization at the docs
 rendering owner. Source-only wrappers for those three SDK capabilities are retired.
+The unused source-only class-base parsing wrapper is also retired; active
+declaration readers retain their own elected native source boundary.
+Inline-import hoisting is planned by its existing candidate owner and published
+through that transaction; the unused direct filesystem-writing wrapper is retired.
 
 A DSL consumer that updates one working source binds it through the existing
 source-view owner. That binding retains the entry candidate's foreign/provider

@@ -314,7 +314,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
                 names.extend(previous_targets)
             previous_targets = (
                 FlextInfraUtilitiesRopeAnalysisSourceScan.statement_declaration_names(
-                    source_module, region
+                    source_module, region, unpack_targets=False
                 )
             )
         return tuple(dict.fromkeys(names))
