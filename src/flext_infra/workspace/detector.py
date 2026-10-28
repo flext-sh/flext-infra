@@ -1025,7 +1025,7 @@ class FlextInfraWorkspaceDetector(
         resolved_root: Path,
         identity: m.Infra.GitIdentityReport,
         declaration: m.Infra.RepositoryDeltaSpec,
-    ) -> p.Result[tuple[m.Infra.BeadsProjectSpec], ...]:
+    ) -> p.Result[tuple[m.Infra.BeadsProjectSpec, ...]]:
         """Resolve the effective Beads ledger from the declared policy overlay.
 
         Returns:
@@ -1053,14 +1053,14 @@ class FlextInfraWorkspaceDetector(
         resolved_root: Path,
         identity: m.Infra.GitIdentityReport,
         beads: m.Infra.BeadsProjectSpec | None,
-    ) -> p.Result[tuple[m.Infra.BeadsProjectSpec], ...]:
+    ) -> p.Result[tuple[m.Infra.BeadsProjectSpec, ...]]:
         """Resolve the effective Beads ledger, inheriting through submodules.
 
         Returns:
             The effective workspace Beads specification as a 0-or-1 tuple.
 
         """
-        result_type = r[tuple[m.Infra.BeadsProjectSpec], ...]
+        result_type = r[tuple[m.Infra.BeadsProjectSpec, ...]]
         member_root = identity.primary_root
         member_beads = member_root / c.Infra.BEADS_DIRNAME
         if not (
@@ -1329,7 +1329,7 @@ class FlextInfraWorkspaceDetector(
     def analysis_exclusion_paths(
         cls,
         repository_root: Path,
-    ) -> p.Result[tuple[Path], ...]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Load exclusions for governed repositories; ignore ungoverned trees.
 
         Returns:

@@ -43,7 +43,7 @@ class FlextInfraValidationCommandRoutes:
         details = "\n".join((report.summary, *report.violations))
         return r[m.Infra.ValidationReport].fail(details)
 
-    validate_command_routes: ClassVar[tuple[m.Cli.ResultCommandRoute], ...] = (
+    validate_command_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
         *tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,

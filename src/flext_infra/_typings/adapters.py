@@ -49,9 +49,9 @@ class FlextInfraTypesAdapters:
     )
     "Validates t.StrSequence."
 
-    NON_EMPTY_STR_SEQ_ADAPTER: ClassVar[
-        u.type_adapter[tuple[t.NonEmptyStr, ...]]
-    ] = u.type_adapter(tuple[t.NonEmptyStr, ...])
+    NON_EMPTY_STR_SEQ_ADAPTER: ClassVar[u.type_adapter[tuple[t.NonEmptyStr, ...]]] = (
+        u.type_adapter(tuple[t.NonEmptyStr, ...])
+    )
     "Validates t.VariadicTuple[t.NonEmptyStr] at typed render boundaries."
 
     STR_ADAPTER: ClassVar[u.type_adapter[str]] = u.type_adapter(str)

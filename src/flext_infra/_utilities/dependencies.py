@@ -165,9 +165,7 @@ class FlextInfraUtilitiesDependencies(
     def _validated_import_suppliers(
         inputs: m.Infra.RuntimeDependencyInputs,
         locked: m.Infra.LockedEnvironment,
-    ) -> p.Result[
-        tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]
-    ]:
+    ) -> p.Result[tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]]:
         """Parse provider requirements and authenticate them against the lock.
 
         Returns:

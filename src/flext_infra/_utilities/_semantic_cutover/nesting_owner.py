@@ -573,7 +573,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         owner: str,
         module_name: str,
         strict: bool = False,
-    ) -> p.Result[tuple[str], ...]:
+    ) -> p.Result[tuple[str, ...]]:
         """Return the loose members the owner body can hold, in module order.
 
         A member that reads the owner while it is being defined (an alias of
@@ -592,7 +592,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             The movable members, or a failure naming the module and member.
 
         """
-        checked = r[tuple[str], ...]
+        checked = r[tuple[str, ...]]
         selected = frozenset(members)
         nodes_by_member: t.MutableMappingKV[str, ast.stmt] = {}
         for node in tree.body:

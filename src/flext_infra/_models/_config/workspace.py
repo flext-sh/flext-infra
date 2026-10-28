@@ -295,7 +295,7 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(alias="include-group", description="Referenced dependency group"),
         ]
 
-    class DependencyGroupEntries(m.RootModel[tuple[str | DependencyGroupInclude], ...]):
+    class DependencyGroupEntries(m.RootModel[tuple[str | DependencyGroupInclude, ...]]):
         """Native ordered PEP 735 entries, without resolving local references."""
 
         @m.model_validator(mode="before")

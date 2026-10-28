@@ -1184,7 +1184,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_path: Path,
         initial_violations: t.SequenceOf[m.Infra.CensusViolation],
         remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
-    ) -> tuple[tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]]:
+    ) -> tuple[
+        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
+    ]:
         """Split initial violations into fixed and still-skipped groups.
 
         Returns:

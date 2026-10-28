@@ -23,7 +23,7 @@ class FlextInfraUtilitiesLogParser:
         repository_root: Path,
         *,
         reports_dir: Path,
-    ) -> p.Result[tuple[m.Infra.SarifResult], ...]:
+    ) -> p.Result[tuple[m.Infra.SarifResult, ...]]:
         """Read the SARIF report ``check run`` wrote into typed findings.
 
         ``reports_dir`` is the exact invocation directory printed by ``check run``,

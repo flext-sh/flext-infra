@@ -423,14 +423,14 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         root: Path,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit], ...]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan binding-aware public import rewrites.
 
         Returns:
             The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit], ...],``.
 
         """
-        planned_edits = (r[tuple[m.Infra.SemanticMigrationEdit], ...],)
+        planned_edits = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
         specs, direct_specs, facades = cls._private_import_references(
             root,
             sources,

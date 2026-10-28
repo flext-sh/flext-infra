@@ -27,8 +27,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     deadline across collection and execution.
     """
 
-    _NO_COVERAGE: ClassVar[tuple[str], ...] = ("--no-cov",)
-    _ITEM_LIMITS: ClassVar[tuple[str], ...] = (
+    _NO_COVERAGE: ClassVar[tuple[str, ...]] = ("--no-cov",)
+    _ITEM_LIMITS: ClassVar[tuple[str, ...]] = (
         f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
     )
 

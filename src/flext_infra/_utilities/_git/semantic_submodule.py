@@ -174,7 +174,9 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
         cls,
         superproject_root: Path,
     ) -> p.Result[
-        tuple[tuple[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec], ...]
+        tuple[
+            tuple[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec], ...
+        ]
     ]:
         """Read every governed, materialized member's own ``pyproject.toml``.
 
@@ -187,7 +189,10 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
 
         """
         result = r[
-            tuple[tuple[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec], ...]
+            tuple[
+                tuple[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec],
+                ...,
+            ]
         ]
         declared = cls.git_submodule_declarations(superproject_root)
         if declared.failure:

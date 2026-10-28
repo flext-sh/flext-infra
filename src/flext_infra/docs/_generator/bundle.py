@@ -33,14 +33,14 @@ class FlextInfraDocsGeneratorBundle:
     def _presentation_metadata(
         scopes: t.SequenceOf[m.Infra.DocScope],
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Prepare only authorial YAML and the owned pyproject locale leaf.
 
         Returns:
             Exact metadata plans, without Python or tooling source planning.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         ownership = u.Infra.pyproject_managed_file()
         if ownership.failure:
             return result_type.from_failure(ownership)

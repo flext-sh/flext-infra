@@ -246,9 +246,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
         plan: m.Infra.CodegenPlan,
-        after_publication: tuple[
-            Callable[[tuple[Path, ...]], p.Result[bool]], ...
-        ],
+        after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
     ) -> p.Result[p.Infra.CodegenResult]:
         """Publish the plan and its docs once, then run the follow-ups.
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraGitLanes, c, m, p, r, s, t, u
+from flext_infra import FlextInfraGitLanes, c, m, p, r, s, u
 
 
 class FlextInfraWorktreeService(s[str]):

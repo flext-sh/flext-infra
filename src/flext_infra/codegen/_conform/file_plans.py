@@ -23,14 +23,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         root: Path,
         inputs: m.Infra.CodegenInputs,
         kind: c.Infra.ProjectKind,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Publish an explicit kind only into the requested target's own source.
 
         Returns:
             The declaration plan, none when already declared, or the conflict.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         effective = inputs.spec.repository
         if "kind" in effective.model_fields_set and effective.kind != kind:
             return result_type.fail(
@@ -145,7 +145,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         cls,
         root: Path,
         inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Project self-owned declarations before retiring their input.
 
         This is an explicit migration operation, not a configuration source.
@@ -156,7 +156,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The own declaration and its retirement, or the first failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         legacy_path = u.Infra.workspace_manifest_path(root)
         project = inputs.spec.repository.project
         resource_owned = project is not None and any(
@@ -316,7 +316,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         captured: m.Cli.AtomicFileState,
         delta: m.Infra.RepositoryDeltaSpec,
         legacy: m.Infra.WorkspaceManifestSpec,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Validate the projected declaration before planning input retirement.
 
         The input is retired unless its bytes are a declared resource.
@@ -325,7 +325,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The source declaration and its dependent retirement.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,

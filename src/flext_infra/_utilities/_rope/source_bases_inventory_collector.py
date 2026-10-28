@@ -755,7 +755,10 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         branches: t.SequenceOf[
-            tuple[t.MappingKV[str, m.Infra.SourceClassReference | None], t.SequenceOf[ast.stmt]]
+            tuple[
+                t.MappingKV[str, m.Infra.SourceClassReference | None],
+                t.SequenceOf[ast.stmt],
+            ]
         ],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:

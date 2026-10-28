@@ -191,7 +191,7 @@ class FlextInfraModReplacements:
     @classmethod
     def compose[FindingT: m.Infra.ModOccurrence](
         cls, root: Path, report: m.Infra.ModOccurrenceReport[FindingT]
-    ) -> p.Result[tuple[m.Infra.SemanticFilePlan], ...]:
+    ) -> p.Result[tuple[m.Infra.SemanticFilePlan, ...]]:
         """Compose authenticated candidate bytes without admission or live effects.
 
         Returns:
@@ -213,7 +213,7 @@ class FlextInfraModReplacements:
     @classmethod
     def admit(
         cls, root: Path, plans: t.SequenceOf[m.Infra.SemanticFilePlan]
-    ) -> p.Result[tuple[m.Infra.SemanticFilePlan], ...]:
+    ) -> p.Result[tuple[m.Infra.SemanticFilePlan, ...]]:
         """Normalize and judge only complete syntax candidates against originals.
 
         Returns:

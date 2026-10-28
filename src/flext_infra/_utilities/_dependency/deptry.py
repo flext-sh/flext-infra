@@ -220,14 +220,14 @@ class FlextInfraUtilitiesDependencyDeptry:
     def _authenticated_deptry_sources(
         project_path: Path,
         roots: t.StrTuple,
-    ) -> p.Result[tuple[m.Cli.AtomicPhysicalTreeManifest], ...]:
+    ) -> p.Result[tuple[m.Cli.AtomicPhysicalTreeManifest, ...]]:
         """Inventory every production root and authenticate its physical shape.
 
         Returns:
             One exact tree manifest per root, or the first authentication failure.
 
         """
-        result_type = r[tuple[m.Cli.AtomicPhysicalTreeManifest], ...]
+        result_type = r[tuple[m.Cli.AtomicPhysicalTreeManifest, ...]]
         manifests: list[m.Cli.AtomicPhysicalTreeManifest] = []
         for root in roots:
             source = u.Cli.atomic_inventory_physical_tree(project_path / root)

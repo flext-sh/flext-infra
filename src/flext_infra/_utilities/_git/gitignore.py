@@ -284,7 +284,7 @@ class FlextInfraUtilitiesGitignore:
         found: t.MappingKV[str, list[int]],
         lines: t.SequenceOf[str],
         destination: Path,
-    ) -> p.Result[tuple[t.Triple[int, int, str]], ...]:
+    ) -> p.Result[tuple[t.Triple[int, int, str], ...]]:
         """Slice one ordered, non-overlapping external section per declared block.
 
         Returns:

@@ -255,7 +255,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         dist: Path,
         destination: Path,
         expectation: m.Infra.ArtifactExpectation,
-    ) -> p.Result[tuple[m.Infra.BuildArtifact], ...]:
+    ) -> p.Result[tuple[m.Infra.BuildArtifact, ...]]:
         """Validate exactly one wheel and one sdist, then persist the set atomically.
 
         An existing set is immutable: it is accepted only byte for byte.
@@ -264,7 +264,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
             The resulting ``p.Result[tuple[m.Infra.BuildArtifact], ...],``.
 
         """
-        result_type = (r[tuple[m.Infra.BuildArtifact], ...],)
+        result_type = r[tuple[m.Infra.BuildArtifact, ...]]
         try:
             entries = tuple(sorted(dist.iterdir()))
         except OSError as exc:

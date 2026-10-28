@@ -155,14 +155,14 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
     def _logical_make_lines(
         content: str,
         policy: m.Infra.CustomHandlerPolicy,
-    ) -> p.Result[tuple[t.Pair[int, str]], ...]:
+    ) -> p.Result[tuple[t.Pair[int, str], ...]]:
         """Collapse backslash continuations into reportable logical lines.
 
         Returns:
             The logical lines and their first physical line numbers.
 
         """
-        result_type = (r[tuple[t.Pair[int, str]], ...],)
+        result_type = r[tuple[t.Pair[int, str], ...]]
         logical_lines: list[t.Pair[int, str]] = []
         pending_line: str | None = None
         pending_number: int = 0

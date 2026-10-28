@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRelease:
     @staticmethod
     def _validated_tar_members(
         archive: tarfile.TarFile,
-    ) -> p.Result[tuple[t.Pair[tarfile.TarInfo, Path]], ...]:
+    ) -> p.Result[tuple[t.Pair[tarfile.TarInfo, Path], ...]]:
         """Validate every archive member name and kind for safe materialization.
 
         Returns:

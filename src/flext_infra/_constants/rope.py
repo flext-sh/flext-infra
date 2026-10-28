@@ -92,7 +92,7 @@ class FlextInfraConstantsRope:
     TYPING_GUARD_IDENTITY: ClassVar[str] = f"{TYPING_GUARD_MODULE}.{TYPING_GUARD_NAME}"
     "Qualified identity of the only guard that keeps a guarded import importable."
 
-    DECLARATION_RELOCATION_IDENTITIES: ClassVar[tuple[str], ...] = (
+    DECLARATION_RELOCATION_IDENTITIES: ClassVar[tuple[str, ...]] = (
         PYDANTIC_MODEL_IDENTITY,
         PYDANTIC_SETTINGS_IDENTITY,
         TYPING_GUARD_IDENTITY,
@@ -110,7 +110,7 @@ class FlextInfraConstantsRope:
     })
     "Decorator names that mark Python descriptors / Pydantic computed fields."
 
-    PYDANTIC_PAYLOAD_DECORATORS: ClassVar[tuple[str], ...] = (
+    PYDANTIC_PAYLOAD_DECORATORS: ClassVar[tuple[str, ...]] = (
         "pydantic.field_validator",
         "pydantic.model_validator",
         "pydantic.field_serializer",
@@ -119,7 +119,7 @@ class FlextInfraConstantsRope:
     )
     "Native Pydantic declaration decorators, resolved by Rope identity."
 
-    PAYLOAD_DESCRIPTOR_DECORATORS: ClassVar[tuple[str], ...] = (
+    PAYLOAD_DESCRIPTOR_DECORATORS: ClassVar[tuple[str, ...]] = (
         "builtins.classmethod",
         "builtins.staticmethod",
         "builtins.property",

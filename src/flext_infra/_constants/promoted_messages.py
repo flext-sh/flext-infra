@@ -131,7 +131,7 @@ class FlextInfraConstantsPromotedMessages:
         WORDS = " "
         LINES = "\n"
 
-    PROMOTED_HELP_GLOBAL_FOOTER: ClassVar[tuple[str], ...] = (
+    PROMOTED_HELP_GLOBAL_FOOTER: ClassVar[tuple[str, ...]] = (
         "",
         "make <verb> shows the verb help and every WHAT.",
         "make help WHAT=<verb> shows the same help.",

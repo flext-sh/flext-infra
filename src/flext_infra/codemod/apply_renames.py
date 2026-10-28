@@ -404,7 +404,7 @@ class FlextInfraApplyRenames:
         roots = snapshot.members
         publication_root = Path(commonpath(roots))
 
-        def verify(changes: tuple[m.Cli.FileChange]) -> p.Result[bool, ...]:
+        def verify(changes: tuple[m.Cli.FileChange]) -> p.Result[bool]:
             nonlocal pending
             current = u.Cli.atomic_read_binary_file_state(csv_path, required=True)
             if current.failure:

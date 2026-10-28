@@ -50,7 +50,7 @@ class FlextInfraModTextGateEngine:
         )
 
     @classmethod
-    def load_rules(cls, root: Path) -> p.Result[tuple[m.Infra.ModTextRule], ...]:
+    def load_rules(cls, root: Path) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
         """Load package and workspace text rules into one validated tuple.
 
         Returns:
@@ -63,7 +63,7 @@ class FlextInfraModTextGateEngine:
         return cls._rules_from_states(snapshots.value)
 
     @classmethod
-    def source_paths(cls, root: Path) -> p.Result[tuple[Path], ...]:
+    def source_paths(cls, root: Path) -> p.Result[tuple[Path, ...]]:
         """Return every source a text rewrite of ``root`` may publish to.
 
         Returns:
@@ -97,7 +97,7 @@ class FlextInfraModTextGateEngine:
     def _selected_rules(
         identity: m.Cli.AtomicFileState,
         rules: tuple[m.Infra.ModTextRule, ...],
-    ) -> p.Result[tuple[m.Infra.ModTextRule], ...]:
+    ) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
         """Select rules from the exact project bytes authenticated for publication.
 
         Returns:
@@ -130,7 +130,7 @@ class FlextInfraModTextGateEngine:
     @staticmethod
     def _catalogue_states(
         root: Path,
-    ) -> p.Result[tuple[m.Cli.AtomicFileState], ...]:
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
         """Capture the packaged rules and the consumer overlay exactly once.
 
         Returns:
@@ -163,7 +163,7 @@ class FlextInfraModTextGateEngine:
     def _rules_from_states(
         cls,
         snapshots: tuple[m.Cli.AtomicFileState, ...],
-    ) -> p.Result[tuple[m.Infra.ModTextRule], ...]:
+    ) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
         """Compose provider rules before local rules and reject ambiguous ids.
 
         Returns:
@@ -191,7 +191,7 @@ class FlextInfraModTextGateEngine:
     def _rules_from_state(
         cls,
         snapshot: m.Cli.AtomicFileState,
-    ) -> p.Result[tuple[m.Infra.ModTextRule], ...]:
+    ) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
         """Parse only the exact authenticated catalogue bytes used by the plan.
 
         Returns:
@@ -277,7 +277,7 @@ class FlextInfraModTextGateEngine:
     def _validated_pattern_fields(
         entry: t.MappingKV[str, t.JsonValue],
         source: Path,
-    ) -> p.Result[tuple[str, tuple[str], re.Pattern[str]], ...]:
+    ) -> p.Result[tuple[str, tuple[str, ...], re.Pattern[str]]]:
         """Validate the find regex and its declared flag names.
 
         Returns:
@@ -343,7 +343,7 @@ class FlextInfraModTextGateEngine:
         entry: t.MappingKV[str, t.JsonValue],
         source: Path,
         compiled: re.Pattern[str],
-    ) -> p.Result[tuple[tuple[str], t.MappingKV[str, str], int | None], ...]:
+    ) -> p.Result[tuple[tuple[str, ...], t.MappingKV[str, str], int | None]]:
         """Validate distributions, the capture map, and the expected receipt.
 
         Returns:
@@ -388,7 +388,7 @@ class FlextInfraModTextGateEngine:
     @staticmethod
     def _selector_failure(
         source: Path,
-    ) -> p.Result[tuple[tuple[str], t.MappingKV[str, str], int | None], ...]:
+    ) -> p.Result[tuple[tuple[str, ...], t.MappingKV[str, str], int | None]]:
         """Report invalid distribution declarations with the canonical message.
 
         Returns:
@@ -510,7 +510,7 @@ class FlextInfraModTextGateEngine:
         rules: tuple[m.Infra.ModTextRule, ...],
         *,
         sources: t.MappingKV[Path, str] | None = None,
-    ) -> p.Result[tuple[Path], ...]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Inventory Python sources and only explicitly declared Markdown globs.
 
         Returns:
@@ -554,7 +554,7 @@ class FlextInfraModTextGateEngine:
         root: Path,
         rules: tuple[m.Infra.ModTextRule, ...],
         sources: t.MappingKV[Path, str] | None,
-    ) -> p.Result[tuple[Path], ...]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Authenticate the explicitly elected Markdown sources.
 
         Returns:

@@ -714,9 +714,7 @@ class FlextInfraWorkspaceChecker(
         ctx: m.Infra.GateContext,
         *,
         capture_identity: bool,
-    ) -> p.Result[
-        tuple[tuple[m.Infra.CheckProjectTarget, ...], m.Infra.GateContext]
-    ]:
+    ) -> p.Result[tuple[tuple[m.Infra.CheckProjectTarget, ...], m.Infra.GateContext]]:
         """Capture pre-gate identities and reserve this invocation's report leaf.
 
         Returns:

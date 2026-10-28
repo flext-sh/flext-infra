@@ -276,7 +276,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         cls,
         repository_root: Path,
         scopes: t.SequenceOf[m.Infra.DocScope],
-    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple], ...]:
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Render aggregate root targets from the complete discovered project set.
 
         Returns:
@@ -339,7 +339,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         *,
         repository_root: Path,
         aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
-    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple], ...]:
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Return the rendered artifact inventory for one docs scope.
 
         The scope label is the only topology input (see ``build_scopes``).
