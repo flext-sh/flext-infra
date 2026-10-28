@@ -414,7 +414,7 @@ class TestsFlextInfraPrivateImportCutover(
         package_import: bool = False,
         root_export: bool = False,
         renamed: bool = False,
-    ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
+    ) -> tuple[Path, str, t.MutableMappingKV[Path, str]]:
         package = root / "sample/src/sample"
         public_name = "PublicClient" if renamed else "Client"
         sources = {

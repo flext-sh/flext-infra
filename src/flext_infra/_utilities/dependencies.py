@@ -94,14 +94,14 @@ class FlextInfraUtilitiesDependencies(
     def _locked_environment_and_document(
         scan: m.Infra.DeptryScan,
         inputs: m.Infra.RuntimeDependencyInputs,
-    ) -> p.Result[t.Pair[m.Infra.LockedEnvironment, t.JsonMapping]]:
+    ) -> p.Result[tuple[m.Infra.LockedEnvironment, t.JsonMapping]]:
         """Authenticate provenance and decode the lock and declaration payloads.
 
         Returns:
             The validated locked environment and native pyproject mapping.
 
         """
-        result_type = r[t.Pair[m.Infra.LockedEnvironment, t.JsonMapping]]
+        result_type = r[tuple[m.Infra.LockedEnvironment, t.JsonMapping]]
         target = inputs.target_root
         if (
             not target.is_absolute()
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesDependencies(
         inputs: m.Infra.RuntimeDependencyInputs,
         locked: m.Infra.LockedEnvironment,
     ) -> p.Result[
-        t.VariadicTuple[t.Pair[m.Infra.RuntimeDependencyProvider, Requirement]]
+        tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]
     ]:
         """Parse provider requirements and authenticate them against the lock.
 
@@ -175,7 +175,7 @@ class FlextInfraUtilitiesDependencies(
 
         """
         result_type = r[
-            t.VariadicTuple[t.Pair[m.Infra.RuntimeDependencyProvider, Requirement]]
+            tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]
         ]
         suppliers = tuple(
             (provider, Requirement(provider.requirement))
@@ -200,13 +200,11 @@ class FlextInfraUtilitiesDependencies(
     def _runtime_selections(
         scan: m.Infra.DeptryScan,
         declarations: m.Infra.DepsToml.MemberRequirements,
-        suppliers: t.VariadicTuple[
-            t.Pair[m.Infra.RuntimeDependencyProvider, Requirement]
-        ],
+        suppliers: tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...],
         *,
         development_only: t.StrTuple,
         used_without_import: t.StrTuple,
-    ) -> t.Pair[list[str], list[str]]:
+    ) -> tuple[list[str], list[str]]:
         """Select retained runtime requirements and collect unresolved modules.
 
         A requirement deptry reports unused stays when the project uses it
@@ -350,7 +348,7 @@ class FlextInfraUtilitiesDependencies(
         normalized = u.Cli.toml_as_mapping(document) or {}
         if not normalized:
             # Keep the empty mapping immutable and fully typed.
-            return MappingProxyType(dict[str, t.VariadicTuple[str]]())
+            return MappingProxyType(dict[str, tuple[str, ...]]())
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod
@@ -685,7 +683,7 @@ class FlextInfraUtilitiesDependencies(
         cls,
         requirement: str,
         internal_names: t.StrSequence,
-    ) -> t.Pair[str, Requirement] | None:
+    ) -> tuple[str, Requirement] | None:
         """Parse the complete declaration before deciding whether it is rewritable.
 
         Returns:

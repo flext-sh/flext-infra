@@ -140,7 +140,7 @@ class FlextInfraCodemodSnapshotReconciler:
         config_root: Path,
         config_path: Path,
         declared: t.MappingKV[str, Sequence[t.JsonValue]],
-    ) -> t.MappingKV[str, t.VariadicTuple[Path]]:
+    ) -> t.MappingKV[str, tuple[Path, ...]]:
         """Resolve every declared fixture directory under its config root.
 
         Returns:
@@ -151,7 +151,7 @@ class FlextInfraCodemodSnapshotReconciler:
                 fixture path must not be a symlink.
 
         """
-        resolved: MutableMapping[str, t.VariadicTuple[Path]] = {}
+        resolved: MutableMapping[str, tuple[Path, ...]] = {}
         for key, declared_paths in declared.items():
             directories: list[Path] = []
             for raw_dir in declared_paths:

@@ -21,7 +21,7 @@ class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):
         """Fleet SonarCloud automatic-analysis scope policy."""
 
         exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -31,7 +31,7 @@ class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):
             ),
         ]
         cpd_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="sonar.cpd.exclusions duplication-scope patterns"),
         ] = ()
         api_url: Annotated[

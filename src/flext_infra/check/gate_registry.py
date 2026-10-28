@@ -115,7 +115,7 @@ class FlextInfraGateRegistry:
         )
 
     @staticmethod
-    def _gate_classes() -> t.VariadicTuple[type[FlextInfraGate]]:
+    def _gate_classes() -> tuple[type[FlextInfraGate], ...]:
         """Return the runtime gate classes registered for workspace checks.
 
         Returns:

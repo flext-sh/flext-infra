@@ -23,6 +23,15 @@ class TestsFlextInfraClassNestingSupport:
 
 from __future__ import annotations
 
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 import os
 
 # Owner-only permission bits.
@@ -85,8 +94,7 @@ __all__: list[str] = ["LIMIT", "write"]
 
     @staticmethod
     def _plan(
-        root: Path,
-        sources: t.MappingKV[Path, str],
+        root: Path, sources: t.MappingKV[Path, ...]
     ) -> t.Pair[t.MappingKV[Path, str], t.MappingKV[Path, str] | str]:
         """Plan class nesting, then replan the planned sources.
 
@@ -118,7 +126,7 @@ __all__: list[str] = ["LIMIT", "write"]
         return updated, residue
 
     @staticmethod
-    def _top_level(source: str) -> t.VariadicTuple[str]:
+    def _top_level(source: str) -> tuple[str, ...]:
         """Return the names a module binds at top level, imports excluded.
 
         Returns:

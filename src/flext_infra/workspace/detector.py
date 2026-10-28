@@ -570,9 +570,9 @@ class FlextInfraWorkspaceDetector(
         allow_unprovisioned_members: bool = False,
     ) -> p.Result[
         t.Triple[
-            t.VariadicTuple[m.Infra.RepositoryRef],
-            t.VariadicTuple[Path],
-            t.VariadicTuple[m.Infra.GitSubmoduleDeclaration],
+            tuple[m.Infra.RepositoryRef, ...],
+            tuple[Path, ...],
+            tuple[m.Infra.GitSubmoduleDeclaration, ...],
         ]
     ]:
         """Validate every direct governed .gitmodules entry before planning writes.
@@ -587,9 +587,9 @@ class FlextInfraWorkspaceDetector(
         declared = u.Infra.git_submodule_declarations(repository_root)
         result_type = r[
             t.Triple[
-                t.VariadicTuple[m.Infra.RepositoryRef],
-                t.VariadicTuple[Path],
-                t.VariadicTuple[m.Infra.GitSubmoduleDeclaration],
+                tuple[m.Infra.RepositoryRef, ...],
+                tuple[Path, ...],
+                tuple[m.Infra.GitSubmoduleDeclaration, ...],
             ]
         ]
         if declared.failure:
@@ -1025,7 +1025,7 @@ class FlextInfraWorkspaceDetector(
         resolved_root: Path,
         identity: m.Infra.GitIdentityReport,
         declaration: m.Infra.RepositoryDeltaSpec,
-    ) -> p.Result[t.VariadicTuple[m.Infra.BeadsProjectSpec]]:
+    ) -> p.Result[tuple[m.Infra.BeadsProjectSpec], ...]:
         """Resolve the effective Beads ledger from the declared policy overlay.
 
         Returns:
@@ -1038,7 +1038,7 @@ class FlextInfraWorkspaceDetector(
             declaration,
         )
         if resolved_beads.failure:
-            return r[t.VariadicTuple[m.Infra.BeadsProjectSpec]].from_failure(
+            return r[tuple[m.Infra.BeadsProjectSpec, ...]].from_failure(
                 resolved_beads,
             )
         return cls._effective_beads(
@@ -1053,14 +1053,14 @@ class FlextInfraWorkspaceDetector(
         resolved_root: Path,
         identity: m.Infra.GitIdentityReport,
         beads: m.Infra.BeadsProjectSpec | None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.BeadsProjectSpec]]:
+    ) -> p.Result[tuple[m.Infra.BeadsProjectSpec], ...]:
         """Resolve the effective Beads ledger, inheriting through submodules.
 
         Returns:
             The effective workspace Beads specification as a 0-or-1 tuple.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.BeadsProjectSpec]]
+        result_type = r[tuple[m.Infra.BeadsProjectSpec], ...]
         member_root = identity.primary_root
         member_beads = member_root / c.Infra.BEADS_DIRNAME
         if not (
@@ -1316,7 +1316,7 @@ class FlextInfraWorkspaceDetector(
     @staticmethod
     def workspace_analysis_exclusion_paths(
         workspace: m.Infra.WorkspaceSpec,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Return read-only external Git dependencies excluded from analysis.
 
         Returns:
@@ -1329,18 +1329,18 @@ class FlextInfraWorkspaceDetector(
     def analysis_exclusion_paths(
         cls,
         repository_root: Path,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path], ...]:
         """Load exclusions for governed repositories; ignore ungoverned trees.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+            The resulting ``p.Result[tuple[Path, ...]]``.
 
         """
         resolved_root = repository_root.expanduser().resolve()
         if not (resolved_root / c.Infra.GITMODULES).is_file():
-            return r[t.VariadicTuple[Path]].ok(())
+            return r[tuple[Path, ...]].ok(())
         if not (resolved_root / c.GIT_DIR_NAME).exists():
-            return r[t.VariadicTuple[Path]].ok(())
+            return r[tuple[Path, ...]].ok(())
         return u.Infra.git_submodule_declarations(resolved_root).map(
             lambda declarations: tuple(
                 declaration.path

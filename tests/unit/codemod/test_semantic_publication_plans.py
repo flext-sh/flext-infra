@@ -23,7 +23,7 @@ class TestsFlextInfraSemanticPublicationPlans:
     def _plans(
         root: Path,
         names: t.StrTuple = ("first.py", "second.py"),
-    ) -> t.VariadicTuple[m.Infra.SemanticFilePlan]:
+    ) -> tuple[m.Infra.SemanticFilePlan, ...]:
         plans: list[m.Infra.SemanticFilePlan] = []
         for name in names:
             path = root / name

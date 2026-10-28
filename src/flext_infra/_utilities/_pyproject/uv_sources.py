@@ -76,7 +76,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     @classmethod
     def direct_source_names(
         cls, document: t.Cli.TomlDocument
-    ) -> p.Result[t.VariadicTuple[str]]:
+    ) -> p.Result[tuple[str, ...]]:
         """Name every requirement declared by direct source reference.
 
         Returns:
@@ -85,8 +85,8 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         """
         lines = cls.document_requirement_lines(document)
         if lines.failure:
-            return r[t.VariadicTuple[str]].from_failure(lines)
-        return r[t.VariadicTuple[str]].ok(
+            return r[tuple[str, ...]].from_failure(lines)
+        return r[tuple[str, ...]].ok(
             tuple(
                 sorted({
                     name
@@ -120,7 +120,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         """
         parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
         selected: list[str | m.Infra.UvScopedOverride] = []
-        seen: set[t.Pair[str, str | None]] = set()
+        seen: set[tuple[str, str | None]] = set()
         for entry in reversed(parsed.root):
             if isinstance(entry, str):
                 requirement = Requirement(entry)
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         document: t.Cli.TomlDocument,
         *,
         target_ref: str,
-    ) -> p.Result[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]:
+    ) -> p.Result[tuple[m.Infra.GitSourceReferenceMigration, ...]]:
         """Elect one Git-ref migration per internal requirement off the line.
 
         Every declared internal requirement whose direct Git source names a
@@ -212,12 +212,12 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             invalid declared source.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]
+        result_type = r[tuple[m.Infra.GitSourceReferenceMigration, ...]]
         lines = cls.document_requirement_lines(document)
         if lines.failure:
             return result_type.from_failure(lines)
         migrations: t.MutableMappingKV[
-            t.Pair[str, str], m.Infra.GitSourceReferenceMigration
+            tuple[str, str], m.Infra.GitSourceReferenceMigration
         ] = {}
         for line in lines.value:
             name = cls._internal_dependency_name(

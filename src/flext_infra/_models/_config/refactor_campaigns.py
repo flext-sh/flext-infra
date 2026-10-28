@@ -36,7 +36,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
             ),
         ]
         roots: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -120,7 +120,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
         """Declared CSV-driven rename campaigns for the mod verb's rename phase."""
 
         campaigns: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec],
+            tuple[FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec, ...],
             m.Field(default=(), description="Ordered rename campaigns"),
         ] = ()
         semantic_plan: Annotated[

@@ -245,15 +245,15 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         for gate, tool in tools.items()
     })
     ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
-    CANONICAL_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(SARIF_TOOL_INFO)
-    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
+    CANONICAL_GATE_IDS: ClassVar[tuple[str, ...]] = tuple(SARIF_TOOL_INFO)
+    CANONICAL_FIXABLE_GATE_IDS: ClassVar[tuple[str, ...]] = tuple(
         gate
         for tools in GATE_TOOLS_BY_KIND.values()
         for gate, tool in tools.items()
         if tool[2]
     )
     """Independent repair policy; formatting remains owned by Make fmt."""
-    CANONICAL_FILE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
+    CANONICAL_FILE_GATE_IDS: ClassVar[tuple[str, ...]] = tuple(
         gate
         for tools in GATE_TOOLS_BY_KIND.values()
         for gate, tool in tools.items()

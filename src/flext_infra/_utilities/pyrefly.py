@@ -26,7 +26,7 @@ class FlextInfraUtilitiesPyrefly:
         project_dir: Path,
         discovered_dirs: t.StrSequence,
         *,
-        selected_files: t.VariadicTuple[Path],
+        selected_files: tuple[Path, ...],
     ) -> t.StrSequence:
         """Preserve native literal-file selection and discovery exclusions.
 

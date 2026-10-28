@@ -310,7 +310,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         # Each row maps to a single ``QualityGateCheck`` via Pydantic v2 batch
         # construction. The detail-label key may differ from the metric path
         # (e.g. ``total_violations`` → ``total``).
-        metric_check_rows: t.VariadicTuple[t.Triple[str, str, str]] = (
+        metric_check_rows: tuple[t.Triple[str, str, str], ...] = (
             (c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE, "total_violations", "total"),
             (
                 c.Infra.QG_CHECK_DUPLICATION_REDUCTION,

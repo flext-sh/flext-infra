@@ -105,14 +105,14 @@ class FlextInfraLocCapGate(FlextInfraGate):
         cls,
         scc_json: str,
         cap: int,
-    ) -> t.VariadicTuple[m.Infra.Issue]:
+    ) -> tuple[m.Infra.Issue, ...]:
         """Extract over-cap modules from an `scc --format json --by-file` payload.
 
         Generated and authored modules share the same configured ceiling.
         Parsing failures propagate.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.Issue]``.
+            The resulting ``tuple[m.Infra.Issue, ...],``.
 
         """
         report = m.Infra.SccReport.model_validate_json(scc_json, strict=True)

@@ -475,9 +475,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         ],
     )
     def test_invalid_declaration_fails_before_effects(
-        self,
-        infra_git_repo: Path,
-        declarations: tuple[str, ...],
+        self, infra_git_repo: Path, declarations: tuple[str, ...]
     ) -> None:
         """Escaping and overlapping archive inputs cannot mutate the manifest."""
         self._prepare_project(

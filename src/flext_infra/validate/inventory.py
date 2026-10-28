@@ -133,7 +133,7 @@ class FlextInfraInventoryService(s[bool]):
             The resulting ``p.Result[list[str]]``.
 
         """
-        report_specs: t.VariadicTuple[t.Pair[str, t.JsonMapping]] = (
+        report_specs: tuple[t.Pair[str, t.JsonMapping], ...] = (
             ("scripts-infra--json--scripts-inventory.json", inventory),
             ("scripts-infra--json--scripts-wiring.json", wiring),
             ("scripts-infra--json--external-scripts-candidates.json", external),

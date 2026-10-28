@@ -61,14 +61,14 @@ class FlextInfraUtilitiesGitWorktreeMeasure(
     @staticmethod
     def _worktree_scan_dir(
         directory: Path,
-    ) -> t.Pair[t.VariadicTuple[os.DirEntry[str]], bool]:
+    ) -> t.Pair[tuple[os.DirEntry[str]], bool, ...]:
         """List one directory paired with whether it was readable.
 
         Returns:
-            The resulting ``t.Pair[t.VariadicTuple[os.DirEntry[str]], bool]``.
+            The resulting ``t.Pair[tuple[os.DirEntry[str]], bool, ...],``.
 
         """
-        entries: t.VariadicTuple[os.DirEntry[str]] = ()
+        entries: tuple[os.DirEntry[str], ...] = ()
         readable = True
         try:
             with os.scandir(directory) as iterator:

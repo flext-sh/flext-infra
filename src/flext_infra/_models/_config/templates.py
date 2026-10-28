@@ -50,7 +50,7 @@ class FlextInfraModelsConfigTemplates:
         )
 
         stripped_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "VS Code keys actively stripped from the settings projection "
@@ -61,10 +61,10 @@ class FlextInfraModelsConfigTemplates:
         ] = ()
 
         stripped_map_keys: Annotated[
-            Mapping[str, t.VariadicTuple[str]],
+            Mapping[str, tuple[str], ...],
             m.Field(description="Retired keys inside language-specific setting maps"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(Mapping[str, t.VariadicTuple[str]]),
+            default_factory=flext_core.u.empty(Mapping[str, tuple[str], ...]),
             validate_default=True,
         )
 
@@ -128,7 +128,7 @@ class FlextInfraModelsConfigTemplates:
             m.Field(description="Strictly parsed and ordered configuration document"),
         ]
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Exact physical files consulted by this document",
@@ -164,15 +164,15 @@ class FlextInfraModelsConfigTemplates:
             ),
         ] = 0o644
         conflict_sections: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Dotted sections rendered by the canonical owner"),
         ] = ()
         preserve_project_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Authored PEP 621 project keys retained on merge"),
         ] = ()
         overwrite_project_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="PEP 621 project keys replaced by generation"),
         ] = ()
 
@@ -200,7 +200,7 @@ class FlextInfraModelsConfigTemplates:
 
         @m.computed_field
         @property
-        def managed_tool_tables(self) -> t.VariadicTuple[str]:
+        def managed_tool_tables(self) -> tuple[str, ...]:
             """Derive tool-relative table paths from the owner's sections.
 
             Returns:
@@ -242,7 +242,7 @@ class FlextInfraModelsConfigTemplates:
             ),
         ] = None
         source_closure: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Complete package-relative resource source closure"),
         ] = ()
         enforce: Annotated[
@@ -254,11 +254,11 @@ class FlextInfraModelsConfigTemplates:
             ),
         ] = ()
         requires_artifacts: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Catalog destination keys required by this artifact"),
         ] = ()
         profiles: Annotated[
-            t.VariadicTuple[c.Infra.MakeProfile],
+            tuple[c.Infra.MakeProfile, ...],
             m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
         ownership: Annotated[
@@ -410,7 +410,7 @@ class FlextInfraModelsConfigTemplates:
         @cached_property
         def entries(
             self,
-        ) -> t.VariadicTuple[FlextInfraModelsConfigTemplates.TemplateEntrySpec]:
+        ) -> tuple[FlextInfraModelsConfigTemplates.TemplateEntrySpec, ...]:
             """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
                 FlextInfraModelsConfigTemplates.TemplateEntrySpec.model_validate({

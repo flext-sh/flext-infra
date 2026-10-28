@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_cli import u
 
-from flext_infra import c, codegen, deps, infra, m, p, t
+from flext_infra import c, codegen, deps, infra, m, p
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
@@ -26,7 +26,7 @@ class FlextInfraCodegenRoutes:
         return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(request, u.Cli)
 
     @staticmethod
-    def check_routes() -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    def check_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the check group's native model and handler bindings.
 
         Returns:
@@ -60,7 +60,7 @@ class FlextInfraCodegenRoutes:
     @staticmethod
     def codegen_routes(
         *, command: str | None = None
-    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
+    ) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the codegen group's native model and handler bindings.
 
         Returns:
@@ -178,7 +178,7 @@ class FlextInfraCodegenRoutes:
         )
 
     @staticmethod
-    def deps_routes() -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    def deps_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the dependency group's native model and handler bindings.
 
         Returns:

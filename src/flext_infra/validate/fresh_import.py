@@ -78,7 +78,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     @staticmethod
     def _project_layouts(
         repository_roots: t.SequenceOf[Path],
-    ) -> p.Result[t.VariadicTuple[m.Infra.RopeProjectLayout]]:
+    ) -> p.Result[tuple[m.Infra.RopeProjectLayout, ...]]:
         """Resolve one Rope layout per requested repository root.
 
         Returns:
@@ -89,11 +89,11 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         for root in repository_roots:
             layout = u.Infra.layout(root)
             if layout is None:
-                return r[t.VariadicTuple[m.Infra.RopeProjectLayout]].fail(
+                return r[tuple[m.Infra.RopeProjectLayout, ...]].fail(
                     f"fresh-import has no Python layout for {root}",
                 )
             layouts.append(layout)
-        return r[t.VariadicTuple[m.Infra.RopeProjectLayout]].ok(tuple(layouts))
+        return r[tuple[m.Infra.RopeProjectLayout, ...]].ok(tuple(layouts))
 
     @staticmethod
     def _origin_code(layouts: t.SequenceOf[m.Infra.RopeProjectLayout]) -> str:
@@ -152,7 +152,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             The entry-point probes of the layout.
 
         """
-        groups: list[t.Pair[str, t.StrMapping]] = []
+        groups: list[tuple[str, t.StrMapping]] = []
         if metadata.scripts is not None:
             groups.append(("console_scripts", metadata.scripts))
         if metadata.gui_scripts is not None:

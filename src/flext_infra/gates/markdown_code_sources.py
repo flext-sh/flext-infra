@@ -61,7 +61,7 @@ class FlextInfraMarkdownCodeSources:
     def formattable_fences(
         content: str,
         origin: Path,
-    ) -> t.VariadicTuple[t.Pair[int, m.Cli.MarkdownFence]]:
+    ) -> tuple[t.Pair[int, m.Cli.MarkdownFence], ...]:
         """Index governed ``python`` fences and keep those that compile.
 
         A pure function of the document text: extraction and write-back of

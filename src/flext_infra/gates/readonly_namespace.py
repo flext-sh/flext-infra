@@ -78,7 +78,7 @@ class FlextInfraReadonlyNamespace:
     def _settings_branch_properties(
         project_dir: Path,
         findings: t.SequenceOf[p.Infra.Issue],
-    ) -> t.VariadicTuple[t.Triple[Path, int, int]]:
+    ) -> tuple[t.Triple[Path, int, int], ...]:
         """Authenticate capitalized protocol properties against settings fields.
 
         Returns:

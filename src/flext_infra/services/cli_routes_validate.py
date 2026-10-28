@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_core import u
 
@@ -30,15 +30,12 @@ from flext_infra.maintenance import (
 )
 from flext_infra.services import FlextInfraValidationCommandRoutes
 
-if TYPE_CHECKING:
-    from flext_infra import t
-
 
 class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
     """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
     validation_routes: ClassVar[
-        MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
+        MutableMapping[str, tuple[m.Cli.ResultCommandRoute], ...]
     ] = {
         c.Infra.CLI_GROUP_DOCS: (
             m.Cli.ResultCommandRoute(

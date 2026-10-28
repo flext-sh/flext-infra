@@ -56,7 +56,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
     def recorded_member_sources(
         cls,
         superproject_root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.DependencyCommitSourceSpec]]:
+    ) -> p.Result[tuple[m.Infra.DependencyCommitSourceSpec, ...]]:
         """Return each governed member's committed gitlink as a commit source.
 
         The commit is the superproject ``HEAD`` tree entry (the recorded
@@ -67,7 +67,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
             One commit source per governed Python member.
 
         """
-        result = r[t.VariadicTuple[m.Infra.DependencyCommitSourceSpec]]
+        result = r[tuple[m.Infra.DependencyCommitSourceSpec, ...]]
         members = cls._member_manifests(superproject_root)
         if members.failure:
             return result.from_failure(members)
@@ -99,7 +99,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
     def flext_back_edges(
         cls,
         superproject_root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.DependencyEdgeSpec]]:
+    ) -> p.Result[tuple[m.Infra.DependencyEdgeSpec, ...]]:
         """Derive the dependency-group edges that close a member cycle.
 
         A back edge is a dependency-group requirement ``X -> Y`` between
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
             Every back edge, sorted by dependent then dependency.
 
         """
-        result = r[t.VariadicTuple[m.Infra.DependencyEdgeSpec]]
+        result = r[tuple[m.Infra.DependencyEdgeSpec, ...]]
         members = cls._member_manifests(superproject_root)
         if members.failure:
             return result.from_failure(members)
@@ -174,9 +174,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
         cls,
         superproject_root: Path,
     ) -> p.Result[
-        t.VariadicTuple[
-            t.Pair[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec]
-        ]
+        tuple[tuple[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec], ...]
     ]:
         """Read every governed, materialized member's own ``pyproject.toml``.
 
@@ -189,15 +187,13 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
 
         """
         result = r[
-            t.VariadicTuple[
-                t.Pair[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec]
-            ]
+            tuple[tuple[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec], ...]
         ]
         declared = cls.git_submodule_declarations(superproject_root)
         if declared.failure:
             return result.from_failure(declared)
         members: list[
-            t.Pair[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec]
+            tuple[m.Infra.GitSubmoduleDeclaration, m.Infra.DependencyManifestSpec]
         ] = []
         for declaration in declared.value:
             if declaration.managed is False:

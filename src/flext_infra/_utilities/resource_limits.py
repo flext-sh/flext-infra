@@ -25,7 +25,7 @@ from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 class FlextInfraUtilitiesResourceLimits:
     """Build resource-bounded commands for memory-intensive quality tools."""
 
-    _MEMORY_FAILURE_MARKERS: ClassVar[t.VariadicTuple[str]] = (
+    _MEMORY_FAILURE_MARKERS: ClassVar[tuple[str, ...]] = (
         "cannot allocate memory",
         "failed to map segment",
         "memoryerror",

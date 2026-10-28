@@ -21,7 +21,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     @staticmethod
     def test_every_declared_profile_has_a_custom_handler_policy() -> None:
         """Each Make profile declares the contract for its own custom surface."""
-        codegen_profiles: t.VariadicTuple[m.Infra.ProfileSpec] = (
+        codegen_profiles: tuple[m.Infra.ProfileSpec, ...] = (
             config.Infra.codegen.profiles
         )
         declared = frozenset(

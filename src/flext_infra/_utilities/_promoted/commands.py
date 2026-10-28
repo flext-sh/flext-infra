@@ -177,7 +177,7 @@ class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
         values: t.JsonValue,
         key: str,
         path: Path,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Return one optional header list of non-blank stripped strings.
 
         Returns:

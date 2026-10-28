@@ -124,7 +124,7 @@ class FlextInfraPytestProfile:
         signal.signal(signal.SIGTERM, terminate)
         try:
             outcome = runner.execute_global().unwrap()
-            return outcome
+            return c.Cli.EXIT_CODE_FAILURE if outcome is None else outcome
         finally:
             failure = sys.exception()
             try:

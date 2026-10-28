@@ -25,7 +25,7 @@ class FlextInfraUtilitiesDocsGeneratePlan(
     @staticmethod
     def docs_normalize_artifacts(
         artifacts: t.SequenceOf[t.Infra.DocsRenderedArtifactTuple],
-    ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Validate one unique lexical owner and target without dereferencing.
 
         Returns:
@@ -42,27 +42,27 @@ class FlextInfraUtilitiesDocsGeneratePlan(
                 or ".." in project.parts
                 or ".." in target.parts
             ):
-                return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].fail(
+                return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].fail(
                     f"docs publication paths must be absolute and lexical: {target}",
                 )
             if not target.is_relative_to(project):
-                return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].fail(
+                return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].fail(
                     f"docs publication target escapes project {project}: {target}",
                 )
             if target in targets:
-                return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].fail(
+                return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].fail(
                     f"duplicate docs publication target: {target}",
                 )
             targets.add(target)
             normalized.append((project, target, content))
-        return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(
+        return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].ok(
             tuple(normalized),
         )
 
     @staticmethod
     def docs_file_plans(
         bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Snapshot targets from the canonical rendered artifact inventory.
 
         Returns:
@@ -90,8 +90,8 @@ class FlextInfraUtilitiesDocsGeneratePlan(
     def _prune_generated_tree_artifacts(
         project: Path,
         root: Path,
-        rendered: t.SequenceOf[t.Pair[Path, str]],
-    ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
+        rendered: t.SequenceOf[tuple[Path, str]],
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Describe stale files owned by one generated tree as absent artifacts.
 
         Returns:
@@ -101,20 +101,20 @@ class FlextInfraUtilitiesDocsGeneratePlan(
         """
         planned = u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 planned,
             )
         if planned.value.directories:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(())
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].ok(())
         inventory = u.Cli.atomic_inventory_physical_tree(root)
         if inventory.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 inventory,
             )
         expected_paths = {
             path for path, _content in rendered if path.is_relative_to(root)
         }
-        return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(
+        return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].ok(
             tuple(
                 (project, entry.path, None)
                 for entry in inventory.value.entries

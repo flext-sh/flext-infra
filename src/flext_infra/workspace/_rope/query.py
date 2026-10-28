@@ -40,10 +40,10 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         default_factory=dict[str, t.Infra.RopeFile | None],
     )
     _name_index: (
-        MutableMapping[str, t.VariadicTuple[t.Triple[Path, str, t.VariadicTuple[int]]]]
+        MutableMapping[str, tuple[t.Triple[Path, str, t.VariadicTuple[int]]], ...]
         | None
     ) = m.PrivateAttr(default_factory=lambda: None)
-    _import_dependents_index: MutableMapping[str, t.VariadicTuple[Path]] | None = (
+    _import_dependents_index: MutableMapping[str, tuple[Path, ...]] | None = (
         m.PrivateAttr(default_factory=lambda: None)
     )
 
@@ -225,7 +225,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         text: str = self._resource_for(file_path).read()
         return text
 
-    def import_dependents(self, import_target: str) -> t.VariadicTuple[Path]:
+    def import_dependents(self, import_target: str) -> tuple[Path, ...]:
         """Return cached module paths that semantically import ``import_target``.
 
         Returns:
@@ -251,7 +251,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
 
     def name_index(
         self,
-    ) -> t.MappingKV[str, t.VariadicTuple[t.Triple[Path, str, t.VariadicTuple[int]]]]:
+    ) -> t.MappingKV[str, tuple[t.Triple[Path, str, t.VariadicTuple[int]]], ...]:
         """Return a cached ``{name: ((path, surface, lines), ...)}`` workspace index.
 
         Returns:

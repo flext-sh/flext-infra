@@ -45,7 +45,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @cache
     def class_base_names(
         source: str,
-    ) -> t.VariadicTuple[t.Pair[str, frozenset[str]]]:
+    ) -> tuple[t.Pair[str, frozenset[str]], ...]:
         """Name every class one module source declares with its base spellings.
 
         Classes are statements, so only statement bodies are traversed;
@@ -63,7 +63,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @staticmethod
     def module_class_base_names(
         module: ast.Module,
-    ) -> t.VariadicTuple[t.Pair[str, frozenset[str]]]:
+    ) -> tuple[t.Pair[str, frozenset[str]], ...]:
         """Read class names and base spellings from the existing module tree.
 
         Returns:
@@ -402,11 +402,11 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         cls,
         source: str,
         name: str,
-    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
+    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
         """Collect mapping entries and referenced names from an assignment.
 
         Returns:
-            The resulting ``t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]],
+            The resulting ``t.Pair[tuple[t.Pair[str, t.StrSequence], ...],
                 t.StrSequence]``.
 
         """
@@ -415,7 +415,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @staticmethod
     def mapping_entries_refs(
         node: t.Infra.RopeAstNode | None,
-    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
+    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
         """Return literal mapping entries plus variable references.
 
         Returns:
@@ -438,7 +438,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def _call_entries_refs(
         cls,
         node: t.Infra.RopeAstNode,
-    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
+    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
         """Return entries and references of one mapping-producing call.
 
         Returns:
@@ -476,7 +476,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @staticmethod
     def _dict_entries_refs(
         node: t.Infra.RopeAstNode,
-    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
+    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
         """Return string-sequence dict entries and unpack references.
 
         Returns:
@@ -793,7 +793,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def lazy_import_mapping_source(
         cls,
         source: str,
-    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
+    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
         """Read elected installer targets, including immutable inline mappings.
 
         Cache parsing by exact source content, not a path or filesystem timestamp.

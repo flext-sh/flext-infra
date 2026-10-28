@@ -68,7 +68,7 @@ class TestsFlextInfraDirenvGate:
 
     @staticmethod
     def messages(
-        violations: t.VariadicTuple[m.Infra.EnvironmentContractViolation],
+        violations: tuple[m.Infra.EnvironmentContractViolation, ...],
     ) -> t.StrSequence:
         """Render typed violations exactly as the gate reports them.
 

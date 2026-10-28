@@ -970,7 +970,7 @@ class FlextInfraGate:
         return execution
 
     @staticmethod
-    def _findings_exit_codes() -> t.VariadicTuple[int]:
+    def _findings_exit_codes() -> tuple[int, ...]:
         """Exit statuses with which this gate's tool reports its findings.
 
         A tool that declares none completes only with a success status.

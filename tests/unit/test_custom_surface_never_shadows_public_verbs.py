@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, t, tm
+from tests import c, tm
 
 
 class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
@@ -38,7 +38,7 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
         """
         return Path(__file__).resolve().parents[2]
 
-    def _custom_surfaces(self) -> t.VariadicTuple[Path]:
+    def _custom_surfaces(self) -> tuple[Path, ...]:
         """Return every custom Make surface present in the workspace.
 
         Returns:
@@ -55,7 +55,7 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
             ),
         )
 
-    def _shadowed_verbs(self, surface: Path) -> t.VariadicTuple[str]:
+    def _shadowed_verbs(self, surface: Path) -> tuple[str, ...]:
         """Return public verbs this custom surface declares as targets.
 
         Returns:

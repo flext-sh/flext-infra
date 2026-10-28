@@ -251,7 +251,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         declares the common fields that appear across all node types.
         """
 
-        _fields: ClassVar[t.VariadicTuple[str]]
+        _fields: ClassVar[tuple[str, ...]]
 
     @runtime_checkable
     class RopeSourceLines(Protocol):
@@ -279,7 +279,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeCachedLogicalLineFinder(Protocol):
         """Native cached lookup of the logical statement containing a line."""
 
-        def logical_line_in(self, line_number: int) -> t.Pair[int, int]: ...
+        def logical_line_in(self, line_number: int) -> tuple[int, int]: ...
 
     @runtime_checkable
     class RopeAssignment(Protocol):
@@ -425,7 +425,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             declarations: t.SequenceOf[m.Infra.SourceClassReference],
             anchors: t.SequenceOf[m.Infra.SourceClassReference],
-        ) -> t.VariadicTuple[frozenset[str]]: ...
+        ) -> tuple[frozenset[str], ...]: ...
 
         def class_defers_annotations(
             self, qualified: m.Infra.SourceClassReference
@@ -513,8 +513,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def source_view(
             self,
             *,
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
-            additional_source_folders: t.VariadicTuple[str] = (),
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+            additional_source_folders: tuple[str, ...] = (),
         ) -> AbstractContextManager[Self]: ...
 
         def source_state(
@@ -712,7 +712,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeContractMatch(Protocol):
         """Native Rope match coordinates without exposing syntax trees."""
 
-        def get_region(self) -> t.Pair[int, int]: ...
+        def get_region(self) -> tuple[int, int]: ...
 
         def get_ast(self, name: str) -> p.AttributeProbe | None: ...
 

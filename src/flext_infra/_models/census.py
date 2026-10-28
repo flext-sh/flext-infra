@@ -96,15 +96,13 @@ class FlextInfraModelsCensus:
         script_reference_sites: t.VariadicTuple[
             FlextInfraModelsCensus.ReferenceSite
         ] = m.Field(default_factory=tuple, description="Script reference sites")
-        all_reference_sites: t.VariadicTuple[FlextInfraModelsCensus.ReferenceSite] = (
-            m.Field(
-                default_factory=tuple,
-                description=(
-                    "Qualified indexed occurrences on all surfaces, "
-                    "including reexports; "
-                    "not reachability"
-                ),
-            )
+        all_reference_sites: tuple[FlextInfraModelsCensus.ReferenceSite, ...] = m.Field(
+            default_factory=tuple,
+            description=(
+                "Qualified indexed occurrences on all surfaces, "
+                "including reexports; "
+                "not reachability"
+            ),
         )
         reference_evidence_collected: Annotated[
             bool,
@@ -276,7 +274,7 @@ class FlextInfraModelsCensus:
             m.Field(description="Verified duplicate definition"),
         ]
         consumer_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Consumers requiring import rebindings"),
         ]
         in_module_uses: Annotated[
@@ -292,11 +290,11 @@ class FlextInfraModelsCensus:
             m.Field(description="Elected definition and its bindings"),
         ]
         copies: Annotated[
-            t.VariadicTuple[FlextInfraModelsCensus.DuplicateCopyCure],
+            tuple[FlextInfraModelsCensus.DuplicateCopyCure, ...],
             m.Field(description="Copies with proven removal contracts"),
         ]
         edits: Annotated[
-            t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit],
+            tuple[FlextInfraModelsTransformers.SemanticMigrationEdit, ...],
             m.Field(description="Complete proposed source edits"),
         ]
 
@@ -395,7 +393,7 @@ class FlextInfraModelsCensus:
             str,
             m.Field(description="Project of the elected owner"),
         ] = ""
-        edits: t.VariadicTuple[FlextInfraModelsCensus.DuplicateCureEdit] = m.Field(
+        edits: tuple[FlextInfraModelsCensus.DuplicateCureEdit, ...] = m.Field(
             default_factory=tuple,
             description="Proposed manual edits, owner first",
         )
@@ -409,10 +407,10 @@ class FlextInfraModelsCensus:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-        edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit] = (
-            m.Field(default_factory=tuple, description="Applied source rewrites")
+        edits: tuple[FlextInfraModelsTransformers.SemanticMigrationEdit, ...] = m.Field(
+            default_factory=tuple, description="Applied source rewrites"
         )
-        plans: t.VariadicTuple[FlextInfraModelsCensus.DuplicateCurePlan] = m.Field(
+        plans: tuple[FlextInfraModelsCensus.DuplicateCurePlan, ...] = m.Field(
             default_factory=tuple,
             description="Manual assisted-cure plans for structural duplicates",
         )
@@ -434,7 +432,7 @@ class FlextInfraModelsCensus:
     ):
         """Per-project census summary."""
 
-        objects: t.VariadicTuple[FlextInfraModelsCensus.Object] = m.Field(
+        objects: tuple[FlextInfraModelsCensus.Object, ...] = m.Field(
             default_factory=tuple,
             description="Objects discovered for this project",
         )
@@ -446,7 +444,7 @@ class FlextInfraModelsCensus:
             t.IntMapping,
             m.Field(description="Object count per kind"),
         ]
-        violations: t.VariadicTuple[FlextInfraModelsCensus.Violation] = m.Field(
+        violations: tuple[FlextInfraModelsCensus.Violation, ...] = m.Field(
             default_factory=tuple,
             description="Detected violations",
         )
@@ -462,7 +460,7 @@ class FlextInfraModelsCensus:
             t.NonNegativeInt,
             m.Field(description="Objects eligible for aggressive removal review"),
         ] = 0
-        removal_candidates: t.VariadicTuple[FlextInfraModelsCensus.RemovalCandidate] = (
+        removal_candidates: tuple[FlextInfraModelsCensus.RemovalCandidate, ...] = (
             m.Field(
                 default_factory=tuple,
                 description="Explicit aggressive-removal candidates for this project",
@@ -498,7 +496,7 @@ class FlextInfraModelsCensus:
             t.NonNegativeInt,
             m.Field(description="Consumer imports the applied duplicate cure rebound"),
         ] = 0
-        projects: t.VariadicTuple[FlextInfraModelsCensus.ProjectReport] = m.Field(
+        projects: tuple[FlextInfraModelsCensus.ProjectReport, ...] = m.Field(
             default_factory=tuple,
             description="Per-project reports",
         )
@@ -510,7 +508,7 @@ class FlextInfraModelsCensus:
             t.NonNegativeInt,
             m.Field(description="Total violations across workspace"),
         ] = 0
-        duplicates: t.VariadicTuple[FlextInfraModelsCensus.DuplicateGroup] = m.Field(
+        duplicates: tuple[FlextInfraModelsCensus.DuplicateGroup, ...] = m.Field(
             default_factory=tuple,
             description="Cross-project duplicate groups",
         )
@@ -528,7 +526,7 @@ class FlextInfraModelsCensus:
             t.NonNegativeInt,
             m.Field(description="Total objects eligible for aggressive removal review"),
         ] = 0
-        removal_candidates: t.VariadicTuple[FlextInfraModelsCensus.RemovalCandidate] = (
+        removal_candidates: tuple[FlextInfraModelsCensus.RemovalCandidate, ...] = (
             m.Field(
                 default_factory=tuple,
                 description="Explicit aggressive-removal candidates across workspace",

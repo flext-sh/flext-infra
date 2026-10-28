@@ -26,7 +26,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
         project: t.JsonMapping,
         live_project: t.JsonMapping,
         key: str,
-    ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[tuple[t.StrSequence, t.StrSequence]]:
         """Validate generated and CUSTOM runtime dependency lists once.
 
         Returns:
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
             strict=True,
         )
         if validated_required.failure:
-            return r[t.Pair[t.StrSequence, t.StrSequence]].fail_op(
+            return r[tuple[t.StrSequence, t.StrSequence]].fail_op(
                 "validate runtime dependencies",
                 validated_required.error,
             )
@@ -49,11 +49,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
             strict=True,
         )
         if validated_custom.failure:
-            return r[t.Pair[t.StrSequence, t.StrSequence]].fail_op(
+            return r[tuple[t.StrSequence, t.StrSequence]].fail_op(
                 "validate runtime dependencies",
                 validated_custom.error,
             )
-        return r[t.Pair[t.StrSequence, t.StrSequence]].ok(
+        return r[tuple[t.StrSequence, t.StrSequence]].ok(
             (validated_required.value, validated_custom.value),
         )
 
@@ -261,8 +261,8 @@ class FlextInfraUtilitiesPyprojectOverlay:
         cls,
         rendered: t.JsonMapping,
         live: t.JsonMapping,
-        prefix: t.VariadicTuple[str],
-        managed: t.SequenceOf[t.VariadicTuple[str]],
+        prefix: tuple[str, ...],
+        managed: t.SequenceOf[tuple[str, ...]],
     ) -> t.JsonDict:
         """Merge CUSTOM siblings of one tool subtree over its rendered form.
 

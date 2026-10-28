@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, p, t
+from flext_infra import c, p
 
 
 class FlextInfraUtilitiesProcess:
@@ -17,7 +17,7 @@ class FlextInfraUtilitiesProcess:
         outcome: p.Cli.ProcessOutcome,
         *,
         findings: int,
-        findings_exit_codes: t.VariadicTuple[int],
+        findings_exit_codes: tuple[int, ...],
     ) -> c.Infra.ToolOutcome:
         """Classify one completed tool run as clean, findings or error.
 

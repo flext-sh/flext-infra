@@ -109,7 +109,7 @@ class FlextInfraModelsCodegenToolchain:
             m.Field(description="Ordered Mise workspace participants"),
         ]
         file_participants: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenToolchain.CodegenFileParticipant],
+            tuple[FlextInfraModelsCodegenToolchain.CodegenFileParticipant, ...],
             m.Field(description="Explicit non-Mise publication capabilities"),
         ] = ()
 
@@ -156,7 +156,7 @@ class FlextInfraModelsCodegenToolchain:
             ),
         ]
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(description="Ordered YAML states that produced the replacement"),
         ] = ()
 
@@ -200,17 +200,17 @@ class FlextInfraModelsCodegenToolchain:
             m.Field(description="Stable workspace topology"),
         ]
         projects: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenToolchain.MiseToolchainProjectState],
+            tuple[FlextInfraModelsCodegenToolchain.MiseToolchainProjectState, ...],
             m.Field(min_length=1, description="Ordered complete workspace topology"),
         ]
 
         @m.computed_field
         @property
-        def sources(self) -> t.VariadicTuple[m.Cli.AtomicFileState]:
+        def sources(self) -> tuple[m.Cli.AtomicFileState, ...]:
             """Every state the publication reads: the planned declarations.
 
             Returns:
-                The resulting ``t.VariadicTuple[m.Cli.AtomicFileState]``.
+                The resulting ``tuple[m.Cli.AtomicFileState, ...],``.
 
             """
             return tuple(

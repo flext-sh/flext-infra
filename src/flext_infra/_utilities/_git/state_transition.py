@@ -82,7 +82,7 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
         cls,
         original: m.Infra.GitWorktreeFileState | None,
         baseline: m.Infra.GitWorktreeFileState | None,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState | None]:
+    ) -> tuple[m.Infra.GitWorktreeFileState | None, ...]:
         allowed: list[m.Infra.GitWorktreeFileState | None] = [original, baseline]
         if (
             original is not None
@@ -234,7 +234,7 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
         root: Path,
         *,
         cleanup: bool,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         actual = cls._state_snapshot(
             m.Infra.GitWorktreeStateRequest(repo_root=root, paths=snapshot.paths),
         )

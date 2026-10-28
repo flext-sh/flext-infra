@@ -453,7 +453,8 @@ class FlextInfra(
         selected repository is reached. Interruptions and infrastructure errors
         stop dispatch with their native status; configuration failures escape.
         Admission, discovery and member execution share this operation's clock.
-        FULL executes incremental then complete suites in each project context.
+        FULL executes the complete applicable suite once in each project context
+        without Testmon, an incremental pre-run or database access.
 
         Returns:
             The first failing native test status, or zero after every success.

@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, s, t, u
+from flext_infra import c, m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -67,7 +67,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         required_minor = self._read_required_minor(root)
         discovered_projects = u.Infra.discover_projects(root)
         if discovered_projects.failure:
-            projects: t.VariadicTuple[Path] = ()
+            projects: tuple[Path, ...] = ()
         else:
             projects = tuple(
                 project.path

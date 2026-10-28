@@ -80,7 +80,7 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         arguments: Annotated[
-            t.VariadicTuple[str], m.Field(description="Native module argument tokens")
+            tuple[str, ...], m.Field(description="Native module argument tokens")
         ] = ()
         integrity: Annotated[
             bool, m.Field(description="Include this check in quick runtime integrity")
@@ -165,7 +165,7 @@ class FlextInfraModelsConfigMake(
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
         arguments: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Named Make inputs consumed by this operation"),
         ] = ()
         description: Annotated[
@@ -182,7 +182,7 @@ class FlextInfraModelsConfigMake(
             ),
         ] = True
         profiles: Annotated[
-            t.VariadicTuple[FlextInfraConstantsConfig.MakeProfile],
+            tuple[FlextInfraConstantsConfig.MakeProfile, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -234,7 +234,7 @@ class FlextInfraModelsConfigMake(
         """One public command in the declared runtime acceptance sequence."""
 
         contexts: Annotated[
-            t.VariadicTuple[Literal["local", "ci"]],
+            tuple[Literal["local", "ci"], ...],
             m.Field(
                 min_length=1, description="Contexts where this acceptance step applies"
             ),
@@ -247,7 +247,7 @@ class FlextInfraModelsConfigMake(
             t.NonEmptyStr, m.Field(description="Required workflow identity")
         ]
         contexts: Annotated[
-            t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
+            tuple[Literal["local", "ci", "pre_commit", "pre_push"], ...],
             m.Field(
                 min_length=1, description="Contexts requiring the prior green phase"
             ),
@@ -264,14 +264,14 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         contexts: Annotated[
-            t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
+            tuple[Literal["local", "ci", "pre_commit", "pre_push"], ...],
             m.Field(
                 min_length=1,
                 description="Execution contexts consuming this single workflow row",
             ),
         ]
         requires: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec],
+            tuple[FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec, ...],
             m.Field(
                 description=(
                     "Earlier workflow identities whose green result admits this step "
@@ -457,19 +457,19 @@ class FlextInfraModelsConfigMake(
         """
 
         format_check: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Flags for ruff format --check (read-only fmt)"),
         ]
         format_apply: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Flags for ruff format APPLY"),
         ]
         lint_check: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Flags for ruff check without mutation"),
         ]
         lint_fix: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Flags for ruff check --fix; MANDATORY unsafe-fix channel"
@@ -731,7 +731,7 @@ class FlextInfraModelsConfigMake(
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
         ]
         fmt_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Gates whose mutating side `make fmt` drives (formatters). "
@@ -757,11 +757,11 @@ class FlextInfraModelsConfigMake(
             ),
         ] = False
         workflow: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeWorkflowStepSpec],
+            tuple[FlextInfraModelsConfigMake.MakeWorkflowStepSpec, ...],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         lifecycle_steps: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeLifecycleStepSpec],
+            tuple[FlextInfraModelsConfigMake.MakeLifecycleStepSpec, ...],
             m.Field(
                 min_length=1, description="Ordered public runtime acceptance steps"
             ),
@@ -771,13 +771,13 @@ class FlextInfraModelsConfigMake(
             m.Field(description="Config-owned CI-only environment delta"),
         ]
         native_environment_unset: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description="Inherited selectors excluded from native project execution"
             ),
         ]
         github_credential_command: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -853,25 +853,25 @@ class FlextInfraModelsConfigMake(
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
         verbs: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
         ]
         violations_sweep_repair_verbs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Default ordered violations-sweep Make operations",
             ),
         ]
         type_contract_rules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Exact AST migrations of source-declared type contracts",
             ),
         ]
         common_arguments: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
         clean: Annotated[
@@ -894,7 +894,7 @@ class FlextInfraModelsConfigMake(
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeProjectCheckGateSpec],
+            tuple[FlextInfraModelsConfigMake.MakeProjectCheckGateSpec, ...],
             m.Field(
                 default=(),
                 description=(
@@ -904,7 +904,7 @@ class FlextInfraModelsConfigMake(
             ),
         ] = ()
         check_prerequisite_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -1220,13 +1220,13 @@ class FlextInfraModelsConfigMake(
 
         @m.computed_field
         @property
-        def approval_verbs(self) -> t.VariadicTuple[str]:
+        def approval_verbs(self) -> tuple[str, ...]:
             """Ordered approval derived once from the validated workflow."""
             return tuple(step.verb for step in self.workflow if "ci" in step.contexts)
 
         @m.computed_field
         @property
-        def check_gates_allowed(self) -> t.VariadicTuple[str]:
+        def check_gates_allowed(self) -> tuple[str, ...]:
             """Canonical generated Make check-gate vocabulary.
 
             The built-in gates this package implements, plus the gates the
@@ -1236,7 +1236,7 @@ class FlextInfraModelsConfigMake(
             kept working handlers unreachable from `make check`.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...],``.
 
             """
             return (
@@ -1252,22 +1252,22 @@ class FlextInfraModelsConfigMake(
 
         @m.computed_field
         @property
-        def check_gates_default(self) -> t.VariadicTuple[str]:
+        def check_gates_default(self) -> tuple[str, ...]:
             """Active default gates, shared by local, CI, hooks, and project gates.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...],``.
 
             """
             return self.check_gates_allowed
 
         @m.computed_field
         @property
-        def check_gates_local(self) -> t.VariadicTuple[str]:
+        def check_gates_local(self) -> tuple[str, ...]:
             """Run the complete active gate universe locally and at pre-push.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...],``.
 
             """
             return self.check_gates_default
@@ -1293,7 +1293,7 @@ class FlextInfraModelsConfigMake(
 
         @m.computed_field
         @property
-        def check_gates_ci(self) -> t.VariadicTuple[str]:
+        def check_gates_ci(self) -> tuple[str, ...]:
             """CI runs the commit-stage and CI-stage gates (gate-budget law).
 
             Returns:
@@ -1309,7 +1309,7 @@ class FlextInfraModelsConfigMake(
 
         @m.computed_field
         @property
-        def pre_commit_check_gates(self) -> t.VariadicTuple[str]:
+        def pre_commit_check_gates(self) -> tuple[str, ...]:
             """The commit hook runs only the fast commit-stage gates.
 
             Returns:
@@ -1325,7 +1325,7 @@ class FlextInfraModelsConfigMake(
 
         @m.computed_field
         @property
-        def check_gates_fixable(self) -> t.VariadicTuple[str]:
+        def check_gates_fixable(self) -> tuple[str, ...]:
             """Repair-capable gates outside the declared formatter operation.
 
             Asking for a gate that cannot fix anything still pays its full cost;
@@ -1333,7 +1333,7 @@ class FlextInfraModelsConfigMake(
             exactly that.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...],``.
 
             """
             return tuple(
@@ -1344,11 +1344,11 @@ class FlextInfraModelsConfigMake(
 
         @m.computed_field
         @property
-        def check_gates_file(self) -> t.VariadicTuple[str]:
+        def check_gates_file(self) -> tuple[str, ...]:
             """Gates whose checker accepts one declared file.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...],``.
 
             """
             return c.Infra.CANONICAL_FILE_GATE_IDS

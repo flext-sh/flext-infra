@@ -10,7 +10,7 @@ from pathlib import Path
 
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitWorktreeCheckpoint,
     FlextInfraUtilitiesGitWorktreeIO,
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesGitWorktreePatch(
         return cls._git_check_patch_at(delta.source_root, delta.patch, reverse=True)
 
     @staticmethod
-    def _git_patch_added_paths(patch: bytes) -> t.VariadicTuple[Path]:
+    def _git_patch_added_paths(patch: bytes) -> tuple[Path, ...]:
         """Return paths declared as new files by one binary Git patch.
 
         Returns:

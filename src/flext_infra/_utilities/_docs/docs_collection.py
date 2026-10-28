@@ -67,7 +67,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
         def absorb_artifacts(
             self,
-            artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
+            artifacts: tuple[m.Cli.AtomicFileState, ...],
         ) -> None:
             """Merge one path's collected states, rejecting concurrent change.
 
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         def record_private(
             self,
             source: m.Infra.PlanCollectionSource,
-            paths: t.VariadicTuple[Path],
+            paths: tuple[Path, ...],
         ) -> None:
             """Record a private-inventory source's coverage."""
             self.coverage.append(
@@ -147,7 +147,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         def record_public(
             self,
             source: m.Infra.PlanCollectionSource,
-            paths: t.VariadicTuple[Path],
+            paths: tuple[Path, ...],
         ) -> None:
             """Record a published source's coverage."""
             self.coverage.append(
@@ -324,9 +324,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         source_root: Path,
         source: m.Infra.PlanCollectionSource,
-        paths: t.VariadicTuple[Path],
+        paths: tuple[Path, ...],
         state: _CollectionState,
-        excluded_outputs: t.VariadicTuple[Path],
+        excluded_outputs: tuple[Path, ...],
     ) -> None:
         """Collect every published artifact of one source path set."""
         for path in paths:
@@ -354,7 +354,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         root: Path,
         configuration: m.Infra.PlanCollectionConfig,
         state: _CollectionState,
-        excluded_outputs: t.VariadicTuple[Path],
+        excluded_outputs: tuple[Path, ...],
     ) -> None:
         """Run every configured source through its collection adapter.
 
@@ -493,7 +493,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         canonical: Path,
         source_root: Path,
         source: m.Infra.PlanCollectionSource,
-        artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
+        artifacts: tuple[m.Cli.AtomicFileState, ...],
         *,
         previous: m.Infra.PlanCollectionRevision | None,
     ) -> m.Infra.PlanCollectionRevision:
@@ -565,7 +565,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         canonical: Path,
         incoming_revision: m.Infra.PlanCollectionRevision,
-        artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
+        artifacts: tuple[m.Cli.AtomicFileState, ...],
         desired: t.MutableMappingKV[Path, bytes],
         *,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],

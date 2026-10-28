@@ -28,7 +28,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
         source: str,
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
+    ) -> tuple[bool, tuple[m.Infra.SourceRewrite, ...]]:
 
         if cls._wrapper_blocked_usages(resource, source, flatten=flatten):
             return (True, ())
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
     def _wrapper_qualified(
         primary: str,
         wrapper_name: str,
-    ) -> t.Triple[str, bool, bool]:
+    ) -> tuple[str, bool, bool]:
         """Split one primary expression into its qualifier parent and match.
 
         Returns:
@@ -131,7 +131,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
         statements: t.SequenceOf[m.Infra.LogicalStatement],
         source: str,
         occurrence: t.Infra.RopeOccurrence,
-        name_replacement: t.Pair[str, str],
+        name_replacement: tuple[str, str],
     ) -> m.Infra.SourceRewrite | None:
         """Build one member occurrence rewrite, or ``None`` when unrelated.
 

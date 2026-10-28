@@ -41,7 +41,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
         protected: t.Pair[int, int] | None = None,
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
             FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         native: t.Triple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
         expression: str,
         offset: int,
-        sources: t.MappingKV[Path, str],
+        sources: t.MappingKV[Path, ...],
     ) -> None:
         """Reuse native reaching-definition proof, including star provenance.
 

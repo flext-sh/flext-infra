@@ -91,7 +91,7 @@ class TestsFlextInfraConformSupport:
         )
 
     @staticmethod
-    def project_tree(root: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
+    def project_tree(root: Path) -> tuple[t.Pair[str, bytes], ...]:
         """Return the versionable project tree independently of Git test fixtures.
 
         Returns:
@@ -132,8 +132,8 @@ class TestsFlextInfraConformSupport:
 
     @staticmethod
     def project_tree_diff(
-        expected: t.VariadicTuple[t.Pair[str, bytes]],
-        actual: t.VariadicTuple[t.Pair[str, bytes]],
+        expected: tuple[t.Pair[str, bytes], ...],
+        actual: tuple[t.Pair[str, bytes], ...],
     ) -> str:
         """Render only differing generated files when a fixed-point contract fails.
 

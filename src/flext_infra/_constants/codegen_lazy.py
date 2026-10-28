@@ -35,7 +35,7 @@ class FlextInfraConstantsCodegenLazy:
         "_root_typing_parts",
     })
     "Closed set of retired root registry module and package names."
-    LAZY_BOOTSTRAP_HELPERS: ClassVar[t.VariadicTuple[str]] = (
+    LAZY_BOOTSTRAP_HELPERS: ClassVar[tuple[str, ...]] = (
         "build_lazy_import_map",
         "install_lazy_exports",
     )

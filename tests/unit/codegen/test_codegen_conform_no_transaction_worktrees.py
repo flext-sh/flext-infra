@@ -27,11 +27,11 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
     """
 
     @staticmethod
-    def _transaction_worktree_siblings(root: Path) -> t.VariadicTuple[str]:
+    def _transaction_worktree_siblings(root: Path) -> tuple[str, ...]:
         """Name sibling directories that look like detached transaction worktrees.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         return tuple(

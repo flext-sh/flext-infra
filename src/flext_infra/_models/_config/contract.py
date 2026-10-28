@@ -27,15 +27,15 @@ class FlextInfraModelsConfigContract(FlextInfraModelsMiseToolchain):
         """Repository-specific exceptions and stale-symbol declarations."""
 
         stale_symbols: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Public symbols retired from current documentation"),
         ] = ()
         stale_symbol_exempt_paths: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Exact generated API paths retaining live symbols"),
         ] = ()
         forbidden_terms: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Literal retired-surface names forbidden in current "
@@ -45,7 +45,7 @@ class FlextInfraModelsConfigContract(FlextInfraModelsMiseToolchain):
             ),
         ] = ()
         container_home_identities: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Container/CI identities whose /home|/Users home is part "
@@ -55,7 +55,7 @@ class FlextInfraModelsConfigContract(FlextInfraModelsMiseToolchain):
             ),
         ] = ()
         historical_evidence_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="Exact dated Markdown records preserving observed paths",
             ),
@@ -86,7 +86,7 @@ class FlextInfraModelsConfigContract(FlextInfraModelsMiseToolchain):
         """Complete rendered documentation policy accepted by the auditor."""
 
         placeholder_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Regexes recognizing unfinished document markers"),
         ] = ()
 

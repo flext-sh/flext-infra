@@ -120,7 +120,7 @@ class FlextInfraProtocolsCheck(Protocol):
         def __call__(
             self,
             gates: t.StrSequence,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CheckProjectTarget]]: ...
+        ) -> p.Result[tuple[m.Infra.CheckProjectTarget, ...]]: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

@@ -191,7 +191,7 @@ class FlextInfraRefactorRoutes:
         """
         return infra.mod_text_candidate(request)
 
-    refactor_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
+    refactor_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
         m.Cli.ResultCommandRoute(
             name="rename-plan",
             help_text=(

@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 
 import flext_infra
-from tests import c, t, tm
+from tests import c, tm
 
 
 class TestsFlextInfraMakeParseIsSideEffectFree:
@@ -49,7 +49,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
         """
         return Path(__file__).resolve().parents[2]
 
-    def _make_surfaces(self) -> t.VariadicTuple[Path]:
+    def _make_surfaces(self) -> tuple[Path, ...]:
         """Return every Make surface plus the templates that generate them.
 
         Returns:
@@ -81,7 +81,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
             and self._INTERPRETER_RUN.search(line) is not None
         )
 
-    def _interpreter_at_parse_time(self, surface: Path) -> t.VariadicTuple[str]:
+    def _interpreter_at_parse_time(self, surface: Path) -> tuple[str, ...]:
         """Return immediate assignments that spawn an interpreter while parsing.
 
         Returns:
@@ -98,7 +98,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
         )
 
     @staticmethod
-    def _silencing_lines(surface: Path) -> t.VariadicTuple[str]:
+    def _silencing_lines(surface: Path) -> tuple[str, ...]:
         """Return recipe lines that discard a command's exit status.
 
         Returns:
@@ -121,7 +121,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
     )
     def test_make_surfaces_preserve_execution_boundaries(self, scan_name: str) -> None:
         """Parsing starts no interpreter and recipes never swallow failures."""
-        scan: Callable[[Path], t.VariadicTuple[str]] = getattr(self, scan_name)
+        scan: Callable[[Path], tuple[str, ...]] = getattr(self, scan_name)
         offenders = {
             surface.name: lines
             for surface in self._make_surfaces()

@@ -124,7 +124,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
     @staticmethod
     @override
-    def _findings_exit_codes() -> t.VariadicTuple[int]:
+    def _findings_exit_codes() -> tuple[int, ...]:
         """Exit statuses with which Ruff format reports unformatted files.
 
         Returns:

@@ -197,14 +197,14 @@ class FlextInfraConstantsBase(
     PYTHON: ClassVar[str] = "python"
     "Python executable and tool name."
 
-    CANONICAL_DEV_DEPENDENCY_GROUPS: ClassVar[t.VariadicTuple[DependencyGroup]] = (
+    CANONICAL_DEV_DEPENDENCY_GROUPS: ClassVar[tuple[DependencyGroup, ...]] = (
         DEV,
         DOCS,
         SECURITY,
         TEST,
         TYPINGS,
     )
-    LEGACY_DEV_DEPENDENCY_GROUPS: ClassVar[t.VariadicTuple[DependencyGroup]] = (
+    LEGACY_DEV_DEPENDENCY_GROUPS: ClassVar[tuple[DependencyGroup, ...]] = (
         DOCS,
         SECURITY,
         TEST,

@@ -181,7 +181,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         """Pyrefly execution and path policy; native options live in settings."""
 
         findings_exit_codes: Annotated[
-            t.VariadicTuple[int],
+            tuple[int, ...],
             m.Field(
                 alias="findings-exit-codes",
                 description="Native diagnostic statuses",

@@ -38,7 +38,7 @@ class FlextInfraModelsConfigBeads:
             m.Field(description="Repository-owned issue prefix"),
         ]
         ownership_command_prefix: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Declared public wrapper for ownership reads"),
         ] = ()
         ownership_command_cwd: Annotated[
@@ -46,7 +46,7 @@ class FlextInfraModelsConfigBeads:
             m.Field(description="Declared city/rig scope of ownership reads"),
         ] = None
         custom_issue_types: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Repository-owned custom types beyond the Gas City baseline"
@@ -96,7 +96,7 @@ class FlextInfraModelsConfigBeads:
             ),
         ] = True
         custom_issue_types: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Union of project and required custom bead types"),
         ] = ()
         dolt_mode: Annotated[

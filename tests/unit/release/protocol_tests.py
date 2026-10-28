@@ -58,8 +58,8 @@ class TestsFlextInfraReleaseProtocol:
         @staticmethod
         def test_explicit_patch_finalization_preserves_opaque_history(
             tmp_path: Path,
-            scenario: t.Triple[str, str, str],
-            outcome: t.Pair[str, bool],
+            scenario: tuple[str, str, str],
+            outcome: tuple[str, bool],
         ) -> None:
             """A selected closure releases its line without compatibility inference."""
             current, tag, subject = scenario
@@ -295,7 +295,7 @@ class TestsFlextInfraReleaseProtocol:
         cls,
         tmp_path: Path,
         runtime_environment: t.StrMapping | None = None,
-    ) -> Generator[t.Triple[Path, Path, m.Infra.GitLaneOwnershipReceipt]]:
+    ) -> Generator[tuple[Path, Path, m.Infra.GitLaneOwnershipReceipt]]:
         """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
         Why: PATH is restored by the public ``env_vars_context`` facade rather
@@ -402,7 +402,7 @@ class TestsFlextInfraReleaseProtocol:
         current: str,
         tag: str,
         subject: str,
-        outcome: t.Pair[str, bool],
+        outcome: tuple[str, bool],
     ) -> None:
         """Explicit scenario policy permits patches and declared releases."""
         workspace = u.Tests.create_release_workspace(tmp_path, version=current)
@@ -437,7 +437,7 @@ class TestsFlextInfraReleaseProtocol:
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
-        scenario: t.Triple[str, str, str],
+        scenario: tuple[str, str, str],
         diagnostic_fragment: str,
     ) -> None:
         """No semantic bump or newer declaration is silently clamped or downgraded."""

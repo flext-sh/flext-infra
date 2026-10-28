@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 def _run_lazy_init_and_read_mapping(
     repository_root: Path,
     package_root: Path,
-) -> t.Pair[str, t.VariadicTuple[t.Pair[str, t.StrSequence]]]:
+) -> t.Pair[str, tuple[t.Pair[str, t.StrSequence]], ...]:
     """Generate lazy init and return its content with the elected mapping.
 
     Returns:

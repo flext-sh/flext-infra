@@ -43,9 +43,11 @@ class FlextInfraCodegenVscode:
             Library defaults overlaid by this project's and local declarations.
 
         """
-        return u.Infra.load_codegen_inputs(repository_root).map(
-            lambda inputs: inputs.spec.vscode,
-        )
+
+        def editor_spec(inputs: m.Infra.CodegenInputs) -> m.Infra.CodegenVscodeSpec:
+            return inputs.spec.vscode
+
+        return u.Infra.load_codegen_inputs(repository_root).map(editor_spec)
 
     @staticmethod
     def vscode_settings(spec: m.Infra.CodegenVscodeSpec) -> t.JsonMapping:

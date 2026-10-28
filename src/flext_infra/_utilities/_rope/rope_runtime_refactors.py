@@ -104,7 +104,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def ignored_regions(
         cls,
         source: str,
-    ) -> t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str | None]]]:
+    ) -> tuple[t.Triple[int, int, t.MappingKV[str, str | None]], ...]:
         """Read complete literal and comment ranges from Rope's native lexer.
 
         Returns:
@@ -150,14 +150,14 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         cls,
         source: str,
         layout: m.Infra.ClassBlockLayout,
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         """Remove one Rope-resolved header without changing literal payloads.
 
         The body statements own the dedent width and the wrapper docstring, so
         both derive from the logical facts instead of being passed alongside.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SourceRewrite]``.
+            The resulting ``tuple[m.Infra.SourceRewrite, ...],``.
 
         Raises:
             TypeError: If Rope's source lines do not satisfy their public contract.
@@ -405,8 +405,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         offset: int | None,
         new_name: str,
         *,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]]:
+        sources: t.MappingKV[Path, ...],
+    ) -> tuple[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet], ...]:
         """Preview every elected project before any publication or Project.do.
 
         Returns:

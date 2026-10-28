@@ -173,11 +173,11 @@ class FlextInfraRefactorCensusObjects:
     def _impact_map_results(
         cls,
         report: m.Infra.WorkspaceReport,
-    ) -> t.VariadicTuple[m.Infra.Result]:
+    ) -> tuple[m.Infra.Result, ...]:
         """Impact map results.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.Result]``.
+            The resulting ``tuple[m.Infra.Result, ...],``.
 
         """
         changes_by_file: MutableMapping[Path, list[str]] = defaultdict(list)
@@ -220,7 +220,7 @@ class FlextInfraRefactorCensusObjects:
     @staticmethod
     def _reference_sites(
         candidate: m.Infra.RemovalCandidate,
-    ) -> t.VariadicTuple[m.Infra.ReferenceSite]:
+    ) -> tuple[m.Infra.ReferenceSite, ...]:
         """Return all reference sites for a removal candidate.
 
         Returns:

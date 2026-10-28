@@ -94,7 +94,7 @@ class TestsFlextInfraPrivateImportCutoverSupport:
         naming: TestsFlextInfraFacadeNaming,
         *,
         import_alias: str = "",
-    ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
+    ) -> tuple[Path, str, t.MutableMappingKV[Path, str]]:
         """Derive the consumer path, private import, and facade source of one family.
 
         Returns:
@@ -122,7 +122,7 @@ class TestsFlextInfraPrivateImportCutoverSupport:
         sources: t.MappingKV[Path, str],
         consumer_path: Path,
         *private_imports: str,
-    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the cutover for every private import reported in the consumer.
 
         Returns:
@@ -147,7 +147,7 @@ class TestsFlextInfraPrivateImportCutoverSupport:
         sources: t.MappingKV[Path, str],
         consumer_path: Path,
         *private_imports: str,
-    ) -> t.VariadicTuple[p.Infra.SemanticMigrationEdit]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         """Return the successful plan's edits.
 
         Returns:

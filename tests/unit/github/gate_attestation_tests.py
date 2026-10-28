@@ -336,7 +336,7 @@ class TestsFlextInfraGithubGateAttestation:
     )
     def test_public_signing_observation_preserves_undeclared_native_facts(
         tmp_path: Path,
-        declarations: t.VariadicTuple[t.Pair[str, str]],
+        declarations: tuple[t.Pair[str, str], ...],
     ) -> None:
         """Native absence is observable, not selection of a signing capability."""
         u.Tests.git_bootstrap(tmp_path, ("init", "-b", c.Infra.GIT_MAIN))

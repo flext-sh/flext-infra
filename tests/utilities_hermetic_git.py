@@ -108,7 +108,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
     @staticmethod
     def locked_git_sources(
         project_root: Path,
-    ) -> t.VariadicTuple[t.Triple[str, str, str]]:
+    ) -> tuple[t.Triple[str, str, str], ...]:
         """Return every ``(url, rev, sha)`` Git source the checkout lock pins.
 
         The checkout itself is not in its lock; it joins as the infrastructure
@@ -305,7 +305,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             )
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}", sha],
+                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}", ...],
                     cwd=mirror,
                 ),
             )

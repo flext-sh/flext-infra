@@ -25,7 +25,7 @@ from git import (
     Repo,
 )
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 
 
 class FlextInfraUtilitiesGitRepo:
@@ -49,11 +49,11 @@ class FlextInfraUtilitiesGitRepo:
     @staticmethod
     def _registered_worktree_entries(
         porcelain: str,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeEntry]:
+    ) -> tuple[m.Infra.GitWorktreeEntry, ...]:
         """Parse one ``worktree list --porcelain`` document into typed entries.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.GitWorktreeEntry]``.
+            The resulting ``tuple[m.Infra.GitWorktreeEntry, ...],``.
 
         """
         entries: list[m.Infra.GitWorktreeEntry] = []
@@ -102,7 +102,7 @@ class FlextInfraUtilitiesGitRepo:
         cls,
         repo: Repo,
         porcelain: str,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeEntry]:
+    ) -> tuple[m.Infra.GitWorktreeEntry, ...]:
         """Bind a storage-only primary row to Git-proven checkout identity.
 
         Returns:

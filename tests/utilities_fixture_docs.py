@@ -217,11 +217,11 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     @staticmethod
     def plan_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Prepare one docs bundle and plan its files.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.CodegenFilePlan]``.
+            The resulting ``tuple[m.Infra.CodegenFilePlan, ...],``.
 
         """
         bundle = TestsFlextInfraUtilitiesDocsFixtureMixin.prepare_docs_bundle(generator)
@@ -232,11 +232,11 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     @staticmethod
     def publish_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Publish one planned docs bundle through the test transaction adapter.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.CodegenFilePlan]``.
+            The resulting ``tuple[m.Infra.CodegenFilePlan, ...],``.
 
         """
         plans = TestsFlextInfraUtilitiesDocsFixtureMixin.plan_docs_bundle(generator)

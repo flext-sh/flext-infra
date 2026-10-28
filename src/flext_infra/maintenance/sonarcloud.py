@@ -94,11 +94,11 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
     def current_field_values(
         plan: m.Infra.SonarcloudSettingsPlan,
         current: m.Infra.SonarcloudSettingsValues,
-    ) -> t.VariadicTuple[m.Infra.SonarcloudIssueFieldValue]:
+    ) -> tuple[m.Infra.SonarcloudIssueFieldValue, ...]:
         """Read effective entries without excluding values inherited from a parent.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SonarcloudIssueFieldValue]``.
+            The resulting ``tuple[m.Infra.SonarcloudIssueFieldValue, ...],``.
 
         """
         return tuple(

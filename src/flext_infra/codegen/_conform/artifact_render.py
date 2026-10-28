@@ -190,7 +190,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
         composed: str | None = None,
-    ) -> p.Result[t.VariadicTuple[str]]:
+    ) -> p.Result[tuple[str, ...]]:
         """Read direct references from composed, finalized, or committed metadata.
 
         Returns:
@@ -200,17 +200,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if composed is not None:
             document = u.Cli.toml_parse_text(composed)
             if document is None:
-                return r[t.VariadicTuple[str]].fail(
+                return r[tuple[str, ...]].fail(
                     "planned pyproject is not valid TOML",
                 )
             return u.Infra.direct_source_names(document)
         if render_inputs.planned_direct_sources is not None:
-            return r[t.VariadicTuple[str]].ok(render_inputs.planned_direct_sources)
+            return r[tuple[str, ...]].ok(render_inputs.planned_direct_sources)
         document = u.Cli.toml_read_document(
             render_inputs.target.root / c.PYPROJECT_FILENAME,
         )
         if document.failure:
-            return r[t.VariadicTuple[str]].from_failure(document)
+            return r[tuple[str, ...]].from_failure(document)
         return u.Infra.direct_source_names(document.value)
 
     @classmethod

@@ -69,7 +69,7 @@ class FlextInfraUtilitiesDocsScopePaths:
     def docs_repository_roots(
         repository_root: Path,
         extra_roots: t.SequenceOf[Path] = (),
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Return existing physical roots from one stable workspace topology.
 
         Returns:
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesDocsScopePaths:
                 extra_roots,
             )
         except (OSError, TypeError, ValueError) as exc:
-            return r[t.VariadicTuple[Path]].fail(
+            return r[tuple[Path, ...]].fail(
                 f"docs workspace discovery failed: {exc}",
                 exception=exc,
             )
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesDocsScopePaths:
     def _docs_repository_roots(
         repository_root: Path,
         extra_roots: t.SequenceOf[Path],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Discover roots while the public boundary owns exception conversion.
 
         Returns:
@@ -102,25 +102,25 @@ class FlextInfraUtilitiesDocsScopePaths:
         """
         root = FlextInfraUtilitiesDocsScopePaths.absolute_lexical(repository_root)
         if not FlextInfraUtilitiesDocsScopePaths.physical_directory_exists(root):
-            return r[t.VariadicTuple[Path]].fail(
+            return r[tuple[Path, ...]].fail(
                 f"docs repository root is missing: {root}",
             )
         declared = FlextInfraUtilitiesDocsScopePaths._attested_declared_submodule_paths(
             root,
         )
         if declared.failure:
-            return r[t.VariadicTuple[Path]].from_failure(declared)
+            return r[tuple[Path, ...]].from_failure(declared)
         candidates_result = FlextInfraUtilitiesDocsScopePaths._declared_root_candidates(
             root,
             declared.value,
         )
         if candidates_result.failure:
-            return r[t.VariadicTuple[Path]].from_failure(candidates_result)
+            return r[tuple[Path, ...]].from_failure(candidates_result)
         candidates = list(candidates_result.value)
         for candidate in extra_roots:
             lexical = FlextInfraUtilitiesDocsScopePaths.absolute_lexical(candidate)
             if not lexical.is_relative_to(root):
-                return r[t.VariadicTuple[Path]].fail(
+                return r[tuple[Path, ...]].fail(
                     f"docs source root escapes repository {root}: {lexical}",
                 )
             candidates.append(lexical)
@@ -131,12 +131,12 @@ class FlextInfraUtilitiesDocsScopePaths:
                 candidate,
             )
         ]
-        return r[t.VariadicTuple[Path]].ok(tuple(roots))
+        return r[tuple[Path, ...]].ok(tuple(roots))
 
     @staticmethod
     def _attested_declared_submodule_paths(
         root: Path,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Read declared submodule paths under a stable manifest topology.
 
         The ``.gitmodules`` bytes are read before and after the declaration
@@ -153,27 +153,27 @@ class FlextInfraUtilitiesDocsScopePaths:
             required=False,
         )
         if manifest_before.failure:
-            return r[t.VariadicTuple[Path]].from_failure(manifest_before)
+            return r[tuple[Path, ...]].from_failure(manifest_before)
         declared = FlextInfraUtilitiesGit.git_submodule_declarations(root)
         if declared.failure:
-            return r[t.VariadicTuple[Path]].from_failure(declared)
+            return r[tuple[Path, ...]].from_failure(declared)
         manifest_after = u.Cli.atomic_read_binary_file_state(
             manifest_path,
             required=False,
         )
         if manifest_after.failure:
-            return r[t.VariadicTuple[Path]].from_failure(manifest_after)
+            return r[tuple[Path, ...]].from_failure(manifest_after)
         if manifest_after.value != manifest_before.value:
-            return r[t.VariadicTuple[Path]].fail(
+            return r[tuple[Path, ...]].fail(
                 f"docs repository topology changed during discovery: {manifest_path}",
             )
-        return r[t.VariadicTuple[Path]].ok(tuple(item.path for item in declared.value))
+        return r[tuple[Path, ...]].ok(tuple(item.path for item in declared.value))
 
     @staticmethod
     def _declared_root_candidates(
         root: Path,
         declared_paths: t.SequenceOf[Path],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Compose repository-root candidates from declared submodule paths.
 
         Returns:
@@ -184,11 +184,11 @@ class FlextInfraUtilitiesDocsScopePaths:
         for declared_path in declared_paths:
             selector = declared_path
             if selector.is_absolute() or ".." in selector.parts:
-                return r[t.VariadicTuple[Path]].fail(
+                return r[tuple[Path, ...]].fail(
                     f"invalid docs composed project path: {selector}",
                 )
             candidates.append(root / selector)
-        return r[t.VariadicTuple[Path]].ok(tuple(candidates))
+        return r[tuple[Path, ...]].ok(tuple(candidates))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsScopePaths"]

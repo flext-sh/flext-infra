@@ -345,8 +345,15 @@ each code change. Only after implementing the real runtime behavior are tests
 updated and run to validate it, without mocks, tautologies or policy hardcodes.
 
 Resolve the test entry from the selected repository's current native help. The
-current generated catalog declares `make tests`, without file or match inputs;
-it executes its applicable persistent-testmon selection once. Historical commands
+current catalog declares `make tests` and the explicitly requested `make tests-full`,
+without file or match inputs. The first executes persistent Testmon selection
+once; the second executes the complete applicable population once without
+Testmon, a preliminary incremental run or any cache read, lease or publication.
+The existing database remains untouched. The operator's latest 2026-10-28
+clarification is owned by
+[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
+Both operations retain source admission, applicability, original failure and the
+same complete invocation deadline. Historical commands
 are receipts for their own source epochs, not aliases or executable instructions
 for this catalog. An undeclared old target is corrected at the documentation
 owner, never bypassed through raw pytest or another dispatcher.
@@ -2380,6 +2387,14 @@ Uncaptured resources remain explicit `None`, without diagnostic module resolutio
 The physical facade and its declared AST base expressions supply source context.
 Diagnostics do not admit unknown objects, skip ancestors or widen the class
 contract without evidence from the real consumer.
+Component composition uses that same admission: a rejected base stops the whole
+query and retains its original exception, never a partial ancestry result.
+Native startup imports Core utilities before planning. A syntax error in an
+authored declaration means generation has not run. Repair its minimal bootstrap
+declaration without changing tuple arity or parameter separators, then repair the
+rewriter's candidate validation at its owner; do not substitute an older runtime
+or bypass the import. Annotation rewrites must preserve surrounding punctuation
+and validate the complete candidate before publication.
 Rope resolves existing bases before composition: upstream bases remain, while an
 own provider moved outside that family leaves its MRO and unused imports.
 Unresolved providers fail before publication. Class-move previews and immutable
@@ -3002,8 +3017,13 @@ resolution and lock publication.
 
 ### Testmon/Toolchain Caching, SSH Gate Attestations, and Smells Enforcement
 
-Normal test verbs remain incremental testmon only ([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)) and omit the configured slow
-markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
+The ordinary `tests` operation uses incremental Testmon selection
+([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)).
+The explicit `tests-full` operation executes the applicable suite once without
+Testmon, an incremental pre-run or database access. Marker applicability remains
+owned by the declared execution context; neither operation invents exclusions.
+The incremental filesystem cache lives at the typed XDG/HOME-derived project path
+and full execution leaves it untouched.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted

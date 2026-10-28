@@ -21,7 +21,7 @@ class FlextInfraUtilitiesPrivateImportAncestry:
         def __init__(self, *, module: str, package: str) -> None:
             self._module = module
             self._package = package
-            self.bases: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
+            self.bases: t.MutableMappingKV[str, tuple[str, ...]] = {}
             self.module_names: t.MutableStrMapping = {}
 
         def collect_root(self, statements: t.SequenceOf[ast.stmt]) -> None:
@@ -122,15 +122,15 @@ class FlextInfraUtilitiesPrivateImportAncestry:
 
     @staticmethod
     def class_bases(
-        sources: t.MappingKV[str, t.Pair[str, bool]],
-    ) -> t.MappingKV[str, t.VariadicTuple[str]]:
+        sources: t.MappingKV[str, tuple[str, bool]],
+    ) -> t.MappingKV[str, tuple[str, ...]]:
         """Index static class ancestry, including private intermediate owners.
 
         Returns:
             The resulting ``t.MappingKV[str, t.VariadicTuple[str]]``.
 
         """
-        bases: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
+        bases: t.MutableMappingKV[str, tuple[str, ...]] = {}
         for module, (source, is_package) in sources.items():
             tree = ast.parse(source, filename=module)
             package = module if is_package else module.rpartition(".")[0]

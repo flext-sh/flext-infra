@@ -165,7 +165,7 @@ class TestsFlextInfraGitFacet:
         return repository, remote, branch
 
     @staticmethod
-    def _lane_bytes(repository: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
+    def _lane_bytes(repository: Path) -> tuple[t.Pair[str, bytes], ...]:
         """Observe fixture bytes, including the Git index, refs, and reflogs.
 
         Returns:

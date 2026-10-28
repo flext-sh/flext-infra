@@ -474,7 +474,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
 
             def reject(identity: str, reason: str) -> bool:
-                u.Cli.info(
+                u.Cli.debug(
                     f"annotation deferral class={qualified.target}."
                     f"{'.'.join(qualified.attributes)} ancestor={identity} "
                     f"reason={reason}"

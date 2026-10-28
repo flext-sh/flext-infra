@@ -91,7 +91,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def normalized_codegen_changes(
         cls,
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]:
+    ) -> p.Result[tuple[m.Cli.FileChange, ...]]:
         """Normalize Python destinations once; pass every other plan through.
 
         Check and publication share this view, so they never disagree. A plan
@@ -143,7 +143,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         root: Path,
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Publish generated plans through the shared file-change publisher.
 
         Python is normalized first; runtime-local index entries are retired and
@@ -193,7 +193,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _prune_emptied_directories(
         lock_path: Path,
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-        published: t.VariadicTuple[Path],
+        published: tuple[Path, ...],
     ) -> p.Result[bool]:
         """Remove the directories a published deletion left empty.
 

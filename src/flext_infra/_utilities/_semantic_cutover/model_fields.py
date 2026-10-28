@@ -221,7 +221,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         resources: t.SequenceOf[p.Infra.RopeResource],
-    ) -> t.SequenceOf[t.Pair[str, str]]:
+    ) -> t.SequenceOf[tuple[str, str]]:
         """Specialize explicit argument shapes, leaving matching/writing to Rope.
 
         Returns:
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         """
         if not rule.defaulted_field:
             return ((rule.pattern, rule.goal),)
-        templates: t.MutableMappingKV[t.Pair[str, str], None] = {}
+        templates: t.MutableMappingKV[tuple[str, str], None] = {}
         field = f"${{{rule.call_target}}}"
         default = f"${{{rule.value_default}}}"
         for resource in resources:
@@ -271,7 +271,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
-    ) -> t.SequenceOf[t.Pair[int, int]]:
+    ) -> t.SequenceOf[tuple[int, int]]:
         """Retain every call lacking an exact native evaluation-safety proof.
 
         Returns:
@@ -301,7 +301,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
-    ) -> t.SequenceOf[t.Pair[int, int]]:
+    ) -> t.SequenceOf[tuple[int, int]]:
         """Prove direct SDK metadata that only stores a deferred builtin factory.
 
         Returns:
@@ -314,7 +314,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = runtime.scope_at(module, match.get_region()[0])
         annotated = runtime.qualified_name(project, "typing.Annotated")
-        regions: list[t.Pair[int, int]] = []
+        regions: list[tuple[int, int]] = []
         for node in ast.walk(contract):
             if not isinstance(node, ast.Subscript) or not isinstance(
                 node.slice, ast.Tuple
@@ -350,7 +350,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
-        candidate: t.Pair[p.Infra.RopeScope, ast.Call],
+        candidate: tuple[p.Infra.RopeScope, ast.Call],
     ) -> bool:
         """Keep builtin factories as values, never evaluate authored callbacks.
 
@@ -400,7 +400,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     def _plan_model_fields(
         cls,
         sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Inspect all sources, including direct access emitted by older rules.
 
         Returns:
@@ -412,7 +412,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     @classmethod
     def _rewrite_fields(cls, path: Path, source: str) -> t.Infra.TransformResult:
         tree = ast.parse(source, filename=str(path))
-        replacements: list[t.Triple[int, int, str]] = []
+        replacements: list[tuple[int, int, str]] = []
         lines = source.splitlines(keepends=True)
         for function in ast.walk(tree):
             if not isinstance(function, c.Infra.AST_FUNCTION_TYPES):
@@ -440,7 +440,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         path: Path,
         function: ast.FunctionDef | ast.AsyncFunctionDef,
         lines: t.SequenceOf[str],
-    ) -> t.SequenceOf[t.Triple[int, int, str]]:
+    ) -> t.SequenceOf[tuple[int, int, str]]:
         """Plan the narrowed model-fields boundary of one function body.
 
         Returns:
@@ -459,7 +459,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             )
             if isinstance(arg.annotation, ast.Name) and arg.annotation.id == "object"
         }
-        replacements: list[t.Triple[int, int, str]] = []
+        replacements: list[tuple[int, int, str]] = []
         for index, statement in enumerate(function.body):
             receiver = cls._field_receiver(statement)
             if receiver not in untrusted or not isinstance(statement, ast.Assign):

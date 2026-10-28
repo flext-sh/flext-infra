@@ -80,7 +80,7 @@ class FlextInfraUtilitiesEnforcementCatalog:
     @staticmethod
     def _claims(
         rules: t.SequenceOf[m.Infra.CodemodRule],
-    ) -> t.VariadicTuple[m.Infra.EnforcementClaim]:
+    ) -> tuple[m.Infra.EnforcementClaim, ...]:
         """Collect every owner's claims in declaration order.
 
         Returns:

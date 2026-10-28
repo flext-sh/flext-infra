@@ -91,7 +91,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
     def docs_machine_path_issues(
         scope: m.Infra.DocScope,
         *,
-        historical_evidence_files: t.VariadicTuple[Path],
+        historical_evidence_files: tuple[Path, ...],
         container_home_identities: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect per-user absolute paths frozen into markdown outside the root.
@@ -299,7 +299,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
             content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for index, fence in enumerate(
                 filter(
-                    FlextInfraUtilitiesDocs.docs_is_python_fence,
+                    FlextInfraUtilitiesDocsBase.docs_is_python_fence,
                     u.Cli.markdown_fences(content),
                 ),
             ):

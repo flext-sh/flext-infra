@@ -29,7 +29,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         source: str,
         *,
         alias: str,
-    ) -> t.VariadicTuple[ast.Assign | ast.AnnAssign]:
+    ) -> tuple[ast.Assign | ast.AnnAssign, ...]:
         """Return only direct module bindings for the declared alias.
 
         Returns:

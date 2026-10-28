@@ -30,7 +30,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         """Shared command identity required by every generated Make surface."""
 
         release_verbs: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(
                 description="Release phase commands elected by repository capability"
             ),
@@ -45,11 +45,11 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Repository-declared public examples module"),
         ] = None
         workspace_repositories: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigContexts.RepositoryRef],
+            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
             m.Field(description="Ordered workspace subproject records"),
         ] = ()
         environment_imports: Annotated[
-            t.VariadicTuple[t.Pair[t.NonEmptyStr, Path]],
+            tuple[t.Pair[t.NonEmptyStr, Path], ...],
             m.Field(
                 description="Declared package names and source roots for diagnostics"
             ),
@@ -63,7 +63,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Runtime-root-local development environment"),
         ] = c.Infra.ENVIRONMENT_DIRECTORY
         contract_env_values: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="OPTIONS or HELP values that display a verb contract"),
         ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
 
@@ -105,7 +105,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Relative workspace root path"),
         ]
         workspace_subprojects: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Declared workspace subproject paths"),
         ] = ()
         uv_link_mode: Annotated[
@@ -127,7 +127,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         mise_install_tools: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -146,7 +146,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Generated Make command contract"),
         ]
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Repository-specific public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
@@ -235,11 +235,11 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         workspace_subprojects: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Ordered workspace subproject paths"),
         ] = ()
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Repository-specific additional public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
@@ -384,11 +384,11 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         project_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Target-owned runtime requirements"),
         ]
         development_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Development policy composed for the target's kind"),
         ]
         tooling: Annotated[
@@ -396,7 +396,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
         beads: Annotated[
@@ -404,7 +404,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         ownership_command_prefix: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Configured Beads ownership command"),
         ]
         canonical_project_name: Annotated[
@@ -465,7 +465,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         inherited_facets: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -475,7 +475,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = ()
         root_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -485,7 +485,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = ()
         repository_namespace_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Implicit namespace directories shipped from the repository root"
@@ -493,7 +493,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = ()
         root_modules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -512,7 +512,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         runtime_dependency_overlay: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(

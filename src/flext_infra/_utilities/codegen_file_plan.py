@@ -26,7 +26,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Compose authenticated effects, advancing bytes only for ordered phases.
 
         Returns:
@@ -263,7 +263,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @staticmethod
     def required_file_states(
         paths: t.IterableOf[Path],
-    ) -> p.Result[t.VariadicTuple[cli_m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]:
         """Snapshot descriptor-authenticated states for an inventoried path set.
 
         Every path must exist: an absent input is a planning defect, not an empty

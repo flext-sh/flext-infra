@@ -242,7 +242,7 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_syntax_errors(cls) -> t.VariadicTuple[type[BaseException]]:
+    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
         """Return exceptions that signal unparseable Python source.
 
         Returns:
@@ -255,7 +255,7 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_runtime_errors(cls) -> t.VariadicTuple[type[BaseException]]:
+    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
         """Return recoverable exceptions raised by Rope operations.
 
         Returns:
@@ -272,7 +272,7 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_module_not_found_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
+    def rope_module_not_found_error_types(cls) -> tuple[type[BaseException], ...]:
         """Return Rope exceptions for unresolved importable modules.
 
         Returns:
@@ -284,7 +284,7 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
     @classmethod
     def rope_attribute_not_found_error_types(
         cls,
-    ) -> t.VariadicTuple[type[BaseException]]:
+    ) -> tuple[type[BaseException], ...]:
         """Return Rope exceptions for statically unresolved attributes.
 
         Returns:

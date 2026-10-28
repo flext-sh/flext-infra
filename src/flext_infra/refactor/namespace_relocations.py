@@ -83,7 +83,7 @@ class FlextInfraNamespaceRelocationCascade:
         entries: t.SequenceOf[m.Infra.ModScanFinding],
         *,
         scan_root: Path,
-    ) -> t.VariadicTuple[t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]:
+    ) -> tuple[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding], ...]:
         """Filter one scan report's entries down to in-scope relocation findings.
 
         The scope is the project's namespace file set (its declared scan
@@ -120,7 +120,7 @@ class FlextInfraNamespaceRelocationCascade:
         project_root: Path,
         rope_project: t.Infra.RopeProject,
         findings: t.SequenceOf[
-            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
+            tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
         ],
         py_files: t.SequenceOf[Path],
         gates: t.StrSequence | None = None,
@@ -191,7 +191,7 @@ class FlextInfraNamespaceRelocationCascade:
         request: m.Infra.NamespaceRelocationRequest,
         *,
         rope_project: p.Infra.RopeProject,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Compose native relocation effects without performing any Rope changes.
 
         Returns:
@@ -504,7 +504,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _relocation_plans(
         request: m.Infra.NamespaceRelocationRequest,
         state: m.Infra.NamespaceRelocationState,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind every changed candidate source to its destination state once.
 
         Returns:
@@ -539,7 +539,7 @@ class FlextInfraNamespaceRelocationCascade:
         cls,
         project_root: Path,
         findings: t.SequenceOf[
-            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
+            tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
         ],
     ) -> t.MappingKV[Path, t.MappingKV[t.StrPair, set[str]]]:
         """Map each file's import moves: ``(source module, target module)`` to aliases.
@@ -594,7 +594,7 @@ class FlextInfraNamespaceRelocationCascade:
         self,
         project_root: Path,
         findings: t.SequenceOf[
-            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
+            tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
         ],
     ) -> tuple[
         MutableMapping[

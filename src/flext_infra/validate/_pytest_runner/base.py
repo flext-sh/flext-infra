@@ -39,9 +39,9 @@ class FlextInfraPytestRunnerBase(s[int]):
     ] = None
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
     testmon_db: Annotated[
-        Path,
-        m.Field(description="Absolute external pytest-testmon SQLite database path."),
-    ]
+        Path | None,
+        m.Field(description="External SQLite database for incremental Testmon runs."),
+    ] = None
     run_timeout_seconds: Annotated[
         int,
         m.Field(
@@ -117,6 +117,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         context: m.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
     ) -> Self:
         """Bind the native runner to one repository's typed policy and identity.
 
@@ -139,16 +142,27 @@ class FlextInfraPytestRunnerBase(s[int]):
         cache = make.testmon_cache
         scratch = make.pytest_scratch
         home = Path(settings.env_required(scratch.user_home_environment_variable))
-        cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
-        cache_home = (
-            Path(cache_home_value)
-            if cache_home_value
-            else Path(settings.env_required(cache.user_home_environment_variable))
-            / cache.home_cache_directory
-        )
-        if not home.is_absolute() or not cache_home.is_absolute():
-            msg = "pytest home and persistent cache anchors must be absolute"
+        if not home.is_absolute():
+            msg = "pytest home anchor must be absolute"
             raise ValueError(msg)
+        database: Path | None = None
+        if execution_mode.is_incremental:
+            cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
+            cache_home = (
+                Path(cache_home_value)
+                if cache_home_value
+                else Path(settings.env_required(cache.user_home_environment_variable))
+                / cache.home_cache_directory
+            )
+            if not cache_home.is_absolute():
+                msg = "pytest persistent cache anchor must be absolute"
+                raise ValueError(msg)
+            database = (
+                cache_home
+                / cache.external_storage_directory
+                / context.target.canonical_project_name
+                / cache.database_filename
+            )
         scratch_base = (
             home / scratch.home_relative_directory / scratch.state_directory_name
         )
@@ -170,12 +184,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,
             reports=cache.reports_directory,
-            testmon_db=(
-                cache_home
-                / cache.external_storage_directory
-                / context.target.canonical_project_name
-                / cache.database_filename
-            ),
+            testmon_db=database,
             scratch_root=scratch_root,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
@@ -220,6 +229,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         collection_command_prefix: t.StrTuple = (),
         profile_enabled: bool = False,
         slow_phase: bool = False,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
     ) -> Self:
         """Create the runner exclusively from generated Make inputs.
 
@@ -254,10 +266,14 @@ class FlextInfraPytestRunnerBase(s[int]):
                 c.Infra.PYTEST_ENV_TARGET_FILE,
             ),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
-            testmon_db=Path(
-                cls._environment_value(
-                    config.Infra.codegen.make.testmon_cache.database_environment_variable,
-                ),
+            testmon_db=(
+                Path(
+                    cls._environment_value(
+                        config.Infra.codegen.make.testmon_cache.database_environment_variable,
+                    ),
+                )
+                if execution_mode.is_incremental
+                else None
             ),
         )
 
@@ -299,12 +315,15 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"test target must be an existing directory or file: {self.target}"
             raise ValueError(msg)
-        if not self.testmon_db.is_absolute():
-            msg = "testmon database path must be absolute"
-            raise ValueError(msg)
-        if self.testmon_db.resolve().is_relative_to(self.repository_root.resolve()):
-            msg = f"testmon database must be outside the checkout: {self.testmon_db}"
-            raise ValueError(msg)
+        if self.testmon_db is not None:
+            if not self.testmon_db.is_absolute():
+                msg = "testmon database path must be absolute"
+                raise ValueError(msg)
+            if self.testmon_db.resolve().is_relative_to(self.repository_root.resolve()):
+                msg = (
+                    f"testmon database must be outside the checkout: {self.testmon_db}"
+                )
+                raise ValueError(msg)
         return self._validate_target_file()
 
     def _validate_target_file(self) -> Self:

@@ -1105,4 +1105,4 @@ class FlextInfraUtilitiesRepository(
         )
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesRepository",)
+__all__: tuple[str, ...] = ("FlextInfraUtilitiesRepository",)

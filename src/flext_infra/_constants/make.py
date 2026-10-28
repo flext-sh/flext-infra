@@ -22,9 +22,9 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     class PytestExecutionMode(StrEnum):
         """Keep test inventory scope distinct from dependency selection.
 
-        GLOBAL_INCREMENTAL shares FULL's marker scope and testmon environment,
-        but selects only impacted cases. INCREMENTAL retains the local/slow
-        partition contract; FULL explicitly executes the complete inventory.
+        GLOBAL_INCREMENTAL shares FULL's marker scope, but uses Testmon to
+        select impacted cases. INCREMENTAL retains the local/slow partition.
+        FULL executes the complete inventory once without Testmon.
         """
 
         INCREMENTAL = "incremental"
@@ -70,6 +70,13 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     """Native pytest option electing its owned temporary tree."""
     PYTEST_TEMP_ENVIRONMENT_VARIABLES: ClassVar[t.StrTuple] = ("TMPDIR", "TMP", "TEMP")
     """Native Python and platform temporary-directory environment names."""
+    TEST_SELECTION_DISABLE_PLUGIN_ARGS: ClassVar[t.StrTuple] = (
+        "-p",
+        "no:pytest-testmon",
+        "-p",
+        "no:testmon.pytest_testmon",
+    )
+    """Block the selection plugin's installed entrypoint and module forms."""
 
     CLI_GROUP_CHECK: ClassVar[str] = "check"
     CLI_GROUP_CODEGEN: ClassVar[str] = "codegen"

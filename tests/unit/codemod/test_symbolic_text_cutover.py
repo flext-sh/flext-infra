@@ -53,7 +53,7 @@ class TestsFlextInfraSymbolicTextCutover:
         source: str,
         *,
         expression: str,
-        proof: t.Pair[str | None, str],
+        proof: t.Pair[str | None, ...],
         scope_name: str | None = None,
     ) -> None:
         """Compare real execution with the public closed native binding owner."""

@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRelease:
     @staticmethod
     def _validated_tar_members(
         archive: tarfile.TarFile,
-    ) -> p.Result[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]]:
+    ) -> p.Result[tuple[t.Pair[tarfile.TarInfo, Path]], ...]:
         """Validate every archive member name and kind for safe materialization.
 
         Returns:
@@ -104,7 +104,7 @@ class FlextInfraUtilitiesRelease:
         try:
             members = tuple(archive.getmembers())
         except tarfile.TarError as exc:
-            return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].fail_op(
+            return r[tuple[t.Pair[tarfile.TarInfo, Path], ...]].fail_op(
                 "read release archive members",
                 exc,
             )
@@ -112,19 +112,19 @@ class FlextInfraUtilitiesRelease:
         for member in members:
             path_result = FlextInfraUtilitiesRelease.archive_member_path(member.name)
             if path_result.failure:
-                return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].from_failure(
+                return r[tuple[t.Pair[tarfile.TarInfo, Path], ...]].from_failure(
                     path_result,
                 )
             if member.issym() or member.islnk():
-                return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].fail(
+                return r[tuple[t.Pair[tarfile.TarInfo, Path], ...]].fail(
                     f"release archive contains symbolic or hard link: {member.name}",
                 )
             if not member.isdir() and not member.isfile():
-                return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].fail(
+                return r[tuple[t.Pair[tarfile.TarInfo, Path], ...]].fail(
                     f"release archive contains unsupported member: {member.name}",
                 )
             validated_members.append((member, path_result.value))
-        return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].ok(
+        return r[tuple[t.Pair[tarfile.TarInfo, Path], ...]].ok(
             tuple(validated_members),
         )
 

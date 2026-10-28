@@ -34,7 +34,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Repository explicitly owns the release protocol"),
         ] = False
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Elected repository-owned public commands"),
         ] = ()
         publish_index: Annotated[
@@ -53,7 +53,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Canonical setup operation report artifact directory"),
         ]
         docs_report_filenames: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Structured docs reports CI dumps and uploads"),
         ] = c.Infra.DOCS_STRUCTURED_REPORT_FILENAMES
         make_profile: Annotated[
@@ -96,7 +96,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Canonical workflow command contract"),
         ]
         workspace_repositories: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigContexts.RepositoryRef],
+            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
             m.Field(
                 description=(
                     "Governed subproject repositories consumed by workspace-scoped "
@@ -105,7 +105,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = ()
         ci_trigger_branches: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description="Ordered, deduplicated blocking CI branches",
@@ -138,7 +138,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ]
         cooldown_excluded_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Requirement names the project takes by direct git "
@@ -197,7 +197,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = None
         system_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -263,7 +263,7 @@ class FlextInfraModelsCodegenRender:
         """Typed input consumed by the generated Git hook validator."""
 
         preservation_ref_namespaces: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Remote ref prefixes exempt from the pre-push matrix"),
         ]
 
@@ -287,7 +287,7 @@ class FlextInfraModelsCodegenRender:
         """Typed input consumed only by the generated project ``.envrc``."""
 
         native_environment_unset: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Inherited selectors excluded by native activation"),
         ]
         toolchain: Annotated[
@@ -299,7 +299,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Project-relative owner of the runtime environment"),
         ] = "."
         environment_path_prepends: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Project-relative executable paths"),
         ]
         environment_directory: Annotated[
@@ -325,7 +325,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ]
         workspace_subprojects: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Workspace-relative member checkout paths of a workspace "
@@ -344,11 +344,11 @@ class FlextInfraModelsCodegenRender:
 
         link_mode: Annotated[str, m.Field(description="uv installation link mode")]
         constraint_dependencies: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Declared constraints, projected as declared"),
         ]
         override_dependencies: Annotated[
-            t.VariadicTuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride],
+            tuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride, ...],
             m.Field(
                 description=(
                     "SSOT-declared PEP 508 overrides resolving a transitive "
@@ -359,7 +359,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = ()
         environments: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Resolved environment markers uv resolves for"),
         ]
 

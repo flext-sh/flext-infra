@@ -72,7 +72,11 @@ class FlextInfraReleaseOrchestrator(
         )
         match ctx.phase:
             case c.Infra.ReleasePhase.PLAN:
-                return self.phase_plan(ctx).map(lambda _plan: True)
+
+                def planned(_plan: m.Infra.ReleasePlan) -> bool:
+                    return True
+
+                return self.phase_plan(ctx).map(planned)
             case c.Infra.ReleasePhase.VERSION:
                 return self.phase_version(ctx)
             case c.Infra.ReleasePhase.TAG:

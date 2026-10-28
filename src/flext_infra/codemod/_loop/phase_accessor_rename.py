@@ -54,7 +54,7 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Plan origin-owned accessors on a separate immutable working view.
 
         Returns:
@@ -97,7 +97,7 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan accessor effects as final file plans.
 
         Returns:

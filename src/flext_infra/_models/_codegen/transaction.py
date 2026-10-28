@@ -113,7 +113,7 @@ class FlextInfraModelsCodegenTransaction:
         candidate: FlextInfraModelsCodegenTransaction.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )
-        consumer_roots: t.VariadicTuple[Path] = m.Field(
+        consumer_roots: tuple[Path, ...] = m.Field(
             default=(),
             description="External scopes elected before producer publication",
         )

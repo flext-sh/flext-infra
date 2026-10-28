@@ -147,7 +147,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         project_dir: Path,
         issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> frozenset[t.Pair[str, str]]:
+    ) -> frozenset[tuple[str, str]]:
         """Index the methods on an override chain of this project.
 
         The index exists only for the static-method recipe, so a run without
@@ -224,7 +224,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             )
             # A module the recipes cannot place stops the phase with nothing
             # written.
-            planned: t.MutableSequenceOf[t.Pair[m.Cli.AtomicFileState, str]] = []
+            planned: t.MutableSequenceOf[tuple[m.Cli.AtomicFileState, str]] = []
             for path, issues in sorted(by_file.items()):
                 before = u.Cli.atomic_read_binary_file_state(
                     path,
@@ -246,8 +246,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _static_hook_keys(
         issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-        resolver: Callable[..., t.VariadicTuple[p.Infra.Issue]],
-        **extras: frozenset[t.Pair[str, str]],
+        resolver: Callable[..., tuple[p.Infra.Issue, ...]],
+        **extras: frozenset[tuple[str, str]],
     ) -> t.StrSequence:
         """Render the static-method findings one resolver leaves to their owner.
 
@@ -337,7 +337,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _overridden_hooks(
         issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-        overridden: frozenset[t.Pair[str, str]],
+        overridden: frozenset[tuple[str, str]],
     ) -> t.StrSequence:
         """Retain instance-method contracts without suppressing their findings.
 
@@ -388,7 +388,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse Ruff's JSON report into findings named by their Ruff rule.
 
         Ruff names every finding by rule name (a syntax error included, as
@@ -512,7 +512,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @staticmethod
     @override
-    def _findings_exit_codes() -> t.VariadicTuple[int]:
+    def _findings_exit_codes() -> tuple[int, ...]:
         """Exit statuses with which Ruff reports its findings.
 
         Returns:

@@ -29,16 +29,34 @@ _MODULE_IMPORT = f"from {c.Infra.PKG_CORE_UNDERSCORE} import t\n"
 _MODEL_USES_ALIAS = f"""\
 from __future__ import annotations
 
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from {c.Infra.PKG_CORE_UNDERSCORE} import m
 
 class _Row(m.BaseModel):
-    skills: t.VariadicTuple[str]
-    rows: t.VariadicTuple[str] = m.Field(alias="rows")
+    skills: tuple[str, ...]
+    rows: tuple[str, ...], = m.Field(alias="rows")
 """
 
 _TYPE_CHECKING_USES_ALIAS = """\
 from __future__ import annotations
 
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -51,6 +69,15 @@ def render(value: t.SequenceOf[str]) -> t.Pair[str, str]: ...
 _PLAIN_CLASS_USES_ALIAS = """\
 from __future__ import annotations
 
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -64,6 +91,15 @@ class Helper:
 _NO_TYPE_CHECKING_BLOCK = """\
 from __future__ import annotations
 
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from email.utils import parseaddr
 
 

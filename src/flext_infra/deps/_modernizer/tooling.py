@@ -175,7 +175,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         *,
         project_kind: str,
         tool_config: m.Infra.ToolConfigDocument,
-        sources: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        sources: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Project every declared table from one conformed native document.
 

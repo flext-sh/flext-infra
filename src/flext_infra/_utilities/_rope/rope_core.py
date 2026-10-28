@@ -131,7 +131,7 @@ class FlextInfraUtilitiesRopeCore(
         source_root: Path,
         *,
         include_consumers: bool = False,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Resolve the declared source graph containing one import consumer.
 
         Returns:

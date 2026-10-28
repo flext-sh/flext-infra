@@ -116,11 +116,11 @@ class TestsFlextInfraCodemodDuplicateApply:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         paths: t.SequenceOf[Path],
         name: str,
-    ) -> t.VariadicTuple[m.Infra.Object]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Collect one name's rope inventory objects across module paths.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.Object]``.
+            The resulting ``tuple[m.Infra.Object, ...],``.
 
         """
         found = tuple(

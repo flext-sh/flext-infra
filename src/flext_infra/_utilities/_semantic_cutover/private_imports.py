@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_infra import m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
     FlextInfraUtilitiesProjectDiscovery,
@@ -119,11 +120,11 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     def _cross_owner_statements(
         cls,
         live_findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Return the cross-owner private import texts among live findings.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         cross_owner_statements: list[str] = []
@@ -143,14 +144,14 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     @classmethod
     def _resolved_facades(
         cls,
-        cross_owner_statements: t.VariadicTuple[str],
+        cross_owner_statements: tuple[str, ...],
         sources: t.MappingKV[Path, str],
     ) -> t.Pair[
-        t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]],
+        t.MappingKV[str, tuple[t.Quad[ast.Module, str, str, str]], ...],
         t.Triple[
             t.MappingKV[str, set[str]],
             t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+            t.MappingKV[str, tuple[str], ...],
         ],
     ]:
         """Resolve facade inventories for the cross-owner import statements.
@@ -162,12 +163,12 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         """
         facades: t.MappingKV[
             str,
-            t.VariadicTuple[t.Quad[ast.Module, str, str, str]],
+            tuple[t.Quad[ast.Module, str, str, str], ...],
         ] = {}
         bindings: t.Triple[
             t.MappingKV[str, set[str]],
             t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+            t.MappingKV[str, tuple[str], ...],
         ] = ({}, {}, {})
         if not cross_owner_statements:
             return facades, bindings
@@ -188,7 +189,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             (
                 export_bindings,
                 declared_exports,
-                ImportAncestry.class_bases(discovery_sources),
+                FlextInfraUtilitiesPrivateImportAncestry.class_bases(discovery_sources),
             ),
         )
 
@@ -199,12 +200,12 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         imported: ast.alias,
         facades: t.MappingKV[
             str,
-            t.VariadicTuple[t.Quad[ast.Module, str, str, str]],
+            tuple[t.Quad[ast.Module, str, str, str], ...],
         ],
         bindings: t.Triple[
             t.MappingKV[str, set[str]],
             t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+            t.MappingKV[str, tuple[str], ...],
         ],
     ) -> str | None:
         """Resolve one imported private name to its public facade reference.
@@ -277,12 +278,12 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         live_findings: t.SequenceOf[m.Infra.ModOccurrence],
         facades: t.MappingKV[
             str,
-            t.VariadicTuple[t.Quad[ast.Module, str, str, str]],
+            tuple[t.Quad[ast.Module, str, str, str], ...],
         ],
         bindings: t.Triple[
             t.MappingKV[str, set[str]],
             t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+            t.MappingKV[str, tuple[str], ...],
         ],
     ) -> t.Pair[
         t.MappingKV[Path, list[t.Infra.PrivateImportSpec]],
@@ -422,14 +423,14 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         root: Path,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit], ...]:
         """Plan binding-aware public import rewrites.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit], ...],``.
 
         """
-        planned_edits = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        planned_edits = (r[tuple[m.Infra.SemanticMigrationEdit], ...],)
         specs, direct_specs, facades = cls._private_import_references(
             root,
             sources,
@@ -463,7 +464,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         *,
         file_specs: t.SequenceOf[t.Infra.PrivateImportSpec],
         direct_specs: t.MappingKV[str, t.Pair[str, str]],
-        facades: t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]],
+        facades: t.MappingKV[str, tuple[t.Quad[ast.Module, str, str, str]], ...],
     ) -> t.Infra.TransformResult:
         """Rewrite one module's private imports and prove zero residue.
 

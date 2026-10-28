@@ -42,7 +42,7 @@ class FlextInfraApplyRenames:
         )
 
     @staticmethod
-    def _consumer_roots(params: m.Infra.ApplyRenamesInput) -> t.VariadicTuple[Path]:
+    def _consumer_roots(params: m.Infra.ApplyRenamesInput) -> tuple[Path, ...]:
         """Elect the complete declared composition without widening prose edits.
 
         Returns:
@@ -245,7 +245,7 @@ class FlextInfraApplyRenames:
         pairs: t.SequenceOf[t.Pair[str, str]],
         view: t.Pair[p.Infra.WorkspaceSnapshot, p.Infra.RopeProject],
         overrides: t.MappingKV[Path, bytes],
-    ) -> t.Triple[t.VariadicTuple[m.Infra.SemanticFilePlan], int, int]:
+    ) -> t.Triple[tuple[m.Infra.SemanticFilePlan], int, int, ...]:
         """Plan one campaign pass against the snapshot and its Rope project.
 
         Returns:
@@ -290,9 +290,9 @@ class FlextInfraApplyRenames:
         project: p.Infra.RopeProject,
         edits: t.Pair[
             t.MappingKV[Path, t.SequenceOf[p.Infra.SourceRewrite]],
-            t.MappingKV[Path, str],
+            t.MappingKV[Path, ...],
         ],
-    ) -> t.Pair[t.VariadicTuple[m.Infra.SemanticFilePlan], int]:
+    ) -> t.Pair[tuple[m.Infra.SemanticFilePlan], int, ...]:
         """Plan every inventoried file against its authenticated bytes.
 
         Returns:
@@ -321,7 +321,7 @@ class FlextInfraApplyRenames:
         context: t.Pair[frozenset[Path], t.MappingKV[Path, m.Cli.AtomicFileState]],
         project: p.Infra.RopeProject,
         symbols: t.MappingKV[Path, t.SequenceOf[p.Infra.SourceRewrite]],
-        entry: t.Pair[Path, str],
+        entry: t.Pair[Path, ...],
     ) -> t.Pair[m.Infra.SemanticFilePlan, int]:
         """Plan one inventoried file's edits against its authenticated bytes.
 
@@ -388,7 +388,7 @@ class FlextInfraApplyRenames:
         state: t.Pair[
             t.Pair[Path, m.Cli.AtomicFileState], t.SequenceOf[t.Pair[str, str]]
         ],
-        planned: t.Pair[t.SequenceOf[m.Infra.SemanticFilePlan], int],
+        planned: t.Pair[t.SequenceOf[m.Infra.SemanticFilePlan], ...],
     ) -> p.Result[t.Pair[t.SequenceOf[Path], int]]:
         """Accept the previewed campaign by a clean re-scan, then publish it.
 
@@ -404,7 +404,7 @@ class FlextInfraApplyRenames:
         roots = snapshot.members
         publication_root = Path(commonpath(roots))
 
-        def verify(changes: t.VariadicTuple[m.Cli.FileChange]) -> p.Result[bool]:
+        def verify(changes: tuple[m.Cli.FileChange]) -> p.Result[bool, ...]:
             nonlocal pending
             current = u.Cli.atomic_read_binary_file_state(csv_path, required=True)
             if current.failure:

@@ -12,7 +12,7 @@ from pathlib import Path
 from defusedxml import ElementTree as DefusedET
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 
 
 class FlextInfraUtilitiesLogParser:
@@ -23,7 +23,7 @@ class FlextInfraUtilitiesLogParser:
         repository_root: Path,
         *,
         reports_dir: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SarifResult]]:
+    ) -> p.Result[tuple[m.Infra.SarifResult], ...]:
         """Read the SARIF report ``check run`` wrote into typed findings.
 
         ``reports_dir`` is the exact invocation directory printed by ``check run``,
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesLogParser:
         No implicit latest report is selected from concurrent or historical runs.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SarifResult]]``.
+            The resulting ``p.Result[tuple[m.Infra.SarifResult, ...]]``.
 
         """
         report_dir = (
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesLogParser:
         )
         sarif_path = report_dir / c.Infra.CHECK_REPORT_SARIF_FILENAME
         if not sarif_path.is_file():
-            return r[t.VariadicTuple[m.Infra.SarifResult]].fail(
+            return r[tuple[m.Infra.SarifResult, ...]].fail(
                 f"check report not found: {sarif_path}",
             )
         return u.validate_value(
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesLogParser:
         ).map(lambda report: tuple(res for run in report.runs for res in run.results))
 
     @staticmethod
-    def mypy_build_sources(stderr: str, project_dir: Path) -> t.VariadicTuple[Path]:
+    def mypy_build_sources(stderr: str, project_dir: Path) -> tuple[Path, ...]:
         """Read the selected sources and completion proof from Mypy's verbose trace.
 
         Mypy prints each ``BuildSource`` path as a Python string literal, so the

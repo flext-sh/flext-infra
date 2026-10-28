@@ -601,7 +601,7 @@ class FlextInfraConstantsRefactor:
     # = no members, same topology contract as the modernizer). The
     # violation-classification token/priority lists had zero consumers and
     # were exterminated.
-    INTEGRATION_CLASS_PREFIXES: ClassVar[t.VariadicTuple[str]] = (
+    INTEGRATION_CLASS_PREFIXES: ClassVar[tuple[str, ...]] = (
         "FlextTap",
         "FlextTarget",
         "FlextDbt",

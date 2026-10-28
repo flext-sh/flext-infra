@@ -279,7 +279,7 @@ class FlextInfraDepsGate(FlextInfraGate):
         """
         started = time.monotonic()
         raw_output = ""
-        issues: t.VariadicTuple[m.Infra.Issue] = ()
+        issues: tuple[m.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
         scan: m.Infra.DeptryScan | None = None
         try:

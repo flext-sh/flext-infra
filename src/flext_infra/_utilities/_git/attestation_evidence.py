@@ -162,14 +162,14 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         evidence: m.Infra.GateCommandEvidence,
         *,
         plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CheckProjectTarget]]:
+    ) -> p.Result[tuple[m.Infra.CheckProjectTarget, ...]]:
         """Require complete unfiltered coverage of the current native gate plan.
 
         Returns:
             Accepted coverage or the first original report or topology failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CheckProjectTarget]]
+        result_type = r[tuple[m.Infra.CheckProjectTarget, ...]]
         refuse = f"tests run only on a green check: {receipt.parent.name} "
         source = cls._report_contract_bytes(
             repo_root, evidence.reports, c.Infra.GateEvidenceReportKind.CHECK_SARIF
@@ -213,7 +213,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         repo_root: Path,
         receipt: Path,
         evidence: m.Infra.GateCommandEvidence,
-        targets: t.VariadicTuple[m.Infra.CheckProjectTarget],
+        targets: tuple[m.Infra.CheckProjectTarget, ...],
     ) -> p.Result[Path]:
         """Require original HEAD/status and freshness for every covered repository.
 
@@ -323,8 +323,8 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         repo_root: Path,
         request: m.Infra.GateAttestationCreateRequest
         | m.Infra.GateAttestationVerifyRequest,
-    ) -> p.Result[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
-        result_type = r[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
+    ) -> p.Result[tuple[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
+        result_type = r[tuple[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
         path = (
             request.receipt
             if request.receipt.is_absolute()

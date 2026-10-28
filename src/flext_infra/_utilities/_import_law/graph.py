@@ -122,7 +122,7 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         cls,
         project: p.Infra.RopeProject,
         cycles: t.MappingKV[str, frozenset[str]],
-        modules: t.MappingKV[Path, str],
+        modules: t.MappingKV[Path, ...],
     ) -> t.StrTuple:
         """Describe native top-level imports of the rejected cyclic candidate.
 

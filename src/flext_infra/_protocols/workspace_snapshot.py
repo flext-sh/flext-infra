@@ -68,7 +68,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def members(self) -> t.VariadicTuple[Path]:
+        def members(self) -> tuple[Path, ...]:
             """Resolved member roots."""
             ...
 
@@ -78,14 +78,14 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def python_files(self) -> MutableMapping[Path, t.VariadicTuple[Path]]:
+        def python_files(self) -> MutableMapping[Path, tuple[Path, ...]]:
             """Python sources of each member, listed on first query."""
             ...
 
         @property
         def directory_facts(
             self,
-        ) -> MutableMapping[Path, t.Pair[Path | None, str]]:
+        ) -> MutableMapping[Path, tuple[Path | None, str]]:
             """Physical directory owner and package name."""
             ...
 
@@ -113,7 +113,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def import_edges(
             self,
-        ) -> MutableMapping[Path, t.Pair[frozenset[str], frozenset[str]]]:
+        ) -> MutableMapping[Path, tuple[frozenset[str], frozenset[str]]]:
             """Runtime and typing-only imported modules per queried source."""
             ...
 
@@ -125,7 +125,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def import_namespaces(
             self,
-        ) -> MutableMapping[t.Pair[Path, Path], t.Pair[Path, str] | None]:
+        ) -> MutableMapping[tuple[Path, Path], tuple[Path, str] | None]:
             """Import-law namespace election per consumer and source."""
             ...
 

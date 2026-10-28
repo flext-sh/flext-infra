@@ -11,7 +11,7 @@ import os
 import typing
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 from flext_cli import u
@@ -41,6 +41,37 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     Functions (including entry points), values and helper classes become members;
     definition-time dependencies remain subject to the same safety checks.
     """
+
+    # Shared singleton-model detection totals for one pass. Per-module detail
+    # emits at debug level; the pass owner emits one aggregate summary row.
+    _detection_modules: ClassVar[t.MutableSetOf[str]] = set()
+    _detection_native = 0
+    _detection_ancestry_max = 0
+
+    @classmethod
+    def _singleton_model_detection_record(
+        cls, module: str, *, native: bool, ancestry_depth: int
+    ) -> None:
+        """Accumulate one detected singleton model for the pass summary."""
+        cls._detection_modules.add(module)
+        if native:
+            cls._detection_native += 1
+        cls._detection_ancestry_max = max(cls._detection_ancestry_max, ancestry_depth)
+
+    @classmethod
+    def _singleton_model_detection_summary(cls) -> None:
+        """Emit one aggregate singleton-model row and reset the pass counters."""
+        if not cls._detection_modules:
+            return
+        u.Cli.info(
+            f"stage=singleton-model-detection summary "
+            f"modules={len(cls._detection_modules)} "
+            f"native={cls._detection_native} "
+            f"deferred_ancestry_max={cls._detection_ancestry_max}"
+        )
+        cls._detection_modules.clear()
+        cls._detection_native = 0
+        cls._detection_ancestry_max = 0
 
     @staticmethod
     def _nesting_declaration_destinations(
@@ -462,7 +493,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         *,
         values: bool,
         strict: bool = False,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Return loose functions and value bindings in module order.
 
         Returns:
@@ -537,12 +568,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     def _movable_members(
         cls,
         tree: ast.Module,
-        members: t.VariadicTuple[str],
+        members: tuple[str, ...],
         *,
         owner: str,
         module_name: str,
         strict: bool = False,
-    ) -> p.Result[t.VariadicTuple[str]]:
+    ) -> p.Result[tuple[str], ...]:
         """Return the loose members the owner body can hold, in module order.
 
         A member that reads the owner while it is being defined (an alias of
@@ -561,7 +592,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             The movable members, or a failure naming the module and member.
 
         """
-        checked = r[t.VariadicTuple[str]]
+        checked = r[tuple[str], ...]
         selected = frozenset(members)
         nodes_by_member: t.MutableMappingKV[str, ast.stmt] = {}
         for node in tree.body:
@@ -835,7 +866,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             for item in ancestry[:8]
             if FlextInfraUtilitiesTypesRopeRuntime.py_class(item)
         )
-        u.Cli.info(
+        cls._singleton_model_detection_record(
+            module.get_name(),
+            native=model.get_object() in ancestry,
+            ancestry_depth=len(parents),
+        )
+        u.Cli.debug(
             f"  stage=singleton-model-detection module={module.get_name()} "
             f"owner={name} native_model={model.get_object() in ancestry} "
             f"model_config={c.Infra.MODEL_CONFIG_ATTRIBUTE in owner.get_attributes()} "

@@ -193,7 +193,7 @@ class FlextInfraUtilitiesDocsApi:
         module_name: str,
         symbol_name: str,
         visited: frozenset[str],
-        context: t.Pair[Path, str],
+        context: t.Pair[Path, ...],
     ) -> t.StrMapping:
         """Resolve one symbol recursively against the shared project context.
 

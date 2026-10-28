@@ -253,15 +253,15 @@ class FlextInfraUtilitiesGitWorktreeMaterialization(
     @staticmethod
     def _worktree_layer_patches(
         repo: Repo,
-        pathspecs: t.VariadicTuple[str],
-    ) -> t.Pair[t.VariadicTuple[bytes], frozenset[Path]]:
+        pathspecs: tuple[str, ...],
+    ) -> t.Pair[tuple[bytes], frozenset[Path], ...]:
         """Build both layer patches and the HEAD-deleted path set.
 
         Returns:
             The resulting ``(patches, deleted paths)`` pair.
 
         """
-        patches: t.VariadicTuple[bytes] = tuple(
+        patches: tuple[bytes, ...] = tuple(
             repo.git.diff(
                 *layer,
                 "--binary",
@@ -353,7 +353,7 @@ class FlextInfraUtilitiesGitWorktreeMaterialization(
     def _apply_layer_patches(
         cls,
         worktree_repo: Repo,
-        patches: t.VariadicTuple[bytes],
+        patches: tuple[bytes, ...],
     ) -> None:
         """Verify then apply both layer patches through one stdin stream each."""
         for check in (True, False):
@@ -394,7 +394,7 @@ class FlextInfraUtilitiesGitWorktreeMaterialization(
         source_root: Path,
         worktree_root: Path,
         excluded: t.SequenceOf[Path],
-        pathspecs: t.VariadicTuple[str],
+        pathspecs: tuple[str, ...],
     ) -> p.Result[bool]:
 
         repo = cls._repo(source_root)

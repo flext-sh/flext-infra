@@ -43,7 +43,7 @@ class TestsFlextInfraUvNativeResolution:
             "package": {"name": "override-layer-provider"},
             "dependencies": ["override-layer-leaf>=1"],
         }
-        layers: t.VariadicTuple[t.Pair[str, t.JsonValueList]] = (
+        layers: tuple[t.Pair[str, t.JsonValueList], ...] = (
             ("codegen.yaml", [project_source, scoped, marked]),
             ("codegen.local.yaml", [local_source]),
         )

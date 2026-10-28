@@ -82,7 +82,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
         """New tool options round-trip through native TOML without new fields."""
-        additions: t.SequenceOf[t.Pair[str, t.JsonValue]] = (
+        additions: t.SequenceOf[tuple[str, t.JsonValue]] = (
             ("defineConstant", {"FEATURE": True, "MODE": "validation"}),
             ("strict", ["src/z", "src/a"]),
         )
@@ -644,7 +644,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_render_context_retains_actual_and_planned_python_scopes(
         tmp_path: Path,
         project_name: str,
-        authored_and_planned: t.Pair[str, str],
+        authored_and_planned: tuple[str, str],
         *,
         complete: bool,
         local_environment: bool,

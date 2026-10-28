@@ -366,7 +366,7 @@ class FlextInfraUtilitiesImportLawRoutes(
     @classmethod
     def _import_law_consumed_facade_paths(
         cls, state: m.Infra.ImportLawPass, bound: str
-    ) -> t.VariadicTuple[t.StrTuple] | None:
+    ) -> tuple[t.StrTuple, ...] | None:
         """Read complete attribute paths reached through the module import.
 
         Direct class-value reads retain their original identity. Lexically

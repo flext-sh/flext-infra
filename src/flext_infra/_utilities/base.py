@@ -67,7 +67,7 @@ class FlextInfraUtilitiesBase:
         gate_set: c.Infra.CheckGateSet,
         *,
         phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Resolve one gate inventory from the typed Make spec at runtime.
 
         The CI token selects the check partition: its declared CI value runs
@@ -184,7 +184,7 @@ class FlextInfraUtilitiesBase:
         return len(path.parts)
 
     @staticmethod
-    def path_depth_then_text(path: Path) -> t.Pair[int, str]:
+    def path_depth_then_text(path: Path) -> tuple[int, str]:
         """Order paths by depth and then their stable POSIX representation.
 
         Returns:
@@ -336,7 +336,7 @@ class FlextInfraUtilitiesBase:
     @staticmethod
     def ast_grep_rule_contract(
         rule_path: Path,
-    ) -> t.Pair[frozenset[str], frozenset[str]]:
+    ) -> tuple[frozenset[str], frozenset[str]]:
         """Return every document ID and the subset carrying an automatic fix.
 
         Returns:
@@ -400,7 +400,7 @@ class FlextInfraUtilitiesBase:
                 str | None,
             ]
         ],
-    ) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    ) -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build a declarative CLI route table from its data rows.
 
         Each row is ``(name, help_text, model_cls, handler, success_message)``;

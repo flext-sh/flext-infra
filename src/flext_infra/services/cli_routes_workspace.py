@@ -184,23 +184,27 @@ class FlextInfraWorkspaceRoutes:
             if report_output
             else params
         )
-        captured = u.Infra.git_capture_gate(
-            request,
-            inputs=inputs,
-            load_inputs=u.Infra.load_codegen_inputs,
-            read_runtime_identity=lambda gates: check.FlextInfraGateRegistry(
+
+        def runtime_identity(gates: t.StrSequence) -> p.Result[str]:
+            return check.FlextInfraGateRegistry(
                 project_gates=inputs.spec.make.project_check_gates
             ).runtime_identity(
                 gates,
                 installed_identity=(
                     workspace.FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
                 ),
-            ),
+            )
+
+        captured = u.Infra.git_capture_gate(
+            request,
+            inputs=inputs,
+            load_inputs=u.Infra.load_codegen_inputs,
+            read_runtime_identity=runtime_identity,
         ).unwrap()
         return captured.process.raw_return_code
 
     @staticmethod
-    def release_routes() -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    def release_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the release group's native model and handler bindings.
 
         Returns:
@@ -218,7 +222,7 @@ class FlextInfraWorkspaceRoutes:
         ))
 
     @classmethod
-    def workspace_routes(cls) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    def workspace_routes(cls) -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the workspace group's native model and handler bindings.
 
         The two routes that format their JSON payload stay explicit; every

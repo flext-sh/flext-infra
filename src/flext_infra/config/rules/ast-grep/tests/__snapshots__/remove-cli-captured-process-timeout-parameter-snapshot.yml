@@ -1,12 +1,12 @@
 id: remove-cli-captured-process-timeout-parameter
 snapshots:
-  "def _captured_process_result(\n    cls,\n    cmd: t.StrSequence,\n    return_code: int | None,\n    received_signals: list[int],\n    diagnostics: t.VariadicTuple[str],\n    stdout_output: bytearray,\n    stderr_output: bytearray,\n    duration: float,\n    *,\n    timed_out: bool,\n    timeout_seconds: int | None,\n    timeout_exit_code: int,\n) -> p.Result[p.Cli.CommandBytesOutput]:\n    \"\"\"Attach captured bytes only after the owned process boundary is empty.\"\"\"\n    return cls._process_exit_result(\n        cmd,\n        return_code,\n        received_signals,\n        diagnostics,\n        timed_out=timed_out,\n        legacy_timeout=timeout_seconds is not None,\n        legacy_timeout_seconds=timeout_seconds,\n        timeout_exit_code=timeout_exit_code,\n    ).map(\n        lambda outcome: m.Cli.CommandBytesOutput(\n            stdout=bytes(stdout_output),\n            stderr=bytes(stderr_output),\n            outcome=outcome,\n            duration=duration,\n        )\n    )\n":
+  "def _captured_process_result(\n    cls,\n    cmd: t.StrSequence,\n    return_code: int | None,\n    received_signals: list[int],\n    diagnostics: tuple[str],\n    stdout_output: bytearray,\n    stderr_output: bytearray,\n    duration: float,\n    *,\n    timed_out: bool,\n    timeout_seconds: int | None,\n    timeout_exit_code: int,\n) -> p.Result[p.Cli.CommandBytesOutput, ...]:\n    \"\"\"Attach captured bytes only after the owned process boundary is empty.\"\"\"\n    return cls._process_exit_result(\n        cmd,\n        return_code,\n        received_signals,\n        diagnostics,\n        timed_out=timed_out,\n        legacy_timeout=timeout_seconds is not None,\n        legacy_timeout_seconds=timeout_seconds,\n        timeout_exit_code=timeout_exit_code,\n    ).map(\n        lambda outcome: m.Cli.CommandBytesOutput(\n            stdout=bytes(stdout_output),\n            stderr=bytes(stderr_output),\n            outcome=outcome,\n            duration=duration,\n        )\n    )\n":
     fixed: |+
       def _captured_process_result(
           cls,
           return_code: int | None,
           received_signals: list[int],
-          diagnostics: t.VariadicTuple[str],
+          diagnostics: tuple[str, ...],
           stdout_output: bytearray,
           stderr_output: bytearray,
           duration: float,
@@ -33,7 +33,7 @@ snapshots:
             cmd: t.StrSequence,
             return_code: int | None,
             received_signals: list[int],
-            diagnostics: t.VariadicTuple[str],
+            diagnostics: tuple[str, ...],
             stdout_output: bytearray,
             stderr_output: bytearray,
             duration: float,

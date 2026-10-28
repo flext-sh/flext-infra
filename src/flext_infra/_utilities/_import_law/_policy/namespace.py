@@ -573,7 +573,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         module_name: str,
         alias_name: str,
         root: Path,
-        sources: t.MappingKV[Path, str],
+        sources: t.MappingKV[Path, ...],
     ) -> p.Infra.RopePyName | None:
         """Follow the existing native lazy routes without losing tuple aliases.
 

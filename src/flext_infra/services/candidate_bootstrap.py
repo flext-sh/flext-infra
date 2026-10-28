@@ -49,7 +49,7 @@ class FlextInfraCandidateBootstrapService:
     def _resolved_roots(
         source_root: Path,
         targets: m.Infra.CandidateBootstrapTargets,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Resolve each declared target to its exact elected worktree root.
 
         Args:
@@ -61,7 +61,7 @@ class FlextInfraCandidateBootstrapService:
             resolution failure.
 
         """
-        result_type = r[t.VariadicTuple[Path]]
+        result_type = r[tuple[Path, ...]]
         elected: list[Path] = []
         for target in targets:
             identity = u.Infra.exact_worktree_root(
@@ -80,14 +80,14 @@ class FlextInfraCandidateBootstrapService:
         self,
         roots: t.SequenceOf[Path],
         targets: m.Infra.CandidateBootstrapTargets,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Compose the file plans of every declared target.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         files: list[m.Infra.CodegenFilePlan] = []
         for root, target in zip(roots, targets, strict=True):
             planned = self._planned_target(root, target)
@@ -100,7 +100,7 @@ class FlextInfraCandidateBootstrapService:
         self,
         root: Path,
         target: m.Infra.CandidateBootstrapTargetSpec,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan one target under its surface contract and prove destinations.
 
         Args:
@@ -111,7 +111,7 @@ class FlextInfraCandidateBootstrapService:
             The planned files of the target, or the first contract violation.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
             return result_type.from_failure(captured)

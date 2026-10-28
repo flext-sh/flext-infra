@@ -29,7 +29,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         cls,
         source: str,
         routes: t.MappingKV[t.StrTuple, t.Triple[str, str, str]],
-        imports: t.MappingKV[str, str],
+        imports: t.MappingKV[str, ...],
     ) -> str:
         """Apply authenticated member routes without moving their import guards.
 
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         def __init__(
             self,
             routes: t.MappingKV[t.StrTuple, t.Triple[str, str, str]],
-            imports: t.MappingKV[str, str],
+            imports: t.MappingKV[str, ...],
         ) -> None:
             self.routes = routes
             self.imports = imports

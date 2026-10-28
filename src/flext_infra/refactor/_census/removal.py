@@ -39,17 +39,17 @@ class FlextInfraRefactorCensusRemoval(
     def _validated_project_reports(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        project_reports: t.VariadicTuple[m.Infra.ProjectReport],
+        project_reports: tuple[m.Infra.ProjectReport, ...],
         *,
         source_preview: p.Infra.SourcePreview,
-    ) -> t.VariadicTuple[m.Infra.ProjectReport]:
+    ) -> tuple[m.Infra.ProjectReport, ...]:
         """Keep only removal candidates that pass the configured dry-run gates.
 
         A gate rejection is reported as a ``preview_rejected`` finding of the
         project; with ``fail_fast`` it stops the census instead.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.ProjectReport]``.
+            The resulting ``tuple[m.Infra.ProjectReport, ...],``.
 
         Raises:
             RuntimeError: If removal preview rejected.

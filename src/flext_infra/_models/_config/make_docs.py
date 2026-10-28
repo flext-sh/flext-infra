@@ -59,7 +59,7 @@ class FlextInfraModelsConfigMakeDocs:
         """Generated Makefile docs verb lifecycle and audit policy."""
 
         actions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -69,7 +69,7 @@ class FlextInfraModelsConfigMakeDocs:
             ),
         ]
         mutable_actions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Docs actions that mutate"),
         ]
         reports_dir: Annotated[
@@ -87,7 +87,7 @@ class FlextInfraModelsConfigMakeDocs:
             ),
         ]
         stale_github_organizations: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=("organization",),
                 description="Placeholder GitHub orgs that must be rewritten",

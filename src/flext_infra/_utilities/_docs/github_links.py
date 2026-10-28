@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
     @staticmethod
     def docs_github_repos(
         repository_root: Path,
-    ) -> t.VariadicTuple[m.Infra.DocsGithubRepoSpec]:
+    ) -> tuple[m.Infra.DocsGithubRepoSpec, ...]:
         """Derive typed GitHub repositories from origin and .gitmodules.
 
         Returns:

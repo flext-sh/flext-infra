@@ -79,7 +79,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan target imports with all selected roots available for reads.
 
         Returns:

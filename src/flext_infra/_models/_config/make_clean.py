@@ -26,19 +26,19 @@ class FlextInfraModelsConfigMakeClean:
         """
 
         cache_dirs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Cache directory names removed anywhere in the tree"),
         ]
         root_dirs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Directories removed at the project root only"),
         ]
         root_files: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Files removed at the project root only"),
         ]
         trace_globs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Trace/profile globs removed anywhere in the tree"),
         ]
 

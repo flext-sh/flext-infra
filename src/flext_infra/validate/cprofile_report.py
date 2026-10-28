@@ -80,11 +80,11 @@ class FlextInfraCProfileReport(s[bool]):
                 raise ValueError(msg) from exc
         return self
 
-    def _run_profiles(self) -> t.VariadicTuple[Path]:
+    def _run_profiles(self) -> tuple[Path, ...]:
         """Validate run identity and artifact digests without consulting latest.
 
         Returns:
-            The resulting ``t.VariadicTuple[Path]``.
+            The resulting ``tuple[Path, ...],``.
 
         Raises:
             ValueError: If the lease was unacquired yet carries execution artifacts,
@@ -238,7 +238,7 @@ class FlextInfraCProfileReport(s[bool]):
         suite: Path,
         suite_required: bool,
         full_suite: bool,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Elect the profile artifacts of a run that recorded a selection plan.
 
         Returns:
@@ -270,7 +270,7 @@ class FlextInfraCProfileReport(s[bool]):
         )
 
     @staticmethod
-    def _process_profiles(directory: Path) -> t.VariadicTuple[Path]:
+    def _process_profiles(directory: Path) -> tuple[Path, ...]:
         """List the per-process profile artifacts of one run directory.
 
         Returns:
@@ -282,7 +282,7 @@ class FlextInfraCProfileReport(s[bool]):
             sorted((directory / policy.profile_process_directory).glob("*.pstats"))
         )
 
-    def _unplanned_profiles(self, directory: Path) -> t.VariadicTuple[Path]:
+    def _unplanned_profiles(self, directory: Path) -> tuple[Path, ...]:
         """Elect the profile artifacts of a run that failed before planning.
 
         Returns:
@@ -320,7 +320,7 @@ class FlextInfraCProfileReport(s[bool]):
 
     def _verify_profile_receipts(
         self,
-        profiles: t.VariadicTuple[Path],
+        profiles: tuple[Path, ...],
         parent: m.Infra.PytestRunContext,
         context: m.Infra.PytestRunContext,
     ) -> None:

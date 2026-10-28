@@ -33,7 +33,7 @@ class TestsFlextInfraDuplicationGate:
             yield
 
     _DUPLICATED_MODULE = """\
-def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
+def normalize_records(records: list[str]) -> tuple[str, ...]:
     normalized: list[str] = []
     seen: set[str] = set()
     for record in records:

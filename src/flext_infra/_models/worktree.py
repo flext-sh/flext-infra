@@ -112,7 +112,7 @@ class FlextInfraModelsWorktree:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         repo_roots: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Repository roots whose registry is scanned"),
         ]
         policy: Annotated[
@@ -125,7 +125,7 @@ class FlextInfraModelsWorktree:
             m.Field(ge=0, description="Staleness window in days"),
         ]
         bead_rows: Annotated[
-            t.VariadicTuple[t.JsonMapping],
+            tuple[t.JsonMapping, ...],
             m.Field(description="Optional bead rows for correlation"),
         ] = ()
         actor_evidence: Annotated[
@@ -213,7 +213,7 @@ class FlextInfraModelsWorktree:
         mode: Annotated[str, m.Field(description="Detected execution mode")]
         apply: Annotated[bool, m.Field(description="Whether this plan will execute")]
         actions: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorktree.PruneAction],
+            tuple[FlextInfraModelsWorktree.PruneAction, ...],
             m.Field(description="Planned actions in stable order"),
         ] = ()
         total_reclaim_bytes: Annotated[
@@ -225,7 +225,7 @@ class FlextInfraModelsWorktree:
         """The worktree facts report: measured facts plus the planned actions."""
 
         facts: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorktree.WorktreeFact],
+            tuple[FlextInfraModelsWorktree.WorktreeFact, ...],
             m.Field(description="Every measured registered worktree"),
         ] = ()
         plan: Annotated[

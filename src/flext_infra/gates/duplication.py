@@ -121,7 +121,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         self,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-    ) -> t.Triple[m.Infra.JscpdReport | None, t.VariadicTuple[m.Infra.Issue], bool]:
+    ) -> t.Triple[m.Infra.JscpdReport | None, tuple[m.Infra.Issue], bool, ...]:
         """Parse the native report into owned clones plus any tool failure.
 
         A non-findings exit, or a findings exit whose report holds no clone,
@@ -138,7 +138,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
             parsed = self._issues_from_report(project_dir, report)
         except ValueError as exc:
             parsed = r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
-        issues: t.VariadicTuple[m.Infra.Issue] = (
+        issues: tuple[m.Infra.Issue, ...] = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
         empty_failure = (
@@ -157,7 +157,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         project_dir: Path,
         evidence: m.Infra.GateOutputReceipt,
         execution: str,
-    ) -> t.VariadicTuple[m.Infra.Issue]:
+    ) -> tuple[m.Infra.Issue, ...]:
         """Publish the duplication assessment beside its receipt.
 
         Returns:

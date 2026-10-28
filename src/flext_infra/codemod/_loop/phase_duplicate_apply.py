@@ -71,7 +71,7 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan the trivial duplicate cures; a structural duplicate fails loud.
 
         Returns:
@@ -100,7 +100,7 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
     @staticmethod
     def _duplicate_groups(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> t.VariadicTuple[m.Infra.DuplicateGroup]:
+    ) -> tuple[m.Infra.DuplicateGroup, ...]:
         """Rebuild the workspace duplicate groups from the Rope inventory.
 
         Returns:

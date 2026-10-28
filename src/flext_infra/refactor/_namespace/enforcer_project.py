@@ -34,7 +34,7 @@ class FlextInfraRefactorNamespaceEnforcerProject:
         py_files: t.SequenceOf[Path],
         before: m.Infra.ModScanReport,
         after: m.Infra.ModScanReport,
-        rule_deltas: t.VariadicTuple[m.Infra.ViolationsRuleDelta],
+        rule_deltas: tuple[m.Infra.ViolationsRuleDelta, ...],
     ) -> m.Infra.ProjectEnforcementReport:
         """Compare one project's observations bracketing the whole workspace repair.
 

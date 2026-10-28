@@ -173,7 +173,7 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         rules: t.SequenceOf[Path],
-    ) -> t.SequenceOf[t.Triple[Path, t.SequenceOf[Path], bool]]:
+    ) -> t.SequenceOf[tuple[Path, t.SequenceOf[Path], bool]]:
         """Group rules by fixture owner and mark the owners this root governs.
 
         Returns:
@@ -193,7 +193,7 @@ class FlextInfraModGateEngine:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
             rules_by_owner.setdefault(owner, []).append(rule)
         scratch = settings.work_dir
-        owners: list[t.Triple[Path, t.SequenceOf[Path], bool]] = []
+        owners: list[tuple[Path, t.SequenceOf[Path], bool]] = []
         for config_root, owner_rules in sorted(rules_by_owner.items()):
             if scratch.resolve().is_relative_to(config_root.resolve()):
                 msg = "rule fixture scratch must be outside its source root"
@@ -474,7 +474,7 @@ class FlextInfraModGateEngine:
         root: Path,
         command: t.StrSequence,
         *,
-        streams: t.Pair[Path, Path],
+        streams: tuple[Path, Path],
         artifact_root: Path,
         finding_exit_code: int | None = None,
     ) -> p.Result[p.Cli.ProcessOutcome]:
@@ -617,7 +617,7 @@ class FlextInfraModGateEngine:
         )
         physical_root = root.resolve()
         grouped: t.MutableMappingKV[Path, list[m.Infra.ModScanFinding]] = {}
-        owners: t.MutableMappingKV[Path, t.Pair[Path, Path]] = {}
+        owners: t.MutableMappingKV[Path, tuple[Path, Path]] = {}
         for entry in report.entries:
             if entry.file not in owners:
                 source = (
@@ -651,7 +651,7 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def recounted(
-        entries: t.VariadicTuple[m.Infra.ModScanFinding],
+        entries: tuple[m.Infra.ModScanFinding, ...],
         *,
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] | None = None,
     ) -> m.Infra.ModScanReport:
@@ -763,7 +763,7 @@ class FlextInfraModGateEngine:
     def _authenticated_snapshot(
         root: Path,
         file: str,
-    ) -> p.Result[t.Pair[Path, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[Path, m.Cli.AtomicFileState]]:
         """Associate a finding with its source's current state.
 
         Returns:
@@ -774,7 +774,7 @@ class FlextInfraModGateEngine:
         resolved_file = (root / file_path).resolve()
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
         if observed.failure and not resolved_file.exists():
-            return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
+            return r[tuple[Path, m.Cli.AtomicFileState]].fail(
                 f"finding source vanished during scanning: {resolved_file}",
                 error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
             )
@@ -787,14 +787,14 @@ class FlextInfraModGateEngine:
         text: str,
         replacement: str | None,
         line: str,
-    ) -> p.Result[t.Pair[bool, c.Infra.ModScanFindingClass]]:
+    ) -> p.Result[tuple[bool, c.Infra.ModScanFindingClass]]:
         """Classify one finding against its rule's fix contract.
 
         Returns:
             The resulting ``(actionable, classification)`` pair.
 
         """
-        outcome = r[t.Pair[bool, c.Infra.ModScanFindingClass]]
+        outcome = r[tuple[bool, c.Infra.ModScanFindingClass]]
         if rule_id not in fixable_ids:
             if replacement is not None:
                 return outcome.fail(
@@ -832,11 +832,11 @@ class FlextInfraModGateEngine:
     @classmethod
     def _line_finding(
         cls,
-        record: t.Pair[str, t.MappingKV[str, t.JsonValue]],
+        record: tuple[str, t.MappingKV[str, t.JsonValue]],
         root: Path,
-        plan: t.Pair[Mapping[str, Path], frozenset[str]],
+        plan: tuple[Mapping[str, Path], frozenset[str]],
         context: m.Infra.ModScanSourceContext,
-        native: t.Pair[m.Infra.ModNativeRecord, m.Cli.AtomicFileReceipt],
+        native: tuple[m.Infra.ModNativeRecord, m.Cli.AtomicFileReceipt],
     ) -> p.Result[m.Infra.ModScanFinding]:
         """Validate one JSONL finding into a typed, authenticated entry.
 
@@ -938,7 +938,7 @@ class FlextInfraModGateEngine:
         )
 
     @staticmethod
-    def _native_records(stdout: Path) -> Generator[t.Pair[int, bytes]]:
+    def _native_records(stdout: Path) -> Generator[tuple[int, bytes]]:
         """Frame native JSONL records across authenticated byte-block boundaries.
 
         Args:
@@ -964,7 +964,7 @@ class FlextInfraModGateEngine:
         cls,
         stdout: Path,
         root: Path,
-        plan: t.Pair[Mapping[str, Path], frozenset[str]],
+        plan: tuple[Mapping[str, Path], frozenset[str]],
         context: m.Infra.ModScanSourceContext,
         native_receipt: m.Cli.AtomicFileReceipt,
     ) -> p.Result[m.Infra.ModScanReport]:
@@ -1035,7 +1035,7 @@ class FlextInfraModGateEngine:
         root: Path,
         ruleset: m.Infra.CodemodRuleset,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
-        selection: t.Pair[t.StrSequence, m.Infra.ModScanSourceContext],
+        selection: tuple[t.StrSequence, m.Infra.ModScanSourceContext],
         *,
         artifact_root: Path,
     ) -> p.Result[m.Infra.ModScanReport]:
@@ -1390,14 +1390,14 @@ class FlextInfraModGateEngine:
     def _candidate_scan_states(
         candidate: m.Infra.StageSourcePlan,
         view_root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
         """Authenticate each staged effect against its declared original witness.
 
         Returns:
             Actual staged receipts rebound to logical paths for binding analysis.
 
         """
-        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        result_type = r[tuple[m.Cli.AtomicFileState, ...]]
         declared = {file.path: file for file in candidate.declared_files}
         originals = {state.path: state for state in candidate.inputs}
         if len(declared) != len(candidate.declared_files) or set(declared) != set(

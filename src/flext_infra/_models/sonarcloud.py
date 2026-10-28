@@ -55,7 +55,7 @@ class FlextInfraModelsSonarcloud:
         )
         key: Annotated[t.NonEmptyStr, m.Field(description="Setting key")]
         field_values: Annotated[
-            t.VariadicTuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue],
+            tuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue, ...],
             m.Field(
                 validation_alias="fieldValues",
                 serialization_alias="fieldValues",
@@ -67,7 +67,7 @@ class FlextInfraModelsSonarcloud:
         """The ``api/settings/values`` response body."""
 
         settings: Annotated[
-            t.VariadicTuple[FlextInfraModelsSonarcloud.SonarcloudSetting],
+            tuple[FlextInfraModelsSonarcloud.SonarcloudSetting, ...],
             m.Field(description="Effective settings for the requested keys"),
         ]
 
@@ -93,7 +93,7 @@ class FlextInfraModelsSonarcloud:
             m.Field(description="PROPERTY_SET setting key"),
         ]
         field_values: Annotated[
-            t.VariadicTuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue],
+            tuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue, ...],
             m.Field(description="Entries in SSOT order; empty means reset"),
         ]
 
@@ -102,7 +102,7 @@ class FlextInfraModelsSonarcloud:
 
         api_path: Annotated[t.NonEmptyStr, m.Field(description="Web API endpoint")]
         form: Annotated[
-            t.VariadicTuple[t.Pair[str, str]],
+            tuple[t.Pair[str, str], ...],
             m.Field(min_length=2, description="Ordered form fields for the endpoint"),
         ]
 
@@ -145,7 +145,7 @@ class FlextInfraModelsSonarcloud:
             m.Field(description="Server-side page accounting of this page"),
         ]
         issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsSonarcloud.SonarcloudIssue],
+            tuple[FlextInfraModelsSonarcloud.SonarcloudIssue, ...],
             m.Field(description="Issues returned on this page"),
         ]
 

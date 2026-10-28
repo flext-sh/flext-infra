@@ -8,18 +8,16 @@ from __future__ import annotations
 
 import ast
 
-from flext_infra import t
-
 
 class FlextInfraUtilitiesRopeAstBindings:
     """Enumerate language bindings without guessing their runtime values."""
 
     @staticmethod
-    def bound_identifiers(node: ast.AST) -> t.VariadicTuple[str]:
+    def bound_identifiers(node: ast.AST) -> tuple[str, ...]:
         """Include match, exception, import, type-parameter and scope targets.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         match node:
@@ -51,11 +49,11 @@ class FlextInfraUtilitiesRopeAstBindings:
                 )
 
     @staticmethod
-    def _bound_scope_identifiers(node: ast.AST) -> t.VariadicTuple[str]:
+    def _bound_scope_identifiers(node: ast.AST) -> tuple[str, ...]:
         """Return the module, import, and scope target names of one node.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         match node:

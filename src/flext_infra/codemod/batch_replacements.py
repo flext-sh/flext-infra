@@ -175,21 +175,23 @@ class FlextInfraModReplacements:
                 exact_replacements=exact_replacements,
             )
         )
-        return candidate.map(
-            lambda content: m.Infra.SemanticFilePlan(
+
+        def semantic_plan(content: bytes) -> m.Infra.SemanticFilePlan:
+            return m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,
                 before=before,
                 desired_content=content,
                 desired_mode=before.mode,
                 changes=tuple(finding.rule_id for finding in findings),
-            ),
-        )
+            )
+
+        return candidate.map(semantic_plan)
 
     @classmethod
     def compose[FindingT: m.Infra.ModOccurrence](
         cls, root: Path, report: m.Infra.ModOccurrenceReport[FindingT]
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.SemanticFilePlan], ...]:
         """Compose authenticated candidate bytes without admission or live effects.
 
         Returns:
@@ -211,7 +213,7 @@ class FlextInfraModReplacements:
     @classmethod
     def admit(
         cls, root: Path, plans: t.SequenceOf[m.Infra.SemanticFilePlan]
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.SemanticFilePlan], ...]:
         """Normalize and judge only complete syntax candidates against originals.
 
         Returns:

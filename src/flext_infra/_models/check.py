@@ -198,7 +198,7 @@ class FlextInfraModelsCheck:
         """Checker inputs; callers cannot select an executable or Python program."""
 
         targets: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(min_length=1, description="Files or directories to check"),
         ]
         workspace: Annotated[
@@ -312,12 +312,12 @@ class FlextInfraModelsCheck:
         severity: Annotated[str, m.Field(description="Issue severity level")] = (
             c.Infra.ERROR
         )
-        locations: t.VariadicTuple[SarifLocation] = m.Field(
+        locations: tuple[SarifLocation, ...] = m.Field(
             default=(),
             description="Native primary source spans when supplied by the scanner",
             validate_default=True,
         )
-        related_locations: t.VariadicTuple[SarifLocation] = m.Field(
+        related_locations: tuple[SarifLocation, ...] = m.Field(
             default=(),
             description="All native comparison locations, including other projects",
             validate_default=True,
@@ -331,7 +331,7 @@ class FlextInfraModelsCheck:
         @classmethod
         def _coerce_declared_sequences(
             cls, value: t.JsonValue
-        ) -> t.JsonValue | t.VariadicTuple[t.JsonValue]:
+        ) -> t.JsonValue | tuple[t.JsonValue, ...]:
             """Coerce scanner JSON arrays into the strict tuple form.
 
             Args:
@@ -389,7 +389,7 @@ class FlextInfraModelsCheck:
             default=None,
             description="Declared native tool outcome; absent derives it from findings",
         )
-        issues: t.VariadicTuple[Issue] = m.Field(
+        issues: tuple[Issue, ...] = m.Field(
             description="Complete native diagnostics",
         )
         raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
@@ -403,7 +403,7 @@ class FlextInfraModelsCheck:
         result: FlextInfraModelsCheck.GateResult = m.Field(
             description="Gate result model",
         )
-        issues: t.VariadicTuple[Issue] = m.Field(
+        issues: tuple[Issue, ...] = m.Field(
             default_factory=tuple,
             description=(
                 "Complete native gate diagnostics, including informative findings"
@@ -519,7 +519,7 @@ class FlextInfraModelsCheck:
         # Why: owned by m.Infra; ArbitraryTypesModel keeps protocol field writability.
 
         results: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.ProjectResult],
+            tuple[FlextInfraModelsCheck.ProjectResult, ...],
             m.Field(description="Individual project execution results."),
         ]
         failed: Annotated[
@@ -588,16 +588,14 @@ class FlextInfraModelsCheck:
                 description="Result message",
             ),
         ]
-        locations: t.VariadicTuple[FlextInfraModelsCheck.SarifLocation] = m.Field(
+        locations: tuple[FlextInfraModelsCheck.SarifLocation, ...] = m.Field(
             description="Result locations",
         )
-        related_locations: t.VariadicTuple[FlextInfraModelsCheck.SarifLocation] = (
-            m.Field(
-                (),
-                validation_alias="relatedLocations",
-                description="Native related source spans",
-                validate_default=True,
-            )
+        related_locations: tuple[FlextInfraModelsCheck.SarifLocation, ...] = m.Field(
+            (),
+            validation_alias="relatedLocations",
+            description="Native related source spans",
+            validate_default=True,
         )
 
         @m.model_serializer
@@ -641,12 +639,12 @@ class FlextInfraModelsCheck:
             description="Tool documentation URL",
             validate_default=True,
         )
-        rules: t.VariadicTuple[FlextInfraModelsCheck.SarifRule] = m.Field(
+        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
             default_factory=tuple,
             validation_alias=m.AliasPath("tool", "driver", "rules"),
             description="Rule descriptors",
         )
-        results: t.VariadicTuple[FlextInfraModelsCheck.SarifResult] = m.Field(
+        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
             default_factory=tuple,
             description="Run results",
         )
@@ -706,19 +704,19 @@ class FlextInfraModelsCheck:
             ),
         ] = ()
         targets: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget],
+            tuple[FlextInfraModelsCheck.CheckProjectTarget, ...],
             m.Field(description="Canonical project roots selected for this invocation"),
         ]
         results: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.ProjectResult],
+            tuple[FlextInfraModelsCheck.ProjectResult, ...],
             m.Field(description="Only executions reached by this invocation"),
         ]
         selected_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="File selection; empty means full-project execution"),
         ]
         global_targets: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget] | None,
+            tuple[FlextInfraModelsCheck.CheckProjectTarget, ...] | None,
             m.Field(
                 min_length=1,
                 description=(
@@ -766,7 +764,7 @@ class FlextInfraModelsCheck:
             description="SARIF version",
             validate_default=True,
         )
-        runs: t.VariadicTuple[FlextInfraModelsCheck.SarifRun] = m.Field(
+        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
             default_factory=tuple,
             description="SARIF runs",
         )

@@ -202,7 +202,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project_dir: Path,
         name: str,
         *,
-        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = (),
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
         role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
         declaration: StandaloneManifestDeclaration | None = None,
     ) -> Path:
@@ -948,7 +948,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             workspace: str,
             database: str,
             issue_prefix: str,
-            custom_issue_types: t.VariadicTuple[str] = (),
+            custom_issue_types: tuple[str, ...] = (),
         ) -> Path:
             """Write one repository-local Beads identity input.
 
@@ -1133,7 +1133,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             distribution: str,
             *,
             beads: TestsFlextInfraUtilitiesWorkspaceFixtureMixin.BeadsIdentity,
-            custom_issue_types: t.VariadicTuple[str] = (),
+            custom_issue_types: tuple[str, ...] = (),
             beads_owner: bool = True,
         ) -> Path:
             """Create one self-identifying governed project with a real Git origin.
@@ -1215,7 +1215,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             return root.name
 
         @classmethod
-        def write_gitmodules(cls, root: Path, projects: t.VariadicTuple[str]) -> Path:
+        def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
             """Declare governed subprojects with the declared fixture contract.
 
             Returns:
@@ -1260,14 +1260,14 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         @staticmethod
         def repository_snapshot(
             root: Path,
-        ) -> t.Pair[t.VariadicTuple[t.Pair[str, bytes]], str]:
+        ) -> t.Pair[tuple[t.Pair[str, bytes]], str, ...]:
             """Capture all repository bytes and porcelain status.
 
             Git metadata is excluded; every runtime-state owner lives outside the
             repository checkout by construction.
 
             Returns:
-                The resulting ``t.Pair[t.VariadicTuple[t.Pair[str, bytes]], str]``.
+                The resulting ``t.Pair[tuple[t.Pair[str, bytes]], str, ...],``.
 
             """
             excluded_roots = frozenset({c.Infra.GIT_DIR})
@@ -1287,7 +1287,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             )
             return tree, status
 
-    __all__: t.VariadicTuple[str] = ("WorktreeFixture",)
+    __all__: tuple[str, ...] = ("WorktreeFixture",)
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceFixtureMixin"]

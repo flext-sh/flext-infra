@@ -104,7 +104,7 @@ class FlextInfraConstantsCodegen(
     FACADE_MODULE_PARTS: ClassVar[int] = 2
     """Dotted parts of the ``package.module`` a type facade destination names."""
 
-    SRC_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
+    SRC_MODULES: ClassVar[tuple[t.Quad[str, str, str, str]], ...] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),
         ("protocols.py", "Protocols", "FlextProtocols", "Protocol definitions"),
@@ -112,7 +112,7 @@ class FlextInfraConstantsCodegen(
         ("utilities.py", "Utilities", "FlextUtilities", "Utility functions"),
     )
     "Base module definitions for src/: (filename, class_suffix, base_class, docstring)."
-    TESTS_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = tuple(
+    TESTS_MODULES: ClassVar[tuple[t.Quad[str, str, str, str], ...]] = tuple(
         (
             filename,
             suffix,
@@ -125,7 +125,7 @@ class FlextInfraConstantsCodegen(
     # Canonical root config/settings pair: a
     # private `_config.py`/`_settings.py` module exporting the singleton.
     # Consumed by the scaffold generator.
-    RUNTIME_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
+    RUNTIME_MODULES: ClassVar[tuple[t.Quad[str, str, str, str]], ...] = (
         ("_config.py", "Config", "FlextConfig", "Runtime config"),
         ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
     )

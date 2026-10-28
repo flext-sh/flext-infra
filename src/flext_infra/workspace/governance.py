@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m
 
 
 class FlextInfraWorkspaceGovernance:
@@ -15,11 +15,11 @@ class FlextInfraWorkspaceGovernance:
     @staticmethod
     def persistent_state_artifacts(
         make_profile: c.Infra.MakeProfile,
-    ) -> t.VariadicTuple[m.Infra.CodegenArtifactSpec]:
+    ) -> tuple[m.Infra.CodegenArtifactSpec, ...]:
         """Project persistent-state artifacts owned by every governed repository.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.CodegenArtifactSpec]``.
+            The resulting ``tuple[m.Infra.CodegenArtifactSpec, ...],``.
 
         """
         del make_profile

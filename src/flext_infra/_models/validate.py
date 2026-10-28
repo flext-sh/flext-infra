@@ -191,10 +191,10 @@ class FlextInfraModelsCore:
         """The selected node IDs after every collection hook has completed."""
 
         node_ids: t.StrTuple = m.Field(description="Unique node IDs in execution order")
-        markdown_eligible: t.VariadicTuple[
-            FlextInfraModelsCore.PytestMarkdownOrigin
-        ] = m.Field(default_factory=tuple, description="Independent plugin eligibility")
-        markdown_collected: t.VariadicTuple[FlextInfraModelsCore.PytestMarkdownItem] = (
+        markdown_eligible: tuple[FlextInfraModelsCore.PytestMarkdownOrigin, ...] = (
+            m.Field(default_factory=tuple, description="Independent plugin eligibility")
+        )
+        markdown_collected: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = (
             m.Field(default_factory=tuple, description="Collection before deselection")
         )
         markdown_deselected: t.StrTuple = m.Field(
@@ -296,13 +296,14 @@ class FlextInfraModelsCore:
         )
         testmon_db: Path | None = m.Field(
             description=(
-                "External pytest-testmon database shared by incremental and "
-                "full operations; absent for coverage"
+                "External pytest-testmon database for incremental operations; "
+                "absent for full and coverage execution"
             ),
         )
         testmon_lease_acquired: bool | None = m.Field(
             description=(
-                "Whether this phase acquired its Testmon lease; absent for coverage"
+                "Whether an incremental phase acquired its Testmon lease; "
+                "absent for full and coverage execution"
             ),
         )
         deadline_monotonic: float = m.Field(
@@ -322,7 +323,7 @@ class FlextInfraModelsCore:
 
         @m.model_validator(mode="after")
         def require_testmon_identity(self) -> Self:
-            """Keep coverage and Testmon execution identities disjoint.
+            """Keep unselected suites and Testmon execution identities disjoint.
 
             Returns:
                 The validated execution identity.
@@ -331,13 +332,13 @@ class FlextInfraModelsCore:
                 ValueError: If the mode contradicts its database or lease state.
 
             """
-            coverage = self.execution_mode == c.Infra.PytestExecutionMode.COVERAGE
-            if coverage != (self.testmon_db is None) or coverage != (
-                self.testmon_lease_acquired is None
+            incremental = self.execution_mode.is_incremental
+            if incremental != (self.testmon_db is not None) or incremental != (
+                self.testmon_lease_acquired is not None
             ):
                 msg = (
-                    "coverage requires no Testmon database or lease; "
-                    "Testmon execution requires both"
+                    "incremental execution requires a Testmon database and lease; "
+                    "full and coverage execution require neither"
                 )
                 raise ValueError(msg)
             return self
@@ -375,7 +376,7 @@ class FlextInfraModelsCore:
             default=None,
             description="TestReport outcome",
         )
-        user_properties: t.VariadicTuple[t.Pair[str, t.JsonValue]] = m.Field(
+        user_properties: tuple[tuple[str, t.JsonValue], ...] = m.Field(
             default_factory=tuple,
             description="Public pytest item properties transported by report-log",
         )
@@ -500,20 +501,18 @@ class FlextInfraModelsCore:
             default_factory=tuple,
             description="Unique node IDs with real TestReport events",
         )
-        phase_outcomes: t.VariadicTuple[FlextInfraModelsCore.PytestPhaseOutcome] = (
+        phase_outcomes: tuple[FlextInfraModelsCore.PytestPhaseOutcome, ...] = m.Field(
+            default_factory=tuple,
+            description="Complete observed runtest outcomes, including failures",
+        )
+        markdown_attempts: tuple[FlextInfraModelsCore.PytestMarkdownAttempt, ...] = (
             m.Field(
                 default_factory=tuple,
-                description="Complete observed runtest outcomes, including failures",
+                description="Observed SDK execution attempts",
             )
         )
-        markdown_attempts: t.VariadicTuple[
-            FlextInfraModelsCore.PytestMarkdownAttempt
-        ] = m.Field(
-            default_factory=tuple,
-            description="Observed SDK execution attempts",
-        )
-        markdown_items: t.VariadicTuple[FlextInfraModelsCore.PytestMarkdownItem] = (
-            m.Field(default_factory=tuple, description="Executed call-phase origins")
+        markdown_items: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = m.Field(
+            default_factory=tuple, description="Executed call-phase origins"
         )
         failed_cases: Annotated[
             t.StrSequence,
@@ -539,13 +538,13 @@ class FlextInfraModelsCore:
     class PytestMarkdownReconciliation(m.Value):
         """Origin and phase accounting; deselection is never execution."""
 
-        eligible: t.VariadicTuple[FlextInfraModelsCore.PytestMarkdownOrigin] = m.Field(
+        eligible: tuple[FlextInfraModelsCore.PytestMarkdownOrigin, ...] = m.Field(
             description="Independent parser eligibility",
         )
-        selected: t.VariadicTuple[FlextInfraModelsCore.PytestMarkdownItem] = m.Field(
+        selected: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = m.Field(
             description="Actual selected identities",
         )
-        deselected: t.VariadicTuple[FlextInfraModelsCore.PytestMarkdownItem] = m.Field(
+        deselected: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = m.Field(
             description="Origins not executed in this phase",
         )
         diagnostics: FlextInfraModelsCore.PytestDiagnostics = m.Field(

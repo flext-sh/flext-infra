@@ -154,7 +154,7 @@ class FlextInfraTypesBase:
     type NativeType = type[p.AttributeProbe | UnionType]
     "Exact native type owners, including the interpreter's union type."
     type NativeClassDeclarations = t.MappingKV[
-        str, t.VariadicTuple[t.Pair[int, frozenset[str]]]
+        str, tuple[t.Pair[int, frozenset[str]], ...]
     ]
     "Immutable compiler facts: class qualified names, source lines and stores."
     type NativeCompilationFacts = t.DictKV[
@@ -162,7 +162,7 @@ class FlextInfraTypesBase:
     ]
     "Invocation-local class facts keyed by exact source bytes and compiler inputs."
     type NativeInstructionFacts = t.DictKV[
-        int, t.Pair[NativeCode, t.VariadicTuple[Instruction]]
+        int, t.Pair[NativeCode, tuple[Instruction], ...]
     ]
     "Immutable instructions indexed by strong native code identity."
     type NativeInvocationFacts = t.Pair[NativeCompilationFacts, NativeInstructionFacts]
@@ -215,13 +215,13 @@ class FlextInfraTypesBase:
     type PrivateImportReferences = tuple[
         t.MappingKV[Path, t.SequenceOf[PrivateImportSpec]],
         t.MappingKV[Path, t.MappingKV[str, t.StrPair]],
-        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
+        t.MappingKV[str, tuple[t.Quad[_ast.Module, str, str, str]], ...],
     ]
     "Resolved private-import specs, declared re-export targets, and facade owners."
     type ConstantFacadeIndex = tuple[
-        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
+        t.MappingKV[str, tuple[t.Quad[_ast.Module, str, str, str]], ...],
         t.MappingKV[str, set[str]],
-        t.MappingKV[str, t.VariadicTuple[str]],
+        t.MappingKV[str, tuple[str], ...],
     ]
     "Live constants facades, export identities, and declared class ancestry."
     type ConstantConsumerContext = t.Quad[

@@ -306,7 +306,7 @@ rules:
                 m.Field(description="Verified duplicate definition"),
             ]
             consumer_files: Annotated[
-                t.VariadicTuple[Path],
+                tuple[Path, ...],
                 m.Field(description="Consumers requiring import rebindings"),
             ]
             in_module_uses: Annotated[
@@ -324,11 +324,11 @@ rules:
                 m.Field(description="Elected definition and its bindings"),
             ]
             copies: Annotated[
-                t.VariadicTuple[FlextInfraModelsCensus.DuplicateCopyCure],
+                tuple[FlextInfraModelsCensus.DuplicateCopyCure, ...],
                 m.Field(description="Copies with proven removal contracts"),
             ]
             edits: Annotated[
-                t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit],
+                tuple[FlextInfraModelsTransformers.SemanticMigrationEdit, ...],
                 m.Field(description="Complete proposed source edits"),
             ]
 
@@ -629,7 +629,7 @@ rules:
                 def synthetic_private_submodules
   replace: |2-
                 @staticmethod
-                def ci_trigger_branches(repository_branch: str) -> t.VariadicTuple[str]:
+                def ci_trigger_branches(repository_branch: str) -> tuple[str, ...]:
                     """Derive the repository trigger set from the configured policy."""
                     return tuple(dict.fromkeys((
                         *config.Infra.codegen.branch_policy.ci_trigger_branches,

@@ -37,7 +37,7 @@ class TestsFlextInfraRuntimeEvaluatedPlannedSubmodules:
     def test_planned_submodule_import_resolves_its_declared_class(
         tmp_path: Path,
         import_statement: str,
-        package_binding: tuple[str, str, str],
+        package_binding: tuple[str, str, ...],
         *,
         initialized: bool,
     ) -> None:

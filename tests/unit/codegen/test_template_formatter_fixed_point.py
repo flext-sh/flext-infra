@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraTemplateFormatterFixedPoint:
@@ -48,7 +48,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
     @staticmethod
     def _workflow_spec(
         *,
-        workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef],
+        workspace_repositories: tuple[m.Infra.RepositoryRef, ...],
         has_devcontainer: bool,
     ) -> m.Infra.GithubWorkflowRenderSpec:
         return u.CodegenTestSupport.Ci.workflow_spec(

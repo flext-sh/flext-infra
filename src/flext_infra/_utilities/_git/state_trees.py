@@ -27,7 +27,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
         root: Path,
         commit: str,
         paths: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         if not paths:
             return ()
         repo = cls._repo(root)
@@ -147,7 +147,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     def _state_working_entries(
         cls,
         snapshot: m.Infra.GitWorktreeStateSnapshot,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         return tuple(
             m.Infra.GitWorktreeIndexEntry(path=file.path, mode=file.mode, oid=file.oid)
             for file in snapshot.files

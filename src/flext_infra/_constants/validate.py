@@ -92,7 +92,7 @@ class FlextInfraConstantsSharedInfra:
     "Mypy verbose build source entry, capturing the path's Python literal."
     MYPY_BUILD_FINISHED_MARKER: ClassVar[str] = "Build finished in "
     "Mypy verbose trace marker proving the build completed."
-    INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
+    INTERNAL_PREFIXES: ClassVar[tuple[str, ...]] = ("flext_", "flext-")
 
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: ClassVar[str] = c.PYPROJECT_FILENAME
@@ -174,7 +174,7 @@ class FlextInfraConstantsSharedInfra:
     EXT_PYTHON: ClassVar[str] = ".py"
     EXT_PYTHON_GLOB: ClassVar[str] = "*.py"
     EXT_PYTHON_STUB: ClassVar[str] = ".pyi"
-    PYTHON_SOURCE_SUFFIXES: ClassVar[t.VariadicTuple[str]] = (
+    PYTHON_SOURCE_SUFFIXES: ClassVar[tuple[str, ...]] = (
         EXT_PYTHON,
         EXT_PYTHON_STUB,
     )

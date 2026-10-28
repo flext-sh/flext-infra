@@ -37,7 +37,7 @@ class FlextInfraRefactorAccessorWarnings:
         )
 
     @classmethod
-    def automated_rules(cls) -> t.VariadicTuple[m.Infra.AccessorMigrationRule]:
+    def automated_rules(cls) -> tuple[m.Infra.AccessorMigrationRule, ...]:
         """Return the declared accessor renames.
 
         Returns:

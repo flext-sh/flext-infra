@@ -18,11 +18,11 @@ class FlextInfraUtilitiesGitWorktreeCheckpoint(
     """Own worktree checkpoint operations."""
 
     @staticmethod
-    def _transaction_exclusion_pathspecs() -> t.VariadicTuple[str]:
+    def _transaction_exclusion_pathspecs() -> tuple[str, ...]:
         """Pathspecs that exclude tool-cache directories from operation deltas.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         return tuple(

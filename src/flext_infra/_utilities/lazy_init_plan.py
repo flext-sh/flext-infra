@@ -78,7 +78,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         *,
         module: str,
         scoped: bool,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Return the package directories a selected module names in ``root``.
 
         Returns:
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def lazy_init_plan_root(
         cls, run: m.Infra.LazyInitRun, target: Path | None
-    ) -> p.Result[t.VariadicTuple[m.Infra.LazyInitPlan]]:
+    ) -> p.Result[tuple[m.Infra.LazyInitPlan, ...]]:
         """Plan the repository's packages bottom-up; a target narrows the tree.
 
         ``target`` is the selected package directory, ``None`` plans the tree.
@@ -110,7 +110,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             The selected package plans, or the first planning failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.LazyInitPlan]]
+        result_type = r[tuple[m.Infra.LazyInitPlan, ...]]
         entries = tuple(
             run.index.packages_by_dir[str(package_dir)]
             for package_dir in run.index.package_dirs
@@ -160,10 +160,10 @@ class FlextInfraUtilitiesLazyInitPlan:
     def lazy_init_file_plans(
         cls,
         run: m.Infra.LazyInitRun,
-        plans: t.VariadicTuple[m.Infra.LazyInitPlan],
+        plans: tuple[m.Infra.LazyInitPlan, ...],
         *,
         first_party: t.MappingKV[Path, frozenset[str]],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind every decided initializer and generated-source tree to its effect.
 
         ``first_party`` maps each owning project root to its first-party
@@ -173,7 +173,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             The file plans sorted by destination path.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         view = run.model.source_project
         by_path: dict[Path, m.Infra.CodegenFilePlan] = {}
         for plan in plans:
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         run: m.Infra.LazyInitRun,
         plan: m.Infra.LazyInitPlan,
         first_party: frozenset[str],
-    ) -> t.SequenceOf[t.Pair[Path, bytes | None]]:
+    ) -> t.SequenceOf[tuple[Path, bytes | None]]:
         """Return the desired bytes of one package and its generated-source trees.
 
         Returns:
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         render = FlextInfraUtilitiesLazyInitRender.lazy_init_render
         view = run.model.source_project
-        effects: list[t.Pair[Path, bytes | None]] = []
+        effects: list[tuple[Path, bytes | None]] = []
         if plan.action == c.Infra.LazyInitAction.WRITE:
             effects.append((
                 plan.context.init_path,
@@ -740,7 +740,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         path: Path,
         module: m.Infra.PythonModuleFacts,
         exports: t.StrSequence,
-    ) -> t.Pair[str | None, str | None]:
+    ) -> tuple[str | None, str | None]:
         """Return a route module's facade alias and family suffix.
 
         A root-namespace facade owner supplies both; otherwise the family is

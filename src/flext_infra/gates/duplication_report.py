@@ -42,7 +42,7 @@ class FlextInfraDuplicationReport:
         cls,
         project_dir: Path,
         report: m.Infra.JscpdReport | None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
+    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
         """Extract one Issue per clone side that falls inside ``project_dir``.
 
         jscpd can emit both A->B and B->A for one clone; one finding is
@@ -70,7 +70,7 @@ class FlextInfraDuplicationReport:
         cls,
         duplicate: t.JsonMapping,
         project_dir: Path,
-    ) -> t.Pair[str, m.Infra.Issue] | None:
+    ) -> tuple[str, m.Infra.Issue] | None:
         """Map one reported clone to its owned side, keyed by its span pair.
 
         The two sides of a clone are the same span only when the same

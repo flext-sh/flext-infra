@@ -331,7 +331,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     def _facade_module_statements(
         source: str,
         module: str,
-    ) -> t.VariadicTuple[ast.stmt]:
+    ) -> tuple[ast.stmt, ...]:
         """Parse one module source once per content; resolution only reads it.
 
         Every facade letter re-resolves its bindings through the same modules,
@@ -341,7 +341,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         source inventory, not this runtime publication view.
 
         Returns:
-            The resulting ``t.VariadicTuple[ast.stmt]``.
+            The resulting ``tuple[ast.stmt, ...],``.
 
         """
         return tuple(

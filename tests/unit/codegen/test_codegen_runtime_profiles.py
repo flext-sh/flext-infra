@@ -91,7 +91,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     def _declare_custom_dependencies(
         pyproject: Path,
         upstream: str,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Author marker variants and a direct source in the target declaration.
 
         Returns:
@@ -148,7 +148,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     @staticmethod
     def _assert_render_retains_requirements(
         rendered: str,
-        declared: t.VariadicTuple[str],
+        declared: tuple[str, ...],
     ) -> str:
         """Public generation retains requirement variants, injecting only dev policy.
 

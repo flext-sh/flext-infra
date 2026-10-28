@@ -89,7 +89,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
         )
 
     @staticmethod
-    def _import_paths() -> t.VariadicTuple[str]:
+    def _import_paths() -> tuple[str, ...]:
         """Return the physical import search path that keys environment facts.
 
         Import search paths may repeat the same physical directory. Query each
@@ -104,7 +104,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @staticmethod
     @lru_cache(maxsize=8)
     def _indexed_provider_configs(
-        paths: t.VariadicTuple[str],
+        paths: tuple[str, ...],
     ) -> t.MappingKV[str, Path]:
         """Locate every installed distribution's codemod config exactly once.
 
@@ -130,7 +130,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @staticmethod
     @lru_cache(maxsize=8)
     def _indexed_distributions(
-        paths: t.VariadicTuple[str],
+        paths: tuple[str, ...],
     ) -> t.MappingKV[str, Distribution]:
         """Read every distribution's metadata on ``paths`` exactly once.
 

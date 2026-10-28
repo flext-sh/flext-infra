@@ -24,7 +24,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
     @staticmethod
     def _editable_sources(
         sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[t.Pair[Path, str]]:
+    ) -> tuple[tuple[Path, str], ...]:
         """Return resolved hand-written sources in stable path order.
 
         Returns:
@@ -52,9 +52,9 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
 
     @staticmethod
     def _semantic_edits(
-        items: t.SequenceOf[t.Pair[Path, str]],
+        items: t.SequenceOf[tuple[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan one edit per module, preserving the first original exception.
 
         Returns:
@@ -73,14 +73,14 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
                         changes=tuple(changes),
                     ),
                 )
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(edits))
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
 
     @classmethod
     def _semantic_checked_edits(
         cls,
-        items: t.SequenceOf[t.Pair[Path, str]],
+        items: t.SequenceOf[tuple[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Keep declarative validation failures on their typed result boundary.
 
         Returns:
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
         try:
             return cls._semantic_edits(items, rewrite)
         except ValueError as exc:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
                 str(exc), exception=exc
             )
 

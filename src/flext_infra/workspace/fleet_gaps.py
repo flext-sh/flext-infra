@@ -171,7 +171,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     @staticmethod
     def _open_pull_requests(
         repo_root: Path,
-    ) -> t.VariadicTuple[m.Infra.FleetPullRequest]:
+    ) -> tuple[m.Infra.FleetPullRequest, ...]:
         """List the checkout's open pull requests; a provider failure is empty.
 
         Returns:

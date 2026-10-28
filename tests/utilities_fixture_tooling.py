@@ -321,7 +321,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
-    def python_dependency_projects(root: Path) -> t.VariadicTuple[Path]:
+    def python_dependency_projects(root: Path) -> tuple[Path, ...]:
         """Resolve declared fixture dependencies to actual workspace source owners.
 
         Only dependencies that are declared workspace members are resolved;
@@ -380,8 +380,8 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     @cache
     def python_dependency_wheels(
         directory: Path,
-        dependency_projects: t.VariadicTuple[Path],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+        dependency_projects: tuple[Path, ...],
+    ) -> p.Result[tuple[Path, ...]]:
         """Build current dependency sources once in the shared worker allocation.
 
         UV reuses its native artifact cache; no installed executor package or
@@ -413,14 +413,14 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     cwd=project,
                 )
                 if built.failure:
-                    return r[t.VariadicTuple[Path]].from_failure(built)
+                    return r[tuple[Path, ...]].from_failure(built)
                 artifacts = tuple(destination.glob("*.whl"))
                 if len(artifacts) != 1:
-                    return r[t.VariadicTuple[Path]].fail(
+                    return r[tuple[Path, ...]].fail(
                         f"Dependency build must publish one wheel: {destination}",
                     )
                 wheels.extend(artifacts)
-        return r[t.VariadicTuple[Path]].ok(tuple(wheels))
+        return r[tuple[Path, ...]].ok(tuple(wheels))
 
     @staticmethod
     def create_python_environment(

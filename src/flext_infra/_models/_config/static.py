@@ -21,7 +21,7 @@ class FlextInfraModelsConfigStatic:
         """Canonical production roots and recursively ignored directories."""
 
         roots: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Ordered production source directory names"),
         ]
 

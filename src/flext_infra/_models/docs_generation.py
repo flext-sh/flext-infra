@@ -187,7 +187,7 @@ class FlextInfraModelsDocsGeneration:
             m.Field(description="Exact scope that owns every relative artifact"),
         ]
         artifacts: Annotated[
-            t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact],
+            tuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact, ...],
             m.Field(description="Complete ordered desired artifact inventory"),
         ]
 
@@ -195,7 +195,7 @@ class FlextInfraModelsDocsGeneration:
         """Single render consumed through publication."""
 
         scopes: Annotated[
-            t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts],
+            tuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts, ...],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
         metadata_files: t.VariadicTuple[

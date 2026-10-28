@@ -364,4 +364,4 @@ class FlextInfraUtilitiesManagedConflicts:
         return r[int].fail("TOML merge conflict has no closing marker")
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesManagedConflicts",)
+__all__: tuple[str, ...] = ("FlextInfraUtilitiesManagedConflicts",)

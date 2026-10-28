@@ -176,11 +176,11 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Dependency-first provider precedence"),
         ]
         rules: Annotated[
-            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRule],
+            tuple[FlextInfraModelsRefactorGrep.CodemodRule, ...],
             m.Field(description="Unique semantic rules with their elected owner"),
         ]
         rulesets: Annotated[
-            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRuleset],
+            tuple[FlextInfraModelsRefactorGrep.CodemodRuleset, ...],
             m.Field(description="Executable provider configs in precedence order"),
         ]
         project_rule_ids: Annotated[
@@ -390,7 +390,7 @@ class FlextInfraModelsRefactorGrep:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
-        lint_tools: t.VariadicTuple[str] = m.Field(
+        lint_tools: tuple[str, ...] = m.Field(
             default_factory=tuple,
             description="Selected lint tools used for preview rendering",
         )
@@ -450,7 +450,7 @@ class FlextInfraModelsRefactorGrep:
             t.NonNegativeInt,
             m.Field(description="Total manual follow-up warnings detected"),
         ]
-        lint_tools: t.VariadicTuple[str] = m.Field(
+        lint_tools: tuple[str, ...] = m.Field(
             default_factory=tuple,
             description="Canonical lint tool list used by this run",
         )
@@ -466,11 +466,9 @@ class FlextInfraModelsRefactorGrep:
             t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
         ]
-        files: t.VariadicTuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile] = (
-            m.Field(
-                default_factory=tuple,
-                description="Preview entries included in this report",
-            )
+        files: tuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile, ...] = m.Field(
+            default_factory=tuple,
+            description="Preview entries included in this report",
         )
 
 

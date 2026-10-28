@@ -277,8 +277,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
             self,
             statements: t.SequenceOf[t.Infra.Cst.BaseStatement],
         ) -> t.Pair[
-            t.VariadicTuple[t.Infra.Cst.BaseStatement],
-            t.VariadicTuple[t.Infra.Cst.EmptyLine],
+            tuple[t.Infra.Cst.BaseStatement, ...],
+            tuple[t.Infra.Cst.EmptyLine, ...],
         ]:
             """Return retained statements and any trailing preserved comments.
 

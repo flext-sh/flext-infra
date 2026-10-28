@@ -8,7 +8,7 @@ snapshots:
           @overload
           @staticmethod
           def map[T, U](
-              items: tuple[T, ...],
+              items: tuple[T, ...]
               mapper,
           ) -> tuple[U, ...]:
               raise NotImplementedError
@@ -27,7 +27,7 @@ snapshots:
         @overload
             @staticmethod
             def map[T, U](
-                items: tuple[T, ...],
+                items: tuple[T, ...]
                 mapper,
             ) -> tuple[U, ...]:
                 _ = items, mapper
@@ -37,7 +37,7 @@ snapshots:
       end: 242
     - source: |-
         def map[T, U](
-                items: tuple[T, ...],
+                items: tuple[T, ...]
                 mapper,
             ) -> tuple[U, ...]:
                 _ = items, mapper
@@ -60,7 +60,7 @@ snapshots:
             @overload
             @staticmethod
             def map[T, U](
-                items: tuple[T, ...],
+                items: tuple[T, ...]
                 mapper,
             ) -> tuple[U, ...]:
                 _ = items, mapper

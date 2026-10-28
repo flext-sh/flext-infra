@@ -90,7 +90,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
         *,
         root: Path,
         resolve_home: bool = True,
-    ) -> t.VariadicTuple[m.Infra.EnvironmentContractViolation]:
+    ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
         """Return one typed violation per direnv contract issue in ``content``.
 
         Contracts enforced:
@@ -182,7 +182,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
     def envrc_local_contract_violations(
         cls,
         content: str,
-    ) -> t.VariadicTuple[m.Infra.EnvironmentContractViolation]:
+    ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
         """Return one typed violation per activation residue in ``.envrc.local``.
 
         Local overrides never activate Beads: managed section markers,
@@ -241,4 +241,4 @@ class FlextInfraWorkspaceEnvironmentContracts:
         return tuple(violations)
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraWorkspaceEnvironmentContracts",)
+__all__: tuple[str, ...] = ("FlextInfraWorkspaceEnvironmentContracts",)

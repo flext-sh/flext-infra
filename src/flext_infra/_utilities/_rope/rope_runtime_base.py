@@ -10,7 +10,7 @@ from collections.abc import Callable
 from importlib import import_module
 from typing import TypeIs, get_protocol_members
 
-from flext_infra import c, p, t
+from flext_infra import c, p
 
 
 class FlextInfraUtilitiesRopeRuntimeBase:
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         return value
 
     @classmethod
-    def rope_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
+    def rope_error_types(cls) -> tuple[type[BaseException], ...]:
         """Return the generic Rope exception boundary.
 
         Returns:

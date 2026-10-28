@@ -188,7 +188,7 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitSemanticIndex):
         )
 
     @classmethod
-    def git_source_scope_paths(cls, scope_root: Path) -> t.VariadicTuple[Path] | None:
+    def git_source_scope_paths(cls, scope_root: Path) -> tuple[Path, ...] | None:
         """Inventory tracked and unpublished source paths without following links.
 
         Args:

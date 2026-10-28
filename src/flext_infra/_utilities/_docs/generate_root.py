@@ -226,8 +226,8 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         rendered: t.SequenceOf[t.Pair[Path, str]],
     ) -> p.Result[
         t.Pair[
-            t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
-            t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
+            tuple[t.Infra.DocsRenderedArtifactTuple, ...],
+            tuple[t.Infra.DocsRenderedArtifactTuple, ...],
         ]
     ]:
         """Prune both generated docs trees against the rendered inventory.
@@ -246,8 +246,8 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         if api_pruned.failure:
             return r[
                 t.Pair[
-                    t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
-                    t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
+                    tuple[t.Infra.DocsRenderedArtifactTuple, ...],
+                    tuple[t.Infra.DocsRenderedArtifactTuple, ...],
                 ]
             ].from_failure(api_pruned)
         projects_pruned = (
@@ -260,14 +260,14 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         if projects_pruned.failure:
             return r[
                 t.Pair[
-                    t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
-                    t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
+                    tuple[t.Infra.DocsRenderedArtifactTuple, ...],
+                    tuple[t.Infra.DocsRenderedArtifactTuple, ...],
                 ]
             ].from_failure(projects_pruned)
         return r[
             t.Pair[
-                t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
-                t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple],
+                tuple[t.Infra.DocsRenderedArtifactTuple, ...],
+                tuple[t.Infra.DocsRenderedArtifactTuple, ...],
             ]
         ].ok((api_pruned.value, projects_pruned.value))
 
@@ -276,19 +276,19 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         cls,
         repository_root: Path,
         scopes: t.SequenceOf[m.Infra.DocScope],
-    ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple], ...]:
         """Render aggregate root targets from the complete discovered project set.
 
         Returns:
             The resulting
-                ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
+                ``p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]``.
 
         """
         tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
             repository_root
         )
         if tooling.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 tooling
             )
         width = FlextInfraUtilitiesDocsRender.docs_markdown_line_length(
@@ -311,7 +311,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
             ),
         )
         if aggregated.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 aggregated,
             )
         rendered, project_scopes, scope_modules = aggregated.value
@@ -324,7 +324,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         )
         pruned = cls._prune_generated(repository_root, rendered)
         if pruned.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 pruned,
             )
         return FlextInfraUtilitiesDocsGenerateRoot.docs_normalize_artifacts((
@@ -339,7 +339,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         *,
         repository_root: Path,
         aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
-    ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple], ...]:
         """Return the rendered artifact inventory for one docs scope.
 
         The scope label is the only topology input (see ``build_scopes``).

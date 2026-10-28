@@ -14,7 +14,7 @@ from flext_infra import c, m, p, r, t, u
 
 type _DocsScopeArtifacts = t.Pair[
     m.Infra.DocScope,
-    t.VariadicTuple[t.Triple[Path, Path, str | None]],
+    tuple[t.Triple[Path, Path, str | None], ...],
 ]
 
 
@@ -23,24 +23,24 @@ class FlextInfraDocsGeneratorBundle:
 
     type _DocsPresentationInputs = t.Pair[
         m.Infra.CodegenBootstrapSource | None,
-        t.VariadicTuple[m.Infra.CodegenFilePlan],
+        tuple[m.Infra.CodegenFilePlan, ...],
     ]
     type _DocsRenderedInventory = t.Pair[
-        list[_DocsScopeArtifacts], t.VariadicTuple[m.Infra.CodegenFilePlan]
+        list[_DocsScopeArtifacts], tuple[m.Infra.CodegenFilePlan, ...]
     ]
 
     @staticmethod
     def _presentation_metadata(
         scopes: t.SequenceOf[m.Infra.DocScope],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
         """Prepare only authorial YAML and the owned pyproject locale leaf.
 
         Returns:
             Exact metadata plans, without Python or tooling source planning.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
         ownership = u.Infra.pyproject_managed_file()
         if ownership.failure:
             return result_type.from_failure(ownership)
@@ -156,7 +156,7 @@ class FlextInfraDocsGeneratorBundle:
     def _prepare_request(
         cls,
         request: m.Infra.DocsGenerateRequest,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Render one inventory from the live workspace sources.
 
@@ -184,7 +184,7 @@ class FlextInfraDocsGeneratorBundle:
         cls,
         repository_root: Path,
         request: m.Infra.DocsGenerateRequest,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[FlextInfraDocsGeneratorBundle._DocsRenderedInventory]:
         """Resolve the docs scopes, their governance source and artifacts.
 
@@ -228,8 +228,8 @@ class FlextInfraDocsGeneratorBundle:
         output_dir: Path,
     ) -> p.Result[
         t.Pair[
-            t.VariadicTuple[m.Infra.DocScope],
-            t.VariadicTuple[m.Infra.DocScope],
+            tuple[m.Infra.DocScope, ...],
+            tuple[m.Infra.DocScope, ...],
         ]
     ]:
         """Build and target-validate the selected and aggregate doc scopes.
@@ -240,8 +240,8 @@ class FlextInfraDocsGeneratorBundle:
         """
         result_type = r[
             t.Pair[
-                t.VariadicTuple[m.Infra.DocScope],
-                t.VariadicTuple[m.Infra.DocScope],
+                tuple[m.Infra.DocScope, ...],
+                tuple[m.Infra.DocScope, ...],
             ]
         ]
         selected = u.Infra.build_scopes(
@@ -277,8 +277,8 @@ class FlextInfraDocsGeneratorBundle:
         cls,
         repository_root: Path,
         scopes: t.Pair[
-            t.VariadicTuple[m.Infra.DocScope],
-            t.VariadicTuple[m.Infra.DocScope],
+            tuple[m.Infra.DocScope, ...],
+            tuple[m.Infra.DocScope, ...],
         ],
         presentation: FlextInfraDocsGeneratorBundle._DocsPresentationInputs = (
             None,
@@ -405,7 +405,7 @@ class FlextInfraDocsGeneratorBundle:
         repository_root: Path,
         rendered: list[_DocsScopeArtifacts],
         *,
-        metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        metadata_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Validate the rendered docs generation bundle.
 

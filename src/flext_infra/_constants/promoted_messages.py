@@ -12,12 +12,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_core import c
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraConstantsPromotedMessages:
@@ -134,7 +131,7 @@ class FlextInfraConstantsPromotedMessages:
         WORDS = " "
         LINES = "\n"
 
-    PROMOTED_HELP_GLOBAL_FOOTER: ClassVar[t.VariadicTuple[str]] = (
+    PROMOTED_HELP_GLOBAL_FOOTER: ClassVar[tuple[str], ...] = (
         "",
         "make <verb> shows the verb help and every WHAT.",
         "make help WHAT=<verb> shows the same help.",

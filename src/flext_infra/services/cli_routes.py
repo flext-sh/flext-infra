@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, services
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCliRouteService:
@@ -20,7 +20,7 @@ class FlextInfraCliRouteService:
     @classmethod
     def route_table_for(
         cls, group: str, *, command: str | None = None
-    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
+    ) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Return the routes for one command group, importing only its owner.
 
         Returns:
@@ -54,7 +54,7 @@ class FlextInfraCliRouteService:
         group: str,
         *,
         command: str | None = None,
-    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
+    ) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Return the check, codegen or deps routes from the codegen owner.
 
         Returns:
@@ -70,7 +70,7 @@ class FlextInfraCliRouteService:
     @staticmethod
     def _workspace_family_routes(
         group: str,
-    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
+    ) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Return the release or workspace routes from the workspace owner.
 
         Returns:

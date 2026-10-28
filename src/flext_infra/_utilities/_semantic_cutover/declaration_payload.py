@@ -342,7 +342,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         name: str,
         *,
         offset: int | None = None,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Discover module and nested class paths from the native scope graph.
 
         Function-local declarations have no durable family owner and are excluded.

@@ -22,7 +22,7 @@ class FlextInfraModelsConfigScaffold:
 
         backend: Annotated[t.NonEmptyStr, m.Field(description="PEP 517 backend")]
         requirements: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Build-system requirements"),
         ]
 
@@ -47,15 +47,15 @@ class FlextInfraModelsConfigScaffold:
 
         readme: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 readme path")]
         supported_licenses: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Licenses with complete templates"),
         ]
         classifiers: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Default PyPI classifiers"),
         ]
         keywords: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Default project keywords"),
         ] = ()
         copyright_year: Annotated[
@@ -70,20 +70,20 @@ class FlextInfraModelsConfigScaffold:
             ),
         ]
         dev: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Canonical development and validation requirements",
             ),
         ]
         retired_dev: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description="Development distributions retired from managed groups"
             ),
         ] = ()
         required_flext_dev: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -92,7 +92,7 @@ class FlextInfraModelsConfigScaffold:
             ),
         ]
         config_bases: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -105,8 +105,8 @@ class FlextInfraModelsConfigScaffold:
         @m.field_validator("dev", "required_flext_dev")
         @classmethod
         def validate_requirements(
-            cls, requirements: t.VariadicTuple[str]
-        ) -> t.VariadicTuple[str]:
+            cls, requirements: tuple[str, ...]
+        ) -> tuple[str, ...]:
             """Validate declared development policy before any dependency writer runs.
 
             Returns:
@@ -147,11 +147,11 @@ class FlextInfraModelsConfigScaffold:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Section heading")]
         patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Ignored path patterns"),
         ]
         profiles: Annotated[
-            t.VariadicTuple[c.Infra.MakeProfile],
+            tuple[c.Infra.MakeProfile, ...],
             m.Field(
                 description=(
                     "Make profiles this section applies to; empty means every "
@@ -181,19 +181,19 @@ class FlextInfraModelsConfigScaffold:
             ),
         ] = None
         runtime: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Runtime requirements"),
         ]
         codegen: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Code-generation requirements"),
         ] = ()
 
         @m.field_validator("runtime", "codegen")
         @classmethod
         def validate_requirements(
-            cls, requirements: t.VariadicTuple[str]
-        ) -> t.VariadicTuple[str]:
+            cls, requirements: tuple[str, ...]
+        ) -> tuple[str, ...]:
             """Reject invalid PEP 508 policy before any dependency writer runs.
 
             Args:

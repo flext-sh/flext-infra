@@ -56,7 +56,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
     _stdlib_backing_cache: ClassVar[t.StrDict | None] = None
     _export_bindings_memo: ClassVar[
-        dict[tuple[str, str, str], t.MappingKV[str, m.Infra.SourceClassReference]]
+        dict[tuple[str, str, str], dict[str, m.Infra.SourceClassReference]]
     ] = {}
 
     @classmethod

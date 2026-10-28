@@ -194,7 +194,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
     @classmethod
     def _call_value_edits(
         cls,
-        offsets: t.VariadicTuple[int],
+        offsets: tuple[int, ...],
         owner: str,
         owned_names: frozenset[str],
         expression: ast.expr,
@@ -296,7 +296,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple(annotations)
 
     @staticmethod
-    def _line_offsets(source: str) -> t.VariadicTuple[int]:
+    def _line_offsets(source: str) -> tuple[int, ...]:
         """Return the character offset of each source line.
 
         Returns:
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple(offsets)
 
     @staticmethod
-    def _node_span(offsets: t.VariadicTuple[int], node: ast.expr) -> t.Pair[int, int]:
+    def _node_span(offsets: tuple[int], node: ast.expr) -> t.Pair[int, int, ...]:
         """Return one expression's exact source character span.
 
         Returns:

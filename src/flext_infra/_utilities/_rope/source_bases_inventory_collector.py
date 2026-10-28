@@ -533,7 +533,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         value = node.value
         if isinstance(value, ast.Name) and value.id not in visible:
             return False
-        receivers: list[t.Pair[m.Infra.SourceClassReference, str]] = []
+        receivers: list[tuple[m.Infra.SourceClassReference, str]] = []
         for target in targets:
             if not isinstance(target, ast.Attribute):
                 return False
@@ -579,7 +579,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """
         current = reference
         remaining = current.attributes
-        visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
+        visited: set[tuple[str, tuple[str, ...]]] = set()
         while remaining:
             identity = current.target, remaining
             if identity in visited:
@@ -755,10 +755,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         branches: t.SequenceOf[
-            t.Pair[
-                t.MappingKV[str, m.Infra.SourceClassReference | None],
-                t.SequenceOf[ast.stmt],
-            ]
+            tuple[t.MappingKV[str, m.Infra.SourceClassReference | None], t.SequenceOf[ast.stmt]]
         ],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:
@@ -838,7 +835,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         name: str,
         reference: m.Infra.SourceClassReference | None,
         statements: t.SequenceOf[ast.stmt],
-    ) -> t.Pair[p.Infra.RopePyObject | None, bool]:
+    ) -> tuple[p.Infra.RopePyObject | None, bool]:
         """Resolve an alternative through its native provider or RHS context.
 
         Returns:

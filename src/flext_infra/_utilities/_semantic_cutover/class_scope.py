@@ -18,14 +18,14 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
     @staticmethod
     def _comprehension_parts(
         node: ast.ListComp | ast.SetComp | ast.GeneratorExp | ast.DictComp,
-    ) -> tuple[t.VariadicTuple[ast.AST], frozenset[str]]:
+    ) -> tuple[tuple[ast.AST], frozenset[str], ...]:
         """Return a comprehension's evaluated parts and the targets it binds.
 
         Returns:
             The element, key/value and generator nodes, with the target names.
 
         """
-        elements: t.VariadicTuple[ast.AST] = (
+        elements: tuple[ast.AST, ...] = (
             (node.key, node.value) if isinstance(node, ast.DictComp) else (node.elt,)
         )
         targets = frozenset(
@@ -54,7 +54,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
     def evaluated_parts(
         cls,
         node: ast.AST,
-    ) -> t.VariadicTuple[tuple[t.VariadicTuple[ast.AST], frozenset[str]]]:
+    ) -> tuple[tuple[t.VariadicTuple[ast.AST], frozenset[str]], ...]:
         """Return the children a suite evaluates now, each with names it binds.
 
         Function, lambda and nested class bodies run in their own scope, and a
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
         return frozenset(names)
 
     @staticmethod
-    def _suite_classes(statement: ast.stmt) -> t.VariadicTuple[ast.ClassDef]:
+    def _suite_classes(statement: ast.stmt) -> tuple[ast.ClassDef, ...]:
         """Return the classes one statement defines in the scope that runs it.
 
         Returns:
@@ -167,7 +167,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
         node: ast.ClassDef,
         qualname: str,
         module_bound: frozenset[str],
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Return the unresolved immediate loads of one suite and its nested suites.
 
         Returns:
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
         return tuple(errors)
 
     @classmethod
-    def definition_time_name_errors(cls, source: str) -> t.VariadicTuple[str]:
+    def definition_time_name_errors(cls, source: str) -> tuple[str, ...]:
         """Return class-suite loads that raise NameError while the module imports.
 
         A class suite resolves a name in its own namespace, then in the module

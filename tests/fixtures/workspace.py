@@ -6,6 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -90,7 +99,7 @@ def constant_candidate(
     root, _package = constants_workspace
 
     def candidate(
-        sources: t.MappingKV[Path, str], expected_paths: t.VariadicTuple[Path]
+        sources: t.MappingKV[Path, str], expected_paths: tuple[Path, ...]
     ) -> t.MappingKV[Path, str]:
         """Validate the phase through its public entry point.
 

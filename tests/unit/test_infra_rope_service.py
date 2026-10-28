@@ -181,11 +181,11 @@ class TestsFlextInfraInfraRopeService:
         repository_root: Path,
         module_path: Path,
         options: t.JsonMapping,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Read one module's public export contract through the Rope workspace.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         with flext_infra.infra.rope_workspace(repository_root) as rope:

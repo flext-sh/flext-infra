@@ -216,7 +216,7 @@ class FlextInfraUtilitiesCodemodNative:
     @staticmethod
     @cache
     def _runtime_modules_of(
-        requirements: t.VariadicTuple[str], import_path: t.VariadicTuple[str]
+        requirements: tuple[str], import_path: t.VariadicTuple[str, ...]
     ) -> frozenset[str]:
         """Resolve the import packages of one requirement set, once per process.
 
@@ -512,7 +512,7 @@ class FlextInfraUtilitiesCodemodNative:
     @staticmethod
     def codemod_fixture_resources(
         plan: m.Infra.CodemodRulePlan,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Return the authored rule files whose catalogs own rule fixtures.
 
         A generated provider renders its rules from project sources of truth
@@ -626,10 +626,7 @@ class FlextInfraUtilitiesCodemodNative:
         )
 
     @staticmethod
-    def _verify_generated_provider(
-        root: Path,
-        texts: t.MappingKV[Path, str],
-    ) -> None:
+    def _verify_generated_provider(root: Path, texts: t.MappingKV[Path, ...]) -> None:
         """Authenticate an immutable provider's complete inventory and contents.
 
         Raises:

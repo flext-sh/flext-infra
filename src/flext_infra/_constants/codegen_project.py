@@ -157,7 +157,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     })
     "bd-owned Dolt/daemon runtime entries the composed-project verify tolerates."
     BEADS_CONFIG_VERSION: ClassVar[Literal[1]] = 1
-    CONFORM_NAMESPACE_TABLE: ClassVar[t.VariadicTuple[str]] = (
+    CONFORM_NAMESPACE_TABLE: ClassVar[tuple[str, ...]] = (
         "tool",
         "flext",
         "namespace",

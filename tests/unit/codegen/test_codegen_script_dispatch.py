@@ -22,7 +22,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def _render_root_makefile(
         tmp_path: Path,
         *,
-        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec],
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
         script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a

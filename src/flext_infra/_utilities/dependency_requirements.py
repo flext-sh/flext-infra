@@ -19,7 +19,7 @@ class FlextInfraUtilitiesDependencyRequirements:
 
     @staticmethod
     def raw_requirement_values(
-        raw: t.JsonValue | t.VariadicTuple[t.JsonValue],
+        raw: t.JsonValue | tuple[t.JsonValue, ...],
     ) -> list[str]:
         """Collect requirement strings from dependency arrays or group tables.
 

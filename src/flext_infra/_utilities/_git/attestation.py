@@ -461,8 +461,8 @@ class FlextInfraUtilitiesGitAttestation(
     @staticmethod
     def git_capture_report_bindings(
         root: Path,
-        paths: t.VariadicTuple[t.Pair[Path, c.Infra.GateEvidenceReportKind]],
-    ) -> p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]:
+        paths: tuple[tuple[Path, c.Infra.GateEvidenceReportKind], ...],
+    ) -> p.Result[tuple[m.Infra.GateReportEvidence, ...]]:
         """Capture producer-owned report bytes through the atomic read owner.
 
         Returns:
@@ -478,7 +478,7 @@ class FlextInfraUtilitiesGitAttestation(
                 .content
             )
             if content is None:
-                return r[t.VariadicTuple[m.Infra.GateReportEvidence]].fail(
+                return r[tuple[m.Infra.GateReportEvidence, ...]].fail(
                     f"required original checker report has no captured bytes: {path}",
                 )
             reports.append(
@@ -488,14 +488,14 @@ class FlextInfraUtilitiesGitAttestation(
                     kind=kind,
                 )
             )
-        return r[t.VariadicTuple[m.Infra.GateReportEvidence]].ok(tuple(reports))
+        return r[tuple[m.Infra.GateReportEvidence, ...]].ok(tuple(reports))
 
     @classmethod
     def _captured_gate_evidence(
         cls,
         started: m.Infra.GateCaptureStart,
         process: m.Cli.ProcessOutcome,
-        reports: t.VariadicTuple[m.Infra.GateReportEvidence],
+        reports: tuple[m.Infra.GateReportEvidence, ...],
         after: m.Infra.GitIdentityReport | None,
     ) -> p.Result[m.Infra.GateCommandEvidence]:
         """Bind the original producer reports to the observed candidate.
@@ -563,14 +563,14 @@ class FlextInfraUtilitiesGitAttestation(
     def _attestation_paths(
         request: m.Infra.GateAttestationCreateRequest
         | m.Infra.GateAttestationVerifyRequest,
-    ) -> p.Result[t.Pair[Path, Path]]:
+    ) -> p.Result[tuple[Path, Path]]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
         if not allowed.is_file():
-            return r[t.Pair[Path, Path]].fail(
+            return r[tuple[Path, Path]].fail(
                 f"allowed_signers file not found: {allowed}",
             )
-        return r[t.Pair[Path, Path]].ok((repo_root, allowed))
+        return r[tuple[Path, Path]].ok((repo_root, allowed))
 
     @classmethod
     def _attestation_predicate(

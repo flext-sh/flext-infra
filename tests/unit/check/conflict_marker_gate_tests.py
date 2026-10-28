@@ -58,8 +58,7 @@ class TestsFlextInfraConflictMarkerGate:
     @staticmethod
     @pytest.mark.parametrize("control", c.Infra.MERGE_CONFLICT_CONTROLS)
     def test_untracked_control_line_blocks(
-        tmp_path: Path,
-        control: tuple[str, str],
+        tmp_path: Path, control: tuple[str, ...]
     ) -> None:
         """The real index/status inventory includes a new unpublished file."""
         root = TestsFlextInfraConflictMarkerGate._root(tmp_path)

@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 from time import monotonic
+from typing import ClassVar
 
 from flext_cli import settings, u
 
@@ -33,6 +34,16 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
 ):
     """Declare the publication facts of the composed import policy."""
 
+    # Shared publication-scan progress. The heartbeat deadline and the
+    # cumulative totals live on the composed policy class so every lookup
+    # of a pass throttles against one interval and the aggregate rows carry
+    # running totals instead of per-symbol detail.
+    _scan_due = 0.0
+    _scan_consumers: ClassVar[t.MutableSetOf[Path]] = set()
+    _scan_lookups = 0
+    _scan_files = 0
+    _scan_providers = 0
+
     @staticmethod
     def codemod_progress(message: str, due: float = 0) -> float:
         """Report active source work at the configured heartbeat interval.
@@ -46,6 +57,22 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             return due
         u.Cli.info(f"mod: {message}")
         return now + settings.cli_process_heartbeat_seconds
+
+    @classmethod
+    def _publication_scan_summary(cls) -> None:
+        """Emit one aggregate publication-scan row and reset the shared totals."""
+        if not cls._scan_lookups:
+            return
+        u.Cli.info(
+            f"mod: import publication scan summary project-lookups="
+            f"{cls._scan_lookups} consumers={len(cls._scan_consumers)} "
+            f"files-scanned={cls._scan_files} "
+            f"providers-found={cls._scan_providers}"
+        )
+        cls._scan_lookups = 0
+        cls._scan_consumers.clear()
+        cls._scan_files = 0
+        cls._scan_providers = 0
 
     @classmethod
     def family_letter(cls, namespace_dir: Path, file_path: Path) -> str | None:
@@ -121,8 +148,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         if directory is None:
             return None
         candidates: t.MutableMappingKV[str, str] = {}
-        due = 0.0
-        scanned = 0
+        cls._scan_lookups += 1
+        cls._scan_consumers.add(scope.file_path)
         for source_path in sorted(
             directory.rglob("*.py")
             if sources is None
@@ -133,13 +160,16 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             ),
             key=lambda path: (len(path.parts), path),
         ):
-            due = cls.codemod_progress(
-                f"import publication lookup project={scope.project_root} "
-                f"consumer={scope.file_path} symbol={module}.{name} "
-                f"scanned={scanned} provider={source_path}",
-                due,
+            cls._scan_files += 1
+            cls._scan_due = cls.codemod_progress(
+                f"import publication scan project={scope.project_root} "
+                f"consumers={len(cls._scan_consumers)} "
+                f"lookups={cls._scan_lookups} "
+                f"files-scanned={cls._scan_files} "
+                f"providers-found={cls._scan_providers} "
+                f"(heartbeat {settings.cli_process_heartbeat_seconds:g}s)",
+                cls._scan_due,
             )
-            scanned += 1
             if source_path.name == c.Infra.INIT_PY:
                 continue
             source = (
@@ -166,12 +196,15 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 frozenset(),
                 sources=sources,
             )
+            cls._scan_providers += 1
             candidates.setdefault(identity, owner)
-        cls.codemod_progress(
-            f"import publication ancestry project={scope.project_root} "
-            f"consumer={scope.file_path} symbol={module}.{name} "
-            f"scanned={scanned} candidates={len(candidates)}",
-            due,
+        cls._scan_due = cls.codemod_progress(
+            f"import publication scan done project={scope.project_root} "
+            f"consumers={len(cls._scan_consumers)} lookups={cls._scan_lookups} "
+            f"files-scanned={cls._scan_files} "
+            f"providers-found={cls._scan_providers} "
+            f"symbol={module}.{name} candidates={len(candidates)}",
+            cls._scan_due,
         )
         ancestors = cls._declared_ancestors(scope, tuple(candidates), sources=sources)
         candidates = {
@@ -406,7 +439,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         resources: t.SequenceOf[p.Infra.RopeResource],
-        sources: t.MappingKV[Path, str],
+        sources: t.MappingKV[Path, ...],
     ) -> t.SequenceOf[
         t.Pair[p.Infra.RopeContractRule, t.SequenceOf[p.Infra.RopeResource]]
     ]:
@@ -441,7 +474,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         resource: p.Infra.RopeResource,
-        sources: t.MappingKV[Path, str],
+        sources: t.MappingKV[Path, ...],
     ) -> p.Infra.RopeContractRule:
         """Apply existing family publication law to one consumer's native goals.
 
@@ -492,7 +525,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
-        sources: t.MappingKV[Path, str],
+        sources: t.MappingKV[Path, ...],
     ) -> p.Infra.RopeContractRule:
         """Rewrite eligible bindings without changing unrelated imports.
 
@@ -529,7 +562,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         project: p.Infra.RopeProject,
         identity: str,
         frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
-        sources: t.MappingKV[Path, str],
+        sources: t.MappingKV[Path, ...],
     ) -> tuple[str, str, str | None, str] | None:
         """Resolve one published family binding into its consumer spelling.
 

@@ -54,7 +54,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT ignore pattern whose section targets *profile*.
 
         """
-        gitignore_sections: t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec] = (
+        gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
             config.Infra.codegen.gitignore_sections
         )
         return tuple(

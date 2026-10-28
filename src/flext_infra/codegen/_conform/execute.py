@@ -125,7 +125,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         *,
         after_publication: tuple[
-            Callable[[t.VariadicTuple[Path]], p.Result[bool]], ...
+            Callable[[tuple[Path, ...]], p.Result[bool]], ...
         ] = (),
     ) -> p.Result[p.Infra.CodegenResult]:
         """Plan the request's projections and publish them once.
@@ -247,7 +247,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         root: Path,
         plan: m.Infra.CodegenPlan,
         after_publication: tuple[
-            Callable[[t.VariadicTuple[Path]], p.Result[bool]], ...
+            Callable[[tuple[Path, ...]], p.Result[bool]], ...
         ],
     ) -> p.Result[p.Infra.CodegenResult]:
         """Publish the plan and its docs once, then run the follow-ups.
@@ -288,7 +288,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
         plan: m.Infra.CodegenPlan,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Validate the normalized dependency cohort before accepting any effects.
 
         The native preview materializes original file declarations, including
@@ -299,7 +299,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The normalized plans, or the original planning or admission failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if plan.issues or plan.exception is not None:
             return result_type.fail(
                 "\n".join(issue.formatted for issue in plan.issues)
@@ -344,16 +344,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @staticmethod
     def _validated_source_plans(
         request: p.Infra.CodegenGenerateRequest,
-        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        files: tuple[m.Infra.CodegenFilePlan, ...],
         ports: p.Infra.CodegenConformPorts,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Admit the normalized candidate through its injected runtime validator.
 
         Returns:
             The unchanged normalized plans, or the original validation failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
             return result_type.ok(files)
         root = request.root.expanduser().resolve()
@@ -391,7 +391,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
         plan: m.Infra.CodegenPlan,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Compose managed plans with their derived presentation and documentation.
 
         Returns:

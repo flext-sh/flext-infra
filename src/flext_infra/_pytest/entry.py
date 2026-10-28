@@ -11,7 +11,7 @@ import traceback
 from pathlib import Path
 
 import flext_infra
-from flext_infra import settings
+from flext_infra import c, settings
 from flext_infra._pytest import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
@@ -25,15 +25,18 @@ class FlextInfraPytestEntry:
 
         ``global`` incrementally selects from FULL's entire inventory, under
         the same green-check prerequisite. ``full`` explicitly executes that
-        complete inventory. ``profile`` profiles the global incremental run.
+        complete inventory once without Testmon or a preceding incremental
+        run. ``profile`` profiles the global incremental run.
         ``coverage`` selects coverage alone; the default remains the local
         incremental operation. The ``slow`` operation runs the incremental
         phase over the slow marker
         only, as its own process with an aggregate operation deadline. The
-        ``file`` runs the complete declared target once within the shared
-        deadline, including slow items. ``file-slow`` retains its incremental
-        operation. Both require Make to export the single-file target.
-        ``full-slow`` runs the full slow phase under the same operation budget.
+        ``file`` runs the complete declared target once without Testmon within
+        the shared deadline, including slow items. ``file-slow`` retains its
+        incremental operation. Both require Make to export the single-file target.
+        ``full-slow`` runs the full slow phase without Testmon under that budget.
+        The declared operation elects database participation before the runner
+        reads any environment-based database location.
 
         Returns:
             The resulting ``int``.
@@ -47,11 +50,24 @@ class FlextInfraPytestEntry:
         if mode == "profile":
             return cls._run_profile()
 
+        match mode:
+            case "full" | "full-slow" | "file":
+                execution_mode = c.Infra.PytestExecutionMode.FULL
+            case "coverage":
+                execution_mode = c.Infra.PytestExecutionMode.COVERAGE
+            case "global":
+                execution_mode = c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+            case "" | "slow" | "file-slow":
+                execution_mode = c.Infra.PytestExecutionMode.INCREMENTAL
+            case _:
+                msg = f"unsupported pytest operation: {mode}"
+                raise ValueError(msg)
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
         runner = FlextInfraPytestRunner.from_environment(
             started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
             profile_enabled=settings.Infra.profile,
             slow_phase=slow_phase,
+            execution_mode=execution_mode,
         )
         if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (
@@ -67,11 +83,8 @@ class FlextInfraPytestEntry:
             status = runner.execute_full().unwrap()
         elif mode == "global":
             status = runner.execute_global().unwrap()
-        elif mode in {"", "slow", "file-slow"}:
-            status = runner.execute().unwrap()
         else:
-            msg = f"unsupported pytest operation: {mode}"
-            raise ValueError(msg)
+            status = runner.execute().unwrap()
         return status
 
     @staticmethod

@@ -19,7 +19,7 @@ class FlextInfraCodegenHandlers:
         cls: type[p.Infra.CodegenService],
         *,
         provide: t.Cli.NullaryOperation[p.Infra.CodegenService],
-    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
+    ) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Declare codegen request contracts and caller-bound handlers once.
 
         Returns:

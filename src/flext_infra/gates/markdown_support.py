@@ -96,7 +96,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
 
     @staticmethod
     @override
-    def _findings_exit_codes() -> t.VariadicTuple[int]:
+    def _findings_exit_codes() -> tuple[int, ...]:
         """Exit statuses with which rumdl reports its findings.
 
         Returns:

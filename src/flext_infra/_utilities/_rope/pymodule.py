@@ -159,7 +159,7 @@ class FlextInfraUtilitiesRopeCorePyModule:
             RuntimeError: If rope module import table unavailable for.
 
         """
-        runtime_errors: t.VariadicTuple[type[BaseException]] = (
+        runtime_errors: tuple[type[BaseException], ...] = (
             *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
         )

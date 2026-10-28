@@ -19,8 +19,6 @@ from tests import c, tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import t
-
 
 class TestsFlextInfraReleaseDependencyOrder:
     """Behavior contract for wave computation over declared dependencies."""
@@ -29,7 +27,7 @@ class TestsFlextInfraReleaseDependencyOrder:
     def _write_project(
         root: Path,
         name: str,
-        dependencies: t.VariadicTuple[str],
+        dependencies: tuple[str, ...],
     ) -> None:
         """Materialize one project whose pyproject declares the given dependencies."""
         project = root / name

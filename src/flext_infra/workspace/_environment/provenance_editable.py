@@ -183,14 +183,14 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         cls,
         distribution: str,
         expected_root: Path,
-    ) -> p.Result[t.VariadicTuple[t.Pair[str, Path | None]]]:
+    ) -> p.Result[tuple[t.Pair[str, Path | None]], ...]:
         """Elect the same package paths and Hatch source mappings as the producer.
 
         Returns:
             The complete deduplicated package declarations, including namespace roots.
 
         """
-        result = r[t.VariadicTuple[t.Pair[str, Path | None]]]
+        result = (r[tuple[t.Pair[str, Path | None]], ...],)
         package_name = u.Infra.project_package_name(expected_root)
         payload = FlextInfraUtilitiesPyprojectDocument.pyproject_payload(
             expected_root / c.PYPROJECT_FILENAME,
@@ -263,14 +263,14 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         distribution: str,
         expected_root: Path,
         wheel: t.JsonMapping,
-    ) -> p.Result[t.VariadicTuple[t.Pair[str, Path | None]]]:
+    ) -> p.Result[tuple[t.Pair[str, Path | None]], ...]:
         """Validate every importable Hatch source remapping in declaration order.
 
         Returns:
             Exact package identities bound to authenticated source directories.
 
         """
-        result = r[t.VariadicTuple[t.Pair[str, Path | None]]]
+        result = (r[tuple[t.Pair[str, Path | None]], ...],)
         packages: list[t.Pair[str, Path | None]] = []
         source_mapping = u.Cli.toml_mapping_child(wheel, "sources")
         if source_mapping is not None:

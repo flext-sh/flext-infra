@@ -182,7 +182,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         self,
         tmp_path: Path,
         event: str,
-        selection: t.Pair[str, str],
+        selection: tuple[str, str],
         *,
         succeeds: bool,
         release: bool,

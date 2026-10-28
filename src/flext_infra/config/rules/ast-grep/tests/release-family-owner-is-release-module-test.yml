@@ -4,4 +4,4 @@ valid:
 - "pins: FlextInfraModelsConfigArtifact.CodegenPlan"
 invalid:
 - "policy: FlextInfraModelsConfigArtifact.ReleasePolicySpec"
-- "pins: t.VariadicTuple[FlextInfraModelsConfigArtifact.BuildConstraintSpec]"
+- "pins: tuple[FlextInfraModelsConfigArtifact.BuildConstraintSpec, ...],"

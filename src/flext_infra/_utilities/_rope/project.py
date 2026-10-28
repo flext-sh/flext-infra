@@ -29,6 +29,8 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     """Native Rope project whose reads see planned sources before the disk."""
 
+    _source_view_lock: RLock
+
     class OverlayFiles:
         """Read-only filesystem view: planned bytes overlay authenticated captures.
 
@@ -77,7 +79,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     msg = f"candidate source conflicts with captured state: {path}"
                     raise ValueError(msg)
                 selected[path] = plan
-            self._states.update((path, plan.before) for path, plan in selected.items())
+            for path, plan in selected.items():
+                self._states.setdefault(path, plan.before)
             changed: list[tuple[Path, bool, bool]] = []
             for path in sorted(self._files.keys() | self._hidden | selected.keys()):
                 previous = (
@@ -300,8 +303,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     def source_view(
         self,
         *,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
-        additional_source_folders: t.VariadicTuple[str] = (),
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        additional_source_folders: tuple[str, ...] = (),
     ) -> Generator[Self]:
         """Bind one candidate and restore the entry view without disk effects.
 
@@ -352,8 +355,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
     def _set_source_view(
         self,
-        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        folders: t.VariadicTuple[str],
+        plans: tuple[m.Infra.CodegenFilePlan, ...],
+        folders: tuple[str, ...],
     ) -> None:
         """Evolve source deltas before notifying native resource observers."""
         files = self.fscommands
@@ -689,8 +692,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     @staticmethod
     def _validate_source_folders(
         root: Path,
-        folders: t.VariadicTuple[str],
-        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        folders: tuple[str, ...],
+        plans: tuple[m.Infra.CodegenFilePlan, ...],
     ) -> None:
         """Reject roots without physical or proposed source membership.
 

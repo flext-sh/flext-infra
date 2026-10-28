@@ -32,7 +32,7 @@ invalid:
         @overload
         @staticmethod
         def map[T, U](
-            items: tuple[T, ...],
+            items: tuple[T, ...]
             mapper,
         ) -> tuple[U, ...]:
             _ = items, mapper

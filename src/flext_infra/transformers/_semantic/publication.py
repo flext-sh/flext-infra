@@ -25,7 +25,7 @@ class FlextInfraTransformersSemanticPublication:
         repository_root: Path,
         options: m.Infra.SemanticPublicationOptions | None = None,
         publish: bool = True,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Compose declared projections, then publish or report pending effects.
 
         A declared validator accepts the previewed candidate tree before any
@@ -78,7 +78,7 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def _previewed_acceptance(
-        changes: t.VariadicTuple[m.Cli.FileChange],
+        changes: tuple[m.Cli.FileChange, ...],
         repository_root: Path,
         options: m.Infra.SemanticPublicationOptions,
     ) -> p.Result[bool]:
@@ -139,7 +139,7 @@ class FlextInfraTransformersSemanticPublication:
         repository_root: Path,
         options: m.Infra.SemanticPublicationOptions | None = None,
         codegen: m.Infra.CodegenConfigSpec | None = None,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Publish every changed semantic file plan.
 
         ``None`` content means no semantic change, never deletion.
@@ -159,7 +159,7 @@ class FlextInfraTransformersSemanticPublication:
     def plan_semantic_file_plans(
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         codegen: m.Infra.CodegenConfigSpec | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Convert every changed semantic plan into one owned codegen file plan.
 
         A generated source outside the declared template inventory requires
@@ -208,7 +208,7 @@ class FlextInfraTransformersSemanticPublication:
         edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
         *,
         owner: str,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind each final edit to its destination's current state, once.
 
         Returns:
@@ -242,7 +242,7 @@ class FlextInfraTransformersSemanticPublication:
     @staticmethod
     def _pending_paths(
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Report the destinations a publication of ``plans`` would change.
 
         Returns:
@@ -268,8 +268,8 @@ class FlextInfraTransformersSemanticPublication:
     def _with_projections(
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
         repository_root: Path,
-        projection_roots: t.VariadicTuple[Path],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        projection_roots: tuple[Path, ...],
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Join the lazy-init projections the planned sources require.
 
         Each declared workspace projects its own roots: a cross-root campaign

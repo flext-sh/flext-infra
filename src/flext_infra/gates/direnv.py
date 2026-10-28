@@ -214,4 +214,4 @@ class FlextInfraDirenvGate(FlextInfraGate):
         )
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraDirenvGate",)
+__all__: tuple[str, ...] = ("FlextInfraDirenvGate",)

@@ -881,7 +881,7 @@ Infra:
       - name: tests
         description: Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
       - name: tests-full
-        description: Execute incremental tests followed by the complete population of each governed repository using the same persistent external database.
+        description: Execute the complete applicable population once without Testmon or a preliminary incremental run, preserving the existing database untouched.
       - name: help
         description: Discover the declared public interface without effects.
       - name: build

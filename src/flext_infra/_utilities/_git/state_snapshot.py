@@ -23,7 +23,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
     """Canonical scoped state discovery for capture, verification and cleanup."""
 
     @staticmethod
-    def _state_pathspecs(paths: t.SequenceOf[Path]) -> t.VariadicTuple[str]:
+    def _state_pathspecs(paths: t.SequenceOf[Path]) -> tuple[str, ...]:
         if not paths or any(
             path.is_absolute() or ".." in path.parts or c.GIT_DIR_NAME in path.parts
             for path in paths
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         relatives: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState]:
+    ) -> tuple[m.Infra.GitWorktreeFileState, ...]:
         """Measure raw working bytes, hashing every regular file in one process.
 
         Regular files go through one unfiltered ``hash-object --stdin-paths``
@@ -116,7 +116,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         paths: t.SequenceOf[Path],
         *,
         index_file: Path | None = None,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         """Read the exact stage-zero index entries for the requested paths.
 
         Returns:
@@ -164,7 +164,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         paths: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         rows = (
             cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", "HEAD")
             if paths
@@ -188,7 +188,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         root: Path,
         paths: t.SequenceOf[Path],
         entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState]:
+    ) -> tuple[m.Infra.GitWorktreeFileState, ...]:
         repo = cls._repo(root)
         pathspecs = cls._state_pathspecs(paths)
         raw_paths = repo.git.ls_files(

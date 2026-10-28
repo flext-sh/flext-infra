@@ -29,7 +29,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         path.write_text(content, encoding="utf-8")
 
     @staticmethod
-    def _non_module_files(package_root: Path) -> t.VariadicTuple[str]:
+    def _non_module_files(package_root: Path) -> tuple[str, ...]:
         """Return files the rewrite left beside the package modules.
 
         Returns:

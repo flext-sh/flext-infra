@@ -211,7 +211,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
     def _namespace_module_source(
         module_name: str,
         locations: t.SequenceOf[str] | None,
-        declared_paths: t.VariadicTuple[t.Infra.NativeOperand],
+        declared_paths: tuple[t.Infra.NativeOperand, ...],
     ) -> p.Result[Path]:
         """Bind a namespace's native search path to exactly one physical origin.
 
@@ -253,7 +253,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
         ).resolve()
 
     @staticmethod
-    def standard_library_package_roots() -> t.VariadicTuple[Path]:
+    def standard_library_package_roots() -> tuple[Path, ...]:
         """Elect package-installation trees inside the interpreter's base scheme.
 
         Returns:

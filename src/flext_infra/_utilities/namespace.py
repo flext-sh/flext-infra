@@ -39,11 +39,11 @@ class FlextInfraUtilitiesCodegenNamespace:
     # Only syntax-derived values are shared; every lookup still consumes its
     # actual source snapshot before reusing an identical declaration.
     _declared_exports_cache: ClassVar[
-        MutableMapping[str, t.Pair[str, t.StrSequence]]
+        MutableMapping[str, tuple[str, t.StrSequence]]
     ] = {}
 
     @staticmethod
-    def isort_member_key(name: str) -> t.Pair[int, str]:
+    def isort_member_key(name: str) -> tuple[int, str]:
         """Order an imported member name like Ruff isort (``order-by-type``).
 
         Constants (all upper case) precede CamelCase classes, which precede
@@ -316,7 +316,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         package_dir: Path,
         *,
         rope_project: p.Infra.RopeProject | None = None,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Read root aliases from declarations, never from initializer outputs.
 
         Returns:
@@ -527,7 +527,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         *,
         rope_project: t.Infra.RopeProject,
         project_layout: m.Infra.RopeProjectLayout | None = None,
-    ) -> t.Quad[str | None, str | None, str | None, t.StrSequence]:
+    ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens).
 
         Returns:
@@ -715,7 +715,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     def _policy_enforces_contract(
-        flags: t.VariadicTuple[bool],
+        flags: tuple[bool, ...],
         *,
         governed_namespace: bool,
     ) -> bool:
@@ -744,7 +744,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     def _policy_exports_symbols(
-        flags: t.VariadicTuple[bool],
+        flags: tuple[bool, ...],
         *,
         src_surface: bool,
     ) -> bool:
@@ -776,7 +776,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     def _policy_includes_in_lazy_init(
-        flags: t.VariadicTuple[bool],
+        flags: tuple[bool, ...],
         *,
         private_stem: str,
         declared_exports: t.StrSequence,
@@ -811,7 +811,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @staticmethod
     def _type_checking_import_names(
         declared_exports: t.StrSequence,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Filter declared exports down to type-checking-only import names.
 
         Returns:
@@ -1184,10 +1184,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_path: Path,
         initial_violations: t.SequenceOf[m.Infra.CensusViolation],
         remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
-    ) -> t.Pair[
-        t.VariadicTuple[m.Infra.CensusViolation],
-        t.VariadicTuple[m.Infra.CensusViolation],
-    ]:
+    ) -> tuple[tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]]:
         """Split initial violations into fixed and still-skipped groups.
 
         Returns:

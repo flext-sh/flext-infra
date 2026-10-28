@@ -56,7 +56,7 @@ class FlextInfraUtilitiesCodemodProject(
     def project_import_graph(
         cls,
         root: Path,
-    ) -> t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
+    ) -> tuple[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
         """Return the runtime import graph and the module name of each file.
 
         Edges come from Rope's module-level import table, which leaves
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesCodemodProject(
         root: Path,
         paths: t.SequenceOf[Path],
         rules: t.SequenceOf[m.Infra.CodemodRule],
-    ) -> t.VariadicTuple[m.Infra.AstGrepOwnedPathDiagnostic]:
+    ) -> tuple[m.Infra.AstGrepOwnedPathDiagnostic, ...]:
         """Admit owned-path policy from the shared inventory, without parsing bytes.
 
         Returns:
@@ -581,7 +581,7 @@ class FlextInfraUtilitiesCodemodProject(
         target: p.Infra.RopePyObject,
         namespace: str,
         sources: t.MappingKV[Path, str],
-    ) -> t.Pair[Path, list[p.Infra.RopePyObject]] | None:
+    ) -> tuple[Path, list[p.Infra.RopePyObject]] | None:
         """Collect native implementation edges of one callable or class.
 
         Returns:
@@ -678,7 +678,7 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         validation: p.Result[m.Infra.ValidationReport],
         root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CensusViolation]]:
+    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
         """Convert the engine-backed namespace report into census violations.
 
         A violation is fixable when its rule declares a token fix or a rope
@@ -692,11 +692,11 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         if validation.failure:
-            return r[t.VariadicTuple[m.Infra.CensusViolation]].from_failure(validation)
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
         with cls.codemod_workspace_snapshot(root) as snapshot:
             planned = cls.codemod_rule_plan(snapshot)
         if planned.failure:
-            return r[t.VariadicTuple[m.Infra.CensusViolation]].from_failure(planned)
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(planned)
         repairable = frozenset(
             rule.id
             for rule in planned.value.rules
@@ -727,7 +727,7 @@ class FlextInfraUtilitiesCodemodProject(
                     fixable=match.group("rule") in repairable,
                 ),
             )
-        return r[t.VariadicTuple[m.Infra.CensusViolation]].ok(tuple(parsed))
+        return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(parsed))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodProject"]

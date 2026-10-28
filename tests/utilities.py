@@ -60,20 +60,20 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             class WorkflowRenderOverrides:
                 """Optional workflow render knobs grouped into one contract."""
 
-                system_packages: t.VariadicTuple[t.NonEmptyStr] = ()
+                system_packages: tuple[t.NonEmptyStr, ...] = ()
                 packages_read: bool = False
                 custom_steps: str = ""
                 custom_post_steps: str = ""
                 has_devcontainer: bool = False
-                workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef] = ()
-                cooldown_excluded_dependencies: t.VariadicTuple[t.NonEmptyStr] = ()
+                workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = ()
+                cooldown_excluded_dependencies: tuple[t.NonEmptyStr, ...] = ()
 
             @staticmethod
-            def ci_trigger_branches(repository_branch: str) -> t.VariadicTuple[str]:
+            def ci_trigger_branches(repository_branch: str) -> tuple[str, ...]:
                 """Derive the repository trigger set from the configured policy.
 
                 Returns:
-                    The resulting ``t.VariadicTuple[str]``.
+                    The resulting ``tuple[str, ...],``.
 
                 """
                 return tuple(
@@ -115,7 +115,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 dist: t.NonEmptyStr,
                 make_profile: c.Infra.MakeProfile,
                 repository_branch: t.NonEmptyStr,
-                ci_trigger_branches: t.VariadicTuple[t.NonEmptyStr],
+                ci_trigger_branches: tuple[t.NonEmptyStr, ...],
                 overrides: WorkflowRenderOverrides | None = None,
             ) -> m.Infra.GithubWorkflowRenderSpec:
                 """Build the common strictly typed workflow rendering contract.
@@ -157,14 +157,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 )
 
             @staticmethod
-            def ci_job_steps(rendered: str) -> t.VariadicTuple[t.JsonMapping]:
+            def ci_job_steps(rendered: str) -> tuple[t.JsonMapping, ...]:
                 """Parse the rendered ci workflow into its ordered job steps.
 
                 One owner for the YAML parse and the jobs/ci/steps navigation every
                 CI-contract test shares; consumers assert on the returned steps.
 
                 Returns:
-                    The resulting ``t.VariadicTuple[t.JsonMapping]``.
+                    The resulting ``tuple[t.JsonMapping, ...],``.
 
                 Raises:
                     TypeError: If workflow job steps must be a sequence.
@@ -239,7 +239,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             project_name: str = "fixture-project"
             package: bool = True
             examples_module: str | None = None
-            extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = ()
+            extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = ()
             script_dispatch: m.Infra.ScriptDispatchSpec | None = None
             version: str | None = None
 

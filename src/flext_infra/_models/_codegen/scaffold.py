@@ -73,7 +73,7 @@ class FlextInfraModelsCodegenScaffold:
         target_dir: Annotated[Path, m.Field(description="Directory to scaffold")]
         prefix: Annotated[str, m.Field(description="Generated class name prefix")]
         modules: Annotated[
-            t.VariadicTuple[t.Quad[str, str, str, str]],
+            tuple[t.Quad[str, str, str, str], ...],
             m.Field(description="Module skeleton definitions"),
         ]
         test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]

@@ -135,7 +135,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         repository: m.Infra.RepositoryRef,
         *,
         project: m.Infra.ProjectSpec | None = None,
-        subprojects: t.VariadicTuple[m.Infra.RepositoryRef] = (),
+        subprojects: tuple[m.Infra.RepositoryRef, ...] = (),
     ) -> m.Infra.WorkspaceSpec:
         """Build the workspace one fixture repository declares.
 

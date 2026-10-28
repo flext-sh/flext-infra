@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         *,
         include_local_scopes: bool,
         include_references: bool = True,
-    ) -> t.VariadicTuple[m.Infra.Object]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Return all same-file defined objects for one workspace module.
 
         Returns:
@@ -108,11 +108,11 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         parent_options: m.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> t.VariadicTuple[m.Infra.Object]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Scope objects.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.Object]``.
+            The resulting ``tuple[m.Infra.Object, ...],``.
 
         """
         items: t.MutableSequenceOf[m.Infra.Object] = []
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         child_scope: p.Infra.RopeScopeDsl | None,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> t.VariadicTuple[m.Infra.Object]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Return one recorded object followed by the objects of its child scope.
 
         An input that produces no record contributes nothing.
@@ -172,11 +172,11 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         record_options: m.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> t.VariadicTuple[m.Infra.Object]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Include nested class declarations while respecting function-local scope.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.Object]``.
+            The resulting ``tuple[m.Infra.Object, ...],``.
 
         """
         if (
@@ -222,11 +222,11 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     def _sorted_module_names(
         pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeResource,
-    ) -> t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]:
+    ) -> tuple[t.Pair[str, t.Infra.RopePyName], ...]:
         """Sorted module names.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]``.
+            The resulting ``tuple[t.Pair[str, t.Infra.RopePyName], ...],``.
 
         """
         return FlextInfraUtilitiesRopeInventory._sorted_names(
@@ -238,11 +238,11 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     def _sorted_scope_names(
         scope: p.Infra.RopeScopeDsl,
         resource: t.Infra.RopeResource,
-    ) -> t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]:
+    ) -> tuple[t.Pair[str, t.Infra.RopePyName], ...]:
         """Sorted scope names.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]``.
+            The resulting ``tuple[t.Pair[str, t.Infra.RopePyName], ...],``.
 
         """
         return FlextInfraUtilitiesRopeInventory._sorted_names(
@@ -254,11 +254,11 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     def _sorted_names(
         names: t.MappingKV[str, t.Infra.RopePyName],
         resource: t.Infra.RopeResource,
-    ) -> t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]:
+    ) -> tuple[t.Pair[str, t.Infra.RopePyName], ...]:
         """Sorted names.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]``.
+            The resulting ``tuple[t.Pair[str, t.Infra.RopePyName], ...],``.
 
         """
         candidates: list[t.Triple[int, str, t.Infra.RopePyName]] = []
@@ -315,9 +315,9 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
             name=options.name,
             scope_chain=options.scope_chain,
         )
-        all_reference_sites: t.VariadicTuple[m.Infra.ReferenceSite] = ()
-        runtime_reference_sites: t.VariadicTuple[m.Infra.ReferenceSite] = ()
-        script_reference_sites: t.VariadicTuple[m.Infra.ReferenceSite] = ()
+        all_reference_sites: tuple[m.Infra.ReferenceSite, ...] = ()
+        runtime_reference_sites: tuple[m.Infra.ReferenceSite, ...] = ()
+        script_reference_sites: tuple[m.Infra.ReferenceSite, ...] = ()
         reference_evidence_collected = False
         if include_references:
             (
@@ -797,11 +797,11 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         name: str,
         *,
         all_surfaces: bool = False,
-    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+    ) -> tuple[t.Infra.RopeResource, ...]:
         """Scope the occurrence search to the validated definition path.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
+            The resulting ``tuple[t.Infra.RopeResource, ...],``.
 
         """
         if all_surfaces:
@@ -975,9 +975,9 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         *,
         line: int,
     ) -> t.Quad[
-        t.VariadicTuple[m.Infra.ReferenceSite],
-        t.VariadicTuple[m.Infra.ReferenceSite],
-        t.VariadicTuple[m.Infra.ReferenceSite],
+        tuple[m.Infra.ReferenceSite, ...],
+        tuple[m.Infra.ReferenceSite, ...],
+        tuple[m.Infra.ReferenceSite, ...],
         bool,
     ]:
         """Collect the reference sites for the symbol one record describes.

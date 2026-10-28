@@ -131,7 +131,7 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
         policy: m.Infra.BuildPolicy,
         targets: t.MappingKV[str, Path],
         versions: t.StrMapping,
-    ) -> p.Result[t.VariadicTuple[m.Infra.BuildRecord]]:
+    ) -> p.Result[tuple[m.Infra.BuildRecord, ...]]:
         """Build every selected target and collect its record.
 
         Returns:
@@ -142,14 +142,14 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
         for name, path in targets.items():
             record = self._build_project(ctx, policy, (name, path), versions)
             if record.failure:
-                return r[t.VariadicTuple[m.Infra.BuildRecord]].from_failure(record)
+                return r[tuple[m.Infra.BuildRecord, ...]].from_failure(record)
             records.append(record.value)
             self.logger.info(
                 "release_phase_build_project",
                 project=name,
                 exit_code=record.value.exit_code,
             )
-        return r[t.VariadicTuple[m.Infra.BuildRecord]].ok(tuple(records))
+        return r[tuple[m.Infra.BuildRecord, ...]].ok(tuple(records))
 
     @staticmethod
     def _write_build_report(

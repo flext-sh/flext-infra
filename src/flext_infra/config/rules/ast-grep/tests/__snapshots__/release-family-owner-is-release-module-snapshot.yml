@@ -1,7 +1,7 @@
 id: release-family-owner-is-release-module
 snapshots:
-  "pins: t.VariadicTuple[FlextInfraModelsConfigArtifact.BuildConstraintSpec]":
-    fixed: "pins: t.VariadicTuple[FlextInfraModelsConfigRelease.BuildConstraintSpec]"
+  "pins: tuple[FlextInfraModelsConfigArtifact.BuildConstraintSpec, ...],":
+    fixed: "pins: tuple[FlextInfraModelsConfigRelease.BuildConstraintSpec, ...],"
     labels:
     - source: FlextInfraModelsConfigArtifact.BuildConstraintSpec
       style: primary

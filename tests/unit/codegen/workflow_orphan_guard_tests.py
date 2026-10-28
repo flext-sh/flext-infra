@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import config
-from tests import t, tm
+from tests import tm
 
 
 class TestsFlextInfraWorkflowOrphanGuard:
@@ -22,7 +22,7 @@ class TestsFlextInfraWorkflowOrphanGuard:
 
     _WORKFLOW_PREFIX = ".github/workflows/"
 
-    _ALLOWED_WORKFLOWS: t.VariadicTuple[str] = (
+    _ALLOWED_WORKFLOWS: tuple[str, ...] = (
         "ci-matrix.yml",
         "ci.yml",
         "docs.yml",

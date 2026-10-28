@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCiSystemPackages:
@@ -22,7 +22,7 @@ class TestsFlextInfraCiSystemPackages:
     step_name = "Install declared system packages"
 
     @classmethod
-    def _render_ci(cls, *, system_packages: t.VariadicTuple[str]) -> str:
+    def _render_ci(cls, *, system_packages: tuple[str, ...]) -> str:
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="fixture-engine",
             make_profile=c.Infra.MakeProfile.STANDALONE,

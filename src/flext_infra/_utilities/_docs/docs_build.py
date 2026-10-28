@@ -21,14 +21,12 @@ from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 if TYPE_CHECKING:
     from types import ModuleType
 
-    from flext_infra import t
-
 
 class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
 
     @staticmethod
-    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> t.VariadicTuple[Path]:
+    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> tuple[Path, ...]:
         """Return primary mkdocs.yml then optional product mkdocs.yaml.
 
         Returns:

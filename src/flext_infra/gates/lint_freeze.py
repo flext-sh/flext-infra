@@ -44,7 +44,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
 
         """
         catalog = cls._catalog_path(root)
-        digests = {
+        digests: dict[str, t.JsonValue] = {
             cls._catalog_key(Path(state.pyproject_path).parent): cls._table_digest(
                 state.payload,
             )
@@ -88,7 +88,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
             self._catalog_key(project_dir),
         )
         issue = self._drift_issue(pyproject, expected, digest)
-        issues: t.VariadicTuple[m.Infra.Issue] = () if issue is None else (issue,)
+        issues: tuple[m.Infra.Issue, ...] = () if issue is None else (issue,)
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
@@ -152,7 +152,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
         raise ValueError(message)
 
     @classmethod
-    def _frozen_tables(cls, payload: object) -> t.JsonMapping:
+    def _frozen_tables(cls, payload: t.JsonMapping) -> t.JsonMapping:
         """Extract the frozen lint-config tables of one pyproject payload.
 
         Returns:
@@ -165,7 +165,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
         }
 
     @classmethod
-    def _table_digest(cls, payload: object) -> str:
+    def _table_digest(cls, payload: t.JsonMapping) -> str:
         """Digest one pyproject's frozen lint-config tables canonically.
 
         Returns:

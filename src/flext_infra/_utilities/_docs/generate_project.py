@@ -52,7 +52,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
         scope: m.Infra.DocScope,
         *,
         width: int,
-    ) -> list[t.Pair[Path, str]]:
+    ) -> list[tuple[Path, str]]:
         """Render package API pages before their owning tree is pruned.
 
         Returns:
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
         scope: m.Infra.DocScope,
         *,
         repository_root: Path,
-    ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Render the complete target inventory for one FLEXT project.
 
         Returns:
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             scope.path
         )
         if tooling.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 tooling
             )
         width = FlextInfraUtilitiesDocsRender.docs_markdown_line_length(
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             repository_root=repository_root,
         )
         if guides.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 guides,
             )
         guide_paths = {
@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             analyzed_contract,
         )
         module_names = FlextInfraUtilitiesDocsGenerateProject._module_names(scope)
-        rendered: list[t.Pair[Path, str]] = [
+        rendered: list[tuple[Path, str]] = [
             (
                 scope.path / "README.md",
                 FlextInfraUtilitiesDocsRender.docs_project_readme(
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             rendered,
         )
         if pruned.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 pruned,
             )
         return FlextInfraUtilitiesDocsGenerateProject.docs_normalize_artifacts((

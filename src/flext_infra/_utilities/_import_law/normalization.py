@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 from contextlib import ExitStack
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -69,6 +70,26 @@ class FlextInfraUtilitiesImportLawNormalization(
     recipe ``normalize-imports`` runs it over each file Ruff reports for
     ``import-outside-top-level``, so both verbs converge on one fixed point.
     """
+
+    # Shared annotation-classification totals for one pass. Every class
+    # detail emits at debug level; deferred (anomaly) classes keep one info
+    # row each, and the pass owner emits one aggregate summary row.
+    _annotation_classified: ClassVar[t.MutableSetOf[t.Triple[str, str, int]]] = set()
+    _annotation_deferred: ClassVar[t.MutableSetOf[t.Triple[str, str, int]]] = set()
+
+    @classmethod
+    def _import_law_annotation_summary(cls) -> None:
+        """Emit one aggregate annotation-classification row and reset totals."""
+        if not cls._annotation_classified:
+            return
+        u.Cli.info(
+            "annotation classification summary "
+            f"modules={len({module for module, _, _ in cls._annotation_classified})} "
+            f"classes={len(cls._annotation_classified)} "
+            f"deferred={len(cls._annotation_deferred)}"
+        )
+        cls._annotation_classified.clear()
+        cls._annotation_deferred.clear()
 
     @classmethod
     def plan_import_normalization(
@@ -274,6 +295,8 @@ class FlextInfraUtilitiesImportLawNormalization(
                     owner="import-normalization",
                 )
             )
+        cls._import_law_annotation_summary()
+        cls._publication_scan_summary()
         return result_type.ok(tuple(plans))
 
     @classmethod
@@ -323,6 +346,8 @@ class FlextInfraUtilitiesImportLawNormalization(
                 ),
                 member_resolver=members,
             )
+            cls._import_law_annotation_summary()
+            cls._publication_scan_summary()
             if normalized is None:
                 return None
             candidate[file_path] = normalized
@@ -479,13 +504,24 @@ class FlextInfraUtilitiesImportLawNormalization(
             deferred = parent is tree and member_resolver.class_defers_annotations(
                 qualified
             )
-            u.Cli.info(
+            classification = (
+                module,
+                ".".join(qualified.attributes),
+                node.lineno,
+            )
+            cls._annotation_classified.add(classification)
+            u.Cli.debug(
                 f"annotation classification module={module} "
                 f"class={'.'.join(qualified.attributes)} line={node.lineno} "
                 f"module_parent={parent is tree} deferred={deferred} "
                 f"owner={__file__}"
             )
             if deferred:
+                cls._annotation_deferred.add(classification)
+                u.Cli.info(
+                    f"annotation classification deferred module={module} "
+                    f"class={'.'.join(qualified.attributes)} line={node.lineno}"
+                )
                 lines.add(node.lineno)
         return frozenset(lines)
 

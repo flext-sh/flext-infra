@@ -148,7 +148,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         *,
         literal_type: str = "__builtin__.str",
         frozen: bool = False,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[t.Pair[str, str], ...]:
         """Prove exact literal boundaries, decimal tokens and native constructors.
 
         Returns:
@@ -352,7 +352,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             return {}
         found: t.MutableMappingKV[str, p.Infra.RopePyName] = {"c": facade}
         pending: t.MutableSequenceOf[
-            t.Triple[str, p.Infra.RopePyObject, t.VariadicTuple[p.Infra.RopePyObject]]
+            t.Triple[str, p.Infra.RopePyObject, tuple[p.Infra.RopePyObject], ...]
         ] = [("c", facade.get_object(), ())]
         while pending:
             prefix, owner, ancestors = pending.pop()

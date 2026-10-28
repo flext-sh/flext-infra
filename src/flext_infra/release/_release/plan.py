@@ -179,7 +179,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         cls,
         root: Path,
         current: str,
-    ) -> p.Result[t.Pair[str, t.StrSequence]]:
+    ) -> p.Result[tuple[str, t.StrSequence]]:
         """Resolve the latest merged release tag and the subjects since it.
 
         Why: CI plans on the pull request's synthetic merge commit, so the
@@ -193,7 +193,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
             The resulting ``(latest_tag, subjects)`` pair.
 
         """
-        result_type = r[t.Pair[str, t.StrSequence]]
+        result_type = r[tuple[str, t.StrSequence]]
         tags = u.Cli.capture(
             [
                 c.Infra.GIT,
@@ -303,14 +303,14 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         )
 
     @classmethod
-    def _integration_base(cls, root: Path) -> p.Result[t.Pair[str, str]]:
+    def _integration_base(cls, root: Path) -> p.Result[tuple[str, str]]:
         """Resolve the merge base against the published integration branch.
 
         Returns:
             The resulting ``(base_oid, head_oid)`` pair.
 
         """
-        result_type = r[t.Pair[str, str]]
+        result_type = r[tuple[str, str]]
         branch = cls._integration_branch(root)
         if branch.failure:
             return result_type.from_failure(branch)
@@ -351,7 +351,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         since: str,
         *,
         merges_only: bool,
-    ) -> p.Result[t.VariadicTuple[str]]:
+    ) -> p.Result[tuple[str, ...]]:
         """Return commit subjects reachable from HEAD since ``since``.
 
         Merge commits carry the pull-request titles the bump derives from.

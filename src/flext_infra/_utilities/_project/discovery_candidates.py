@@ -58,7 +58,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
         repository_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
-        declarations: t.VariadicTuple[m.Infra.GitSubmoduleDeclaration] | None = None,
+        declarations: tuple[m.Infra.GitSubmoduleDeclaration, ...] | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> t.SequenceOf[Path]:
         """Elect candidates and exclusions from one current Git declaration read.
@@ -151,7 +151,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
         cls,
         repository_root: Path,
         *,
-        declarations: t.VariadicTuple[m.Infra.GitSubmoduleDeclaration] | None = None,
+        declarations: tuple[m.Infra.GitSubmoduleDeclaration, ...] | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> frozenset[str]:
         """Derive exclusions from this invocation's Git declarations, never a cache.

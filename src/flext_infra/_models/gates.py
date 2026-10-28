@@ -56,7 +56,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.SccFile],
+            tuple[FlextInfraModelsGates.SccFile, ...],
             m.Field(alias="Files", description="Every scanned file in this language"),
         ]
 
@@ -130,7 +130,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Explicit runtime binary directory owning the scanner"),
         ]
         source: Annotated[
-            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
             m.Field(
                 min_length=1, description="Production trees consumed by the scanner"
             ),
@@ -224,13 +224,13 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Extra arguments for Pyright"),
         ] = ()
         selected_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="Validated literal file selection; empty means project"
             ),
         ] = ()
         candidate_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Complete sealed source-plan inventory for admission"),
         ] = ()
         check_progress: Annotated[
@@ -573,7 +573,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         reports: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateReportEvidence],
+            tuple[FlextInfraModelsGates.GateReportEvidence, ...],
             m.Field(
                 min_length=1, description="Original report identities and byte digests"
             ),
@@ -719,7 +719,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Reaped original producer outcome"),
         ]
         reports: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateReportEvidence],
+            tuple[FlextInfraModelsGates.GateReportEvidence, ...],
             m.Field(description="Original producer report byte bindings"),
         ]
         report_root: Annotated[
@@ -740,7 +740,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             Path | None, m.Field(description="Published immutable original receipt")
         ]
         issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Actual capture or candidate eligibility failures"),
         ] = ()
 
@@ -791,7 +791,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         commands: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateCommandEvidence],
+            tuple[FlextInfraModelsGates.GateCommandEvidence, ...],
             m.Field(
                 min_length=1, max_length=1, description="Original accepted execution"
             ),

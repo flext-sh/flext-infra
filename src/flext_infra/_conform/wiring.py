@@ -71,7 +71,7 @@ class FlextInfraConformWiring:
     def validate_codegen_candidate(
         root: Path,
         candidate: Path,
-        projects: t.VariadicTuple[Path],
+        projects: tuple[Path, ...],
     ) -> p.Result[bool]:
         """Admit the complete candidate through the existing fresh-import owner.
 

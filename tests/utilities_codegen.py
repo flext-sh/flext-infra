@@ -232,7 +232,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         *,
         project_name: str = "flext-test-project",
         package_name: str = "flext_test_project",
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Create a real workspace with an empty, generation-eligible initializer.
 
         Returns:
@@ -408,7 +408,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
 
     @staticmethod
     def lazy_init_effects(
-        planned: p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]],
+        planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
     ) -> t.StrSequence:
         """Return the destinations a successful lazy-init plan would change.
 
@@ -423,7 +423,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         )
 
     @staticmethod
-    def demo_lazy_init_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+    def demo_lazy_init_workspace(tmp_path: Path) -> tuple[Path, Path]:
         """Create the ``flext-demo`` lazy-init workspace.
 
         Returns:
@@ -464,7 +464,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
 
     @staticmethod
     def materialize_codegen_plans(
-        planned: p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]],
+        planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
     ) -> p.Result[bool]:
         """Publish immutable codegen plans only inside test workspaces.
 
@@ -537,7 +537,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
     @staticmethod
     def lazy_init_scenario(
         tmp_path: Path,
-    ) -> t.Triple[Path, Path, codegen.FlextInfraCodegenLazyInit]:
+    ) -> tuple[Path, Path, codegen.FlextInfraCodegenLazyInit]:
         """Create the workspace, write its namespace module, build the service.
 
         Returns:
@@ -559,7 +559,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         return package_root, init_path, service
 
     @staticmethod
-    def extract_lazy_init_exports(source: str) -> t.Pair[bool, t.StrSequence]:
+    def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
         """Read the published lazy export contract through the public source reader.
 
         Returns:

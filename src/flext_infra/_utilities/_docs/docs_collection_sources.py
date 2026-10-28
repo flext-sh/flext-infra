@@ -43,8 +43,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         root: Path,
         source: m.Infra.PlanCollectionSource,
-        excluded_outputs: t.VariadicTuple[Path] = (),
-    ) -> t.VariadicTuple[Path]:
+        excluded_outputs: tuple[Path, ...] = (),
+    ) -> tuple[Path, ...]:
         """Inventory physical regular files, rejecting inaccessible sources.
 
         Returns:
@@ -143,8 +143,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         path: Path,
         source: m.Infra.PlanCollectionSource,
-        excluded_outputs: t.VariadicTuple[Path] = (),
-    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
+        excluded_outputs: tuple[Path, ...] = (),
+    ) -> tuple[m.Cli.AtomicFileState, ...]:
         """Read the plan and its same-basename companion directory.
 
         Returns:
@@ -174,8 +174,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
     @staticmethod
     def collection_source_updated(
         content: bytes,
-        fields: t.VariadicTuple[str],
-    ) -> t.Pair[str | None, str | None]:
+        fields: tuple[str, ...],
+    ) -> tuple[str | None, str | None]:
         """Retain explicit source precision; never promote filesystem time.
 
         Returns:
@@ -223,7 +223,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         canonical: Path,
         projection: Path | None,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-    ) -> t.Pair[m.Infra.PlanCollectionManifest, t.VariadicTuple[Path]]:
+    ) -> tuple[m.Infra.PlanCollectionManifest, tuple[Path, ...]]:
         """Exclude only outputs attested by the canonical generated manifest.
 
         Returns:
@@ -310,7 +310,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         candidate: Path,
         state: m.Cli.AtomicFileState,
-        roots: t.Pair[Path, Path | None],
+        roots: tuple[Path, Path | None],
         plans: set[Path],
         affected: set[Path],
     ) -> None:
@@ -347,7 +347,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     @classmethod
     def _classified_owned_outputs(
         cls,
-        roots: t.Pair[Path, Path | None],
+        roots: tuple[Path, Path | None],
         manifest: m.Infra.PlanCollectionManifest,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         plans: set[Path],

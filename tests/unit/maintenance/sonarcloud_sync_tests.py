@@ -56,7 +56,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
 
     @staticmethod
     def _server_payload(
-        pairs: t.VariadicTuple[t.Pair[str, str]],
+        pairs: tuple[t.Pair[str, str], ...],
         *,
         inherited: bool = False,
         include_setting: bool = True,
@@ -80,11 +80,11 @@ class TestsFlextInfraSonarcloudSettingsSync:
         return tm.ok(u.Cli.json_dumps({"settings": settings}))
 
     @staticmethod
-    def _pairs(spec: m.Infra.SonarcloudSpec) -> t.VariadicTuple[t.Pair[str, str]]:
+    def _pairs(spec: m.Infra.SonarcloudSpec) -> tuple[t.Pair[str, str], ...]:
         """Read expectations from the exact typed config the service receives.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[str, str]]``.
+            The resulting ``tuple[t.Pair[str, str], ...],``.
 
         """
         return tuple(

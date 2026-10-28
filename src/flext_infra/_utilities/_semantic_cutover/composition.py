@@ -55,7 +55,7 @@ class FlextInfraUtilitiesSemanticComposition(
             positions: t.MappingKV[cst.CSTNode, CodeRange],
             bases: t.MappingKV[int, t.StrSequence],
             retired: frozenset[int],
-            consumers: t.MappingKV[t.Pair[int, int], cst.BaseExpression],
+            consumers: t.MappingKV[tuple[int, int], cst.BaseExpression],
         ) -> None:
             self.lines = source.splitlines()
             self.positions = positions
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesSemanticComposition(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan authored MRO dispatch, utility alias retirement and every consumer.
 
         Returns:
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesSemanticComposition(
             working[path] = cls.rewrite_own_method_mro_calls(source)[0]
         with closing(cls.snapshot_project(workspace.rope_project, working)) as project:
             aliases: list[
-                t.Quad[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
+                tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
             ] = []
             bases: dict[Path, dict[int, list[str]]] = {}
             retired: dict[Path, set[int]] = {}
@@ -161,7 +161,7 @@ class FlextInfraUtilitiesSemanticComposition(
                         consumers,
                     )
                 ).code
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -252,7 +252,7 @@ class FlextInfraUtilitiesSemanticComposition(
         owner: p.Infra.RopeSourceClass,
         target: p.Infra.RopeSourceClass,
         aliases: t.SequenceOf[
-            t.Quad[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
+            tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
     ) -> None:
         """Reject formerly independent namespaces with competing behavior.
@@ -282,9 +282,9 @@ class FlextInfraUtilitiesSemanticComposition(
         module: p.Infra.RopeParsedModule,
         source: str,
         aliases: t.SequenceOf[
-            t.Quad[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
+            tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
-    ) -> dict[t.Pair[int, int], cst.BaseExpression]:
+    ) -> dict[tuple[int, int], cst.BaseExpression]:
         """Rebind method receivers only after their complete native owner proof.
 
         Returns:
@@ -295,7 +295,7 @@ class FlextInfraUtilitiesSemanticComposition(
             TypeError: If the composition consumer has no native module syntax.
 
         """
-        rewritten: dict[t.Pair[int, int], cst.BaseExpression] = {}
+        rewritten: dict[tuple[int, int], cst.BaseExpression] = {}
         tree = module.get_ast()
         if not isinstance(tree, ast.AST):
             message = "Composition consumer has no native module syntax"

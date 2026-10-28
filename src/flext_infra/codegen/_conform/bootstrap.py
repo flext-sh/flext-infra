@@ -78,14 +78,14 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
-    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
         """Discover script verbs from scripts/<verb>/all.sh in the repository root.
 
         The filesystem is the SSOT: a verb is emitted only when its all.sh
         entrypoint exists. No manual list is required.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.MakeVerbSpec]``.
+            The resulting ``tuple[m.Infra.MakeVerbSpec, ...],``.
 
         """
         scripts_dir = repository_root / c.Infra.DIR_SCRIPTS
@@ -105,7 +105,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         self,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
-    ) -> t.VariadicTuple[t.Pair[str, Path]]:
+    ) -> tuple[t.Pair[str, Path], ...]:
         """Resolve diagnostic package identities from their declared projects.
 
         Paths stay relative to the target root so the rendered Makefile is
@@ -160,10 +160,10 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _merge_extra_verbs(
-        declared: t.VariadicTuple[m.Infra.MakeVerbSpec],
-        discovered: t.VariadicTuple[m.Infra.MakeVerbSpec],
+        declared: tuple[m.Infra.MakeVerbSpec, ...],
+        discovered: tuple[m.Infra.MakeVerbSpec, ...],
         canonical_names: frozenset[str],
-    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
         """Union declared and discovered script verbs deduplicated by name.
 
         Why: object-level dedup never converges because declared
@@ -176,7 +176,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         owner of that name in the generated Makefile.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.MakeVerbSpec]``.
+            The resulting ``tuple[m.Infra.MakeVerbSpec, ...],``.
 
         Raises:
             ValueError: If config extra_verbs declares canonical verb.

@@ -31,7 +31,7 @@ class FlextInfraModelsConfigRelease:
             m.Field(default=None, description="Command that produces the artifacts"),
         ] = None
         version_variables: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
 
@@ -67,11 +67,11 @@ class FlextInfraModelsConfigRelease:
             m.Field(description="Branch that produces releases"),
         ]
         version_variables: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="file:variable anchors the tool rewrites"),
         ]
         version_toml: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="file:tomlpath anchors the tool rewrites"),
         ]
         build_command: Annotated[
@@ -138,7 +138,7 @@ class FlextInfraModelsConfigRelease:
         )
 
         publishable_prefixes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Distribution-name prefixes eligible for build/publish. "
@@ -186,7 +186,7 @@ class FlextInfraModelsConfigRelease:
             ),
         ] = c.Infra.PYPI_UPLOAD_URL
         build_constraints: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigRelease.BuildConstraintSpec],
+            tuple[FlextInfraModelsConfigRelease.BuildConstraintSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -218,7 +218,7 @@ class FlextInfraModelsConfigRelease:
         name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
         hashes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
 
@@ -235,7 +235,7 @@ class FlextInfraModelsConfigRelease:
             m.Field(description="Mise/Python version selector"),
         ]
         groups: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Ordered dependency groups synchronized by setup"),
         ]
 

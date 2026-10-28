@@ -67,11 +67,11 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         source_cache: MutableMapping[Path, str] | None = None,
-    ) -> t.MappingKV[Path, t.VariadicTuple[t.IntPair]] | None:
+    ) -> t.MappingKV[Path, tuple[t.IntPair, ...]] | None:
         """Plan safe line-range removals for simple top-level removal candidates.
 
         Returns:
-            The resulting ``t.MappingKV[Path, t.VariadicTuple[t.IntPair]] | None``.
+            The resulting ``t.MappingKV[Path, tuple[t.IntPair, ...]] | None``.
 
         """
         if candidate.scope_path != candidate.object_name:
@@ -128,12 +128,12 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         candidate: m.Infra.RemovalCandidate,
         *,
-        sites: t.VariadicTuple[m.Infra.ReferenceSite],
-    ) -> t.VariadicTuple[t.IntPair] | None:
+        sites: tuple[m.Infra.ReferenceSite, ...],
+    ) -> tuple[t.IntPair, ...] | None:
         """Plan removable top-level ranges for one support file.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.IntPair] | None``.
+            The resulting ``tuple[t.IntPair, ...] | None``.
 
         """
         planned_ranges: list[t.IntPair] = []
@@ -179,7 +179,7 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         *,
         imported_name: str,
-    ) -> t.VariadicTuple[int]:
+    ) -> tuple[int, ...]:
         """Return same-file occurrence lines for local aliases of ``imported_name``.
 
         Returns:
@@ -945,11 +945,11 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def merge_line_ranges(
         ranges: t.SequenceOf[t.IntPair],
-    ) -> t.VariadicTuple[t.IntPair]:
+    ) -> tuple[t.IntPair, ...]:
         """Merge overlapping or adjacent 1-based inclusive line ranges.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.IntPair]``.
+            The resulting ``tuple[t.IntPair, ...],``.
 
         """
         if not ranges:
@@ -967,14 +967,14 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def _supporting_reference_sites(
         candidate: m.Infra.RemovalCandidate,
-    ) -> t.VariadicTuple[m.Infra.ReferenceSite]:
+    ) -> tuple[m.Infra.ReferenceSite, ...]:
         """Supporting reference sites.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.ReferenceSite]``.
+            The resulting ``tuple[m.Infra.ReferenceSite, ...],``.
 
         """
-        sites: t.VariadicTuple[m.Infra.ReferenceSite] = tuple(
+        sites: tuple[m.Infra.ReferenceSite, ...] = tuple(
             candidate.script_reference_sites,
         )
         return sites

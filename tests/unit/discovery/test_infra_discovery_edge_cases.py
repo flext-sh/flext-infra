@@ -33,8 +33,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         ],
     )
     def test_module_exports_follow_declared_source(
-        source: str,
-        expected: tuple[str, ...],
+        source: str, expected: tuple[str, ...]
     ) -> None:
         """Explicit ``__all__`` wins; otherwise only local classes are exported."""
         tm.that(u.Infra.module_export_names_source(source), eq=expected)

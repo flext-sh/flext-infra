@@ -23,14 +23,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         root: Path,
         inputs: m.Infra.CodegenInputs,
         kind: c.Infra.ProjectKind,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
         """Publish an explicit kind only into the requested target's own source.
 
         Returns:
             The declaration plan, none when already declared, or the conflict.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
         effective = inputs.spec.repository
         if "kind" in effective.model_fields_set and effective.kind != kind:
             return result_type.fail(
@@ -71,7 +71,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         own_path: Path,
         inputs: m.Infra.CodegenInputs,
         kind: c.Infra.ProjectKind,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]] | None:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]] | None:
         """Guard the target's own ``kind`` declaration.
 
         Returns:
@@ -84,7 +84,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             return None
         document = u.Infra.read_codegen_config_document(own.content)
         if document.failure:
-            return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(document)
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(document)
         declared = u.Cli.json_walk_path(
             document.value,
             ("Infra", "codegen", "repository", "kind"),
@@ -92,10 +92,10 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         if declared is None:
             return None
         if declared != kind.value:
-            return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                 f"bootstrap kind conflicts with the target's declaration: {own_path}",
             )
-        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(())
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
 
     @classmethod
     def _codegen_declaration_plan(
@@ -145,7 +145,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         cls,
         root: Path,
         inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
         """Project self-owned declarations before retiring their input.
 
         This is an explicit migration operation, not a configuration source.
@@ -156,7 +156,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The own declaration and its retirement, or the first failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
         legacy_path = u.Infra.workspace_manifest_path(root)
         project = inputs.spec.repository.project
         resource_owned = project is not None and any(
@@ -316,7 +316,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         captured: m.Cli.AtomicFileState,
         delta: m.Infra.RepositoryDeltaSpec,
         legacy: m.Infra.WorkspaceManifestSpec,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan], ...]:
         """Validate the projected declaration before planning input retirement.
 
         The input is retired unless its bytes are a declared resource.
@@ -325,7 +325,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The source declaration and its dependent retirement.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan], ...]
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -461,7 +461,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         # --all-packages`); no extra dependency group and no editable overlay
         # plan exist any more.
         del workspace
-        groups: t.VariadicTuple[str] = ("dev", "codegen")
+        groups: tuple[str, ...] = ("dev", "codegen")
         return m.Infra.UvEnvironmentPlan(
             project_root=root,
             environment_root=target.root,
@@ -568,7 +568,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         cls,
         root: Path,
         destinations: t.SequenceOf[str],
-        evidence_by_path: t.MappingKV[str, str],
+        evidence_by_path: t.MappingKV[str, ...],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan removal of every still-present retired destination file.
 

@@ -133,7 +133,7 @@ class FlextInfraUtilitiesGitignore:
             )
         templates_root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
         project_patterns: t.StrSequence = ()
-        preserved_blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock] = ()
+        preserved_blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...] = ()
         if project_dir is not None:
             managed = FlextInfraUtilitiesProjectManagedArtifacts
             resolved = managed.load_project_managed_artifacts(project_dir)
@@ -167,7 +167,7 @@ class FlextInfraUtilitiesGitignore:
     def preserve_project_gitignore_blocks(
         rendered: str,
         project_dir: Path,
-        blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
         *,
         runtime_suffix: str = "",
     ) -> p.Result[str]:
@@ -280,15 +280,15 @@ class FlextInfraUtilitiesGitignore:
 
     @staticmethod
     def _block_sections(
-        blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
         found: t.MappingKV[str, list[int]],
         lines: t.SequenceOf[str],
         destination: Path,
-    ) -> p.Result[t.VariadicTuple[t.Triple[int, int, str]]]:
+    ) -> p.Result[tuple[t.Triple[int, int, str]], ...]:
         """Slice one ordered, non-overlapping external section per declared block.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[t.Triple[int, int, str]]]``.
+            The resulting ``p.Result[tuple[t.Triple[int, int, str], ...]]``.
 
         """
         sections: list[t.Triple[int, int, str]] = []
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesGitignore:
             if not begins and not ends:
                 continue
             if len(begins) != 1 or len(ends) != 1 or begins[0] >= ends[0]:
-                return r[t.VariadicTuple[t.Triple[int, int, str]]].fail(
+                return r[tuple[t.Triple[int, int, str], ...]].fail(
                     f"ambiguous gitignore preserved block {block.begin!r}: "
                     f"{destination}",
                 )
@@ -309,16 +309,16 @@ class FlextInfraUtilitiesGitignore:
             ))
         sections.sort(key=itemgetter(0))
         if any(previous[1] >= current[0] for previous, current in pairwise(sections)):
-            return r[t.VariadicTuple[t.Triple[int, int, str]]].fail(
+            return r[tuple[t.Triple[int, int, str], ...]].fail(
                 f"overlapping gitignore preserved blocks: {destination}",
             )
-        return r[t.VariadicTuple[t.Triple[int, int, str]]].ok(tuple(sections))
+        return r[tuple[t.Triple[int, int, str], ...]].ok(tuple(sections))
 
     @staticmethod
     def _compose_preserved_blocks(
         rendered: str,
         content: bytes,
-        blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
         markers: frozenset[str],
         destination: Path,
     ) -> p.Result[str]:
@@ -361,7 +361,7 @@ class FlextInfraUtilitiesGitignore:
         project_name: str | None = None,
         workspace: m.Infra.WorkspaceSpec | None = None,
         project_patterns: t.StrSequence = (),
-    ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]:
+    ) -> tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...]:
         """Derive the ordered ``.gitignore`` sections for one project.
 
         Single owner of the section list: the profile-filtered SSOT sections,
@@ -372,7 +372,7 @@ class FlextInfraUtilitiesGitignore:
         demand a pattern that ``make gen`` does not materialize.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]``.
+            The resulting ``tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...],``.
 
         """
         sections = [
@@ -435,7 +435,7 @@ class FlextInfraUtilitiesGitignore:
     @staticmethod
     def _runtime_gitignore_sections(
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]:
+    ) -> tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...]:
         """Declare final ignore precedence for precisely the runtime-local artifacts.
 
         Returns:

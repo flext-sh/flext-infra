@@ -186,7 +186,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         context: m.Infra.ProjectRenderContext,
-        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
+        scaffold_entries: tuple[t.Pair[m.Infra.TemplateEntrySpec, str], ...],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan scaffold entries in dependency order using the owned render state.
 
@@ -233,7 +233,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         self,
         codegen: m.Infra.CodegenConfigSpec,
         root: Path,
-        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
+        scaffold_entries: tuple[t.Pair[m.Infra.TemplateEntrySpec, str], ...],
     ) -> p.Result[bool]:
         """Validate every scaffold template source and destination path.
 
@@ -326,8 +326,8 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
     def _with_planned_facade_rebinds(
         self,
         *,
-        planned: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
+        planned: tuple[m.Infra.CodegenFilePlan, ...],
+        scaffold_entries: tuple[t.Pair[m.Infra.TemplateEntrySpec, str], ...],
         render_inputs: m.Infra.CodegenRenderInputs,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the final pyproject over the sources the scaffold plans.

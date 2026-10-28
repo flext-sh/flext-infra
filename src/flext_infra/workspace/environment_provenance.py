@@ -131,7 +131,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         repository: m.Infra.RepositoryRef,
-        installation: t.Triple[Distribution, str, m.Infra.DirectUrlReceipt],
+        installation: tuple[Distribution, str, m.Infra.DirectUrlReceipt],
         *,
         lock_state: m.Cli.AtomicFileState | None,
         environment_root: Path,
@@ -184,14 +184,14 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         distribution: Distribution,
         *,
         environment_root: Path,
-    ) -> p.Result[t.Pair[PackagePath, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[PackagePath, m.Cli.AtomicFileState]]:
         """Read the unique producer declaration inside the installed environment.
 
         Returns:
             The RECORD entry and its current authenticated physical file.
 
         """
-        result = r[t.Pair[PackagePath, m.Cli.AtomicFileState]]
+        result = r[tuple[PackagePath, m.Cli.AtomicFileState]]
         files = distribution.files
         if files is None:
             return result.fail(
@@ -312,7 +312,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         repository_root: Path,
         *,
         metadata_paths: t.StrSequence | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
+    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
         """Elect declared mutable members with authenticated installed editables.
 
         Frozen or registry-installed dependencies remain libraries even when
@@ -326,7 +326,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         root = repository_root.expanduser().resolve()
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root)
         if workspace.failure:
-            return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(workspace)
+            return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(workspace)
         repositories = tuple(
             repository
             for repository in u.Infra.mutable_flext_members(workspace.value)
@@ -335,7 +335,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         if metadata_paths is None and repositories:
             native = cls._observe_environment(root, repositories)
             if native.failure:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(native)
+                return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(native)
             metadata_paths = tuple(str(path) for path in native.value.metadata_paths)
         selected: list[m.Infra.RepositoryRef] = []
         for repository in repositories:
@@ -344,7 +344,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 path=metadata_paths,
             )
             if len(matches) != 1:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "member provenance distribution count mismatch: "
                     f"distribution={repository.distribution} expected=1 "
                     f"actual={len(matches)}",
@@ -356,7 +356,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             if receipt.dir_info is None or not receipt.dir_info.editable:
                 continue
             if not repository.editable:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     f"member is installed editable against declaration: "
                     f"{repository.distribution}",
                 )
@@ -367,11 +367,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 receipt,
             )
             if authenticated.failure:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(
+                return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(
                     authenticated,
                 )
             selected.append(repository)
-        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(tuple(selected))
+        return r[tuple[m.Infra.RepositoryRef, ...]].ok(tuple(selected))
 
     @classmethod
     def validate_editable_installation(
@@ -441,7 +441,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @staticmethod
     def _observe_environment(
         root: Path,
-        repositories: t.VariadicTuple[m.Infra.RepositoryRef],
+        repositories: tuple[m.Infra.RepositoryRef, ...],
     ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
         """Read package facts exclusively through the elected physical runtime.
 
@@ -733,14 +733,14 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         locked: m.Infra.LockedEnvironment,
         context: m.Infra.WorkspaceRuntimeContext,
         metadata_paths: t.StrSequence | None,
-    ) -> p.Result[t.Pair[m.Infra.LockedPackage, Distribution]]:
+    ) -> p.Result[tuple[m.Infra.LockedPackage, Distribution]]:
         """Bind one installed distribution inside the owned environment to its lock.
 
         Returns:
             The unique locked package and its installed distribution.
 
         """
-        result_type = r[t.Pair[m.Infra.LockedPackage, Distribution]]
+        result_type = r[tuple[m.Infra.LockedPackage, Distribution]]
         distributions = u.installed_distributions(name=name, path=metadata_paths)
         if len(distributions) != 1:
             return result_type.fail(

@@ -130,7 +130,7 @@ class FlextInfraDocGenerator(
     @staticmethod
     def plan_files(
         bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind one prepared render bundle to exact live destination states.
 
         Returns:
@@ -142,7 +142,7 @@ class FlextInfraDocGenerator(
     def prepare_bundle(
         self,
         *,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Render the configured docs inventory once.
 

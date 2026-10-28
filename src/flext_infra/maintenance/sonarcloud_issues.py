@@ -23,11 +23,11 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         project_key: str,
         branch: str,
         page: int,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[t.Pair[str, str], ...]:
         """Constrain the search to one project and its integration branch.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[str, str]]``.
+            The resulting ``tuple[t.Pair[str, str], ...],``.
 
         """
         return (

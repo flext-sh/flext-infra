@@ -527,7 +527,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         child_source: str,
         *,
         parent_exports: t.StrSequence = (),
-    ) -> t.Pair[Path, t.MutableMappingKV[Path, str]]:
+    ) -> tuple[Path, t.MutableMappingKV[Path, str]]:
         """Declare a parent whose class name no package naming could infer.
 
         Returns:
@@ -579,7 +579,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         tmp_path: Path,
         sources: t.MappingKV[Path, str],
         child: Path,
-    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the facade-base phase for the detector finding in ``child``.
 
         Returns:
@@ -600,7 +600,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         tmp_path: Path,
         sources: t.MappingKV[Path, str],
         child: Path,
-    ) -> t.VariadicTuple[p.Infra.SemanticMigrationEdit]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         """Return the successful plan's edits.
 
         Returns:

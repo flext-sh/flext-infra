@@ -348,7 +348,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        seen: set[t.VariadicTuple[t.Quad[str, str, str, str | None]]] = set()
+        seen: set[tuple[t.Quad[str, str, str, str | None], ...]] = set()
         iteration = 0
         while current.actionable:
             iteration += 1

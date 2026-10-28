@@ -27,12 +27,12 @@ class FlextInfraRefactorCensusFilters:
 
     @staticmethod
     def duplicate_groups(
-        project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Object]],
-    ) -> t.VariadicTuple[m.Infra.DuplicateGroup]:
+        project_objects: tuple[t.SequenceOf[m.Infra.Object], ...],
+    ) -> tuple[m.Infra.DuplicateGroup, ...]:
         """Duplicate groups.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.DuplicateGroup]``.
+            The resulting ``tuple[m.Infra.DuplicateGroup, ...],``.
 
         """
 

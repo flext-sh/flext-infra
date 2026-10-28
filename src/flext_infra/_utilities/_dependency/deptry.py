@@ -220,14 +220,14 @@ class FlextInfraUtilitiesDependencyDeptry:
     def _authenticated_deptry_sources(
         project_path: Path,
         roots: t.StrTuple,
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]:
+    ) -> p.Result[tuple[m.Cli.AtomicPhysicalTreeManifest], ...]:
         """Inventory every production root and authenticate its physical shape.
 
         Returns:
             One exact tree manifest per root, or the first authentication failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]
+        result_type = r[tuple[m.Cli.AtomicPhysicalTreeManifest], ...]
         manifests: list[m.Cli.AtomicPhysicalTreeManifest] = []
         for root in roots:
             source = u.Cli.atomic_inventory_physical_tree(project_path / root)
@@ -274,7 +274,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         t.Triple[
             m.Cli.AtomicFileState,
             t.StrTuple,
-            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
         ]
     ]:
         """Read the deptry configuration and authenticate its declared roots.
@@ -287,7 +287,7 @@ class FlextInfraUtilitiesDependencyDeptry:
             t.Triple[
                 m.Cli.AtomicFileState,
                 t.StrTuple,
-                t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+                tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
             ]
         ]
         settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)

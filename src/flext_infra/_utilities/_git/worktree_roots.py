@@ -89,7 +89,7 @@ class FlextInfraUtilitiesGitWorktreeRoots(
         repository_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]:
+    ) -> p.Result[tuple[m.Infra.GitSubmoduleDeclaration, ...]]:
         """Parse the repository's ``.gitmodules`` through ``git config -f``.
 
         Git itself reads the file, so its syntax is Git's. A missing file is
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesGitWorktreeRoots(
             Every declared submodule in declaration order.
 
         """
-        result = r[t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]
+        result = r[tuple[m.Infra.GitSubmoduleDeclaration, ...]]
         sections = cls._gitmodules_sections(
             repository_root, source_project=source_project
         )

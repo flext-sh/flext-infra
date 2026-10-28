@@ -458,7 +458,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
     def _declared_facade_bases(
         owner: t.Infra.CstClass,
         ordered: t.SequenceOf[str],
-    ) -> t.VariadicTuple[t.Infra.CstArgument]:
+    ) -> tuple[t.Infra.CstArgument, ...]:
         """Build the reordered base arguments for the facade namespace.
 
         Returns:

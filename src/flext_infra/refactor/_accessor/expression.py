@@ -186,7 +186,7 @@ class FlextInfraRefactorAccessorExpression:
         rope_project: t.Infra.RopeProject,
         py_file: Path,
         updated_source: str,
-        imports: t.MappingKV[str, str],
+        imports: t.MappingKV[str, ...],
     ) -> str:
         """Plan imports against the complete expression snapshot.
 

@@ -145,7 +145,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     @pytest.mark.slow
     @pytest.mark.parametrize(
         ("scenario", "expected"),
-        [("red", ["FixtureModels"]), ("green", [])],
+        [("red", ["FixtureModels"]), ("green", ...)],
     )
     def test_model_facade_root_requires_native_model_ancestry(
         self,
