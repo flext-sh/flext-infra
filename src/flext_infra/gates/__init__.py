@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from flext_infra.gates.base_gate import FlextInfraGate
     from flext_infra.gates.codemod import FlextInfraCodemodGate
     from flext_infra.gates.conflict_markers import FlextInfraConflictMarkersGate
-    from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
     from flext_infra.gates.deps import FlextInfraDepsGate
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate
@@ -27,6 +26,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
     from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
     from flext_infra.gates.layout import FlextInfraLayoutGate
+    from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
     from flext_infra.gates.loc_cap import FlextInfraLocCapGate
     from flext_infra.gates.markdown import FlextInfraMarkdownGate
     from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
@@ -59,6 +59,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraGate",
     "FlextInfraIndexDeclarationsGate",
     "FlextInfraLayoutGate",
+    "FlextInfraLintConfigFreezeGate",
     "FlextInfraLocCapGate",
     "FlextInfraMarkdownCodeGate",
     "FlextInfraMarkdownCodeSources",
@@ -94,6 +95,7 @@ install_lazy_exports(
         "FlextInfraGate": ".base_gate",
         "FlextInfraIndexDeclarationsGate": ".index_declarations",
         "FlextInfraLayoutGate": ".layout",
+        "FlextInfraLintConfigFreezeGate": ".lint_freeze",
         "FlextInfraLocCapGate": ".loc_cap",
         "FlextInfraMarkdownCodeGate": ".markdown_code",
         "FlextInfraMarkdownCodeSources": ".markdown_code_sources",

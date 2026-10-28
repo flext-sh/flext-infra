@@ -17,6 +17,7 @@ ruleDirs:
 # instead of duplicating the block in every rule (SSOT for codemod guards).
 utilDirs:
   - utils
+  - fixture-utils
 
 # testConfigs: directories containing test YAML files
 # Test files follow naming convention: {rule-id}-test.yml

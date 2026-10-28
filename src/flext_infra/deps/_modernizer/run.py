@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerTooling
+from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -222,6 +223,11 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
             return 1
         if migrated or dry_run or self.skip_check:
             return 0
+        for note in FlextInfraLintConfigFreezeGate.refresh_catalog(
+            self.root,
+            states,
+        ):
+            u.Cli.info(note)
         return self._run_build_check(states, invalid_paths=invalid_paths)
 
     @staticmethod
