@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,14 +26,14 @@ class FlextInfraDepsDetectionRunners:
         *,
         config_path: Path | None = None,
         json_output_path: Path | None = None,
-    ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
+    ) -> p.Result[tuple[Sequence[t.JsonMapping], int]]:
         """Consume every native deptry finding over the project's production source.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]``.
+            The resulting ``p.Result[tuple[Sequence[t.JsonMapping], int]]``.
 
         """
-        result_type = r[t.Pair[t.SequenceOf[t.JsonMapping], int]]
+        result_type = r[tuple[Sequence[t.JsonMapping], int]]
         settings = config_path or project_path / c.PYPROJECT_FILENAME
         reports = u.Cli.ensure_dir(project_path / c.Infra.REPORTS_DIR_NAME)
         if reports.failure:
@@ -63,11 +64,11 @@ class FlextInfraDepsDetectionRunners:
     def run_pip_check(
         repository_root: Path,
         venv_bin: Path,
-    ) -> p.Result[t.Pair[t.StrSequence, int]]:
+    ) -> p.Result[tuple[Sequence[str], int]]:
         """Check the elected environment through the managed UV package checker.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.StrSequence, int]]``.
+            The resulting ``p.Result[tuple[Sequence[str], int]]``.
 
         """
         result = u.Cli.run_raw(
@@ -82,7 +83,7 @@ class FlextInfraDepsDetectionRunners:
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if result.failure:
-            return r[t.Pair[t.StrSequence, int]].from_failure(result)
+            return r[tuple[Sequence[str], int]].from_failure(result)
         cmd_result: p.Cli.CommandOutput = result.value
         outcome = cmd_result.outcome
         if (
@@ -94,13 +95,13 @@ class FlextInfraDepsDetectionRunners:
                 outcome,
                 from_attributes=True,
             ).model_dump_json()
-            return r[t.Pair[t.StrSequence, int]].fail(
+            return r[tuple[Sequence[str], int]].fail(
                 "UV package check failed: "
                 f"{receipt}\n"
                 f"stdout:\n{cmd_result.stdout}\nstderr:\n{cmd_result.stderr}",
             )
         lines = f"{cmd_result.stdout}\n{cmd_result.stderr}".strip().splitlines()
-        return r[t.Pair[t.StrSequence, int]].ok((
+        return r[tuple[Sequence[str], int]].ok((
             lines,
             outcome.raw_return_code,
         ))

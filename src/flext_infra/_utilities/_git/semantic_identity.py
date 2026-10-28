@@ -16,7 +16,7 @@ from git import (
     Repo,
 )
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
@@ -229,7 +229,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(
             repo.close()
 
     @classmethod
-    def _redacted_remotes(cls, repo: Repo) -> t.Pair[str | None, str | None]:
+    def _redacted_remotes(cls, repo: Repo) -> tuple[str | None, str | None]:
         """Return the redacted origin and upstream remote URLs.
 
         Returns:

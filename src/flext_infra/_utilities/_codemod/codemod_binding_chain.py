@@ -12,9 +12,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -82,14 +83,12 @@ class FlextInfraUtilitiesCodemodBindingChain:
         @classmethod
         def stable_binding_chain(
             cls,
-            frame: t.Triple[
-                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
-            ],
+            frame: tuple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
             expression: str,
             offset: int,
-            sources: t.MappingKV[Path, str],
+            sources: Mapping[Path, str],
             *,
-            visited: frozenset[t.Pair[str, str]] = frozenset(),
+            visited: frozenset[tuple[str, str]] = frozenset(),
         ) -> bool:
             """Reject rebound receivers, intermediate owners, and imported alias chains.
 
@@ -132,14 +131,12 @@ class FlextInfraUtilitiesCodemodBindingChain:
         @classmethod
         def _chain_base_binding(
             cls,
-            frame: t.Triple[
-                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
-            ],
+            frame: tuple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
             expression: str,
             offset: int,
-            sources: t.MappingKV[Path, str],
+            sources: Mapping[Path, str],
             *,
-            visited: frozenset[t.Pair[str, str]],
+            visited: frozenset[tuple[str, str]],
         ) -> p.Infra.RopePyName | None:
             """Resolve the chain's base binding for one attribute or name expression.
 
@@ -164,8 +161,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
         @staticmethod
         def _chain_module_text(
             module: p.Infra.RopeParsedModule,
-            sources: t.MappingKV[Path, str],
-        ) -> t.Pair[Path, str] | None:
+            sources: Mapping[Path, str],
+        ) -> tuple[Path, str] | None:
             """Locate the module source text inside the authenticated closure.
 
             Untouched consumers resolve through the project's authenticated
@@ -196,8 +193,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
             project: p.Infra.RopeProject,
             binding: p.Infra.RopePyName,
             expression: str,
-            routes: t.StrMapping,
-            sources: t.MappingKV[Path, str],
+            routes: Mapping[str, str],
+            sources: Mapping[Path, str],
         ) -> bool:
             """Hold the lazy alias route and the single-assignment contract.
 
@@ -240,9 +237,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
             cls,
             project: p.Infra.RopeProject,
             binding: p.Infra.RopeImportedName,
-            sources: t.MappingKV[Path, str],
+            sources: Mapping[Path, str],
             *,
-            visited: frozenset[t.Pair[str, str]],
+            visited: frozenset[tuple[str, str]],
         ) -> bool:
             """Follow an imported name to its defining module and continue there.
 
@@ -294,9 +291,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
             project: p.Infra.RopeProject,
             binding: p.Infra.RopePyName,
             expression: str,
-            sources: t.MappingKV[Path, str],
+            sources: Mapping[Path, str],
             *,
-            visited: frozenset[t.Pair[str, str]],
+            visited: frozenset[tuple[str, str]],
         ) -> bool:
             """Hold the definition site of the resolved binding against rebinds.
 
@@ -369,8 +366,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
         def _chain_holder_context(
             cls,
             binding: p.Infra.RopePyName,
-            sources: t.MappingKV[Path, str],
-        ) -> t.Triple[p.Infra.RopePyModule, int | None, str] | None:
+            sources: Mapping[Path, str],
+        ) -> tuple[p.Infra.RopePyModule, int | None, str] | None:
             """Locate one binding's definition inside the authenticated closure.
 
             Untouched definition sites resolve through the project's
@@ -457,7 +454,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             holder_text: str,
             line: int | None,
             name: str,
-        ) -> t.Triple[m.Infra.LogicalStatement, int, p.Infra.RopeScope] | None:
+        ) -> tuple[m.Infra.LogicalStatement, int, p.Infra.RopeScope] | None:
             """Prove the holder's declaration is the single reaching definition.
 
             Returns:
@@ -498,7 +495,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             scope: p.Infra.RopeScope,
             expression: str,
             offset: int,
-            declared_routes: t.StrMapping | None = None,
+            declared_routes: Mapping[str, str] | None = None,
         ) -> bool:
             """Prove one unconditional declaration instead of Rope's last assignment.
 
@@ -559,7 +556,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
             expression: str,
-        ) -> t.SequenceOf[t.Pair[m.Infra.LogicalStatement, int]]:
+        ) -> Sequence[tuple[m.Infra.LogicalStatement, int]]:
             """Collect the frame-local declarations competing with the expression.
 
             Returns:
@@ -581,8 +578,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
                 module.pycore.project, name
             )
-            declarations: list[t.Pair[m.Infra.LogicalStatement, int]] = []
-            seen: set[t.Pair[int, int]] = set()
+            declarations: list[tuple[m.Infra.LogicalStatement, int]] = []
+            seen: set[tuple[int, int]] = set()
             for occurrence in finder.find_occurrences(pymodule=module):
                 start, end = occurrence.get_primary_range()
                 if cls._binding_expression(source[start:end]) != expression:
@@ -616,7 +613,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
         @classmethod
         def _occurrence_redefines(
             cls,
-            frame: t.Pair[p.Infra.RopePyModule, p.Infra.RopeScope],
+            frame: tuple[p.Infra.RopePyModule, p.Infra.RopeScope],
             occurrence: p.Infra.RopeOccurrence,
             row: m.Infra.LogicalStatement,
             expression: str,
@@ -722,7 +719,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             scope: p.Infra.RopeScope,
             declaration: m.Infra.LogicalStatement,
             expression: str,
-            declared_routes: t.StrMapping | None,
+            declared_routes: Mapping[str, str] | None,
         ) -> bool:
             """Report whether the declaration dominates the queried offset.
 

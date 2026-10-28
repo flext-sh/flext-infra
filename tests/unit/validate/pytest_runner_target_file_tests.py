@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 @pytest.mark.unit
@@ -49,7 +50,7 @@ class TestsFlextInfraPytestTargetFile:
                 config.Infra.tooling,
                 "pytest.ini_options",
                 "python_files",
-                TypeForm(t.StrSequence),
+                TypeForm(Sequence[str]),
             )[0].replace("*", probe)
         )
         proof = root / f"{probe}.log"
@@ -119,7 +120,7 @@ class TestsFlextInfraPytestTargetFile:
         budgeted: bool,
         slow: bool,
         failure: str,
-    ) -> t.Pair[str, list[str]]:
+    ) -> tuple[str, list[str]]:
         """Render the probe module and the phases it must record.
 
         Returns:

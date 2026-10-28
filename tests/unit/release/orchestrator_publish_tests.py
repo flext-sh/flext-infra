@@ -23,11 +23,11 @@ class TestsFlextInfraReleasePublish:
         tmp_path: Path,
         *,
         projects: t.StrTuple = ("flext-a",),
-    ) -> t.Pair[Path, m.Infra.BuildReport]:
+    ) -> tuple[Path, m.Infra.BuildReport]:
         """Build one member and return the workspace with its verified receipt.
 
         Returns:
-            The resulting ``t.Pair[Path, m.Infra.BuildReport]``.
+            The resulting ``tuple[Path, m.Infra.BuildReport]``.
 
         """
         workspace = u.Tests.create_release_workspace(

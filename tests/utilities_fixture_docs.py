@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import config
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import c, m, r, t, tm
+from tests import c, m, r, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -23,7 +24,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     def create_docs_workspace(
         root: Path,
         *,
-        project_names: t.StrSequence = (),
+        project_names: Sequence[str] = (),
         include_fixable_link: bool = False,
     ) -> Path:
         """Create a documentation workspace fixture.
@@ -136,7 +137,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     def create_github_workspace(
         root: Path,
         *,
-        project_names: t.StrSequence = (),
+        project_names: Sequence[str] = (),
         source_workflow: str = "name: CI\n",
     ) -> Path:
         """Create a GitHub workflow workspace fixture.
@@ -181,13 +182,13 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     def docs_workspace_generator(
         root: Path,
         *,
-        project_names: t.StrSequence = (),
-        selected_projects: t.StrSequence | None = None,
-    ) -> t.Pair[Path, FlextInfraDocGenerator]:
+        project_names: Sequence[str] = (),
+        selected_projects: Sequence[str] | None = None,
+    ) -> tuple[Path, FlextInfraDocGenerator]:
         """Create one docs workspace plus the generator scoped to its selection.
 
         Returns:
-            The resulting ``t.Pair[Path, FlextInfraDocGenerator]``.
+            The resulting ``tuple[Path, FlextInfraDocGenerator]``.
 
         """
         workspace = TestsFlextInfraUtilitiesDocsFixtureMixin.create_docs_workspace(

@@ -11,10 +11,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import override
 
-from flext_infra import m, p, r, s, t
+from flext_infra import m, p, r, s
 from flext_infra.codemod import FlextInfraModGateEngine
 
 
@@ -103,4 +103,4 @@ class FlextInfraNamespaceValidator(s[bool]):
         return " ".join(message.split())
 
 
-__all__: t.StrSequence = ("FlextInfraNamespaceValidator",)
+__all__: Sequence[str] = ("FlextInfraNamespaceValidator",)

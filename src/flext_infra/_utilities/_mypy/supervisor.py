@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._utilities import FlextInfraUtilitiesResourceLimits
 
 if TYPE_CHECKING:
@@ -62,7 +62,7 @@ class FlextInfraUtilitiesMypySupervisor:
             raise FlextInfraUtilitiesMypySupervisor.ProcessGroupAbsentError from None
 
     @staticmethod
-    def _usage(pid: int) -> t.Pair[int, bool]:
+    def _usage(pid: int) -> tuple[int, bool]:
 
         snapshot = u.Cli.run(
             ("/bin/ps", "-axo", "pgid=,rss=,stat="),

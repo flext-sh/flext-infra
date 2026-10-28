@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
     from pathlib import Path
 
     from flext_infra import t
@@ -126,14 +126,14 @@ class FlextInfraRefactorWrapperRewrite:
         *,
         line_offsets: list[int],
         runtime_aliases: frozenset[str],
-    ) -> list[t.Triple[int, int, str]]:
+    ) -> list[tuple[int, int, str]]:
         """Find every ``<alias>.Core.Tests`` chain and emit ``(start, end, repl)``.
 
         Returns:
-            The resulting ``list[t.Triple[int, int, str]]``.
+            The resulting ``list[tuple[int, int, str]]``.
 
         """
-        rewrites: list[t.Triple[int, int, str]] = []
+        rewrites: list[tuple[int, int, str]] = []
         for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(module_ast)):
             if (
                 u.Infra.node_kind(node) != "Attribute"
@@ -202,7 +202,7 @@ class FlextInfraRefactorWrapperRewrite:
     @staticmethod
     def _apply_byte_rewrites(
         source: str,
-        rewrites: t.SequenceOf[t.Triple[int, int, str]],
+        rewrites: Sequence[tuple[int, int, str]],
     ) -> str:
         """Apply ``(start, end, replacement)`` triples to ``source`` (right-to-left).
 

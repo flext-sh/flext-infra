@@ -10,9 +10,10 @@ import ast
 import io
 import re
 import tokenize
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 from flext_infra.codegen import FlextInfraStagedPackage
 
 
@@ -55,7 +56,7 @@ class FlextInfraCodemodRenameSources:
     @staticmethod
     def compose_candidate(
         candidate: m.Infra.SemanticSourcePlan,
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.SemanticSourcePlan]:
         """Fold phase file plans into the staged candidate view.
 
@@ -95,7 +96,7 @@ class FlextInfraCodemodRenameSources:
 
     @staticmethod
     def symbol_paths(
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         symbols: frozenset[str],
     ) -> frozenset[Path]:
         """Elect actual identifier syntax, never executable string payloads.
@@ -132,12 +133,12 @@ class FlextInfraCodemodRenameSources:
         return frozenset(selected)
 
     @staticmethod
-    def pairs(source: str) -> t.VariadicTuple[t.Pair[str, str]]:
+    def pairs(source: str) -> tuple[tuple[str, str], ...]:
         rows = u.Cli.csv_loads(source).unwrap()
         if not rows or rows[0] != ["old", "new"]:
             msg = "rename CSV header must be exactly 'old,new'"
             raise ValueError(msg)
-        pairs: t.MutableMappingKV[str, str] = {}
+        pairs: MutableMapping[str, str] = {}
         for row in rows[1:]:
             if len(row) != len(rows[0]) or not all(value.strip() for value in row):
                 msg = "every row must contain non-empty old,new values"
@@ -164,7 +165,7 @@ class FlextInfraCodemodRenameSources:
         return tuple(sorted(pairs.items()))
 
     @staticmethod
-    def _rooted_symlink(path: Path, roots: t.SequenceOf[Path]) -> bool:
+    def _rooted_symlink(path: Path, roots: Sequence[Path]) -> bool:
         """Authorize an in-tree symlink target and mark the link projected.
 
         Returns:
@@ -189,12 +190,12 @@ class FlextInfraCodemodRenameSources:
 
     @staticmethod
     def inventory(
-        roots: t.SequenceOf[Path],
+        roots: Sequence[Path],
         params: m.Infra.ApplyRenamesInput,
         *,
         needles: frozenset[str] | None = None,
         python_sources: bool = True,
-    ) -> t.Pair[t.MappingKV[Path, m.Cli.AtomicFileState], int]:
+    ) -> tuple[Mapping[Path, m.Cli.AtomicFileState], int]:
         """Index scanned files minus ignored, generated, and driver paths.
 
         ``needles`` bounds the authenticated reads of an identifier campaign to
@@ -209,7 +210,7 @@ class FlextInfraCodemodRenameSources:
             the number of electable files scanned.
 
         """
-        files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        files: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         scanned = 0
         raw_needles = tuple(
             needle.encode(c.DEFAULT_ENCODING) for needle in needles or ()
@@ -239,7 +240,7 @@ class FlextInfraCodemodRenameSources:
     @staticmethod
     def exclusions(
         params: m.Infra.ApplyRenamesInput,
-    ) -> t.Triple[t.Pair[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]]:
+    ) -> tuple[tuple[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]]:
         """Resolve the declared exclusions every inventory pass shares.
 
         Returns:
@@ -272,10 +273,10 @@ class FlextInfraCodemodRenameSources:
     def _electable(
         path: Path,
         root: Path,
-        roots: t.SequenceOf[Path],
+        roots: Sequence[Path],
         params: m.Infra.ApplyRenamesInput,
-        exclusions: t.Triple[
-            t.Pair[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
+        exclusions: tuple[
+            tuple[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
         ],
     ) -> bool:
         """Whether one scoped path is a rename source under the declared surfaces.
@@ -337,10 +338,10 @@ class FlextInfraCodemodRenameSources:
     @staticmethod
     def text_edits(
         source: str,
-        pairs: t.SequenceOf[t.Pair[str, str]],
+        pairs: Sequence[tuple[str, str]],
         *,
         start: int = 0,
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         replacements = dict(pairs)
         pattern = re.compile(
             r"\b(?:" + "|".join(re.escape(old) for old in replacements) + r")\b",
@@ -358,12 +359,12 @@ class FlextInfraCodemodRenameSources:
     def documentation_edits(
         cls,
         source: str,
-        pairs: t.SequenceOf[t.Pair[str, str]],
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+        pairs: Sequence[tuple[str, str]],
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         """Select real docstrings and comments; executable literals retain bytes.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SourceRewrite]``.
+            The resulting ``tuple[m.Infra.SourceRewrite, ...]``.
 
         Raises:
             ValueError: If Python docstring lacks an authenticated source span.
@@ -374,7 +375,7 @@ class FlextInfraCodemodRenameSources:
         for line in lines:
             offsets.append(offsets[-1] + len(line))
         tree = ast.parse(source)
-        docstrings: t.MutableSequenceOf[t.Pair[t.Pair[int, int], t.Pair[int, int]]] = []
+        docstrings: MutableSequence[tuple[tuple[int, int], tuple[int, int]]] = []
         for node in ast.walk(tree):
             if not isinstance(node, c.Infra.AST_SCOPE_OWNER_TYPES):
                 continue
@@ -399,7 +400,7 @@ class FlextInfraCodemodRenameSources:
                     (value.lineno, column),
                     (value.end_lineno, end_column),
                 ))
-        edits: t.MutableSequenceOf[m.Infra.SourceRewrite] = []
+        edits: MutableSequence[m.Infra.SourceRewrite] = []
         for token in tokenize.generate_tokens(io.StringIO(source).readline):
             if token.type == tokenize.COMMENT or (
                 token.type == tokenize.STRING

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
@@ -16,7 +16,7 @@ from flext_infra.refactor import FlextInfraNamespaceEnforcer
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
@@ -28,7 +28,7 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         rules_only: bool
 
         @property
-        def project_names(self) -> t.StrSequence | None:
+        def project_names(self) -> Sequence[str] | None:
             """Normalized selected project names."""
 
     def _fix_project(
@@ -70,12 +70,12 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
     def fix_workspace(
         self,
         *,
-        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
-    ) -> t.SequenceOf[m.Infra.AutoFixResult]:
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
+    ) -> Sequence[m.Infra.AutoFixResult]:
         """Run auto-fix on selected projects.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.AutoFixResult]``.
+            The resulting ``Sequence[m.Infra.AutoFixResult]``.
 
         """
         if projects is not None:

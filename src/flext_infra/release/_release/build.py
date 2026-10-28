@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from json import dumps
 from pathlib import Path
 
@@ -19,7 +20,7 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
 
     @staticmethod
     def render_build_constraints(
-        pins: t.SequenceOf[m.Infra.BuildConstraintSpec],
+        pins: Sequence[m.Infra.BuildConstraintSpec],
     ) -> str:
         """Render the ``uv build --require-hashes`` constraints from typed config.
 
@@ -74,8 +75,8 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
     @staticmethod
     def _selected_targets(
         root: Path,
-        project_names: t.StrSequence,
-    ) -> p.Result[t.MutableMappingKV[str, Path]]:
+        project_names: Sequence[str],
+    ) -> p.Result[MutableMapping[str, Path]]:
         """Resolve the publishable project targets of the release build.
 
         Eligibility is declared data; no prefix means every project publishes.
@@ -86,13 +87,13 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
         """
         selected = u.Infra.resolve_projects(root, project_names)
         if selected.failure:
-            return r[t.MutableMappingKV[str, Path]].from_failure(selected)
+            return r[MutableMapping[str, Path]].from_failure(selected)
         prefixes = tuple(config.Infra.release.publishable_prefixes)
-        targets: t.MutableMappingKV[str, Path] = {}
+        targets: MutableMapping[str, Path] = {}
         for project in selected.value:
             if project.path.exists() and project.name.startswith(prefixes or ("",)):
                 targets.setdefault(project.name, project.path)
-        return r[t.MutableMappingKV[str, Path]].ok(targets)
+        return r[MutableMapping[str, Path]].ok(targets)
 
     def _release_version_pins(self, root: Path) -> p.Result[t.MutableStrMapping]:
         """Resolve every release pin: workspace declarations then locked entries.
@@ -129,8 +130,8 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         policy: m.Infra.BuildPolicy,
-        targets: t.MappingKV[str, Path],
-        versions: t.StrMapping,
+        targets: Mapping[str, Path],
+        versions: Mapping[str, str],
     ) -> p.Result[tuple[m.Infra.BuildRecord, ...]]:
         """Build every selected target and collect its record.
 
@@ -138,7 +139,7 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
             The resulting build records.
 
         """
-        records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
+        records: MutableSequence[m.Infra.BuildRecord] = []
         for name, path in targets.items():
             record = self._build_project(ctx, policy, (name, path), versions)
             if record.failure:
@@ -156,7 +157,7 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         output_dir: Path,
         policy: m.Infra.BuildPolicy,
-        records: t.SequenceOf[m.Infra.BuildRecord],
+        records: Sequence[m.Infra.BuildRecord],
     ) -> p.Result[bool]:
         """Write the build report and fail loud on any failed build.
 

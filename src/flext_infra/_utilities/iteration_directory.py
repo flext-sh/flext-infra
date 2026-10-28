@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
@@ -14,8 +15,6 @@ from flext_infra._utilities._git import FlextInfraUtilitiesGitScope
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesIterationDirectory(
@@ -49,7 +48,7 @@ class FlextInfraUtilitiesIterationDirectory(
     @classmethod
     def iter_directory_python_files(
         cls, directory: Path, *, repository_root: Path
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Iterate owned Python files in one configured source tree.
 
         Scoped to one directory (project src, subdirectory, etc.) — unlike

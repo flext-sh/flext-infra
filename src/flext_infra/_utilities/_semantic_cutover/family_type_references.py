@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import operator
 from bisect import bisect_left, bisect_right
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     @staticmethod
     def _apply_type_rewrites(
         source: str,
-        edits: t.SequenceOf[tuple[int, int, str]],
+        edits: Sequence[tuple[int, int, str]],
     ) -> str:
         """Apply the outermost nonoverlapping type edits in reverse source order.
 
@@ -464,7 +464,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         an ordinary runtime assignment is not implicitly a type declaration.
 
         Returns:
-            The resulting ``frozenset[t.Pair[int, int]]``.
+            The resulting ``frozenset[tuple[int, int]]``.
 
         """
         protected: set[tuple[int, int]] = set()
@@ -527,7 +527,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 opens.append(cursor)
             elif character in closers:
                 if not opens or source[opens[-1]] != closers[character]:
-                    msg = "type reference delimiter differs from native region"
+                    msg = (
+                        "type reference delimiter differs from native region: "
+                        f"stray {character!r} at {cursor}; "
+                        f"region={begin}:{end}; "
+                        f"region_text={source[begin:end][:160]!r}"
+                    )
                     raise ValueError(msg)
                 opens.pop()
             elif character in separators and not opens:
@@ -535,7 +540,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 part = cursor + 1
             cursor += 1
         if opens:
-            msg = "type reference delimiter differs from native region"
+            msg = (
+                "type reference delimiter differs from native region: "
+                f"unbalanced {source[opens[-1]]!r} opened at {opens[-1]}; "
+                f"region={begin}:{end}; "
+                f"region_text={source[begin:end][:160]!r}"
+            )
             raise ValueError(msg)
         regions.append((part, end))
         return tuple(
@@ -559,7 +569,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         A foreign runtime Worder product fails the protection scan.
 
         Returns:
-            The protected ``frozenset[t.Pair[int, int]]`` payload regions.
+            The protected ``frozenset[tuple[int, int]]`` payload regions.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules

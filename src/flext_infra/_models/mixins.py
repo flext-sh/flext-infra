@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -68,7 +69,7 @@ class FlextInfraModelsMixins:
             m.Field(description="Repository root"),
         ] = Path()
         projects: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.BeforeValidator(
                 lambda value: (value,) if isinstance(value, str) else value
             ),
@@ -98,7 +99,7 @@ class FlextInfraModelsMixins:
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.
 
-        Gates are stored as ``t.StrSequence`` — CSV strings are parsed
+        Gates are stored as ``Sequence[str]`` — CSV strings are parsed
         by ``@field_validator`` so downstream consumers always see a
         normalized list.
         """
@@ -112,7 +113,7 @@ class FlextInfraModelsMixins:
                 },
             ),
         ] = False
-        gates: t.StrSequence = m.Field(
+        gates: Sequence[str] = m.Field(
             default=(),
             description=(
                 "Gate names for post-transform validation; empty resolves the"
@@ -122,11 +123,11 @@ class FlextInfraModelsMixins:
 
         @m.field_validator("gates", mode="before")
         @classmethod
-        def _parse_gates(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
-            """Accept CSV string, sequence, or None; normalize to StrSequence.
+        def _parse_gates(cls, value: str | Sequence[str] | None) -> Sequence[str]:
+            """Accept CSV string, sequence, or None; normalize to Sequence[str].
 
             Returns:
-                The resulting ``t.StrSequence``.
+                The resulting ``Sequence[str]``.
 
             """
             if value is None:
@@ -229,14 +230,14 @@ class FlextInfraModelsMixins:
         """Shared optional project-name collection."""
 
         project_names: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(description="Project names"),
         ] = None
 
     class ProjectNamesListMixin(m.BaseModel):
         """Shared concrete project-name collection."""
 
-        project_names: t.StrSequence = m.Field(
+        project_names: Sequence[str] = m.Field(
             default_factory=tuple, description="Project names"
         )
 

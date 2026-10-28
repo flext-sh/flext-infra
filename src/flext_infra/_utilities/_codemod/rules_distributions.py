@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+import warnings
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache
 from importlib.metadata import Distribution
@@ -18,7 +19,7 @@ from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, p, r, t
+from flext_infra import c, p, r
 
 
 class FlextInfraUtilitiesCodemodRulesDistributions:
@@ -27,21 +28,21 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @staticmethod
     def codemod_project_requirements(
         root: Path,
-    ) -> p.Result[t.Pair[str, t.StrSequence]]:
+    ) -> p.Result[tuple[str, Sequence[str]]]:
 
         pyproject = root / c.PYPROJECT_FILENAME
         document = u.Cli.toml_read_document(pyproject)
         if document.failure:
-            return r[t.Pair[str, t.StrSequence]].from_failure(document)
+            return r[tuple[str, Sequence[str]]].from_failure(document)
         payload = u.Cli.toml_as_mapping(document.value)
         project = payload.get(c.Infra.PROJECT) if payload else None
         if not isinstance(project, Mapping):
-            return r[t.Pair[str, t.StrSequence]].fail(
+            return r[tuple[str, Sequence[str]]].fail(
                 f"missing [project] table: {pyproject}",
             )
         raw_name = project.get("name")
         if not isinstance(raw_name, str) or not raw_name.strip():
-            return r[t.Pair[str, t.StrSequence]].fail(
+            return r[tuple[str, Sequence[str]]].fail(
                 f"missing project.name: {pyproject}",
             )
         raw_dependencies = project.get(c.Infra.DEPENDENCIES)
@@ -54,25 +55,31 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
             raw_dependencies,
             str,
         ):
-            return r[t.Pair[str, t.StrSequence]].fail(
+            return r[tuple[str, Sequence[str]]].fail(
                 f"project.dependencies must be a sequence: {pyproject}",
             )
         dependencies: set[str] = set()
         for raw in raw_dependencies:
             if not isinstance(raw, str):
-                return r[t.Pair[str, t.StrSequence]].fail(
+                return r[tuple[str, Sequence[str]]].fail(
                     f"project dependency must be a string: {pyproject}",
                 )
             requirement = Requirement(raw)
             if requirement.marker is None or requirement.marker.evaluate():
                 dependencies.add(canonicalize_name(requirement.name))
-        return r[t.Pair[str, t.StrSequence]].ok((
+        return r[tuple[str, Sequence[str]]].ok((
             canonicalize_name(raw_name),
             tuple(sorted(dependencies)),
         ))
 
     @staticmethod
-    def codemod_distributions() -> t.MappingKV[str, Distribution]:
+    @warnings.deprecated(
+        "compat: FlextInfraUtilitiesCodemodRules.codemod_distributions -> "
+        "p.Infra.WorkspaceSnapshot; fix: rewire via make mod; read codemod "
+        "rule providers from the repository workspace snapshot instead of "
+        "indexing sys.path distributions (engine-map S3/D4).",
+    )
+    def codemod_distributions() -> Mapping[str, Distribution]:
         """Index the installed distributions visible on the current import path.
 
         Installed metadata is a fact of the interpreter environment for the
@@ -105,7 +112,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @lru_cache(maxsize=8)
     def _indexed_provider_configs(
         paths: tuple[str, ...],
-    ) -> t.MappingKV[str, Path]:
+    ) -> Mapping[str, Path]:
         """Locate every installed distribution's codemod config exactly once.
 
         Where a distribution's package lives is a fact of the same import path
@@ -131,7 +138,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @lru_cache(maxsize=8)
     def _indexed_distributions(
         paths: tuple[str, ...],
-    ) -> t.MappingKV[str, Distribution]:
+    ) -> Mapping[str, Distribution]:
         """Read every distribution's metadata on ``paths`` exactly once.
 
         Returns:
@@ -161,8 +168,8 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @classmethod
     def codemod_runtime_closure(
         cls,
-        direct: t.StrSequence,
-        indexed: t.MappingKV[str, Distribution],
+        direct: Sequence[str],
+        indexed: Mapping[str, Distribution],
     ) -> frozenset[str]:
         pending = list(direct)
         resolved: set[str] = set()
@@ -179,7 +186,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
         return frozenset(resolved)
 
     @staticmethod
-    def _requirements(installed: Distribution) -> t.StrSequence:
+    def _requirements(installed: Distribution) -> Sequence[str]:
         requirements: set[str] = set()
         for raw in installed.requires or ():
             requirement = Requirement(raw)
@@ -190,11 +197,11 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @classmethod
     def _providers(
         cls,
-        discovered: t.MappingKV[str, Path],
+        discovered: Mapping[str, Path],
         *,
         scope: str,
         selected: frozenset[str],
-    ) -> p.Result[t.MappingKV[str, Path]]:
+    ) -> p.Result[Mapping[str, Path]]:
 
         providers: MutableMapping[str, Path] = {}
         for name in sorted(selected):
@@ -203,17 +210,17 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
                 continue
             declared_scope = cls._config_scope(provider_config)
             if declared_scope.failure:
-                return r[t.MappingKV[str, Path]].from_failure(declared_scope)
+                return r[Mapping[str, Path]].from_failure(declared_scope)
             if declared_scope.value == scope:
                 providers[name] = provider_config
-        return r[t.MappingKV[str, Path]].ok(providers)
+        return r[Mapping[str, Path]].ok(providers)
 
     @classmethod
     def _provider_order(
         cls,
-        providers: t.MappingKV[str, Path],
-        indexed: t.MappingKV[str, Distribution],
-    ) -> t.StrSequence:
+        providers: Mapping[str, Path],
+        indexed: Mapping[str, Distribution],
+    ) -> Sequence[str]:
 
         selected = frozenset(providers)
         edges = {

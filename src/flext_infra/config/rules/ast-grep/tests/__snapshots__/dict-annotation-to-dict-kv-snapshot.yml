@@ -4,7 +4,7 @@ snapshots:
     fixed: |
       from flext_core import t
       class Owner:
-          def method(self, value: t.DictKV[str, int] | None = None) -> None: ...
+          def method(self, value: dict[str, int] | None = None) -> None: ...
     labels:
     - source: dict[str, int]
       style: primary
@@ -41,7 +41,7 @@ snapshots:
     fixed: |
       from flext_core import t
       def f() -> None:
-          acc: t.DictKV[str, int] = {}
+          acc: dict[str, int] = {}
     labels:
     - source: dict[str, int]
       style: primary
@@ -79,7 +79,7 @@ snapshots:
   "from flext_core import t\ndef f() -> dict[str, int]: ...\n":
     fixed: |
       from flext_core import t
-      def f() -> t.DictKV[str, int]: ...
+      def f() -> dict[str, int]: ...
     labels:
     - source: dict[str, int]
       style: primary
@@ -114,7 +114,7 @@ snapshots:
   "from flext_core import t\ndef f() -> dict[str, t.JsonValue]: ...\n":
     fixed: |
       from flext_core import t
-      def f() -> t.DictKV[str, t.JsonValue]: ...
+      def f() -> dict[str, t.JsonValue]: ...
     labels:
     - source: dict[str, t.JsonValue]
       style: primary
@@ -149,7 +149,7 @@ snapshots:
   "from flext_core import t\ndef f(x: dict[str, int]) -> None: ...\n":
     fixed: |
       from flext_core import t
-      def f(x: t.DictKV[str, int]) -> None: ...
+      def f(x: dict[str, int]) -> None: ...
     labels:
     - source: dict[str, int]
       style: primary

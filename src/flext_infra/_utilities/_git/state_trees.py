@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitStateSnapshot,
     FlextInfraUtilitiesGitWorktreeIO,
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
         cls,
         root: Path,
         commit: str,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
     ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         if not paths:
             return ()
@@ -51,8 +51,8 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     def state_index_update(
         cls,
         root: Path,
-        removed: t.SequenceOf[Path],
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        removed: Sequence[Path],
+        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
         *,
         index_file: Path | None = None,
     ) -> None:
@@ -80,8 +80,8 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
         cls,
         root: Path,
         base: str,
-        paths: t.SequenceOf[Path],
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        paths: Sequence[Path],
+        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
     ) -> Generator[Path]:
         """Select an isolated index containing only the explicit scoped effects.
 
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     def _state_tree(
         cls,
         snapshot: m.Infra.GitWorktreeStateSnapshot,
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
     ) -> str:
         """Write the captured tree through the same isolated-index owner.
 

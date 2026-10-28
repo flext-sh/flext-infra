@@ -11,7 +11,7 @@ valid:
         total: int
   - |
     class ScopeMixin(m.BaseModel):
-        projects: t.StrSequence = ()
+        projects: Sequence[str] = ()
   - |
     class ManagedModel(BaseModel):
         model_config = ConfigDict(validate_assignment=True)

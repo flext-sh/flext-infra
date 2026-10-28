@@ -10,6 +10,7 @@ import os
 import shutil
 import sys
 import time
+from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 from textwrap import indent
@@ -292,7 +293,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             )
             options["plugins"] = [
                 *u.Infra.native_tool_setting(
-                    tooling, "mypy", "plugins", TypeForm(t.StrSequence)
+                    tooling, "mypy", "plugins", TypeForm(Sequence[str])
                 ),
                 str(plugin),
             ]
@@ -426,7 +427,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     def create_python_environment(
         root: Path,
         *,
-        dependency_projects: t.SequenceOf[Path] = (),
+        dependency_projects: Sequence[Path] = (),
         session_runtime: p.Tests.SessionRuntime | None = None,
     ) -> p.Result[bool]:
         """Provision a physical fixture venv with session-built real dependencies.
@@ -618,7 +619,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         path.chmod(0o755)
 
     @staticmethod
-    def declare_codemod_rules(root: Path, rules: t.StrMapping) -> None:
+    def declare_codemod_rules(root: Path, rules: Mapping[str, str]) -> None:
         """Point ``root`` at a local ast-grep catalog holding exactly ``rules``.
 
         Each key names one rule file and each value is its YAML body.
@@ -638,11 +639,11 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
     @staticmethod
     def run_isolated_make(
-        args: t.StrSequence,
+        args: Sequence[str],
         *,
         cwd: Path,
-        env: t.StrMapping | None = None,
-        private_env: t.MappingKV[str, t.SecretStr] | None = None,
+        env: Mapping[str, str] | None = None,
+        private_env: Mapping[str, t.SecretStr] | None = None,
         capture: bool = True,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run Make without undeclared state inherited from outer pytest.

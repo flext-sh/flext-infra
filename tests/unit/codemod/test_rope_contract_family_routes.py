@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsRopeContractFamilyRoutes:
@@ -152,7 +152,7 @@ class TestsRopeContractFamilyRoutes:
 
     @staticmethod
     def test_richer_foreign_facade_binding_is_unchanged(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Inherited native function identity already permits an upstream facade."""
         workspace, path = rope_contract_consumer
@@ -190,7 +190,7 @@ class TestsRopeContractFamilyRoutes:
     @staticmethod
     @pytest.mark.parametrize("arguments", ["*args", "**kwargs"])
     def test_expanded_arguments_cannot_authorize_contract_normalization(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         arguments: str,
     ) -> None:
         """Unknown argument bindings cannot authorize val-to-value normalization."""

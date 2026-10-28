@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, p, t
+from collections.abc import Sequence
+
+from flext_infra import c, p
 
 
 class FlextInfraUtilitiesPromotedRendering:
@@ -185,11 +187,11 @@ class FlextInfraUtilitiesPromotedRendering:
         )
 
     @staticmethod
-    def _promoted_param_details(param: p.Infra.PromotedParam) -> t.Pair[str, str]:
+    def _promoted_param_details(param: p.Infra.PromotedParam) -> tuple[str, str]:
         """Render the ``default=`` and ``choices=`` details, empty when undeclared.
 
         Returns:
-            The resulting ``t.Pair[str, str]``.
+            The resulting ``tuple[str, str]``.
 
         """
         help_ = c.Infra.PromotedHelp
@@ -203,12 +205,12 @@ class FlextInfraUtilitiesPromotedRendering:
     def _promoted_section(
         title: str,
         template: str,
-        items: t.StrSequence,
-    ) -> t.StrSequence:
+        items: Sequence[str],
+    ) -> Sequence[str]:
         """Render one titled help section, empty without items.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if not items:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import sys
 from base64 import urlsafe_b64encode
+from collections.abc import Mapping, MutableSequence, Sequence
 from functools import lru_cache
 from importlib.metadata import Distribution, PackagePath
 from json import dumps
@@ -17,7 +18,7 @@ from sys import modules
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import (
     FlextInfraBindingService,
     FlextInfraWorkspaceDetector,
@@ -289,7 +290,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             The installed environment's deterministic SHA-256 identity.
 
         """
-        provenance: t.MutableSequenceOf[str] = []
+        provenance: MutableSequence[str] = []
         for distribution in u.installed_distributions():
             receipt = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
             dir_info = (
@@ -311,7 +312,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         *,
-        metadata_paths: t.StrSequence | None = None,
+        metadata_paths: Sequence[str] | None = None,
     ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
         """Elect declared mutable members with authenticated installed editables.
 
@@ -428,7 +429,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         *,
-        metadata_paths: t.StrSequence | None = None,
+        metadata_paths: Sequence[str] | None = None,
     ) -> p.Result[int]:
         """Validate installed sources against the elected native lock.
 
@@ -563,7 +564,10 @@ class FlextInfraWorkspaceEnvironmentProvenance(
 
         """
         package_name = u.Infra.project_package_name(expected_root)
-        package = u.Infra.declared_package_dir(package_name)
+        package = u.Infra.declared_package_dir(
+            package_name,
+            search_paths=(str(expected_root / c.Infra.DEFAULT_SRC_DIR),),
+        )
         if (
             package is None
             or not package.is_dir()
@@ -606,7 +610,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         *,
-        metadata_paths: t.StrSequence | None = None,
+        metadata_paths: Sequence[str] | None = None,
     ) -> p.Result[int]:
         """Prove locked artifacts and declared local members match their origins.
 
@@ -684,11 +688,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def _validate_required(
         cls,
-        members: t.MappingKV[str, m.Infra.RepositoryRef],
+        members: Mapping[str, m.Infra.RepositoryRef],
         locked: m.Infra.LockedEnvironment,
         context: m.Infra.WorkspaceRuntimeContext,
         *,
-        metadata_paths: t.StrSequence | None,
+        metadata_paths: Sequence[str] | None,
         observation: m.Infra.PythonEnvironmentObservation | None,
     ) -> p.Result[int]:
         """Prove every declared member and natively sourced lock entry.
@@ -732,7 +736,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         name: str,
         locked: m.Infra.LockedEnvironment,
         context: m.Infra.WorkspaceRuntimeContext,
-        metadata_paths: t.StrSequence | None,
+        metadata_paths: Sequence[str] | None,
     ) -> p.Result[tuple[m.Infra.LockedPackage, Distribution]]:
         """Bind one installed distribution inside the owned environment to its lock.
 

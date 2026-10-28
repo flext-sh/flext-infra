@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from flext_infra import c, m, p, s, t, u
+from flext_infra import c, m, p, s, u
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -31,7 +31,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     def retain_diagnostics(
         self,
         *exceptions: BaseException | None,
-        issues: t.SequenceOf[m.Infra.Issue] = (),
+        issues: Sequence[m.Infra.Issue] = (),
     ) -> None:
         """Collect issues and keep the first cause the invocation re-raises."""
         self.state.planning_issues.extend(issues)
@@ -105,7 +105,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         self,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
-    ) -> tuple[t.Pair[str, Path], ...]:
+    ) -> tuple[tuple[str, Path], ...]:
         """Resolve diagnostic package identities from their declared projects.
 
         Paths stay relative to the target root so the rendered Makefile is
@@ -121,7 +121,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                 is unresolved.
 
         """
-        roots: list[t.Pair[str, Path]] = []
+        roots: list[tuple[str, Path]] = []
         if target.repository.package:
             if (
                 target.project is None

@@ -12,10 +12,11 @@ from __future__ import annotations
 
 import os
 import sysconfig
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -77,30 +78,30 @@ class FlextInfraBindingService:
         *,
         consumer_root: Path,
         python: Path,
-    ) -> p.Result[t.StrMapping]:
+    ) -> p.Result[Mapping[str, str]]:
         """Read PEP 508 facts from the authenticated consumer interpreter.
 
         Returns:
-            The resulting ``p.Result[t.StrMapping]``.
+            The resulting ``p.Result[Mapping[str, str]]``.
 
         """
         environment = cls._consumer_environment(consumer_root, python)
         if environment.failure:
-            return r[t.StrMapping].from_failure(environment)
+            return r[Mapping[str, str]].from_failure(environment)
         outcome = u.Cli.run(
             (str(python), "-I", "-c", c.Infra.BINDING_MARKER_SCRIPT),
             cwd=consumer_root,
         )
         if outcome.failure:
-            return r[t.StrMapping].from_failure(outcome)
+            return r[Mapping[str, str]].from_failure(outcome)
         facts = m.Infra.DependencyMarkerEnvironment.model_validate_json(
             outcome.value.stdout,
         )
         if facts.prefix.resolve() != environment.value.resolve():
-            return r[t.StrMapping].fail(
+            return r[Mapping[str, str]].fail(
                 "binding interpreter reports a foreign environment",
             )
-        return r[t.StrMapping].ok({
+        return r[Mapping[str, str]].ok({
             key: str(value) for key, value in facts.model_dump().items()
         })
 
@@ -109,7 +110,7 @@ class FlextInfraBindingService:
         *,
         consumer_root: Path,
         python: Path,
-        packages: t.StrSequence,
+        packages: Sequence[str],
     ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
         """Observe real package resolution and metadata in the elected Python.
 

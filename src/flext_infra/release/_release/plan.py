@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.release import FlextInfraReleaseReleasePublish
 
 
@@ -179,7 +180,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         cls,
         root: Path,
         current: str,
-    ) -> p.Result[tuple[str, t.StrSequence]]:
+    ) -> p.Result[tuple[str, Sequence[str]]]:
         """Resolve the latest merged release tag and the subjects since it.
 
         Why: CI plans on the pull request's synthetic merge commit, so the
@@ -193,7 +194,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
             The resulting ``(latest_tag, subjects)`` pair.
 
         """
-        result_type = r[tuple[str, t.StrSequence]]
+        result_type = r[tuple[str, Sequence[str]]]
         tags = u.Cli.capture(
             [
                 c.Infra.GIT,

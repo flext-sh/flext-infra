@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 # The run-scoped template resolves a real toolchain through Make upg before any
 # item starts; each scenario provisions its own physical environment frozen
@@ -26,7 +26,8 @@ class TestsFlextInfraCodegenSetupSubmodules:
 
     @pytest.fixture
     def generated_project_template(
-        self: t.MappingKV[c.Infra.MakeProfile, Path],
+        self,
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
     ) -> Path:
         """Return the run's standalone consumer, resolved once by ``make upg``.
 
@@ -34,7 +35,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
             The run's standalone consumer, resolved once by ``make upg``.
 
         """
-        return self[c.Infra.MakeProfile.STANDALONE]
+        return resolved_make_templates[c.Infra.MakeProfile.STANDALONE]
 
     @staticmethod
     def _git(root: Path, *arguments: str) -> str:

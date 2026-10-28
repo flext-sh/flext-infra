@@ -563,7 +563,7 @@ class TestsFlextInfraLazyInitRuntime:
     @staticmethod
     @pytest.mark.parametrize("family", ["c", "m"])
     def test_competing_declared_publishers_keep_their_exact_diagnostic(
-        tmp_path: Path, family: Literal["c", ...]
+        tmp_path: Path, family: Literal["c", "m"]
     ) -> None:
         """Equal spellings cannot erase distinct declared implementations."""
         _, package = u.Tests.create_lazy_init_workspace(tmp_path)

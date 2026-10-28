@@ -9,11 +9,12 @@ from __future__ import annotations
 import operator
 import time
 import traceback
+from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import c, m, p, r, t, u, workspace as workspace_services
+from flext_infra import c, m, p, r, u, workspace as workspace_services
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform.scaffold_plan import (
     FlextInfraCodegenConformScaffoldPlan,
@@ -155,7 +156,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         codegen: m.Infra.CodegenConfigSpec,
         *,
         profile: str,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Authenticate one facade and use the existing source convergence owner.
 
         The current module elects the family; directory spelling never elects a
@@ -165,7 +166,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The dependency-complete selected cohort, or its planning failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         previous_snapshot = self.state.snapshot
         with (
             u.Infra.workspace_snapshot(root, (root,)) as snapshot,
@@ -204,7 +205,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         root: Path,
         module: str | None,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Result[tuple[Path, int]]:
         """Select the declared facade input and its original mode.
 
@@ -271,7 +272,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     def _render_facade(
         destination: Path,
         family: Literal["c", "t", "u", "p", "m"],
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         *,
         project: p.Infra.RopeProject,
     ) -> p.Result[str]:
@@ -379,7 +380,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                     if project_inputs.failure:
                         return result_type.from_failure(project_inputs)
-                    selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None = None
+                    selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None
                     if request.module is not None:
                         with self._source_view(
                             project, declared_files=tuple(files.values())
@@ -431,18 +432,14 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
         inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[
-        t.Pair[m.Infra.WorkspaceSpec, t.VariadicTuple[m.Infra.RepositoryRef]]
-    ]:
+    ) -> p.Result[tuple[m.Infra.WorkspaceSpec, tuple[m.Infra.RepositoryRef, ...]]]:
         """Resolve initializer participants through the existing topology owner.
 
         Returns:
             The workspace and its selected repositories, or the original failure.
 
         """
-        result_type = r[
-            t.Pair[m.Infra.WorkspaceSpec, t.VariadicTuple[m.Infra.RepositoryRef]]
-        ]
+        result_type = r[tuple[m.Infra.WorkspaceSpec, tuple[m.Infra.RepositoryRef, ...]]]
         topology = self._planning_workspace(request, root, inputs=inputs)
         if topology.failure:
             return result_type.from_failure(topology)
@@ -457,7 +454,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         *,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[
-        t.Triple[
+        tuple[
             m.Infra.WorkspaceSpec,
             m.Infra.RepositoryConformTarget,
             m.Infra.RepositoryRef,
@@ -466,12 +463,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """Load the planning workspace and its current conformance target.
 
         Returns:
-            The resulting ``p.Result[t.Triple[m.Infra.WorkspaceSpec,
+            The resulting ``p.Result[tuple[m.Infra.WorkspaceSpec,
                 m.Infra.RepositoryConformTarget, m.Infra.RepositoryRef]]``.
 
         """
         result_type = r[
-            t.Triple[
+            tuple[
                 m.Infra.WorkspaceSpec,
                 m.Infra.RepositoryConformTarget,
                 m.Infra.RepositoryRef,
@@ -526,8 +523,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     @staticmethod
     def _planning_report_evidence(
         root: Path,
-        outcomes: t.SequenceOf[m.Infra.CodegenRepositoryPlanOutcome],
-        repository_paths: t.MappingKV[str, Path],
+        outcomes: Sequence[m.Infra.CodegenRepositoryPlanOutcome],
+        repository_paths: Mapping[str, Path],
     ) -> p.Result[m.Infra.CodegenPlanningReport]:
         """Project original planning outcomes into payload-free publication evidence.
 
@@ -604,11 +601,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _repository_plan_outcomes(
         self,
-        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
+        tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
         surface: c.Infra.CodegenConformSurface,
         inputs: m.Infra.CodegenInputs,
-        snapshots: t.MappingKV[str, p.Infra.WorkspaceSnapshot],
-    ) -> t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome]:
+        snapshots: Mapping[str, p.Infra.WorkspaceSnapshot],
+    ) -> tuple[m.Infra.CodegenRepositoryPlanOutcome, ...]:
         """Plan the read-only cohort before any serial evidence publication.
 
         Returns:
@@ -658,8 +655,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     @staticmethod
     def _cohort_failure(
         failure: m.Infra.CodegenRepositoryPlanOutcome,
-        outcomes: t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
-    ) -> t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome]:
+        outcomes: tuple[m.Infra.CodegenRepositoryPlanOutcome, ...],
+    ) -> tuple[m.Infra.CodegenRepositoryPlanOutcome, ...]:
         """Fail every still-planned repository with one cohort-wide cause.
 
         Returns:
@@ -685,11 +682,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _governed_plan_outcomes(
         self,
-        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
-        snapshots: t.MappingKV[str, p.Infra.WorkspaceSnapshot],
+        tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
+        snapshots: Mapping[str, p.Infra.WorkspaceSnapshot],
         *,
         selected_pyproject: bool,
-    ) -> t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome]:
+    ) -> tuple[m.Infra.CodegenRepositoryPlanOutcome, ...]:
         """Plan lazy providers, then managed surfaces in dependency order.
 
         One process loops over the repositories: every lazy plan first, then
@@ -731,7 +728,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             and task.initial_workspace is not None
             and task.repository.name == task.initial_workspace.repository.name
         )
-        metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        metadata_files: tuple[m.Infra.CodegenFilePlan, ...] = ()
         if scaffold_tasks:
             metadata = tuple(
                 plan(
@@ -846,12 +843,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     @staticmethod
     def _planned_dependency_waves(
-        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
-        scaffold_tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
-        metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> t.Pair[
-        t.VariadicTuple[m.Infra.CodegenFilePlan],
-        t.SequenceOf[t.StrSequence],
+        tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
+        scaffold_tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
+        metadata_files: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> tuple[
+        tuple[m.Infra.CodegenFilePlan, ...],
+        Sequence[Sequence[str]],
     ]:
         """Select each declared scaffold manifest and derive dependency waves.
 
@@ -884,10 +881,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _managed_plan_outcomes(
         self,
-        waves: t.SequenceOf[t.VariadicTuple[m.Infra.CodegenRepositoryPlanTask]],
-        providers: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        snapshots: t.MappingKV[str, p.Infra.WorkspaceSnapshot],
-    ) -> t.MappingKV[str, m.Infra.CodegenRepositoryPlanOutcome]:
+        waves: Sequence[tuple[m.Infra.CodegenRepositoryPlanTask, ...]],
+        providers: tuple[m.Infra.CodegenFilePlan, ...],
+        snapshots: Mapping[str, p.Infra.WorkspaceSnapshot],
+    ) -> Mapping[str, m.Infra.CodegenRepositoryPlanOutcome]:
         """Plan managed surfaces in dependency order over the staged plans.
 
         Each repository plans in the one loop over the plans staged by the
@@ -899,7 +896,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The managed outcome per repository.
 
         """
-        planned: t.MutableMappingKV[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
+        planned: MutableMapping[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
         staged = {file.path: file for file in providers}
         for wave in waves:
             for task in wave:
@@ -927,8 +924,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     @staticmethod
     def _verify_root_manifest(
         manifest: m.Infra.CodegenFilePlan,
-        outcomes: t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
-        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
+        outcomes: tuple[m.Infra.CodegenRepositoryPlanOutcome, ...],
+        tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
     ) -> None:
         """Prove the planned root manifest kept one payload and a stable graph.
 
@@ -976,16 +973,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     def _gathered_repository_plans(
         self,
         root: Path,
-        planning: t.Triple[
+        planning: tuple[
             m.Infra.WorkspaceSpec,
             m.Infra.RepositoryConformTarget,
             m.Infra.RepositoryRef,
         ],
-        selected: t.VariadicTuple[m.Infra.RepositoryRef],
+        selected: tuple[m.Infra.RepositoryRef, ...],
         surface: c.Infra.CodegenConformSurface,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[
-        t.Triple[
+        tuple[
             list[m.Infra.CodegenFilePlan],
             list[m.Infra.UvEnvironmentPlan],
             list[m.Infra.Issue],
@@ -1002,13 +999,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             inputs: Loaded codegen inputs of the request root.
 
         Returns:
-            The resulting ``p.Result[t.Pair[list[m.Infra.CodegenFilePlan],
+            The resulting ``p.Result[tuple[list[m.Infra.CodegenFilePlan],
                 list[m.Infra.UvEnvironmentPlan]]]``.
 
         """
         current_target = planning[1]
         result_type = r[
-            t.Triple[
+            tuple[
                 list[m.Infra.CodegenFilePlan],
                 list[m.Infra.UvEnvironmentPlan],
                 list[m.Infra.Issue],
@@ -1090,10 +1087,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     def _reported_repository_plans(
         self,
         root: Path,
-        selected: t.VariadicTuple[m.Infra.RepositoryRef],
-        outcomes: t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
+        selected: tuple[m.Infra.RepositoryRef, ...],
+        outcomes: tuple[m.Infra.CodegenRepositoryPlanOutcome, ...],
     ) -> p.Result[
-        t.Triple[
+        tuple[
             list[m.Infra.CodegenFilePlan],
             list[m.Infra.UvEnvironmentPlan],
             list[m.Infra.Issue],
@@ -1106,7 +1103,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[
-            t.Triple[
+            tuple[
                 list[m.Infra.CodegenFilePlan],
                 list[m.Infra.UvEnvironmentPlan],
                 list[m.Infra.Issue],
@@ -1242,7 +1239,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
         if task.surface is c.Infra.CodegenConformSurface.LAZY_INIT:
             planned = (
-                r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+                r[Sequence[m.Infra.CodegenFilePlan]].ok(())
                 if task.initial_workspace is not None
                 and task.initial_workspace.project is not None
                 and repository.name == task.initial_workspace.repository.name
@@ -1391,7 +1388,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         *,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[
-        t.Triple[
+        tuple[
             Path,
             m.Infra.RepositoryConformTarget,
             m.Infra.WorkspaceSpec,
@@ -1400,12 +1397,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """Resolve one repository's checkout root, target, and local workspace.
 
         Returns:
-            The resulting ``p.Result[t.Triple[Path,
+            The resulting ``p.Result[tuple[Path,
                 m.Infra.RepositoryConformTarget, m.Infra.WorkspaceSpec]]``.
 
         """
         result_type = r[
-            t.Triple[
+            tuple[
                 Path,
                 m.Infra.RepositoryConformTarget,
                 m.Infra.WorkspaceSpec,
@@ -1520,7 +1517,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         inputs: m.Infra.CodegenInputs,
         *,
         scaffold: bool,
-    ) -> p.Result[t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]]:
+    ) -> p.Result[tuple[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]]:
         """Plan governed files and retirements using the target's elected config.
 
         Args:
@@ -1532,12 +1529,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 repository planning its initial scaffold.
 
         Returns:
-            The resulting ``p.Result[t.Pair[list[m.Infra.CodegenFilePlan],
+            The resulting ``p.Result[tuple[list[m.Infra.CodegenFilePlan],
                 list[m.Infra.CodegenFilePlan]]]``.
 
         """
         result_type = r[
-            t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]
+            tuple[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]
         ]
         config_spec = inputs.spec
         if scaffold:
@@ -1585,20 +1582,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         request: p.Infra.CodegenGenerateRequest,
         workspace: m.Infra.WorkspaceSpec,
         current_repository: m.Infra.RepositoryRef,
-    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
+    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
         """Resolve self/subprojects/all from the local read-only topology.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]``.
+            The resulting ``p.Result[tuple[m.Infra.RepositoryRef, ...]]``.
 
         """
         scope = request.scope
-        selected: t.VariadicTuple[m.Infra.RepositoryRef]
+        selected: tuple[m.Infra.RepositoryRef, ...]
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
         elif scope is c.Infra.CodegenConformScope.DECLARED:
             if not workspace.subprojects:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "subprojects scope requires local .gitmodules entries",
                 )
             selected = tuple(workspace.subprojects)
@@ -1611,10 +1608,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             and not repository.read_only
         )
         if not mutable:
-            return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                 "selected repositories do not permit code generation",
             )
-        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(mutable)
+        return r[tuple[m.Infra.RepositoryRef, ...]].ok(mutable)
 
     @staticmethod
     def _repository_root(

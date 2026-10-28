@@ -12,7 +12,7 @@ valid:
 - |
   class Scope(m.Value):
       settings: Annotated[
-          t.MappingKV[str, t.Port[p.Tests.NativeMatchValue]] | None,
+          Mapping[str, t.Port[p.Tests.NativeMatchValue]] | None,
           m.Field(description="Initial configuration values."),
       ] = None
 - |
@@ -38,7 +38,7 @@ valid:
       validator: Callable[[Path], p.Result[bool]] | None = None
 - |
   class Holder(m.Value):
-      middleware: t.SequenceOf[type[p.Middleware]] = ()
+      middleware: Sequence[type[p.Middleware]] = ()
 - |
   class NativeProject(Project):
       fscommands: p.Infra.RopeProjectFiles
@@ -56,7 +56,7 @@ invalid:
 - |
   class Scope(m.Value):
       settings: Annotated[
-          t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+          Mapping[str, p.Tests.NativeMatchValue] | None,
           m.Field(description="Initial configuration values."),
       ] = None
 - |
@@ -64,7 +64,7 @@ invalid:
       writer: p.Writer
 - |
   class Runner(m.Value):
-      writers: t.SequenceOf[p.Writer] = m.Field(description="Writers.")
+      writers: Sequence[p.Writer] = m.Field(description="Writers.")
 - |
   class Runner(m.Value):
       sink: p.Sink[str] | None = None

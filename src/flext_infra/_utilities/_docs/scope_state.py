@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopePaths
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
@@ -23,6 +23,8 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
     @staticmethod
     def _project_state(
         project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.ProjectPyprojectState:
         """Return project state bound to the current file bytes.
 
@@ -41,6 +43,15 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         """
         root = FlextInfraUtilitiesDocsScopeState.absolute_lexical(project_root)
         pyproject_path = root / c.PYPROJECT_FILENAME
+        if source_project is not None:
+            source_project.source_state(pyproject_path, required=False)
+            return FlextInfraUtilitiesDocsScopeState._state_from_content(
+                root,
+                pyproject_path,
+                source_project.source_bytes(pyproject_path)
+                if source_project.source_query(pyproject_path, "isfile")
+                else None,
+            )
         snapshot = u.Cli.atomic_read_binary_file_state(pyproject_path, required=False)
         if snapshot.failure:
             raise ValueError(
@@ -133,6 +144,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         project_root: Path,
         *,
         metadata_projection: m.Infra.CodegenFilePlan | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.ProjectPyprojectState:
         """Return the shared state of the live or projected pyproject bytes.
 
@@ -143,8 +155,13 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
             ValueError: If the projected view targets another pyproject.
 
         """
+        if metadata_projection is not None and source_project is not None:
+            message = "project metadata requires one explicit source authority"
+            raise ValueError(message)
         if metadata_projection is None:
-            return FlextInfraUtilitiesDocsScopeState._project_state(project_root)
+            return FlextInfraUtilitiesDocsScopeState._project_state(
+                project_root, source_project=source_project
+            )
         path = project_root / c.PYPROJECT_FILENAME
         if metadata_projection.path != path:
             msg = f"projected metadata targets another pyproject: {path}"

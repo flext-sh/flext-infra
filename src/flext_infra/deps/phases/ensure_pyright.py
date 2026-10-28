@@ -6,10 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from flext_core import u
 
 from flext_infra import c, m, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
@@ -59,7 +58,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         env_dir: str,
         root: str,
-        extra_paths: t.StrSequence,
+        extra_paths: Sequence[str],
         rules: m.Infra.PyrightConfig.PathRulesConfig,
     ) -> m.Infra.PyrightConfig.ExecutionEnvironment:
         """Env entry.
@@ -84,12 +83,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         source_path: str,
         project_root: str,
         source_dir: str,
-        member_src_paths: t.SequenceOf[str] = (),
-    ) -> t.StrSequence:
+        member_src_paths: Sequence[str] = (),
+    ) -> Sequence[str]:
         """Resolve owned source packages before installed distributions.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if env_dir == source_dir:
@@ -103,15 +102,15 @@ class FlextInfraEnsurePyrightConfigPhase:
     def _envs_for_dirs(
         self,
         *,
-        env_dirs: t.StrSequence,
+        env_dirs: Sequence[str],
         source_path: str,
         project_root: str,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Envs for dirs.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]``.
+            The resulting ``Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]``.
 
         """
         environments = [
@@ -151,19 +150,17 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_dir: Path | None,
         root_prefix: Path | None,
         source_path: str,
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Resolve configured overrides only when their project path exists.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]``.
+            The resulting ``Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]``.
 
         """
         if project_dir is None:
             return ()
         rules = self._tool_config.tools.pyright.path_rules
-        environments: t.MutableSequenceOf[
-            m.Infra.PyrightConfig.ExecutionEnvironment
-        ] = []
+        environments: MutableSequence[m.Infra.PyrightConfig.ExecutionEnvironment] = []
         for override in rules.diagnostic_path_overrides:
             if not (project_dir / override.root).is_dir():
                 continue
@@ -193,7 +190,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     @staticmethod
     def _workspace_member_roots(
         repository_root: Path,
-    ) -> t.SequenceOf[t.Pair[str, t.StrSequence]]:
+    ) -> Sequence[tuple[str, Sequence[str]]]:
         """Discover each declared member's owned Python roots independently.
 
         Returns:
@@ -218,7 +215,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _workspace_member_envs(
         self, repository_root: Path
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Share one analyzer while keeping member package resolution local.
 
         Returns:
@@ -269,8 +266,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         is_root: bool,
         repository_root: Path | None,
         project_dir: Path | None,
-        project_roots: t.StrSequence,
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        project_roots: Sequence[str],
+    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Return the expected execution environments.
 
         Returns:
@@ -343,12 +340,12 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def environment_payloads_for_dirs(
         self,
-        env_dirs: t.StrSequence,
-    ) -> t.SequenceOf[t.JsonDict]:
+        env_dirs: Sequence[str],
+    ) -> Sequence[t.JsonDict]:
         """Render configured environments for Python roots declared before writes.
 
         Returns:
-            The resulting ``t.SequenceOf[t.JsonDict]``.
+            The resulting ``Sequence[t.JsonDict]``.
 
         """
         rules = self._tool_config.tools.pyright.path_rules
@@ -360,11 +357,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         return tuple(self._environment_payload(item) for item in environments)
 
-    def _declared_environment_dirs(self, env_dirs: t.StrSequence) -> t.StrSequence:
+    def _declared_environment_dirs(self, env_dirs: Sequence[str]) -> Sequence[str]:
         """Apply canonical Python discovery exclusions to pre-write declarations.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         # Declared and on-disk roots must
@@ -391,8 +388,8 @@ class FlextInfraEnsurePyrightConfigPhase:
     def _expected_excludes(
         self,
         project_root: Path | None,
-        analysis_exclusions: t.StrSequence | None,
-    ) -> t.StrSequence:
+        analysis_exclusions: Sequence[str] | None,
+    ) -> Sequence[str]:
         """Return the complete config-owned Pyright exclude list.
 
         Returns:
@@ -400,7 +397,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         """
         rules = self._tool_config.tools.pyright.path_rules
-        workspace_excludes: t.StrSequence = ()
+        workspace_excludes: Sequence[str] = ()
         if analysis_exclusions is None and project_root is not None:
             workspace_excludes = tuple(
                 path.as_posix()
@@ -416,7 +413,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             *provided_exclusions,
         })
 
-    def _expected_ignores(self) -> t.StrSequence:
+    def _expected_ignores(self) -> Sequence[str]:
         """Ignore the configured diagnostic globs, each once.
 
         Returns:
@@ -434,11 +431,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         context: m.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Resolve declared directories and discovered Python include targets.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         generated_roots = (
@@ -485,7 +482,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         context: m.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
-        analysis_exclusions: t.StrSequence | None,
+        analysis_exclusions: Sequence[str] | None,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build the managed pyright phase for one project context.
 
@@ -525,7 +522,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             ),
         )
         toml = m.Infra.DepsToml
-        operations: t.MutableSequenceOf[
+        operations: MutableSequence[
             m.Infra.DepsToml.SetOp | m.Infra.DepsToml.ListOp | m.Infra.DepsToml.RemoveOp
         ] = [
             toml.ListOp(key=c.Infra.EXCLUDE, values=expected_excludes)
@@ -586,12 +583,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         context: m.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None = None,
-        analysis_exclusions: t.StrSequence | None = None,
-    ) -> t.StrSequence:
+        analysis_exclusions: Sequence[str] | None = None,
+    ) -> Sequence[str]:
         """Apply managed pyright settings directly to one normalized payload.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             ValueError: When the pyright owner produces no native table.

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, overload
 
@@ -25,7 +26,7 @@ class FlextInfraUtilitiesRopeCorePyModule:
 
     @staticmethod
     def find_identifier_offset_in_lines(
-        lines: t.SequenceOf[str],
+        lines: Sequence[str],
         *,
         line: int,
         symbol: str,

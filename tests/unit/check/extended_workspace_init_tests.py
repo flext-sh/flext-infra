@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,8 +17,6 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import t
-
 
 class TestsFlextInfraWorkspaceInit:
     """Declarative public-contract tests for workspace checker setup."""
@@ -27,7 +26,7 @@ class TestsFlextInfraWorkspaceInit:
         ("raw", "expected"),
         [("--fix --unsafe-fixes", ["--fix", "--unsafe-fixes"]), (None, []), ("", [])],
     )
-    def test_parse_tool_args(raw: str | None, expected: t.StrSequence) -> None:
+    def test_parse_tool_args(raw: str | None, expected: Sequence[str]) -> None:
         """Test parse tool args."""
         tm.that(FlextInfraWorkspaceChecker.parse_tool_args(raw), eq=list(expected))
 

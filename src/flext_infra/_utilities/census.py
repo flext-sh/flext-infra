@@ -9,7 +9,12 @@ from __future__ import annotations
 import ast
 import shutil
 from collections import defaultdict
-from collections.abc import Callable as _CensusCallable, MutableMapping
+from collections.abc import (
+    Callable as _CensusCallable,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from pathlib import Path
 from typing import ClassVar
 
@@ -67,11 +72,11 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         source_cache: MutableMapping[Path, str] | None = None,
-    ) -> t.MappingKV[Path, tuple[t.IntPair, ...]] | None:
+    ) -> Mapping[Path, tuple[t.IntPair, ...]] | None:
         """Plan safe line-range removals for simple top-level removal candidates.
 
         Returns:
-            The resulting ``t.MappingKV[Path, tuple[t.IntPair, ...]] | None``.
+            The resulting ``Mapping[Path, tuple[t.IntPair, ...]] | None``.
 
         """
         if candidate.scope_path != candidate.object_name:
@@ -251,7 +256,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         source_cache: MutableMapping[Path, str] | None = None,
-    ) -> p.Result[t.MappingKV[Path, str]]:
+    ) -> p.Result[Mapping[Path, str]]:
         """Return projected sources or a loud failure for broken planning.
 
         Supported top-level class/function candidates must either produce
@@ -268,8 +273,8 @@ class FlextInfraUtilitiesRefactorCensus:
             source_cache=source_cache,
         )
         if updates is not None:
-            return r[t.MappingKV[Path, str]].ok(updates)
-        return r[t.MappingKV[Path, str]].fail(
+            return r[Mapping[Path, str]].ok(updates)
+        return r[Mapping[Path, str]].fail(
             "simple removal planning failed for "
             f"{candidate.file_path}:{candidate.line} {candidate.object_name}",
         )
@@ -280,11 +285,11 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         source_cache: MutableMapping[Path, str] | None = None,
-    ) -> t.MappingKV[Path, str] | None:
+    ) -> Mapping[Path, str] | None:
         """Build updated sources for a simple removal candidate without writing.
 
         Returns:
-            The resulting ``t.MappingKV[Path, str] | None``.
+            The resulting ``Mapping[Path, str] | None``.
 
         """
         edit_plan = FlextInfraUtilitiesRefactorCensus.plan_simple_removal_edits(
@@ -363,8 +368,8 @@ class FlextInfraUtilitiesRefactorCensus:
         file_path: Path,
         *,
         target_name: str,
-        removed_ranges: t.SequenceOf[t.IntPair],
-    ) -> t.StrSequence:
+        removed_ranges: Sequence[t.IntPair],
+    ) -> Sequence[str]:
         """Return simple alias names removed together with ``target_name``.
 
         Returns:
@@ -428,7 +433,7 @@ class FlextInfraUtilitiesRefactorCensus:
         return line if origin.path == resource.path else None
 
     @staticmethod
-    def _line_in_ranges(line: int, *, removed_ranges: t.SequenceOf[t.IntPair]) -> bool:
+    def _line_in_ranges(line: int, *, removed_ranges: Sequence[t.IntPair]) -> bool:
         """Return whether ``line`` falls inside any removed range.
 
         Returns:
@@ -443,7 +448,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         source_cache: MutableMapping[Path, str] | None = None,
-    ) -> t.MappingKV[Path, str] | None:
+    ) -> Mapping[Path, str] | None:
         """Drop ``candidate`` from class-base lists in facade modules.
 
         Returns an empty mapping when no facade references the candidate, a
@@ -452,7 +457,7 @@ class FlextInfraUtilitiesRefactorCensus:
         (unsafe — candidate must be handled manually).
 
         Returns:
-            The resulting ``t.MappingKV[Path, str] | None``.
+            The resulting ``Mapping[Path, str] | None``.
 
         """
         target_name = candidate.object_name
@@ -516,7 +521,7 @@ class FlextInfraUtilitiesRefactorCensus:
         return updates
 
     @staticmethod
-    def _strip_class_base(source: str, base_name: str) -> t.Pair[str, bool]:
+    def _strip_class_base(source: str, base_name: str) -> tuple[str, bool]:
         """Return (new_source, disqualified) after removing ``base_name`` from bases.
 
         Handles both single-line and multi-line class declarations. The header
@@ -569,11 +574,11 @@ class FlextInfraUtilitiesRefactorCensus:
     def _rewrite_class_header_bases(
         header: str,
         base_name: str,
-    ) -> t.Triple[str, bool, bool]:
+    ) -> tuple[str, bool, bool]:
         """Rewrite one class header block after removing ``base_name`` from bases.
 
         Returns:
-            The resulting ``t.Triple[str, bool, bool]``.
+            The resulting ``tuple[str, bool, bool]``.
 
         """
         stripped_header = header.rstrip("\n")
@@ -690,7 +695,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         candidate: m.Infra.RemovalCandidate,
-        file_paths: t.SequenceOf[Path],
+        file_paths: Sequence[Path],
     ) -> None:
         """Run one centralized post-write Rope cleanup for touched files.
 
@@ -720,7 +725,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         source_cache: MutableMapping[Path, str] | None = None,
-    ) -> p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]]]:
+    ) -> p.Result[tuple[Mapping[Path, str], _CensusCallable[[], None]]]:
         """Plan one simple removal and bind its post-write Rope cleanup.
 
         A candidate outside the simple-removal contract yields a typed
@@ -730,11 +735,11 @@ class FlextInfraUtilitiesRefactorCensus:
         outcome so both report the same result from one owner.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[],
+            The resulting ``p.Result[tuple[Mapping[Path, str], _CensusCallable[[],
                 None]]]``.
 
         """
-        planned = r[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]]]
+        planned = r[tuple[Mapping[Path, str], _CensusCallable[[], None]]]
         if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
             candidate,
         ):
@@ -824,7 +829,7 @@ class FlextInfraUtilitiesRefactorCensus:
         workspace: Path,
         candidate: m.Infra.RemovalCandidate,
         *,
-        gates: t.StrSequence,
+        gates: Sequence[str],
         post_apply_hook: _CensusCallable[[Path], None] | None = None,
     ) -> p.Result[bool]:
         """Apply one simple removal candidate permanently, gates-validated.
@@ -877,7 +882,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
 
     @staticmethod
-    def apply_line_ranges(source: str, ranges: t.SequenceOf[t.IntPair]) -> str:
+    def apply_line_ranges(source: str, ranges: Sequence[t.IntPair]) -> str:
         """Remove one or more 1-based inclusive line ranges from Python source.
 
         Returns:
@@ -944,7 +949,7 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def merge_line_ranges(
-        ranges: t.SequenceOf[t.IntPair],
+        ranges: Sequence[t.IntPair],
     ) -> tuple[t.IntPair, ...]:
         """Merge overlapping or adjacent 1-based inclusive line ranges.
 

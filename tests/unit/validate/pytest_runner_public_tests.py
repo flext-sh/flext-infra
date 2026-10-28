@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import pstats
 import sqlite3
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPytestRunner:
@@ -154,7 +155,7 @@ class TestsFlextInfraPytestRunner:
         )
         pytest_policy = config.Infra.tooling.tools.pytest
 
-        def marker_expression(command: t.StrSequence) -> str:
+        def marker_expression(command: Sequence[str]) -> str:
             return command[command.index("-m", 3) + 1]
 
         def deselected(expression: str) -> frozenset[str]:
@@ -234,7 +235,7 @@ class TestsFlextInfraPytestRunner:
             / config.Infra.codegen.make.testmon_cache.reports_directory
         )
         suite_command = runner.build_command(report)
-        names: t.MutableSequenceOf[str] = []
+        names: MutableSequence[str] = []
         for command in (
             runner.build_selection_command(
                 report_log=report / "selection.jsonl",

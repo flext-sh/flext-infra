@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from time import monotonic
 from typing import ClassVar
@@ -39,7 +40,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
     # of a pass throttles against one interval and the aggregate rows carry
     # running totals instead of per-symbol detail.
     _scan_due = 0.0
-    _scan_consumers: ClassVar[t.MutableSetOf[Path]] = set()
+    _scan_consumers: ClassVar[t.Infra.MutableSetOf[Path]] = set()
     _scan_lookups = 0
     _scan_files = 0
     _scan_providers = 0
@@ -102,7 +103,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         module: str,
         name: str,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Return the nearest package that lazily publishes one leaf object.
 
@@ -133,7 +134,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         module: str,
         name: str,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Discover a unique source declaration published by its own package.
 
@@ -147,7 +148,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         directory = cls.import_package_dir(scope.project_root, module, sources=sources)
         if directory is None:
             return None
-        candidates: t.MutableMappingKV[str, str] = {}
+        candidates: MutableMapping[str, str] = {}
         cls._scan_lookups += 1
         cls._scan_consumers.add(scope.file_path)
         for source_path in sorted(
@@ -226,7 +227,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         scope: m.Infra.ImportLawScope,
         identities: t.StrTuple,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> frozenset[str]:
         """Find explicit source ancestors of the published declarations.
 
@@ -298,7 +299,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         name: str,
         seen: frozenset[str],
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> str:
         """Follow explicit reexports to their source, rejecting cyclic bindings.
 
@@ -368,7 +369,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         qualified: str,
         *,
         binding: p.Infra.RopePyName | None = None,
-    ) -> t.Triple[str, str, str] | None:
+    ) -> tuple[str, str, str] | None:
         """Prove a model helper's native static identity and lazy publication.
 
         Returns:
@@ -438,11 +439,9 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        resources: t.SequenceOf[p.Infra.RopeResource],
-        sources: t.MappingKV[Path, ...],
-    ) -> t.SequenceOf[
-        t.Pair[p.Infra.RopeContractRule, t.SequenceOf[p.Infra.RopeResource]]
-    ]:
+        resources: Sequence[p.Infra.RopeResource],
+        sources: Mapping[Path, str],
+    ) -> Sequence[tuple[p.Infra.RopeContractRule, Sequence[p.Infra.RopeResource]]]:
         """Bind a family's new calls through its declared helper, never its facade.
 
         Returns:
@@ -474,7 +473,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         resource: p.Infra.RopeResource,
-        sources: t.MappingKV[Path, ...],
+        sources: Mapping[Path, str],
     ) -> p.Infra.RopeContractRule:
         """Apply existing family publication law to one consumer's native goals.
 
@@ -524,8 +523,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
-        sources: t.MappingKV[Path, ...],
+        frame: tuple[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        sources: Mapping[Path, str],
     ) -> p.Infra.RopeContractRule:
         """Rewrite eligible bindings without changing unrelated imports.
 
@@ -561,8 +560,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         identity: str,
-        frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
-        sources: t.MappingKV[Path, ...],
+        frame: tuple[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        sources: Mapping[Path, str],
     ) -> tuple[str, str, str | None, str] | None:
         """Resolve one published family binding into its consumer spelling.
 

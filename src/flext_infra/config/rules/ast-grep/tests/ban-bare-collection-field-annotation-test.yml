@@ -2,9 +2,9 @@ id: ban-bare-collection-field-annotation
 valid:
   - |
     class Order(m.FrozenModel):
-        items: t.SequenceOf[str]
+        items: Sequence[str]
         tags: frozenset[str] = frozenset()
-        names: Annotated[t.StrSequence, m.Field(default_factory=list)]
+        names: Annotated[Sequence[str], m.Field(default_factory=list)]
   - |
     class Order(m.FrozenModel):
         _items: list[str] = []

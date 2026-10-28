@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -249,7 +250,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
     def _quality_receipt(
         member: Path,
         reports: Path,
-        gates: t.StrSequence,
+        gates: Sequence[str],
     ) -> tuple[Path, m.Infra.ProjectResult]:
         """Publish a real checker invocation and return its exact native receipt.
 

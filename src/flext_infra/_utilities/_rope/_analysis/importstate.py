@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util as _importlib_util
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -27,7 +27,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     """Rope semantic import state, class discovery, and project-backed probes."""
 
     _SEMANTIC_STATE_CACHE: ClassVar[
-        MutableMapping[t.Triple[str, str, str], m.Infra.ModuleSemanticState]
+        MutableMapping[tuple[str, str, str], m.Infra.ModuleSemanticState]
     ] = {}
 
     @staticmethod
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         *,
         pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeFile,
-    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+    ) -> Sequence[m.Infra.ClassInfo]:
         """Return local class infos for one resolved Rope module.
 
         Returns:
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             ValueError: If Rope's superclass lineage is incomplete or cyclic.
 
         """
-        class_infos: t.MutableSequenceOf[m.Infra.ClassInfo] = []
+        class_infos: MutableSequence[m.Infra.ClassInfo] = []
         tree = pymodule.get_ast()
         if not isinstance(tree, ast.Module):
             msg = "Rope class discovery requires a module AST"
@@ -233,7 +233,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             # Non-class bases (functions, unknown objects) stay unresolved on
             # purpose: the declared-versus-resolved count comparison below
             # refuses the lineage instead of raising mid-comprehension.
-            bases: t.StrSequence = tuple(
+            bases: Sequence[str] = tuple(
                 FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(superclass)
                 for superclass in obj.get_superclasses()
                 if FlextInfraUtilitiesRopeRuntime.instance_object(superclass)
@@ -306,7 +306,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         current_package: str,
-    ) -> t.Pair[MutableMapping[str, str], MutableMapping[str, str]]:
+    ) -> tuple[MutableMapping[str, str], MutableMapping[str, str]]:
         """Return declared and semantic import maps for one module.
 
         Returns:
@@ -320,7 +320,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             resource,
         )
         raw_imports = getattr(module_imports, "imports", ())
-        import_stmts: t.VariadicTuple[t.Infra.RopeImportStatement] = tuple(raw_imports)
+        import_stmts: tuple[t.Infra.RopeImportStatement, ...] = tuple(raw_imports)
         for import_stmt in import_stmts:
             FlextInfraUtilitiesRopeAnalysisImportState._merge_import_statement(
                 current_package=current_package,
@@ -462,7 +462,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def resolve_semantic_module_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Return {local_name: fully_qualified_name} for all imports in a module.
 
         Returns:
@@ -484,7 +484,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def resolve_declared_module_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Return {local_name: declared import path} without resolving re-exports.
 
         Returns:
@@ -506,7 +506,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def resolve_module_classes(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return names of all classes defined in a module.
 
         Returns:
@@ -528,11 +528,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> t.StrPair | None:
+    ) -> tuple[str, str] | None:
         """Resolve declared or missing local aliases through actual inheritance.
 
         Returns:
-            The resulting ``t.StrPair | None``.
+            The resulting ``tuple[str, str] | None``.
 
         """
         return cls._facade_owner(rope_project, resource, infer_missing=True)
@@ -542,7 +542,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> t.StrPair | None:
+    ) -> tuple[str, str] | None:
         """Return only an existing class alias suitable for publication.
 
         Returns:
@@ -558,7 +558,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         resource: t.Infra.RopeFile,
         *,
         infer_missing: bool,
-    ) -> t.StrPair | None:
+    ) -> tuple[str, str] | None:
         """Resolve a published local class's alias from declarations and its MRO.
 
         The spelling of a module or class supplies no ownership information.
@@ -566,7 +566,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         determine the missing declaration that the repair must publish locally.
 
         Returns:
-            The resulting ``t.StrPair | None``.
+            The resulting ``tuple[str, str] | None``.
 
         Raises:
             ValueError: If module has no declaration scope; or if ambiguous facade
@@ -583,7 +583,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             for name in exports
             if name.islower() and not name.startswith("_") and name not in attributes
         )
-        owners: set[t.Pair[str, str]] = set()
+        owners: set[tuple[str, str]] = set()
         scope = module.get_scope()
         for child in scope.get_scopes():
             if child.get_kind() != "Class":
@@ -651,14 +651,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         resource: t.Infra.RopeResource,
         *,
         class_name: str,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Prove nested namespace inheritance by Rope scope and attribute identity.
 
         Only source-defined ``PyClass`` bases declare lexical nested scopes.
         Rope's builtin ``AbstractClass`` objects have attributes, not scopes.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             ValueError: If cyclic facade namespace inheritance at.
@@ -729,14 +729,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def resolve_class_info(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+    ) -> Sequence[m.Infra.ClassInfo]:
         """Return ClassInfo (name, line, bases) for all classes in a module.
 
         Returns:
             ClassInfo (name, line, bases) for all classes in a module.
 
         """
-        class_infos: t.SequenceOf[m.Infra.ClassInfo] = (
+        class_infos: Sequence[m.Infra.ClassInfo] = (
             FlextInfraUtilitiesRopeAnalysisImportState.resolve_module_semantic_state(
                 rope_project,
                 resource,
@@ -749,7 +749,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         class_name: str,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return base class names for a given class in a module.
 
         Returns:
@@ -771,7 +771,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         class_name: str,
         *,
         include_private: bool = False,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Return the native callable role for each selected class method.
 
         Returns:
@@ -791,7 +791,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         class_name: str,
         include_private: bool,
         pymodule: t.Infra.RopeSemanticModule,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Read method roles from native functions in one resolved Rope module.
 
         Returns:
@@ -818,11 +818,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def _open_pymodule(
         project_root: Path,
         file_path: Path,
-    ) -> t.Pair[t.Infra.RopePyModule, t.Infra.RopeProject] | None:
+    ) -> tuple[t.Infra.RopePyModule, t.Infra.RopeProject] | None:
         """Open a rope project and resolve ``file_path`` to a ``PyModule``.
 
         Returns:
-            The resulting ``t.Pair[t.Infra.RopePyModule, t.Infra.RopeProject] | None``.
+            The resulting ``tuple[t.Infra.RopePyModule, t.Infra.RopeProject] | None``.
 
         """
         rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project_root)
@@ -885,7 +885,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         project_root: Path,
         file_path: Path,
         package_name: str,
-        exports: t.StrSequence,
+        exports: Sequence[str],
     ) -> MutableMapping[str, str]:
         """Map exports → defining module via rope's import table.
 

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from contextlib import AbstractContextManager
 from pathlib import Path
 from types import FunctionType
@@ -78,14 +78,14 @@ class FlextInfraProtocolsBase(Protocol):
 
         def normalized_codegen_changes(
             self,
-            plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-        ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]: ...
+            plans: Sequence[m.Infra.CodegenFilePlan],
+        ) -> p.Result[tuple[m.Cli.FileChange, ...]]: ...
 
         def publish_codegen_plans(
             self,
             root: Path,
-            plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-        ) -> p.Result[t.VariadicTuple[Path]]: ...
+            plans: Sequence[m.Infra.CodegenFilePlan],
+        ) -> p.Result[tuple[Path, ...]]: ...
 
     @runtime_checkable
     class CodegenConformPorts(Protocol):
@@ -105,7 +105,7 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def candidate_validator(
             self,
-        ) -> Callable[[Path, Path, t.VariadicTuple[Path]], p.Result[bool]]: ...
+        ) -> Callable[[Path, Path, tuple[Path, ...]], p.Result[bool]]: ...
 
         @property
         def imports_planner(
@@ -158,12 +158,12 @@ class FlextInfraProtocolsBase(Protocol):
         """Public plan membership, separate from the internal publication schema."""
 
         @property
-        def files(self) -> t.SequenceOf[FlextInfraProtocolsBase.CodegenFileOutcome]: ...
+        def files(self) -> Sequence[FlextInfraProtocolsBase.CodegenFileOutcome]: ...
 
         @property
         def repositories(
             self,
-        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]: ...
+        ) -> Sequence[FlextInfraProtocolsBase.RepositoryRef]: ...
 
     @runtime_checkable
     class CodegenResult(Protocol):
@@ -173,10 +173,10 @@ class FlextInfraProtocolsBase(Protocol):
         def plan(self) -> FlextInfraProtocolsBase.CodegenPlanOutcome: ...
 
         @property
-        def written_files(self) -> t.VariadicTuple[Path]: ...
+        def written_files(self) -> tuple[Path, ...]: ...
 
         @property
-        def errors(self) -> t.VariadicTuple[str]: ...
+        def errors(self) -> tuple[str, ...]: ...
 
     @runtime_checkable
     class CodegenExecutionContext(Protocol):
@@ -235,12 +235,12 @@ class FlextInfraProtocolsBase(Protocol):
         def __call__(
             self,
             project_root: Path,
-            files: t.SequenceOf[Path],
+            files: Sequence[Path],
             *,
-            sources: t.MappingKV[Path, str],
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+            sources: Mapping[Path, str],
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
             """Return source-preserving import plans without publishing them."""
             ...
 
@@ -252,10 +252,10 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             root: Path,
             *,
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
-            selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+            selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]: ...
 
     @runtime_checkable
     class SourceViewProvider(Protocol):
@@ -270,11 +270,11 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             root: Path,
             *,
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         ) -> AbstractContextManager[
-            t.Pair[
+            tuple[
                 FlextInfraProtocolsRopeRuntime.RopeProject,
-                t.MappingKV[Path, str],
+                Mapping[Path, str],
             ]
         ]: ...
 
@@ -286,14 +286,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             root: Path,
             *,
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
-            planners: t.Pair[
+            planners: tuple[
                 FlextInfraProtocolsBase.SourceInitializerPlanner,
                 FlextInfraProtocolsBase.SourceViewProvider,
             ],
-            selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+            selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]: ...
 
     @runtime_checkable
     class SourceImportNormalizer(Protocol):
@@ -305,8 +305,8 @@ class FlextInfraProtocolsBase(Protocol):
             project_root: Path,
             file_path: Path,
             source: str,
-            import_graph: t.MappingKV[str, frozenset[str]],
-            sources: t.MappingKV[Path, str],
+            import_graph: Mapping[str, frozenset[str]],
+            sources: Mapping[Path, str],
         ) -> str | None:
             """Return normalized source, or None when no import changes are needed."""
             ...
@@ -318,8 +318,8 @@ class FlextInfraProtocolsBase(Protocol):
         def preview_sources[T](
             self,
             workspace: Path,
-            updates: t.MappingKV[Path, str | None],
-            validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+            updates: Mapping[Path, str | None],
+            validator: Callable[[Path, Mapping[Path, Path]], T],
             *,
             options: m.Infra.CodegenSourcePreviewOptions | None = None,
         ) -> p.Result[T]:
@@ -419,13 +419,13 @@ class FlextInfraProtocolsBase(Protocol):
         """Read-only structural contract for rule delta comparison options."""
 
         @property
-        def inventory(self) -> t.VariadicTuple[t.Pair[str, str]]: ...
+        def inventory(self) -> tuple[tuple[str, str], ...]: ...
 
         @property
         def repository_root(self) -> Path | None: ...
 
         @property
-        def projects(self) -> t.SequenceOf[Path]: ...
+        def projects(self) -> Sequence[Path]: ...
 
     @runtime_checkable
     class ChainDeclarationSpec(Protocol):
@@ -453,7 +453,7 @@ class FlextInfraProtocolsBase(Protocol):
         def expression(self) -> str: ...
 
         @property
-        def sources(self) -> t.MappingKV[Path, str]: ...
+        def sources(self) -> Mapping[Path, str]: ...
 
     @runtime_checkable
     class ModProgress(Protocol):
@@ -496,8 +496,8 @@ class FlextInfraProtocolsBase(Protocol):
             preflight: m.Infra.ModScanReport,
             rope_workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
             *,
-            sources: t.MappingKV[Path, str],
-        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+            sources: Mapping[Path, str],
+        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]: ...
 
         def apply(
             self,
@@ -530,10 +530,10 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             **kwargs: (
                 t.JsonPayload
-                | t.SequenceOf[t.JsonValue]
+                | Sequence[t.JsonValue]
                 | t.StrPairSequence
-                | t.SequenceOf[t.StrSequencePair]
-                | t.SequenceOf[t.StrPairSequencePair]
+                | Sequence[t.StrSequencePair]
+                | Sequence[t.StrPairSequencePair]
                 | t.JsonMapping
                 | type
             ),
@@ -609,7 +609,7 @@ class FlextInfraProtocolsBase(Protocol):
         def prepare_bundle(
             self,
             *,
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
         ) -> p.Result[m.Infra.DocsGenerationBundle]:
             """Freeze one configured inventory and its consumed inputs."""
             ...
@@ -617,7 +617,7 @@ class FlextInfraProtocolsBase(Protocol):
         def plan_files(
             self,
             bundle: m.Infra.DocsGenerationBundle,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
             """Plan the rendered documentation as file changes."""
             ...
 
@@ -629,7 +629,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             *,
             repository_root: Path,
-            projects: t.StrSequence,
+            projects: Sequence[str],
             include_root: bool,
         ) -> FlextInfraProtocolsBase.DocsArtifactPlanner:
             """Bind the planner to the repositories conform publishes."""
@@ -655,7 +655,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def issues(self) -> t.SequenceOf[FlextInfraProtocolsCheck.Issue]:
+        def issues(self) -> Sequence[FlextInfraProtocolsCheck.Issue]:
             """Complete native diagnostics."""
             ...
 
@@ -717,7 +717,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def required_custom_types(self) -> t.StrSequence:
+        def required_custom_types(self) -> Sequence[str]:
             """Immutable custom bead types required by Gas City."""
             ...
 
@@ -810,7 +810,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def custom_issue_types(self) -> t.StrSequence:
+        def custom_issue_types(self) -> Sequence[str]:
             """Repository-owned types beyond the Gas City baseline."""
             ...
 
@@ -834,12 +834,12 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+        def subprojects(self) -> Sequence[FlextInfraProtocolsBase.RepositoryRef]:
             """Direct governed repositories declared by local .gitmodules."""
             ...
 
         @property
-        def external_dependency_paths(self) -> t.SequenceOf[Path]:
+        def external_dependency_paths(self) -> Sequence[Path]:
             """Observed external or fork Git submodule paths."""
             ...
 
@@ -869,7 +869,7 @@ class FlextInfraProtocolsBase(Protocol):
         def rename_plan(self) -> Path | None: ...
 
         @property
-        def consumer_roots(self) -> t.VariadicTuple[Path]: ...
+        def consumer_roots(self) -> tuple[Path, ...]: ...
 
     @runtime_checkable
     class WorkspaceEnvironmentContracts(Protocol):
@@ -886,7 +886,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             root: Path,
             resolve_home: bool = True,
-        ) -> t.VariadicTuple[m.Infra.EnvironmentContractViolation]:
+        ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
             """Return one typed violation per direnv contract issue."""
             ...
 
@@ -894,7 +894,7 @@ class FlextInfraProtocolsBase(Protocol):
         def envrc_local_contract_violations(
             cls,
             content: str,
-        ) -> t.VariadicTuple[m.Infra.EnvironmentContractViolation]:
+        ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
             """Return one typed violation per activation residue in overrides."""
             ...
 
@@ -930,27 +930,27 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def uv_environments(self) -> t.StrSequence:
+        def uv_environments(self) -> Sequence[str]:
             """Marker expressions limiting the uv-resolved lock environments."""
             ...
 
         @property
-        def uv_constraint_dependencies(self) -> t.StrSequence:
+        def uv_constraint_dependencies(self) -> Sequence[str]:
             """SSOT-declared [tool.uv] constraints; empty exterminates the key."""
             ...
 
         @property
-        def environment_path_prepends(self) -> t.SequenceOf[str]:
+        def environment_path_prepends(self) -> Sequence[str]:
             """Extra directories prepended to PATH by shell activation."""
             ...
 
         @property
-        def tool_versions(self) -> t.MappingKV[str, str]:
+        def tool_versions(self) -> Mapping[str, str]:
             """Effective release selector per tool: pins layered over entries."""
             ...
 
         @property
-        def tool_selectors(self) -> t.MappingKV[str, str]:
+        def tool_selectors(self) -> Mapping[str, str]:
             """Declared Mise selector of every selector-bearing fleet tool."""
             ...
 
@@ -964,7 +964,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def profiles(self) -> t.StrSequence:
+        def profiles(self) -> Sequence[str]:
             """Make profiles that consume the template."""
             ...
 
@@ -977,7 +977,7 @@ class FlextInfraProtocolsBase(Protocol):
     class Validator(Protocol):
         """Contract for validation services."""
 
-        def validate(self, argv: t.StrSequence | None = None) -> p.Result[int]:
+        def validate(self, argv: Sequence[str] | None = None) -> p.Result[int]:
             """Execute validation and return result."""
             ...
 
@@ -988,8 +988,8 @@ class FlextInfraProtocolsBase(Protocol):
         def run(
             self,
             project: str,
-            gates: t.StrSequence,
-        ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
+            gates: Sequence[str],
+        ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
             """Run quality gates for one project."""
             ...
 
@@ -1000,7 +1000,7 @@ class FlextInfraProtocolsBase(Protocol):
         def generate(
             self,
             request: m.Infra.DocsGenerateRequest,
-        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+        ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
 
@@ -1011,7 +1011,7 @@ class FlextInfraProtocolsBase(Protocol):
         def discover_projects(
             self,
             repository_root: Path,
-        ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+        ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...
 
@@ -1021,7 +1021,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def capture(
             self,
-            cmd: t.StrSequence,
+            cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
         ) -> p.Result[str]:
@@ -1030,7 +1030,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run_checked(
             self,
-            cmd: t.StrSequence,
+            cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
         ) -> p.Result[bool]:
@@ -1058,7 +1058,7 @@ class FlextInfraProtocolsBase(Protocol):
         def write_json(
             self,
             path: Path,
-            payload: t.MappingKV[str, t.JsonValue],
+            payload: Mapping[str, t.JsonValue],
         ) -> p.Result[bool]:
             """Write payload to JSON file."""
             ...
@@ -1071,8 +1071,8 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             repository_root: Path,
             *,
-            projects_filter: t.StrSequence | None = None,
-        ) -> p.Result[t.SequenceOf[Path]]:
+            projects_filter: Sequence[str] | None = None,
+        ) -> p.Result[Sequence[Path]]:
             """Discover project paths in workspace root."""
             ...
 
@@ -1080,14 +1080,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_path: Path,
             venv_bin: Path,
-        ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
+        ) -> p.Result[tuple[Sequence[t.JsonMapping], int]]:
             """Run deptry on a project and return issues."""
             ...
 
         def build_project_report(
             self,
             project_name: str,
-            deptry_issues: t.SequenceOf[t.JsonMapping],
+            deptry_issues: Sequence[t.JsonMapping],
         ) -> m.Infra.ProjectDependencyReport:
             """Build project report from deptry issues."""
             ...
@@ -1096,7 +1096,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             repository_root: Path,
             venv_bin: Path,
-        ) -> p.Result[t.Pair[t.StrSequence, int]]:
+        ) -> p.Result[tuple[Sequence[str], int]]:
             """Run pip check on workspace and return results."""
             ...
 
@@ -1132,8 +1132,8 @@ class FlextInfraProtocolsBase(Protocol):
             repository_root: Path | None = None,
             *,
             output_format: str = "json",
-            projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CensusReport]]:
+            projects: Sequence[FlextInfraProtocolsBase.ProjectInfo] | None = None,
+        ) -> p.Result[tuple[m.Infra.CensusReport, ...]]:
             """Run census and return typed reports."""
             ...
 
@@ -1169,7 +1169,7 @@ class FlextInfraProtocolsBase(Protocol):
         def _include_rule(
             rule: str,
             *,
-            rule_names: t.StrSequence | None,
+            rule_names: Sequence[str] | None,
             selected_rules: frozenset[str] | None = None,
         ) -> bool: ...
 
@@ -1234,7 +1234,7 @@ class FlextInfraProtocolsBase(Protocol):
         project: Path | None
         workspace: Path | None
         file: Path | None
-        files: t.SequenceOf[Path] | None
+        files: Sequence[Path] | None
         pattern: str
         dry_run: bool
         show_diff: bool

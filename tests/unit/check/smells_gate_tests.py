@@ -20,16 +20,19 @@ class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
 
     @pytest.fixture
-    def smells_project(self: Path) -> Path:
+    def smells_project(
+        self,
+        tmp_path: Path,
+    ) -> Path:
         """One declared project inside ``tmp_path`` for qlty to scan.
 
         Returns:
             The resulting ``Path``.
 
         """
-        name = f"smells-{self.name}"
+        name = f"smells-{tmp_path.name}"
         return u.Tests.mk_project(
-            self,
+            tmp_path,
             name,
             pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
             with_src=True,

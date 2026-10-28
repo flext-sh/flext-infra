@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import codegen, docs, gates, m, r, t, u, validate
+from flext_infra import codegen, docs, gates, m, r, u, validate
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
@@ -26,7 +27,7 @@ class FlextInfraConformWiring:
     def docs_artifact_planner(
         *,
         repository_root: Path,
-        projects: t.StrSequence,
+        projects: Sequence[str],
         include_root: bool,
     ) -> p.Infra.DocsArtifactPlanner:
         """Build the docs planner complete conform publishes through.

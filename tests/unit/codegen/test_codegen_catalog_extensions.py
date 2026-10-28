@@ -101,7 +101,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
 
     @staticmethod
     def _attach_member_submodule(
-        repository_root: Path, member: m.Infra.RepositoryRef, remote: tuple[Path, ...]
+        repository_root: Path, member: m.Infra.RepositoryRef, remote: tuple[Path, str]
     ) -> Path:
         """Attach the governed member submodule and publish its remote ref.
 

@@ -188,7 +188,7 @@ files:
   - "**/src/**/utilities.py"
 rule:
   pattern:
-    context: "__all__: tuple[str, ...], = $VALUE"
+    context: "__all__: tuple[str, ...] = $VALUE"
     selector: assignment
 fix: "__all__ = $VALUE"
 message: >-

@@ -85,7 +85,7 @@ class FlextInfraModelsConfigProvider:
             ),
         ] = None
         ci_trigger_branches: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -96,7 +96,7 @@ class FlextInfraModelsConfigProvider:
             ),
         ]
         preservation_ref_namespaces: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -183,7 +183,7 @@ class FlextInfraModelsConfigProvider:
             ),
         ]
         repositories: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Selected repositories granted contents-read only",
@@ -220,7 +220,7 @@ class FlextInfraModelsConfigProvider:
         _KNOWN_HOSTS_FIELD_COUNT: ClassVar[int] = 3
 
         known_hosts: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -230,16 +230,14 @@ class FlextInfraModelsConfigProvider:
         ]
 
         paths: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Submodule paths to init before make setup",
             ),
         ]
         deploy_keys: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec
-            ],
+            tuple[FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec, ...],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 

@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraVersion, c, m, p, r, t, u
+from flext_infra import FlextInfraVersion, c, m, p, r, u
 
 
 class FlextInfraCheckWorkspaceCheckReports:
@@ -141,8 +141,8 @@ class FlextInfraCheckWorkspaceCheckReports:
     @classmethod
     def _generate_sarif(
         cls,
-        results: t.SequenceOf[m.Infra.ProjectResult],
-        gates: t.StrSequence,
+        results: Sequence[m.Infra.ProjectResult],
+        gates: Sequence[str],
         summary: m.Infra.CheckReportSummary,
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results.

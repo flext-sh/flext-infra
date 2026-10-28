@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import warnings
+from collections.abc import Mapping, MutableMapping
 from functools import cache
 from importlib.metadata import entry_points
 from importlib.util import find_spec
@@ -16,7 +18,7 @@ from typing import Literal
 
 import flext_core
 
-from flext_infra import c, config, p, t
+from flext_infra import c, config, p
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
@@ -33,14 +35,14 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
     """Declare the namespace facts of the composed import policy."""
 
     @staticmethod
-    def _module_bindings(tree: ast.Module) -> t.MappingKV[str, ast.stmt]:
+    def _module_bindings(tree: ast.Module) -> Mapping[str, ast.stmt]:
         """Return the module-level statement binding each top-level name.
 
         Returns:
             The last declaring statement for each module-level name.
 
         """
-        bindings: t.MutableMappingKV[str, ast.stmt] = {}
+        bindings: MutableMapping[str, ast.stmt] = {}
         for statement in tree.body:
             names: list[str] = []
             match statement:
@@ -99,7 +101,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         snapshot: p.Infra.WorkspaceSnapshot,
         project_root: Path,
         file_path: Path,
-    ) -> t.Pair[Path, str] | None:
+    ) -> tuple[Path, str] | None:
         """Reuse the import-law election within one captured source epoch.
 
         Returns:
@@ -119,9 +121,9 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         project_root: Path,
         file_path: Path,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.Pair[Path, str] | None:
+    ) -> tuple[Path, str] | None:
         """Return the namespace directory and dotted module of one file.
 
         Regular source packages and internal tiers own their root. A declared
@@ -184,7 +186,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
 
     @staticmethod
     @cache
-    def _layer_alias_modules() -> t.MappingKV[str, str]:
+    def _layer_alias_modules() -> Mapping[str, str]:
         """Derive the module stem of every declared layer alias.
 
         The core package binds each ``layer-aliases`` entry to a class; that
@@ -258,6 +260,12 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         )
 
     @staticmethod
+    @warnings.deprecated(
+        "compat: FlextInfraUtilitiesImportLawPolicyNamespace.bootstrap_modules "
+        "-> p.Infra.WorkspaceSnapshot; fix: rewire via make mod; derive "
+        "bootstrap modules from the repository's single rope index instead "
+        "of find_spec plus ast.walk (engine-map S3/D1).",
+    )
     @cache
     def bootstrap_modules(package: str) -> frozenset[str]:
         """Own modules the generated package root runs before its facades exist.
@@ -427,9 +435,9 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         project_root: Path,
         package: str,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrMapping | None:
+    ) -> Mapping[str, str] | None:
         """Map each name one owned package ``__init__`` publishes to its module.
 
         The package resolves under ``src/`` or the project root (internal
@@ -477,7 +485,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         project_root: Path,
         package: str,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> Path | None:
         """Return the directory of one dotted package the project owns.
@@ -523,7 +531,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
     def import_bootstrap_dependency(
         namespace: str,
         module: str,
-        import_graph: t.MappingKV[str, frozenset[str]],
+        import_graph: Mapping[str, frozenset[str]],
     ) -> bool:
         """Identify modules the root executes before lazy exports are installed.
 
@@ -545,8 +553,8 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
     @staticmethod
     def import_facade_dependencies(
         module: str,
-        root_exports: t.StrMapping,
-        import_graph: t.MappingKV[str, frozenset[str]],
+        root_exports: Mapping[str, str],
+        import_graph: Mapping[str, frozenset[str]],
     ) -> frozenset[str]:
         """Return facade aliases whose providers depend on the importing module."""
         dependencies: set[str] = set()
@@ -573,7 +581,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         module_name: str,
         alias_name: str,
         root: Path,
-        sources: t.MappingKV[Path, ...],
+        sources: Mapping[Path, str],
     ) -> p.Infra.RopePyName | None:
         """Follow the existing native lazy routes without losing tuple aliases.
 
@@ -588,7 +596,7 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
             project.get_module(module_name)
         )
-        visited: set[t.Pair[str, str]] = set()
+        visited: set[tuple[str, str]] = set()
         while True:
             resource = provider.get_resource()
             if resource is None:

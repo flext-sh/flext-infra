@@ -9,7 +9,7 @@ from __future__ import annotations
 import tarfile
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 from flext_infra.release import FlextInfraReleaseReleaseArtifact
 
 
@@ -22,14 +22,14 @@ class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
         project_path: Path,
         stage_path: Path,
         gitleaks_config: Path,
-    ) -> p.Result[t.Pair[m.Infra.SourceSnapshot, str]]:
+    ) -> p.Result[tuple[m.Infra.SourceSnapshot, str]]:
         """Extract committed HEAD; scan, return identity + license digest.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.SourceSnapshot, str]]``.
+            The resulting ``p.Result[tuple[m.Infra.SourceSnapshot, str]]``.
 
         """
-        result_type = r[t.Pair[m.Infra.SourceSnapshot, str]]
+        result_type = r[tuple[m.Infra.SourceSnapshot, str]]
         snapshot = cls._committed_snapshot(project_path)
         if snapshot.failure:
             return result_type.from_failure(snapshot)
@@ -114,14 +114,14 @@ class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
         return extracted
 
     @classmethod
-    def _staged_licenses(cls, stage_path: Path) -> p.Result[t.VariadicTuple[Path]]:
+    def _staged_licenses(cls, stage_path: Path) -> p.Result[tuple[Path, ...]]:
         """Reject unsafe staged paths and return the top-level license files.
 
         Returns:
             The license files found at the root of the staged source.
 
         """
-        result_type = r[t.VariadicTuple[Path]]
+        result_type = r[tuple[Path, ...]]
         try:
             members = tuple(sorted(stage_path.rglob("*")))
             licenses = tuple(

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from contextlib import closing
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -15,7 +15,10 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, m, r
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -30,11 +33,9 @@ from flext_infra._utilities._semantic_cutover.own_mro import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from libcst.metadata import CodeRange
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticComposition(
@@ -52,10 +53,10 @@ class FlextInfraUtilitiesSemanticComposition(
         def __init__(
             self,
             source: str,
-            positions: t.MappingKV[cst.CSTNode, CodeRange],
-            bases: t.MappingKV[int, t.StrSequence],
+            positions: Mapping[cst.CSTNode, CodeRange],
+            bases: Mapping[int, Sequence[str]],
             retired: frozenset[int],
-            consumers: t.MappingKV[tuple[int, int], cst.BaseExpression],
+            consumers: Mapping[tuple[int, int], cst.BaseExpression],
         ) -> None:
             self.lines = source.splitlines()
             self.positions = positions
@@ -110,7 +111,7 @@ class FlextInfraUtilitiesSemanticComposition(
     def plan_facade_composition(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan authored MRO dispatch, utility alias retirement and every consumer.
 
@@ -120,9 +121,22 @@ class FlextInfraUtilitiesSemanticComposition(
         """
         authored = dict(cls._editable_sources(sources))
         working = dict(sources)
-        for path, source in authored.items():
-            working[path] = cls.rewrite_own_method_mro_calls(source)[0]
-        with closing(cls.snapshot_project(workspace.rope_project, working)) as project:
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            workspace.repository_root,
+            planned_sources=working,
+            source_project=workspace.rope_project,
+        ) as (project, _sources):
+            for path, source in authored.items():
+                working[path] = cls.rewrite_own_method_mro_calls(
+                    source,
+                    source_project=project,
+                    file_path=path,
+                )[0]
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            workspace.repository_root,
+            planned_sources=working,
+            source_project=workspace.rope_project,
+        ) as (project, _sources):
             aliases: list[
                 tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
             ] = []
@@ -251,7 +265,7 @@ class FlextInfraUtilitiesSemanticComposition(
         cls,
         owner: p.Infra.RopeSourceClass,
         target: p.Infra.RopeSourceClass,
-        aliases: t.SequenceOf[
+        aliases: Sequence[
             tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
     ) -> None:
@@ -281,7 +295,7 @@ class FlextInfraUtilitiesSemanticComposition(
         cls,
         module: p.Infra.RopeParsedModule,
         source: str,
-        aliases: t.SequenceOf[
+        aliases: Sequence[
             tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
     ) -> dict[tuple[int, int], cst.BaseExpression]:

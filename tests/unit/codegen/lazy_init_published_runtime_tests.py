@@ -13,14 +13,14 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraLazyInitPublishedRuntime:
     """Consume published package identities and enforce admission before effects."""
 
     @staticmethod
-    def _generate_package(tmp_path: Path) -> t.Pair[Path, Path]:
+    def _generate_package(tmp_path: Path) -> tuple[Path, Path]:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-lazy-demo",

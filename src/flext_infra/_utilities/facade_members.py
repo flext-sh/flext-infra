@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import builtins
 import re
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, config, p, t
@@ -461,7 +462,7 @@ class FlextInfraUtilitiesFacadeMembers:
     @staticmethod
     def _model_class(
         origin: p.Infra.RopeClassObject,
-        ancestry: t.SequenceOf[p.Infra.RopePyObject],
+        ancestry: Sequence[p.Infra.RopePyObject],
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
@@ -645,10 +646,10 @@ class FlextInfraUtilitiesFacadeMembers:
     @staticmethod
     def facade_source_classes(
         package: str,
-        letters: t.StrSequence,
+        letters: Sequence[str],
         *,
         source_project: p.Infra.RopeProject,
-    ) -> t.MappingKV[str, p.Infra.RopeClassObject]:
+    ) -> Mapping[str, p.Infra.RopeClassObject]:
         """Resolve exactly the requested published facade receivers from native source.
 
         Returns:
@@ -783,7 +784,7 @@ class FlextInfraUtilitiesFacadeMembers:
     @classmethod
     def facade_source_members(
         cls, facade: p.Infra.RopeClassObject, *, source_project: p.Infra.RopeProject
-    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+    ) -> Mapping[str, p.Infra.RopePyName]:
         """Read the inherited bindings selected by the native class object.
 
         Returns:
@@ -800,15 +801,13 @@ class FlextInfraUtilitiesFacadeMembers:
     @classmethod
     def facade_member_placement(
         cls,
-        reference: t.Triple[str, str, str],
+        reference: tuple[str, str, str],
         *,
-        facades: t.MappingKV[str, p.Infra.RopeClassObject],
-        bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        facades: Mapping[str, p.Infra.RopeClassObject],
+        bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
-        declarations: t.MappingKV[
-            str, t.MappingKV[str, t.SequenceOf[p.Infra.RopePyObject]]
-        ]
+        declarations: Mapping[str, Mapping[str, Sequence[p.Infra.RopePyObject]]]
         | None = None,
     ) -> c.Infra.FacadeMemberPlacement | None:
         """Classify a foreign member's actual placement through native bindings.
@@ -848,7 +847,7 @@ class FlextInfraUtilitiesFacadeMembers:
         except ValueError as failure:
             failure.add_note(f"Facade census reference: {package}.{letter}.{member}")
             raise
-        members: t.MappingKV[str, p.Infra.RopePyName] = bindings.get(owner, {})
+        members: Mapping[str, p.Infra.RopePyName] = bindings.get(owner, {})
         bound = member in members
         if (
             owner != letter
@@ -884,10 +883,10 @@ class FlextInfraUtilitiesFacadeMembers:
     @classmethod
     def facade_member_census(
         cls, project: Path, *, source_project: p.Infra.RopeProject
-    ) -> t.Triple[
-        t.StrSequence,
-        t.MappingKV[str, frozenset[str]],
-        t.MappingKV[str, frozenset[str]],
+    ) -> tuple[
+        Sequence[str],
+        Mapping[str, frozenset[str]],
+        Mapping[str, frozenset[str]],
     ]:
         """Derive every foreign facade reference over the project's lineage.
 
@@ -983,7 +982,7 @@ class FlextInfraUtilitiesFacadeMembers:
     def facade_member_lineage(
         cls,
         package: str,
-        letters: t.StrSequence,
+        letters: Sequence[str],
         *,
         source_project: p.Infra.RopeProject,
     ) -> t.StrTuple:
@@ -1031,7 +1030,7 @@ class FlextInfraUtilitiesFacadeMembers:
         )
 
     @staticmethod
-    def facade_member_family_files(root: Path) -> t.MappingKV[str, t.StrSequence]:
+    def facade_member_family_files(root: Path) -> Mapping[str, Sequence[str]]:
         """Group the project's facade-family files by the letter they produce.
 
         Returns:
@@ -1054,16 +1053,14 @@ class FlextInfraUtilitiesFacadeMembers:
     def _owned_references(
         cls,
         root: str,
-        facades: t.MappingKV[str, p.Infra.RopeClassObject],
-        bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        facades: Mapping[str, p.Infra.RopeClassObject],
+        bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
-        declarations: t.MappingKV[
-            str, t.MappingKV[str, t.SequenceOf[p.Infra.RopePyObject]]
-        ]
+        declarations: Mapping[str, Mapping[str, Sequence[p.Infra.RopePyObject]]]
         | None = None,
-    ) -> t.SequenceOf[t.StrPair]:
+    ) -> Sequence[tuple[str, str]]:
         """Reference every owned member through each other letter of ``root``.
 
         A letter that binds no object, or the owner's identical object, under
@@ -1097,23 +1094,21 @@ class FlextInfraUtilitiesFacadeMembers:
     def _owned_members(
         cls,
         root: str,
-        facades: t.MappingKV[str, p.Infra.RopeClassObject],
-        bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        facades: Mapping[str, p.Infra.RopeClassObject],
+        bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
-        declarations: t.MappingKV[
-            str, t.MappingKV[str, t.SequenceOf[p.Infra.RopePyObject]]
-        ]
+        declarations: Mapping[str, Mapping[str, Sequence[p.Infra.RopePyObject]]]
         | None = None,
-    ) -> t.SequenceOf[t.Triple[str, p.Infra.RopePyName, str]]:
+    ) -> Sequence[tuple[str, p.Infra.RopePyName, str]]:
         """Collect each public member a letter of ``root`` declares as owner.
 
         Returns:
             The owner letter, the bound object and the member name.
 
         """
-        owned: list[t.Triple[str, p.Infra.RopePyName, str]] = []
+        owned: list[tuple[str, p.Infra.RopePyName, str]] = []
         for owner, facade in facades.items():
             for member, value in bindings[owner].items():
                 if not cls.declared_by_package(
@@ -1138,7 +1133,7 @@ class FlextInfraUtilitiesFacadeMembers:
     @classmethod
     def codemod_facade_member_ownership_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the retirement and wrong-layer rules, one document per letter.
 
         A family module of letter ``L`` declaring a member another letter owns
@@ -1242,7 +1237,7 @@ class FlextInfraUtilitiesFacadeMembers:
     @classmethod
     def _misplaced_members(
         cls, package: str, *, source_project: p.Infra.RopeProject
-    ) -> t.MappingKV[str, frozenset[str]]:
+    ) -> Mapping[str, frozenset[str]]:
         """Collect each letter's members whose owner binds nothing under the name.
 
         Returns:
@@ -1284,7 +1279,7 @@ class FlextInfraUtilitiesFacadeMembers:
     @classmethod
     def codemod_facade_member_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the one rule relocating every foreign facade reference.
 
         A reference matches only as one of the exact foreign ``letter.member``
@@ -1458,7 +1453,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @staticmethod
     def facade_letter_bound_rule(
-        name: t.JsonMapping, sources: t.StrSequence
+        name: t.JsonMapping, sources: Sequence[str]
     ) -> t.JsonDict:
         """Match where a module-level facade import binds a letter unshadowed.
 
@@ -1597,7 +1592,7 @@ class FlextInfraUtilitiesFacadeMembers:
         }
 
     @staticmethod
-    def exact_alternation(texts: t.StrSequence) -> str:
+    def exact_alternation(texts: Sequence[str]) -> str:
         """Anchor an exact, sorted alternation of literal texts.
 
         Returns:
@@ -1613,8 +1608,7 @@ class FlextInfraUtilitiesFacadeMembers:
         package: str,
         *,
         source_project: p.Infra.RopeProject,
-        declarations: t.MappingKV[str, t.SequenceOf[p.Infra.RopePyObject]]
-        | None = None,
+        declarations: Mapping[str, Sequence[p.Infra.RopePyObject]] | None = None,
     ) -> bool:
         """Whether a class of ``package`` declares ``member`` in the facade MRO.
 

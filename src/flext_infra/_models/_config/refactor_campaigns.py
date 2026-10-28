@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path, PureWindowsPath
 from types import MappingProxyType
 from typing import Annotated, Self
@@ -46,16 +47,16 @@ class FlextInfraModelsConfigRefactorCampaigns:
             ),
         ] = ()
         bindings: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            Mapping[str, Sequence[str]],
             m.Field(
                 description=(
                     "CSV expression prefixes mapped "
                     "to current public Rope owner identities"
                 ),
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType[str, t.StrSequence]({}))
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, Sequence[str]]({}))
         text_globs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Explicit root-relative non-Python "
@@ -73,7 +74,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
             ),
         ] = False
         exclude_globs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description="Generated projections excluded from campaign targets",
             ),

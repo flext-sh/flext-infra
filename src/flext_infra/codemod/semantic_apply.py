@@ -9,7 +9,7 @@ from __future__ import annotations
 import keyword
 import os
 import re
-from collections.abc import Callable, Generator, MutableMapping
+from collections.abc import Callable, Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, closing, contextmanager
 from functools import partial
 from pathlib import Path
@@ -84,7 +84,7 @@ class FlextInfraCodemodSemanticApply(
         planned: m.Infra.SemanticSourcePlan,
         *,
         before: m.Cli.AtomicFileState,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Publish a captured source artifact through the existing guarded owner.
 
         The caller observes the destination before capturing its source epoch.
@@ -94,7 +94,7 @@ class FlextInfraCodemodSemanticApply(
             Published paths, or the original authenticity or publication failure.
 
         """
-        outcome = r[t.VariadicTuple[Path]]
+        outcome = r[tuple[Path, ...]]
         root, target = root.resolve(), target.resolve()
         if not target.is_relative_to(root):
             return outcome.fail("source plan output escapes workspace")
@@ -200,7 +200,7 @@ class FlextInfraCodemodSemanticApply(
     def build_source_plan(
         cls,
         root: Path,
-        consumer_roots: t.VariadicTuple[Path] = (),
+        consumer_roots: tuple[Path, ...] = (),
     ) -> p.Result[m.Infra.SemanticSourcePlan]:
         """Capture a native source campaign without creating a rename artifact.
 
@@ -318,9 +318,9 @@ class FlextInfraCodemodSemanticApply(
     def _module_naming_candidates(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> t.VariadicTuple[t.Pair[Path, str]]:
+    ) -> tuple[tuple[Path, str], ...]:
         """Select module names without changing the authenticated native sources.
 
         Returns:
@@ -330,7 +330,7 @@ class FlextInfraCodemodSemanticApply(
             ValueError: If a stripped identifier or responsibility is invalid.
 
         """
-        selected: list[t.Pair[Path, str]] = []
+        selected: list[tuple[Path, str]] = []
         for path in sorted(sources):
             name = path.stem
             if not path.is_relative_to(root.resolve()) or (
@@ -406,8 +406,8 @@ class FlextInfraCodemodSemanticApply(
             if item.kind in {"class", "function"} and item.scope_path == item.name
         )
         responsibility = ""
-        methods: t.StrSequence = ()
-        nested_classes: t.StrSequence = ()
+        methods: Sequence[str] = ()
+        nested_classes: Sequence[str] = ()
         if len(declarations) == 1:
             declared = declarations[0].name
             responsibility = cls._declared_responsibility(path, owner, declared)
@@ -479,7 +479,7 @@ class FlextInfraCodemodSemanticApply(
         return responsibility
 
     @staticmethod
-    def _member_responsibility(methods: t.StrSequence, owner: str) -> str:
+    def _member_responsibility(methods: Sequence[str], owner: str) -> str:
         """Name a split class by the word its own public methods share.
 
         A single public method names the fragment; otherwise the one word
@@ -507,8 +507,8 @@ class FlextInfraCodemodSemanticApply(
     @staticmethod
     def _package_naming_candidates(
         root: Path,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[t.Pair[Path, str]]:
+        sources: Mapping[Path, str],
+    ) -> tuple[tuple[Path, str], ...]:
         """Select shallowest split packages owned by an actual facade declaration.
 
         Returns:
@@ -518,7 +518,7 @@ class FlextInfraCodemodSemanticApply(
             ValueError: If split naming has no unambiguous facade responsibility.
 
         """
-        selected: list[t.Pair[Path, str]] = []
+        selected: list[tuple[Path, str]] = []
         families = u.Infra.facade_families()
         for path in sorted(sources, key=lambda item: (len(item.parts), item)):
             if path.name != c.Infra.INIT_PY or not path.is_relative_to(root.resolve()):
@@ -565,15 +565,15 @@ class FlextInfraCodemodSemanticApply(
     @staticmethod
     def _source_scopes(
         root: Path,
-        consumer_roots: t.VariadicTuple[Path],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+        consumer_roots: tuple[Path, ...],
+    ) -> p.Result[tuple[Path, ...]]:
         """Elect explicit non-overlapping native source scopes.
 
         Returns:
             The producer followed by its distinct declared consumer roots.
 
         """
-        outcome = r[t.VariadicTuple[Path]]
+        outcome = r[tuple[Path, ...]]
         if any(not path.is_absolute() or not path.is_dir() for path in consumer_roots):
             return outcome.fail(
                 "consumer roots must be existing absolute checkout roots"
@@ -595,7 +595,7 @@ class FlextInfraCodemodSemanticApply(
     @classmethod
     def _source_closure(
         cls,
-        scopes: t.VariadicTuple[Path],
+        scopes: tuple[Path, ...],
         snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Plan the source closure of the elected scopes without any update.
@@ -643,8 +643,8 @@ class FlextInfraCodemodSemanticApply(
     @staticmethod
     def _planning_election(
         live: p.Infra.RopeProject,
-        source_folders: t.VariadicTuple[str],
-        python_folders: t.VariadicTuple[str],
+        source_folders: tuple[str, ...],
+        python_folders: tuple[str, ...],
     ) -> m.Infra.RopeProjectElection:
         """Elect the multiproject source and interpreter folders of one plan.
 
@@ -664,7 +664,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         selections: m.Infra.SemanticRenameSelections,
-        scopes: t.VariadicTuple[Path],
+        scopes: tuple[Path, ...],
         snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> p.Result[m.Infra.SemanticRenamePlan]:
         """Capture all elected sources before computing any native candidate.
@@ -707,12 +707,10 @@ class FlextInfraCodemodSemanticApply(
     @classmethod
     def _build_native_source_plan(
         cls,
-        scopes: t.VariadicTuple[Path],
-        decisions: t.VariadicTuple[m.Infra.SemanticRenameDecision],
+        scopes: tuple[Path, ...],
+        decisions: tuple[m.Infra.SemanticRenameDecision, ...],
         snapshot: p.Infra.WorkspaceSnapshot | None = None,
-    ) -> p.Result[
-        t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
-    ]:
+    ) -> p.Result[tuple[m.Infra.SemanticSourcePlan, tuple[tuple[Path, Path], ...]]]:
         """Share native capture, planning and receipts across source campaigns.
 
         Returns:
@@ -722,7 +720,7 @@ class FlextInfraCodemodSemanticApply(
         captured_sources = cls._source_closure(scopes, snapshot)
         if captured_sources.failure:
             return r[
-                t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
+                tuple[m.Infra.SemanticSourcePlan, tuple[tuple[Path, Path], ...]]
             ].from_failure(captured_sources)
         baseline = captured_sources.value
         captured = m.Infra.CodemodBindingSnapshot(states=baseline.inputs)
@@ -781,7 +779,7 @@ class FlextInfraCodemodSemanticApply(
         staged_inputs = cls._staged_inputs(moves, captured.states)
         if staged_inputs.failure:
             return r[
-                t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
+                tuple[m.Infra.SemanticSourcePlan, tuple[tuple[Path, Path], ...]]
             ].from_failure(staged_inputs)
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
@@ -809,9 +807,9 @@ class FlextInfraCodemodSemanticApply(
 
     @staticmethod
     def _rename_edits(
-        original: t.MappingKV[Path, str],
-        updates: t.MappingKV[Path, str | None],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        original: Mapping[Path, str],
+        updates: Mapping[Path, str | None],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Render one migration edit per updated original source.
 
         Returns:
@@ -832,9 +830,9 @@ class FlextInfraCodemodSemanticApply(
     @classmethod
     def _staged_inputs(
         cls,
-        moves: t.SequenceOf[t.Pair[Path, Path]],
-        base_states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        moves: Sequence[tuple[Path, Path]],
+        base_states: tuple[m.Cli.AtomicFileState, ...],
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
         """Authenticate native module destinations as absent before staging.
 
         Returns:
@@ -842,7 +840,7 @@ class FlextInfraCodemodSemanticApply(
             first destination that appeared before staging.
 
         """
-        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        result_type = r[tuple[m.Cli.AtomicFileState, ...]]
         destinations = tuple(
             u.Cli.atomic_read_binary_file_state(target).unwrap()
             for _origin, target in moves
@@ -859,7 +857,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         seed: m.Infra.SemanticSourcePlan,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> Generator[p.Infra.RopeWorkspaceDsl]:
         """Elect a bounded native graph over the live tree and planned bytes.
 
@@ -920,7 +918,10 @@ class FlextInfraCodemodSemanticApply(
                             ),
                             python_folders,
                         ),
-                        declared_files=cls._planned_files(root, candidate, sources),
+                        declared_files=cls.planning_file_plans(
+                            root, candidate, sources
+                        ),
+                        observations=candidate.inputs,
                     )
                 )
             )
@@ -939,20 +940,28 @@ class FlextInfraCodemodSemanticApply(
                 yield workspace
 
     @staticmethod
-    def _planned_files(
+    def planning_file_plans(
         root: Path,
         candidate: m.Infra.StageSourcePlan,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
-        """Declare every planned source that differs from its live destination.
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Declare source deltas against the candidate's captured observations.
 
         Returns:
             One plan per planned addition, rewrite, or retirement.
 
+        Raises:
+            ValueError: A planned source has no authenticated physical witness.
+
         """
+        states = {state.path: state for state in candidate.inputs}
+        selected = {**candidate.updates, **sources}
         planned: list[m.Infra.CodegenFilePlan] = []
-        for path, source in {**candidate.updates, **sources}.items():
-            before = u.Infra.codegen_target_snapshot(path).unwrap()
+        for path, source in selected.items():
+            before = states.get(path)
+            if before is None:
+                message = f"candidate source has no authenticated input witness: {path}"
+                raise ValueError(message)
             desired = None if source is None else source.encode(c.DEFAULT_ENCODING)
             if before.content == desired:
                 continue
@@ -1018,7 +1027,7 @@ class FlextInfraCodemodSemanticApply(
         candidate: m.Infra.SemanticSourcePlan,
         *,
         publish: bool = True,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Publish one rule-composed native candidate.
 
         Returns:
@@ -1032,14 +1041,14 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         request: m.Infra.ModCommand,
-    ) -> p.Result[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]:
         """Authenticate the semantic rename driver and parse its artifact.
 
         Returns:
             The first artifact failure, or the parsed plan with its driver state.
 
         """
-        loaded = r[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]
+        loaded = r[tuple[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]
         if request.rename_plan is None:
             return loaded.fail("semantic rename consumption requires an artifact")
         path = (root / request.rename_plan).resolve()
@@ -1058,7 +1067,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         request: m.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
-        pair: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+        pair: tuple[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Re-derive, candidate-validate, and re-authenticate the artifact.
 
@@ -1131,7 +1140,7 @@ class FlextInfraCodemodSemanticApply(
     def _rename_candidate_differences(
         original: m.Infra.StageSourcePlan,
         current: m.Infra.StageSourcePlan,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Describe exact candidate differences without emitting observed values.
 
         Returns:
@@ -1207,7 +1216,7 @@ class FlextInfraCodemodSemanticApply(
         artifact: m.Infra.SemanticSourcePlan,
         *,
         publish: bool,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Publish the candidate's planned effects through the shared publisher.
 
         Returns:
@@ -1263,7 +1272,7 @@ class FlextInfraCodemodSemanticApply(
         *,
         apply: bool,
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Compose declaration and constant consumers before census acceptance.
 
         Args:
@@ -1273,7 +1282,7 @@ class FlextInfraCodemodSemanticApply(
             workspace_factory: Validator workspace factory for staged candidates.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         inventory: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
@@ -1292,7 +1301,7 @@ class FlextInfraCodemodSemanticApply(
         # candidate keeps the exact union, even when normalization writes no bytes.
         project_roots = {u.Infra.project_root(path) for path in changed or original}
         if not project_roots or None in project_roots:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
                 "census corrective candidate has no complete governed project scope",
             )
         projects = tuple(
@@ -1342,8 +1351,8 @@ class FlextInfraCodemodSemanticApply(
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan both census owners against one original-to-final source candidate.
 
         Returns:
@@ -1356,7 +1365,7 @@ class FlextInfraCodemodSemanticApply(
         )
         working = dict(sources)
         changed: set[Path] = set()
-        result_type = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        result_type = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
         if rope_workspace.repository_root.resolve() != root.resolve():
             return result_type.fail(
                 "constants planner target differs from workspace selection"
@@ -1390,11 +1399,11 @@ class FlextInfraCodemodSemanticApply(
         )
 
     @classmethod
-    def _verify_census_phases(
+    def _verify_Sequences(
         cls,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        phases: t.SequenceOf[c.Infra.SemanticCutoverPhase],
+        phases: Sequence[c.Infra.SemanticCutoverPhase],
     ) -> p.Result[bool]:
         """Verify both corrective phases against one proposed or published state.
 
@@ -1421,11 +1430,11 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         preflight: m.Infra.ModOccurrenceReport[FindingT],
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[tuple[str, str], ...]:
         """Identify the complete governed source state between mod phases.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[str, str]]``.
+            The resulting ``tuple[tuple[str, str], ...]``.
 
         """
         return tuple(
@@ -1439,7 +1448,7 @@ class FlextInfraCodemodSemanticApply(
         root: Path,
         preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
+    ) -> tuple[m.Infra.DeclarationRelocationFinding, ...]:
         """Return every payload declaration whose relocation owner is unresolved.
 
         Returns:
@@ -1455,7 +1464,7 @@ class FlextInfraCodemodSemanticApply(
     def publish_planned_edits(
         cls,
         root: Path,
-        edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
+        edits: Sequence[p.Infra.SemanticMigrationEdit],
         *,
         validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[bool]:
@@ -1470,12 +1479,12 @@ class FlextInfraCodemodSemanticApply(
             Whether the accepted batch contains source changes.
 
         """
-        original: t.MutableMappingKV[Path, str | None] = {}
+        original: MutableMapping[Path, str | None] = {}
         for edit in edits:
             if edit.file_path not in original:
                 original[edit.file_path] = edit.original_source
         # A creation (original None) starts absent from the working view.
-        working: t.MutableMappingKV[Path, str] = {
+        working: MutableMapping[Path, str] = {
             path: source for path, source in original.items() if source is not None
         }
         changed: set[Path] = set()
@@ -1545,15 +1554,15 @@ class FlextInfraCodemodSemanticApply(
         root: Path,
         preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        original: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        original: Mapping[Path, str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Compose semantic phases on planned bytes without publishing originals.
 
         Returns:
             Complete edits relative to the supplied planned input, or its first failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        result_type = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
         if not original:
             return result_type.fail("semantic cutover has no source inventory")
         working = dict(original)
@@ -1642,7 +1651,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         preflight: m.Infra.ModOccurrenceReport[FindingT],
-        working: t.MutableMappingKV[Path, str],
+        working: MutableMapping[Path, str],
         *,
         changed: bool,
     ) -> p.Result[bool]:
@@ -1656,7 +1665,7 @@ class FlextInfraCodemodSemanticApply(
             return r[bool].ok(value=True)
         return cls._check_residue(
             "future-annotations",
-            r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+            r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
                 cls._phase_future_annotations(root, preflight, working)
             ),
         )
@@ -1665,8 +1674,8 @@ class FlextInfraCodemodSemanticApply(
     def _semantic_phase_sources(
         root: Path,
         phase: c.Infra.SemanticCutoverPhase,
-        working: t.MappingKV[Path, str],
-    ) -> t.MappingKV[Path, str]:
+        working: Mapping[Path, str],
+    ) -> Mapping[Path, str]:
         """Restrict local-only phases while retaining shared views for other phases.
 
         Returns:
@@ -1763,16 +1772,16 @@ class FlextInfraCodemodSemanticApply(
     def _phase_import_alignment(
         cls,
         root: Path,
-        working: t.MappingKV[Path, str],
+        working: Mapping[Path, str],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan rope-native absolute import alignment when tooling enables it.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
-        planned_edits = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        planned_edits = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
         if not config.Infra.tooling.mod.phases.import_alignment:
             return planned_edits.ok(())
         planned = u.Infra.align_module_imports(
@@ -1801,11 +1810,11 @@ class FlextInfraCodemodSemanticApply(
         root: Path,
         preflight: m.Infra.ModOccurrenceReport[FindingT],
         working: MutableMapping[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Plan the future-annotations phase; the pipeline applies the edits.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
+            The resulting ``tuple[m.Infra.SemanticMigrationEdit, ...]``.
 
         Raises:
             ValueError: If authenticated source disappeared during mod preflight.
@@ -1847,7 +1856,7 @@ class FlextInfraCodemodSemanticApply(
     @staticmethod
     def _check_residue(
         phase: str,
-        planned: p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]],
+        planned: p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]],
     ) -> p.Result[bool]:
         """Reject a replan failure or edits replanned by a completed phase.
 
@@ -1866,8 +1875,8 @@ class FlextInfraCodemodSemanticApply(
 
     @staticmethod
     def _check_definition_time(
-        original: t.MappingKV[Path, str],
-        working: t.MappingKV[Path, str],
+        original: Mapping[Path, str],
+        working: Mapping[Path, str],
         changed: set[Path],
     ) -> p.Result[bool]:
         """Reject a plan whose class suites would raise NameError at import.
@@ -1910,7 +1919,7 @@ class FlextInfraCodemodSemanticApply(
             The resulting ``p.Result[bool]``.
 
         """
-        edits = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        edits = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
         verified = cls._check_residue(
             "future-annotations",
             edits.ok(cls._phase_future_annotations(root, preflight, working)),
@@ -1941,11 +1950,11 @@ class FlextInfraCodemodSemanticApply(
         _preflight: m.Infra.ModOccurrenceReport[FindingT],
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.MappingKV[Path, str]:
+    ) -> Mapping[Path, str]:
         """Read the canonical governed Python inventory used by native scanning.
 
         Returns:
-            The resulting ``t.MappingKV[Path, str]``.
+            The resulting ``Mapping[Path, str]``.
 
         Raises:
             ValueError: If authenticated source disappeared during mod preflight.
@@ -2005,7 +2014,7 @@ class FlextInfraCodemodSemanticApply(
             return r[bool].ok(value=True)
         return cls._check_residue(
             "deferred-models",
-            r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+            r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
                 cls._deferred_model_edits({
                     path: source
                     for path, source in working.items()
@@ -2016,12 +2025,12 @@ class FlextInfraCodemodSemanticApply(
 
     @staticmethod
     def _deferred_model_edits(
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Normalize every handwritten canonical model source from its AST.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
+            The resulting ``tuple[m.Infra.SemanticMigrationEdit, ...]``.
 
         """
         edits: list[m.Infra.SemanticMigrationEdit] = []
@@ -2049,7 +2058,7 @@ class FlextInfraCodemodSemanticApply(
     @staticmethod
     def apply_plan(
         sources: MutableMapping[Path, str],
-        edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
+        edits: Sequence[p.Infra.SemanticMigrationEdit],
         changed: set[Path],
         *,
         retirements: t.Infra.RopeMutablePaths | None = None,
@@ -2077,8 +2086,8 @@ class FlextInfraCodemodSemanticApply(
     def _publish(
         cls,
         root: Path,
-        original: t.MappingKV[Path, str | None],
-        updated: t.MappingKV[Path, str | None],
+        original: Mapping[Path, str | None],
+        updated: Mapping[Path, str | None],
         *,
         validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[bool]:
@@ -2147,11 +2156,11 @@ class FlextInfraCodemodSemanticApply(
         )
 
     @staticmethod
-    def _path_key(path: Path) -> t.Pair[bool, str]:
+    def _path_key(path: Path) -> tuple[bool, str]:
         """Sort consumers before the public API owner in a typed key.
 
         Returns:
-            The resulting ``t.Pair[bool, str]``.
+            The resulting ``tuple[bool, str]``.
 
         """
         return (path.name == c.Infra.API_PY, path.as_posix())

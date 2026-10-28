@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsAuditDetectors,
@@ -106,7 +107,7 @@ class FlextInfraUtilitiesDocsAudit(
 
     @staticmethod
     def _link_issue(
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue],
+        issues: MutableSequence[m.Infra.AuditIssue],
         md_file: Path,
         rel: str,
         number: int,
@@ -160,7 +161,7 @@ class FlextInfraUtilitiesDocsAudit(
         content: str,
         md_file: Path,
         rel: str,
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue],
+        issues: MutableSequence[m.Infra.AuditIssue],
     ) -> None:
         """Check every parsed link and image destination of one markdown file."""
         for link in u.Cli.markdown_links(content):
@@ -175,14 +176,14 @@ class FlextInfraUtilitiesDocsAudit(
     @staticmethod
     def docs_broken_link_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Collect broken internal link issues in one docs scope.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.AuditIssue]``.
+            The resulting ``Sequence[m.Infra.AuditIssue]``.
 
         """
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        issues: MutableSequence[m.Infra.AuditIssue] = []
         for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
@@ -200,17 +201,17 @@ class FlextInfraUtilitiesDocsAudit(
     @staticmethod
     def docs_stale_symbol_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Collect stale-symbol issues outside the explicit migration docs.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.AuditIssue]``.
+            The resulting ``Sequence[m.Infra.AuditIssue]``.
 
         """
         policy = FlextInfraUtilitiesDocsAudit.docs_audit_policy(scope)
         tokens = policy.stale_symbols
         exempt_paths = set(policy.stale_symbol_exempt_paths)
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        issues: MutableSequence[m.Infra.AuditIssue] = []
         if not tokens:
             return issues
         live_public_symbols = (
@@ -245,16 +246,16 @@ class FlextInfraUtilitiesDocsAudit(
     @staticmethod
     def docs_audit_markdown(
         scope: m.Infra.DocScope,
-        issues: t.SequenceOf[m.Infra.AuditIssue],
+        issues: Sequence[m.Infra.AuditIssue],
         docstring_coverage: m.Infra.DocstringCoverage | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Render the standard markdown audit report.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
-        metric_lines: t.MutableSequenceOf[str] = []
+        metric_lines: MutableSequence[str] = []
         if docstring_coverage is not None:
             metric_lines.append(
                 "Docstring coverage: "

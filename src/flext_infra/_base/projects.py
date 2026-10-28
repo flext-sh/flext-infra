@@ -6,18 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, u
 
 
 class FlextInfraBaseProjects:
     """Private project-selection behavior for project-scoped services."""
 
     if TYPE_CHECKING:
-        selected_projects: t.StrSequence | None
+        selected_projects: Sequence[str] | None
 
     @property
     def root(self) -> Path:
@@ -25,12 +25,12 @@ class FlextInfraBaseProjects:
         raise NotImplementedError
 
     @property
-    def project_names(self) -> t.StrSequence | None:
+    def project_names(self) -> Sequence[str] | None:
         """Normalized selected project names."""
         return u.Infra.normalize_sequence_values(self.selected_projects)
 
     @property
-    def project_dirs(self) -> t.SequenceOf[Path] | None:
+    def project_dirs(self) -> Sequence[Path] | None:
         """Resolve selected project directories relative to the repository root."""
         names = u.Infra.normalize_sequence_values(self.selected_projects)
         if names is None:
@@ -43,12 +43,12 @@ class FlextInfraBaseProjects:
         *,
         output_dir: Path | str | None,
         handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
-        projects: t.StrSequence | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+        projects: Sequence[str] | None = None,
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run one docs phase across the resolved governed scopes.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         return u.Infra.run_scoped(

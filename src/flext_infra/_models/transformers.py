@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -29,7 +29,7 @@ class FlextInfraModelsTransformers:
             description="Consumer acceptance gate over the previewed view root",
         )
         plan_validator: (
-            Callable[[t.VariadicTuple[m.Cli.FileChange]], p.Result[bool]] | None
+            Callable[[tuple[m.Cli.FileChange, ...]], p.Result[bool]] | None
         ) = m.Field(
             default=None,
             description=(
@@ -37,7 +37,7 @@ class FlextInfraModelsTransformers:
                 "for a consumer that reads its own snapshot instead of a view root"
             ),
         )
-        projection_roots: t.VariadicTuple[Path] = m.Field(
+        projection_roots: tuple[Path, ...] = m.Field(
             default=(),
             description="Generated projection roots composed into the publication",
         )
@@ -82,7 +82,7 @@ class FlextInfraModelsTransformers:
             ),
         ]
         changes: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Recorded migration operations"),
         ] = m.Field(default_factory=tuple)
 
@@ -114,7 +114,7 @@ class FlextInfraModelsTransformers:
             description="Explicit source retirement, not empty-file output",
         )
         changes: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Recorded migration operations"),
         ] = ()
 
@@ -124,27 +124,27 @@ class FlextInfraModelsTransformers:
         path: Annotated[Path, m.Field(description="Consumer source identity")]
         source: Annotated[str, m.Field(description="Consumer source text")]
         modules: Annotated[
-            t.MappingKV[str, t.Pair[str, bool]],
+            Mapping[str, tuple[str, bool]],
             m.Field(description="Qualified source text and package identities"),
         ]
         ownership: Annotated[
-            t.Pair[
-                t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
-                frozenset[t.Quad[str, str, str, str]],
+            tuple[
+                Mapping[tuple[str, str], Sequence[tuple[str, str]]],
+                frozenset[tuple[str, str, str, str]],
             ],
             m.Field(description="Declared utility owners and facade dispatch needs"),
         ]
         utility_imports: Annotated[
-            frozenset[t.Pair[str, str]],
+            frozenset[tuple[str, str]],
             m.Field(description="Elected self-facade import identities"),
-        ] = m.Field(default_factory=frozenset[t.Pair[str, str]])
+        ] = m.Field(default_factory=frozenset[tuple[str, str]])
         declaration_imports: Annotated[
-            frozenset[t.Pair[str, str]],
+            frozenset[tuple[str, str]],
             m.Field(
                 description="External declaration receivers eligible for proven lower "
                 "binding"
             ),
-        ] = m.Field(default_factory=frozenset[t.Pair[str, str]])
+        ] = m.Field(default_factory=frozenset[tuple[str, str]])
 
     class DeclarationRelocationFinding(m.ContractModel):
         """One payload declaration whose relocation owner cannot be resolved."""
@@ -170,19 +170,19 @@ class FlextInfraModelsTransformers:
         """Binding-proven rewrites planned for one compatibility-alias cutover file."""
 
         local_aliases: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Aliases the file declares, mapped to their targets"),
         ]
         import_aliases: Annotated[
-            t.MappingKV[str, t.StrMapping],
+            Mapping[str, Mapping[str, str]],
             m.Field(description="Imported aliases per source module and their targets"),
         ]
         attribute_aliases: Annotated[
-            t.MappingKV[t.Pair[str, str], str],
+            Mapping[tuple[str, str], str],
             m.Field(description="Module attribute alias accesses and their targets"),
         ]
         qualified_aliases: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Qualified alias identities mapped to their targets"),
         ]
         target_bindings: Annotated[
@@ -190,31 +190,31 @@ class FlextInfraModelsTransformers:
             m.Field(description="Module-level names the file already binds"),
         ]
         preserved_reads: Annotated[
-            frozenset[t.Pair[int, int]],
+            frozenset[tuple[int, int]],
             m.Field(description="Eager upstream reads before a local alias rebind"),
         ] = frozenset()
         upstream_aliases: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Proven upstream identities preceding local aliases"),
-        ] = m.Field(default_factory=u.empty(TypeForm(t.StrMapping)))
+        ] = m.Field(default_factory=u.empty(TypeForm(Mapping[str, str])))
 
     class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""
 
         removals: Annotated[
-            t.MappingKV[str, frozenset[str]],
+            Mapping[str, frozenset[str]],
             m.Field(description="Private symbols removed per source module"),
         ]
         obsolete_imports: Annotated[
-            t.MappingKV[str, frozenset[str]],
+            Mapping[str, frozenset[str]],
             m.Field(description="Public roots superseded by their facade alias"),
         ]
         replacements: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Private qualified identities and public references"),
         ]
         public_imports: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Facade aliases mapped to their publishing package"),
         ]
 
@@ -232,7 +232,7 @@ class FlextInfraModelsTransformers:
             m.Field(description="Python file analyzed for Tier 0 import violations"),
         ]
         alias_to_module: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Alias names mapped to their source modules"),
         ]
         category_a: Annotated[
@@ -356,11 +356,11 @@ class FlextInfraModelsTransformers:
         ]
         root: Annotated[Path, m.Field(description="Physical project root")]
         sources: Annotated[
-            t.MappingKV[Path, str],
+            Mapping[Path, str],
             m.Field(description="Editable source bytes per path"),
         ]
         working: Annotated[
-            t.MutableMappingKV[Path, str],
+            MutableMapping[Path, str],
             m.Field(description="Prospective source bytes per path"),
         ]
 

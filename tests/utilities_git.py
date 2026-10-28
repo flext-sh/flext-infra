@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import venv
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import config, u
@@ -157,7 +158,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         bootstrap(repository_root, ("config", "--local", "user.name", "Flext Tests"))
 
     @staticmethod
-    def isolated_git_keys() -> t.StrSequence:
+    def isolated_git_keys() -> Sequence[str]:
         """Return the repository-local Git variables a fixture must not inherit.
 
         Git exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE while running
@@ -177,9 +178,9 @@ class TestsFlextInfraUtilitiesGitMixin:
     @staticmethod
     def git_bootstrap(
         repo_root: Path,
-        command: t.StrSequence,
+        command: Sequence[str],
         *,
-        overrides: t.StrMapping | None = None,
+        overrides: Mapping[str, str] | None = None,
     ) -> None:
         """Run one repository-construction command isolated from the caller.
 

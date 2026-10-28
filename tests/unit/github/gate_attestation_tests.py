@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from shlex import quote
@@ -20,7 +20,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraGithubGateAttestation:
@@ -41,7 +41,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
 
     @staticmethod
-    def _runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
+    def _runtime_identity(gate_ids: Sequence[str]) -> p.Result[str]:
         """Read real installed provenance and selected native scanner identities.
 
         Returns:
@@ -336,7 +336,7 @@ class TestsFlextInfraGithubGateAttestation:
     )
     def test_public_signing_observation_preserves_undeclared_native_facts(
         tmp_path: Path,
-        declarations: tuple[t.Pair[str, str], ...],
+        declarations: tuple[tuple[str, str], ...],
     ) -> None:
         """Native absence is observable, not selection of a signing capability."""
         u.Tests.git_bootstrap(tmp_path, ("init", "-b", c.Infra.GIT_MAIN))

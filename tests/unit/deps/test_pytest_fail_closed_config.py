@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -101,7 +102,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                     tooling,
                     "pytest.ini_options",
                     "filterwarnings",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 )
             ),
         )
@@ -112,7 +113,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                     tooling,
                     "pytest.ini_options",
                     "testpaths",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 )
             ),
         )
@@ -126,7 +127,7 @@ class TestsFlextInfraPytestFailClosedConfig:
             set(u.Tests.strings(ini["addopts"])),
             eq=set(
                 u.Infra.native_tool_setting(
-                    tooling, "pytest.ini_options", "addopts", TypeForm(t.StrSequence)
+                    tooling, "pytest.ini_options", "addopts", TypeForm(Sequence[str])
                 )
             ),
         )

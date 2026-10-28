@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,8 +16,6 @@ from tests import m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import t
 
 
 class TestsFlextInfraBuilder:
@@ -39,7 +38,7 @@ class TestsFlextInfraBuilder:
         tmp_path: Path,
     ) -> None:
         """Test build with valid scope returns success."""
-        reports: t.SequenceOf[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
+        reports: Sequence[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
         tm.that(len(reports), gte=0)
 
     @staticmethod
@@ -59,7 +58,7 @@ class TestsFlextInfraBuilder:
     def test_build_with_option_variants(
         builder: FlextInfraDocBuilder,
         tmp_path: Path,
-        kwargs: t.MappingKV[str, str | t.SequenceOf[str]],
+        kwargs: Mapping[str, str | Sequence[str]],
     ) -> None:
         """Build runs with each option variant and returns a railway result."""
         if "output_dir" in kwargs:

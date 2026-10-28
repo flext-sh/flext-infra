@@ -10,14 +10,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, override
 
 from flext_cli import u
 
-from flext_infra import FlextInfraUtilities, c, d, m, p, r, t
+from flext_infra import FlextInfraUtilities, c, d, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -41,7 +41,7 @@ class FlextInfraCodegenLazyInit(
     """Plan every generated ``__init__.py`` of the selected repositories."""
 
     project_scope_roots: Annotated[
-        t.SequenceOf[Path] | None,
+        Sequence[Path] | None,
         m.Field(
             description=(
                 "Repository roots selected by conformance; None plans every "
@@ -57,7 +57,7 @@ class FlextInfraCodegenLazyInit(
         *,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None = None,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan this candidate's exports through the existing public initializer.
 
@@ -140,8 +140,8 @@ class FlextInfraCodegenLazyInit(
             }
 
             def family_files(
-                files: t.SequenceOf[m.Infra.CodegenFilePlan],
-            ) -> t.SequenceOf[m.Infra.CodegenFilePlan]:
+                files: Sequence[m.Infra.CodegenFilePlan],
+            ) -> Sequence[m.Infra.CodegenFilePlan]:
                 return tuple(
                     file
                     for file in files
@@ -272,17 +272,17 @@ class FlextInfraCodegenLazyInit(
 
     def _targets(
         self,
-        indexes: t.MappingKV[Path, m.Infra.RopeWorkspaceIndex],
+        indexes: Mapping[Path, m.Infra.RopeWorkspaceIndex],
         *,
         scoped: bool,
-    ) -> p.Result[t.MappingKV[Path, Path | None]]:
+    ) -> p.Result[Mapping[Path, Path | None]]:
         """Select each root's target package; ``None`` plans the whole root.
 
         Returns:
             The planned roots with their target, or an unresolved selection.
 
         """
-        result_type = r[t.MappingKV[Path, Path | None]]
+        result_type = r[Mapping[Path, Path | None]]
         if not self.module:
             return result_type.ok(dict.fromkeys(indexes))
         found = {

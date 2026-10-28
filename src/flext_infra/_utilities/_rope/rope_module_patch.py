@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, p, t
+from flext_infra import c, p
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -87,9 +88,9 @@ class FlextInfraUtilitiesRopeModulePatch:
         }
         # One parse serves every export: indexing the direct module bindings by
         # name once keeps this linear in the module size.
-        bindings_by_name: t.MutableMappingKV[
+        bindings_by_name: MutableMapping[
             str,
-            t.MutableSequenceOf[ast.Assign | ast.AnnAssign],
+            MutableSequence[ast.Assign | ast.AnnAssign],
         ] = {}
         for node in tree.body:
             if not isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
@@ -117,7 +118,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         return frozenset(letters)
 
     @staticmethod
-    def absolute_import_sources_source(source: str, *, name: str) -> t.StrSequence:
+    def absolute_import_sources_source(source: str, *, name: str) -> Sequence[str]:
         """Return the top-level packages an absolute ``from X import`` binds name from.
 
         Returns:

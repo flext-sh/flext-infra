@@ -9,9 +9,9 @@ from __future__ import annotations
 import ast
 import sys
 import textwrap
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
 
@@ -41,12 +41,12 @@ class FlextInfraUtilitiesImportLawPlacement(
     def _import_law_guard_edits(
         cls,
         tree: ast.Module,
-        lines: t.StrSequence,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Replace every module-level import guard with its plain imports.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         """
         return tuple(
@@ -98,8 +98,8 @@ class FlextInfraUtilitiesImportLawPlacement(
     def _import_law_layer_order_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Reorder module-level imports into the canonical layer groups.
 
         The region between the first and the last module-level import
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesImportLawPlacement(
         one layout.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         """
         statements = [
@@ -227,12 +227,12 @@ class FlextInfraUtilitiesImportLawPlacement(
     def _import_law_placement_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Hoist inline imports and move typing-only reverse imports.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         Raises:
             ValueError: If distinct inline providers would share one global binding.
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesImportLawPlacement(
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]] = {
             placement: [] for placement in c.Infra.ImportPlacement
         }
-        edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
+        edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         pending: MutableMapping[str, ast.Import | ast.ImportFrom] = {}
         for node in cls._import_law_iter_imports(state.tree):
             inline = cls._import_law_enclosing_scope(node, state.parents) is not None
@@ -306,15 +306,15 @@ class FlextInfraUtilitiesImportLawPlacement(
     def _import_law_typing_runtime_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Promote allowed runtime reads using the existing definition-time analysis.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         """
-        edits: list[tuple[int, int, t.StrSequence]] = []
+        edits: list[tuple[int, int, Sequence[str]]] = []
         promoted: list[str] = []
         for guard in state.tree.body:
             if not (
@@ -342,10 +342,10 @@ class FlextInfraUtilitiesImportLawPlacement(
     def _import_law_promote_guard_body(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
+        lines: Sequence[str],
         guard: ast.If,
     ) -> tuple[
-        list[tuple[int, int, t.StrSequence]],
+        list[tuple[int, int, Sequence[str]]],
         set[int],
         list[str],
     ]:
@@ -359,7 +359,7 @@ class FlextInfraUtilitiesImportLawPlacement(
             ValueError: If the guard is ambiguous or forces a reverse import.
 
         """
-        guard_edits: list[tuple[int, int, t.StrSequence]] = []
+        guard_edits: list[tuple[int, int, Sequence[str]]] = []
         removed: set[int] = set()
         promoted: list[str] = []
         for node in guard.body:
@@ -424,9 +424,9 @@ class FlextInfraUtilitiesImportLawPlacement(
         cls,
         state: m.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
-        lines: t.StrSequence,
+        lines: Sequence[str],
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]],
-    ) -> tuple[int, int, t.StrSequence] | None:
+    ) -> tuple[int, int, Sequence[str]] | None:
         """Plan one import statement's move, recording where its aliases go.
 
         Returns:
@@ -557,7 +557,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @staticmethod
     def _import_law_sole_body_statement(
         node: ast.stmt,
-        parents: t.MappingKV[int, ast.AST],
+        parents: Mapping[int, ast.AST],
     ) -> bool:
         """Return whether moving one import would leave its body empty.
 
@@ -579,7 +579,7 @@ class FlextInfraUtilitiesImportLawPlacement(
         ):
             return False
         if node in parent.body:
-            body: t.SequenceOf[ast.stmt] = parent.body
+            body: Sequence[ast.stmt] = parent.body
         elif isinstance(parent, ast.If | ast.For | ast.While | ast.Try):
             body = parent.orelse
         else:
@@ -599,7 +599,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     def _import_law_render(
         cls,
         node: ast.Import | ast.ImportFrom,
-        aliases: t.SequenceOf[ast.alias],
+        aliases: Sequence[ast.alias],
     ) -> str:
         """Render one import statement over the given aliases.
 
@@ -616,13 +616,13 @@ class FlextInfraUtilitiesImportLawPlacement(
     def _import_law_insertion_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        runtime_lines: t.StrSequence,
-        typing_lines: t.StrSequence,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        runtime_lines: Sequence[str],
+        typing_lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Insert hoisted runtime and typing-only imports at module level.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         """
         anchor = cls._import_law_header_end(state.tree) + 1

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
 from keyword import iskeyword
 from pathlib import Path
 
@@ -162,7 +163,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         run: m.Infra.LazyInitRun,
         plans: tuple[m.Infra.LazyInitPlan, ...],
         *,
-        first_party: t.MappingKV[Path, frozenset[str]],
+        first_party: Mapping[Path, frozenset[str]],
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind every decided initializer and generated-source tree to its effect.
 
@@ -209,7 +210,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         run: m.Infra.LazyInitRun,
         plan: m.Infra.LazyInitPlan,
         first_party: frozenset[str],
-    ) -> t.SequenceOf[tuple[Path, bytes | None]]:
+    ) -> Sequence[tuple[Path, bytes | None]]:
         """Return the desired bytes of one package and its generated-source trees.
 
         Returns:
@@ -405,7 +406,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         context: m.Infra.LazyInitPackageContext,
         action: c.Infra.LazyInitAction,
         *,
-        child_packages: t.StrSequence = (),
+        child_packages: Sequence[str] = (),
     ) -> m.Infra.LazyInitPlan:
         """Return a plan without exports for one decided action.
 
@@ -494,6 +495,12 @@ class FlextInfraUtilitiesLazyInitPlan:
             and module.file_path.name != c.Infra.INIT_PY
         )
         for path, module_name in modules:
+            if not run.model.source_project.source_query(path, "isfile"):
+                # A staged sibling plan already moved this module on disk
+                # within the same pipeline run; the pre-move index entry is
+                # stale. Skip it — the fixed-point rerun plans the moved
+                # module under its destination name.
+                continue
             names = (
                 python.python_model_exports(
                     python.python_model_module_at(run.model, path, module_name)
@@ -528,7 +535,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         cls,
         run: m.Infra.LazyInitRun,
         context: m.Infra.LazyInitPackageContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Record importable direct child packages without publishing their names.
 
         The child initializer owns its own direct declarations. Its exports
@@ -639,7 +646,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         run: m.Infra.LazyInitRun,
         lazy_map: t.MutableLazyAliasMap,
         name: str,
-        target: t.StrPair,
+        target: tuple[str, str],
     ) -> None:
         """Insert one export; a competing target is elected or recorded ambiguous."""
         existing = lazy_map.get(name)
@@ -659,8 +666,13 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def _lazy_init_elect(
-        cls, run: m.Infra.LazyInitRun, a: t.StrPair, b: t.StrPair, *, name: str
-    ) -> t.StrPair | None:
+        cls,
+        run: m.Infra.LazyInitRun,
+        a: tuple[str, str],
+        b: tuple[str, str],
+        *,
+        name: str,
+    ) -> tuple[str, str] | None:
         """Elect between two targets that publish one declaration or class lineage.
 
         Order: an introducing subclass wins; a package initializer loses to a
@@ -709,8 +721,13 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def _lazy_init_rank(
-        cls, run: m.Infra.LazyInitRun, a: t.StrPair, b: t.StrPair, *, name: str
-    ) -> t.StrPair | None:
+        cls,
+        run: m.Infra.LazyInitRun,
+        a: tuple[str, str],
+        b: tuple[str, str],
+        *,
+        name: str,
+    ) -> tuple[str, str] | None:
         """Rank two publication routes without a filename tie-breaker.
 
         Returns:
@@ -739,7 +756,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         run: m.Infra.LazyInitRun,
         path: Path,
         module: m.Infra.PythonModuleFacts,
-        exports: t.StrSequence,
+        exports: Sequence[str],
     ) -> tuple[str | None, str | None]:
         """Return a route module's facade alias and family suffix.
 
@@ -776,7 +793,7 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def _lazy_init_score(
-        cls, run: m.Infra.LazyInitRun, name: str, target: t.StrPair
+        cls, run: m.Infra.LazyInitRun, name: str, target: tuple[str, str]
     ) -> int:
         """Score one route by its module's governed publication facts.
 

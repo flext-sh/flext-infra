@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -57,17 +57,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def __init__(
             self,
             *,
-            module_bindings: t.Pair[
-                t.MappingKV[str, t.StrMapping],
-                t.MappingKV[str, p.Infra.RopeResource],
+            module_bindings: tuple[
+                Mapping[str, Mapping[str, str]],
+                Mapping[str, p.Infra.RopeResource],
             ],
-            definitions: t.StrMapping,
-            native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
-            inventory: t.Pair[str, t.MappingKV[Path, str]],
-            resolvers: t.Triple[
+            definitions: Mapping[str, str],
+            native: tuple[p.Infra.RopeProject, p.Infra.RopeFile],
+            inventory: tuple[str, Mapping[Path, str]],
+            resolvers: tuple[
                 Callable[..., str],
                 Callable[[t.Infra.Cst.BaseStatement], str | None],
-                Callable[..., t.Pair[str, str]],
+                Callable[..., tuple[str, str]],
             ],
         ) -> None:
             source, sources = inventory
@@ -89,12 +89,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self.line_offsets = [0]
             for line in source.splitlines(keepends=True):
                 self.line_offsets.append(self.line_offsets[-1] + len(line))
-            self.quoted: t.MutableMappingKV[
-                t.Pair[int, int], m.Infra.SourceRewrite
-            ] = {}
+            self.quoted: MutableMapping[tuple[int, int], m.Infra.SourceRewrite] = {}
             self.elected_source = source
             self.identities: list[
-                t.Triple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
+                tuple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
             ] = []
             for module, bindings in bindings_by_module.items():
                 provider = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
@@ -202,7 +200,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def _reject_ambiguous_alias(
             self,
             expression: str,
-            declarations: t.SequenceOf[t.Pair[m.Infra.LogicalStatement, int]],
+            declarations: Sequence[tuple[m.Infra.LogicalStatement, int]],
         ) -> None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             if len(declarations) > 1:
@@ -235,7 +233,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             scope: p.Infra.RopeScope,
             expression: str,
             actual: p.Infra.RopePyName | None,
-            match: t.Pair[p.Infra.RopeSemanticModule, str],
+            match: tuple[p.Infra.RopeSemanticModule, str],
         ) -> str:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             origin, bound = match
@@ -649,7 +647,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if isinstance(updated_node.names, c.Infra.Cst.ImportStar):
                 return updated_node
             aliases: list[t.Infra.Cst.ImportAlias] = []
-            seen: set[t.Pair[str, str]] = set()
+            seen: set[tuple[str, str]] = set()
             for imported in updated_node.names:
                 name = (
                     FlextInfraUtilitiesQualifiedNames.dotted_name(imported.name) or ""
@@ -706,14 +704,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
     @staticmethod
     def _assignment_targets(
         statement: t.Infra.Cst.BaseSmallStatement,
-    ) -> t.VariadicTuple[t.Infra.Cst.BaseAssignTargetExpression]:
+    ) -> tuple[t.Infra.Cst.BaseAssignTargetExpression, ...]:
         """Return the targets one assignment statement binds.
 
         Returns:
             The bound targets, or an empty tuple for other statements.
 
         """
-        targets: t.SequenceOf[t.Infra.Cst.BaseAssignTargetExpression] = ()
+        targets: Sequence[t.Infra.Cst.BaseAssignTargetExpression] = ()
         if isinstance(statement, c.Infra.Cst.AnnAssign):
             targets = [statement.target]
         elif isinstance(statement, c.Infra.Cst.Assign):
@@ -751,13 +749,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         cls,
         source: str,
         *,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
-        bindings: t.Pair[
-            t.MappingKV[str, t.StrMapping],
-            t.MappingKV[str, p.Infra.RopeResource],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeFile],
+        bindings: tuple[
+            Mapping[str, Mapping[str, str]],
+            Mapping[str, p.Infra.RopeResource],
         ],
-        definitions: t.StrMapping,
-        sources: t.MappingKV[Path, str],
+        definitions: Mapping[str, str],
+        sources: Mapping[Path, str],
     ) -> str:
         """Return binding-proven import and usage rewrites without effects.
 

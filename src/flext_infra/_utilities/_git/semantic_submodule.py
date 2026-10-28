@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -20,7 +20,7 @@ from git import GitCommandError
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
 
 
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
 
     @staticmethod
     def _requirement_names(
-        requirements: t.StrSequence,
+        requirements: Sequence[str],
     ) -> p.Result[frozenset[str]]:
         """Return the canonical distribution names of PEP 508 requirements.
 
@@ -248,7 +248,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
     @staticmethod
     def _runtime_closure(
         start: str,
-        runtime: t.MappingKV[str, frozenset[str]],
+        runtime: Mapping[str, frozenset[str]],
     ) -> frozenset[str]:
         """Return every member reachable from ``start`` over runtime edges.
 
@@ -268,8 +268,8 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
 
     @staticmethod
     def _unordered_members(
-        graph: t.MappingKV[str, frozenset[str]],
-    ) -> t.StrSequence:
+        graph: Mapping[str, frozenset[str]],
+    ) -> Sequence[str]:
         """Return the members a topological order cannot place (a cycle).
 
         Returns:

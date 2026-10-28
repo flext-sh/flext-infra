@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import re
 import sys
+from collections.abc import Mapping, Sequence
 from importlib.metadata import packages_distributions
 from pathlib import Path
 from typing import override
@@ -35,6 +36,7 @@ from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackage,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -152,7 +154,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     original_node: t.Infra.Cst.Attribute,
                     updated_node: t.Infra.Cst.Attribute,
                     *,
-                    destinations: t.MappingKV[t.Infra.Cst.Attribute, str] = elected,
+                    destinations: Mapping[t.Infra.Cst.Attribute, str] = elected,
                 ) -> t.Infra.Cst.BaseExpression:
                     destination = destinations.get(original_node)
                     return (
@@ -184,7 +186,7 @@ class FlextInfraUtilitiesFacadeComponents:
     def _component_elected_attributes(
         wrapper: t.Infra.CstMetadata,
         source: str,
-        replacements: t.MappingKV[tuple[int, int, int | None, int | None], str],
+        replacements: Mapping[tuple[int, int, int | None, int | None], str],
     ) -> dict[t.Infra.Cst.Attribute, str]:
         """Match native byte spans to concrete syntax nodes without changing text.
 
@@ -211,7 +213,7 @@ class FlextInfraUtilitiesFacadeComponents:
     def assert_provider_publications_closed(
         cls,
         source_project: p.Infra.RopeProject,
-        publications: t.MappingKV[
+        publications: Mapping[
             tuple[p.Infra.RopeClassObject, str], p.Infra.RopeClassObject
         ],
     ) -> None:
@@ -266,7 +268,7 @@ class FlextInfraUtilitiesFacadeComponents:
     @classmethod
     def facade_component_references(
         cls, project: Path, *, source_project: p.Infra.RopeProject
-    ) -> t.MappingKV[t.StrPair, frozenset[str]]:
+    ) -> Mapping[tuple[str, str], frozenset[str]]:
         """Map each facade namespace to the component references it composes.
 
         A facade letter, or a namespace class nested in it, composes family
@@ -281,7 +283,7 @@ class FlextInfraUtilitiesFacadeComponents:
             ``letter[.Namespace]`` target.
 
         """
-        claims: dict[str, set[t.StrPair]] = {}
+        claims: dict[str, set[tuple[str, str]]] = {}
         for (base, member), targets in cls._component_claims(
             project, source_project=source_project
         ).items():
@@ -289,7 +291,7 @@ class FlextInfraUtilitiesFacadeComponents:
             claims.setdefault(reference, set()).update(
                 (root, target) for root, target, _holder in targets
             )
-        references: dict[t.StrPair, set[str]] = {}
+        references: dict[tuple[str, str], set[str]] = {}
         for reference, targets in claims.items():
             if len(targets) == 1:
                 references.setdefault(next(iter(targets)), set()).add(reference)
@@ -297,8 +299,8 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @staticmethod
     def _facade_namespace_holders(
-        root: str, letters: t.StrSequence, *, source_project: p.Infra.RopeProject
-    ) -> t.SequenceOf[tuple[p.Infra.RopeClassObject, str]]:
+        root: str, letters: Sequence[str], *, source_project: p.Infra.RopeProject
+    ) -> Sequence[tuple[p.Infra.RopeClassObject, str]]:
         """List each facade letter and its recursively nested public namespaces.
 
         Returns:
@@ -330,6 +332,47 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(holders)
 
     @staticmethod
+    def _component_lexical_base(
+        owner: p.Infra.RopeClassObject, index: int
+    ) -> p.Infra.RopeClassObject | None:
+        """Re-resolve one superclass through its declaring module, rope natively.
+
+        The generated lazy initializer re-exports facade components through
+        ``install_lazy_exports``; import inference through that indirection is
+        view-order dependent. The class header names every base lexically, so
+        the declaring module is resolved through the native import map and the
+        class attribute is read from it directly.
+
+        Returns:
+            The native base class, or ``None`` when the header does not name
+            the base index.
+
+        """
+        module = owner.get_module()
+        if not isinstance(module, p.Infra.RopeSourceModule):
+            return None
+        node = owner.get_ast()
+        if not isinstance(node, ast.ClassDef) or index >= len(node.bases):
+            return None
+        reference = ast.unparse(node.bases[index]).partition(".")[0]
+        resource = module.pycore.project.find_module(reference)
+        if resource is None:
+            return None
+        declared = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            module.pycore.project, resource
+        )
+        _head, _, tail = ast.unparse(node.bases[index]).partition(".")
+        binding = declared.get_object()
+        for attribute in tail.split(".") if tail else []:
+            binding = binding[attribute].get_object()
+        try:
+            return FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+                binding, "lexical facade component ancestry"
+            )
+        except TypeError:
+            return None
+
+    @staticmethod
     def _component_ancestors(
         holder: p.Infra.RopeClassObject,
     ) -> tuple[p.Infra.RopeClassObject, ...]:
@@ -359,13 +402,13 @@ class FlextInfraUtilitiesFacadeComponents:
                 base = FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                     candidate, "facade component ancestry"
                 )
-            except TypeError as failure:
-                failure.add_note(
-                    f"ancestry owner={owner.get_name()}; direct_base_index={index}; "
-                    f"inferred_kind={type(candidate).__module__}."
-                    f"{type(candidate).__qualname__}"
+            except TypeError:
+                lexical = FlextInfraUtilitiesFacadeComponents._component_lexical_base(
+                    owner, index
                 )
-                raise
+                if lexical is None:
+                    raise
+                base = lexical
             if base in seen:
                 continue
             seen.add(base)
@@ -382,15 +425,15 @@ class FlextInfraUtilitiesFacadeComponents:
     def _composed_methods(
         cls,
         root: str,
-        letters: t.StrSequence,
+        letters: Sequence[str],
         holder: p.Infra.RopeClassObject,
         *,
         source_project: p.Infra.RopeProject,
-    ) -> t.SequenceOf[tuple[p.Infra.RopeClassObject, str]]:
+    ) -> Sequence[tuple[p.Infra.RopeClassObject, str]]:
         """Keep component receivers only when their effective method is identical.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Pair[p.Infra.RopeClassObject, str]]``.
+            The resulting ``Sequence[tuple[p.Infra.RopeClassObject, str]]``.
 
         """
         members = FlextInfraUtilitiesFacadeMembers
@@ -431,15 +474,15 @@ class FlextInfraUtilitiesFacadeComponents:
     @classmethod
     def _component_claims(
         cls, project: Path, *, source_project: p.Infra.RopeProject
-    ) -> t.MappingKV[
+    ) -> Mapping[
         tuple[p.Infra.RopeClassObject, str],
-        t.SequenceOf[tuple[str, str, p.Infra.RopeClassObject]],
+        Sequence[tuple[str, str, p.Infra.RopeClassObject]],
     ]:
         """Retain native receiver identities while discovering public composition.
 
         Returns:
-            The resulting ``t.MappingKV[t.Pair[p.Infra.RopeClassObject, str],
-                t.SequenceOf[t.Triple[str, str, p.Infra.RopeClassObject]]]``.
+            The resulting ``Mapping[tuple[p.Infra.RopeClassObject, str],
+                Sequence[tuple[str, str, p.Infra.RopeClassObject]]]``.
 
         """
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
@@ -480,11 +523,11 @@ class FlextInfraUtilitiesFacadeComponents:
     def _component_calls(
         cls,
         module: p.Infra.RopePyModule,
-        claims: t.MappingKV[
+        claims: Mapping[
             tuple[p.Infra.RopeClassObject, str],
-            t.SequenceOf[tuple[str, str, p.Infra.RopeClassObject]],
+            Sequence[tuple[str, str, p.Infra.RopeClassObject]],
         ],
-    ) -> t.SequenceOf[tuple[ast.Attribute, str, str]]:
+    ) -> Sequence[tuple[ast.Attribute, str, str]]:
         """Prove both the imported component and its lexical facade receiver.
 
         Callbacks consume the same native callable as call expressions. Both join
@@ -492,7 +535,7 @@ class FlextInfraUtilitiesFacadeComponents:
         and class-base declarations never change their mutation or declaration owner.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[ast.Attribute, str, str]]``.
+            The resulting ``Sequence[tuple[ast.Attribute, str, str]]``.
 
         Raises:
             TypeError: If component consumer has no native module tree.
@@ -538,9 +581,9 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         module: p.Infra.RopePyModule,
         reference: ast.Attribute,
-        claims: t.MappingKV[
+        claims: Mapping[
             tuple[p.Infra.RopeClassObject, str],
-            t.SequenceOf[tuple[str, str, p.Infra.RopeClassObject]],
+            Sequence[tuple[str, str, p.Infra.RopeClassObject]],
         ],
     ) -> str | None:
         """Elect an already bound facade for one native component call.
@@ -587,7 +630,7 @@ class FlextInfraUtilitiesFacadeComponents:
         scope: p.Infra.RopeScope,
         reference: ast.Attribute,
         original: p.Infra.RopePyName,
-        targets: t.SequenceOf[tuple[str, str, p.Infra.RopeClassObject]],
+        targets: Sequence[tuple[str, str, p.Infra.RopeClassObject]],
     ) -> set[str]:
         """Retain effective native callable identities in the consumer scope.
 
@@ -676,7 +719,7 @@ class FlextInfraUtilitiesFacadeComponents:
         rule_id: str,
         relative: str,
         namespace: str,
-        calls: t.SequenceOf[tuple[ast.Attribute, str, str]],
+        calls: Sequence[tuple[ast.Attribute, str, str]],
         source: str,
     ) -> t.JsonMapping:
         """Group native callable-load witnesses by file and public namespace.
@@ -738,7 +781,7 @@ class FlextInfraUtilitiesFacadeComponents:
     @classmethod
     def codemod_facade_component_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render native-proven component calls through their bound public facade.
 
         Calls share one rule per consumer file and public namespace, with exact
@@ -817,7 +860,7 @@ class FlextInfraUtilitiesFacadeComponents:
     @classmethod
     def codemod_library_member_name_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the one rule banning a library-prefixed facade member.
 
         A facade export is prefixed by its capability (``git_``,

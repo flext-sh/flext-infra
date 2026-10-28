@@ -31,10 +31,11 @@ snapshots:
   "type TomlValue = Primitives | list[FlextTestsTypesMake.TomlValue] | dict[str, FlextTestsTypesMake.TomlValue]":
     labels:
     - source: >-
-        type TomlValue = Primitives | list[FlextTestsTypesMake.TomlValue] | dict[str, FlextTestsTypesMake.TomlValue]
+        type TomlValue = Primitives | list[FlextTestsTypesMake.TomlValue] | dict[str,
+        FlextTestsTypesMake.TomlValue]
       style: primary
       start: 0
-      end: 118
+      end: 108
     - source: TomlValue
       style: secondary
       start: 5
@@ -42,7 +43,7 @@ snapshots:
     - source: list[FlextTestsTypesMake.TomlValue]
       style: secondary
       start: 30
-      end: 70
+      end: 65
   "type TomlValue = Primitives | list[TomlValue] | dict[str, TomlValue]":
     labels:
     - source: type TomlValue = Primitives | list[TomlValue] | dict[str, TomlValue]

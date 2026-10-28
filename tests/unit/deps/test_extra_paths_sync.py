@@ -7,13 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra import FlextInfraCli
 from flext_infra.deps import FlextInfraExtraPathsManager
-from tests import c, t, tf, tm, u
+from tests import c, tf, tm, u
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
@@ -24,7 +25,7 @@ class SyncScenario:
 
     mode: str
     dry_run: bool = False
-    project_dirs: t.StrSequence | None = None
+    project_dirs: Sequence[str] | None = None
     expect_fail: bool = False
     expect_has: str | None = None
 
@@ -91,7 +92,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         scenario: SyncScenario,
     ) -> None:
         """Verify sync extra paths success modes."""
-        project_dirs_arg: t.SequenceOf[Path] | None = None
+        project_dirs_arg: Sequence[Path] | None = None
         if scenario.mode == "project":
             project = tmp_path / "proj"
             project.mkdir()
@@ -153,7 +154,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         tmp_path: Path,
         pyright_content: str,
         mode: str,
-        argv: t.StrSequence,
+        argv: Sequence[str],
         expected_exit: int,
     ) -> None:
         """Verify main success modes."""

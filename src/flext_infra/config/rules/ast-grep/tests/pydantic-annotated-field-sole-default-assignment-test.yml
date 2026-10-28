@@ -7,7 +7,7 @@ valid:
         project_id: t.NonEmptyStr | None = None
   - |
     class Spec:
-        roots: Annotated[t.StrSequence, m.Field(default=(), description="d")]
+        roots: Annotated[Sequence[str], m.Field(default=(), description="d")]
   - |
     class Spec:
         project_id: Annotated[t.NonEmptyStr | None, m.Field(default=None)] = None
@@ -21,6 +21,6 @@ invalid:
   - |
     class Spec:
         flags: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(default=()),
         ]

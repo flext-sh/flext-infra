@@ -159,7 +159,7 @@ class FlextInfraModelsConfigRelease:
             }
         )
         maintenance_line: Annotated[
-            t.Pair[t.NonNegativeInt, t.NonNegativeInt] | None,
+            tuple[t.NonNegativeInt, t.NonNegativeInt] | None,
             m.Field(
                 description="Permitted major/minor release line; unset is unrestricted",
             ),

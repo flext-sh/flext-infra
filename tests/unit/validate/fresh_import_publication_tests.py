@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +24,7 @@ def _probe_publication(
     init_path: Path,
     current_pkg: str | None = None,
     surface: str | None = None,
-    exports: t.StrSequence = (),
+    exports: Sequence[str] = (),
 ) -> m.Infra.LazyInitPlan:
     """Compose one generated-`__init__` publication probe.
 
@@ -50,9 +51,9 @@ def _probe_publication(
 def _probe_report(
     tmp_path: Path,
     *,
-    packages: t.StrSequence = (),
-    publications: t.SequenceOf[m.Infra.LazyInitPlan] = (),
-    repository_roots: t.SequenceOf[Path] = (),
+    packages: Sequence[str] = (),
+    publications: Sequence[m.Infra.LazyInitPlan] = (),
+    repository_roots: Sequence[Path] = (),
     runtime_root: Path,
 ) -> m.Infra.ValidationReport:
     """Build one fresh-import report over the probe checkout.

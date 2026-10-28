@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -78,7 +79,7 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
             f"{organization}{c.Infra.SONARCLOUD_PROJECT_KEY_SEPARATOR}{repository}",
         )
 
-    def project_credentials(self) -> p.Result[t.Pair[t.SecretStr, str]]:
+    def project_credentials(self) -> p.Result[tuple[t.SecretStr, str]]:
         """Resolve the exact token and the project key of this checkout.
 
         Returns:
@@ -87,18 +88,18 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
         """
         token = self.required_token()
         if token.failure:
-            return r[t.Pair[t.SecretStr, str]].from_failure(token)
+            return r[tuple[t.SecretStr, str]].from_failure(token)
         key = self.project_key(self.repository_root)
         if key.failure:
-            return r[t.Pair[t.SecretStr, str]].from_failure(key)
-        return r[t.Pair[t.SecretStr, str]].ok((token.value, key.value))
+            return r[tuple[t.SecretStr, str]].from_failure(key)
+        return r[tuple[t.SecretStr, str]].ok((token.value, key.value))
 
     @staticmethod
     def call(
         api_url: str,
         timeout_seconds: int,
         token: t.SecretStr,
-        request: t.Triple[str, str, t.SequenceOf[t.Pair[str, str]]],
+        request: tuple[str, str, Sequence[tuple[str, str]]],
     ) -> p.Result[str]:
         """Send one authenticated request to the configured web API origin.
 

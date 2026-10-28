@@ -10,7 +10,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from flext_infra import infra
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,6 +22,15 @@ class TestsFlextInfraClassNestingSupport:
     LOOSE_MODULE = '''"""Loose helpers of one family module."""
 
 from __future__ import annotations
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 
 import re
 from collections.abc import (
@@ -61,7 +70,7 @@ __all__: list[str] = ["LIMIT", "write"]
 '''
 
     @staticmethod
-    def _family_module(tmp_path: Path, stem: str, source: str) -> t.Pair[Path, Path]:
+    def _family_module(tmp_path: Path, stem: str, source: str) -> tuple[Path, Path]:
         """Write one module into the utilities family package of a workspace.
 
         Returns:
@@ -94,8 +103,8 @@ __all__: list[str] = ["LIMIT", "write"]
 
     @staticmethod
     def _plan(
-        root: Path, sources: t.MappingKV[Path, ...]
-    ) -> t.Pair[t.MappingKV[Path, str], t.MappingKV[Path, str] | str]:
+        root: Path, sources: Mapping[Path, str]
+    ) -> tuple[Mapping[Path, str], Mapping[Path, str] | str]:
         """Plan class nesting, then replan the planned sources.
 
         Returns:

@@ -278,7 +278,7 @@ class TestsFlextInfraDepsModernizerTooling:
     @staticmethod
     def test_native_tooling_render_keeps_caller_nested_tables_unchanged() -> None:
         """Missing output tables never become mutations of the caller's tree."""
-        options: t.MappingKV[str, t.JsonMapping] = {
+        options: Mapping[str, t.JsonMapping] = {
             "fixture_native": {
                 "branch": {
                     "keep": [{"label": "last"}, {"label": "first"}],
@@ -502,11 +502,11 @@ class TestsFlextInfraDepsModernizerTooling:
         source: str = "",
         *,
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> t.Pair[t.MutableJsonMapping, t.JsonMapping]:
+    ) -> tuple[t.MutableJsonMapping, t.JsonMapping]:
         """Apply the Ruff phase twice to one named payload; return payload and ruff.
 
         Returns:
-            The resulting ``t.Pair[t.MutableJsonMapping, t.JsonMapping]``.
+            The resulting ``tuple[t.MutableJsonMapping, t.JsonMapping]``.
 
         """
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
@@ -565,7 +565,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "pyrefly",
                     "project-excludes",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 )
             ),
             eq=True,
@@ -676,7 +676,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 ),
             }),
         )

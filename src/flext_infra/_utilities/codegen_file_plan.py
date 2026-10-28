@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from itertools import islice
 from typing import TYPE_CHECKING
 
 from flext_cli import m as cli_m, u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +24,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_compose_file_plans(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
@@ -101,8 +102,8 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @classmethod
     def codegen_stage_file_plans(
         cls,
-        index: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        index: MutableMapping[Path, m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
     ) -> None:
@@ -116,7 +117,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @classmethod
     def codegen_duplicate_effect_diagnostic(
         cls,
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
     ) -> str:
         """Describe bounded duplicate declarations without exposing source bytes.
 
@@ -164,7 +165,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         edit: p.Infra.SemanticMigrationEdit,
         *,
         source_project: p.Infra.RopeProject,
-        declared_files: t.MappingKV[Path, m.Infra.CodegenFilePlan],
+        declared_files: Mapping[Path, m.Infra.CodegenFilePlan],
     ) -> m.Infra.CodegenFilePlan:
         """Bind a semantic edit to its original candidate publication witness.
 
@@ -262,7 +263,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def required_file_states(
-        paths: t.IterableOf[Path],
+        paths: Iterable[Path],
     ) -> p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]:
         """Snapshot descriptor-authenticated states for an inventoried path set.
 
@@ -270,7 +271,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         snapshot.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[cli_m.Cli.AtomicFileState]]``.
+            The resulting ``p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]``.
 
         """
         states: list[cli_m.Cli.AtomicFileState] = []
@@ -318,7 +319,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_fixed_point(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         subject: str,
     ) -> p.Result[bool]:
@@ -346,7 +347,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_file_drift_report(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         limit: int = 40,
     ) -> str:

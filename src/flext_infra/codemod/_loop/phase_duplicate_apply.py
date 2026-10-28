@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,7 @@ from flext_infra.refactor._census import (
 from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodemodLoopPhaseDuplicateApply:
@@ -70,7 +71,7 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan the trivial duplicate cures; a structural duplicate fails loud.
 
@@ -104,7 +105,7 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
         """Rebuild the workspace duplicate groups from the Rope inventory.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.DuplicateGroup]``.
+            The resulting ``tuple[m.Infra.DuplicateGroup, ...]``.
 
         """
         project_objects: dict[str, list[m.Infra.Object]] = {}

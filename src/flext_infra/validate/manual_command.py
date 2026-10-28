@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shlex
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, s, t
@@ -51,7 +52,7 @@ class FlextInfraManualCommandValidator(s[bool]):
             The resulting ``bool``.
 
         """
-        tokens: t.MutableSequenceOf[str] = (
+        tokens: MutableSequence[str] = (
             cls._strip_wrappers(shlex.split(segment)) if segment else []
         )
         if not tokens:
@@ -76,14 +77,14 @@ class FlextInfraManualCommandValidator(s[bool]):
         )
 
     @classmethod
-    def _strip_wrappers(cls, tokens: t.StrSequence) -> t.MutableSequenceOf[str]:
+    def _strip_wrappers(cls, tokens: Sequence[str]) -> MutableSequence[str]:
         """Drop leading wrapper commands and ``env VAR=val`` assignments.
 
         Returns:
-            The resulting ``t.MutableSequenceOf[str]``.
+            The resulting ``MutableSequence[str]``.
 
         """
-        out: t.MutableSequenceOf[str] = list(tokens)
+        out: MutableSequence[str] = list(tokens)
         while out:
             name = Path(out[0]).name
             if name == "env":
@@ -101,7 +102,7 @@ class FlextInfraManualCommandValidator(s[bool]):
         return out
 
     @classmethod
-    def _strip_uv_run_options(cls, tokens: t.StrSequence) -> t.MutableSequenceOf[str]:
+    def _strip_uv_run_options(cls, tokens: Sequence[str]) -> MutableSequence[str]:
         """Return the real command after ``uv run`` and its options.
 
         Returns:
@@ -126,7 +127,7 @@ class FlextInfraManualCommandValidator(s[bool]):
         return out
 
     @staticmethod
-    def _module_after_m(rest: t.StrSequence) -> str:
+    def _module_after_m(rest: Sequence[str]) -> str:
         """Return the module name following ``-m`` (``python -m <module>``).
 
         Returns:

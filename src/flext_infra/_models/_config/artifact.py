@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence
 from functools import cached_property
 from keyword import iskeyword
 from pathlib import Path
@@ -133,7 +133,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
         """
 
         tool_state: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Non-artifact tool homes and scratch roots (agent sync "
@@ -142,7 +142,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         archive_roots: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Immutable archive contracts: historical evidence trees "
@@ -151,7 +151,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         docs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Docs-scanner delta: generated sites and documentation "
@@ -160,7 +160,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         markdown: Annotated[
-            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
+            tuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")], ...],
             m.Field(
                 description=(
                     "Positive repository-relative Markdown exclusion patterns "
@@ -169,7 +169,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         docs_publish: Annotated[
-            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
+            tuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")], ...],
             m.Field(
                 description=(
                     "Repository-relative page patterns excluded from site "
@@ -178,7 +178,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         docs_copy: Annotated[
-            t.VariadicTuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")]],
+            tuple[Annotated[t.NonEmptyStr, m.Field(pattern=r"^[^!]")], ...],
             m.Field(
                 description=(
                     "Repository-relative documentation patterns excluded from "
@@ -187,7 +187,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         pyproject_scan: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "pyproject-discovery delta: non-productive trees whose "
@@ -196,7 +196,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         check: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Quality-check delta: editor/agent state, report "
@@ -205,7 +205,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         validation_clone: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Validation-clone delta: directories excluded when "
@@ -214,7 +214,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         worktree_transaction: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Worktree-transaction delta: cache directories excluded "
@@ -223,7 +223,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         deps_discovery: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Dependency-discovery delta: directories skipped while "
@@ -232,7 +232,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = ()
         scenario_data_roots: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Project-relative fixture materialization and pytest collection "
@@ -283,7 +283,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         shapes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Rule shapes the renderer is registered to emit"),
         ] = ()
         shapes_from: Annotated[
@@ -328,7 +328,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
         """Native ast-grep utilities and rules rendered in memory from SSOT facts."""
 
         producers: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "u.Infra producer names; each maps a project root to its "
@@ -337,7 +337,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         renderers: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigArtifact.CodegenAstGrepRendererSpec],
+            tuple[FlextInfraModelsConfigArtifact.CodegenAstGrepRendererSpec, ...],
             m.Field(
                 description=(
                     "Renderers emitting generated native rule documents, run "
@@ -346,7 +346,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         scopes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "u.Infra file-scope producer names; each maps a project root "
@@ -405,7 +405,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
         """Declared artifacts and their editor, source and generated-tree views."""
 
         artifacts: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigArtifact.CodegenArtifactSpec],
+            tuple[FlextInfraModelsConfigArtifact.CodegenArtifactSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -462,11 +462,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def source_scan_ignored(self) -> t.VariadicTuple[str]:
+        def source_scan_ignored(self) -> tuple[str, ...]:
             """Derived ``source_scan.ignored_resources`` names from the SSOT.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -477,11 +477,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def generated_sources(self) -> t.VariadicTuple[str]:
+        def generated_sources(self) -> tuple[str, ...]:
             """Derived names of the tracked generator-owned source trees.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -492,11 +492,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def generated_source_globs(self) -> t.VariadicTuple[str]:
+        def generated_source_globs(self) -> tuple[str, ...]:
             """Derived generation-ownership globs, not analyzer exemptions.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(f"**/{name}/**" for name in self.generated_sources)
@@ -573,7 +573,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
         ] = m.Field(default_factory=FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec)
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         retired_projections: Annotated[
-            t.VariadicTuple[str | FlextInfraModelsConfigArtifact.RetiredProjectionSpec],
+            tuple[str | FlextInfraModelsConfigArtifact.RetiredProjectionSpec, ...],
             m.Field(
                 description=(
                     "Repository-relative generated projections that no template "
@@ -656,7 +656,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         ci_system_packages: Annotated[
-            Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
+            Mapping[str, tuple[t.NonEmptyStr, ...]],
             m.Field(
                 description=(
                     "Per-distribution runner packages (Ubuntu apt names) the "
@@ -665,7 +665,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         ci_package_registry_read: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Distributions whose generated CI gates resolve GitHub "
@@ -688,7 +688,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             m.Field(description="Global branch policy (CI triggers, integration line)"),
         ]
         profiles: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigContexts.ProfileSpec],
+            tuple[FlextInfraModelsConfigContexts.ProfileSpec, ...],
             m.Field(description="Ordered Make profiles"),
         ]
         make: Annotated[
@@ -720,7 +720,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def analyzer_exclude_globs(self) -> t.VariadicTuple[str]:
+        def analyzer_exclude_globs(self) -> tuple[str, ...]:
             """Project declared artifacts and walker exclusions into analyzer globs.
 
             Returns:
@@ -744,7 +744,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def markdown_exclude_globs(self) -> t.VariadicTuple[str]:
+        def markdown_exclude_globs(self) -> tuple[str, ...]:
             """Derive Markdown scope without hiding authored or merged documents.
 
             Returns:
@@ -767,7 +767,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def docs_publish_patterns(self) -> t.VariadicTuple[str]:
+        def docs_publish_patterns(self) -> tuple[str, ...]:
             """Compose page and copy exclusions in repository coordinates.
 
             Returns:
@@ -783,7 +783,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def docs_copy_patterns(self) -> t.VariadicTuple[str]:
+        def docs_copy_patterns(self) -> tuple[str, ...]:
             """Expose declared copy exclusions without importing Markdown scope.
 
             Returns:
@@ -794,7 +794,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def analysis_excluded_dirs(self) -> t.VariadicTuple[str]:
+        def analysis_excluded_dirs(self) -> tuple[str, ...]:
             """Derived base directory exclusion set every walker composes.
 
             Machine-emitted artifacts flagged ``analysis_exclude`` plus the
@@ -803,7 +803,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             per-scanner derivations extend.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -820,7 +820,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def docs_excluded_dirs(self) -> t.VariadicTuple[str]:
+        def docs_excluded_dirs(self) -> tuple[str, ...]:
             """Derived live-documentation exclusion set.
 
             The base walker set plus the declared archive roots and the
@@ -828,7 +828,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             and immutable or historical evidence roots.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -841,7 +841,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def pyproject_scan_excluded_dirs(self) -> t.VariadicTuple[str]:
+        def pyproject_scan_excluded_dirs(self) -> tuple[str, ...]:
             """Derived pyproject-discovery exclusion set.
 
             The base walker set plus the declared archive roots and the
@@ -849,7 +849,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             membership.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -862,14 +862,14 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def check_excluded_dirs(self) -> t.VariadicTuple[str]:
+        def check_excluded_dirs(self) -> tuple[str, ...]:
             """Derived quality-check exclusion set.
 
             The base walker set plus the declared archive roots and the
             check delta (editor/agent state, report outputs, caches).
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -882,7 +882,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def validation_clone_excluded_dirs(self) -> t.VariadicTuple[str]:
+        def validation_clone_excluded_dirs(self) -> tuple[str, ...]:
             """Derived validation-clone exclusion set.
 
             The base walker set plus the declared archive roots and the
@@ -890,7 +890,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             post-apply validation.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -903,14 +903,14 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def worktree_transaction_excluded_dirs(self) -> t.VariadicTuple[str]:
+        def worktree_transaction_excluded_dirs(self) -> tuple[str, ...]:
             """Derived worktree-transaction exclusion set.
 
             The base walker set plus the declared archive roots and the
             cache delta excluded from isolated worktree transaction deltas.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -923,7 +923,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def deps_discovery_excluded_dirs(self) -> t.VariadicTuple[str]:
+        def deps_discovery_excluded_dirs(self) -> tuple[str, ...]:
             """Derived dependency-discovery exclusion set.
 
             The base walker set plus the declared archive roots and the
@@ -931,7 +931,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             declarations.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -944,11 +944,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def resolver_owned_files(self) -> t.VariadicTuple[str]:
+        def resolver_owned_files(self) -> tuple[str, ...]:
             """Derived filenames whose content the package resolver owns.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             return tuple(
@@ -969,9 +969,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
         @property
         def gitignore_sections(
             self,
-        ) -> t.VariadicTuple[
-            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-        ]:
+        ) -> tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...]:
             """Derived canonical ``.gitignore`` sections (SSOT order, deduplicated).
 
             Ignore files are order-sensitive: a pattern placed before a
@@ -983,7 +981,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
             Returns:
                 The resulting
-                    ``t.VariadicTuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec]``.
+                    ``tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...]``.
 
             """
             scaffold_sections = self.scaffold.gitignore_sections
@@ -996,7 +994,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                 for section in scaffold_sections
                 for pattern in section.patterns
             }
-            managed_allowed: t.MutableSequenceOf[str] = []
+            managed_allowed: MutableSequence[str] = []
             declared_patterns = {
                 pattern for section in scaffold_sections for pattern in section.patterns
             }
@@ -1013,11 +1011,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                     if candidate not in declared_patterns
                     and candidate not in managed_allowed
                 )
-            derived: t.MutableSequenceOf[str] = []
+            derived: MutableSequence[str] = []
             for pattern in self.gitignore_artifact_patterns:
                 if pattern not in governed and pattern not in derived:
                     derived.append(pattern)
-            sections: t.MutableSequenceOf[
+            sections: MutableSequence[
                 FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
             ] = []
             # Declared sections are emitted verbatim. Cross-section dedup is
@@ -1047,11 +1045,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def gitignore_artifact_patterns(self) -> t.VariadicTuple[str]:
+        def gitignore_artifact_patterns(self) -> tuple[str, ...]:
             """Derived ``.gitignore`` artifact patterns from the SSOT (stable order).
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...]``.
 
             """
             # A generated source tree is tracked: ignoring it would hide the
@@ -1066,7 +1064,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
         @cached_property
         def managed_file_specs(
             self,
-        ) -> t.VariadicTuple[FlextInfraModelsConfigTemplates.ManagedFileSpec]:
+        ) -> tuple[FlextInfraModelsConfigTemplates.ManagedFileSpec, ...]:
             """Derive managed views once per catalog from its single declaration.
 
             Returns:
@@ -1128,7 +1126,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             m.Field(description="Validated repository declaration subsection"),
         ]
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True, description="Exact consulted configuration input states"
             ),
@@ -1142,7 +1140,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             m.Field(description="Validated effective repository codegen declaration"),
         ]
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(exclude=True, description="Exact consulted config input states"),
         ] = ()
 
@@ -1310,7 +1308,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                 ),
             ),
         ]
-        planned_direct_sources: t.VariadicTuple[str] | None = m.Field(
+        planned_direct_sources: tuple[str, ...] | None = m.Field(
             default=None,
             description=(
                 "Requirement names the pyproject composed in this plan "
@@ -1342,7 +1340,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             m.Field(description="Captured index entry scheduled for retirement"),
         ] = None
         tracking_dependencies: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description=(
                     "Portable declaration destinations required before retirement"
@@ -1396,7 +1394,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ] = None
         provider_plans: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigArtifact.CodegenFilePlan] | None,
+            tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] | None,
             m.Field(
                 exclude=True,
                 description=(
@@ -1482,11 +1480,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigArtifact.CodegenPlanningFileEvidence],
+            tuple[FlextInfraModelsConfigArtifact.CodegenPlanningFileEvidence, ...],
             m.Field(description="Planned destination identities and content digests"),
         ]
         issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Native target failures from original planning"),
         ]
         error: Annotated[str, m.Field(description="Original planning failure message")]
@@ -1502,8 +1500,8 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         root: Annotated[Path, m.Field(description="Invoking generation scope")]
         outcomes: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigArtifact.CodegenPlanningRepositoryEvidence
+            tuple[
+                FlextInfraModelsConfigArtifact.CodegenPlanningRepositoryEvidence, ...
             ],
             m.Field(description="Every selected repository's native planning outcome"),
         ]

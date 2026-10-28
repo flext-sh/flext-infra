@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import config
@@ -63,7 +64,7 @@ class TestsFlextInfraWorkspaceFactory:
         self,
         tmp_path: Path,
         name: t.NonEmptyStr,
-        deps: t.StrSequence,
+        deps: Sequence[str],
     ) -> Path:
         """Create a project with the specified dependencies.
 
@@ -114,7 +115,7 @@ class TestsFlextInfraWorkspaceFactory:
         self,
         tmp_path: Path,
         name: t.NonEmptyStr,
-        deps: t.StrSequence,
+        deps: Sequence[str],
     ) -> Path:
         """Create a project structure with package and tests directories.
 
@@ -143,7 +144,7 @@ class TestsFlextInfraWorkspaceFactory:
         (tests_dir / "__init__.py").write_text("", encoding=self.encoding)
         return project_root
 
-    def _project_pyproject(self, name: t.NonEmptyStr, deps: t.StrSequence) -> str:
+    def _project_pyproject(self, name: t.NonEmptyStr, deps: Sequence[str]) -> str:
         """Generate pyproject.toml content using infra constants.
 
         Returns:

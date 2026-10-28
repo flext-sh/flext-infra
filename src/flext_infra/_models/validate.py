@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -29,7 +30,7 @@ class FlextInfraModelsCore:
 
         passed: Annotated[bool, m.Field(description="Validation status")]
         violations: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Collected validation violations"),
         ] = m.Field(default_factory=tuple)
         summary: Annotated[
@@ -46,16 +47,16 @@ class FlextInfraModelsCore:
     class FreshImportEntryPoints(m.ExternalContractModel):
         """The standardized executable metadata consumed by importlib."""
 
-        scripts: t.StrMapping | None = m.Field(
+        scripts: Mapping[str, str] | None = m.Field(
             default=None,
             description="Declared console entrypoints when present",
         )
-        gui_scripts: t.StrMapping | None = m.Field(
+        gui_scripts: Mapping[str, str] | None = m.Field(
             default=None,
             alias="gui-scripts",
             description="Declared graphical entrypoints when present",
         )
-        entry_points: t.MappingKV[str, t.StrMapping] | None = m.Field(
+        entry_points: Mapping[str, Mapping[str, str]] | None = m.Field(
             default=None,
             alias="entry-points",
             description="Declared plugin entrypoint groups when present",
@@ -78,14 +79,14 @@ class FlextInfraModelsCore:
             c.Infra.OperationMode,
             m.Field(description="Skill validation mode"),
         ]
-        include_globs: Annotated[t.StrSequence, m.Field(description="Include globs")]
-        exclude_globs: Annotated[t.StrSequence, m.Field(description="Exclude globs")]
+        include_globs: Annotated[Sequence[str], m.Field(description="Include globs")]
+        exclude_globs: Annotated[Sequence[str], m.Field(description="Exclude globs")]
 
     class SkillReportContext(m.ArbitraryTypesModel):
         """Resolved inputs for one skill validation report."""
 
         rules: Annotated[
-            t.MappingKV[str, t.JsonValue],
+            Mapping[str, t.JsonValue],
             m.Field(description="Rules payload"),
         ]
         root: Annotated[Path, m.Field(description="Repository root path")]
@@ -95,7 +96,7 @@ class FlextInfraModelsCore:
             m.Field(description="Skill validation mode"),
         ]
         counts: Annotated[t.IntMapping, m.Field(description="Violation counts")]
-        violations: Annotated[t.StrSequence, m.Field(description="Violations")]
+        violations: Annotated[Sequence[str], m.Field(description="Violations")]
 
     class StubAnalysisReport(
         FlextInfraModelsMixins.ProjectNameMixin,
@@ -104,15 +105,15 @@ class FlextInfraModelsCore:
         """Structured typed-dependency analysis result for a project."""
 
         mypy_hints: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Install-package hints extracted from mypy output"),
         ] = m.Field(default_factory=list)
         internal_missing: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Missing internal imports"),
         ] = m.Field(default_factory=list)
         unresolved_missing: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(
                 description=(
                     "Missing external imports without an installed typed dependency"
@@ -146,29 +147,25 @@ class FlextInfraModelsCore:
     class PytestMarkdownCollection(m.ArbitraryTypesModel):
         """Session-owned public collection-hook observations."""
 
-        eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
-            m.Field(
-                default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
-                        t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin]
-                    ),
+        eligible: MutableSequence[FlextInfraModelsCore.PytestMarkdownOrigin] = m.Field(
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    MutableSequence[FlextInfraModelsCore.PytestMarkdownOrigin]
                 ),
-                validate_default=True,
-                description="Independently parsed origins",
-            )
+            ),
+            validate_default=True,
+            description="Independently parsed origins",
         )
-        collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
-            m.Field(
-                default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
-                        t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem]
-                    ),
+        collected: MutableSequence[FlextInfraModelsCore.PytestMarkdownItem] = m.Field(
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
                 ),
-                validate_default=True,
-                description="Observed pre-selection items",
-            )
+            ),
+            validate_default=True,
+            description="Observed pre-selection items",
         )
-        deselected: t.MutableSequenceOf[str] = m.Field(
+        deselected: MutableSequence[str] = m.Field(
             default_factory=list,
             description="Public pytest deselection notifications",
         )
@@ -515,23 +512,23 @@ class FlextInfraModelsCore:
             default_factory=tuple, description="Executed call-phase origins"
         )
         failed_cases: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Failed test labels"),
         ] = m.Field(default_factory=tuple)
         error_traces: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Collected error traces"),
         ] = m.Field(default_factory=tuple)
         warning_lines: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Captured warning lines"),
         ] = m.Field(default_factory=tuple)
         skip_cases: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Skipped test labels"),
         ] = m.Field(default_factory=tuple)
         slow_entries: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Slow test entries"),
         ] = m.Field(default_factory=tuple)
 
@@ -562,67 +559,67 @@ class FlextInfraModelsCore:
         mutable state.
         """
 
-        reported_phases: t.MutableMappingKV[str, t.MutableStrMapping] = m.Field(
+        reported_phases: MutableMapping[str, t.MutableStrMapping] = m.Field(
             default_factory=dict,
             description="Runtest phase outcomes keyed by TestReport node ID",
         )
-        connectivity_skip_cases: t.MutableSequenceOf[str] = m.Field(
+        connectivity_skip_cases: MutableSequence[str] = m.Field(
             default_factory=list,
             description="Shared-plugin prerequisite skips retained in JUnit",
         )
-        markdown_attempts: t.MutableSequenceOf[
+        markdown_attempts: MutableSequence[
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownAttempt]
+                    MutableSequence[FlextInfraModelsCore.PytestMarkdownAttempt]
                 ),
             ),
             validate_default=True,
             description="Call-phase attempt observations",
         )
-        markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
+        markdown_items: MutableSequence[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
                 default_factory=u.empty(
                     contract_factory=lambda: TypeForm(
-                        t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem]
+                        MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
                     ),
                 ),
                 validate_default=True,
                 description="Call-phase origin observations",
             )
         )
-        collection_failed_cases: t.MutableSequenceOf[str] = m.Field(
+        collection_failed_cases: MutableSequence[str] = m.Field(
             default_factory=list,
             description="Node IDs with failed collection reports",
         )
-        collection_skip_cases: t.MutableSequenceOf[str] = m.Field(
+        collection_skip_cases: MutableSequence[str] = m.Field(
             default_factory=list,
             description="Node IDs with skipped collection reports",
         )
 
         failed_cases: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Collected failed test-case labels"),
         ] = m.Field(default_factory=list)
         error_cases: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Collected error test-case labels"),
         ] = m.Field(default_factory=list)
         error_traces: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Collected error trace chunks"),
         ] = m.Field(default_factory=list)
         skip_cases: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Collected skipped test-case labels"),
         ] = m.Field(default_factory=list)
         warning_lines: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Collected warning lines"),
         ] = m.Field(default_factory=list)
         slow_entries: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Collected slow-test entries"),
         ] = m.Field(default_factory=list)
 
@@ -634,7 +631,7 @@ class FlextInfraModelsCore:
             m.Field(description="Total discovered scripts"),
         ]
         reports_written: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Written report file paths"),
         ] = m.Field(default_factory=list)
 

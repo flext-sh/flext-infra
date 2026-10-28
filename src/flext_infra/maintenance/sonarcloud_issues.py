@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, t, u
@@ -23,11 +24,11 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         project_key: str,
         branch: str,
         page: int,
-    ) -> tuple[t.Pair[str, str], ...]:
+    ) -> tuple[tuple[str, str], ...]:
         """Constrain the search to one project and its integration branch.
 
         Returns:
-            The resulting ``tuple[t.Pair[str, str], ...],``.
+            The resulting ``tuple[tuple[str, str], ...],``.
 
         """
         return (
@@ -75,14 +76,14 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
             u.Cli.info(issue.model_dump_json())
         return r[bool].ok(value=True)
 
-    def _authenticated_scope(self) -> p.Result[t.Triple[t.SecretStr, str, str]]:
+    def _authenticated_scope(self) -> p.Result[tuple[t.SecretStr, str, str]]:
         """Resolve the token, project key, and baseline branch of the audit.
 
         Returns:
             The resulting ``(token, project_key, branch)`` triple.
 
         """
-        result_type = r[t.Triple[t.SecretStr, str, str]]
+        result_type = r[tuple[t.SecretStr, str, str]]
         credentials = self.project_credentials()
         if credentials.failure:
             return result_type.from_failure(credentials)
@@ -100,7 +101,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         token: t.SecretStr,
         key: str,
         branch_value: str,
-    ) -> p.Result[t.SequenceOf[m.Infra.SonarcloudIssue]]:
+    ) -> p.Result[Sequence[m.Infra.SonarcloudIssue]]:
         """Read every search page with complete-accounting guarantees.
 
         Returns:
@@ -124,14 +125,14 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
                 ),
             )
             if body.failure:
-                return r[t.SequenceOf[m.Infra.SonarcloudIssue]].from_failure(body)
+                return r[Sequence[m.Infra.SonarcloudIssue]].from_failure(body)
             parsed = u.validate_value(
                 m.Infra.SonarcloudIssueSearch,
                 body.value,
                 from_json=True,
             )
             if parsed.failure:
-                return r[t.SequenceOf[m.Infra.SonarcloudIssue]].from_failure(parsed)
+                return r[Sequence[m.Infra.SonarcloudIssue]].from_failure(parsed)
             response = parsed.value
             page_verdict = self._page_verdict(
                 response,
@@ -144,25 +145,25 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
             total = response.paging.total
             for issue in response.issues:
                 if issue.key in seen:
-                    return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
+                    return r[Sequence[m.Infra.SonarcloudIssue]].fail(
                         f"SonarCloud repeated issue {issue.key}",
                     )
                 seen.add(issue.key)
                 findings.append(issue)
             if len(findings) > total:
-                return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
+                return r[Sequence[m.Infra.SonarcloudIssue]].fail(
                     "SonarCloud returned more issues than its total",
                 )
             page += 1
-        return r[t.SequenceOf[m.Infra.SonarcloudIssue]].ok(findings)
+        return r[Sequence[m.Infra.SonarcloudIssue]].ok(findings)
 
     @staticmethod
     def _page_verdict(
         response: m.Infra.SonarcloudIssueSearch,
-        findings: t.SequenceOf[m.Infra.SonarcloudIssue],
+        findings: Sequence[m.Infra.SonarcloudIssue],
         page: int,
         total: int | None,
-    ) -> p.Result[t.SequenceOf[m.Infra.SonarcloudIssue]] | None:
+    ) -> p.Result[Sequence[m.Infra.SonarcloudIssue]] | None:
         """Judge one search page against the paging and completeness contract.
 
         Returns:
@@ -170,25 +171,25 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         """
         if response.paging.page_index != page:
-            return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
                 f"SonarCloud returned page {response.paging.page_index}; "
                 f"requested {page}",
             )
         if total is not None and response.paging.total != total:
-            return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
                 "SonarCloud issue total changed while reading pages",
             )
         if response.paging.total >= c.Infra.SONARCLOUD_ISSUES_SEARCH_LIMIT:
-            return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
                 "SonarCloud issue search reached its result-window limit; "
                 "the issue set cannot be reported as complete",
             )
         if len(response.issues) > response.paging.page_size:
-            return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
                 "SonarCloud returned more issues than its page size",
             )
         if not response.issues and (total is None or len(findings) < total):
-            return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
                 "SonarCloud returned an empty page before its total",
             )
         return None

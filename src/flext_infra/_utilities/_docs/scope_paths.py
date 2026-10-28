@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, p, r, t
+from flext_infra import c, p, r
 from flext_infra._utilities import FlextInfraUtilitiesGit
 
 
@@ -68,7 +69,7 @@ class FlextInfraUtilitiesDocsScopePaths:
     @staticmethod
     def docs_repository_roots(
         repository_root: Path,
-        extra_roots: t.SequenceOf[Path] = (),
+        extra_roots: Sequence[Path] = (),
     ) -> p.Result[tuple[Path, ...]]:
         """Return existing physical roots from one stable workspace topology.
 
@@ -90,12 +91,12 @@ class FlextInfraUtilitiesDocsScopePaths:
     @staticmethod
     def _docs_repository_roots(
         repository_root: Path,
-        extra_roots: t.SequenceOf[Path],
+        extra_roots: Sequence[Path],
     ) -> p.Result[tuple[Path, ...]]:
         """Discover roots while the public boundary owns exception conversion.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+            The resulting ``p.Result[tuple[Path, ...]]``.
 
         from flext_core.result import FlextResult as r
 
@@ -144,7 +145,7 @@ class FlextInfraUtilitiesDocsScopePaths:
         candidates from a tree that moved underneath it.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+            The resulting ``p.Result[tuple[Path, ...]]``.
 
         """
         manifest_path = root / c.Infra.GITMODULES
@@ -172,12 +173,12 @@ class FlextInfraUtilitiesDocsScopePaths:
     @staticmethod
     def _declared_root_candidates(
         root: Path,
-        declared_paths: t.SequenceOf[Path],
+        declared_paths: Sequence[Path],
     ) -> p.Result[tuple[Path, ...]]:
         """Compose repository-root candidates from declared submodule paths.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+            The resulting ``p.Result[tuple[Path, ...]]``.
 
         """
         candidates: list[Path] = [root]

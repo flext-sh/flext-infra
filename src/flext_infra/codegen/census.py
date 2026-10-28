@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, p, r, s, t, u
@@ -46,7 +47,7 @@ class FlextInfraCodegenCensus(s[str]):
                 "total_fixable": total_fixable,
             }
             return r[str].ok(t.Infra.INFRA_MAPPING_ADAPTER.dump_json(payload).decode())
-        lines: t.MutableSequenceOf[str] = [
+        lines: MutableSequence[str] = [
             (
                 f"  {report.project}: {report.total} violations"
                 f" ({report.fixable} fixable)"
@@ -65,7 +66,7 @@ class FlextInfraCodegenCensus(s[str]):
         repository_root: Path | None = None,
         *,
         output_format: str = c.Cli.OutputFormats.JSON,
-        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> p.Result[tuple[m.Infra.CensusReport, ...]]:
         """Run census on all projects in workspace.
 
@@ -86,12 +87,12 @@ class FlextInfraCodegenCensus(s[str]):
     def _run_project_census(
         workspace: Path,
         *,
-        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> p.Result[tuple[m.Infra.CensusReport, ...]]:
         """Census all projects in workspace using the standard path.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CensusReport]]``.
+            The resulting ``p.Result[tuple[m.Infra.CensusReport, ...]]``.
 
         """
         if projects is not None:
@@ -103,7 +104,7 @@ class FlextInfraCodegenCensus(s[str]):
                     projects_result,
                 )
             selected_projects = tuple(projects_result.value)
-        reports: t.MutableSequenceOf[m.Infra.CensusReport] = []
+        reports: MutableSequence[m.Infra.CensusReport] = []
         for project in selected_projects:
             project_root = project.path.resolve()
             validation = FlextInfraNamespaceValidator(

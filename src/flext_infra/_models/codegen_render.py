@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
@@ -445,13 +445,13 @@ class FlextInfraModelsCodegenRender:
         site_url: t.NonEmptyStr = m.Field(description="Published site URL.")
         repo_url: t.NonEmptyStr = m.Field(description="Source repository URL.")
         repo_name: t.NonEmptyStr = m.Field(description="Source repository name.")
-        exclude_docs: t.StrSequence = m.Field(
+        exclude_docs: Sequence[str] = m.Field(
             description="Gitignore-style docs exclusions."
         )
-        exclude_plugin_patterns: t.StrSequence = m.Field(
+        exclude_plugin_patterns: Sequence[str] = m.Field(
             description="Translated physical-copy exclusion regular expressions.",
         )
-        mkdocstrings_paths: t.StrSequence = m.Field(
+        mkdocstrings_paths: Sequence[str] = m.Field(
             description="mkdocstrings source paths.",
         )
         documentation_language: t.Infra.DocumentationLanguage = m.Field(

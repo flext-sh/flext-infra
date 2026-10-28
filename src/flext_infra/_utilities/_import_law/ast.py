@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import ast
 import operator
+from collections.abc import Mapping, Sequence
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
 
 
@@ -19,11 +20,11 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     @staticmethod
     def _import_law_iter_imports(
         tree: ast.Module,
-    ) -> t.SequenceOf[ast.Import | ast.ImportFrom]:
+    ) -> Sequence[ast.Import | ast.ImportFrom]:
         """Return every import statement anywhere in the module, in order.
 
         Returns:
-            The resulting ``t.SequenceOf[ast.Import | ast.ImportFrom]``.
+            The resulting ``Sequence[ast.Import | ast.ImportFrom]``.
 
         """
         return sorted(
@@ -39,7 +40,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_enclosing_scope(
         cls,
         node: ast.AST,
-        parents: t.MappingKV[int, ast.AST],
+        parents: Mapping[int, ast.AST],
     ) -> ast.AST | None:
         """Return the lexical scope that evaluates one node.
 
@@ -66,7 +67,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         node: ast.AST,
         child: ast.AST,
         scope: ast.AST,
-        parents: t.MappingKV[int, ast.AST],
+        parents: Mapping[int, ast.AST],
     ) -> bool:
         """Return whether ``scope`` evaluates ``node`` reached through ``child``.
 
@@ -90,7 +91,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_comprehension_owns_node(
         node: ast.AST,
         scope: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
-        parents: t.MappingKV[int, ast.AST],
+        parents: Mapping[int, ast.AST],
     ) -> bool:
         """Keep the first iterable outside its comprehension's lexical bindings.
 
@@ -128,7 +129,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_inside_type_checking(
         cls,
         node: ast.AST,
-        parents: t.MappingKV[int, ast.AST],
+        parents: Mapping[int, ast.AST],
     ) -> bool:
         """Return whether the node sits under an ``if TYPE_CHECKING:`` block.
 
@@ -320,7 +321,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     def _import_law_apply_edits(
         cls,
         source: str,
-        edits: t.SequenceOf[tuple[int, int, t.StrSequence]],
+        edits: Sequence[tuple[int, int, Sequence[str]]],
     ) -> str | None:
         """Apply non-overlapping line edits; ``None`` when they collide.
 

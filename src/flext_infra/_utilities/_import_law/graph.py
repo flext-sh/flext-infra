@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -29,8 +29,8 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         cls,
         project: p.Infra.RopeProject,
         *,
-        resources: t.SequenceOf[t.Infra.RopeFile] | None = None,
-    ) -> t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
+        resources: Sequence[t.Infra.RopeFile] | None = None,
+    ) -> tuple[Mapping[str, frozenset[str]], Mapping[Path, str]]:
         """Read runtime imports from an immutable proposed-source Rope graph.
 
         A live caller supplies governed resources. An authenticated candidate
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         snapshot keeps its captured inventory, including proposed virtual modules.
 
         Returns:
-            The resulting ``t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path,
+            The resulting ``tuple[Mapping[str, frozenset[str]], Mapping[Path,
                 str]]``.
 
         Raises:
@@ -121,8 +121,8 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
     def import_cycle_statements(
         cls,
         project: p.Infra.RopeProject,
-        cycles: t.MappingKV[str, frozenset[str]],
-        modules: t.MappingKV[Path, ...],
+        cycles: Mapping[str, frozenset[str]],
+        modules: Mapping[Path, str],
     ) -> t.StrTuple:
         """Describe native top-level imports of the rejected cyclic candidate.
 
@@ -157,12 +157,12 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
 
     @staticmethod
     def project_import_cycles(
-        graph: t.MappingKV[str, frozenset[str]],
-    ) -> t.MappingKV[str, frozenset[str]]:
+        graph: Mapping[str, frozenset[str]],
+    ) -> Mapping[str, frozenset[str]]:
         """Map each module in a runtime import cycle to its cycle's members.
 
         Returns:
-            The resulting ``t.MappingKV[str, frozenset[str]]``.
+            The resulting ``Mapping[str, frozenset[str]]``.
 
         """
         cycles: MutableMapping[str, frozenset[str]] = {}

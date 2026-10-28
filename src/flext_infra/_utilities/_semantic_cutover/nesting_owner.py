@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import os
 import typing
+from collections.abc import Mapping, MutableMapping, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
     # Shared singleton-model detection totals for one pass. Per-module detail
     # emits at debug level; the pass owner emits one aggregate summary row.
-    _detection_modules: ClassVar[t.MutableSetOf[str]] = set()
+    _detection_modules: ClassVar[t.Infra.MutableSetOf[str]] = set()
     _detection_native = 0
     _detection_ancestry_max = 0
 
@@ -76,8 +77,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @staticmethod
     def _nesting_declaration_destinations(
         module: p.Infra.RopePyModule,
-        definitions: t.StrMapping,
-    ) -> t.StrMapping:
+        definitions: Mapping[str, str],
+    ) -> Mapping[str, str]:
         """Elect real declaration scopes when class locals shadow type parameters.
 
         Python annotation scopes consult their containing class dictionary.
@@ -111,7 +112,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         occupied = set(definitions)
         if scope is not None:
             occupied.update(scope.get_defined_names())
-        isolated: t.MutableMappingKV[str, str] = {}
+        isolated: MutableMapping[str, str] = {}
         for node in tree.body:
             if not isinstance(node, ast.TypeAlias) or node.name.id not in definitions:
                 continue
@@ -145,7 +146,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @staticmethod
     def _pytest_collection_patterns(
         root: Path,
-    ) -> t.Triple[t.StrTuple, t.StrTuple, t.StrTuple]:
+    ) -> tuple[t.StrTuple, t.StrTuple, t.StrTuple]:
         """Read native configuration and defaults without running consumer plugins.
 
         Returns:
@@ -200,7 +201,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         )
 
     @staticmethod
-    def _pytest_name_matches(name: str, patterns: t.StrSequence) -> bool:
+    def _pytest_name_matches(name: str, patterns: Sequence[str]) -> bool:
         """Match pytest's native prefix-or-glob class/function selectors.
 
         Returns:
@@ -216,7 +217,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         cls,
         name: str,
         binding: p.Infra.RopePyName,
-        patterns: t.StrSequence,
+        patterns: Sequence[str],
     ) -> bool:
         """Prove native class selection, including source-owned inherited flags.
 
@@ -302,10 +303,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         cls,
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
-        patterns: t.Pair[t.StrSequence, t.StrSequence],
+        classes: Mapping[str, ast.ClassDef],
+        patterns: tuple[Sequence[str], Sequence[str]],
         *,
-        collection: t.Pair[bool, bool],
+        collection: tuple[bool, bool],
     ) -> p.Result[str]:
         """Elect an existing collected suite, otherwise derive Tests<Unit>.
 
@@ -379,7 +380,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         convention: m.Infra.RopeModuleConvention,
         stem: str,
         prefix: str,
-        patterns: t.StrSequence,
+        patterns: Sequence[str],
         *,
         require_collection: bool,
     ) -> p.Result[str]:
@@ -594,7 +595,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         """
         checked = r[tuple[str, ...]]
         selected = frozenset(members)
-        nodes_by_member: t.MutableMappingKV[str, ast.stmt] = {}
+        nodes_by_member: MutableMapping[str, ast.stmt] = {}
         for node in tree.body:
             name = (
                 node.name
@@ -626,7 +627,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     def _creation_bound(
         cls,
         tree: ast.Module,
-        nodes_by_member: t.MappingKV[str, ast.stmt],
+        nodes_by_member: Mapping[str, ast.stmt],
         selected: frozenset[str],
         owner: str,
     ) -> set[str]:
@@ -695,7 +696,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopeSourceModule,
-    ) -> t.Pair[p.Infra.RopeSourceClass, t.StrTuple] | None:
+    ) -> tuple[p.Infra.RopeSourceClass, t.StrTuple] | None:
         """Select an exported pure namespace, including its redundant wrapper.
 
         Returns:
@@ -730,7 +731,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         project: p.Infra.RopeProject,
         owner: p.Infra.RopeSourceClass,
         node: ast.ClassDef,
-    ) -> t.Pair[p.Infra.RopeSourceClass, t.StrTuple] | None:
+    ) -> tuple[p.Infra.RopeSourceClass, t.StrTuple] | None:
         """Admit only a transparent holder around the same pure namespace.
 
         Returns:
@@ -812,8 +813,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         cls,
         project: p.Infra.RopeProject,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
-    ) -> t.StrMapping:
+        classes: Mapping[str, ast.ClassDef],
+    ) -> Mapping[str, str]:
         """Wrap an exported singleton model without renaming its entity.
 
         Returns:
@@ -884,7 +885,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         cls,
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],
     ) -> p.Result[str]:
         """Return the semantic owner, or derive one from the module convention.
@@ -955,7 +956,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     def _ordinary_module_owner(
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],
     ) -> p.Result[str]:
         derived = r[str]

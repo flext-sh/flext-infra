@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import ast
 import operator
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import cli
@@ -55,8 +56,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _plan_constant_consumers(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Compose constant effects under their original source authority.
 
         Returns:
@@ -65,7 +66,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         working = dict(sources)
         originals = dict(cls._editable_sources(sources))
-        changes: t.MutableMappingKV[Path, list[str]] = {}
+        changes: MutableMapping[Path, list[str]] = {}
         retired: set[Path] = set()
         source_project = rope_workspace.rope_project
         with (
@@ -89,7 +90,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     changes.setdefault(edit.file_path, []).extend(edit.changes)
                     if edit.retire_file:
                         retired.add(edit.file_path)
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -107,8 +108,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _retire_flat_constant_declarations(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Retire flat facts only at equivalent explicit authored class owners.
 
         Returns:
@@ -188,7 +189,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _equivalent_constant_declarations(
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         original: p.Infra.RopePyName,
         target: p.Infra.RopePyName,
     ) -> bool:
@@ -199,7 +200,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        signatures: list[t.Pair[str, p.Infra.RopePyName]] = []
+        signatures: list[tuple[str, p.Infra.RopePyName]] = []
         for binding in (original, target):
             if (
                 not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
@@ -243,8 +244,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _constant_declarations(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Delegate constants declaration policy to the shared native contract loop.
 
         Returns:
@@ -266,8 +267,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _plan_constant_imports(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Resolve imported constants in one closed Rope graph.
 
         Returns:
@@ -277,7 +278,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
         project = runtime.snapshot_project(rope_workspace.rope_project, sources)
-        paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]] = {}
+        paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]] = {}
         try:
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
@@ -301,7 +302,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         source: str,
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
-        paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
         """Admit scalar returns, singleton Literal fields and frozen predicates.
 
@@ -407,10 +408,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        public: t.MappingKV[str, p.Infra.RopePyName],
-        returns_by_type: t.MappingKV[str, t.VariadicTuple[t.Pair[int, int]]],
+        public: Mapping[str, p.Infra.RopePyName],
+        returns_by_type: Mapping[str, tuple[tuple[int, int], ...]],
         path: Path,
-    ) -> t.MappingKV[t.Pair[int, int], str]:
+    ) -> Mapping[tuple[int, int], str]:
         """Match native scalar returns, refusing competing public owners.
 
         Returns:
@@ -420,7 +421,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"literal return has ambiguous public constant owners in {path}"
-        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
+        matched: MutableMapping[tuple[int, int], str] = {}
         for literal_type, returns in returns_by_type.items():
             for literal, reference in cls._literal_constant_patterns(
                 project, public, literal_type=literal_type
@@ -504,8 +505,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
     @staticmethod
     def _record_matched_region(
-        matched: t.MutableMappingKV[t.Pair[int, int], str],
-        region: t.Pair[int, int],
+        matched: MutableMapping[tuple[int, int], str],
+        region: tuple[int, int],
         reference: str,
         scope: str,
     ) -> None:
@@ -526,10 +527,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        public: t.MappingKV[str, p.Infra.RopePyName],
-        arguments: t.StrMapping,
+        public: Mapping[str, p.Infra.RopePyName],
+        arguments: Mapping[str, str],
         path: Path,
-    ) -> t.MappingKV[t.Pair[int, int], str]:
+    ) -> Mapping[tuple[int, int], str]:
         """Match native frozen predicates, refusing competing public owners.
 
         Returns:
@@ -538,7 +539,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"frozenset predicate has ambiguous public owners in {path}"
-        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
+        matched: MutableMapping[tuple[int, int], str] = {}
         for literal_type in ("__builtin__.str", "__builtin__.int"):
             for expression, reference in cls._literal_constant_patterns(
                 project, public, literal_type=literal_type, frozen=True
@@ -575,10 +576,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        public: t.MappingKV[str, p.Infra.RopePyName],
+        public: Mapping[str, p.Infra.RopePyName],
         source: str,
         path: Path,
-    ) -> t.MappingKV[t.Pair[int, int], str]:
+    ) -> Mapping[tuple[int, int], str]:
         """Match StrEnum members to singleton Literal annotations by identity.
 
         Returns:
@@ -587,7 +588,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"literal annotation has ambiguous enum owners in {path}"
-        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
+        matched: MutableMapping[tuple[int, int], str] = {}
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         for literal, reference in cls._literal_constant_patterns(project, public):
             if not cls._constant_derives_from(
@@ -629,10 +630,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _constant_declaration_bindings(
         cls,
         project: p.Infra.RopeProject,
-        public: t.MappingKV[str, p.Infra.RopePyName],
-    ) -> t.MappingKV[
+        public: Mapping[str, p.Infra.RopePyName],
+    ) -> Mapping[
         Path,
-        t.Pair[p.Infra.RopePyModule, list[t.Pair[p.Infra.RopePyName, int]]],
+        tuple[p.Infra.RopePyModule, list[tuple[p.Infra.RopePyName, int]]],
     ]:
         """Group unique assignments by their native module and definition line.
 
@@ -643,11 +644,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             TypeError: A declaration has no native source module.
 
         """
-        declarations: t.MutableMappingKV[
+        declarations: MutableMapping[
             Path,
-            t.Pair[
+            tuple[
                 p.Infra.RopePyModule,
-                list[t.Pair[p.Infra.RopePyName, int]],
+                list[tuple[p.Infra.RopePyName, int]],
             ],
         ] = {}
         for reference, candidate in public.items():
@@ -711,11 +712,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _literal_constant_patterns(
         cls,
         project: p.Infra.RopeProject,
-        public: t.MappingKV[str, p.Infra.RopePyName],
+        public: Mapping[str, p.Infra.RopePyName],
         *,
         literal_type: str = "__builtin__.str",
         frozen: bool = False,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[tuple[str, str], ...]:
         """Prove exact literal boundaries, decimal tokens and native constructors.
 
         Returns:
@@ -724,7 +725,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
-        found: list[t.Pair[str, str]] = []
+        found: list[tuple[str, str]] = []
         arguments = dict[str, str]()
         if frozen:
             arguments["frozen"] = "name=__builtin__.frozenset"
@@ -789,7 +790,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         source: str,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
-        paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
         """Rebind one consumer using its complete native import plan.
 
@@ -845,9 +846,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         resource: p.Infra.RopeResource,
         source: str,
         package: str,
-        plan: t.Pair[
-            t.VariadicTuple[m.Infra.SourceRewrite], t.MappingKV[int, set[str]]
-        ],
+        plan: tuple[tuple[m.Infra.SourceRewrite, ...], Mapping[int, set[str]]],
     ) -> str:
         """Apply correlated reference/removal edits through native import owners.
 
@@ -872,9 +871,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _constant_qualified_edits(
         module: p.Infra.RopePyModule,
-        public: t.MappingKV[str, p.Infra.RopePyName],
+        public: Mapping[str, p.Infra.RopePyName],
         path: Path,
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         """Qualify missing flat members beneath their proven published namespace.
 
         A missing terminal has no identity to compare. Only its resolved namespace
@@ -941,9 +940,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
     @staticmethod
     def _constant_destinations(
-        public: t.MappingKV[str, p.Infra.RopePyName],
+        public: Mapping[str, p.Infra.RopePyName],
         owner_module: p.Infra.RopeSemanticModule,
-    ) -> t.MutableMappingKV[str, list[str]]:
+    ) -> MutableMapping[str, list[str]]:
         """Elect component destinations beneath natively published namespaces.
 
         Returns:
@@ -957,7 +956,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             and FlextInfraUtilitiesTypesRopeRuntime.abstract_class(binding.get_object())
             and binding.get_object().get_module() is owner_module
         }
-        destinations: t.MutableMappingKV[str, list[str]] = {}
+        destinations: MutableMapping[str, list[str]] = {}
         for reference in public:
             match reference.split("."):
                 case [facade, namespace, _, member]:
@@ -975,9 +974,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        statements: t.SequenceOf[
-            t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]
-        ],
+        statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
     ) -> bool:
         """Elect imported constants through their native declaration's role.
 
@@ -1049,7 +1046,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _constant_imports(
         project: p.Infra.RopeProject, module: p.Infra.RopePyModule
-    ) -> t.VariadicTuple[t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]]:
+    ) -> tuple[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement], ...]:
         """Elect declared constants imports before resolving native suppliers.
 
         Returns:
@@ -1057,7 +1054,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        found: list[t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]] = []
+        found: list[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]] = []
         for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
             module.source_code
         ):
@@ -1109,12 +1106,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        statements: t.SequenceOf[
-            t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]
-        ],
-        paths: t.MappingKV[str, p.Infra.RopePyName],
+        statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
+        paths: Mapping[str, p.Infra.RopePyName],
         path: Path,
-    ) -> t.Pair[t.VariadicTuple[m.Infra.SourceRewrite], t.MappingKV[int, set[str]]]:
+    ) -> tuple[tuple[m.Infra.SourceRewrite, ...], Mapping[int, set[str]]]:
         """Plan every native reference before removing its import binding.
 
         Returns:
@@ -1123,7 +1118,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
         rewrites: list[m.Infra.SourceRewrite] = []
-        removals: t.MutableMappingKV[int, set[str]] = {}
+        removals: MutableMapping[int, set[str]] = {}
         for info, statement in statements:
             for imported, alias in info.names_and_aliases:
                 name = alias or imported
@@ -1166,7 +1161,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        visited: set[t.Pair[Path, str]] = set()
+        visited: set[tuple[Path, str]] = set()
         while isinstance(binding, p.Infra.RopeImportedName):
             resource = runtime.imported_module_resource(project, binding)
             path = Path(resource.real_path).resolve()
@@ -1241,7 +1236,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @classmethod
     def _constant_reference(
         cls,
-        paths: t.MappingKV[str, p.Infra.RopePyName],
+        paths: Mapping[str, p.Infra.RopePyName],
         binding: p.Infra.RopePyName,
         path: Path,
     ) -> str | None:
@@ -1271,10 +1266,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        imported: t.Pair[str, p.Infra.RopePyName],
+        imported: tuple[str, p.Infra.RopePyName],
         reference: str,
         facade: p.Infra.RopePyName,
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         """Rewrite native imported occurrences without crossing local rebindings.
 
         Returns:
@@ -1316,7 +1311,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        removals: t.MappingKV[int, set[str]],
+        removals: Mapping[int, set[str]],
     ) -> str:
         """Remove proven imports and empty suites, preserving unrelated comments.
 
@@ -1374,7 +1369,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _empty_type_checking_suites(
         source: str,
-        edits: t.SequenceOf[m.Infra.SourceRewrite],
+        edits: Sequence[m.Infra.SourceRewrite],
         emptied: frozenset[int] | set[int],
     ) -> list[m.Infra.SourceRewrite]:
         """Remove empty TYPE_CHECKING suites without stubs or comment loss.
@@ -1433,7 +1428,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 or info.module_name != "typing"
             ):
                 continue
-            kept: list[t.Pair[str, str | None]] = []
+            kept: list[tuple[str, str | None]] = []
             for name, alias in info.names_and_aliases:
                 if name != "TYPE_CHECKING":
                     kept.append((name, alias))
@@ -1454,7 +1449,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         package: str,
-    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+    ) -> Mapping[str, p.Infra.RopePyName]:
         """Enumerate native public facade members without importing the target.
 
         Returns:
@@ -1467,9 +1462,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         facade = module.get_attributes().get("c")
         if facade is None:
             return {}
-        found: t.MutableMappingKV[str, p.Infra.RopePyName] = {"c": facade}
-        pending: t.MutableSequenceOf[
-            t.Triple[str, p.Infra.RopePyObject, t.VariadicTuple[p.Infra.RopePyObject]]
+        found: MutableMapping[str, p.Infra.RopePyName] = {"c": facade}
+        pending: MutableSequence[
+            tuple[str, p.Infra.RopePyObject, tuple[p.Infra.RopePyObject, ...]]
         ] = [("c", facade.get_object(), ())]
         while pending:
             prefix, owner, ancestors = pending.pop()
@@ -1531,9 +1526,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
     @staticmethod
     def _constant_facade_package(
-        statements: t.SequenceOf[
-            t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]
-        ],
+        statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
         declared_package: str,
         path: Path,
     ) -> str:

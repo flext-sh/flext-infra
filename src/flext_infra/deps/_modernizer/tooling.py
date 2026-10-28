@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
@@ -64,14 +65,14 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         topology: m.Infra.PyprojectDeclaredTopology,
         codegen: m.Infra.CodegenConfigSpec,
         tool_config: m.Infra.ToolConfigDocument | None = None,
-    ) -> p.Result[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]:
+    ) -> p.Result[tuple[m.Infra.PyprojectDocumentState, Sequence[str]]]:
         """Read and apply canonical phases before a consumer chooses rendering.
 
         Returns:
             The validated document state and its phase changes.
 
         """
-        result_type = r[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]
+        result_type = r[tuple[m.Infra.PyprojectDocumentState, Sequence[str]]]
         state = self._read_document_state(path, source=source)
         if state.failure:
             return result_type.from_failure(state)
@@ -151,7 +152,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
 
     @staticmethod
     def tooling_configuration(
-        tool_options: t.MappingKV[str, t.JsonMapping],
+        tool_options: Mapping[str, t.JsonMapping],
     ) -> p.Result[str]:
         """Serialize declared native tables through one ordered TOML boundary.
 
@@ -184,7 +185,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
 
         """
         result_type = r[m.Infra.ToolingRuntimeContext]
-        options: t.MutableMappingKV[str, t.JsonMapping] = {}
+        options: MutableMapping[str, t.JsonMapping] = {}
         for table_path in tool_config.settings:
             table = u.Cli.toml_mapping_path(
                 payload, (c.Infra.TOOL, *table_path.split("."))
@@ -206,7 +207,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
             )
         )
 
-    def _live_dev_dependencies(self, path: Path) -> p.Result[t.StrSequence]:
+    def _live_dev_dependencies(self, path: Path) -> p.Result[Sequence[str]]:
         """Collect the live dev groups plus canonical dev dependencies.
 
         Returns:
@@ -214,10 +215,10 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
 
         """
         if not path.is_file():
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         live_state = self._read_document_state(path)
         if live_state.failure:
-            return r[t.StrSequence].from_failure(live_state)
+            return r[Sequence[str]].from_failure(live_state)
         groups = (
             u.Cli.toml_mapping_child(
                 live_state.value.payload,
@@ -231,11 +232,11 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
             strict=True,
         )
         if group_dev.failure:
-            return r[t.StrSequence].fail_op(
+            return r[Sequence[str]].fail_op(
                 "validate live dev dependencies",
                 group_dev.error,
             )
-        return r[t.StrSequence].ok((
+        return r[Sequence[str]].ok((
             *group_dev.value,
             *u.Infra.canonical_dev_dependencies_from_payload(
                 live_state.value.payload,

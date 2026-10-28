@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import builtins
+from collections.abc import Sequence
 
 import libcst as cst
 import libcst.helpers as csth
@@ -28,9 +29,9 @@ class FlextInfraUtilitiesRopeNestedClassMove:
     def extract_nested_class(
         cls,
         source: str,
-        member_path: t.StrSequence,
+        member_path: Sequence[str],
         target_module: str,
-    ) -> t.StrPair:
+    ) -> tuple[str, str]:
         """Split ``Outer[.Middle...].Inner`` out of ``source`` into its own module.
 
         ``member_path`` names the top-level family class, every enclosing
@@ -99,8 +100,8 @@ class FlextInfraUtilitiesRopeNestedClassMove:
 
     @staticmethod
     def _foreign_family_references(
-        member: t.Infra.Cst.ClassDef, path: t.StrSequence
-    ) -> t.StrSequence:
+        member: t.Infra.Cst.ClassDef, path: Sequence[str]
+    ) -> Sequence[str]:
         """Return the other family members ``member`` reads by qualified name.
 
         Only outermost attribute chains rooted at the family class count; the
@@ -162,7 +163,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         return found
 
     @staticmethod
-    def _qualified_matcher(path: t.StrSequence) -> t.Infra.Cst.AttributeMatcher:
+    def _qualified_matcher(path: Sequence[str]) -> t.Infra.Cst.AttributeMatcher:
         """Match the dotted reference ``path[0].path[1]...path[-1]``.
 
         Returns:

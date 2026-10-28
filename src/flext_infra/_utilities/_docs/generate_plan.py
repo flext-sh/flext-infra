@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -24,13 +25,13 @@ class FlextInfraUtilitiesDocsGeneratePlan(
 
     @staticmethod
     def docs_normalize_artifacts(
-        artifacts: t.SequenceOf[t.Infra.DocsRenderedArtifactTuple],
+        artifacts: Sequence[t.Infra.DocsRenderedArtifactTuple],
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Validate one unique lexical owner and target without dereferencing.
 
         Returns:
             The resulting
-                ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
+                ``p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]``.
 
         """
         normalized: list[t.Infra.DocsRenderedArtifactTuple] = []
@@ -66,7 +67,7 @@ class FlextInfraUtilitiesDocsGeneratePlan(
         """Snapshot targets from the canonical rendered artifact inventory.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
 
         """
         plans: list[m.Infra.CodegenFilePlan] = []
@@ -90,13 +91,13 @@ class FlextInfraUtilitiesDocsGeneratePlan(
     def _prune_generated_tree_artifacts(
         project: Path,
         root: Path,
-        rendered: t.SequenceOf[tuple[Path, str]],
+        rendered: Sequence[tuple[Path, str]],
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Describe stale files owned by one generated tree as absent artifacts.
 
         Returns:
             The resulting
-                ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
+                ``p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]``.
 
         """
         planned = u.Cli.atomic_plan_directory_chain(root)

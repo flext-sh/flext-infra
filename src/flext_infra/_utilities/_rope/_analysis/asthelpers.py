@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -27,7 +28,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
     def resource_cache_key(
         rope_project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
-    ) -> t.Triple[str, str, str]:
+    ) -> tuple[str, str, str]:
         """Key export facts by authenticated source, not physical timestamps.
 
         Returns:
@@ -130,11 +131,11 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return cached
 
     @staticmethod
-    def decorator_names(pyfunction: t.Infra.RopePyObject) -> t.StrSequence:
+    def decorator_names(pyfunction: t.Infra.RopePyObject) -> Sequence[str]:
         """Extract decorator names from a rope ``PyFunction`` (no ast import).
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         decorators = getattr(pyfunction, "decorators", None) or ()
@@ -181,7 +182,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return type(node).__name__
 
     @staticmethod
-    def walk_ast_nodes(root: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def walk_ast_nodes(root: t.Infra.RopeAstNode) -> Sequence[t.Infra.RopeAstNode]:
         """Return every AST node reachable from ``root``, ``root`` included.
 
         Returns:
@@ -196,7 +197,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
     def module_level_node(
         cls,
         node: t.Infra.RopeAstNode,
-        parent_map: t.MappingKV[int, t.Infra.RopeAstNode],
+        parent_map: Mapping[int, t.Infra.RopeAstNode],
     ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 
@@ -240,7 +241,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return ""
 
     @staticmethod
-    def line_col_range(node: p.AttributeProbe) -> t.Quad[int, int, int, int] | None:
+    def line_col_range(node: p.AttributeProbe) -> tuple[int, int, int, int] | None:
         """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node.
 
         Returns:
@@ -263,7 +264,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return (lineno, col_offset, end_lineno, end_col_offset)
 
     @staticmethod
-    def assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
+    def assignment_target_names(node: p.AttributeProbe) -> Sequence[str]:
         """Return direct assignment target names represented by one AST node.
 
         Returns:
@@ -273,7 +274,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return FlextInfraUtilitiesRopeAnalysisAstHelpers._assignment_target_names(node)
 
     @staticmethod
-    def _assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
+    def _assignment_target_names(node: p.AttributeProbe) -> Sequence[str]:
         """Return direct assignment target names represented by one AST node.
 
         Returns:
@@ -295,7 +296,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return tuple(names)
 
     @staticmethod
-    def class_info_from_source(source: str) -> t.SequenceOf[m.Infra.ClassInfo]:
+    def class_info_from_source(source: str) -> Sequence[m.Infra.ClassInfo]:
         """Return class info from the current source text without Rope resource cache.
 
         Returns:
@@ -311,7 +312,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
     @staticmethod
     def class_info_from_module(
         tree: t.Infra.AstModule,
-    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+    ) -> Sequence[m.Infra.ClassInfo]:
         """Read top-level class facts from an existing native module tree.
 
         Returns:

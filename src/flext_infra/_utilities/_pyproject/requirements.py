@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import u
@@ -20,8 +20,6 @@ from flext_infra._utilities._git.requirement_source import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from flext_infra import p
 
 
@@ -29,7 +27,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
 
     @staticmethod
-    def dependency_group_name(names: t.IterableOf[str], name: str) -> str:
+    def dependency_group_name(names: Iterable[str], name: str) -> str:
         """Elect an existing native spelling using PEP 735 normalized identity.
 
         Returns:
@@ -50,7 +48,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
 
     @staticmethod
     def dependency_group_wire(
-        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        entries: Sequence[str | m.Infra.DependencyGroupInclude],
     ) -> list[t.JsonValue]:
         """Serialize native entries without turning inclusion tables into strings.
 
@@ -75,7 +73,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         live: str | None,
         *,
         group: str = str(c.Infra.DEV),
-    ) -> p.Result[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]:
+    ) -> p.Result[tuple[str | m.Infra.DependencyGroupInclude, ...]]:
         """Remove only entries carrying this generator's explicit provenance.
 
         Returns:
@@ -86,7 +84,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
             tuple(groups), group
         )
-        result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
+        result_type = r[tuple[str | m.Infra.DependencyGroupInclude, ...]]
         values = u.validate_value(
             m.Infra.DependencyGroupEntries,
             groups.get(group, ()),
@@ -120,14 +118,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
     def _dependency_group_comments(
         live: str,
         group: str,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Read native per-occurrence comments from the parsed dependency group.
 
         Returns:
             Ordered array comments or the original missing-source failure.
 
         """
-        result_type = r[t.StrSequence]
+        result_type = r[Sequence[str]]
         document = u.Cli.toml_parse_text(live)
         if document is None:
             return result_type.fail("dev provenance source is invalid TOML")
@@ -141,11 +139,11 @@ class FlextInfraUtilitiesPyprojectRequirements:
     @staticmethod
     def dependency_group_entries(
         value: t.JsonPayload,
-    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
         """Parse the shared native entry grammar without expanding inclusions.
 
         Returns:
-            The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
+            The resulting ``tuple[str | m.Infra.DependencyGroupInclude, ...]``.
 
         """
         return m.Infra.DependencyGroupEntries.model_validate(value).root
@@ -155,11 +153,11 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         container: t.Cli.TomlTable,
         name: str,
-    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
         """Read an absent or native array without permissive string extraction.
 
         Returns:
-            The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
+            The resulting ``tuple[str | m.Infra.DependencyGroupInclude, ...]``.
 
         """
         value = u.Cli.toml_value(
@@ -175,16 +173,16 @@ class FlextInfraUtilitiesPyprojectRequirements:
     @classmethod
     def merge_dependency_group_entries(
         cls,
-        generated: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+        generated: Sequence[str | m.Infra.DependencyGroupInclude],
+        custom: Sequence[str | m.Infra.DependencyGroupInclude],
+    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
         """Lead missing complete requirements and preserve authored entries.
 
         Packaging owns requirement identity, including version constraints.
         Explicit retirement policy determines which authored entries are removed.
 
         Returns:
-            The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
+            The resulting ``tuple[str | m.Infra.DependencyGroupInclude, ...]``.
 
         """
         active = frozenset(
@@ -221,11 +219,11 @@ class FlextInfraUtilitiesPyprojectRequirements:
     @staticmethod
     def _development_requirement_identity(
         requirement: str,
-    ) -> t.Pair[t.Pair[str, str], t.Pair[str | None, str | None]]:
+    ) -> tuple[tuple[str, str], tuple[str | None, str | None]]:
         """Scope floor replacement to the same extras, marker and origin.
 
         Returns:
-            The resulting ``t.Pair[t.Pair[str, str], t.Pair[str | None, str | None]]``.
+            The resulting ``tuple[tuple[str, str], tuple[str | None, str | None]]``.
 
         """
         parsed = Requirement(requirement)
@@ -238,7 +236,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     def requirement_group_fields(
         document: t.Cli.TomlDocument,
         project: t.Cli.TomlTable,
-    ) -> Iterator[t.Pair[t.Cli.TomlTable, str]]:
+    ) -> Iterator[tuple[t.Cli.TomlTable, str]]:
         """Yield ``(section, group_name)`` for every declared requirement group.
 
         Optional dependencies hang off ``[project]`` while dependency groups hang
@@ -246,7 +244,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         every requirement rewriter.
 
         Yields:
-            Each ``t.Pair[t.Cli.TomlTable, str]``.
+            Each ``tuple[t.Cli.TomlTable, str]``.
 
         """
         for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
@@ -267,9 +265,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        declared_sources: t.StrMapping,
-        candidate_sources: t.StrMapping,
-        native_sources: t.StrSequence = (),
+        declared_sources: Mapping[str, str],
+        candidate_sources: Mapping[str, str],
+        native_sources: Sequence[str] = (),
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -361,7 +359,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if raw_value is None:
             return r[bool].ok(value=True)
         raw_items = u.Cli.json_as_sequence(raw_value)
-        validated_items: p.Result[t.StrSequence] = u.validate_value(
+        validated_items: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             raw_items,
             strict=True,
@@ -372,7 +370,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 validated_items.error,
             )
         items = validated_items.value
-        normalized_items: t.MutableSequenceOf[str] = []
+        normalized_items: MutableSequence[str] = []
         for item in items:
             normalized = cls._canonical_requirement(item, provenance=provenance)
             if normalized.failure:
@@ -385,11 +383,11 @@ class FlextInfraUtilitiesPyprojectRequirements:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def dependency_order_key(requirement: str) -> t.Pair[str, str]:
+    def dependency_order_key(requirement: str) -> tuple[str, str]:
         """Order preserved and conformed requirements by name and complete spec.
 
         Returns:
-            The resulting ``t.Pair[str, str]``.
+            The resulting ``tuple[str, str]``.
 
         Raises:
             ValueError: If dependency ordering requires a named requirement.
@@ -469,9 +467,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
         head: str,
         dependency_name: str,
         *,
-        parsed: t.Pair[str, str],
+        parsed: tuple[str, str],
         provenance: m.Infra.RequirementsProvenance,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 
         Returns:
@@ -483,7 +481,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if declared is not None:
             declared_result = cls._declared_member_override(head, declared)
             if declared_result.failure:
-                return r[t.Pair[str, str]].from_failure(
+                return r[tuple[str, str]].from_failure(
                     declared_result,
                 )
             # An attached member renders on the line its declaration carries.
@@ -499,18 +497,18 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 url,
             )
             if candidate_result.failure:
-                return r[t.Pair[str, str]].from_failure(
+                return r[tuple[str, str]].from_failure(
                     candidate_result,
                 )
             url, declared_ref = candidate_result.value
-        return r[t.Pair[str, str]].ok((url, declared_ref))
+        return r[tuple[str, str]].ok((url, declared_ref))
 
     @staticmethod
     def _internal_dependency_name(
         requirement: str,
         *,
-        declared_sources: t.StrMapping,
-        candidate_sources: t.StrMapping,
+        declared_sources: Mapping[str, str],
+        candidate_sources: Mapping[str, str],
     ) -> str | None:
         """Return the dependency name when the requirement is internal.
 
@@ -533,7 +531,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     def _parsed_canonical_provenance(
         cls,
         requirement: str,
-    ) -> p.Result[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]]:
+    ) -> p.Result[tuple[str, tuple[bool, str], tuple[str, str]]]:
         """Parse one internal requirement's head, marker, and Git provenance.
 
         Returns:
@@ -544,14 +542,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         requirement_part, separator, marker = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
-            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].fail(
+            return r[tuple[str, tuple[bool, str], tuple[str, str]]].fail(
                 f"invalid internal requirement: {requirement}",
             )
         source = FlextInfraUtilitiesGitRequirementSource.declared_git_source(
             requirement
         )
         if source.failure:
-            return r[t.Triple[str, t.Pair[bool, str], t.Pair[str, str]]].from_failure(
+            return r[tuple[str, tuple[bool, str], tuple[str, str]]].from_failure(
                 source,
             )
         marker_text = marker.strip()
@@ -563,7 +561,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     def _declared_member_override(
         head: str,
         declared: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Parse an attached member's declared Git source line.
 
         Returns:
@@ -575,8 +573,8 @@ class FlextInfraUtilitiesPyprojectRequirements:
             source_line
         )
         if parsed.failure:
-            return r[t.Pair[str, str]].from_failure(parsed)
-        return r[t.Pair[str, str]].ok(parsed.value)
+            return r[tuple[str, str]].from_failure(parsed)
+        return r[tuple[str, str]].ok(parsed.value)
 
     @staticmethod
     def _candidate_commit_override(
@@ -584,7 +582,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dependency_name: str,
         candidate: str,
         url: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Validate and apply one candidate workspace overlay source.
 
         Returns:
@@ -592,7 +590,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
 
         """
         if not url:
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 "candidate dependency has no declared Git provenance: "
                 f"{dependency_name}",
             )
@@ -600,25 +598,25 @@ class FlextInfraUtilitiesPyprojectRequirements:
             f"{head} @ {candidate}",
         )
         if selected.failure:
-            return r[t.Pair[str, str]].from_failure(selected)
+            return r[tuple[str, str]].from_failure(selected)
         candidate_url, candidate_commit = selected.value
         if not FlextInfraUtilitiesGitRequirementSource.ref_is_commit(candidate_commit):
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 f"candidate dependency must pin a full Git commit: {dependency_name}",
             )
         if url and url != candidate_url:
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 "candidate dependency Git URL differs from declared provenance: "
                 f"{dependency_name}",
             )
-        return r[t.Pair[str, str]].ok((candidate_url, candidate_commit))
+        return r[tuple[str, str]].ok((candidate_url, candidate_commit))
 
     @staticmethod
     def _rendered_canonical(
         head: str,
         dependency_name: str,
-        resolved: t.Pair[str, str],
-        marker: t.Pair[bool, str],
+        resolved: tuple[str, str],
+        marker: tuple[bool, str],
     ) -> p.Result[str]:
         """Render the canonical inline Git requirement line.
 
@@ -637,7 +635,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         return r[str].ok(f"{inline} ; {marker_text}" if has_marker else inline)
 
     @staticmethod
-    def active_development_requirements(requirements: t.StrSequence) -> t.StrSequence:
+    def active_development_requirements(requirements: Sequence[str]) -> Sequence[str]:
         """Preserve declared requirements except explicitly retired distributions.
 
         Returns:
@@ -694,7 +692,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
-        required_dev_dependencies: t.StrSequence,
+        required_dev_dependencies: Sequence[str],
         provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Sync development groups while applying explicit retirement policy.
@@ -788,7 +786,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     def _floor_yields_to_declared_requirement(
         cls,
         requirement: str,
-        authored_live: t.StrSequence,
+        authored_live: Sequence[str],
     ) -> bool:
         """Whether a generated bare floor must yield to an authored requirement.
 
@@ -850,11 +848,11 @@ class FlextInfraUtilitiesPyprojectRequirements:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _raw_requirement_values(payload: t.JsonMapping) -> t.StrSequence:
+    def _raw_requirement_values(payload: t.JsonMapping) -> Sequence[str]:
         """Collect every requirement line the document declares.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         raw_values: list[str] = []

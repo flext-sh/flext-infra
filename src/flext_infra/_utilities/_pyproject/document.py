@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import cache, partial
 from pathlib import Path
 from typing import Annotated, ClassVar
@@ -409,7 +409,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         payload: t.JsonMapping,
         docs_meta: t.JsonMapping,
         *,
-        source_paths: t.SequenceOf[Path] | None = None,
+        source_paths: Sequence[Path] | None = None,
     ) -> str:
         """Return the primary package name using pre-loaded pyproject payload.
 
@@ -500,7 +500,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
     @staticmethod
     @cache
-    def workspace_project_paths(repository_root: Path) -> t.StrSequence:
+    def workspace_project_paths(repository_root: Path) -> Sequence[str]:
         """Return governed project paths declared by this directory's ``.gitmodules``.
 
         A missing file denotes a standalone project and therefore an empty
@@ -532,7 +532,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     @cache
     def workspace_member_layer_names(
         project_root: Path,
-    ) -> t.Pair[frozenset[str], frozenset[str]]:
+    ) -> tuple[frozenset[str], frozenset[str]]:
         """Derive declared domain/platform member name sets from the topology.
 
         The containing workspace root resolves first (the superproject when
@@ -575,11 +575,11 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 platform.add(item.path.name)
         return (frozenset(domain), frozenset(platform))
 
-    type _CustomGroupsPair = t.Pair[
-        t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    type _CustomGroupsPair = tuple[
+        Sequence[str | m.Infra.DependencyGroupInclude],
+        Sequence[str | m.Infra.DependencyGroupInclude],
     ]
-    type _ConformedProvenance = t.Triple[
+    type _ConformedProvenance = tuple[
         t.Cli.TomlDocument,
         str,
         m.Infra.RequirementsProvenance,
@@ -599,14 +599,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def parsed_pyproject(
         cls,
         pyproject_content: str,
-    ) -> p.Result[t.Triple[t.Cli.TomlDocument, str, t.JsonMapping]]:
+    ) -> p.Result[tuple[t.Cli.TomlDocument, str, t.JsonMapping]]:
         """Parse a source, its distribution identity, and its mapping once.
 
         Returns:
             The validated document, project name, and metadata mapping.
 
         """
-        result = r[t.Triple[t.Cli.TomlDocument, str, t.JsonMapping]]
+        result = r[tuple[t.Cli.TomlDocument, str, t.JsonMapping]]
         source = u.Cli.toml_parse_text(pyproject_content)
         if source is None:
             return result.fail(
@@ -633,7 +633,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyproject_content: str,
         *,
         workspace: m.Infra.WorkspaceSpec,
-        required_dev_dependencies: t.StrSequence,
+        required_dev_dependencies: Sequence[str],
         uv_resolution: m.Infra.UvResolutionSpec,
         options: PyprojectConformOptions | None = None,
     ) -> p.Result[str]:
@@ -709,7 +709,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyproject_content: str,
         *,
         workspace: m.Infra.WorkspaceSpec,
-        required_dev_dependencies: t.StrSequence,
+        required_dev_dependencies: Sequence[str],
         options: PyprojectConformOptions | None,
     ) -> p.Result[_ConformedProvenance]:
         """Parse the source and compose its declared requirement provenance.
@@ -783,14 +783,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         provenance: m.Infra.RequirementsProvenance,
-    ) -> p.Result[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]]:
+    ) -> p.Result[tuple[Sequence[str], Mapping[str, str], Mapping[str, str]]]:
         """Validate composed declarations before applying the one source context.
 
         Returns:
             Local requirements and source mappings, or the original failure.
 
         """
-        result_type = r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]]
+        result_type = r[tuple[Sequence[str], Mapping[str, str], Mapping[str, str]]]
         local = cls.document_requirement_lines(source)
         if local.failure:
             return result_type.from_failure(
@@ -838,8 +838,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 "root metadata is not a TOML mapping",
             )
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
-        retained: t.MutableMappingKV[
-            str, t.SequenceOf[str | m.Infra.DependencyGroupInclude]
+        retained: MutableMapping[
+            str, Sequence[str | m.Infra.DependencyGroupInclude]
         ] = {}
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
             authored_name = cls.dependency_group_name(groups, str(group))
@@ -878,7 +878,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             custom_groups,
             strict=True,
         ):
-            normalized_custom: t.MutableSequenceOf[
+            normalized_custom: MutableSequence[
                 str | m.Infra.DependencyGroupInclude
             ] = []
             for value in custom:
@@ -901,9 +901,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         workspace: m.Infra.WorkspaceSpec,
         *,
         project_name: str,
-        requirements: t.StrSequence,
+        requirements: Sequence[str],
         flext_line: m.Infra.WorkspaceIntegrationSpec | None,
-    ) -> p.Result[t.StrMapping]:
+    ) -> p.Result[Mapping[str, str]]:
         """Derive governed source defaults solely for generated bare floors.
 
         Returns:
@@ -928,14 +928,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 and requirement.strip() == name
             }
             if floors and flext_line.base_url is None:
-                return r[t.StrMapping].fail(
+                return r[Mapping[str, str]].fail(
                     "detected FLEXT line carries no provider base URL",
                 )
             declared_sources.update({
                 name: f"git+{flext_line.base_url}/{name}.git@{flext_line.branch}"
                 for name in floors
             })
-        return r[t.StrMapping].ok(declared_sources)
+        return r[Mapping[str, str]].ok(declared_sources)
 
     @staticmethod
     def _render_pyproject(source: t.Cli.TomlDocument) -> p.Result[str]:
@@ -989,9 +989,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         *,
         project_name: str,
         workspace: m.Infra.WorkspaceSpec,
-        required_dev_dependencies: t.StrSequence,
+        required_dev_dependencies: Sequence[str],
         flext_line: m.Infra.WorkspaceIntegrationSpec | None,
-    ) -> p.Result[t.Pair[t.StrMapping, t.StrMapping]]:
+    ) -> p.Result[tuple[Mapping[str, str], Mapping[str, str]]]:
         """Return the declared and candidate Git sources of internal requirements.
 
         Explicit requirement URLs and refs remain authoritative. Source-less
@@ -1010,13 +1010,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             flext_line=flext_line,
         )
         if declared.failure:
-            return r[t.Pair[t.StrMapping, t.StrMapping]].from_failure(declared)
+            return r[tuple[Mapping[str, str], Mapping[str, str]]].from_failure(declared)
         declared_sources = declared.value
         candidate_sources = {
             item.distribution: f"git+{item.url}@{item.commit}"
             for item in workspace.candidate_dependencies
         }
-        return r[t.Pair[t.StrMapping, t.StrMapping]].ok(
+        return r[tuple[Mapping[str, str], Mapping[str, str]]].ok(
             (declared_sources, candidate_sources),
         )
 
@@ -1026,8 +1026,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source: t.Cli.TomlDocument,
         *,
         uv_resolution: m.Infra.UvResolutionSpec,
-        candidate_sources: t.StrMapping,
-        local_requirements: t.StrSequence,
+        candidate_sources: Mapping[str, str],
+        local_requirements: Sequence[str],
         workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[bool]:
         """Sync the canonical typecheck, namespace, uv, and provenance tables.
@@ -1054,7 +1054,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                         config.Infra.tooling,
                         c.Infra.DEPTRY,
                         "optional_dependencies_dev_groups",
-                        TypeForm(t.StrSequence),
+                        TypeForm(Sequence[str]),
                     )
                 )
                 if optional is not None and group in optional
@@ -1170,7 +1170,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     @staticmethod
     def _sync_namespace_scope(
         document: t.Cli.TomlDocument,
-        namespace_scan_dirs: t.StrSequence | None,
+        namespace_scan_dirs: Sequence[str] | None,
     ) -> p.Result[bool]:
         """Sync ``[tool.flext.namespace].scan_dirs`` from the project SSOT.
 
@@ -1217,7 +1217,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         raw_environments = u.Cli.json_as_sequence(
             u.Cli.toml_value(pyright, "executionEnvironments"),
         )
-        normalized_environments: t.JsonValueList = []
+        normalized_environments: list[t.JsonValue] = []
         for index, environment in enumerate(raw_environments):
             if not isinstance(environment, Mapping):
                 return r[bool].fail(

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
@@ -30,7 +31,10 @@ class TestsFlextInfraGenRespectsInvocationScope:
     """`gen` delegates the complete composition through exactly one root."""
 
     @pytest.fixture
-    def rendered_makefile(self: Path) -> str:
+    def rendered_makefile(
+        self,
+        tmp_path: Path,
+    ) -> str:
         """Render the workspace Makefile through the conform owner.
 
         Returns:
@@ -38,20 +42,20 @@ class TestsFlextInfraGenRespectsInvocationScope:
 
         """
         return u.Tests.scaffold_text(
-            self / "fixture-project",
+            tmp_path / "fixture-project",
             c.Infra.MAKEFILE_FILENAME,
             members=(_MEMBER,),
         )
 
     @staticmethod
-    def _recipe_bodies(text: str) -> t.MutableMappingKV[str, list[str]]:
+    def _recipe_bodies(text: str) -> MutableMapping[str, list[str]]:
         """Return each rendered ``_builtin_*`` target mapped to its recipe lines.
 
         Returns:
             Each rendered ``_builtin_*`` target mapped to its recipe lines.
 
         """
-        bodies: t.MutableMappingKV[str, list[str]] = {}
+        bodies: MutableMapping[str, list[str]] = {}
         current: str | None = None
         for line in text.splitlines():
             target = re.match(r"^(_builtin_[a-z_]+):", line)

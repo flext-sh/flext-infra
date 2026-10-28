@@ -6,14 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
 from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitMutationScope,
     FlextInfraUtilitiesGitStateTrees,
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
 
     @classmethod
     @contextmanager
-    def _state_leases(cls, roots: t.SequenceOf[Path]) -> Generator[None]:
+    def _state_leases(cls, roots: Sequence[Path]) -> Generator[None]:
         locks = {
             FlextInfraUtilitiesGitMutationScope.mutation_lock_path(root).unwrap()
             for root in roots

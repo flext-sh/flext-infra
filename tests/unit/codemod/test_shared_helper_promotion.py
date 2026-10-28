@@ -16,14 +16,14 @@ import pytest
 
 from flext_infra import infra
 from flext_infra.transformers import FlextInfraTransformersSemanticPublication
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraSharedHelperPromotion:
     """Keep real consumers working while the original declaration changes owner."""
 
     @staticmethod
-    def _workspace(tmp_path: Path, *, reexport: bool) -> t.Triple[Path, Path, str]:
+    def _workspace(tmp_path: Path, *, reexport: bool) -> tuple[Path, Path, str]:
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
         # Promotion publishes through the codegen transaction, which coordinates
         # only inside an exact Git worktree root, exactly as in production.

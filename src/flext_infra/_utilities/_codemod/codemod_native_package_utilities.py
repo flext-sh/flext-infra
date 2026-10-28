@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Mapping, Sequence
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path, PurePosixPath
@@ -43,7 +44,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     """Derive package export and facade-family package utility rules."""
 
     @staticmethod
-    def codemod_exact_names_rule(names: t.StrSequence) -> t.JsonDict:
+    def codemod_exact_names_rule(names: Sequence[str]) -> t.JsonDict:
         """Match a captured identifier that is exactly one of ``names``.
 
         Returns:
@@ -121,7 +122,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @classmethod
     def codemod_package_export_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """One ``exports--<dotted package>`` utility per package of the project.
 
         Returns:
@@ -141,7 +142,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     def codemod_facade_family_package_utilities(
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Facade-family packages: ``<own root>._<family>`` of every family.
 
         The family directories come from the facade-family declarations, so a
@@ -207,7 +208,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @staticmethod
     def _codemod_declaring_packages(
         facts: m.Infra.CodemodPackageExportsFacts,
-    ) -> t.MappingKV[str, t.StrTuple]:
+    ) -> Mapping[str, t.StrTuple]:
         """Every public non-dunder name to the packages whose ``__all__`` declares it.
 
         Returns:
@@ -227,7 +228,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @classmethod
     def codemod_header_resolvable_names(
         cls, facts: m.Infra.CodemodPackageExportsFacts
-    ) -> t.MappingKV[str, str]:
+    ) -> Mapping[str, str]:
         """Names whose canonical package import is unambiguous from any module.
 
         A name resolves when exactly one shallowest package declares it; a
@@ -260,7 +261,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         facts: m.Infra.CodemodPackageExportsFacts,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Insert the nearest declaring package's import for unbound names.
 
         One rule per package and scope inserts, after the module's first
@@ -339,7 +340,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         return documents
 
     @classmethod
-    def _codemod_header_rule(cls, names: t.StrSequence) -> t.JsonDict:
+    def _codemod_header_rule(cls, names: Sequence[str]) -> t.JsonDict:
         """Anchor on the first future or plain import of a module using ``names``.
 
         Returns:
@@ -409,7 +410,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         facts: m.Infra.CodemodPackageExportsFacts,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Reach a member through its package import, never a module object.
 
         For each package with child packages, one rule rewrites
@@ -480,7 +481,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @classmethod
     def _codemod_member_rule(
-        cls, package: str, branches: t.SequenceOf[t.JsonDict]
+        cls, package: str, branches: Sequence[t.JsonDict]
     ) -> t.JsonDict:
         """Match ``<child>.<Name>`` bound by a module-object import of ``package``.
 
@@ -566,7 +567,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @classmethod
     def codemod_package_deep_import_rules(
         cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Rebind a one-name import from a module to its nearest publishing package.
 
         For each package P, one rule matches ``from <module> import <Name>``
@@ -626,7 +627,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @classmethod
     def _codemod_deep_import_branch(
-        cls, module: str, names: t.StrSequence
+        cls, module: str, names: Sequence[str]
     ) -> t.JsonDict:
         """Match an import of one of ``names`` from exactly ``module``.
 
@@ -655,7 +656,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @staticmethod
     def codemod_role_files(
-        snapshot: p.Infra.WorkspaceSnapshot, project: Path, roles: t.StrSequence
+        snapshot: p.Infra.WorkspaceSnapshot, project: Path, roles: Sequence[str]
     ) -> t.StrTuple:
         """Project-relative paths of every module the import law gives a role.
 
@@ -800,7 +801,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @classmethod
     def codemod_external_import_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Ban a library import outside the facade families (ADR-028).
 
         The module of a live import must be the standard library, the own
@@ -865,7 +866,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @classmethod
     def codemod_library_type_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Ban a library type named inline outside the typings family (ADR-028).
 
         An attribute of a module the file binds by ``import`` and that is a
@@ -1076,7 +1077,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @classmethod
     def codemod_layer_zero_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Ban own-root/family imports, admitting only native-proven helpers.
 
         A settings/config (or lazy-loader) module owns its declarations before

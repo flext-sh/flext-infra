@@ -11,13 +11,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenFixer
-from tests import m, t, tm, u
+from tests import m, tm, u
 
 
 def _reports_import_cycle(result: m.Infra.AutoFixResult) -> bool:
@@ -32,11 +33,11 @@ def _fix_workspace(
     tmp_path: Path,
     project: Path,
     package_name: str,
-) -> t.SequenceOf[m.Infra.AutoFixResult]:
+) -> Sequence[m.Infra.AutoFixResult]:
     """Provision one codegen checkout and return the fixer's workspace results.
 
     Returns:
-        The resulting ``t.SequenceOf[m.Infra.AutoFixResult]``.
+        The resulting ``Sequence[m.Infra.AutoFixResult]``.
 
     """
     u.Tests.declare_workspace_projects(tmp_path, (project.name,))

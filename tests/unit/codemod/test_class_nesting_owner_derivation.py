@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import pytest
@@ -680,7 +681,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         """Cold imports preserve lexical shadows, wildcard identities and payloads."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         source_root = root / c.Infra.DEFAULT_SRC_DIR
-        sources: t.MutableMappingKV[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
         for package, owner, value in (("left", "Left", 11), ("right", "Right", 29)):
             directory = source_root / package
             tm.ok(u.Cli.ensure_dir(directory))

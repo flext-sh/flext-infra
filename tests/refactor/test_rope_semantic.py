@@ -10,7 +10,7 @@ from pathlib import Path
 
 from tests import t, tm, u
 
-type RopeWorkspace = t.Pair[t.Infra.RopeProject, Path]
+type RopeWorkspace = tuple[t.Infra.RopeProject, Path]
 
 
 class TestsFlextInfraRefactorRopeSemantic:

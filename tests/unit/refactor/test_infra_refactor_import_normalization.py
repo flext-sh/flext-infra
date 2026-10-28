@@ -679,7 +679,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "from demo_pkg.typings import t\n"
             "\n"
             "\n"
-            "def run(value: t.StrSequence) -> object:\n"
+            "def run(value: Sequence[str]) -> object:\n"
             "    return r.ok(value)\n",
         )
 

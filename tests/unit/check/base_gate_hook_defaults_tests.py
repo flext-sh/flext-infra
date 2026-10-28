@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 import pytest
@@ -22,7 +23,7 @@ from tests import c, tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class TestsFlextInfraGateHookDefaults:
@@ -45,12 +46,12 @@ class TestsFlextInfraGateHookDefaults:
             self,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-            check_dirs: t.StrSequence,
-        ) -> t.StrSequence:
+            check_dirs: Sequence[str],
+        ) -> Sequence[str]:
             """Print the environment keys the hook defaults control.
 
             Returns:
-                The resulting ``t.StrSequence``.
+                The resulting ``Sequence[str]``.
 
             """
             _ = project_dir, ctx, check_dirs
@@ -62,11 +63,11 @@ class TestsFlextInfraGateHookDefaults:
             result: p.Cli.CommandOutput,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-        ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+        ) -> tuple[bool, Sequence[m.Infra.Issue]]:
             """Accept the probe output. The environment is the assertion.
 
             Returns:
-                The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+                The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
 
             """
             _ = result, project_dir, ctx
@@ -77,7 +78,7 @@ class TestsFlextInfraGateHookDefaults:
 
         check_report_filename: ClassVar[str] = "probe.json"
         check_timeout: ClassVar[int] = 1
-        check_remove_env_keys: ClassVar[t.StrSequence] = (
+        check_remove_env_keys: ClassVar[Sequence[str]] = (
             *gates.FlextInfraGate.check_remove_env_keys,
             "FLEXT_GATE_PROBE_KEPT",
         )
@@ -92,8 +93,8 @@ class TestsFlextInfraGateHookDefaults:
             self,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-            targets: t.StrSequence,
-        ) -> t.StrSequence:
+            targets: Sequence[str],
+        ) -> Sequence[str]:
             """Return a native repair probe.
 
             Returns:
@@ -111,8 +112,8 @@ class TestsFlextInfraGateHookDefaults:
             self,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-            targets: t.StrSequence,
-        ) -> t.StrSequence:
+            targets: Sequence[str],
+        ) -> Sequence[str]:
             """Return a failing native repair.
 
             Returns:
@@ -136,8 +137,8 @@ class TestsFlextInfraGateHookDefaults:
             self,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-            check_dirs: t.StrSequence,
-        ) -> t.StrSequence:
+            check_dirs: Sequence[str],
+        ) -> Sequence[str]:
             """Run a successful tool before encountering the unimplemented hook.
 
             Returns:
@@ -155,11 +156,11 @@ class TestsFlextInfraGateHookDefaults:
             self,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-        ) -> t.StrMapping | None:
+        ) -> Mapping[str, str] | None:
             """Overlay one marker on the inherited environment.
 
             Returns:
-                The resulting ``t.StrMapping | None``.
+                The resulting ``Mapping[str, str] | None``.
 
             """
             _ = project_dir, ctx
@@ -178,7 +179,7 @@ class TestsFlextInfraGateHookDefaults:
             result: p.Cli.CommandOutput,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-            targets: t.StrSequence,
+            targets: Sequence[str],
         ) -> None:
             """Reject the probe's native stderr marker.
 
@@ -199,12 +200,12 @@ class TestsFlextInfraGateHookDefaults:
             self,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-            check_dirs: t.StrSequence,
-        ) -> t.StrSequence:
+            check_dirs: Sequence[str],
+        ) -> Sequence[str]:
             """Sleep inside the inherited deadline, then finish.
 
             Returns:
-                The resulting ``t.StrSequence``.
+                The resulting ``Sequence[str]``.
 
             """
             _ = project_dir, ctx, check_dirs
@@ -224,12 +225,12 @@ class TestsFlextInfraGateHookDefaults:
             self,
             project_dir: Path,
             ctx: m.Infra.GateContext,
-            check_dirs: t.StrSequence,
-        ) -> t.StrSequence:
+            check_dirs: Sequence[str],
+        ) -> Sequence[str]:
             """Sleep far past the replaced one-second deadline.
 
             Returns:
-                The resulting ``t.StrSequence``.
+                The resulting ``Sequence[str]``.
 
             """
             _ = project_dir, ctx, check_dirs
@@ -243,11 +244,11 @@ class TestsFlextInfraGateHookDefaults:
             )
 
     @staticmethod
-    def _probe_command() -> t.StrSequence:
+    def _probe_command() -> Sequence[str]:
         """Return the interpreter command that prints the probed environment.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         force = repr(c.Infra.ENV_VAR_FORCE_COLOR)

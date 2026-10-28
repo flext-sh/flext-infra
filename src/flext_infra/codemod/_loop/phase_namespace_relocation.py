@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, u
 from flext_infra.refactor import FlextInfraNamespaceRelocationCascade
 
 if TYPE_CHECKING:
@@ -27,7 +28,7 @@ class FlextInfraCodemodLoopPhaseNamespaceRelocation:
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan selected declarations while retaining the full reference readscope.
 
@@ -37,7 +38,7 @@ class FlextInfraCodemodLoopPhaseNamespaceRelocation:
         """
         cascade = FlextInfraNamespaceRelocationCascade()
         working = dict(sources)
-        effects: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan] = {}
+        effects: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
         for project_root in u.Infra.governed_project_roots(root):
             if not u.Infra.namespace_enabled(project_root):
                 continue

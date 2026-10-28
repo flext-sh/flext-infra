@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import FlextInfraCli
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 @pytest.mark.slow
@@ -484,7 +485,7 @@ class TestsFlextInfraModCliRoute:
         mod_workspace: Path,
     ) -> None:
         """Execute every rule of the local catalog and retain its exact rule file."""
-        expected_rule_files: t.MutableMappingKV[str, str] = {}
+        expected_rule_files: MutableMapping[str, str] = {}
         source_lines: list[str] = []
         config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_RELPATH
         rules_root = config_path.parent / c.Cli.RULES_DIR_NAME

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraWorkspaceMemberLedgerIdentity:
@@ -90,11 +90,11 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
     @staticmethod
-    def _attach_member_to_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+    def _attach_member_to_workspace(tmp_path: Path) -> tuple[Path, Path]:
         """Create one governed, committed workspace/member checkout pair.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         parent = tmp_path / "workspace"

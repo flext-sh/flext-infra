@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,7 +14,7 @@ from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraRefactorCensusRemoval(
@@ -28,7 +28,7 @@ class FlextInfraRefactorCensusRemoval(
     """
 
     @property
-    def dry_run_gate_names(self) -> t.StrSequence:
+    def dry_run_gate_names(self) -> Sequence[str]:
         """Per-candidate lint and Pyrefly gates.
 
         Transitive checkers consume regenerated exports, so candidate previews

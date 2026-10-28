@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from json import dumps
 from pathlib import Path
 from types import MappingProxyType
@@ -313,11 +313,11 @@ class FlextInfraUtilitiesDependencies(
     @staticmethod
     def project_dev_groups_from_payload(
         payload: t.JsonMapping,
-    ) -> t.MappingKV[str, t.StrSequence]:
+    ) -> Mapping[str, Sequence[str]]:
         """Collect optional dependency groups from one normalized payload.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.StrSequence]``.
+            The resulting ``Mapping[str, Sequence[str]]``.
 
         """
         project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
@@ -336,11 +336,11 @@ class FlextInfraUtilitiesDependencies(
     def project_dev_groups(
         cls,
         document: t.Cli.TomlDocument,
-    ) -> t.MappingKV[str, t.StrSequence]:
+    ) -> Mapping[str, Sequence[str]]:
         """Collect optional dependency groups from one TOML document.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.StrSequence]``.
+            The resulting ``Mapping[str, Sequence[str]]``.
 
         """
         normalized = u.Cli.toml_as_mapping(document) or {}
@@ -353,11 +353,11 @@ class FlextInfraUtilitiesDependencies(
     def canonical_dev_dependencies(
         cls,
         document: t.Cli.TomlDocument,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Merge all canonical dev dependency groups from one TOML document.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         normalized = u.Cli.toml_as_mapping(document) or {}
@@ -369,11 +369,11 @@ class FlextInfraUtilitiesDependencies(
     def canonical_dev_dependencies_from_payload(
         cls,
         payload: t.JsonMapping,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Merge all canonical dev dependency groups from one normalized payload.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         groups = cls.project_dev_groups_from_payload(payload)
@@ -389,8 +389,8 @@ class FlextInfraUtilitiesDependencies(
         *,
         distribution: str,
         kind: c.Infra.ProjectKind,
-        declared: t.StrSequence = (),
-    ) -> t.StrSequence:
+        declared: Sequence[str] = (),
+    ) -> Sequence[str]:
         """Compose development policy over the target's own requirement declarations.
 
         Existing requirement spellings, marker variants and sources stay intact.
@@ -425,7 +425,7 @@ class FlextInfraUtilitiesDependencies(
     def project_dependency_names_from_payload(
         cls,
         payload: t.JsonMapping,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return strict names from the PEP 621 runtime dependency array.
 
         Returns:
@@ -462,10 +462,10 @@ class FlextInfraUtilitiesDependencies(
     def workspace_dependency_order(
         cls,
         root: Path,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
-    ) -> t.StrSequence:
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+    ) -> Sequence[str]:
         """Order declared packages by their actual runtime dependency graph.
 
         Returns:
@@ -484,10 +484,10 @@ class FlextInfraUtilitiesDependencies(
     def workspace_dependency_waves(
         cls,
         root: Path,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
-    ) -> t.SequenceOf[t.StrSequence]:
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+    ) -> Sequence[Sequence[str]]:
         """Group declared packages into runtime-dependency-first waves.
 
         Returns:
@@ -497,7 +497,7 @@ class FlextInfraUtilitiesDependencies(
             ValueError: If distributions collide or the runtime graph is cyclic.
 
         """
-        by_name: t.MappingKV[str, p.Infra.RepositoryRef] = {
+        by_name: Mapping[str, p.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -530,7 +530,7 @@ class FlextInfraUtilitiesDependencies(
     @staticmethod
     def _workspace_manifest_payload(
         project: Path,
-        manifests: t.MappingKV[Path, m.Infra.CodegenFilePlan],
+        manifests: Mapping[Path, m.Infra.CodegenFilePlan],
     ) -> t.JsonMapping:
         """Read one project's dependency manifest, planned payload first.
 
@@ -595,11 +595,11 @@ class FlextInfraUtilitiesDependencies(
         return f">={public_version}"
 
     @classmethod
-    def resolved_dependency_versions(cls) -> t.MappingKV[str, str]:
+    def resolved_dependency_versions(cls) -> Mapping[str, str]:
         """Read registry versions from the provisioned runtime, not release provenance.
 
         Returns:
-            The resulting ``t.MappingKV[str, str]``.
+            The resulting ``Mapping[str, str]``.
 
         Raises:
             TypeError: If Installed distribution has no Name metadata.
@@ -634,8 +634,8 @@ class FlextInfraUtilitiesDependencies(
         cls,
         requirement: str,
         *,
-        resolved_versions: t.MappingKV[str, str],
-        internal_names: t.StrSequence = (),
+        resolved_versions: Mapping[str, str],
+        internal_names: Sequence[str] = (),
     ) -> str | None:
         """Rewrite one PEP 621 requirement to the resolved runtime floor.
 
@@ -680,7 +680,7 @@ class FlextInfraUtilitiesDependencies(
     def _rewritable_requirement(
         cls,
         requirement: str,
-        internal_names: t.StrSequence,
+        internal_names: Sequence[str],
     ) -> tuple[str, Requirement] | None:
         """Parse the complete declaration before deciding whether it is rewritable.
 
@@ -702,7 +702,7 @@ class FlextInfraUtilitiesDependencies(
     def declared_dependency_names(
         cls,
         document: t.Cli.TomlDocument,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return normalized dependency names from one TOML document.
 
         Returns:
@@ -718,7 +718,7 @@ class FlextInfraUtilitiesDependencies(
     def declared_dependency_names_from_payload(
         cls,
         payload: t.JsonMapping,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return normalized dependency names across supported dependency tables.
 
         Returns:
@@ -838,8 +838,8 @@ class FlextInfraUtilitiesDependencies(
         cls,
         payload: t.JsonMapping,
         *,
-        workspace_project_names: t.StrSequence = (),
-    ) -> t.StrSequence:
+        workspace_project_names: Sequence[str] = (),
+    ) -> Sequence[str]:
         """Return workspace-local dependency names from one payload.
 
         Returns:

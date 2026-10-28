@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
@@ -19,7 +19,7 @@ from typing_extensions import TypeForm
 
 from flext_infra import config, m
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
@@ -87,7 +87,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                                         config.Infra.tooling,
                                         "pytest.ini_options",
                                         "python_files",
-                                        TypeForm(t.StrSequence),
+                                        TypeForm(Sequence[str]),
                                     ),
                                 ),
                                 "markers": list(pytest_settings.standard_markers),

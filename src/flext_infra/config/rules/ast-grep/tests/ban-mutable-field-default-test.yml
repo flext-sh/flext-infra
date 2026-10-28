@@ -2,15 +2,15 @@ id: ban-mutable-field-default
 valid:
   - |
     class Order(m.FrozenModel):
-        items: t.StrSequence = ()
-        tags: t.StrSequence = m.Field(default_factory=tuple, description="x")
+        items: Sequence[str] = ()
+        tags: Sequence[str] = m.Field(default_factory=tuple, description="x")
   - |
     class Order(m.FrozenModel):
-        names: t.StrSequence = []
+        names: Sequence[str] = []
 invalid:
   - |
     class Order(m.FrozenModel):
-        items: t.StrSequence = ["a"]
+        items: Sequence[str] = ["a"]
   - |
     class Order(m.FrozenModel):
-        table: t.StrMapping = m.Field(default={"a": "b"}, description="x")
+        table: Mapping[str, str] = m.Field(default={"a": "b"}, description="x")

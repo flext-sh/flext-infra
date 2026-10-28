@@ -12,7 +12,7 @@
 # facade import it replaces. The duplicated import form is merged by the
 # import-normalization phase of the codemod loop (the same contract
 # facade-import-from-own-package documents). Bare letter uses that do not
-# traverse `CosmosCharts` (for example `t.Pair`) resolve through the class MRO
+# traverse `CosmosCharts` (for example `tuple`) resolve through the class MRO
 # and stay untouched, as does every letter bound from another package, because
 # both rules require the module to bind that exact letter from its facade
 # package AND to reach through `CosmosCharts`.
@@ -37,7 +37,7 @@ rule:
 fix: CosmosChartsConstants.CosmosCharts
 message: >-
   Reach constants through the static CosmosChartsConstants class path; the
-  module re-alias does not propagate to mypy or pyright.
+            The resulting ``t.Pair[int, str]``. pyright.
 ---
 id: namespace-static-path-constants-import
 language: python

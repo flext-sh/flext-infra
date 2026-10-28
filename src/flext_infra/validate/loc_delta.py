@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, override
 from flext_infra import c, m, r, s, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraLocDeltaValidator(s[bool]):
@@ -48,11 +48,11 @@ class FlextInfraLocDeltaValidator(s[bool]):
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _sum_numstat(numstat: str) -> t.Pair[int, int]:
+    def _sum_numstat(numstat: str) -> tuple[int, int]:
         """Sum insertions/deletions from `git diff --numstat` output (skip binary).
 
         Returns:
-            The resulting ``t.Pair[int, int]``.
+            The resulting ``tuple[int, int]``.
 
         """
         insertions = 0

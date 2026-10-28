@@ -18,7 +18,7 @@ class TestsFlextInfraModelsBase:
         """Native snapshot identity and its complete per-source metadata."""
 
         id: str = m.Field(description="Native rule identity")
-        snapshots: t.MappingKV[str, t.JsonMapping] = m.Field(
+        snapshots: Mapping[str, t.JsonMapping] = m.Field(
             description="Source cases and their native snapshot metadata",
         )
 

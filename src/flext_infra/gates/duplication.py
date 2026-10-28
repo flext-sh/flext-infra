@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import socket
 import time
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, r, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import FlextInfraGate
 from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
@@ -121,7 +122,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         self,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-    ) -> t.Triple[m.Infra.JscpdReport | None, tuple[m.Infra.Issue], bool, ...]:
+    ) -> tuple[m.Infra.JscpdReport | None, tuple[m.Infra.Issue, ...], bool]:
         """Parse the native report into owned clones plus any tool failure.
 
         A non-findings exit, or a findings exit whose report holds no clone,
@@ -153,7 +154,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
 
     def _assessment_issues(
         self,
-        assessed: t.Pair[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
+        assessed: tuple[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
         project_dir: Path,
         evidence: m.Infra.GateOutputReceipt,
         execution: str,
@@ -286,7 +287,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         )
         return self._load_report(report_dir, result)
 
-    def _render_scope_dirs(self, project_dir: Path) -> p.Result[t.StrSequence]:
+    def _render_scope_dirs(self, project_dir: Path) -> p.Result[Sequence[str]]:
         """The invoking project's canonical scope plus its declared extra trees.
 
         Every repository evaluates only itself, locally exactly as in CI: the
@@ -302,17 +303,17 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         artifact (a false 50%-duplication report), never real duplication.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         project_config = self._read_project_config(project_dir)
         if project_config.failure:
-            return r[t.StrSequence].from_failure(project_config)
+            return r[Sequence[str]].from_failure(project_config)
         scope_dirnames = project_config.value.scope
         declared_trees = self._declared_duplication_trees()
         if declared_trees.failure:
-            return r[t.StrSequence].from_failure(declared_trees)
-        candidates: t.MutableSequenceOf[str] = []
+            return r[Sequence[str]].from_failure(declared_trees)
+        candidates: MutableSequence[str] = []
         seen: set[str] = set()
         for candidate in (
             *self._existing_check_dirs(project_dir),
@@ -343,11 +344,11 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
                 continue
             internal.add(resolved)
             candidates.append(resolved)
-        return r[t.StrSequence].ok(
+        return r[Sequence[str]].ok(
             tuple(str(project_dir / candidate) for candidate in candidates),
         )
 
-    def _render_fleet_scope_dirs(self, project_dir: Path) -> p.Result[t.StrSequence]:
+    def _render_fleet_scope_dirs(self, project_dir: Path) -> p.Result[Sequence[str]]:
         """Union this project's scope with every declared member's scope.
 
         The cross-project view scans every member this workspace declares (the
@@ -358,26 +359,26 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         the governed workspace root.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         base = self._render_scope_dirs(project_dir)
         if base.failure:
-            return r[t.StrSequence].from_failure(base)
-        candidates: t.MutableSequenceOf[str] = list(base.value)
+            return r[Sequence[str]].from_failure(base)
+        candidates: MutableSequence[str] = list(base.value)
         seen: set[str] = set(candidates)
         for member in u.Infra.discover_project_roots(project_dir):
             if member == project_dir:
                 continue
             member_scope = self._render_scope_dirs(member)
             if member_scope.failure:
-                return r[t.StrSequence].from_failure(member_scope)
+                return r[Sequence[str]].from_failure(member_scope)
             for candidate in member_scope.value:
                 if candidate in seen:
                     continue
                 seen.add(candidate)
                 candidates.append(candidate)
-        return r[t.StrSequence].ok(tuple(candidates))
+        return r[Sequence[str]].ok(tuple(candidates))
 
     @staticmethod
     def _read_project_config(
@@ -420,18 +421,18 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
             )
         return r[m.Infra.ProjectDuplicationOverrides].ok(validated.value)
 
-    def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
+    def _declared_duplication_trees(self) -> p.Result[Sequence[str]]:
         """Read duplication scope from the target's selected repository delta.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         loaded = u.Infra.load_codegen_inputs(self._repository_root)
         if loaded.failure:
-            return r[t.StrSequence].from_failure(loaded)
+            return r[Sequence[str]].from_failure(loaded)
         repository = loaded.value.spec.repository
-        return r[t.StrSequence].ok(repository.duplication_trees)
+        return r[Sequence[str]].ok(repository.duplication_trees)
 
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
@@ -552,7 +553,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
     @staticmethod
     def _comparison_roots(
         overrides: m.Infra.ProjectDuplicationOverrides,
-    ) -> t.Pair[t.SequenceOf[Path], t.StrSequence]:
+    ) -> tuple[Sequence[Path], Sequence[str]]:
         """Resolve declared external comparison roots against the filesystem.
 
         Returns:
@@ -588,7 +589,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
             return ""
         return "jscpd comparison roots skipped (absent): " + ", ".join(absent)
 
-    def _derived_ignore_patterns(self) -> t.StrSequence:
+    def _derived_ignore_patterns(self) -> Sequence[str]:
         """Derive the complete jscpd ignore list from declared owners.
 
         Every pattern names a declared semantic fact, never a hand-maintained
@@ -600,7 +601,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         Owned generated sources remain subject to clone analysis.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         globs: list[str] = []
@@ -625,11 +626,11 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
     def _sgconfig_fixture_globs(
         corpus_root_rel: str,
         config_root: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Derive corpus globs from one declared sgconfig's fixture topology.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         fixtures = FlextInfraCodemodSnapshotReconciler.fixture_directories(config_root)

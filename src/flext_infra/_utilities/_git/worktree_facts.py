@@ -40,7 +40,7 @@ class FlextInfraUtilitiesGitWorktreeFacts(
         order.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[Path, str]]``.
+            The resulting ``tuple[tuple[Path, str], ...]``.
 
         """
         registry = (
@@ -74,8 +74,8 @@ class FlextInfraUtilitiesGitWorktreeFacts(
         Nothing is executed here.
 
         Returns:
-            The resulting ``t.Pair[t.VariadicTuple[m.Infra.WorktreeFact],
-                t.VariadicTuple[m.Infra.PruneAction]]``.
+            The resulting ``tuple[tuple[m.Infra.WorktreeFact, ...],
+                tuple[m.Infra.PruneAction, ...]]``.
 
         """
         facts: list[m.Infra.WorktreeFact] = []
@@ -226,11 +226,11 @@ class FlextInfraUtilitiesGitWorktreeFacts(
     def _worktree_bead_index(
         cls,
         rows: tuple[t.JsonMapping, ...],
-    ) -> t.MappingKV[str, t.MappingKV[str, t.JsonMapping]]:
+    ) -> Mapping[str, Mapping[str, t.JsonMapping]]:
         """Index optional bead rows by work dir and branch for correlation.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.MappingKV[str, t.JsonMapping]]``.
+            The resulting ``Mapping[str, Mapping[str, t.JsonMapping]]``.
 
         """
         by_dir: MutableMapping[str, t.JsonMapping] = {}

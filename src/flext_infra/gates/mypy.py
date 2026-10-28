@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.MYPY
     gate_name: ClassVar[str] = "Mypy"
     can_fix: ClassVar[bool] = False
-    checker_info_prefixes: ClassVar[t.StrSequence] = (
+    checker_info_prefixes: ClassVar[Sequence[str]] = (
         "LOG:",
         "TRACE:",
         "[pydantic-mypy]:",
@@ -37,7 +38,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> None:
         """Keep one effective resource policy for each admitted analysis."""
         super().__init__(repository_root, runner=runner)
-        self._resource_limits: t.MutableMappingKV[Path, m.Infra.MypyResourceLimit] = {}
+        self._resource_limits: MutableMapping[Path, m.Infra.MypyResourceLimit] = {}
 
     def _project_limit(self, project_dir: Path) -> m.Infra.MypyResourceLimit:
         """Return the admitted policy shared by the child, runner and receipt.
@@ -92,11 +93,11 @@ class FlextInfraMypyGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Check local Python roots directly instead of recursively scanning ``.``.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         # Empty or explicitly excluded roots are omitted because Mypy aborts
@@ -138,8 +139,8 @@ class FlextInfraMypyGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Run the resource-limited Mypy invocation with its JSON report.
 
         Returns:
@@ -210,7 +211,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
+        targets: Sequence[str],
     ) -> None:
         """Account for every submitted target from Mypy's native build trace.
 
@@ -243,7 +244,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     @override
     def _runner_limits(
         timeout: int,
-    ) -> t.Pair[int | None, p.Cli.ProcessDeadline | None]:
+    ) -> tuple[int | None, p.Cli.ProcessDeadline | None]:
         """Leave the child's analysis and forced-kill windows uninterrupted.
 
         Returns:
@@ -269,11 +270,11 @@ class FlextInfraMypyGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrMapping | None:
+    ) -> Mapping[str, str] | None:
         """Run Mypy against the project's shared analysis cache.
 
         Returns:
-            The resulting ``t.StrMapping | None``.
+            The resulting ``Mapping[str, str] | None``.
 
         """
         del ctx
@@ -290,7 +291,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Validate Mypy's one-JSON-object-per-line report into findings.
 
         Returns:
@@ -298,7 +299,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
         """
         del ctx
-        diagnostics: t.MutableSequenceOf[p.Infra.Issue] = []
+        diagnostics: MutableSequence[p.Infra.Issue] = []
         if resource_diagnostic := u.Infra.mypy_failure_diagnostic(
             result,
             self._project_limit(project_dir),

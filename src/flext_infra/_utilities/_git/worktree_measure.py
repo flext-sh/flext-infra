@@ -14,7 +14,7 @@ import os
 import time
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c
 from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeStatus
 
 
@@ -24,11 +24,11 @@ class FlextInfraUtilitiesGitWorktreeMeasure(
     """Own the bounded tree measurement for worktree facts."""
 
     @classmethod
-    def _worktree_measure(cls, root: Path) -> t.Triple[int, float, bool]:
+    def _worktree_measure(cls, root: Path) -> tuple[int, float, bool]:
         """Measure one tree within the bounded, symlink-free walk.
 
         Returns:
-            The resulting ``t.Triple[int, float, bool]``.
+            The resulting ``tuple[int, float, bool]``.
 
         """
         started = time.monotonic()
@@ -61,11 +61,11 @@ class FlextInfraUtilitiesGitWorktreeMeasure(
     @staticmethod
     def _worktree_scan_dir(
         directory: Path,
-    ) -> t.Pair[tuple[os.DirEntry[str]], bool, ...]:
+    ) -> tuple[tuple[os.DirEntry[str], ...], bool]:
         """List one directory paired with whether it was readable.
 
         Returns:
-            The resulting ``t.Pair[tuple[os.DirEntry[str]], bool, ...],``.
+            The resulting ``tuple[tuple[os.DirEntry[str]], bool, ...],``.
 
         """
         entries: tuple[os.DirEntry[str], ...] = ()
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesGitWorktreeMeasure(
     def _worktree_entry_metrics(
         cls,
         entry: os.DirEntry[str],
-    ) -> t.Triple[bool, int, float]:
+    ) -> tuple[bool, int, float]:
         """Return ``(descend, bytes, mtime)`` for one entry, skipping symlinks.
 
         Returns:
@@ -112,7 +112,7 @@ class FlextInfraUtilitiesGitWorktreeMeasure(
         return entry.is_dir(follow_symlinks=False) and not entry.is_symlink()
 
     @staticmethod
-    def _worktree_entry_file_metrics(entry: os.DirEntry[str]) -> t.Pair[int, float]:
+    def _worktree_entry_file_metrics(entry: os.DirEntry[str]) -> tuple[int, float]:
         """Return ``(bytes, mtime)`` for one regular entry, zero for a symlink.
 
         Returns:

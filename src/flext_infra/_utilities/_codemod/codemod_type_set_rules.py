@@ -29,6 +29,7 @@ import inspect
 import re
 import sys
 import warnings
+from collections.abc import Mapping, Sequence
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
@@ -47,7 +48,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
     @classmethod
     def codemod_type_set_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the type-set rule of the project's constants facade.
 
         Returns:
@@ -91,7 +92,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
 
     @staticmethod
     def _type_set_document(
-        rule_id: str, sets: t.SequenceOf[tuple[str, t.JsonDict]]
+        rule_id: str, sets: Sequence[tuple[str, t.JsonDict]]
     ) -> t.JsonDict:
         """Build the one rule whose rewriters replace each declared set.
 
@@ -128,7 +129,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         }
 
     @staticmethod
-    def _type_set_rule(spellings: t.SequenceOf[t.StrSequence]) -> t.JsonDict:
+    def _type_set_rule(spellings: Sequence[Sequence[str]]) -> t.JsonDict:
         """Match one exact type set as a tuple or a ``|`` union, any order.
 
         Returns:
@@ -175,8 +176,8 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
 
     @classmethod
     def _type_set_constants(
-        cls, owner: type, path: t.StrSequence
-    ) -> t.SequenceOf[tuple[t.StrSequence, t.SequenceOf[type]]]:
+        cls, owner: type, path: Sequence[str]
+    ) -> Sequence[tuple[Sequence[str], Sequence[type]]]:
         """Collect every unmarked tuple-of-classes constant of ``owner``.
 
         Returns:
@@ -224,7 +225,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
     @classmethod
     def codemod_compat_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the rule that fails and rewires reads of compat-marked constants.
 
         Every attribute of the constants facade whose annotation carries the
@@ -305,8 +306,8 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
 
     @classmethod
     def _compat_markers(
-        cls, owner: type, path: t.StrSequence
-    ) -> t.SequenceOf[tuple[t.StrSequence, str]]:
+        cls, owner: type, path: Sequence[str]
+    ) -> Sequence[tuple[Sequence[str], str]]:
         """Collect every compat-marked attribute of ``owner`` and its namespaces.
 
         Returns:
@@ -364,8 +365,8 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
 
     @classmethod
     def _facade_aliases(
-        cls, owner: type, path: t.StrSequence
-    ) -> t.MappingKV[type, t.StrSequence]:
+        cls, owner: type, path: Sequence[str]
+    ) -> Mapping[type, Sequence[str]]:
         """Map each class the facade binds as an alias to its attribute paths.
 
         Returns:
@@ -400,9 +401,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         )
 
     @staticmethod
-    def _spellings(
-        item: type, aliases: t.MappingKV[type, t.StrSequence]
-    ) -> t.StrSequence:
+    def _spellings(item: type, aliases: Mapping[type, Sequence[str]]) -> Sequence[str]:
         """Every source spelling of ``item`` admitted outside the constants family.
 
         Returns:

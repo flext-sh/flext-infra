@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Annotated, ClassVar
 
 from flext_cli import m
@@ -55,7 +56,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
             extra_paths: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias=c.Infra.EXTRA_PATHS,
                     description="extraPaths applied to this execution environment.",
@@ -73,7 +74,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             """Path resolution rules loaded from YAML."""
 
             project_root_env_dirs: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="project-root-env-dirs",
                     description=(
@@ -98,14 +99,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ] = "."
             env_dirs: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="env-dirs",
                     description="Canonical execution environment directories in order.",
                 ),
             ] = ()
             test_like_dirs: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="test-like-dirs",
                     description=(
@@ -114,14 +115,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ] = ()
             default_excludes: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="default-excludes",
                     description="Always-applied pyright exclude globs.",
                 ),
             ] = ()
             ignored_diagnostic_globs: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="ignored-diagnostic-globs",
                     description=(
@@ -131,8 +132,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ] = ()
             diagnostic_path_overrides: Annotated[
-                t.VariadicTuple[
-                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride
+                tuple[
+                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride,
+                    ...,
                 ],
                 m.Field(
                     alias="diagnostic-path-overrides",
@@ -206,7 +208,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ] = "."
             env_dirs: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="env-dirs",
                     description="Canonical directories used to build project-includes.",
@@ -220,14 +222,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ] = False
             workspace_include_child_env_dirs: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="workspace-include-child-env-dirs",
                     description="Child env dirs included by root pyrefly when enabled.",
                 ),
             ] = ()
             project_shared_search_paths: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(
                     alias="project-shared-search-paths",
                     description=(

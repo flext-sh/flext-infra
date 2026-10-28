@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -13,7 +14,7 @@ from flext_infra._utilities import FlextInfraUtilitiesBase
 from flext_infra._utilities._promoted import FlextInfraUtilitiesPromotedWorkspace
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesPromotedInvocation(FlextInfraUtilitiesPromotedWorkspace):
@@ -63,7 +64,7 @@ class FlextInfraUtilitiesPromotedInvocation(FlextInfraUtilitiesPromotedWorkspace
     def promoted_validate_all_choices(
         cls,
         verb: str,
-        commands: t.MappingKV[str, p.Infra.PromotedCommand],
+        commands: Mapping[str, p.Infra.PromotedCommand],
     ) -> None:
         """Validate the WHAT choices declared on a verb's ``all`` command.
 

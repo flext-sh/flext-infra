@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
@@ -32,14 +33,14 @@ class FlextInfraExtraPathsManager(
     # applies. Discovery that only sees the pre-apply tree would omit them and
     # the post-apply verification plan would want the pyproject changed again.
     generated_python_roots: Annotated[
-        t.StrSequence,
+        Sequence[str],
         m.Field(
             default=(),
             description="Analyzer roots the active codegen plan materializes",
         ),
     ] = ()
     analysis_exclusions: Annotated[
-        t.StrSequence,
+        Sequence[str],
         m.Field(
             default=(),
             description="Workspace-relative paths excluded from analyzer discovery",
@@ -49,7 +50,7 @@ class FlextInfraExtraPathsManager(
     _workspace_project_names: t.Infra.StrSet = m.PrivateAttr(default_factory=set)
 
     @override
-    def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
+    def model_post_init(self, __context: Mapping[str, p.AttributeProbe], /) -> None:
         """Initialize workspace metadata after validation."""
         del __context
         self._workspace_project_names = set(
@@ -57,7 +58,7 @@ class FlextInfraExtraPathsManager(
         )
 
     @property
-    def workspace_project_names(self) -> t.StrSequence:
+    def workspace_project_names(self) -> Sequence[str]:
         """Managed workspace project names backing dependency resolution."""
         return tuple(sorted(self._workspace_project_names))
 
@@ -89,7 +90,7 @@ class FlextInfraExtraPathsManager(
         rules: p.Infra.TypeCheckerPathRules,
         *,
         project_dir: Path,
-        shared_search_paths: t.StrSequence,
+        shared_search_paths: Sequence[str],
         include_generated_roots: bool,
     ) -> t.Infra.StrSet:
         """Return the unordered search roots a checker shares, minus ordered ones.
@@ -116,11 +117,11 @@ class FlextInfraExtraPathsManager(
         return paths
 
     @staticmethod
-    def pyright_extra_paths() -> t.StrSequence:
+    def pyright_extra_paths() -> Sequence[str]:
         """Compute pyright extra paths for a project.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
@@ -137,7 +138,7 @@ class FlextInfraExtraPathsManager(
         self,
         *,
         project_dir: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Compute pyrefly search paths for a project.
 
         Only roots inside ``project_dir`` are emitted. Path dependencies and uv
@@ -146,7 +147,7 @@ class FlextInfraExtraPathsManager(
         that leaves the project.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
@@ -183,7 +184,7 @@ class FlextInfraExtraPathsManager(
             return (source_root, *ordered)
         return tuple(ordered)
 
-    def mypy_search_paths(self, *, project_dir: Path) -> t.StrSequence:
+    def mypy_search_paths(self, *, project_dir: Path) -> Sequence[str]:
         """Compute mypy search paths: like pyrefly but without the project root.
 
         mypy treats each search-path entry as a package root and enumerates the
@@ -197,7 +198,7 @@ class FlextInfraExtraPathsManager(
         and stays one (see :meth:`pyrefly_search_paths`).
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
@@ -212,7 +213,7 @@ class FlextInfraExtraPathsManager(
             return (source_root, *sorted(paths))
         return tuple(sorted(paths))
 
-    def _included_pyrefly_env_dirs(self, *, project_dir: Path) -> t.StrSequence:
+    def _included_pyrefly_env_dirs(self, *, project_dir: Path) -> Sequence[str]:
         """Return the declared env dirs whose Python sources pyrefly analyzes.
 
         The one declared set behind both pyrefly project-includes and the
@@ -223,7 +224,7 @@ class FlextInfraExtraPathsManager(
         participate.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
@@ -245,11 +246,11 @@ class FlextInfraExtraPathsManager(
         *,
         project_dir: Path,
         is_root: bool,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Build Pyrefly includes from configured productive directories.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         includes: t.Infra.StrSet = set(
@@ -278,11 +279,11 @@ class FlextInfraExtraPathsManager(
         return sorted(includes)
 
     @staticmethod
-    def pyrefly_include_globs(env_dirs: t.StrSequence) -> t.StrSequence:
+    def pyrefly_include_globs(env_dirs: Sequence[str]) -> Sequence[str]:
         """Render Pyrefly include globs for already validated Python roots.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return tuple(f"{directory}/**/*.py*" for directory in env_dirs)
@@ -292,11 +293,11 @@ class FlextInfraExtraPathsManager(
         doc: t.Cli.TomlDocument,
         *,
         project_dir: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Apply computed extra paths to an in-memory TOMLDocument.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         # Path producers and toml_as_string_list both yield immutable
@@ -309,7 +310,7 @@ class FlextInfraExtraPathsManager(
         if pyright_table is None:
             return list[str]()
         mypy_table = u.Cli.toml_table_child(tool_table, c.Infra.MYPY)
-        changes: t.MutableSequenceOf[str] = []
+        changes: MutableSequence[str] = []
         pyright_extra_paths = u.Cli.toml_item_child(pyright_table, "extraPaths")
         current_pyright = u.Cli.toml_as_string_list(
             pyright_extra_paths if pyright_extra_paths is not None else [],
@@ -346,12 +347,12 @@ class FlextInfraExtraPathsManager(
         payload: t.MutableJsonMapping,
         *,
         project_dir: Path,
-        mypy_search_paths: t.StrSequence | None = None,
-    ) -> t.StrSequence:
+        mypy_search_paths: Sequence[str] | None = None,
+    ) -> Sequence[str]:
         """Apply computed extra paths to one normalized TOML payload.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         expected = self.pyright_extra_paths()
@@ -362,7 +363,7 @@ class FlextInfraExtraPathsManager(
         if pyright_table is None:
             return list[str]()
         mypy_table = u.Cli.toml_mapping_path(tool_table, (c.Infra.MYPY,))
-        changes: t.MutableSequenceOf[str] = []
+        changes: MutableSequence[str] = []
         if u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT)),
             "extraPaths",
@@ -419,7 +420,7 @@ class FlextInfraExtraPathsManager(
         self,
         *,
         dry_run: bool = False,
-        project_dirs: t.SequenceOf[Path] | None = None,
+        project_dirs: Sequence[Path] | None = None,
     ) -> p.Result[int]:
         """Synchronize extraPaths and mypy_path across projects.
 
@@ -450,7 +451,7 @@ class FlextInfraExtraPathsManager(
         # mypy_path/extraPaths frozen at whatever was last written by hand, so
         # sibling path dependencies never reached the member analyzers and every
         # symbol imported from them degraded to Any.
-        targets: t.MutableSequenceOf[Path] = [self.root]
+        targets: MutableSequence[Path] = [self.root]
         targets.extend(
             self.root / member for member in u.Infra.workspace_project_paths(self.root)
         )

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSet
+from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -90,12 +90,12 @@ class FlextInfraModelsCensus:
             t.NonNegativeInt,
             m.Field(description="Number of references from script modules"),
         ] = 0
-        runtime_reference_sites: t.VariadicTuple[
-            FlextInfraModelsCensus.ReferenceSite
-        ] = m.Field(default_factory=tuple, description="Runtime/source reference sites")
-        script_reference_sites: t.VariadicTuple[
-            FlextInfraModelsCensus.ReferenceSite
-        ] = m.Field(default_factory=tuple, description="Script reference sites")
+        runtime_reference_sites: tuple[FlextInfraModelsCensus.ReferenceSite, ...] = (
+            m.Field(default_factory=tuple, description="Runtime/source reference sites")
+        )
+        script_reference_sites: tuple[FlextInfraModelsCensus.ReferenceSite, ...] = (
+            m.Field(default_factory=tuple, description="Script reference sites")
+        )
         all_reference_sites: tuple[FlextInfraModelsCensus.ReferenceSite, ...] = m.Field(
             default_factory=tuple,
             description=(
@@ -129,11 +129,11 @@ class FlextInfraModelsCensus:
         """Gate selection and source cache shared by one removal preview batch."""
 
         gates: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Configured dry-run gate names the preview runs"),
         ]
         source_cache: Annotated[
-            t.MutableMappingKV[Path, str] | None,
+            MutableMapping[Path, str] | None,
             m.Field(description="Live source cache reused across candidates"),
         ] = None
 
@@ -159,17 +159,17 @@ class FlextInfraModelsCensus:
             str,
             m.Field(description="Suggested removal action for this candidate"),
         ]
-        runtime_reference_sites: t.VariadicTuple[
-            FlextInfraModelsCensus.ReferenceSite
-        ] = m.Field(
-            default_factory=tuple,
-            description="Runtime/source references blocking full deletion",
+        runtime_reference_sites: tuple[FlextInfraModelsCensus.ReferenceSite, ...] = (
+            m.Field(
+                default_factory=tuple,
+                description="Runtime/source references blocking full deletion",
+            )
         )
-        script_reference_sites: t.VariadicTuple[
-            FlextInfraModelsCensus.ReferenceSite
-        ] = m.Field(
-            default_factory=tuple,
-            description="Script references supporting this candidate",
+        script_reference_sites: tuple[FlextInfraModelsCensus.ReferenceSite, ...] = (
+            m.Field(
+                default_factory=tuple,
+                description="Script references supporting this candidate",
+            )
         )
 
     class Violation(
@@ -203,11 +203,11 @@ class FlextInfraModelsCensus:
         """Resolved per-collect scan configuration shared across modules."""
 
         kind_names: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(description="Symbol-kind filters"),
         ]
         rule_names: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(description="Violation-rule filters"),
         ]
         selected_families: Annotated[
@@ -241,7 +241,7 @@ class FlextInfraModelsCensus:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_objects: Annotated[
-            t.MutableMappingKV[str, t.MutableSequenceOf[FlextInfraModelsCensus.Object]],
+            MutableMapping[str, MutableSequence[FlextInfraModelsCensus.Object]],
             m.Field(description="Object inventory accumulated per project"),
         ]
         report_projects: Annotated[
@@ -316,7 +316,7 @@ class FlextInfraModelsCensus:
             m.Field(description="Shared object name across projects"),
         ]
         kind: Annotated[str, m.Field(description="Object kind")]
-        definitions: t.MutableSequenceOf[FlextInfraModelsCensus.Object] = m.Field(
+        definitions: MutableSequence[FlextInfraModelsCensus.Object] = m.Field(
             description="All definitions of this object",
         )
         canonical: Annotated[
@@ -512,11 +512,11 @@ class FlextInfraModelsCensus:
             default_factory=tuple,
             description="Cross-project duplicate groups",
         )
-        duplicate_cure_plans: t.VariadicTuple[
-            FlextInfraModelsCensus.DuplicateCurePlan
-        ] = m.Field(
-            default_factory=tuple,
-            description="Manual assisted-cure plans for structural duplicates",
+        duplicate_cure_plans: tuple[FlextInfraModelsCensus.DuplicateCurePlan, ...] = (
+            m.Field(
+                default_factory=tuple,
+                description="Manual assisted-cure plans for structural duplicates",
+            )
         )
         unused_count: Annotated[
             t.NonNegativeInt,

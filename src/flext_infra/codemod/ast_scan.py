@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 from uuid import uuid4
@@ -161,9 +162,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
     def _execute_apply(
         cls,
         root: Path,
-        rules: t.SequenceOf[Path],
+        rules: Sequence[Path],
         *,
-        rule_ids: t.StrSequence | None = None,
+        rule_ids: Sequence[str] | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades while retaining accepted progress.
 
@@ -252,7 +253,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         root: Path,
         invocation: Path,
         outcome: p.Result[t.Cli.ResultValue],
-    ) -> p.Result[t.Pair[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]:
+    ) -> p.Result[tuple[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]:
         """Scan the whole catalog after a selected apply and publish evidence.
 
         A failed apply keeps its failure primary over any observation or
@@ -268,7 +269,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             observation or publication failure.
 
         """
-        result_type = r[t.Pair[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]
+        result_type = r[tuple[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]
         after = FlextInfraModGateEngine.scan(root, fix=False)
         if after.failure:
             sys.stderr.write(
@@ -338,7 +339,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         root: Path,
         current: m.Infra.ModScanReport,
         *,
-        rule_ids: t.StrSequence | None = None,
+        rule_ids: Sequence[str] | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 
@@ -348,7 +349,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        seen: set[tuple[t.Quad[str, str, str, str | None], ...]] = set()
+        seen: set[tuple[tuple[str, str, str, str | None], ...]] = set()
         iteration = 0
         while current.actionable:
             iteration += 1

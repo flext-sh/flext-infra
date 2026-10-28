@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -52,7 +53,7 @@ class FlextInfraUtilitiesDeclarationPayload(
     def class_ancestry(
         cls,
         value: p.Infra.RopePyObject,
-    ) -> t.SequenceOf[p.Infra.RopePyObject]:
+    ) -> Sequence[p.Infra.RopePyObject]:
         pending = [value]
         found: list[p.Infra.RopePyObject] = []
         while pending:
@@ -157,7 +158,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
         module: p.Infra.RopePyModule,
-    ) -> t.Pair[str, t.Triple[p.Infra.RopeWorder, int, int]] | None:
+    ) -> tuple[str, tuple[p.Infra.RopeWorder, int, int]] | None:
         """Locate the class header base list through Rope's native reader.
 
         Args:
@@ -190,7 +191,7 @@ class FlextInfraUtilitiesDeclarationPayload(
     @classmethod
     def direct_bases(
         cls, value: p.Infra.RopePyObject
-    ) -> t.SequenceOf[p.Infra.RopePyObject]:
+    ) -> Sequence[p.Infra.RopePyObject]:
         """Return native bases and proven generic owners in their original scope.
 
         Returns:
@@ -262,7 +263,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         return bases
 
     @staticmethod
-    def _specialized_arguments(source: str, first: int, last: int) -> t.StrSequence:
+    def _specialized_arguments(source: str, first: int, last: int) -> Sequence[str]:
         """Select the original subscribed class-header arguments.
 
         Returns:
@@ -371,7 +372,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             if offset is not None
             else None
         )
-        pending: list[t.Pair[p.Infra.RopeScope, str]] = [(scope, "")]
+        pending: list[tuple[p.Infra.RopeScope, str]] = [(scope, "")]
         names: list[str] = []
         while pending:
             parent, prefix = pending.pop()
@@ -466,7 +467,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         module: p.Infra.RopePyModule,
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
-    ) -> t.SequenceOf[m.Infra.LogicalStatement] | None:
+    ) -> Sequence[m.Infra.LogicalStatement] | None:
         """Return the logical statements of one admitted payload body.
 
         Args:
@@ -509,7 +510,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         project: p.Infra.RopeProject,
         path: Path,
         qualified_name: str,
-    ) -> t.Pair[p.Infra.RopePyModule, p.Infra.RopePyName] | None:
+    ) -> tuple[p.Infra.RopePyModule, p.Infra.RopePyName] | None:
         """Resolve one lexical class identity through its native module.
 
         Returns:
@@ -608,7 +609,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         cls,
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
     ) -> bool:
         """Reject class-body behavior using the existing Rope statement boundary.
 
@@ -669,7 +670,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         cls,
         project: p.Infra.RopeProject,
         method: p.Infra.RopeScopedObject,
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
     ) -> bool:
         """Admit only native declaration decorators in Rope's header region.
 

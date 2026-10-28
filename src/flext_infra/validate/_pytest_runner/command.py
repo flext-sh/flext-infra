@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -122,7 +123,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         toolchain, configuration = self.testmon_input_identity()
         return f"toolchain-{toolchain[:12]}-{configuration}-{scope}"
 
-    def testmon_input_identity(self) -> t.Pair[str, str]:
+    def testmon_input_identity(self) -> tuple[str, str]:
         """Read runtime and configuration identities independently of selection.
 
         Returns:
@@ -494,10 +495,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         self,
         report_dir: Path,
         *,
-        limits: t.StrSequence,
-        targets: t.StrSequence,
+        limits: Sequence[str],
+        targets: Sequence[str],
         workers: str,
-        trailing: t.StrSequence,
+        trailing: Sequence[str],
     ) -> tuple[str, ...]:
         """Assemble one suite invocation; ``trailing`` owns the plugin split.
 

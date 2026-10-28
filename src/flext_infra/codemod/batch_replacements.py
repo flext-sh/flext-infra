@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,7 +24,7 @@ class FlextInfraModReplacements:
 
     @staticmethod
     def generator_owned(
-        entries: t.SequenceOf[m.Infra.ModOccurrence],
+        entries: Sequence[m.Infra.ModOccurrence],
     ) -> t.StrTuple:
         """Name the findings whose file the canonical generator owns.
 
@@ -46,7 +46,7 @@ class FlextInfraModReplacements:
     @classmethod
     def require_authored(
         cls,
-        entries: t.SequenceOf[m.Infra.ModOccurrence],
+        entries: Sequence[m.Infra.ModOccurrence],
     ) -> p.Result[bool]:
         """Refuse to write generated files: their findings are generator repairs.
 
@@ -120,7 +120,7 @@ class FlextInfraModReplacements:
         cls,
         root: Path,
         path: Path,
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
+        findings: Sequence[m.Infra.ModOccurrence],
         *,
         exact_replacements: bool = False,
         compose_only: bool = False,
@@ -136,7 +136,7 @@ class FlextInfraModReplacements:
             return r[m.Infra.SemanticFilePlan].fail(
                 f"actionable finding lacks authenticated state: {path}",
             )
-        replacements: list[t.Triple[int, int, bytes]] = []
+        replacements: list[tuple[int, int, bytes]] = []
         observed = (
             before
             if compose_only
@@ -212,7 +212,7 @@ class FlextInfraModReplacements:
 
     @classmethod
     def admit(
-        cls, root: Path, plans: t.SequenceOf[m.Infra.SemanticFilePlan]
+        cls, root: Path, plans: Sequence[m.Infra.SemanticFilePlan]
     ) -> p.Result[tuple[m.Infra.SemanticFilePlan, ...]]:
         """Normalize and judge only complete syntax candidates against originals.
 
@@ -242,7 +242,7 @@ class FlextInfraModReplacements:
         finding: m.Infra.ModOccurrence,
         replacement: str,
         path: Path,
-    ) -> p.Result[t.Triple[int, int, bytes]]:
+    ) -> p.Result[tuple[int, int, bytes]]:
         """Validate one finding's byte coordinates against the authenticated bytes.
 
         Returns:
@@ -252,23 +252,23 @@ class FlextInfraModReplacements:
         offsets = finding.replacement_offsets
         raw_match = finding.range.get("byteOffset")
         if offsets is None or not isinstance(raw_match, Mapping):
-            return r[t.Triple[int, int, bytes]].fail(
+            return r[tuple[int, int, bytes]].fail(
                 f"ast-grep finding lacks byte coordinates: {path}:{finding.rule_id}",
             )
         matched = m.Infra.ModReplacementOffsets.model_validate(raw_match)
         if not (0 <= offsets.start <= offsets.end <= len(content)) or not (
             0 <= matched.start <= matched.end <= len(content)
         ):
-            return r[t.Triple[int, int, bytes]].fail(
+            return r[tuple[int, int, bytes]].fail(
                 f"ast-grep byte coordinates escape source: {path}",
             )
         if content[matched.start : matched.end] != finding.text.encode(
             c.DEFAULT_ENCODING,
         ):
-            return r[t.Triple[int, int, bytes]].fail(
+            return r[tuple[int, int, bytes]].fail(
                 f"ast-grep match differs from authenticated source: {path}",
             )
-        return r[t.Triple[int, int, bytes]].ok((
+        return r[tuple[int, int, bytes]].ok((
             offsets.start,
             offsets.end,
             replacement.encode(c.DEFAULT_ENCODING),
@@ -277,7 +277,7 @@ class FlextInfraModReplacements:
     @staticmethod
     def _apply_replacements(
         content: bytes,
-        replacements: t.SequenceOf[t.Triple[int, int, bytes]],
+        replacements: Sequence[tuple[int, int, bytes]],
         path: Path,
     ) -> p.Result[bytes]:
         """Apply one path's replacements back-to-front, rejecting overlaps.

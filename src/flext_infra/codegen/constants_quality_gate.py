@@ -9,7 +9,7 @@ from __future__ import annotations
 import operator
 import shutil
 import sys
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import override
@@ -122,14 +122,14 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
 
     @staticmethod
-    def modified_python_files(repository_root: Path) -> t.StrSequence:
+    def modified_python_files(repository_root: Path) -> Sequence[str]:
         """Return modified Python files detected by git porcelain status.
 
         Returns:
             Modified Python files detected by git porcelain status.
 
         """
-        modified: t.MutableSequenceOf[str] = []
+        modified: MutableSequence[str] = []
         git_bin = shutil.which(c.Infra.GIT)
         if git_bin is None:
             return []
@@ -156,13 +156,13 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def run_static_check(
         repository_root: Path,
-        modified_files: t.StrSequence,
+        modified_files: Sequence[str],
         tool: str,
-    ) -> t.MappingKV[str, t.JsonValue]:
+    ) -> Mapping[str, t.JsonValue]:
         """Run a targeted static tool on modified files and normalize result.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.JsonValue]``.
+            The resulting ``Mapping[str, t.JsonValue]``.
 
         """
         if not modified_files:
@@ -218,8 +218,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
     def _run_static_checks(
         cls,
         repository_root: Path,
-        modified_files: t.StrSequence,
-    ) -> t.Pair[t.MappingKV[str, t.JsonValue], t.MappingKV[str, t.JsonValue]]:
+        modified_files: Sequence[str],
+    ) -> tuple[Mapping[str, t.JsonValue], Mapping[str, t.JsonValue]]:
         """Run pyrefly and ruff checks in parallel over the same file set.
 
         Both tools operate on the unmodified ``modified_files`` list and are
@@ -228,11 +228,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
         subprocesses.
 
         Returns:
-            The resulting ``t.Pair[t.MappingKV[str, t.JsonValue], t.MappingKV[str,
+            The resulting ``tuple[Mapping[str, t.JsonValue], Mapping[str,
                 t.JsonValue]]``.
 
         """
-        empty_result: t.MappingKV[str, t.JsonValue] = {
+        empty_result: Mapping[str, t.JsonValue] = {
             "passed": True,
             "detail": "no modified python files detected",
             "exit_code": 0,
@@ -241,9 +241,9 @@ class FlextInfraCodegenQualityGate(s[bool]):
             return (empty_result, empty_result)
 
         tools = (c.Infra.PYREFLY, c.Infra.RUFF)
-        results: MutableMapping[str, t.MappingKV[str, t.JsonValue]] = {}
+        results: MutableMapping[str, Mapping[str, t.JsonValue]] = {}
         with ThreadPoolExecutor(max_workers=len(tools)) as executor:
-            futures: MutableMapping[Future[t.MappingKV[str, t.JsonValue]], str] = {
+            futures: MutableMapping[Future[Mapping[str, t.JsonValue]], str] = {
                 executor.submit(
                     cls.run_static_check,
                     repository_root,
@@ -261,12 +261,12 @@ class FlextInfraCodegenQualityGate(s[bool]):
     def after_metrics(
         *,
         census_report: m.Infra.WorkspaceReport,
-        modified_files: t.StrSequence,
-    ) -> t.MappingKV[str, t.JsonValue]:
+        modified_files: Sequence[str],
+    ) -> Mapping[str, t.JsonValue]:
         """Build post-run metrics summary used by quality checks.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.JsonValue]``.
+            The resulting ``Mapping[str, t.JsonValue]``.
 
         """
         by_kind: t.MutableIntMapping = {}
@@ -279,7 +279,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             lambda project: project.violations_total == 0,
         )
         modified_python_files: list[t.JsonValue] = list(modified_files)
-        violations_by_rule: t.MutableMappingKV[str, t.JsonValue] = dict(
+        violations_by_rule: MutableMapping[str, t.JsonValue] = dict(
             sorted(by_kind.items()),
         )
         summary: MutableMapping[str, t.JsonValue] = {
@@ -296,21 +296,21 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def build_checks(
         *,
-        after_metrics: t.MappingKV[str, t.JsonValue],
-        pyrefly_check: t.MappingKV[str, t.JsonValue],
-        ruff_check: t.MappingKV[str, t.JsonValue],
-    ) -> t.SequenceOf[t.MappingKV[str, t.JsonValue]]:
+        after_metrics: Mapping[str, t.JsonValue],
+        pyrefly_check: Mapping[str, t.JsonValue],
+        ruff_check: Mapping[str, t.JsonValue],
+    ) -> Sequence[Mapping[str, t.JsonValue]]:
         """Build quality gate check entries from metrics and tool results.
 
         Returns:
-            The resulting ``t.SequenceOf[t.MappingKV[str, t.JsonValue]]``.
+            The resulting ``Sequence[Mapping[str, t.JsonValue]]``.
 
         """
         # Metric-driven checks share the shape ``(name, value==0, "label=value")``.
         # Each row maps to a single ``QualityGateCheck`` via Pydantic v2 batch
         # construction. The detail-label key may differ from the metric path
         # (e.g. ``total_violations`` → ``total``).
-        metric_check_rows: tuple[t.Triple[str, str, str], ...] = (
+        metric_check_rows: tuple[tuple[str, str, str], ...] = (
             (c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE, "total_violations", "total"),
             (
                 c.Infra.QG_CHECK_DUPLICATION_REDUCTION,
@@ -343,11 +343,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 critical=True,
             ),
         )
-        checks: t.SequenceOf[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
+        checks: Sequence[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
         return [check.model_dump() for check in checks]
 
     @staticmethod
-    def compute_verdict(checks: t.SequenceOf[t.MappingKV[str, t.JsonValue]]) -> str:
+    def compute_verdict(checks: Sequence[Mapping[str, t.JsonValue]]) -> str:
         """Return PASS only when all checks passed.
 
         Returns:
@@ -363,11 +363,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def project_findings(
         census_report: m.Infra.WorkspaceReport,
-    ) -> t.SequenceOf[t.MappingKV[str, t.JsonValue]]:
+    ) -> Sequence[Mapping[str, t.JsonValue]]:
         """Convert census reports into sorted per-project findings.
 
         Returns:
-            The resulting ``t.SequenceOf[t.MappingKV[str, t.JsonValue]]``.
+            The resulting ``Sequence[Mapping[str, t.JsonValue]]``.
 
         """
         return [
@@ -431,7 +431,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             report,
             "duplicate_constant_groups",
         )
-        lines: t.MutableSequenceOf[str] = [
+        lines: MutableSequence[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
             "",

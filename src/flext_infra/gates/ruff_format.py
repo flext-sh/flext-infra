@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
@@ -30,11 +31,11 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Keep native cache writes outside authenticated source candidates.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         """
         return {
@@ -49,12 +50,12 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Build the format verdict command from the config-owned flags.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         _ = project_dir, ctx
@@ -70,7 +71,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Format every project-owned Python root, or the project itself.
 
         Returns:
@@ -86,7 +87,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         """Report each file Ruff would reformat once, from its check listing.
 
         Returns:
@@ -94,7 +95,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
         """
         del ctx
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         if not u.Cli.process_succeeded(result.outcome) and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
@@ -138,12 +139,12 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
-    ) -> t.StrSequence:
+        targets: Sequence[str],
+    ) -> Sequence[str]:
         """Build fix command.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         _ = project_dir, ctx
@@ -158,7 +159,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     def format_files(
         cls,
         repository_root: Path,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
     ) -> p.Result[bool]:
         """Format an explicit path list with the config-owned apply flags.
 

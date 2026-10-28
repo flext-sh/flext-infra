@@ -93,10 +93,10 @@ class FlextInfraCodemodSnapshotReconciler:
     @staticmethod
     def _declared_directories(
         config_path: Path,
-        payload: t.MappingKV[str, t.JsonValue],
+        payload: Mapping[str, t.JsonValue],
         *,
         fixtures: bool,
-    ) -> t.MappingKV[str, Sequence[t.JsonValue]]:
+    ) -> Mapping[str, Sequence[t.JsonValue]]:
         """Read every declared fixture directory list from the ast-grep config.
 
         Returns:
@@ -139,8 +139,8 @@ class FlextInfraCodemodSnapshotReconciler:
     def _resolved_directories(
         config_root: Path,
         config_path: Path,
-        declared: t.MappingKV[str, Sequence[t.JsonValue]],
-    ) -> t.MappingKV[str, tuple[Path, ...]]:
+        declared: Mapping[str, Sequence[t.JsonValue]],
+    ) -> Mapping[str, tuple[Path, ...]]:
         """Resolve every declared fixture directory under its config root.
 
         Returns:
@@ -185,7 +185,7 @@ class FlextInfraCodemodSnapshotReconciler:
     def stale_snapshots(
         cls,
         config_root: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Describe every committed snapshot projection no current test produces.
 
         ``ast-grep test`` rejects a drifted or missing snapshot but accepts the
@@ -195,7 +195,7 @@ class FlextInfraCodemodSnapshotReconciler:
         projections for a reviewed commit.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         directories = cls.fixture_directories(config_root)
@@ -228,11 +228,11 @@ class FlextInfraCodemodSnapshotReconciler:
         return tuple(stale)
 
     @staticmethod
-    def _invalid_cases(test_dir: Path) -> t.MappingKV[str, frozenset[str]]:
+    def _invalid_cases(test_dir: Path) -> Mapping[str, frozenset[str]]:
         """Map every rule test in one test directory to its invalid cases.
 
         Returns:
-            The resulting ``t.MappingKV[str, frozenset[str]]``.
+            The resulting ``Mapping[str, frozenset[str]]``.
 
         Raises:
             TypeError: If invalid ast-grep rule-test contract.
@@ -263,7 +263,7 @@ class FlextInfraCodemodSnapshotReconciler:
         return cases
 
     @staticmethod
-    def _snapshot_cases(snapshot: Path) -> t.StrSequence:
+    def _snapshot_cases(snapshot: Path) -> Sequence[str]:
         """Return the test cases one committed snapshot file projects.
 
         Returns:
@@ -281,4 +281,4 @@ class FlextInfraCodemodSnapshotReconciler:
         return tuple(projections)
 
 
-__all__: t.StrSequence = ("FlextInfraCodemodSnapshotReconciler",)
+__all__: Sequence[str] = ("FlextInfraCodemodSnapshotReconciler",)

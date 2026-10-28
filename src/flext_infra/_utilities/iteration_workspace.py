@@ -9,12 +9,12 @@ from __future__ import annotations
 import os
 import shlex
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
@@ -75,10 +75,10 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         root: Path,
         scope: c.Infra.CodegenConformScope,
         operation: str,
-        task: Callable[[Path], p.Result[t.SequenceOf[Path]]],
+        task: Callable[[Path], p.Result[Sequence[Path]]],
         *,
         mutating: bool = False,
-    ) -> p.Result[t.SequenceOf[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         """Attempt a discovered repository scope serially through its original owner.
 
         Returns:
@@ -91,11 +91,11 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             scope,
         )
         if discovered.failure:
-            return r[t.SequenceOf[Path]].from_failure(discovered)
+            return r[Sequence[Path]].from_failure(discovered)
         roots = tuple(target.root for target in discovered.value)
         receipts: list[m.Infra.WorkspaceOperationReceipt] = []
         files: list[Path] = []
-        first_failure: p.Result[t.SequenceOf[Path]] | None = None
+        first_failure: p.Result[Sequence[Path]] | None = None
         for target in discovered.value:
             receipt, observed, failure = (
                 FlextInfraUtilitiesIterationWorkspace._operation_target_outcome(
@@ -126,27 +126,27 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
                 u.Cli.error(
                     f"{operation} receipt publication failed: {published.error}",
                 )
-                return r[t.SequenceOf[Path]].from_failure(first_failure)
-            return r[t.SequenceOf[Path]].from_failure(published)
+                return r[Sequence[Path]].from_failure(first_failure)
+            return r[Sequence[Path]].from_failure(published)
         if first_failure is not None:
-            return r[t.SequenceOf[Path]].from_failure(first_failure)
+            return r[Sequence[Path]].from_failure(first_failure)
         if not any(receipt.executed for receipt in receipts):
-            return r[t.SequenceOf[Path]].fail(
+            return r[Sequence[Path]].fail(
                 f"{operation} executed no applicable repository operation",
             )
-        return r[t.SequenceOf[Path]].ok(tuple(files))
+        return r[Sequence[Path]].ok(tuple(files))
 
     @staticmethod
     def _operation_target_outcome(
         target: m.Infra.WorkspaceOperationTarget,
         operation: str,
-        task: Callable[[Path], p.Result[t.SequenceOf[Path]]],
+        task: Callable[[Path], p.Result[Sequence[Path]]],
         *,
         mutating: bool,
     ) -> tuple[
         m.Infra.WorkspaceOperationReceipt,
         tuple[Path, ...],
-        p.Result[t.SequenceOf[Path]] | None,
+        p.Result[Sequence[Path]] | None,
     ]:
         """Run one discovered target through its original owner and report it.
 
@@ -184,7 +184,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         result = (
             task(repository_root)
             if executed
-            else r[t.SequenceOf[Path]].from_failure(applicability)
+            else r[Sequence[Path]].from_failure(applicability)
         )
         if result.failure:
             error = result.error
@@ -260,14 +260,14 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
     def iter_python_files(
         cls,
         request: p.Infra.SourceScanRequest,
-    ) -> p.Result[t.SequenceOf[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         """Return Python files from the exact production roots in ``request``.
 
         Args:
             request: Field-only request containing already-resolved project roots.
 
         Returns:
-            Result[t.SequenceOf[Path]] - Success contains sorted unique file paths.
+            Result[Sequence[Path]] - Success contains sorted unique file paths.
             Failure if: workspace inaccessible, discovery fails, or OSError.
 
         """
@@ -276,7 +276,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             None,
         )
         if invalid_root is not None:
-            return r[t.SequenceOf[Path]].fail(
+            return r[Sequence[Path]].fail(
                 f"python file iteration failed: project root "
                 f"is not a directory: {invalid_root}",
             )
@@ -286,12 +286,12 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
                 for project_root in request.project_roots
                 for file_path in cls._project_python_files(project_root)
             }
-            return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
+            return r[Sequence[Path]].ok(tuple(sorted(files)))
         except OSError as exc:
-            return r[t.SequenceOf[Path]].fail_op("python file iteration", exc)
+            return r[Sequence[Path]].fail_op("python file iteration", exc)
 
     @classmethod
-    def _project_python_files(cls, project_root: Path) -> t.SequenceOf[Path]:
+    def _project_python_files(cls, project_root: Path) -> Sequence[Path]:
         """Return every active Python source owned by this project.
 
         Returns:

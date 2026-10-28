@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
@@ -26,41 +28,41 @@ class FlextInfraUtilitiesPyprojectOverlay:
         project: t.JsonMapping,
         live_project: t.JsonMapping,
         key: str,
-    ) -> p.Result[tuple[t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[tuple[Sequence[str], Sequence[str]]]:
         """Validate generated and CUSTOM runtime dependency lists once.
 
         Returns:
             The resulting ``(required, custom)`` requirement lists.
 
         """
-        validated_required: p.Result[t.StrSequence] = u.validate_value(
+        validated_required: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             project.get(key, []),
             strict=True,
         )
         if validated_required.failure:
-            return r[tuple[t.StrSequence, t.StrSequence]].fail_op(
+            return r[tuple[Sequence[str], Sequence[str]]].fail_op(
                 "validate runtime dependencies",
                 validated_required.error,
             )
-        validated_custom: p.Result[t.StrSequence] = u.validate_value(
+        validated_custom: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             live_project.get(key, []),
             strict=True,
         )
         if validated_custom.failure:
-            return r[tuple[t.StrSequence, t.StrSequence]].fail_op(
+            return r[tuple[Sequence[str], Sequence[str]]].fail_op(
                 "validate runtime dependencies",
                 validated_custom.error,
             )
-        return r[tuple[t.StrSequence, t.StrSequence]].ok(
+        return r[tuple[Sequence[str], Sequence[str]]].ok(
             (validated_required.value, validated_custom.value),
         )
 
     @staticmethod
     def _merged_requirements(
-        required: t.StrSequence,
-        custom: t.StrSequence,
+        required: Sequence[str],
+        custom: Sequence[str],
     ) -> list[t.JsonValue]:
         """Merge CUSTOM runtime requirements under the generated ownership order.
 
@@ -98,7 +100,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
         cls,
         merged: t.MutableJsonMapping,
         live_payload: t.JsonMapping | None,
-        project_keys: t.StrSequence,
+        project_keys: Sequence[str],
     ) -> p.Result[t.JsonDict]:
         """Overlay every declared CUSTOM project key onto the merged document.
 
@@ -139,7 +141,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
     def sync_member_dev_provenance(
         document: t.Cli.TomlDocument,
         *,
-        custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        custom: Sequence[str | m.Infra.DependencyGroupInclude],
         group: str = str(c.Infra.DEV),
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""
@@ -262,7 +264,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
         rendered: t.JsonMapping,
         live: t.JsonMapping,
         prefix: tuple[str, ...],
-        managed: t.SequenceOf[tuple[str, ...]],
+        managed: Sequence[tuple[str, ...]],
     ) -> t.JsonDict:
         """Merge CUSTOM siblings of one tool subtree over its rendered form.
 
@@ -298,7 +300,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
         cls,
         merged: t.MutableJsonMapping,
         live_payload: t.JsonMapping,
-        tool_tables: t.StrSequence,
+        tool_tables: Sequence[str],
     ) -> None:
         """Preserve CUSTOM siblings without merging into an owned table subtree."""
         rendered_tool = u.Cli.toml_mapping_child(merged, c.Infra.TOOL)
@@ -317,8 +319,8 @@ class FlextInfraUtilitiesPyprojectOverlay:
         rendered: str,
         live: str | None,
         *,
-        preserve_project_keys: t.StrSequence | None = None,
-        managed_tool_tables: t.StrSequence | None = None,
+        preserve_project_keys: Sequence[str] | None = None,
+        managed_tool_tables: Sequence[str] | None = None,
     ) -> p.Result[str]:
         """Keep live CUSTOM project keys and unmanaged tool tables.
 

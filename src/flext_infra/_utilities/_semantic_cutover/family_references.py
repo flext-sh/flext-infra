@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -109,7 +111,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
 
     @staticmethod
     def _occurrence_in_function(
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
         occurrence: t.Infra.RopeOccurrence,
     ) -> bool:
         """Whether one occurrence sits inside a function scope.
@@ -128,7 +130,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
     def _occurrence_edit(
         cls,
         flatten: m.Infra.FamilyWrapperFlatten,
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
         source: str,
         occurrence: t.Infra.RopeOccurrence,
         name_replacement: tuple[str, str],

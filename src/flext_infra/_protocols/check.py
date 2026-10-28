@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import p
@@ -73,12 +74,12 @@ class FlextInfraProtocolsCheck(Protocol):
         @property
         def locations(
             self,
-        ) -> t.SequenceOf[FlextInfraProtocolsCheck.SarifLocation]: ...
+        ) -> Sequence[FlextInfraProtocolsCheck.SarifLocation]: ...
 
         @property
         def related_locations(
             self,
-        ) -> t.SequenceOf[FlextInfraProtocolsCheck.SarifLocation]: ...
+        ) -> Sequence[FlextInfraProtocolsCheck.SarifLocation]: ...
 
     @runtime_checkable
     class GitScopeFacts(Protocol):
@@ -87,7 +88,7 @@ class FlextInfraProtocolsCheck(Protocol):
         def tracked_scope_relative_paths(
             self,
             scope_root: Path,
-        ) -> t.StrSequence | None: ...
+        ) -> Sequence[str] | None: ...
 
     @runtime_checkable
     class NativeStorageSlot[ValueT](Protocol):
@@ -111,7 +112,7 @@ class FlextInfraProtocolsCheck(Protocol):
         def loader(self) -> p.AttributeProbe | None: ...
 
         @property
-        def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
+        def submodule_search_locations(self) -> Sequence[str] | None: ...
 
     @runtime_checkable
     class GlobalCheckTargetPlanner(Protocol):
@@ -119,7 +120,7 @@ class FlextInfraProtocolsCheck(Protocol):
 
         def __call__(
             self,
-            gates: t.StrSequence,
+            gates: Sequence[str],
         ) -> p.Result[tuple[m.Infra.CheckProjectTarget, ...]]: ...
 
     @runtime_checkable

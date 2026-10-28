@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from git import GitCommandError
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r
 from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMaterialization
 
 
@@ -35,7 +37,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpoint(
         cls,
         repository: m.Infra.RepositoryWorktree,
         *,
-        source_gitlinks: t.MappingKV[str, str] | None = None,
+        source_gitlinks: Mapping[str, str] | None = None,
     ) -> p.Result[m.Infra.RepositoryDelta]:
         """Stage and capture the operation-only patch after a checkpoint.
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 import io
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from operator import itemgetter
 from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
@@ -42,7 +43,7 @@ class FlextInfraRefactorAccessorRewrite(
         source: str,
         *,
         resolver: FlextInfraRefactorAccessorOrigin,
-    ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
         """Apply the declared semantic migrations.
 
         Returns:
@@ -82,20 +83,20 @@ class FlextInfraRefactorAccessorRewrite(
         cls,
         source: str,
         *,
-        rules: t.SequenceOf[m.Infra.AccessorMigrationRule],
+        rules: Sequence[m.Infra.AccessorMigrationRule],
         file_path: Path,
         resolver: FlextInfraRefactorAccessorOrigin,
-    ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
         """Resolve every catalog occurrence against the unchanged Rope source.
 
         Returns:
             The proposed source and actual rename or review receipts.
 
         """
-        token_changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
-        rewrite_ranges: t.MutableSequenceOf[t.Triple[int, int, str]] = []
+        token_changes: MutableSequence[m.Infra.AccessorMigrationChange] = []
+        rewrite_ranges: MutableSequence[tuple[int, int, str]] = []
         rules_by_name = {rule.source_name: rule for rule in rules}
-        skipped_by_definition: t.MutableMappingKV[t.Pair[str, str], int] = {}
+        skipped_by_definition: MutableMapping[tuple[str, str], int] = {}
         for token in generate_tokens(io.StringIO(source).readline):
             if token.type != NAME or token.string not in rules_by_name:
                 continue

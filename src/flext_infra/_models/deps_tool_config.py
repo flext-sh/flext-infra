@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
@@ -93,7 +93,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         stages: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ModStageConfig],
+            tuple[FlextInfraModelsDepsToolConfig.ModStageConfig, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -401,7 +401,7 @@ class FlextInfraModelsDepsToolConfig(
         # Collection roots are validated config, not local state.
 
         standard_markers: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="standard-markers",
                 description="Standard pytest markers enforced by modernizer.",
@@ -617,7 +617,7 @@ class FlextInfraModelsDepsToolConfig(
         """Markdown rules; artifact and exclusion declarations own file scope."""
 
         findings_exit_codes: Annotated[
-            t.VariadicTuple[int],
+            tuple[int, ...],
             m.Field(
                 alias="findings-exit-codes",
                 description="Exit statuses with which rumdl reports its findings.",
@@ -670,7 +670,7 @@ class FlextInfraModelsDepsToolConfig(
         """Declarative policy for ``__init__.py`` lazy export generation."""
 
         import_layer_order: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="import-layer-order",
                 description=(
@@ -686,7 +686,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         layer_aliases: Annotated[
-            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            Mapping[t.NonEmptyStr, t.NonEmptyStr],
             m.Field(
                 alias="layer-aliases",
                 description=(
@@ -699,7 +699,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         stdlib_backports: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="stdlib-backports",
                 description=(
@@ -761,7 +761,7 @@ class FlextInfraModelsDepsToolConfig(
         """Single owner of every facade member, derived from its runtime object."""
 
         owners: Annotated[
-            t.MappingKV[c.Infra.FacadeMemberKind, t.NonEmptyStr],
+            Mapping[c.Infra.FacadeMemberKind, t.NonEmptyStr],
             m.Field(
                 description=(
                     "Facade letter that owns each member kind. A member bound "
@@ -771,7 +771,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         model_declaration_modules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="model-declaration-modules",
                 strict=False,
@@ -782,7 +782,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         type_constructor_modules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="type-constructor-modules",
                 strict=False,
@@ -815,7 +815,7 @@ class FlextInfraModelsDepsToolConfig(
         """Repair guidance attached to qlty smell findings."""
 
         fix_text: Annotated[
-            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            Mapping[t.NonEmptyStr, t.NonEmptyStr],
             m.Field(
                 alias="fix-text",
                 min_length=1,
@@ -826,7 +826,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         enforce: Annotated[
-            t.MappingKV[t.NonEmptyStr, t.Infra.EnforcementIds],
+            Mapping[t.NonEmptyStr, t.Infra.EnforcementIds],
             m.Field(
                 description=(
                     "qlty check name -> enforcement law ids the smells gate "
@@ -840,7 +840,7 @@ class FlextInfraModelsDepsToolConfig(
         """Accessor naming policy enforced by the accessor migration."""
 
         forbidden_prefixes: Annotated[
-            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            Mapping[t.NonEmptyStr, t.NonEmptyStr],
             m.Field(
                 alias="forbidden-prefixes",
                 min_length=1,
@@ -855,7 +855,7 @@ class FlextInfraModelsDepsToolConfig(
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
         settings: Annotated[
-            t.MappingKV[
+            Mapping[
                 t.NonEmptyStr,
                 t.Infra.SettingsPairs,
             ],
@@ -880,7 +880,7 @@ class FlextInfraModelsDepsToolConfig(
         ]
 
         derived_settings: Annotated[
-            t.MappingKV[
+            Mapping[
                 t.NonEmptyStr,
                 Annotated[tuple[t.NonEmptyStr, ...], m.Field(strict=False)],
             ],
@@ -1203,7 +1203,7 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(description="Validated project-specific tooling configuration."),
         ]
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(description="Captured canonical and project configuration layers."),
         ]
 
@@ -1232,7 +1232,7 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(description="Conformed native tables keyed by declared table path"),
         ]
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Original configuration layers bound to the render",

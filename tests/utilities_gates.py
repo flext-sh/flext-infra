@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import infra
 from flext_infra.deps import FlextInfraConfigFixer
-from tests import c, m, t, tm
+from tests import c, m, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         project: str = "p",
         *,
         passed: bool = True,
-        issues: t.SequenceOf[m.Infra.Issue] | None = None,
+        issues: Sequence[m.Infra.Issue] | None = None,
     ) -> m.Infra.GateExecution:
         """Create a typed quality-gate execution fixture.
 
@@ -137,7 +138,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def make_project(
         name: str = "p",
-        gates: t.MappingKV[str, m.Infra.GateExecution] | None = None,
+        gates: Mapping[str, m.Infra.GateExecution] | None = None,
     ) -> m.Infra.ProjectResult:
         """Create a typed project-result fixture.
 
@@ -145,7 +146,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
             The resulting ``m.Infra.ProjectResult``.
 
         """
-        resolved_gates: t.MappingKV[str, m.Infra.GateExecution] = (
+        resolved_gates: Mapping[str, m.Infra.GateExecution] = (
             gates
             if gates is not None
             else {"lint": TestsFlextInfraUtilitiesGatesMixin.create_gate_execution()}
@@ -202,8 +203,8 @@ class TestsFlextInfraUtilitiesGatesMixin:
     def census_report(
         workspace: Path,
         *,
-        rules: t.StrSequence,
-        kinds: t.StrSequence | None = None,
+        rules: Sequence[str],
+        kinds: Sequence[str] | None = None,
         options: m.Infra.CensusInput | None = None,
     ) -> m.Infra.WorkspaceReport:
         """Execute one refactor census and unwrap its successful report.

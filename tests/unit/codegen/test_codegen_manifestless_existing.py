@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 import pytest
@@ -87,7 +88,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
         # A dotted target (``Class.member``) resolves through attribute access,
         # so the seeded class carries each declared member.
-        targets: t.MutableMappingKV[Path, t.MutableMappingKV[str, set[str]]] = {}
+        targets: MutableMapping[Path, MutableMapping[str, set[str]]] = {}
         for entries in declared_groups:
             for target in entries.values():
                 module_name, _, attribute = str(target).partition(":")
@@ -117,7 +118,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
             )
 
     @staticmethod
-    def seed_existing_tree(root: Path, seeded: t.StrMapping) -> None:
+    def seed_existing_tree(root: Path, seeded: Mapping[str, str]) -> None:
         """Copy the externally managed extras and commit the seeded tree."""
         vscode_settings = root / ".vscode" / "settings.json"
         vscode_settings.parent.mkdir()

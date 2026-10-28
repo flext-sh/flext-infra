@@ -43,7 +43,7 @@ class TestsFlextInfraUvNativeResolution:
             "package": {"name": "override-layer-provider"},
             "dependencies": ["override-layer-leaf>=1"],
         }
-        layers: tuple[t.Pair[str, t.JsonValueList], ...] = (
+        layers: tuple[tuple[str, t.JsonValueList], ...] = (
             ("codegen.yaml", [project_source, scoped, marked]),
             ("codegen.local.yaml", [local_source]),
         )
@@ -307,7 +307,7 @@ class TestsFlextInfraUvNativeResolution:
     def _conformed_first_party_documents(
         cls,
         root: Path,
-    ) -> t.MappingKV[str, t.Cli.TomlDocument]:
+    ) -> Mapping[str, t.Cli.TomlDocument]:
         """Retain complete conformed profile documents before internal qualification.
 
         Args:
@@ -426,7 +426,7 @@ class TestsFlextInfraUvNativeResolution:
     @staticmethod
     def _internal_requirement_document(
         document: t.Cli.TomlDocument,
-        packages: t.MappingKV[str, Path],
+        packages: Mapping[str, Path],
     ) -> t.Cli.TomlDocument:
         """Qualify only the real internal edges, without fabricating third parties.
 
@@ -722,7 +722,7 @@ class TestsFlextInfraUvNativeResolution:
     @staticmethod
     def _write_self_identity_graph(
         tmp_path: Path, identity: str
-    ) -> t.Triple[Path, str, str]:
+    ) -> tuple[Path, str, str]:
         """Materialize the same local Git graph and declared dependency groups.
 
         Returns:

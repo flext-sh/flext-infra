@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from abc import ABC
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -35,7 +36,7 @@ class FlextInfraDocServiceBase[TResult: t.JsonPayload = bool](
     @staticmethod
     def _propagate_phase_outcome(
         label: str,
-        result: p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]],
+        result: p.Result[Sequence[m.Infra.DocsPhaseReport]],
         *,
         failure_predicate: Callable[[m.Infra.DocsPhaseReport], bool] | None = None,
     ) -> p.Result[bool]:

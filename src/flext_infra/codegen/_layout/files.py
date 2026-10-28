@@ -26,19 +26,19 @@ class FlextInfraCodegenLayoutFiles:
         source: Path,
         target: Path,
         archive_rel: str,
-    ) -> p.Result[t.Pair[t.Infra.LayoutStatus, str]]:
+    ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
         """Move one entry; collisions archive the source (never delete).
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.Infra.LayoutStatus, str]]``.
+            The resulting ``p.Result[tuple[t.Infra.LayoutStatus, str]]``.
 
         """
         if not target.exists():
             moved = self._move_path(project_dir, source, target)
             if moved.failure:
-                return r[t.Pair[t.Infra.LayoutStatus, str]].from_failure(moved)
+                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(moved)
             applied_status: t.Infra.LayoutStatus = "applied"
-            return r[t.Pair[t.Infra.LayoutStatus, str]].ok((
+            return r[tuple[t.Infra.LayoutStatus, str]].ok((
                 applied_status,
                 f"moved {source.name} -> {target.name}",
             ))
@@ -49,17 +49,17 @@ class FlextInfraCodegenLayoutFiles:
         ):
             archived = self._archive_path(project_dir, source, archive_rel)
             if archived.failure:
-                return r[t.Pair[t.Infra.LayoutStatus, str]].from_failure(archived)
+                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(archived)
             status, message = archived.value
-            return r[t.Pair[t.Infra.LayoutStatus, str]].ok((
+            return r[tuple[t.Infra.LayoutStatus, str]].ok((
                 status,
                 f"identical target kept; {message}",
             ))
         archived = self._archive_path(project_dir, source, archive_rel)
         if archived.failure:
-            return r[t.Pair[t.Infra.LayoutStatus, str]].from_failure(archived)
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(archived)
         status, message = archived.value
-        return r[t.Pair[t.Infra.LayoutStatus, str]].ok((
+        return r[tuple[t.Infra.LayoutStatus, str]].ok((
             status,
             f"collision: target kept; {message}",
         ))
@@ -70,11 +70,11 @@ class FlextInfraCodegenLayoutFiles:
         source: Path,
         rel: str,
         finding: m.Infra.LayoutFinding | None = None,
-    ) -> p.Result[t.Pair[t.Infra.LayoutStatus, str]]:
+    ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
         """Move one entry under ``archive_root/<project>/`` (idempotent).
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.Infra.LayoutStatus, str]]``.
+            The resulting ``p.Result[tuple[t.Infra.LayoutStatus, str]]``.
 
         """
         spec = config.Infra.codegen.layout
@@ -89,22 +89,22 @@ class FlextInfraCodegenLayoutFiles:
             ):
                 removed = self._remove_tracked_or_unlinked(project_dir, source)
                 if removed.failure:
-                    return r[t.Pair[t.Infra.LayoutStatus, str]].from_failure(removed)
+                    return r[tuple[t.Infra.LayoutStatus, str]].from_failure(removed)
                 applied_status: t.Infra.LayoutStatus = "applied"
-                return r[t.Pair[t.Infra.LayoutStatus, str]].ok((
+                return r[tuple[t.Infra.LayoutStatus, str]].ok((
                     applied_status,
                     f"{base_message} (already archived; duplicate removed)",
                 ))
             skipped_status: t.Infra.LayoutStatus = "skipped"
-            return r[t.Pair[t.Infra.LayoutStatus, str]].ok((
+            return r[tuple[t.Infra.LayoutStatus, str]].ok((
                 skipped_status,
                 f"{base_message} (archive target exists; manual review)",
             ))
         moved = self._archive_move(project_dir, source, target)
         if moved.failure:
-            return r[t.Pair[t.Infra.LayoutStatus, str]].from_failure(moved)
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(moved)
         final_applied_status: t.Infra.LayoutStatus = "applied"
-        return r[t.Pair[t.Infra.LayoutStatus, str]].ok((
+        return r[tuple[t.Infra.LayoutStatus, str]].ok((
             final_applied_status,
             base_message,
         ))

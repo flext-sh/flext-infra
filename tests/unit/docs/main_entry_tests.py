@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,8 +16,6 @@ from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import t
 
 
 class TestsFlextInfraDocsMainEntry:
@@ -49,7 +48,7 @@ class TestsFlextInfraDocsMainEntry:
             ["docs", "validate", "--help"],
         ],
     )
-    def test_help_routes(argv: t.SequenceOf[str]) -> None:
+    def test_help_routes(argv: Sequence[str]) -> None:
         """Expose help successfully for every public docs route."""
         tm.that(FlextInfraCli.infra_main(argv), eq=0)
 

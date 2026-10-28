@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
         """Render package API pages before their owning tree is pruned.
 
         Returns:
-            The resulting ``list[t.Pair[Path, str]]``.
+            The resulting ``list[tuple[Path, str]]``.
 
         """
         module_names = FlextInfraUtilitiesDocsGenerateProject._module_names(scope)
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
 
         Returns:
             The resulting
-                ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
+                ``p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]``.
 
         """
         tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(

@@ -7,14 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraRefactorCensusObjects:
@@ -25,7 +25,7 @@ class FlextInfraRefactorCensusObjects:
     """
 
     @staticmethod
-    def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
+    def _selected_families(family_names: Sequence[str] | None) -> frozenset[str]:
         """Return the selected families.
 
         Returns:
@@ -208,7 +208,7 @@ class FlextInfraRefactorCensusObjects:
 
     @staticmethod
     def _append_impact_change(
-        changes_by_file: t.MappingKV[Path, t.MutableSequenceOf[str]],
+        changes_by_file: Mapping[Path, MutableSequence[str]],
         file_path: Path,
         change: str,
     ) -> None:

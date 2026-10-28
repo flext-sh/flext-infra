@@ -58,17 +58,17 @@ snapshots:
       style: secondary
       start: 0
       end: 54
-  "from flext_cli import t\nfrom flext_core import u\n\nADAPTER = t.TypeAdapter(t.StrMapping)\n":
+  "from flext_cli import t\nfrom flext_core import u\n\nADAPTER = t.TypeAdapter(Mapping[str, str])\n":
     fixed: |
       from flext_cli import t
       from flext_core import u
       
-      ADAPTER = u.type_adapter(t.StrMapping)
+      ADAPTER = u.type_adapter(Mapping[str, str])
     labels:
-    - source: t.TypeAdapter(t.StrMapping)
+    - source: t.TypeAdapter(Mapping[str, str])
       style: primary
       start: 60
-      end: 87
+      end: 92
     - source: t
       style: secondary
       start: 60
@@ -85,10 +85,10 @@ snapshots:
         from flext_cli import t
         from flext_core import u
         
-        ADAPTER = t.TypeAdapter(t.StrMapping)
+        ADAPTER = t.TypeAdapter(Mapping[str, str])
       style: secondary
       start: 0
-      end: 88
+      end: 93
   "from flext_core import m, u\n\nADAPTER = m.TypeAdapter(int)\n":
     fixed: |
       from flext_core import m, u

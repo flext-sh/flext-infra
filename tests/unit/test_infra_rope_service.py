@@ -51,7 +51,7 @@ class TestsFlextInfraInfraRopeService:
     @staticmethod
     @pytest.mark.parametrize("same_root", [False, True])
     def test_sibling_scopes_keep_their_root_and_independent_lifetime(
-        rope_sibling_scopes: t.Pair[t.Pair[Path, Path], t.Pair[Path, Path]],
+        rope_sibling_scopes: tuple[tuple[Path, Path], tuple[Path, Path]],
         *,
         same_root: bool,
     ) -> None:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import fnmatch
 import os
 import re
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra._utilities import (
@@ -19,7 +20,7 @@ from flext_infra._utilities import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesIterationMatching(
@@ -32,9 +33,9 @@ class FlextInfraUtilitiesIterationMatching(
         cls,
         root: Path,
         *,
-        includes: t.StrSequence,
-        excludes: t.StrSequence = (),
-    ) -> t.SequenceOf[Path]:
+        includes: Sequence[str],
+        excludes: Sequence[str] = (),
+    ) -> Sequence[Path]:
         """Return files in one scope through the canonical git-aware selection path.
 
         The scope's tracked inventory is read from Git; outside Git every
@@ -58,9 +59,9 @@ class FlextInfraUtilitiesIterationMatching(
     def scope_matching_files(
         cls,
         root: Path,
-        includes: t.StrSequence,
+        includes: Sequence[str],
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Return included files in one scope from an invocation's shared facts.
 
         Without injected facts the scope's tracked inventory is read from Git.
@@ -84,9 +85,9 @@ class FlextInfraUtilitiesIterationMatching(
     @staticmethod
     def scope_excluded_paths(
         root: Path,
-        paths: t.SequenceOf[Path],
-        patterns: t.StrSequence,
-    ) -> t.SequenceOf[Path]:
+        paths: Sequence[Path],
+        patterns: Sequence[str],
+    ) -> Sequence[Path]:
         """Apply the declared positive glob view through native path matching.
 
         Git inventory owns tracking and ignore semantics; these derived globs
@@ -108,9 +109,9 @@ class FlextInfraUtilitiesIterationMatching(
     def governed_scope_files(
         cls,
         root: Path,
-        includes: t.StrSequence,
+        includes: Sequence[str],
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Return the included governed files of one scope.
 
         The native tracked inventory preserves tracked ignored source. Analysis
@@ -133,17 +134,17 @@ class FlextInfraUtilitiesIterationMatching(
     @staticmethod
     def _select_matching(
         root: Path,
-        tracked: t.StrSequence | None,
-        includes: t.StrSequence,
-        excludes: t.StrSequence,
-    ) -> t.SequenceOf[Path]:
+        tracked: Sequence[str] | None,
+        includes: Sequence[str],
+        excludes: Sequence[str],
+    ) -> Sequence[Path]:
         """Match each scope-relative candidate once; stat only matched paths.
 
         Returns:
             The matched files under ``root``, sorted.
 
         """
-        candidates: t.StrSequence = (
+        candidates: Sequence[str] = (
             tracked
             if tracked is not None
             else tuple(

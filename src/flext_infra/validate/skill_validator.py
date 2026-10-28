@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
@@ -51,7 +52,7 @@ class FlextInfraSkillValidator(
 
     def _apply_baseline_comparison(
         self,
-        rules: t.MappingKV[str, t.JsonValue],
+        rules: Mapping[str, t.JsonValue],
         root: Path,
         skill_name: str,
         counts: t.IntMapping,
@@ -108,7 +109,7 @@ class FlextInfraSkillValidator(
         skill_name: str,
         *,
         mode: c.Infra.OperationMode = c.Infra.OperationMode.BASELINE,
-        _project_filter: t.StrSequence | None = None,
+        _project_filter: Sequence[str] | None = None,
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
 
@@ -143,8 +144,8 @@ class FlextInfraSkillValidator(
 
     @staticmethod
     def _scan_globs(
-        scan_targets: t.MappingKV[str, t.JsonValue],
-    ) -> t.Pair[t.StrSequence, t.StrSequence]:
+        scan_targets: Mapping[str, t.JsonValue],
+    ) -> tuple[Sequence[str], Sequence[str]]:
         """Return include and exclude glob lists from rules.yml scan targets.
 
         Returns:
@@ -158,7 +159,7 @@ class FlextInfraSkillValidator(
         return include_globs, exclude_globs
 
     @staticmethod
-    def _rules_list(rules: t.MappingKV[str, t.JsonValue]) -> p.Result[t.JsonList]:
+    def _rules_list(rules: Mapping[str, t.JsonValue]) -> p.Result[t.JsonList]:
         """Validate the rules.yml rules payload.
 
         Returns:
@@ -173,15 +174,15 @@ class FlextInfraSkillValidator(
     def _evaluate_rules(
         self,
         context: m.Infra.SkillRuleEvaluationContext,
-    ) -> t.Pair[t.IntMapping, t.StrSequence]:
+    ) -> tuple[t.IntMapping, Sequence[str]]:
         """Evaluate skill validation rules and return counts plus violations.
 
         Returns:
-            The resulting ``t.Pair[t.IntMapping, t.StrSequence]``.
+            The resulting ``tuple[t.IntMapping, Sequence[str]]``.
 
         """
         counts: t.MutableIntMapping = {}
-        violations: t.MutableSequenceOf[str] = []
+        violations: MutableSequence[str] = []
         for rule_obj_raw in context.rules_list:
             rule_obj = u.Cli.json_as_mapping(rule_obj_raw)
             if not rule_obj:

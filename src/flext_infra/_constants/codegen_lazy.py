@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from enum import IntEnum, StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
@@ -46,7 +47,7 @@ class FlextInfraConstantsCodegenLazy:
     "Test-module filenames forbidden from installable package export maps."
     INIT_PYI: ClassVar[str] = "__init__.pyi"
     "Typing stub paired with generated thin package initializers."
-    ALL_SCAN_PATTERNS: ClassVar[t.StrSequence] = (
+    ALL_SCAN_PATTERNS: ClassVar[Sequence[str]] = (
         "src/**/__init__.py",
         "tests/**/__init__.py",
         "examples/**/__init__.py",
@@ -96,7 +97,7 @@ class FlextInfraConstantsCodegenLazy:
         "tools",
     })
     "Module segments recognized as local inferred imports in lazy-load chain."
-    PUBLIC_ROOT_ALIAS_ORDER: ClassVar[t.StrSequence] = (
+    PUBLIC_ROOT_ALIAS_ORDER: ClassVar[Sequence[str]] = (
         "c",
         "t",
         "p",
@@ -112,7 +113,7 @@ class FlextInfraConstantsCodegenLazy:
         "main",
     )
     "Canonical dependency order for public aliases and operational entry points."
-    TEST_RUNTIME_ALIAS_TARGETS: ClassVar[t.MappingKV[str, t.StrPair]] = (
+    TEST_RUNTIME_ALIAS_TARGETS: ClassVar[Mapping[str, tuple[str, str]]] = (
         MappingProxyType({
             "c": ("flext_tests", "c"),
             "d": ("flext_tests", "d"),

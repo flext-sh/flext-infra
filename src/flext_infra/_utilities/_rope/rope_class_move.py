@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import keyword
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from types import MappingProxyType
 from typing import Final
@@ -47,7 +48,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         def __init__(
             self,
-            sources: t.MappingKV[Path, str],
+            sources: Mapping[Path, str],
             states: tuple[m.Cli.AtomicFileState, ...],
             *,
             declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
@@ -60,9 +61,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 plan.path: plan for plan in declared_files
             })
 
-        def authenticate(
-            self, source: Path
-        ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
+        def authenticate(self, source: Path) -> Mapping[Path, m.Cli.AtomicFileState]:
             """Require candidate text and witnesses to describe the same source view.
 
             Returns:
@@ -122,10 +121,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             self,
             target_plan: m.Infra.CodegenFilePlan,
             source: Path,
-            changed: t.MappingKV[Path, str],
+            changed: Mapping[Path, str],
             *,
             resource_move: bool = False,
-        ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        ) -> tuple[m.Infra.CodegenFilePlan, ...]:
             """Build create/retire/consumer effects from the authenticated witnesses.
 
             Returns:
@@ -195,7 +194,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         destination_directory: Path | None = None,
         *,
         inputs: NativeSourceView
-        | t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
+        | tuple[Mapping[Path, str], tuple[m.Cli.AtomicFileState, ...]],
         destination_file: Path | None = None,
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Plan a module relocation without creating its destination.
@@ -314,7 +313,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         project: p.Infra.RopeProject,
         root: Path,
-        paths: t.Pair[Path, Path],
+        paths: tuple[Path, Path],
         view: NativeSourceView,
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Compose native resource changes and publication plans.
@@ -371,8 +370,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_resource_relocation(
         cls,
         project: p.Infra.RopeProject,
-        paths: t.Pair[Path, Path],
-        candidate: t.MutableMappingKV[Path, str],
+        paths: tuple[Path, Path],
+        candidate: MutableMapping[Path, str],
         virtual: list[m.Infra.CodegenFilePlan],
         mode: int,
     ) -> Path:
@@ -449,7 +448,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_quoted_sources(
         cls,
         project: p.Infra.RopeProject,
-        candidate: t.MutableMappingKV[Path, str],
+        candidate: MutableMapping[Path, str],
         source: Path,
         target: Path,
         *,
@@ -478,7 +477,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
 
-        checks: t.DictKV[Path, t.DictKV[tuple[t.StrTuple, str], int]] = {}
+        checks: dict[Path, dict[tuple[t.StrTuple, str], int]] = {}
         composed = runtime.snapshot_project(
             project, candidate, declared_files=declared_files
         )
@@ -546,19 +545,19 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @staticmethod
     def _module_scopes(
         module: p.Infra.RopeParsedModule,
-    ) -> t.DictKV[t.StrTuple, p.Infra.RopeScope]:
+    ) -> dict[t.StrTuple, p.Infra.RopeScope]:
         """Map native lexical declarations independently of synthetic scope caches.
 
         Returns:
             Native scopes keyed by declaration ancestry and sibling identity.
 
         """
-        scopes: t.DictKV[t.StrTuple, p.Infra.RopeScope] = {(): module.get_scope()}
+        scopes: dict[t.StrTuple, p.Infra.RopeScope] = {(): module.get_scope()}
         pending: list[t.StrTuple] = [()]
         index = 0
         while index < len(pending):
             parent = pending[index]
-            occurrences: t.DictKV[str, int] = {}
+            occurrences: dict[str, int] = {}
             for scope in scopes[parent].get_scopes():
                 node = scope.pyobject.get_ast()
                 # Rope caches expression comprehensions alongside declarations.
@@ -602,12 +601,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @classmethod
     def _module_quoted_consumer(
         cls,
-        projects: t.Pair[p.Infra.RopeProject, p.Infra.RopeProject],
-        paths: t.Triple[Path, Path, Path],
+        projects: tuple[p.Infra.RopeProject, p.Infra.RopeProject],
+        paths: tuple[Path, Path, Path],
         text: str,
-        identities: t.Pair[int, int],
+        identities: tuple[int, int],
         destination: str,
-    ) -> t.Pair[str, t.DictKV[tuple[t.StrTuple, str], int]]:
+    ) -> tuple[str, dict[tuple[t.StrTuple, str], int]]:
         """Rewrite one consumer with callback state owned by this invocation.
 
         Returns:
@@ -635,11 +634,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_quoted_rewrite(
         cls,
         composed: p.Infra.RopeProject,
-        modules: t.Pair[p.Infra.RopeParsedModule, p.Infra.RopeParsedModule],
+        modules: tuple[p.Infra.RopeParsedModule, p.Infra.RopeParsedModule],
         text: str,
-        paths: t.Triple[Path, Path, Path],
-        destination_info: t.Pair[t.Pair[int, int], str],
-    ) -> t.Pair[str, t.DictKV[tuple[t.StrTuple, str], int]]:
+        paths: tuple[Path, Path, Path],
+        destination_info: tuple[tuple[int, int], str],
+    ) -> tuple[str, dict[tuple[t.StrTuple, str], int]]:
         """Apply one consumer's quoted edits with invocation-local callback state.
 
         Returns:
@@ -667,7 +666,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             before_scopes, current_scopes, paths, identities[0]
         )
         positions = {id(scope): key for key, scope in current_scopes.items()}
-        required: t.DictKV[tuple[t.StrTuple, str], int] = {}
+        required: dict[tuple[t.StrTuple, str], int] = {}
         binding: str | None = None
 
         def replacement(scope: p.Infra.RopeScope, expression: str) -> str | None:
@@ -714,9 +713,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
     @staticmethod
     def _validate_module_quoted_scopes(
-        before: t.MappingKV[t.StrTuple, p.Infra.RopeScope],
-        current: t.MappingKV[t.StrTuple, p.Infra.RopeScope],
-        paths: t.Triple[Path, Path, Path],
+        before: Mapping[t.StrTuple, p.Infra.RopeScope],
+        current: Mapping[t.StrTuple, p.Infra.RopeScope],
+        paths: tuple[Path, Path, Path],
         expected: int,
     ) -> None:
         """Require unchanged lexical declarations and reject name capture.
@@ -768,14 +767,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopeParsedModule,
-        scopes: t.Pair[p.Infra.RopeScope, p.Infra.RopeScope],
+        scopes: tuple[p.Infra.RopeScope, p.Infra.RopeScope],
         expression: str,
-        destination_info: t.Triple[
-            t.Pair[Path, Path],
-            t.Pair[int, int],
+        destination_info: tuple[
+            tuple[Path, Path],
+            tuple[int, int],
             str,
         ],
-    ) -> t.Triple[str | None, str | None, int]:
+    ) -> tuple[str | None, str | None, int]:
         """Resolve a quoted prefix by original and destination native identity.
 
         Returns:
@@ -861,7 +860,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         original: p.Infra.RopeParsedModule,
         text: str,
         rewritten: str,
-        paths: t.Triple[Path, Path, Path],
+        paths: tuple[Path, Path, Path],
         expected: int,
     ) -> str:
         """Preserve explicit exports of the relocated native module.
@@ -893,7 +892,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         project: p.Infra.RopeProject,
         path: Path,
         text: str,
-        required: t.DictKV[tuple[t.StrTuple, str], int],
+        required: dict[tuple[t.StrTuple, str], int],
         relocated: int,
     ) -> None:
         """Verify every original quoted position in a single consumer invocation.
@@ -936,7 +935,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @staticmethod
     def _module_resource_changes(
         changes: p.Infra.RopeChangeSet,
-        candidate: t.MutableMappingKV[Path, str],
+        candidate: MutableMapping[Path, str],
         source: Path,
         target: Path,
     ) -> None:
@@ -980,13 +979,13 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         rope_project: p.Infra.RopeProject,
         source: Path,
         target: Path,
-        sources: t.MappingKV[Path, str],
-        states: t.MappingKV[Path, m.Cli.AtomicFileState],
+        sources: Mapping[Path, str],
+        states: Mapping[Path, m.Cli.AtomicFileState],
     ) -> tuple[
         m.Infra.ClassMoveRequest,
         m.Infra.CodegenFilePlan,
-        t.DictKV[Path, str],
-        t.VariadicTuple[m.Infra.CodegenFilePlan],
+        dict[Path, str],
+        tuple[m.Infra.CodegenFilePlan, ...],
         str,
     ]:
         canonical, source_module_name, reexports = cls._canonical_module_metadata(
@@ -1039,10 +1038,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         request: m.Infra.ClassMoveRequest,
         source_module_name: str,
-        sources: t.MappingKV[Path, str],
-        proposed: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> t.DictKV[Path, str]:
+        sources: Mapping[Path, str],
+        proposed: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> dict[Path, str]:
         changed = cls._module_reference_changes(request, sources, proposed, virtual)
         candidate = dict(proposed)
         candidate.update(changed)
@@ -1066,8 +1065,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         rope_project: p.Infra.RopeProject,
         source: Path,
-        sources: t.MappingKV[Path, str],
-    ) -> t.Triple[str, str, t.VariadicTuple[str]]:
+        sources: Mapping[Path, str],
+    ) -> tuple[str, str, tuple[str, ...]]:
         root = Path(rope_project.root.real_path).resolve()
         original = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             rope_project, sources
@@ -1111,10 +1110,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_reexport_sources(
         cls,
         request: m.Infra.ClassMoveRequest,
-        proposed: t.MutableMappingKV[Path, str],
-        sources: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        reexports: t.VariadicTuple[str],
+        proposed: MutableMapping[Path, str],
+        sources: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+        reexports: tuple[str, ...],
     ) -> None:
         root = Path(request.rope_project.root.real_path).resolve()
         virtual_paths = {plan.path for plan in virtual}
@@ -1154,10 +1153,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_reference_changes(
         cls,
         request: m.Infra.ClassMoveRequest,
-        sources: t.MappingKV[Path, str],
-        proposed: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> t.DictKV[Path, str]:
+        sources: Mapping[Path, str],
+        proposed: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> dict[Path, str]:
         planned = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
             proposed,
@@ -1186,8 +1185,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         request: m.Infra.ClassMoveRequest,
         source_module_name: str,
-        candidate: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        candidate: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
     ) -> str | None:
         root = Path(request.rope_project.root.real_path).resolve()
         metadata_project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
@@ -1210,7 +1209,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_reexport_packages(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         source: p.Infra.RopeFile,
         name: str,
     ) -> tuple[str, ...]:
@@ -1421,12 +1420,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         request: m.Infra.ClassMoveRequest,
         *,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Preview one identity-preserving move inside a closed source inventory.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
+            The resulting ``tuple[m.Infra.SemanticMigrationEdit, ...]``.
 
         Raises:
             TypeError: If class move planning produced a non-content effect.
@@ -1480,11 +1479,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _class_mover(
         cls,
         request: m.Infra.ClassMoveRequest,
-    ) -> t.Pair[Path, p.Infra.RopeMoveGlobal]:
+    ) -> tuple[Path, p.Infra.RopeMoveGlobal]:
         """Resolve both execution and planning from the exact original declaration.
 
         Returns:
-            The resulting ``t.Pair[Path, p.Infra.RopeMoveGlobal]``.
+            The resulting ``tuple[Path, p.Infra.RopeMoveGlobal]``.
 
         Raises:
             FileNotFoundError: If ``not source_file.is_file()``.

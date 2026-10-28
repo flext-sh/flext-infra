@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import textwrap
+from collections.abc import MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 
@@ -24,11 +25,11 @@ class FlextInfraUtilitiesRopeSource:
         project_dir: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Discover live regular, namespace, and stub packages under ``src/``.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         src_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def find_import_insert_position(
-        lines: t.StrSequence,
+        lines: Sequence[str],
         *,
         past_existing: bool = True,
     ) -> int:
@@ -107,7 +108,7 @@ class FlextInfraUtilitiesRopeSource:
             The resulting ``t.StrPairSequence``.
 
         """
-        result: t.MutableSequenceOf[t.StrPair] = []
+        result: MutableSequence[tuple[str, str]] = []
         for part in names_str.split(","):
             candidate = part.strip().rstrip("\\").strip()
             if not candidate or candidate.startswith(("(", ")")):
@@ -123,7 +124,7 @@ class FlextInfraUtilitiesRopeSource:
     def hoist_inline_imports(
         cls,
         file_path: Path,
-        statement_lines: t.SequenceOf[t.IntPair],
+        statement_lines: Sequence[t.IntPair],
     ) -> bool:
         """Move function-local import statements to the module import block.
 
@@ -151,7 +152,7 @@ class FlextInfraUtilitiesRopeSource:
         cls,
         file_path: Path,
         source: str,
-        statement_lines: t.SequenceOf[t.IntPair],
+        statement_lines: Sequence[t.IntPair],
     ) -> str:
         """Plan the same statement hoist without changing its physical source.
 
@@ -180,7 +181,7 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def statements_at_module_end(
         source: str,
-        statement_lines: t.SequenceOf[t.IntPair],
+        statement_lines: Sequence[t.IntPair],
         *,
         filename: str,
     ) -> str:
@@ -222,7 +223,7 @@ class FlextInfraUtilitiesRopeSource:
     def rewrite_source_at_offsets(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-        changes: t.SequenceOf[t.Triple[int, int, str]],
+        changes: Sequence[tuple[int, int, str]],
         *,
         apply: bool = True,
     ) -> str:

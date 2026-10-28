@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import re
 from collections import defaultdict
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -42,7 +42,7 @@ class FlextInfraUtilitiesRopeImports:
         source: str,
         *,
         resource: p.Infra.RopeResource | None = None,
-    ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
+    ) -> tuple[p.Infra.RopeImportStatement, ...]:
         """Collect declared imports from Rope's parsed tree in source order.
 
         The parsed import nodes cover every lexical scope and exclude strings
@@ -99,7 +99,7 @@ class FlextInfraUtilitiesRopeImports:
         source: str,
         *,
         resource: p.Infra.RopeResource | None = None,
-    ) -> t.VariadicTuple[t.Pair[str | None, t.StrSequence]]:
+    ) -> tuple[tuple[str | None, Sequence[str]], ...]:
         """Collect each declared import's module and imported names in order.
 
         The optional resource identifies the owner; the supplied source remains
@@ -126,7 +126,7 @@ class FlextInfraUtilitiesRopeImports:
         source: str,
         *,
         resource: p.Infra.RopeResource | None = None,
-    ) -> t.SequenceOf[t.Infra.PythonImportNode]:
+    ) -> Sequence[t.Infra.PythonImportNode]:
         """Collect import nodes from Rope's parsed tree in source order.
 
         The parsed import nodes cover every lexical scope and exclude strings
@@ -167,7 +167,7 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def import_statements(
         module_imports: t.Infra.RopeModuleImports,
-    ) -> t.SequenceOf[t.Infra.RopeImportStatement]:
+    ) -> Sequence[t.Infra.RopeImportStatement]:
         """Return validated Rope import statements from one module import collection.
 
         Returns:
@@ -195,7 +195,7 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def import_statement_names_and_aliases(
         import_statement: t.Infra.RopeImportStatement,
-    ) -> t.SequenceOf[t.Pair[str, str | None]]:
+    ) -> Sequence[tuple[str, str | None]]:
         """Return validated imported-name pairs from one Rope import statement.
 
         Returns:
@@ -216,7 +216,7 @@ class FlextInfraUtilitiesRopeImports:
         module_imports: t.Infra.RopeModuleImports,
         *,
         current_package: str = "",
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return runtime import targets represented by a Rope module import set.
 
         Returns:
@@ -256,19 +256,19 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeResource,
         offset: int,
         *,
-        resources: t.SequenceOf[t.Infra.RopeResource] | None = None,
+        resources: Sequence[t.Infra.RopeResource] | None = None,
         in_hierarchy: bool = False,
-    ) -> t.SequenceOf[t.Infra.RopeLocation]:
+    ) -> Sequence[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Infra.RopeLocation]``.
+            The resulting ``Sequence[t.Infra.RopeLocation]``.
 
         Raises:
             RuntimeError: If rope find_occurrences failed for.
 
         """
-        runtime_errors: t.VariadicTuple[type[BaseException]] = (
+        runtime_errors: tuple[type[BaseException], ...] = (
             *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
             RecursionError,
@@ -312,8 +312,8 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeResource,
         name: str,
         definition_path: Path,
-        dependent_import_targets: t.StrSequence = (),
-    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+        dependent_import_targets: Sequence[str] = (),
+    ) -> tuple[t.Infra.RopeResource, ...]:
         """Build the reachability resource set for semantic occurrence searches.
 
         The workspace name index already narrows the candidate module set to
@@ -324,7 +324,7 @@ class FlextInfraUtilitiesRopeImports:
         candidates narrow to the import dependents when targets are given.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
+            The resulting ``tuple[t.Infra.RopeResource, ...]``.
 
         """
         resolved_definition = definition_path.resolve()
@@ -360,14 +360,14 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeResource,
         name: str,
         definition_path: Path,
-    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+    ) -> tuple[t.Infra.RopeResource, ...]:
         """Build the report-only resource set that spans package reexports.
 
         Report-only callers index every surface, so ``__init__`` reexports stay
         admissible and the candidate set is not narrowed to import dependents.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
+            The resulting ``tuple[t.Infra.RopeResource, ...]``.
 
         """
         resolved_definition = definition_path.resolve()
@@ -391,11 +391,11 @@ class FlextInfraUtilitiesRopeImports:
         name: str,
         definition_path: Path,
         occurrence_admitted: Callable[[Path], bool],
-    ) -> t.VariadicTuple[t.Infra.RopeResource]:
+    ) -> tuple[t.Infra.RopeResource, ...]:
         """Collect deduplicated Rope resources from the workspace name index.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Infra.RopeResource]``.
+            The resulting ``tuple[t.Infra.RopeResource, ...]``.
 
         Raises:
             RuntimeError: If rope search resource unavailable for indexed path.
@@ -440,7 +440,7 @@ class FlextInfraUtilitiesRopeImports:
             The resulting ``p.Result[bool]``.
 
         """
-        runtime_errors: t.VariadicTuple[type[BaseException]] = (
+        runtime_errors: tuple[type[BaseException], ...] = (
             *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
             *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
@@ -472,7 +472,7 @@ class FlextInfraUtilitiesRopeImports:
         cls,
         rope_project: t.Infra.RopeProject,
         *,
-        file_paths: t.SequenceOf[Path],
+        file_paths: Sequence[Path],
         preserve_canonical_aliases: bool = False,
     ) -> p.Result[bool]:
         """Normalize imports with Ruff and preserve semantic facade references.
@@ -491,7 +491,7 @@ class FlextInfraUtilitiesRopeImports:
             return r[bool].ok(value=False)
         canonical_imports: MutableMapping[
             Path,
-            list[t.Pair[str, t.VariadicTuple[str]]],
+            list[tuple[str, tuple[str, ...]]],
         ] = {}
         if preserve_canonical_aliases:
             try:
@@ -530,13 +530,13 @@ class FlextInfraUtilitiesRopeImports:
     def _collect_canonical_alias_imports(
         cls,
         rope_project: t.Infra.RopeProject,
-        file_paths: t.SequenceOf[Path],
-    ) -> MutableMapping[Path, list[t.Pair[str, t.VariadicTuple[str]]]]:
+        file_paths: Sequence[Path],
+    ) -> MutableMapping[Path, list[tuple[str, tuple[str, ...]]]]:
         """Collect canonical runtime-alias imports eligible for semantic restore.
 
         Returns:
-            The resulting ``MutableMapping[Path, list[t.Pair[str,
-                t.VariadicTuple[str]]]]``.
+            The resulting ``MutableMapping[Path, list[tuple[str,
+                tuple[str, ...]]]]``.
 
         Raises:
             ValueError: If ``referenced_result.failure``.
@@ -547,7 +547,7 @@ class FlextInfraUtilitiesRopeImports:
             c.Infra.PKG_CORE_UNDERSCORE,
             c.Infra.PKG_INFRA_UNDERSCORE,
         })
-        collected: MutableMapping[Path, list[t.Pair[str, t.VariadicTuple[str]]]] = {}
+        collected: MutableMapping[Path, list[tuple[str, tuple[str, ...]]]] = {}
         for file_path in file_paths:
             resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
                 rope_project,
@@ -559,7 +559,7 @@ class FlextInfraUtilitiesRopeImports:
                 rope_project,
                 resource,
             )
-            entries: list[t.Pair[str, t.VariadicTuple[str]]] = []
+            entries: list[tuple[str, tuple[str, ...]]] = []
             for import_stmt in cls.import_statements(module_imports):
                 import_info = import_stmt.import_info
                 if (
@@ -599,7 +599,7 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def _referenced_runtime_aliases(
         source: str,
-        aliases: t.SequenceOf[str],
+        aliases: Sequence[str],
     ) -> p.Result[frozenset[str]]:
         """Return runtime aliases referenced after Ruff cleanup.
 
@@ -631,7 +631,7 @@ class FlextInfraUtilitiesRopeImports:
     def _ensure_canonical_alias_imports(
         cls,
         rope_project: t.Infra.RopeProject,
-        collected: MutableMapping[Path, list[t.Pair[str, t.VariadicTuple[str]]]],
+        collected: MutableMapping[Path, list[tuple[str, tuple[str, ...]]]],
     ) -> p.Result[bool]:
         """Re-add canonical runtime-alias imports removed by Ruff F401 cleanup.
 
@@ -656,7 +656,7 @@ class FlextInfraUtilitiesRopeImports:
         cls,
         rope_project: t.Infra.RopeProject,
         file_path: Path,
-        entries: t.SequenceOf[t.Pair[str, t.VariadicTuple[str]]],
+        entries: Sequence[tuple[str, tuple[str, ...]]],
     ) -> p.Result[bool]:
         """Restore one file's referenced canonical aliases Rope removed.
 
@@ -749,7 +749,7 @@ class FlextInfraUtilitiesRopeImports:
     def _merge_missing_into_statement(
         module_imports: t.Infra.RopeModuleImports,
         module_name: str,
-        missing: t.StrSequence,
+        missing: Sequence[str],
     ) -> bool:
         """Merge missing names into the module's existing absolute from-import.
 
@@ -788,7 +788,7 @@ class FlextInfraUtilitiesRopeImports:
         *,
         source_module: str,
         target_module: str,
-        aliases: t.StrSequence,
+        aliases: Sequence[str],
     ) -> str | None:
         """Move names and their bindings between absolute imports using Rope.
 
@@ -830,8 +830,8 @@ class FlextInfraUtilitiesRopeImports:
         file_path: Path,
         *,
         source_module: str,
-        aliases: t.StrSequence,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        aliases: Sequence[str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan an own-package import without publishing or rebinding foreign names.
 
         The project declaration owns the target. Rope owns import bindings and
@@ -844,15 +844,15 @@ class FlextInfraUtilitiesRopeImports:
         entry = rope_workspace.module(file_path)
         root = entry.project_root if entry is not None else None
         if root is None:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
                 f"import owner has no declared project: {file_path}",
             )
         own = cls.package_root_import_owner(root, source_module)
         if own is None:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
         resource = rope_workspace.resource(file_path)
         if resource is None:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
                 f"import owner is not a Rope resource: {file_path}",
             )
         original = resource.read()
@@ -864,8 +864,8 @@ class FlextInfraUtilitiesRopeImports:
             aliases=aliases,
         )
         if updated is None:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok((
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok((
             m.Infra.SemanticMigrationEdit(
                 file_path=file_path.resolve(),
                 original_source=original,
@@ -882,7 +882,7 @@ class FlextInfraUtilitiesRopeImports:
         *,
         source_module: str,
         target_module: str,
-        aliases: t.StrSequence,
+        aliases: Sequence[str],
     ) -> str | None:
         """Prepare scoped imports in place without changing reference text.
 
@@ -966,7 +966,7 @@ class FlextInfraUtilitiesRopeImports:
 
     @staticmethod
     def _ast_character_offset(
-        lines: t.StrSequence,
+        lines: Sequence[str],
         line: int,
         column: int | None,
     ) -> int:
@@ -985,10 +985,10 @@ class FlextInfraUtilitiesRopeImports:
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-        lines: t.StrSequence,
+        lines: Sequence[str],
         source_resource: t.Infra.RopeResource | None,
         aliases: frozenset[str],
-    ) -> t.VariadicTuple[t.Infra.RopePyName]:
+    ) -> tuple[t.Infra.RopePyName, ...]:
         """Reject selected exports in runtime or scoped quoted type attributes.
 
         Returns:
@@ -1064,16 +1064,16 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         tree: ast.Module,
-        owners: t.SequenceOf[t.Pair[str, t.Infra.RopeResource | None]],
-        selected_names: t.SequenceOf[t.Infra.RopePyName],
-    ) -> list[t.Triple[ast.ImportFrom, str, ast.AST]]:
+        owners: Sequence[tuple[str, t.Infra.RopeResource | None]],
+        selected_names: Sequence[t.Infra.RopePyName],
+    ) -> list[tuple[ast.ImportFrom, str, ast.AST]]:
         """Resolve import identities and lexical scopes before planning any edit.
 
         Returns:
             Resolved imports and their innermost lexical scopes.
 
         """
-        imports: list[t.Triple[ast.ImportFrom, str, ast.AST]] = []
+        imports: list[tuple[ast.ImportFrom, str, ast.AST]] = []
         scopes = [
             node
             for node in ast.walk(tree)
@@ -1117,7 +1117,7 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         statement: ast.ImportFrom,
-        owners: t.SequenceOf[t.Pair[str, t.Infra.RopeResource | None]],
+        owners: Sequence[tuple[str, t.Infra.RopeResource | None]],
     ) -> str | None:
         """Resolve relative imports by physical Rope identity, in owner order.
 
@@ -1153,7 +1153,7 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeFile,
         statement: ast.ImportFrom,
         module_name: str,
-        selected_names: t.SequenceOf[t.Infra.RopePyName],
+        selected_names: Sequence[t.Infra.RopePyName],
     ) -> None:
         """Reject star imports exposing a selected Rope identity.
 
@@ -1181,7 +1181,7 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(imported_tree, ast.Module):
             msg = f"invalid Rope module AST: {module_name}"
             raise TypeError(msg)
-        exports: t.StrSequence | None = None
+        exports: Sequence[str] | None = None
         for declaration in imported_tree.body:
             if not isinstance(declaration, c.Infra.AST_ASSIGNMENT_TYPES):
                 continue
@@ -1239,7 +1239,7 @@ class FlextInfraUtilitiesRopeImports:
     def _validate_import_alias_bindings(
         resource: t.Infra.RopeFile,
         statement: ast.ImportFrom,
-        imports: t.SequenceOf[t.Triple[ast.ImportFrom, str, ast.AST]],
+        imports: Sequence[tuple[ast.ImportFrom, str, ast.AST]],
         target_module: str,
         aliases: frozenset[str],
     ) -> bool:
@@ -1286,10 +1286,10 @@ class FlextInfraUtilitiesRopeImports:
         cls,
         resource: t.Infra.RopeFile,
         statement: ast.ImportFrom,
-        lines: t.StrSequence,
+        lines: Sequence[str],
         target_module: str,
         aliases: frozenset[str],
-    ) -> t.Triple[int, int, str]:
+    ) -> tuple[int, int, str]:
         """Render a source range with its contiguous relocated CST alias groups.
 
         Returns:
@@ -1358,7 +1358,7 @@ class FlextInfraUtilitiesRopeImports:
         ):
             msg = f"unsupported Rope import statement: {location}"
             raise TypeError(msg)
-        groups: list[t.Pair[bool, list[t.Infra.Cst.ImportAlias]]] = []
+        groups: list[tuple[bool, list[t.Infra.Cst.ImportAlias]]] = []
         for alias in imported_statement.names:
             selected = parsed.code_for_node(alias.name) in aliases
             if groups and groups[-1][0] == selected:
@@ -1408,7 +1408,7 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         from_module: str,
-        names: t.StrSequence,
+        names: Sequence[str],
         *,
         apply: bool = True,
     ) -> str | None:
@@ -1440,7 +1440,7 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         from_module: str,
-        names: t.StrSequence,
+        names: Sequence[str],
         *,
         apply: bool = True,
     ) -> str | None:
@@ -1516,14 +1516,14 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         repository_root: Path,
         index: m.Infra.RopeWorkspaceIndex,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan absolute-form rewrites for every relative from-import.
 
         Package initializers are generated and render their own imports, so
         only authored modules are planned.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
 
         """
         file_plans: list[m.Infra.CodegenFilePlan] = []
@@ -1539,13 +1539,13 @@ class FlextInfraUtilitiesRopeImports:
                 entry,
             )
             if plan_result.failure:
-                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(
                     plan_result,
                 )
             plan_value, plan_present = plan_result.value
             if plan_present and plan_value is not None:
                 file_plans.append(plan_value)
-        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(file_plans))
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(file_plans))
 
     @classmethod
     def _align_entry_imports(
@@ -1553,7 +1553,7 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         repository_root: Path,
         entry: m.Infra.RopeModuleIndexEntry,
-    ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan | None, bool]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan | None, bool]]:
         """Plan the absolute-form rewrite of one indexed module's imports.
 
         Returns:
@@ -1570,7 +1570,7 @@ class FlextInfraUtilitiesRopeImports:
             else None
         )
         if resource is None:
-            return r[t.Pair[m.Infra.CodegenFilePlan, bool]].ok((None, False))
+            return r[tuple[m.Infra.CodegenFilePlan, bool]].ok((None, False))
         module_imports = FlextInfraUtilitiesRopeCore.resolve_module_imports(
             rope_project,
             resource,
@@ -1580,20 +1580,20 @@ class FlextInfraUtilitiesRopeImports:
             entry.module_name,
         )
         if not changed:
-            return r[t.Pair[m.Infra.CodegenFilePlan, bool]].ok((None, False))
+            return r[tuple[m.Infra.CodegenFilePlan, bool]].ok((None, False))
         updated_source = module_imports.get_changed_source()
         original_source = resource.read()
         if updated_source == original_source:
-            return r[t.Pair[m.Infra.CodegenFilePlan, bool]].ok((None, False))
+            return r[tuple[m.Infra.CodegenFilePlan, bool]].ok((None, False))
         before = u.Cli.atomic_read_binary_file_state(file_path, required=False)
         if before.failure:
-            return r[t.Pair[m.Infra.CodegenFilePlan | None, bool]].from_failure(before)
+            return r[tuple[m.Infra.CodegenFilePlan | None, bool]].from_failure(before)
         snapshot = before.unwrap()
         if snapshot.mode is None:
-            return r[t.Pair[m.Infra.CodegenFilePlan | None, bool]].fail(
+            return r[tuple[m.Infra.CodegenFilePlan | None, bool]].fail(
                 f"import source has no permission snapshot: {file_path}",
             )
-        return r[t.Pair[m.Infra.CodegenFilePlan, bool]].ok(
+        return r[tuple[m.Infra.CodegenFilePlan, bool]].ok(
             (
                 m.Infra.CodegenFilePlan(
                     project=repository_root,

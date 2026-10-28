@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -331,7 +332,7 @@ exclude-dependencies = [{exclusion}]
     @pytest.mark.parametrize("members", [(), ("fixture-member",)])
     def test_scaffold_pyrefly_policy_matches_ssot_and_converges(
         tmp_path: Path,
-        members: t.StrSequence,
+        members: Sequence[str],
     ) -> None:
         """Both repository roles render each declared diagnostic exactly once."""
         root = tmp_path / "fixture-project"

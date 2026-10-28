@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
@@ -36,7 +37,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
     class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
-        DETECTOR_MODULE_SCENARIOS: ClassVar[t.SequenceOf[t.StrTuple]] = (
+        DETECTOR_MODULE_SCENARIOS: ClassVar[Sequence[t.StrTuple]] = (
             ("requests",),
             ("requests", "pytz"),
             ("requests", "pytz", "six"),
@@ -48,7 +49,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
             )
         )
 
-        DIRENV_SESSION_ENV_KEYS: ClassVar[t.StrSequence] = (
+        DIRENV_SESSION_ENV_KEYS: ClassVar[Sequence[str]] = (
             "DIRENV_DIFF",
             "DIRENV_DIR",
             "DIRENV_FILE",
@@ -70,7 +71,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         environment with no inherited direnv session at all.
         """
 
-        GIT_LOCAL_ENV_KEYS: ClassVar[t.StrSequence] = (
+        GIT_LOCAL_ENV_KEYS: ClassVar[Sequence[str]] = (
             "GIT_ALTERNATE_OBJECT_DIRECTORIES",
             "GIT_CONFIG",
             "GIT_CONFIG_PARAMETERS",
@@ -107,7 +108,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         MAKE_TEMPLATE_CI_RECEIPT: ClassVar[str] = "ci-setup-receipt.json"
         """Recorded cold-storage CI ``make setup`` outcome of one template."""
 
-        DIRENV_STATE_ENV_KEYS: ClassVar[t.StrSequence] = (
+        DIRENV_STATE_ENV_KEYS: ClassVar[Sequence[str]] = (
             "DIRENV_DIFF",
             "DIRENV_DIR",
             "DIRENV_FILE",
@@ -121,7 +122,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         otherwise undo the variables a test hands to the activation under test.
         """
 
-        MAKE_ISOLATION_ENV_KEYS: ClassVar[t.StrSequence] = (
+        MAKE_ISOLATION_ENV_KEYS: ClassVar[Sequence[str]] = (
             *DIRENV_STATE_ENV_KEYS,
             # BASH_ENV: Make's own recursive-invocation propagation variable
             # (GNU Make protocol), declared by no Python constant.
@@ -190,7 +191,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         PROJECT_A_NAME: ClassVar[str] = "proj-a"
         PROJECT_B_NAME: ClassVar[str] = "proj-b"
         PROJECT_NO_SRC_NAME: ClassVar[str] = "no-src"
-        PROJECT_MEMBERS_BY_SCENARIO: ClassVar[t.MappingKV[str, t.StrSequence]] = (
+        PROJECT_MEMBERS_BY_SCENARIO: ClassVar[Mapping[str, Sequence[str]]] = (
             MappingProxyType({
                 "single": (DEMO_PROJECT_NAME,),
                 "filtered": (PROJECT_A_NAME, PROJECT_B_NAME),
@@ -220,10 +221,10 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         RELEASE_VERSION_BASE: ClassVar[str] = "0.1.0"
         RELEASE_VERSION_PATCH: ClassVar[str] = "0.1.1"
         RELEASE_VERSION_PRERELEASE: ClassVar[str] = "0.1.0rc0"
-        RELEASE_PROJECTS: ClassVar[t.Pair[str, str]] = ("flext-a", "flext-b")
+        RELEASE_PROJECTS: ClassVar[tuple[str, str]] = ("flext-a", "flext-b")
         # Fixture members depend on these siblings, so a release build must see
         # them to pin their declared versions.
-        RELEASE_INTERNAL_DEPENDENCIES: ClassVar[t.Pair[str, str]] = (
+        RELEASE_INTERNAL_DEPENDENCIES: ClassVar[tuple[str, str]] = (
             "flext-core",
             "flext-tests",
         )

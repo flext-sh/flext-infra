@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 from flext_infra.release import FlextInfraReleaseReleaseMetadata
 
 
@@ -21,8 +22,8 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         policy: m.Infra.BuildPolicy,
-        target: t.Pair[str, Path],
-        versions: t.StrMapping,
+        target: tuple[str, Path],
+        versions: Mapping[str, str],
     ) -> p.Result[m.Infra.BuildRecord]:
         """Build one project; its fail-loud error becomes its failed, logged record.
 
@@ -58,8 +59,8 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         policy: m.Infra.BuildPolicy,
-        target: t.Pair[str, Path],
-        versions: t.StrMapping,
+        target: tuple[str, Path],
+        versions: Mapping[str, str],
         temporary: Path,
     ) -> p.Result[m.Infra.BuildRecord]:
         """Stage, render, build, validate and persist one project in ``temporary``.
@@ -126,17 +127,15 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         stage: Path,
         policy: m.Infra.BuildPolicy,
         version: str,
-        versions: t.StrMapping,
-    ) -> p.Result[t.Triple[t.Pair[m.Infra.SourceSnapshot, str], str, t.StrSequence]]:
+        versions: Mapping[str, str],
+    ) -> p.Result[tuple[tuple[m.Infra.SourceSnapshot, str], str, Sequence[str]]]:
         """Stage, render, and boundary-check one project's release source.
 
         Returns:
             The resulting ``(staged, rendered, boundary_roots)`` triple.
 
         """
-        result_type = r[
-            t.Triple[t.Pair[m.Infra.SourceSnapshot, str], str, t.StrSequence]
-        ]
+        result_type = r[tuple[tuple[m.Infra.SourceSnapshot, str], str, Sequence[str]]]
         staged = self._stage_source(path, stage, Path(policy.gitleaks_policy_path))
         if staged.failure:
             return result_type.from_failure(staged)
@@ -188,8 +187,8 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         self,
         build: p.Cli.CommandOutput,
         log: Path,
-        target: t.Pair[str, Path],
-        staged: t.Pair[m.Infra.SourceSnapshot, ...],
+        target: tuple[str, Path],
+        staged: tuple[m.Infra.SourceSnapshot, str],
     ) -> p.Result[m.Infra.BuildRecord] | None:
         """Write the build log and return its failed record, or ``None`` on success.
 
@@ -282,7 +281,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
                 f"expected one wheel and one sdist, found "
                 f"{len(wheels)} wheel(s) and {len(sdists)} sdist(s)",
             )
-        built: t.MutableSequenceOf[m.Infra.BuildArtifact] = []
+        built: MutableSequence[m.Infra.BuildArtifact] = []
         for source in sources:
             validated = cls._validate_artifact(source, expectation)
             if validated.failure:
@@ -301,7 +300,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
     def _commit_artifacts(
         cls,
         destination: Path,
-        sources: t.SequenceOf[Path],
+        sources: Sequence[Path],
     ) -> p.Result[bool]:
         """Commit the artifact set: byte-identical acceptance or atomic persist.
 
@@ -319,7 +318,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
     def _existing_artifacts_match(
         cls,
         destination: Path,
-        sources: t.SequenceOf[Path],
+        sources: Sequence[Path],
     ) -> p.Result[bool]:
         """Prove an existing artifact set matches byte for byte.
 
@@ -348,7 +347,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
     @staticmethod
     def _persist_fresh_artifacts(
         destination: Path,
-        sources: t.SequenceOf[Path],
+        sources: Sequence[Path],
     ) -> p.Result[bool]:
         """Persist a fresh artifact set atomically through a sibling staging dir.
 

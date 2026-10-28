@@ -7,14 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config, m, r, t
+from flext_infra import c, config, m, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIterationDirectory,
@@ -131,7 +131,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         scan_dirs: frozenset[str] | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Discover all project directories under repository root.
 
         Algorithm:
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             return candidates
         configured_order = {name: idx for idx, name in enumerate(configured_projects)}
 
-        def configured_key(candidate: Path) -> t.Pair[int, str]:
+        def configured_key(candidate: Path) -> tuple[int, str]:
             relative = candidate.relative_to(resolved_repository_root).as_posix()
             return configured_order.get(
                 relative,
@@ -188,7 +188,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         repository_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Return every Python project this repository's Rope workspace owns.
 
         A workspace census must index its declared first-party members so
@@ -255,10 +255,10 @@ class FlextInfraUtilitiesProjectDiscovery(
         cls,
         repository_root: Path,
         *,
-        source_files: t.SequenceOf[Path] | None = None,
+        source_files: Sequence[Path] | None = None,
         refactor_config: m.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return one repository's Python sources and owned stub-policy paths.
 
         Configured roots cannot hide active Python sources. Enumerating files
@@ -313,7 +313,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         workspace_excluded_top_dirs: frozenset[str],
         skip_dirs: frozenset[str] | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return owned top-level directories containing active Python sources.
 
         Native directory candidates share the source walk's declared-root
@@ -384,7 +384,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         workspace_excluded_top_dirs: frozenset[str],
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return owned Python directories and standalone root modules.
 
         Root module names are elected before their native file query. Python
@@ -595,7 +595,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         workspace_excluded_top_dirs: frozenset[str],
         source_project: p.Infra.RopeProject | None = None,
         owned_path_admission: bool = False,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Enumerate sources once without crossing project or artifact boundaries.
 
         Injected source paths stay lexical until native admission, so a selected
@@ -818,10 +818,10 @@ class FlextInfraUtilitiesProjectDiscovery(
     def analyzer_python_roots(
         cls,
         project_dir: Path,
-        declared: t.StrSequence,
+        declared: Sequence[str],
         *,
         workspace_excluded_top_dirs: frozenset[str],
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Keep declared directory order and append every discovered Python target.
 
         Returns:
@@ -840,7 +840,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         repository_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Return the repositories a verb run at ``repository_root`` governs.
 
         The workspace owns its declared first-party members. A standalone
@@ -863,7 +863,7 @@ class FlextInfraUtilitiesProjectDiscovery(
     @staticmethod
     def mutable_flext_members(
         workspace: m.Infra.WorkspaceSpec,
-    ) -> t.SequenceOf[m.Infra.RepositoryRef]:
+    ) -> Sequence[m.Infra.RepositoryRef]:
         """Return the declared members a workspace may settle or rewrite.
 
         A member qualifies by its declaration alone: an internal FLEXT kind,

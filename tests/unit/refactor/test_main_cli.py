@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from types import CodeType
 from typing import TYPE_CHECKING
@@ -90,7 +91,7 @@ class TestsFlextInfraRefactorMainCli:
         "from typing import TypeAlias\n\n"
         "from flext_core import t\n\n"
         '__all__: list[str] = ["consume"]\n\n'
-        "PayloadMap: TypeAlias = t.StrMapping\n"
+        "PayloadMap: TypeAlias = Mapping[str, str]\n"
         "def consume(payload: PayloadMap) -> PayloadMap:\n"
         "    return payload\n"
     )
@@ -113,7 +114,7 @@ class TestsFlextInfraRefactorMainCli:
         "from __future__ import annotations\n"
         "from collections.abc import Sequence\n\n"
         '__all__: list[str] = ["only_for_tests"]\n\n'
-        "def only_for_tests(values: t.SequenceOf[int]) -> int:\n"
+        "def only_for_tests(values: Sequence[int]) -> int:\n"
         "    return len(values)\n"
     )
 
@@ -160,7 +161,7 @@ class TestsFlextInfraRefactorMainCli:
         "from __future__ import annotations\n"
         "from collections.abc import Sequence\n\n"
         '__all__: list[str] = ["only_for_cleanup"]\n\n'
-        "def only_for_cleanup(values: t.SequenceOf[int]) -> int:\n"
+        "def only_for_cleanup(values: Sequence[int]) -> int:\n"
         "    return len(values)\n"
     )
 
@@ -243,8 +244,8 @@ class TestsFlextInfraRefactorMainCli:
             return r[CodeType].fail(f"source failed to compile: {exc}", exception=exc)
 
     @staticmethod
-    def _strings(value: t.JsonValue) -> t.StrSequence:
-        result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
+    def _strings(value: t.JsonValue) -> Sequence[str]:
+        result: Sequence[str] = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
         return result
 
     @staticmethod
@@ -318,11 +319,11 @@ class TestsFlextInfraRefactorMainCli:
     def _build_module_workspace(
         tmp_path: Path,
         module_source: str,
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Build a lazy-init demo package holding one authored ``models.py``.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         workspace, package_root = u.Tests.create_lazy_init_workspace(
@@ -342,11 +343,11 @@ class TestsFlextInfraRefactorMainCli:
         service_source: str,
         test_source: str | None = None,
         init_source: str = _FUTURE_INIT,
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Build the ``sample_pkg`` workspace around one service module.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         workspace = tmp_path / "workspace"
@@ -359,7 +360,7 @@ class TestsFlextInfraRefactorMainCli:
         return workspace, service_file
 
     @classmethod
-    def _build_facade_member_workspace(cls, tmp_path: Path) -> t.Pair[Path, Path]:
+    def _build_facade_member_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
         return cls._build_module_workspace(tmp_path, cls._FACADE_MEMBER_MODULE)
 
     @classmethod
@@ -374,7 +375,7 @@ class TestsFlextInfraRefactorMainCli:
     def _build_test_only_workspace_with_source_import(
         cls,
         tmp_path: Path,
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         return cls._build_service_workspace(
             tmp_path,
             service_source=cls._SEQUENCE_TEST_ONLY_SERVICE,
@@ -401,7 +402,7 @@ class TestsFlextInfraRefactorMainCli:
     def _build_unused_top_level_workspace_with_source_import(
         cls,
         tmp_path: Path,
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         return cls._build_service_workspace(
             tmp_path,
             service_source=cls._UNUSED_TOP_LEVEL_SERVICE,
@@ -419,7 +420,7 @@ class TestsFlextInfraRefactorMainCli:
     def _build_lazy_init_cascade_workspace(
         cls,
         tmp_path: Path,
-    ) -> t.Triple[Path, Path, Path]:
+    ) -> tuple[Path, Path, Path]:
         workspace = tmp_path / "workspace"
         cls._write_workspace_pyproject(workspace)
         init_path = workspace / "src" / "sample_pkg" / "__init__.py"
@@ -449,9 +450,9 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_flags_unused_when_only_tests_reference_source(
         self,
         tmp_path: Path,
-        kinds: t.StrSequence,
-        rules: t.StrSequence,
-        families: t.StrSequence | None,
+        kinds: Sequence[str],
+        rules: Sequence[str],
+        families: Sequence[str] | None,
     ) -> None:
         """The public census normalizes selectors without changing request data."""
         workspace = self._build_test_only_workspace(tmp_path)

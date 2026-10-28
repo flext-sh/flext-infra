@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -73,8 +73,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def _artifact_dependency_plans(
         codegen: m.Infra.CodegenConfigSpec,
         root: Path,
-        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        planned: Sequence[m.Infra.CodegenFilePlan],
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Require every selected artifact's outputs in the same plan set.
 
         Args:
@@ -86,7 +86,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The planned files, or the first artifact with unplanned dependencies.
 
         """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
         paths = {plan.path for plan in planned}
         for entry in codegen.templates.entries:
             if root / entry.destination not in paths or not entry.requires_artifacts:
@@ -108,7 +108,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     @staticmethod
     def planned_source_tooling(
         render_inputs: m.Infra.CodegenRenderInputs,
-        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        planned: Sequence[m.Infra.CodegenFilePlan],
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.ToolingRuntimeContext:
@@ -429,15 +429,15 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def _release_declaration(
-        document: t.MappingKV[str, t.Cli.YamlValue],
-    ) -> p.Result[t.MappingKV[str, t.Cli.YamlValue]]:
+        document: Mapping[str, t.Cli.YamlValue],
+    ) -> p.Result[Mapping[str, t.Cli.YamlValue]]:
         """Validate only owned namespace shapes without copying authored values.
 
         Returns:
             The declared release mapping by reference, or its original shape error.
 
         """
-        result_type = r[t.MappingKV[str, t.Cli.YamlValue]]
+        result_type = r[Mapping[str, t.Cli.YamlValue]]
         namespace = document.get("Infra", {})
         if not isinstance(namespace, Mapping):
             return result_type.fail("Infra must be a mapping")
@@ -643,7 +643,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         codegen = render_inputs.codegen
         repository = target.repository
         if destination == c.Infra.GITIGNORE:
-            project_patterns: t.StrSequence = (
+            project_patterns: Sequence[str] = (
                 render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
             )
             return r[p.Model].ok(

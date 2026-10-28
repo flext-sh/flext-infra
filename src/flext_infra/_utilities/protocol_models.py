@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
 
@@ -33,7 +34,7 @@ class FlextInfraUtilitiesModelsProtocol:
     @classmethod
     def protocol_model_sources(
         cls, workspace: p.Infra.RopeWorkspaceDsl
-    ) -> t.MappingKV[Path, str]:
+    ) -> Mapping[Path, str]:
         """Return protocol sources without importing or publishing the target.
 
         Returns:
@@ -63,7 +64,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self.dependencies: set[str] = set()
             self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
 
-        def render(self) -> t.MappingKV[Path, str]:
+        def render(self) -> Mapping[Path, str]:
             """Close consumed model identities and render their native namespaces.
 
             Returns:
@@ -256,10 +257,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 self.project, "BaseModel", module_name="pydantic"
             ).get_object()
             pending: list[
-                t.Triple[
+                tuple[
                     str,
                     p.Infra.RopePyName,
-                    t.VariadicTuple[p.Infra.RopePyObject],
+                    tuple[p.Infra.RopePyObject, ...],
                 ]
             ] = [("", self.facades["m"], ())]
             while pending:
@@ -374,7 +375,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
         def _field_declaration(
             self, statement: ast.stmt, scope: p.Infra.RopeScope
-        ) -> t.Pair[str, ast.expr] | None:
+        ) -> tuple[str, ast.expr] | None:
             """Select annotated storage or a native computed field's return type.
 
             Returns:
@@ -485,8 +486,8 @@ class FlextInfraUtilitiesModelsProtocol:
         def _lineage(
             self,
             value: p.Infra.RopePyObject,
-            visiting: t.VariadicTuple[p.Infra.RopePyObject],
-        ) -> t.VariadicTuple[p.Infra.RopePyObject]:
+            visiting: tuple[p.Infra.RopePyObject, ...],
+        ) -> tuple[p.Infra.RopePyObject, ...]:
             """Use the canonical C3 merger for the native declared bases.
 
             Returns:
@@ -775,9 +776,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 return ast.parse(f"{alias}.{route}", mode="eval").body
             return None
 
-        def _imports(
-            self, source: str, scope: p.Infra.RopeScope
-        ) -> t.MappingKV[str, str]:
+        def _imports(self, source: str, scope: p.Infra.RopeScope) -> Mapping[str, str]:
             """Reuse native imports with provider-bound lexical aliases.
 
             Returns:

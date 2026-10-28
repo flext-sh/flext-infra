@@ -22,7 +22,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
 
     @staticmethod
     def _document_payload(
-        *entries: t.Pair[str, t.JsonValue],
+        *entries: tuple[str, t.JsonValue],
     ) -> t.JsonMapping:
         """Supply native option deltas through the same document production reads.
 

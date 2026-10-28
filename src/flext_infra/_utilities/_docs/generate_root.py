@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
@@ -29,9 +29,9 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     def _aggregate_root_pages(
         repository_root: Path,
         inputs: m.Infra.DocsRootInputs,
-        src_paths: t.SequenceOf[str],
-        catalog_entries: t.SequenceOf[m.Infra.DocsCatalogEntry],
-    ) -> list[t.Pair[Path, str]]:
+        src_paths: Sequence[str],
+        catalog_entries: Sequence[m.Infra.DocsCatalogEntry],
+    ) -> list[tuple[Path, str]]:
         """Render the static aggregate mkdocs and catalog root pages.
 
         Args:
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
             catalog_entries: Catalog entries of every discovered project.
 
         Returns:
-            The resulting ``list[t.Pair[Path, str]]``.
+            The resulting ``list[tuple[Path, str]]``.
 
         """
         width = inputs.markdown_width
@@ -66,13 +66,13 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     def _root_rendered(
         cls,
         repository_root: Path,
-        scopes: t.SequenceOf[m.Infra.DocScope],
+        scopes: Sequence[m.Infra.DocScope],
         inputs: m.Infra.DocsRootInputs,
     ) -> p.Result[
-        t.Triple[
-            list[t.Pair[Path, str]],
+        tuple[
+            list[tuple[Path, str]],
             list[m.Infra.DocScope],
-            t.MutableMappingKV[str, list[str]],
+            MutableMapping[str, list[str]],
         ]
     ]:
         """Render the aggregate root pages and collect per-project inputs.
@@ -88,10 +88,10 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         """
         width = inputs.markdown_width
         project_scopes = [scope for scope in scopes if scope.path != repository_root]
-        catalog_entries: t.MutableSequenceOf[m.Infra.DocsCatalogEntry] = []
+        catalog_entries: MutableSequence[m.Infra.DocsCatalogEntry] = []
         scope_modules: MutableMapping[str, list[str]] = {}
-        src_paths: t.MutableSequenceOf[str] = []
-        root_api: list[t.Pair[Path, str]] = []
+        src_paths: MutableSequence[str] = []
+        root_api: list[tuple[Path, str]] = []
         for scope in scopes:
             if scope.name == c.Infra.RK_ROOT:
                 continue
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
                 ),
             )
         class_counts = Counter(entry.project_class for entry in catalog_entries)
-        rendered: list[t.Pair[Path, str]] = [
+        rendered: list[tuple[Path, str]] = [
             *root_api,
             *cls._aggregate_root_pages(
                 repository_root,
@@ -151,29 +151,29 @@ class FlextInfraUtilitiesDocsGenerateRoot(
             ),
         ]
         return r[
-            t.Triple[
-                list[t.Pair[Path, str]],
+            tuple[
+                list[tuple[Path, str]],
                 list[m.Infra.DocScope],
-                t.MutableMappingKV[str, list[str]],
+                MutableMapping[str, list[str]],
             ]
         ].ok((rendered, project_scopes, dict(scope_modules)))
 
     @staticmethod
     def _project_rendered(
         repository_root: Path,
-        project_scopes: t.SequenceOf[m.Infra.DocScope],
-        scope_modules: t.MappingKV[str, list[str]],
-        rendered: list[t.Pair[Path, str]],
+        project_scopes: Sequence[m.Infra.DocScope],
+        scope_modules: Mapping[str, list[str]],
+        rendered: list[tuple[Path, str]],
         *,
         width: int,
-    ) -> list[t.Pair[Path, str]]:
+    ) -> list[tuple[Path, str]]:
         """Append every project's generated API pages and the projects index.
 
         Returns:
-            The resulting ``list[t.Pair[Path, str]]``.
+            The resulting ``list[tuple[Path, str]]``.
 
         """
-        projects_index_entries: t.MutableSequenceOf[m.Infra.DocsProjectIndexEntry] = []
+        projects_index_entries: MutableSequence[m.Infra.DocsProjectIndexEntry] = []
         for scope in project_scopes:
             rendered.append((
                 repository_root / "docs/api-reference/generated" / f"{scope.name}.md",
@@ -223,9 +223,9 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     def _prune_generated(
         cls,
         repository_root: Path,
-        rendered: t.SequenceOf[t.Pair[Path, str]],
+        rendered: Sequence[tuple[Path, str]],
     ) -> p.Result[
-        t.Pair[
+        tuple[
             tuple[t.Infra.DocsRenderedArtifactTuple, ...],
             tuple[t.Infra.DocsRenderedArtifactTuple, ...],
         ]
@@ -245,7 +245,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         )
         if api_pruned.failure:
             return r[
-                t.Pair[
+                tuple[
                     tuple[t.Infra.DocsRenderedArtifactTuple, ...],
                     tuple[t.Infra.DocsRenderedArtifactTuple, ...],
                 ]
@@ -259,13 +259,13 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         )
         if projects_pruned.failure:
             return r[
-                t.Pair[
+                tuple[
                     tuple[t.Infra.DocsRenderedArtifactTuple, ...],
                     tuple[t.Infra.DocsRenderedArtifactTuple, ...],
                 ]
             ].from_failure(projects_pruned)
         return r[
-            t.Pair[
+            tuple[
                 tuple[t.Infra.DocsRenderedArtifactTuple, ...],
                 tuple[t.Infra.DocsRenderedArtifactTuple, ...],
             ]
@@ -275,7 +275,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     def docs_root_artifacts(
         cls,
         repository_root: Path,
-        scopes: t.SequenceOf[m.Infra.DocScope],
+        scopes: Sequence[m.Infra.DocScope],
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Render aggregate root targets from the complete discovered project set.
 
@@ -338,7 +338,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         scope: m.Infra.DocScope,
         *,
         repository_root: Path,
-        aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
+        aggregate_scopes: Sequence[m.Infra.DocScope],
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Return the rendered artifact inventory for one docs scope.
 

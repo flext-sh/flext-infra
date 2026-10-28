@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from functools import partial
 from pathlib import Path, PurePosixPath
 
@@ -175,14 +176,14 @@ class FlextInfraUtilitiesDependencyDeptry:
         wheel = cls._declared_wheel_target(settings)
         if wheel.failure:
             return result_type.from_failure(wheel)
-        shipped: p.Result[t.StrSequence] = u.validate_value(
+        shipped: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             wheel.value.get("only-include", ()),
             strict=True,
         )
         if shipped.failure:
             return result_type.from_failure(shipped)
-        sources: p.Result[t.StrMapping] = u.validate_value(
+        sources: p.Result[Mapping[str, str]] = u.validate_value(
             t.Infra.STR_MAPPING_ADAPTER,
             wheel.value.get("sources", dict[str, str]()),
             strict=True,
@@ -243,7 +244,7 @@ class FlextInfraUtilitiesDependencyDeptry:
 
     @staticmethod
     def _verified_deptry_sources(
-        sources: t.SequenceOf[m.Cli.AtomicPhysicalTreeManifest],
+        sources: Sequence[m.Cli.AtomicPhysicalTreeManifest],
         *,
         moment: str,
     ) -> p.Result[bool]:
@@ -271,7 +272,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         *,
         config_path: Path,
     ) -> p.Result[
-        t.Triple[
+        tuple[
             m.Cli.AtomicFileState,
             t.StrTuple,
             tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
@@ -284,7 +285,7 @@ class FlextInfraUtilitiesDependencyDeptry:
 
         """
         result_type = r[
-            t.Triple[
+            tuple[
                 m.Cli.AtomicFileState,
                 t.StrTuple,
                 tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
@@ -360,14 +361,14 @@ class FlextInfraUtilitiesDependencyDeptry:
     @staticmethod
     def _parsed_deptry_report(
         json_output_path: Path,
-    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
         """Read and strictly parse the fresh native deptry report.
 
         Returns:
             The report file state and its validated native payload.
 
         """
-        result_type = r[t.Pair[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]
+        result_type = r[tuple[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]
         report_state = u.Cli.atomic_read_binary_file_state(
             json_output_path, required=True
         )
@@ -398,7 +399,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[
-        t.Triple[m.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
+        tuple[m.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
     ]:
         """Run deptry once and strictly parse its fresh native report.
 
@@ -407,7 +408,7 @@ class FlextInfraUtilitiesDependencyDeptry:
 
         """
         result_type = r[
-            t.Triple[
+            tuple[
                 m.Cli.CommandOutput,
                 m.Cli.AtomicFileState,
                 m.Infra.DeptryNativeReport,
@@ -435,7 +436,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         cls,
         settings: m.Cli.AtomicFileState,
         report_state: m.Cli.AtomicFileState,
-        sources: t.SequenceOf[m.Cli.AtomicPhysicalTreeManifest],
+        sources: Sequence[m.Cli.AtomicPhysicalTreeManifest],
     ) -> p.Result[bool]:
         """Re-verify the captured states and the unchanged production trees.
 

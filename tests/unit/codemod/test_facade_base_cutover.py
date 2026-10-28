@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra, m, p, t, u
+from flext_infra import infra, m, p, u
 from tests import c, tm
 
 if TYPE_CHECKING:
@@ -246,7 +247,13 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
                 target = installed_dependency_path / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(source, encoding="utf-8")
-        tm.that(u.Infra.facade_classes("parent_pkg"), eq={"m": self.PARENT_CLASS})
+        tm.that(
+            u.Infra.facade_classes(
+                "parent_pkg",
+                source_root=installed_dependency_path,
+            ),
+            eq={"m": self.PARENT_CLASS},
+        )
 
     @pytest.mark.parametrize("consumer", ["workspace", "member"])
     def test_facade_classes_read_a_declared_sibling_without_installation(
@@ -412,7 +419,13 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(source, encoding="utf-8")
 
-        tm.that(u.Infra.facade_classes("parent_pkg"), eq={"m": self.PARENT_CLASS})
+        tm.that(
+            u.Infra.facade_classes(
+                "parent_pkg",
+                source_root=installed_dependency_path,
+            ),
+            eq={"m": self.PARENT_CLASS},
+        )
 
     @pytest.mark.parametrize(
         "runtime_binding",
@@ -526,12 +539,12 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         tmp_path: Path,
         child_source: str,
         *,
-        parent_exports: t.StrSequence = (),
-    ) -> tuple[Path, t.MutableMappingKV[Path, str]]:
+        parent_exports: Sequence[str] = (),
+    ) -> tuple[Path, MutableMapping[Path, str]]:
         """Declare a parent whose class name no package naming could infer.
 
         Returns:
-            The resulting ``t.Pair[Path, t.MutableMappingKV[Path, str]]``.
+            The resulting ``tuple[Path, MutableMapping[Path, str]]``.
 
         """
         exports = parent_exports or (self.PARENT_CLASS, "m")
@@ -577,7 +590,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
     def _plan(
         cls,
         tmp_path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         child: Path,
     ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the facade-base phase for the detector finding in ``child``.
@@ -598,7 +611,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
     def _edits(
         cls,
         tmp_path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         child: Path,
     ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         """Return the successful plan's edits.

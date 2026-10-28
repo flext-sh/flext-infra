@@ -15,7 +15,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraRenderProvenance:
@@ -26,7 +26,7 @@ class TestsFlextInfraRenderProvenance:
     @pytest.mark.parametrize("ci_context", [False, True])
     def test_controller_ignores_undeclared_and_caller_sources(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,
         *,
         ci_context: bool,

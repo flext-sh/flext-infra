@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
@@ -104,18 +104,18 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def ignored_regions(
         cls,
         source: str,
-    ) -> tuple[t.Triple[int, int, t.MappingKV[str, str | None]], ...]:
+    ) -> tuple[tuple[int, int, Mapping[str, str | None]], ...]:
         """Read complete literal and comment ranges from Rope's native lexer.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str |
-                None]]]``.
+            The resulting ``tuple[tuple[int, int, Mapping[str, str |
+                None]], ...]``.
 
         """
-        adapter: t.ValueAdapter[
-            t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
-        ] = u.type_adapter(
-            Sequence[tuple[int, int, dict[str, str | None]]],
+        adapter: t.ValueAdapter[Sequence[tuple[int, int, Mapping[str, str | None]]]] = (
+            u.type_adapter(
+                Sequence[tuple[int, int, dict[str, str | None]]],
+            )
         )
         return tuple(
             adapter.validate_python(
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def change_set_members(
         value: p.AttributeProbe,
         invalid_result: str,
-    ) -> p.Result[t.SequenceOf[p.Infra.RopeChangeContents]]:
+    ) -> p.Result[Sequence[p.Infra.RopeChangeContents]]:
         """Validate a native content-change list once at the Rope SDK boundary.
 
         Returns:
@@ -136,14 +136,14 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
 
         """
         if not isinstance(value, list):
-            return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
+            return r[Sequence[p.Infra.RopeChangeContents]].fail(invalid_result)
         members = cast("list[p.AttributeProbe]", value)
         validated: list[p.Infra.RopeChangeContents] = []
         for member in members:
             if not isinstance(member, p.Infra.RopeChangeContents):
-                return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
+                return r[Sequence[p.Infra.RopeChangeContents]].fail(invalid_result)
             validated.append(member)
-        return r[t.SequenceOf[p.Infra.RopeChangeContents]].ok(tuple(validated))
+        return r[Sequence[p.Infra.RopeChangeContents]].ok(tuple(validated))
 
     @classmethod
     def unwrap_class_rewrites(
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         cls,
         resource: p.Infra.RopeResource,
         source: str,
-        rewrites: t.SequenceOf[p.Infra.SourceRewrite],
+        rewrites: Sequence[p.Infra.SourceRewrite],
     ) -> p.Infra.RopeChangeContents:
         """Preview checked, disjoint edits through Rope's change machinery.
 
@@ -283,7 +283,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         resource: p.Infra.RopeResource,
         offset: int,
         *,
-        resources: t.SequenceOf[p.Infra.RopeResource],
+        resources: Sequence[p.Infra.RopeResource],
         remove: bool = True,
     ) -> p.Infra.RopeChangeSet:
         """Plan assigned-name inlining with native occurrence and import handling.
@@ -400,13 +400,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     @classmethod
     def rename_all_changes(
         cls,
-        projects: t.SequenceOf[p.Infra.RopeProject],
+        projects: Sequence[p.Infra.RopeProject],
         resource: p.Infra.RopeResource,
         offset: int | None,
         new_name: str,
         *,
-        sources: t.MappingKV[Path, ...],
-    ) -> tuple[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet], ...]:
+        sources: Mapping[Path, str],
+    ) -> tuple[tuple[p.Infra.RopeProject, p.Infra.RopeChangeSet], ...]:
         """Preview every elected project before any publication or Project.do.
 
         Returns:
@@ -428,7 +428,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             if offset is None
             else cls._identifier_at(sources[Path(resource.real_path)], offset)
         )
-        changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
+        changes: list[tuple[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
         for project in projects:
             # Foreign declarations must use the same authenticated resource owner
             # as imports, not MultiProjectRefactoring's global NoProject resolver.
@@ -512,7 +512,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         return finder
 
     @classmethod
-    def word_primary_range(cls, source: str, offset: int) -> t.Pair[int, int]:
+    def word_primary_range(cls, source: str, offset: int) -> tuple[int, int]:
         word_finder = cls._word_finder(source)
         primary_range = getattr(word_finder, "get_primary_range", None)
         if not callable(primary_range):
@@ -528,8 +528,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
 
     @classmethod
     def word_call_regions(
-        cls, source: str, region: t.Pair[int, int]
-    ) -> t.SequenceOf[t.Pair[int, int]]:
+        cls, source: str, region: tuple[int, int]
+    ) -> Sequence[tuple[int, int]]:
         """Collect native call facts using one Rope word finder for the region.
 
         Returns:
@@ -543,7 +543,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         if not isinstance(finder, p.Infra.RopeWorder):
             message = "Rope word finder does not satisfy its source fact contract"
             raise TypeError(message)
-        regions: set[t.Pair[int, int]] = set()
+        regions: set[tuple[int, int]] = set()
         offset, limit = region
         while offset < limit:
             start, end = finder.get_word_range(offset)

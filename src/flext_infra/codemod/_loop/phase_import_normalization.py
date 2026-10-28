@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, u
 from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
@@ -28,7 +29,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
     name: str = "import-normalization"
 
     @classmethod
-    def apply_files(cls, project_root: Path, files: t.SequenceOf[Path]) -> bool:
+    def apply_files(cls, project_root: Path, files: Sequence[Path]) -> bool:
         """Normalize every given file; return whether any source changed.
 
         Returns:
@@ -52,7 +53,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
     @staticmethod
     def _publish(
         project_root: Path,
-        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        planned: Sequence[m.Infra.CodegenFilePlan],
     ) -> p.Result[bool]:
         """Publish the planned batch with its lazy-init projections.
 
@@ -78,7 +79,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan target imports with all selected roots available for reads.
 

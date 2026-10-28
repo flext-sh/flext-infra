@@ -29,6 +29,15 @@ _MODULE_IMPORT = f"from {c.Infra.PKG_CORE_UNDERSCORE} import t\n"
 _MODEL_USES_ALIAS = f"""\
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import re
 from collections.abc import (
     Iterable,
@@ -48,6 +57,15 @@ class _Row(m.BaseModel):
 _TYPE_CHECKING_USES_ALIAS = """\
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
 import re
 from collections.abc import (
     Iterable,
@@ -63,11 +81,20 @@ if TYPE_CHECKING:
     pass
 
 
-def render(value: t.SequenceOf[str]) -> t.Pair[str, str]: ...
+def render(value: Sequence[str]) -> tuple[str, str]: ...
 """
 
 _PLAIN_CLASS_USES_ALIAS = """\
 from __future__ import annotations
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 
 import re
 from collections.abc import (
@@ -85,11 +112,20 @@ if TYPE_CHECKING:
 
 
 class Helper:
-    values: t.SequenceOf[str]
+    values: Sequence[str]
 """
 
 _NO_TYPE_CHECKING_BLOCK = """\
 from __future__ import annotations
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 
 import re
 from collections.abc import (
@@ -104,10 +140,10 @@ from email.utils import parseaddr
 
 
 class Version:
-    info: t.Triple[int, int, int]
+    info: tuple[int, int, int]
 
     @staticmethod
-    def resolve() -> t.Pair[str, str]: ...
+    def resolve() -> tuple[str, str]: ...
 """
 
 

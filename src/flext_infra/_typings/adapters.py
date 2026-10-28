@@ -24,35 +24,35 @@ class FlextInfraTypesAdapters:
     INFRA_MAPPING_ADAPTER: ClassVar[u.type_adapter[t.JsonMapping]] = (
         u.json_mapping_adapter()
     )
-    "Validates t.MappingKV[str, InfraValue] - the most common infra adapter."
+    "Validates Mapping[str, InfraValue] - the most common infra adapter."
 
     MUTABLE_INFRA_MAPPING_ADAPTER: ClassVar[
         u.type_adapter[MutableMapping[str, t.JsonValue]]
     ] = u.type_adapter(MutableMapping[str, t.JsonValue])
     "Validates MutableMapping[str, InfraValue] for in-place mutation."
 
-    STR_MAPPING_ADAPTER: ClassVar[u.type_adapter[t.StrMapping]] = u.type_adapter(
+    STR_MAPPING_ADAPTER: ClassVar[u.type_adapter[Mapping[str, str]]] = u.type_adapter(
         Mapping[str, str],
     )
-    "Validates t.StrMapping."
+    "Validates Mapping[str, str]."
 
     CONTAINER_MAPPING_ADAPTER: ClassVar[
-        u.type_adapter[t.MappingKV[str, t.Scalar | Path]]
+        u.type_adapter[Mapping[str, t.Scalar | Path]]
     ] = u.type_adapter(Mapping[str, t.Scalar | Path])
     "Validates flat scalar/path mappings (no nested containers)."
 
     INFRA_SEQ_ADAPTER: ClassVar[u.type_adapter[t.JsonList]] = u.json_list_adapter()
-    "Validates t.SequenceOf[InfraValue]."
+    "Validates Sequence[InfraValue]."
 
-    STR_SEQ_ADAPTER: ClassVar[u.type_adapter[t.StrSequence]] = u.type_adapter(
+    STR_SEQ_ADAPTER: ClassVar[u.type_adapter[Sequence[str]]] = u.type_adapter(
         Sequence[str],
     )
-    "Validates t.StrSequence."
+    "Validates Sequence[str]."
 
     NON_EMPTY_STR_SEQ_ADAPTER: ClassVar[u.type_adapter[tuple[t.NonEmptyStr, ...]]] = (
         u.type_adapter(tuple[t.NonEmptyStr, ...])
     )
-    "Validates t.VariadicTuple[t.NonEmptyStr] at typed render boundaries."
+    "Validates tuple[t.NonEmptyStr, ...] at typed render boundaries."
 
     STR_ADAPTER: ClassVar[u.type_adapter[str]] = u.type_adapter(str)
     "Validates one string at boundaries whose upstream stubs expose Any."

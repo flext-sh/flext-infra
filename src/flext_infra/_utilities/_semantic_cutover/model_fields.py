@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 import libcst as cst
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     @staticmethod
     def _contract_arguments(
         rule: p.Infra.RopeContractRule,
-    ) -> t.MappingKV[str, str | t.StrSequence]:
+    ) -> Mapping[str, str | Sequence[str]]:
         """Constrain ordinary captures before native call admission.
 
         Returns:
@@ -220,8 +221,8 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        resources: t.SequenceOf[p.Infra.RopeResource],
-    ) -> t.SequenceOf[tuple[str, str]]:
+        resources: Sequence[p.Infra.RopeResource],
+    ) -> Sequence[tuple[str, str]]:
         """Specialize explicit argument shapes, leaving matching/writing to Rope.
 
         Returns:
@@ -230,7 +231,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         """
         if not rule.defaulted_field:
             return ((rule.pattern, rule.goal),)
-        templates: t.MutableMappingKV[tuple[str, str], None] = {}
+        templates: MutableMapping[tuple[str, str], None] = {}
         field = f"${{{rule.call_target}}}"
         default = f"${{{rule.value_default}}}"
         for resource in resources:
@@ -271,7 +272,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
-    ) -> t.SequenceOf[tuple[int, int]]:
+    ) -> Sequence[tuple[int, int]]:
         """Retain every call lacking an exact native evaluation-safety proof.
 
         Returns:
@@ -301,7 +302,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
-    ) -> t.SequenceOf[tuple[int, int]]:
+    ) -> Sequence[tuple[int, int]]:
         """Prove direct SDK metadata that only stores a deferred builtin factory.
 
         Returns:
@@ -399,12 +400,12 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     @classmethod
     def _plan_model_fields(
         cls,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Inspect all sources, including direct access emitted by older rules.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         return cls._semantic_edits(cls._editable_sources(sources), cls._rewrite_fields)
@@ -439,12 +440,12 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls,
         path: Path,
         function: ast.FunctionDef | ast.AsyncFunctionDef,
-        lines: t.SequenceOf[str],
-    ) -> t.SequenceOf[tuple[int, int, str]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, str]]:
         """Plan the narrowed model-fields boundary of one function body.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[int, int, str]]``.
+            The resulting ``Sequence[tuple[int, int, str]]``.
 
         Raises:
             ValueError: If a model field guard has no complete source span.

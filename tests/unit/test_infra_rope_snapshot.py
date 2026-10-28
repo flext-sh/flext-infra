@@ -247,6 +247,85 @@ class TestsFlextInfraRopeSnapshot:
             )
 
     @staticmethod
+    def test_planned_override_preserves_bound_foreign_candidate(tmp_path: Path) -> None:
+        """An owned override retains its provider candidate and entry witnesses."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        owned = package / "owned.py"
+        provider = tmp_path / "external"
+        provider.mkdir()
+        foreign = provider / "provider.py"
+        owned_physical = b"class Original: pass\n"
+        foreign_physical = b"class Provider: pass\n"
+        foreign_proposed = b"class ProposedProvider: pass\n"
+        owned_proposed = "class ProposedOwned: pass\n"
+        owned.write_bytes(owned_physical)
+        foreign.write_bytes(foreign_physical)
+        foreign_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(foreign, required=True)
+        )
+        foreign_plan = m.Infra.CodegenFilePlan(
+            project=provider,
+            path=foreign,
+            before=foreign_before,
+            desired_content=foreign_proposed,
+            desired_mode=foreign_before.mode,
+        )
+        with u.Infra.facade_source_project(root, declared_files=(foreign_plan,)) as (
+            project,
+            _sources,
+        ):
+            owned_before = project.source_state(owned)
+            provider_before = project.source_state(foreign)
+            with u.Infra.facade_source_project(
+                root,
+                planned_sources={owned: owned_proposed},
+                source_project=project,
+            ) as (candidate, candidate_sources):
+                tm.that(candidate, where=lambda current: current is project)
+                tm.that(candidate_sources[owned], eq=owned_proposed)
+                tm.that(candidate.source_bytes(foreign), eq=foreign_proposed)
+                tm.that(
+                    candidate.source_state(owned),
+                    where=lambda state: state is owned_before,
+                )
+                tm.that(
+                    candidate.source_state(foreign),
+                    where=lambda state: state is provider_before,
+                )
+                tm.that(owned.read_bytes(), eq=owned_physical)
+                tm.that(foreign.read_bytes(), eq=foreign_physical)
+            tm.that(project.source_bytes(owned), eq=owned_physical)
+            tm.that(project.source_bytes(foreign), eq=foreign_proposed)
+            competing = m.Infra.CodegenFilePlan(
+                project=root,
+                path=owned,
+                before=owned_before,
+                desired_content=owned_physical,
+                desired_mode=owned_before.mode,
+            )
+            with (
+                pytest.raises(ValueError, match="competing declarations"),
+                u.Infra.facade_source_project(
+                    root,
+                    declared_files=(competing,),
+                    planned_sources={owned: owned_proposed},
+                    source_project=project,
+                ),
+            ):
+                pytest.fail("competing owned declarations were admitted")
+            tm.that(project.source_bytes(owned), eq=owned_physical)
+            tm.that(project.source_bytes(foreign), eq=foreign_proposed)
+            tm.that(
+                project.source_state(owned), where=lambda state: state is owned_before
+            )
+            tm.that(
+                project.source_state(foreign),
+                where=lambda state: state is provider_before,
+            )
+        tm.that(owned.read_bytes(), eq=owned_physical)
+        tm.that(foreign.read_bytes(), eq=foreign_physical)
+
+    @staticmethod
     def test_nested_candidate_binding_restores_parent_after_consumer_failure(
         tmp_path: Path,
     ) -> None:
@@ -378,6 +457,60 @@ class TestsFlextInfraRopeSnapshot:
                     )
                     supplied = tm.not_none(parent.get_module().get_resource())
                     tm.that(supplied.real_path, eq=str(expected))
+
+    @staticmethod
+    def test_planned_reintroduction_preserves_retired_source_mode(
+        tmp_path: Path,
+    ) -> None:
+        """Reintroducing a retired source retains its captured physical mode."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        physical = b"class Original: pass\n"
+        proposed = "class Reintroduced: pass\n"
+        source.write_bytes(physical)
+        source.chmod(config.Infra.codegen.modes.file_default ^ 0o100)
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            before = project.source_state(source)
+            retirement = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=before,
+                desired_content=None,
+                desired_mode=None,
+            )
+            with u.Infra.facade_source_project(
+                root, declared_files=(retirement,), source_project=project
+            ) as (retired, retired_sources):
+                tm.that(source in retired_sources, eq=False)
+                with u.Infra.facade_source_project(
+                    root,
+                    planned_sources={source: proposed},
+                    source_project=retired,
+                ) as (candidate, candidate_sources):
+                    tm.that(candidate, where=lambda current: current is project)
+                    tm.that(candidate_sources[source], eq=proposed)
+                    plan = next(
+                        plan for plan in candidate.source_plans if plan.path == source
+                    )
+                    tm.that(plan.desired_mode, eq=before.mode)
+                    tm.that(
+                        plan.desired_mode != config.Infra.codegen.modes.file_default,
+                        eq=True,
+                    )
+                    tm.that(plan.before, where=lambda state: state is before)
+                    tm.that(
+                        candidate.source_state(source),
+                        where=lambda state: state is before,
+                    )
+                    tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+                tm.that(retired.source_query(source, "exists"), eq=False)
+                with pytest.raises(FileNotFoundError):
+                    retired.source_bytes(source)
+                tm.that(
+                    retired.source_state(source), where=lambda state: state is before
+                )
+            tm.that(project.source_bytes(source), eq=physical)
+            tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
 
     @staticmethod
     def test_candidate_retirement_hides_only_the_logical_source(tmp_path: Path) -> None:

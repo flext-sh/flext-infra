@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, MutableSequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -80,7 +80,7 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(description="Planned repository name"),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan],
+            tuple[FlextInfraModelsConfig.CodegenFilePlan, ...],
             m.Field(description="Governed and retired file plans"),
         ] = ()
         environment: Annotated[
@@ -100,7 +100,7 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(description="Original planning traceback, without local variables"),
         ] = ""
         issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Native failures attributed to individual targets"),
         ] = ()
         elapsed: Annotated[
@@ -136,7 +136,7 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(description="Validated public request"),
         ]
         repositories: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfig.RepositoryRef],
+            tuple[FlextInfraModelsConfig.RepositoryRef, ...],
             m.Field(description="Selected repositories in deterministic order"),
         ]
         workspace: Annotated[
@@ -144,15 +144,15 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(description="Workspace governing the selection"),
         ]
         uv_environments: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfig.UvEnvironmentPlan],
+            tuple[FlextInfraModelsConfig.UvEnvironmentPlan, ...],
             m.Field(description="uv plans paired with selected repositories"),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan],
+            tuple[FlextInfraModelsConfig.CodegenFilePlan, ...],
             m.Field(description="All render results validated before application"),
         ]
         issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Planning failures retained alongside valid outputs"),
         ] = ()
 
@@ -163,11 +163,11 @@ class FlextInfraModelsCodegenPipeline:
             FlextInfraModelsCodegenPipeline.CodegenPlan,
             m.Field(description="The plan actually used by the producer"),
         ]
-        written_files: t.VariadicTuple[Path] = m.Field(
+        written_files: tuple[Path, ...] = m.Field(
             default=(),
             description="Files atomically replaced by apply",
         )
-        errors: t.VariadicTuple[str] = m.Field(
+        errors: tuple[str, ...] = m.Field(
             default=(),
             description="Fail-closed validation or write errors",
         )
@@ -200,7 +200,7 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(exclude=True, description="Native staged source-view owner"),
         ]
         candidate_validator: Annotated[
-            t.Port[Callable[[Path, Path, t.VariadicTuple[Path]], p.Result[bool]]],
+            t.Port[Callable[[Path, Path, tuple[Path, ...]], p.Result[bool]]],
             m.Field(
                 exclude=True,
                 description="Native cold-import admission in the source runtime",
@@ -231,15 +231,15 @@ class FlextInfraModelsCodegenPipeline:
             exclude=True,
             description="Validated projection request retained by reference",
         )
-        provider_plans: (
-            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan] | None
-        ) = m.Field(
-            default=None,
-            exclude=True,
-            description="Original cohort plans available to native source reads",
+        provider_plans: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] | None = (
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Original cohort plans available to native source reads",
+            )
         )
         completed_source_plans: (
-            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan] | None
+            tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] | None
         ) = m.Field(
             default=None,
             exclude=True,
@@ -262,7 +262,7 @@ class FlextInfraModelsCodegenPipeline:
             exclude=True,
             description="Facade-bound docs planning",
         )
-        planning_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = m.Field(
+        planning_issues: MutableSequence[FlextInfraModelsCheck.Issue] = m.Field(
             default_factory=list[FlextInfraModelsCheck.Issue],
             exclude=True,
             description="Native file planning failures retained by this invocation",
@@ -284,7 +284,7 @@ class FlextInfraModelsCodegenPipeline:
                 "The run's one workspace snapshot; present while repositories plan"
             ),
         )
-        _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
+        _generation_issues: MutableSequence[FlextInfraModelsCheck.Issue] = (
             m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])
         )
 

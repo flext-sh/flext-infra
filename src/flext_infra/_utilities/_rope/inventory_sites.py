@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -226,7 +227,7 @@ class FlextInfraUtilitiesRopeInventorySites:
         convention: m.Infra.RopeModuleConvention,
         *,
         name: str,
-        scope_chain: t.StrSequence,
+        scope_chain: Sequence[str],
     ) -> bool:
         """Is facade member.
 

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -229,7 +230,7 @@ class FlextInfraModelsGit(
             m.Field(description="Repository the registry was read for"),
         ]
         entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsGit.GitWorktreeEntry],
+            tuple[FlextInfraModelsGit.GitWorktreeEntry, ...],
             m.Field(description="Every registered worktree, primary first"),
         ]
         porcelain: Annotated[
@@ -394,14 +395,14 @@ class FlextInfraModelsGit(
         """Short ref names below one namespace mapped to their tip oids."""
 
         heads: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Name relative to the namespace -> tip oid"),
         ]
 
     class GitOidListReport(m.ContractModel):
         """Ordered Git object ids."""
 
-        oids: Annotated[t.StrSequence, m.Field(description="Object ids in order")]
+        oids: Annotated[Sequence[str], m.Field(description="Object ids in order")]
 
     class GitBranchCreateRequest(GitRepoRequest):
         """Create one branch at a start point, optionally switching to it."""
@@ -486,7 +487,7 @@ class FlextInfraModelsGit(
         """Repository plus multiple relative paths for add/restore operations."""
 
         paths: Annotated[
-            t.SequenceOf[t.NonEmptyStr],
+            Sequence[t.NonEmptyStr],
             m.Field(description="Relative paths to operate on"),
         ]
 
@@ -539,7 +540,7 @@ class FlextInfraModelsGit(
         """Repository plus optional paths for checkout/restore operations."""
 
         paths: Annotated[
-            t.SequenceOf[t.NonEmptyStr],
+            Sequence[t.NonEmptyStr],
             m.Field(description="Relative paths to restore; empty restores all"),
         ] = ()
 

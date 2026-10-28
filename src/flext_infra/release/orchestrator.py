@@ -228,7 +228,7 @@ class FlextInfraReleaseOrchestrator(
         version: str,
         subject: str,
         head_oid: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Locate the merged release commit, or fail loud when it is absent.
 
         A hot integration lane keeps landing after the release commit: the
@@ -240,7 +240,7 @@ class FlextInfraReleaseOrchestrator(
             The resulting ``(subject, oid)`` pair of the release commit.
 
         """
-        result_type = r[t.Pair[str, str]]
+        result_type = r[tuple[str, str]]
         if u.Infra.release_subject(subject, version):
             return result_type.ok((subject, head_oid))
         expected = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)

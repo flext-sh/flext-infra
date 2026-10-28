@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -71,7 +71,7 @@ class FlextInfraUtilitiesRopeCore(
     def _new_project(
         resolved_root: Path,
         *,
-        project_roots: t.SequenceOf[Path],
+        project_roots: Sequence[Path],
         consumer_root: Path | None = None,
     ) -> t.Infra.RopeProject:
         """Create one Rope project from validated source roots.
@@ -201,7 +201,7 @@ class FlextInfraUtilitiesRopeCore(
     def open_project(
         repository_root: Path,
         *,
-        project_roots: t.SequenceOf[Path] | None = None,
+        project_roots: Sequence[Path] | None = None,
         consumer_root: Path | None = None,
     ) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary.

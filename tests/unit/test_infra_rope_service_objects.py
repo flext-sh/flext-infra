@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import pytest
 
 import flext_infra
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,11 +26,11 @@ class TestsFlextInfraInfraRopeServiceObjects:
         tmp_path: Path,
         module_name: str,
         source: str,
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Create one flext-demo workspace and write ``source`` into its module.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -45,11 +46,11 @@ class TestsFlextInfraInfraRopeServiceObjects:
     def _module_objects_by_name(
         repository_root: Path,
         module_path: Path,
-    ) -> t.MutableMappingKV[str, m.Infra.Object]:
+    ) -> MutableMapping[str, m.Infra.Object]:
         """Index one module's non-local objects by their declared name.
 
         Returns:
-            The resulting ``t.MutableMappingKV[str, m.Infra.Object]``.
+            The resulting ``MutableMapping[str, m.Infra.Object]``.
 
         """
         with flext_infra.infra.rope_workspace(repository_root) as rope:

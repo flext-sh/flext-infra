@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 from collections import Counter
+from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -50,10 +51,8 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
     class _EnvironmentTransformer(cst.CSTTransformer):
         METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
 
-        def __init__(self, bindings: t.MappingKV[str, int]) -> None:
-            self.aliases: t.MutableMappingKV[
-                t.Pair[str, t.Infra.Cst.FunctionDef], str
-            ] = {}
+        def __init__(self, bindings: Mapping[str, int]) -> None:
+            self.aliases: MutableMapping[tuple[str, t.Infra.Cst.FunctionDef], str] = {}
             self.packages: set[str] = set()
             self.bindings = bindings
 
@@ -176,12 +175,12 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
     @classmethod
     def _plan_dynamic_environment(
         cls,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         selected: frozenset[Path],
         *,
         source_project: p.Infra.RopeProject,
-        owner_context: Callable[[Path], t.Triple[str, str, m.Infra.CodegenConfigSpec]],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        owner_context: Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
 
         def rewrite(_path: Path, source: str) -> t.Infra.TransformResult:
             del _path
@@ -245,19 +244,19 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         repository_root: Path,
         codegen: m.Infra.CodegenConfigSpec,
         source_project: p.Infra.RopeProject,
-        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
-    ) -> Callable[[Path], t.Triple[str, str, m.Infra.CodegenConfigSpec]]:
+        dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
+    ) -> Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]]:
         """Own one phase's memoized metadata elections.
 
         Returns:
             A lazy settings-owner election bound to the original source authority.
 
         """
-        contexts: dict[Path, t.Triple[str, str, m.Infra.CodegenConfigSpec]] = {}
+        contexts: dict[Path, tuple[str, str, m.Infra.CodegenConfigSpec]] = {}
 
         def owner_context(
             owner_root: Path,
-        ) -> t.Triple[str, str, m.Infra.CodegenConfigSpec]:
+        ) -> tuple[str, str, m.Infra.CodegenConfigSpec]:
             if owner_root not in contexts:
                 contexts[owner_root] = cls._settings_owner_context(
                     owner_root,
@@ -276,8 +275,8 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         source_project: p.Infra.RopeProject,
         repository_root: Path,
         codegen: m.Infra.CodegenConfigSpec,
-        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
-    ) -> t.Triple[str, str, m.Infra.CodegenConfigSpec]:
+        dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
+    ) -> tuple[str, str, m.Infra.CodegenConfigSpec]:
         """Read the namespace and validate the exact policy inputs of one owner.
 
         Returns:
@@ -329,10 +328,10 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
     @staticmethod
     def _require_settings_owner(
         package: str,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         *,
         source_project: p.Infra.RopeProject,
-        owner_context: Callable[[Path], t.Triple[str, str, m.Infra.CodegenConfigSpec]],
+        owner_context: Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]],
     ) -> None:
         """Require the destination settings API to exist in the source inventory.
 

@@ -6,11 +6,11 @@ valid:
         table: t.MutableStrMapping = m.Field(default_factory=dict, description="x")
   - |
     class Order(m.FrozenModel):
-        names: t.StrSequence = m.Field(default_factory=tuple, description="x")
+        names: Sequence[str] = m.Field(default_factory=tuple, description="x")
 invalid:
   - |
     class Order(m.FrozenModel):
-        names: t.StrSequence = m.Field(default_factory=list, description="x")
+        names: Sequence[str] = m.Field(default_factory=list, description="x")
   - |
     class Order(m.FrozenModel):
-        table: Annotated[t.StrMapping, m.Field(default_factory=dict, description="x")]
+        table: Annotated[Mapping[str, str], m.Field(default_factory=dict, description="x")]

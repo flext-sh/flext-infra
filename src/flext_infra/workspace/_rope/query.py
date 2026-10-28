@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from operator import attrgetter
 from pathlib import Path
@@ -40,14 +40,13 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         default_factory=dict[str, t.Infra.RopeFile | None],
     )
     _name_index: (
-        MutableMapping[str, tuple[t.Triple[Path, str, t.VariadicTuple[int]]], ...]
-        | None
+        MutableMapping[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None
     ) = m.PrivateAttr(default_factory=lambda: None)
     _import_dependents_index: MutableMapping[str, tuple[Path, ...]] | None = (
         m.PrivateAttr(default_factory=lambda: None)
     )
 
-    _SURFACE_DIRS: ClassVar[t.StrSequence] = (
+    _SURFACE_DIRS: ClassVar[Sequence[str]] = (
         c.Infra.DIR_TESTS,
         c.Infra.DIR_EXAMPLES,
         c.Infra.DIR_SCRIPTS,
@@ -191,8 +190,8 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
     def modules(
         self,
         *,
-        project_names: t.StrSequence | None = None,
-    ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]:
+        project_names: Sequence[str] | None = None,
+    ) -> Sequence[m.Infra.RopeModuleIndexEntry]:
         """Return path-sorted module entries, optionally only the named projects'.
 
         Returns:
@@ -251,7 +250,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
 
     def name_index(
         self,
-    ) -> t.MappingKV[str, tuple[t.Triple[Path, str, t.VariadicTuple[int]]], ...]:
+    ) -> Mapping[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
         """Return a cached ``{name: ((path, surface, lines), ...)}`` workspace index.
 
         Returns:
@@ -260,7 +259,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         """
         if self._name_index is not None:
             return self._name_index
-        index: MutableMapping[str, list[t.Triple[Path, str, list[int]]]] = {}
+        index: MutableMapping[str, list[tuple[Path, str, list[int]]]] = {}
         for entry in self.workspace_index.modules_by_path.values():
             py_file = entry.file_path
             source_text = self._resource_for(py_file).read()

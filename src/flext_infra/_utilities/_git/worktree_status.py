@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from git import GitCommandError, Repo
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
@@ -103,7 +104,7 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
     def git_changed_paths(
         cls,
         request: m.Infra.GitRepoRequest,
-    ) -> p.Result[t.SequenceOf[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         """Return literal staged, unstaged, and untracked paths without resolving links.
 
         Returns:
@@ -120,13 +121,13 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
             )
             relative_paths = tuple(dict.fromkeys((*changed, *repo.untracked_files)))
         except GitCommandError as exc:
-            return r[t.SequenceOf[Path]].fail(str(exc), exception=exc)
+            return r[Sequence[Path]].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[t.SequenceOf[Path]].fail(
+            return r[Sequence[Path]].fail(
                 f"git changed paths failed: {exc}",
                 exception=exc,
             )
-        return r[t.SequenceOf[Path]].ok(
+        return r[Sequence[Path]].ok(
             tuple(
                 path
                 for relative_path in relative_paths

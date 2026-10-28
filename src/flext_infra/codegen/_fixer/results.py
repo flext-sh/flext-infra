@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import m, u
@@ -14,7 +15,7 @@ from flext_infra.validate import FlextInfraNamespaceValidator
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodegenFixerResults:
@@ -59,11 +60,11 @@ class FlextInfraCodegenFixerResults:
         self,
         ctx: m.Infra.FixContext,
         project_path: Path,
-    ) -> t.SequenceOf[m.Infra.CensusViolation]:
+    ) -> Sequence[m.Infra.CensusViolation]:
         """Read the initial namespace violations and record skip reason on failure.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.CensusViolation]``.
+            The resulting ``Sequence[m.Infra.CensusViolation]``.
 
         """
         initial_violations_result = u.Infra.parse_namespace_validation(
@@ -90,7 +91,7 @@ class FlextInfraCodegenFixerResults:
     def _classify_remaining_violations(
         ctx: m.Infra.FixContext,
         project_path: Path,
-        initial_violations: t.SequenceOf[m.Infra.CensusViolation],
+        initial_violations: Sequence[m.Infra.CensusViolation],
     ) -> None:
         """Re-run validation and split outstanding violations into fixed vs skipped."""
         remaining_result = u.Infra.parse_namespace_validation(

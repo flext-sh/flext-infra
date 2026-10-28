@@ -19,22 +19,22 @@ snapshots:
       style: secondary
       start: 21
       end: 62
-  "adapter = u.type_adapter(Annotated[t.ScalarMapping, None])":
-    fixed: adapter = u.type_adapter(TypeForm(t.ScalarMapping))
+  "adapter = u.type_adapter(Annotated[Mapping[str, t.Scalar], None])":
+    fixed: adapter = u.type_adapter(TypeForm(Mapping[str, t.Scalar]))
     labels:
-    - source: Annotated[t.ScalarMapping, None]
+    - source: Annotated[Mapping[str, t.Scalar], None]
       style: primary
       start: 25
-      end: 57
+      end: 64
     - source: u.type_adapter
       style: secondary
       start: 10
       end: 24
-    - source: u.type_adapter(Annotated[t.ScalarMapping, None])
+    - source: u.type_adapter(Annotated[Mapping[str, t.Scalar], None])
       style: secondary
       start: 10
-      end: 58
-    - source: (Annotated[t.ScalarMapping, None])
+      end: 65
+    - source: (Annotated[Mapping[str, t.Scalar], None])
       style: secondary
       start: 24
-      end: 58
+      end: 65

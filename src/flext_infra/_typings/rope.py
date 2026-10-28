@@ -7,12 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from ast import ClassDef, Import, ImportFrom
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 
 import libcst
 import libcst.matchers
-from flext_core import t
 from libcst import (
     Arg,
     BaseStatement,
@@ -91,13 +90,13 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     type RopeImplementationPaths = frozenset[RopeSourcePath]
     type RopeMutablePaths = set[RopeSourcePath]
     type RopeCallableSignature = tuple[
-        t.StrSequence,
-        t.StrSequence,
+        Sequence[str],
+        Sequence[str],
         str | None,
-        t.StrSequence,
+        Sequence[str],
         str | None,
-        t.StrSequence,
-        t.SequenceOf[str | None],
+        Sequence[str],
+        Sequence[str | None],
         bool,
     ]
     type PythonClassNode = ClassDef
@@ -111,14 +110,12 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
 
     type RopeProject = FlextInfraProtocolsRopeRuntime.RopeProject
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource
-    type RopeImportLookup = t.MutableMappingKV[
-        t.Triple[str, str, int], RopeResource | None
-    ]
+    type RopeImportLookup = MutableMapping[tuple[str, str, int], RopeResource | None]
     type CodemodImportWalkNode = (
-        t.Pair[Path, tuple[t.Pair[str, RopeResource], ...]] | None
+        tuple[Path, tuple[tuple[str, RopeResource], ...]] | None
     )
-    type CodemodImportWalkMemo = t.Pair[
-        RopeImportLookup, t.MutableMappingKV[str, CodemodImportWalkNode]
+    type CodemodImportWalkMemo = tuple[
+        RopeImportLookup, MutableMapping[str, CodemodImportWalkNode]
     ]
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
@@ -144,7 +141,7 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
 
     type RopeTransformFn = Callable[
         [RopeProject, RopeResource],
-        t.Pair[str, t.StrSequence],
+        tuple[str, Sequence[str]],
     ]
     type RopeMatchFilter = Callable[
         [RopePyModule, FlextInfraProtocolsRopeRuntime.RopeContractMatch],

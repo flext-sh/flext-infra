@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesGit
 from flext_infra._utilities._project import FlextInfraUtilitiesProjectDiscoveryShape
 
@@ -22,7 +23,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
     def repository_operation_targets(
         root: Path,
         scope: c.Infra.CodegenConformScope,
-    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]:
+    ) -> p.Result[Sequence[m.Infra.WorkspaceOperationTarget]]:
         """Retain declared roots, including missing checkouts, in discovery order.
 
         Returns:
@@ -30,7 +31,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
 
         """
         resolved = root.expanduser().resolve()
-        result_type = r[t.SequenceOf[m.Infra.WorkspaceOperationTarget]]
+        result_type = r[Sequence[m.Infra.WorkspaceOperationTarget]]
         if not resolved.is_dir():
             return result_type.fail(f"operation root does not exist: {resolved}")
         target = m.Infra.WorkspaceOperationTarget(root=resolved)
@@ -60,7 +61,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
         scan_dirs: frozenset[str] | None = None,
         declarations: tuple[m.Infra.GitSubmoduleDeclaration, ...] | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Elect candidates and exclusions from one current Git declaration read.
 
         Returns:
@@ -70,7 +71,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
             ValueError: If ``declared_paths.failure``.
 
         """
-        roots: t.MutableSequenceOf[Path] = []
+        roots: MutableSequence[Path] = []
         effective_scan_dirs = scan_dirs or frozenset()
         if declarations is None:
             declared = FlextInfraUtilitiesGit.git_submodule_declarations(
@@ -108,7 +109,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
         ):
             roots.append(resolved_repository_root)
         if configured_projects:
-            candidate_entries: t.SequenceOf[Path] = sorted(
+            candidate_entries: Sequence[Path] = sorted(
                 configured_entries,
                 key=Path.as_posix,
             )

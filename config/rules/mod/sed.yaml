@@ -121,12 +121,12 @@ rules:
   replace: '\g<1>[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]'
 - id: topology-pending-workspace-tuple-contract
   include: [ src/flext_infra/workspace/detector.py ]
-  find: 't\.Pair\[t\.SequenceOf\[m\.Infra\.RepositoryRef\], t\.SequenceOf\[Path\]\]'
-  replace: 't.Triple[t.SequenceOf[m.Infra.RepositoryRef], t.SequenceOf[Path], t.SequenceOf[m.Infra.GitSubmoduleDeclaration]]'
+  find: 't\.Pair\[t\.Sequence\[m\.Infra\.RepositoryRef\], t\.Sequence\[Path\]\]'
+  replace: 'tuple[Sequence[m.Infra.RepositoryRef], Sequence[Path], Sequence[m.Infra.GitSubmoduleDeclaration]]'
 - id: topology-pending-workspace-local-contract
   include: [ src/flext_infra/workspace/detector.py ]
   find: 't\.Pair\[t\.VariadicTuple\[m\.Infra\.RepositoryRef\], t\.VariadicTuple\[Path\]\]|tuple\[tuple\[m\.Infra\.RepositoryRef, \.\.\.\], t\.VariadicTuple\[Path\]\]'
-  replace: 't.Triple[t.VariadicTuple[m.Infra.RepositoryRef], t.VariadicTuple[Path], t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]'
+  replace: 'tuple[t.VariadicTuple[m.Infra.RepositoryRef], t.VariadicTuple[Path], t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]'
 - id: topology-pending-workspace-accounting
   include: [ src/flext_infra/workspace/detector.py ]
   find: '(?m)^(        external: list\[Path\] = \[\]\n)(?!        pending:)'

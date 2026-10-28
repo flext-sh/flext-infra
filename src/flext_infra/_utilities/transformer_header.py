@@ -7,8 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableSequence
 
-from flext_infra import c, t
+from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesTransformerHeaderParser
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
@@ -318,9 +319,9 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         runtime_ids = (
             FlextInfraUtilitiesTransformerHeader._runtime_model_annotation_ids(module)
         )
-        spans: list[t.Quad[int, int, int, int]] = []
+        spans: list[tuple[int, int, int, int]] = []
         for node in ast.walk(module):
-            annotations: t.MutableSequenceOf[ast.expr | None] = []
+            annotations: MutableSequence[ast.expr | None] = []
             if isinstance(node, ast.AnnAssign | ast.arg):
                 annotations.append(node.annotation)
             elif isinstance(node, c.Infra.AST_FUNCTION_TYPES):
@@ -381,4 +382,4 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         )
 
 
-__all__: t.MutableSequenceOf[str] = ["FlextInfraUtilitiesTransformerHeader"]
+__all__: MutableSequence[str] = ["FlextInfraUtilitiesTransformerHeader"]

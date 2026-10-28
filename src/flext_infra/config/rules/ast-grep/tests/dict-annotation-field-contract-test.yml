@@ -3,7 +3,7 @@ valid:
   - |
     from flext_core import t
     class Payload:
-        values: t.MappingKV[str, int]
+        values: Mapping[str, int]
   - |
     from flext_core import t
     def f(x: dict[str, int]) -> None: ...

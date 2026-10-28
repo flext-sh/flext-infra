@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import importlib.util
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -27,36 +27,8 @@ from flext_infra._utilities._rope.rope_runtime_types import (
 class FlextInfraUtilitiesRopeSourceBasesAliases:
     """Alias and lazy-module resolution part of the source-bases composite."""
 
-    @classmethod
-    def _stdlib_backing_module(cls, target: str) -> str | None:
-        """Return the importable real module backing one virtual stdlib module.
-
-        Returns:
-            The backing module name when the target imports at runtime and its
-            declaration file is importable under its own stem; otherwise None.
-
-        """
-        if cls._stdlib_backing_cache is None:
-            cls._stdlib_backing_cache = {}
-        cached = cls._stdlib_backing_cache.get(target, "")
-        if cached:
-            return cached or None
-        backing: str | None = None
-        try:
-            runtime = importlib.import_module(target)
-        except ImportError:
-            runtime = None
-        file = getattr(runtime, "__file__", None)
-        if file:
-            stem = Path(file).stem
-            if stem != target.rpartition(".")[-1] and importlib.util.find_spec(stem):
-                backing = stem
-        cls._stdlib_backing_cache[target] = backing or ""
-        return backing
-
-    _stdlib_backing_cache: ClassVar[t.StrDict | None] = None
     _export_bindings_memo: ClassVar[
-        dict[tuple[str, str, str], dict[str, m.Infra.SourceClassReference]]
+        dict[tuple[str, str, str, str], dict[str, m.Infra.SourceClassReference]]
     ] = {}
 
     @classmethod
@@ -68,7 +40,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         *,
         project: p.Infra.RopeProject,
         pymodule: p.Infra.RopeSemanticModule | None = None,
-    ) -> t.StrDict:
+    ) -> dict[str, str]:
         """Project the provider module of every declared lazy export binding.
 
         Returns:
@@ -95,7 +67,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         *,
         project: p.Infra.RopeProject,
         pymodule: p.Infra.RopeSemanticModule | None = None,
-    ) -> t.MappingKV[str, m.Infra.SourceClassReference]:
+    ) -> Mapping[str, m.Infra.SourceClassReference]:
         """Read native lazy routes without losing their exported attributes.
 
         ``install_lazy_exports`` accepts both a provider string and an explicit
@@ -125,7 +97,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         parsed = cls._parsed_initializer(project, source, pymodule)
         if key in cls._export_bindings_memo:
             return dict(cls._export_bindings_memo[key])
-        aliases: t.MutableMappingKV[str, m.Infra.SourceClassReference] = {}
+        aliases: dict[str, m.Infra.SourceClassReference] = {}
         # A declaracao e textual: a varredura percorre o proprio texto do
         # inicializador (epoch-proof), sem depender do indice de modulos do
         # projeto para localizar a chamada nativa.
@@ -267,7 +239,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         cls,
         expression: str,
         module: p.Infra.RopeParsedModule,
-        ancestors: frozenset[t.Pair[str, int]] = frozenset(),
+        ancestors: frozenset[tuple[str, int]] = frozenset(),
     ) -> str:
         """Read one declared alias map without executing its source expressions.
 
@@ -357,7 +329,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
     def _native_alias_callable(
         expression: ast.expr,
         scope: p.Infra.RopeScope,
-        expected_modules: t.StrSequence,
+        expected_modules: Sequence[str],
         expected_attribute: str,
     ) -> bool:
         """Prove a declared SDK callable from native import metadata alone.
@@ -396,7 +368,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         call: ast.Call,
         source: str,
         module: p.Infra.RopeParsedModule,
-        ancestors: frozenset[t.Pair[str, int]],
+        ancestors: frozenset[tuple[str, int]],
     ) -> str:
         """Compile literal SDK builder arguments through the native map owner.
 
@@ -418,8 +390,8 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             raise ValueError(message)
         if call.args:
             arguments["module_groups"] = call.args[0]
-        modules: t.MappingKV[str, t.StrSequence] = {}
-        aliases: t.MappingKV[str, t.SequenceOf[t.StrPair]] = {}
+        modules: Mapping[str, Sequence[str]] = {}
+        aliases: Mapping[str, Sequence[tuple[str, str]]] = {}
         for name in ("module_groups", "alias_groups"):
             argument = arguments.get(name)
             if argument is None or (
@@ -435,11 +407,11 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             )
             if name == "module_groups":
                 modules = u.type_adapter(
-                    TypeForm(t.MappingKV[str, t.StrSequence])
+                    TypeForm(Mapping[str, Sequence[str]])
                 ).validate_python(literal, strict=True)
             else:
                 aliases = u.type_adapter(
-                    TypeForm(t.MappingKV[str, t.SequenceOf[t.StrPair]])
+                    TypeForm(Mapping[str, Sequence[tuple[str, str]]])
                 ).validate_python(literal, strict=True)
         sort = arguments.get("sort_keys", ast.Constant(value=True))
         match sort:
@@ -508,7 +480,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         source = source.strip()
         if not (source.startswith("{") and source.endswith("}")):
             return {}
-        result: t.MutableMappingKV[str, t.StrPair] = {}
+        result: MutableMapping[str, tuple[str, str]] = {}
         mapping = ast.parse(source, mode="eval").body
         if not isinstance(mapping, ast.Dict):
             return {}

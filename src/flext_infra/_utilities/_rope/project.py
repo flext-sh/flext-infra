@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from os import PathLike
 from os.path import realpath
@@ -21,7 +21,7 @@ from rope.base.project import NoProject, Project
 from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p
 from flext_infra._utilities._rope.native_project import FlextInfraRopeNativeProject
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
@@ -40,15 +40,115 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         a later disk edit remains a publication conflict.
         """
 
-        def __init__(self, plans: tuple[m.Infra.CodegenFilePlan, ...]) -> None:
+        def __init__(
+            self,
+            plans: tuple[m.Infra.CodegenFilePlan, ...],
+            *,
+            observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
+            source_roots: tuple[Path, ...] = (),
+            dependency_roots: tuple[Path, ...] = (),
+        ) -> None:
+            """Pin captured reads before admitting declared source effects.
+
+            ``None`` selects native first-read observation. An explicit tuple,
+            including an empty tuple, selects a closed source observation.
+
+            Raises:
+                ValueError: Two observations disagree for one physical path.
+
+            """
             self._physical: dict[str, Path] = {}
             self._states: dict[Path, m.Cli.AtomicFileState] = {}
             self._files: dict[Path, bytes] = {}
             self._hidden: set[Path] = set()
             self._directories: set[Path] = set()
             self._planned_children: dict[Path, set[str]] = {}
+            self._observed_children: dict[Path, set[str]] = {}
+            self._observed_directories: set[Path] = set()
+            self._closed_observations = False
+            self._source_roots = tuple(
+                self._resolved(str(path)) for path in source_roots
+            )
+            self._dependency_roots = tuple(
+                self._resolved(str(path)) for path in dependency_roots
+            )
+            self._closed_observations = observations is not None
             self.plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
+            for state in observations if observations is not None else ():
+                path = self._resolved(str(state.path))
+                for parent in path.parents:
+                    self._physical.setdefault(str(parent), parent)
+                previous = self._states.get(path)
+                if previous is not None and previous != state:
+                    message = f"source observations disagree for physical path: {path}"
+                    raise ValueError(message)
+                self._states[path] = state
+                if state.content is not None:
+                    self._observed_directories.update(path.parents)
+                    for child in (path, *path.parents):
+                        if child.parent != child:
+                            self._observed_children.setdefault(child.parent, set()).add(
+                                child.name
+                            )
             self.replace(plans)
+
+        def select_source_roots(self, roots: tuple[Path, ...]) -> None:
+            """Use the native election's current source roots for captured reads."""
+            self._source_roots = tuple(self._resolved(str(path)) for path in roots)
+
+        @property
+        def directory_membership(self) -> frozenset[Path]:
+            """The captured and planned directories visible to native observers.
+
+            Returns:
+                The logical directory identities of this view.
+
+            """
+            return frozenset(self._observed_directories | self._directories)
+
+        def captured_directory(self, path: str) -> bool:
+            """Read directory membership from observations and declared effects.
+
+            Returns:
+                Whether the view already owns this directory independently of disk.
+
+            """
+            resolved = self._resolved(path)
+            return (
+                resolved in self._directories
+                or resolved in self._observed_directories
+                or (self._captured_source(resolved) and resolved in self._source_roots)
+            )
+
+        def _captured_source(self, path: Path) -> bool:
+            """Distinguish captured sources from explicitly elected SDK roots.
+
+            The most specific elected root owns a lookup. Source ownership wins
+            a tie, including editable paths also present on the Python path.
+
+            Returns:
+                Whether the lookup belongs to the closed source observation.
+
+            """
+            if not self._closed_observations:
+                return False
+            source_depth = max(
+                (
+                    len(root.parts)
+                    for root in self._source_roots
+                    if path.is_relative_to(root)
+                ),
+                default=-1,
+            )
+            dependency_depth = max(
+                (
+                    len(root.parts)
+                    for root in self._dependency_roots
+                    if path.is_relative_to(root)
+                ),
+                default=-1,
+            )
+            return source_depth >= 0 and source_depth >= dependency_depth
 
         def replace(
             self, plans: tuple[m.Infra.CodegenFilePlan, ...]
@@ -150,7 +250,18 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             """
             physical = self._physical.get(path)
             if physical is None:
-                physical = Path(realpath(path))
+                logical = Path(path)
+                if self._closed_observations:
+                    for parent in logical.parents:
+                        pinned = self._physical.get(str(parent))
+                        if pinned is None:
+                            continue
+                        candidate = pinned / logical.relative_to(parent)
+                        if self._captured_source(candidate):
+                            physical = candidate
+                        break
+                if physical is None:
+                    physical = Path(realpath(path))
                 self._physical[path] = physical
             return physical
 
@@ -164,7 +275,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             return self.isfile(path) or self.isdir(path)
 
         def isfile(self, path: str) -> bool:
-            """Report planned files and visible live files.
+            """Report captured and planned files, or native dependency files.
 
             Returns:
                 Whether the path is a file in the overlaid view.
@@ -178,33 +289,61 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     resolved not in self._hidden
                     and self._states[resolved].content is not None
                 )
+            if self._captured_source(resolved):
+                return False
             return resolved not in self._hidden and resolved.is_file()
 
         def isdir(self, path: str) -> bool:
-            """Report planned parents and live directories.
+            """Report observed parents, planned directories or native dependencies.
 
             Returns:
                 Whether the path is a directory in the overlaid view.
 
             """
             resolved = self._resolved(path)
-            return resolved in self._directories or resolved.is_dir()
+            if self.captured_directory(path):
+                return True
+            if (
+                resolved in self._states
+                or resolved in self._files
+                or resolved in self._hidden
+            ):
+                return False
+            if self._captured_source(resolved):
+                return resolved in self._source_roots
+            return resolved.is_dir()
 
         def listdir(self, path: str) -> list[str]:
-            """List live entries plus planned children, minus hidden files.
+            """List captured or SDK-owned children plus explicit planned effects.
 
             Returns:
                 The sorted child names.
 
             """
             resolved = self._resolved(path)
-            names = {
-                child.name
-                for child in (resolved.iterdir() if resolved.is_dir() else ())
-                if child not in self._hidden
-            }
+            names = set(self._observed_children.get(resolved, ()))
+            if not self._captured_source(resolved):
+                names.update(
+                    child.name
+                    for child in (resolved.iterdir() if resolved.is_dir() else ())
+                )
             names.update(self._planned_children.get(resolved, ()))
-            return sorted(names)
+            visible: set[str] = set()
+            for name in names:
+                child = resolved / name
+                if child in self._hidden:
+                    continue
+                state = self._states.get(child)
+                if (
+                    state is not None
+                    and state.content is None
+                    and child not in self._files
+                    and child not in self._directories
+                    and child not in self._observed_directories
+                ):
+                    continue
+                visible.add(name)
+            return sorted(visible)
 
         def read(self, path: str) -> bytes:
             """Read planned bytes, else the first authenticated physical capture.
@@ -214,6 +353,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
             Raises:
                 FileNotFoundError: The path is hidden by a planned deletion.
+                ValueError: A closed source lookup was not observed.
 
             """
             resolved = self._resolved(path)
@@ -236,13 +376,23 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
             Raises:
                 FileNotFoundError: A required source was absent in this view.
+                ValueError: An unobserved source is requested or appeared on disk.
 
             """
             resolved = self._resolved(str(path))
             if resolved not in self._states:
-                self._states[resolved] = u.Cli.atomic_read_binary_file_state(
+                if required and self._captured_source(resolved):
+                    message = f"source is outside the captured observation: {resolved}"
+                    raise ValueError(message)
+                state = u.Cli.atomic_read_binary_file_state(
                     resolved, required=required
                 ).unwrap()
+                if self._captured_source(resolved) and state.content is not None:
+                    message = (
+                        f"uncaptured source appeared in the source scope: {resolved}"
+                    )
+                    raise ValueError(message)
+                self._states[resolved] = state
             observed = self._states[resolved]
             if required and observed.content is None:
                 raise FileNotFoundError(path)
@@ -267,7 +417,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         def get_indicator(
             self,
             resource: File | Folder,
-        ) -> t.Pair[bool, bytes | tuple[Path, ...]]:
+        ) -> tuple[bool, bytes | tuple[Path, ...]]:
             """Return the overlaid bytes or membership of a resource.
 
             Returns:
@@ -299,18 +449,37 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             return files.source_state(path, required=required)
         return u.Cli.atomic_read_binary_file_state(path, required=required).unwrap()
 
+    @property
+    def source_plans(self) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Expose the current candidate without copying its original witnesses.
+
+        Returns:
+            The plans owned by the active source view.
+
+        Raises:
+            TypeError: The project does not own an authenticated overlay.
+
+        """
+        files = self.fscommands
+        if not isinstance(files, self.OverlayFiles):
+            msg = "source plans require an authenticated source overlay"
+            raise TypeError(msg)
+        return files.plans
+
     @contextmanager
     def source_view(
         self,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-        additional_source_folders: tuple[str, ...] = (),
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = (),
+        additional_source_folders: tuple[str, ...] | None = (),
     ) -> Generator[Self]:
         """Bind one candidate and restore the entry view without disk effects.
 
         Synchronous nested bindings retain their own entry view. Another thread
         cannot replace a candidate while its native objects are being consumed.
         Physical preimages stay unchanged across every logical view transition.
+        ``None`` retains the entry plans or roots while acquiring the same
+        barrier, so preparing a nested candidate cannot observe another thread.
 
         Yields:
             This same native project reading the bound candidate.
@@ -331,7 +500,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         folders = tuple(self._custom_source_folders)
         frozen = self._frozen_folders
         try:
-            self._set_source_view(declared_files, additional_source_folders)
+            self._set_source_view(
+                previous if declared_files is None else declared_files,
+                tuple(folder.path for folder in folders)
+                if additional_source_folders is None
+                else additional_source_folders,
+            )
             yield self
         finally:
             primary = sys.exception()
@@ -369,9 +543,10 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             raise ValueError(msg)
         root = Path(self.root.real_path)
         self._validate_source_folders(root, folders, plans)
-        previous_directories = frozenset(files._directories)
+        previous_directories = files.directory_membership
         changed = files.replace(plans)
         selected = tuple(sorted({*election.source_folders, *folders}))
+        files.select_source_roots((root, *(root / folder for folder in selected)))
         changed_folders = selected != tuple(
             folder.path for folder in self._custom_source_folders
         )
@@ -436,9 +611,10 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         if not isinstance(files, self.OverlayFiles):
             msg = "candidate notifications require an authenticated source overlay"
             raise TypeError(msg)
+        current_directories = files.directory_membership
         removed = {
             path
-            for path in previous_directories - files._directories
+            for path in previous_directories - current_directories
             if not path.is_dir()
         }
         removed_roots = tuple(
@@ -447,7 +623,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         created = sorted(
             (
                 path
-                for path in files._directories - previous_directories
+                for path in current_directories - previous_directories
                 if not path.is_dir()
             ),
             key=lambda path: len(path.parts),
@@ -575,7 +751,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             directories: list[str] = []
             files: list[str] = []
             for child in self.source_children(directory):
-                if child.is_symlink():
+                files_view = self.fscommands
+                if isinstance(files_view, self.OverlayFiles) and (
+                    files_view.captured_directory(str(child))
+                ):
+                    directories.append(child.name)
+                elif child.is_symlink():
                     if child.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES or (
                         directory == path
                         and lookup_anchor
@@ -599,7 +780,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         fscommands: p.Infra.RopeProjectFiles | None = None,
         ropefolder: str | None = ".ropeproject",
         external_project: p.Infra.RopeResourceOwner | None = None,
-        **prefs: bool | t.StrSequence,
+        **prefs: bool | Sequence[str],
     ) -> None:
         """Initialize the native project over its filesystem view.
 
@@ -658,6 +839,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         *,
         election: p.Infra.RopeProjectElection,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> Self:
         """Build a read-only project over ``live``'s tree with planned sources.
@@ -665,6 +847,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         ``additional_source_folders`` elect live or virtual import roots inside
         the project. Live roots retain their native directory identity; a
         virtual root must hold declared planned content.
+        ``observations`` retain read authority independently of publication
+        policy; observing a stub does not declare a stub file effect.
 
         Returns:
             The project reading planned sources before the live tree.
@@ -675,7 +859,18 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         """
         root = Path(live.root.real_path)
         cls._validate_source_folders(root, additional_source_folders, declared_files)
-        files = cls.OverlayFiles(declared_files)
+        files = cls.OverlayFiles(
+            declared_files,
+            observations=observations,
+            source_roots=(
+                root,
+                *(root / folder for folder in election.source_folders),
+                *(root / folder for folder in additional_source_folders),
+            ),
+            dependency_roots=tuple(
+                Path(folder) for folder in election.python_path_folders
+            ),
+        )
         return cls._from_files(
             str(root),
             files,

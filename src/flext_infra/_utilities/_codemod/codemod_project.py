@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesCodemodProject(
     def project_import_graph(
         cls,
         root: Path,
-    ) -> tuple[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
+    ) -> tuple[Mapping[str, frozenset[str]], Mapping[Path, str]]:
         """Return the runtime import graph and the module name of each file.
 
         Edges come from Rope's module-level import table, which leaves
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesCodemodProject(
         package = facade_file.parent / f"_{facade_file.stem}"
         if not package.is_dir():
             return True
-        bases_by_class: MutableMapping[str, t.StrSequence] = {}
+        bases_by_class: MutableMapping[str, Sequence[str]] = {}
         exported: set[str] = set()
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         for module in sorted(package.rglob(f"*{c.Infra.EXT_PYTHON}")):
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesCodemodProject(
         tree: t.Infra.AstModule,
         namespace: str,
         facade_file: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the base names of class ``namespace`` nested in the facade.
 
         Returns:
@@ -196,8 +196,8 @@ class FlextInfraUtilitiesCodemodProject(
     def codemod_path_findings(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
-        rules: t.SequenceOf[m.Infra.CodemodRule],
+        paths: Sequence[Path],
+        rules: Sequence[m.Infra.CodemodRule],
     ) -> tuple[m.Infra.AstGrepOwnedPathDiagnostic, ...]:
         """Admit owned-path policy from the shared inventory, without parsing bytes.
 
@@ -229,7 +229,7 @@ class FlextInfraUtilitiesCodemodProject(
     @classmethod
     def codemod_ambient_environ_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the rule failing real process-environment reads of the project.
 
         A read is an ``os.environ`` subscript or ``.get`` call, or an
@@ -389,7 +389,7 @@ class FlextInfraUtilitiesCodemodProject(
 
     @classmethod
     def codemod_isolated_entrypoints(
-        cls, root: Path, sources: t.SequenceOf[Path]
+        cls, root: Path, sources: Sequence[Path]
     ) -> frozenset[Path]:
         """Elect the stdlib-only entrypoints of the project's native executions.
 
@@ -528,7 +528,7 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         project: p.Infra.RopeProject,
         condition: p.Infra.PrimitiveOwnerCondition,
-        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
+        sources: Mapping[t.Infra.RopeSourcePath, str],
     ) -> t.Infra.RopeImplementationPaths:
         """Derive a primitive's implementation from native definitions and MRO.
 
@@ -580,7 +580,7 @@ class FlextInfraUtilitiesCodemodProject(
     def _implementation_target(
         target: p.Infra.RopePyObject,
         namespace: str,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> tuple[Path, list[p.Infra.RopePyObject]] | None:
         """Collect native implementation edges of one callable or class.
 
@@ -685,7 +685,7 @@ class FlextInfraUtilitiesCodemodProject(
         relocation in the project's rule plan.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CensusViolation]]``.
+            The resulting ``p.Result[tuple[m.Infra.CensusViolation, ...]]``.
 
         Raises:
             ValueError: If namespace violation does not follow the report format.

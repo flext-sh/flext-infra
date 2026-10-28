@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import u
@@ -13,7 +14,7 @@ from flext_infra import u
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from flext_infra import m, t
+    from flext_infra import m
 
 
 class FlextInfraDocsAuditorChecks:
@@ -22,7 +23,7 @@ class FlextInfraDocsAuditorChecks:
     @staticmethod
     def forbidden_term_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Return forbidden-term issues configured for one scope.
 
         Returns:
@@ -36,7 +37,7 @@ class FlextInfraDocsAuditorChecks:
         )
 
     @staticmethod
-    def placeholder_issues(scope: m.Infra.DocScope) -> t.SequenceOf[m.Infra.AuditIssue]:
+    def placeholder_issues(scope: m.Infra.DocScope) -> Sequence[m.Infra.AuditIssue]:
         """Return placeholder-text issues for one scope.
 
         Returns:
@@ -51,7 +52,7 @@ class FlextInfraDocsAuditorChecks:
     @staticmethod
     def machine_path_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Return machine-local paths outside exact historical evidence files.
 
         Returns:
@@ -69,15 +70,16 @@ class FlextInfraDocsAuditorChecks:
         self,
         scope: m.Infra.DocScope,
         check: str,
-    ) -> t.Pair[t.StrSequence, t.SequenceOf[m.Infra.AuditIssue]]:
+    ) -> tuple[Sequence[str], Sequence[m.Infra.AuditIssue]]:
         """Resolve selection from the handlers and collect issues in canonical order.
 
         Returns:
             Sorted selected checks and their issues in handler execution order.
 
         """
-        handlers: t.VariadicTuple[
-            t.Pair[str, Callable[[m.Infra.DocScope], t.SequenceOf[m.Infra.AuditIssue]]]
+        handlers: tuple[
+            tuple[str, Callable[[m.Infra.DocScope], Sequence[m.Infra.AuditIssue]]],
+            ...,
         ] = (
             ("links", u.Infra.docs_broken_link_issues),
             ("forbidden-terms", self.forbidden_term_issues),

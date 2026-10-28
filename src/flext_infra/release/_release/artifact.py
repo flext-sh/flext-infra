@@ -9,6 +9,7 @@ from __future__ import annotations
 import stat
 import tarfile
 import zipfile
+from collections.abc import Mapping, Sequence
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
 
@@ -47,19 +48,15 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
     def _archive_contents(
         cls,
         path: Path,
-    ) -> p.Result[
-        t.Pair[t.SequenceOf[t.Triple[str, bool, bool]], t.MappingKV[str, bytes]]
-    ]:
+    ) -> p.Result[tuple[Sequence[tuple[str, bool, bool]], Mapping[str, bytes]]]:
         """Read one wheel or sdist's members and the bytes the proof needs.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.SequenceOf[t.Triple[str, bool, bool]],
-                t.MappingKV[str, bytes]]]``.
+            The resulting ``p.Result[tuple[Sequence[tuple[str, bool, bool]],
+                Mapping[str, bytes]]]``.
 
         """
-        result_type = r[
-            t.Pair[t.SequenceOf[t.Triple[str, bool, bool]], t.MappingKV[str, bytes]]
-        ]
+        result_type = r[tuple[Sequence[tuple[str, bool, bool]], Mapping[str, bytes]]]
         if path.suffix == ".whl":
             try:
                 with zipfile.ZipFile(path) as wheel:
@@ -101,8 +98,8 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
         cls,
         path: Path,
         project: str,
-        members: t.SequenceOf[t.Triple[str, bool, bool]],
-        allowed_roots: t.StrSequence,
+        members: Sequence[tuple[str, bool, bool]],
+        allowed_roots: Sequence[str],
     ) -> str:
         """Return why an archive's members leave the public boundary, or ''.
 
@@ -140,8 +137,8 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
         package: str,
         *,
         wheel: bool,
-        allowed_roots: t.StrSequence,
-        member: t.Triple[str, bool, bool],
+        allowed_roots: Sequence[str],
+        member: tuple[str, bool, bool],
     ) -> str:
         """Return one archive member's boundary error, or an empty string.
 
@@ -184,16 +181,16 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
         cls,
         path: Path,
         expectation: m.Infra.ArtifactExpectation,
-    ) -> p.Result[t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]]:
+    ) -> p.Result[tuple[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]]:
         """Validate one artifact's boundary, identity and pins; return kind and digest.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.Infra.ReleaseArtifactKind,
+            The resulting ``p.Result[tuple[t.Infra.ReleaseArtifactKind,
                 t.Infra.ReleaseArtifactSha256]]``.
 
         """
         result_type = r[
-            t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
+            tuple[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
         ]
         kind: t.Infra.ReleaseArtifactKind = (
             "wheel" if path.suffix == ".whl" else "sdist"
@@ -232,10 +229,10 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
         cls,
         path: Path,
         project: str,
-        members: t.SequenceOf[t.Triple[str, bool, bool]],
-        payload: t.MappingKV[str, bytes],
+        members: Sequence[tuple[str, bool, bool]],
+        payload: Mapping[str, bytes],
         expectation: m.Infra.ArtifactExpectation,
-    ) -> t.Pair[str, str]:
+    ) -> tuple[str, str]:
         """Return the artifact's boundary error and its core metadata text.
 
         Returns:
@@ -261,7 +258,7 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
     def _artifact_digest(
         path: Path,
         kind: t.Infra.ReleaseArtifactKind,
-    ) -> p.Result[t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]]:
+    ) -> p.Result[tuple[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]]:
         """Hash one validated artifact with its kind.
 
         Returns:
@@ -269,7 +266,7 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
 
         """
         result_type = r[
-            t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
+            tuple[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
         ]
         try:
             digest = u.Cli.sha256_file(path)

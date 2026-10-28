@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from typing_extensions import TypeForm
@@ -234,7 +235,7 @@ class TestsFlextInfraExtendedConfigFixer:
                             tm.ok(u.Infra.load_tooling_inputs(tmp_path)).document,
                             c.Infra.PYREFLY,
                             c.Infra.PROJECT_EXCLUDES,
-                            TypeForm(t.StrSequence),
+                            TypeForm(Sequence[str]),
                         ),
                         codegen=u.Infra.load_codegen_inputs(tmp_path).unwrap().spec,
                     )

@@ -20,7 +20,7 @@ import shutil
 import sys
 import tempfile
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from functools import cache
 from importlib.metadata import packages_distributions
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesCodemodNative:
         }
 
     @staticmethod
-    def codemod_module_names_rule(names: t.StrSequence) -> t.JsonMapping:
+    def codemod_module_names_rule(names: Sequence[str]) -> t.JsonMapping:
         """Match a captured dotted module whose top-level package is listed.
 
         The top-level package is the captured text up to its first dot or
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesCodemodNative:
     @classmethod
     def codemod_own_package_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Own package: the public package, internal tiers, declared namespaces.
 
         An absolute import between the project's package and its internal
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesCodemodNative:
         }
 
     @staticmethod
-    def codemod_own_package_names(project: Path) -> t.StrSequence:
+    def codemod_own_package_names(project: Path) -> Sequence[str]:
         """Top-level packages the project owns: its package, tiers, namespaces.
 
         Returns:
@@ -134,7 +134,7 @@ class FlextInfraUtilitiesCodemodNative:
     @classmethod
     def codemod_stdlib_module_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Standard library: ``sys.stdlib_module_names`` plus declared backports.
 
         Returns:
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesCodemodNative:
     def codemod_generated_module_utilities(
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Generated module: a module whose first line is the generator header.
 
         The same header ``generated_source`` reads proves a file is a
@@ -181,7 +181,7 @@ class FlextInfraUtilitiesCodemodNative:
     @classmethod
     def codemod_runtime_package_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Runtime package: an import package of the runtime dependency closure.
 
         Returns:
@@ -216,7 +216,7 @@ class FlextInfraUtilitiesCodemodNative:
     @staticmethod
     @cache
     def _runtime_modules_of(
-        requirements: tuple[str], import_path: t.VariadicTuple[str, ...]
+        requirements: tuple[str, ...], import_path: tuple[str, ...]
     ) -> frozenset[str]:
         """Resolve the import packages of one requirement set, once per process.
 
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesCodemodNative:
 
     @staticmethod
     @cache
-    def codemod_installed_import_packages() -> t.MappingKV[str, frozenset[str]]:
+    def codemod_installed_import_packages() -> Mapping[str, frozenset[str]]:
         """Map each installed import package to its canonical distributions.
 
         Installed metadata is a fact of the interpreter environment, fixed for
@@ -369,8 +369,8 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        producers: t.StrSequence,
-    ) -> t.MappingKV[str, t.StrTuple]:
+        producers: Sequence[str],
+    ) -> Mapping[str, t.StrTuple]:
         """Run every registered file-scope producer and merge its selectors.
 
         Returns:
@@ -382,7 +382,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         scopes: dict[str, t.StrTuple] = {}
-        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.StrTuple]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.StrTuple]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):
@@ -426,7 +426,7 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         *,
-        rule_ids: t.StrSequence | None = None,
+        rule_ids: Sequence[str] | None = None,
     ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Build the sole executable rule plan for check and mutation.
 
@@ -453,7 +453,7 @@ class FlextInfraUtilitiesCodemodNative:
     def codemod_facade_alias_base_rules(
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the rule dropping a bare runtime facade alias used as a base.
 
         Facade members are reached through the alias, never by inheriting it;
@@ -536,7 +536,7 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         spec: m.Infra.CodegenAstGrepSpec,
-    ) -> t.Pair[str, Path] | None:
+    ) -> tuple[str, Path] | None:
         """Materialize the project's rendered rules as one native provider root.
 
         The root is content-addressed under the project's native stage
@@ -626,7 +626,7 @@ class FlextInfraUtilitiesCodemodNative:
         )
 
     @staticmethod
-    def _verify_generated_provider(root: Path, texts: t.MappingKV[Path, ...]) -> None:
+    def _verify_generated_provider(root: Path, texts: Mapping[Path, str]) -> None:
         """Authenticate an immutable provider's complete inventory and contents.
 
         Raises:
@@ -670,7 +670,7 @@ class FlextInfraUtilitiesCodemodNative:
         project: Path,
         entry: m.Infra.CodegenAstGrepRendererSpec,
         facts: dict[str, p.Model],
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Run one renderer, passing its facts model computed once per generation.
 
         Every renderer and facts producer receives the injected snapshot and
@@ -688,7 +688,7 @@ class FlextInfraUtilitiesCodemodNative:
         if not callable(renderer):
             msg = f"ast-grep rule renderer is not declared: {entry.name}"
             raise TypeError(msg)
-        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         if entry.facts is None:
             return adapter.validate_python(renderer(snapshot, project), strict=True)
         if entry.facts not in facts:
@@ -725,7 +725,7 @@ class FlextInfraUtilitiesCodemodNative:
             msg = f"ast-grep shape producer is not declared: {entry.shapes_from}"
             raise TypeError(msg)
         return frozenset(
-            u.type_adapter(TypeForm(t.StrSequence)).validate_python(
+            u.type_adapter(TypeForm(Sequence[str])).validate_python(
                 producer(), strict=True
             )
         )
@@ -737,8 +737,8 @@ class FlextInfraUtilitiesCodemodNative:
         project: Path,
         spec: m.Infra.CodegenAstGrepSpec,
         *,
-        facts: t.MappingKV[str, p.Model] | None = None,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+        facts: Mapping[str, p.Model] | None = None,
+    ) -> Mapping[str, t.JsonMapping]:
         """Run every registered renderer and merge its rule documents by id.
 
         ``facts`` seeds facts models the generation already computed.
@@ -779,8 +779,8 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        producers: t.StrSequence,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+        producers: Sequence[str],
+    ) -> Mapping[str, t.JsonMapping]:
         """Run every registered producer and merge its utilities by id.
 
         Returns:
@@ -792,7 +792,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):

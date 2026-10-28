@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import override
 
 from flext_cli import u
@@ -35,7 +35,7 @@ class FlextInfraRopeRestructure(Restructure):
         def get_name() -> str:
             return "identity_choices"
 
-        def matches(self, suspect: p.AttributeProbe, arg: t.StrSequence) -> bool:
+        def matches(self, suspect: p.AttributeProbe, arg: Sequence[str]) -> bool:
             return any(self._wildcard.matches(suspect, choice) for choice in arg)
 
     def __init__(
@@ -115,7 +115,7 @@ class FlextInfraRopeRestructure(Restructure):
         self,
         resource: t.Infra.RopeNativeResource,
         source: str,
-        imports: t.StrSequence,
+        imports: Sequence[str],
     ) -> str:
         """Reuse existing bindings instead of replacing a richer public facade.
 

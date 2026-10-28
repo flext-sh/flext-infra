@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tomllib
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import config, t
@@ -23,9 +24,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _RESOLVED_IDENTITY_SEPARATOR = "~"
 
 
-def _declared_versions(tools: t.JsonMapping) -> t.StrDict:
+def _declared_versions(tools: t.JsonMapping) -> dict[str, str]:
     """Return the version string each declared mise tool carries."""
-    versions: t.StrDict = {}
+    versions: dict[str, str] = {}
     for name, entry in tools.items():
         if isinstance(entry, dict):
             value = entry.get("version")
@@ -37,9 +38,9 @@ def _declared_versions(tools: t.JsonMapping) -> t.StrDict:
     return versions
 
 
-def _lock_specifiers(tools: t.JsonMapping) -> t.MutableMappingKV[str, set[str]]:
+def _lock_specifiers(tools: t.JsonMapping) -> MutableMapping[str, set[str]]:
     """Return every specifier the committed lock records for each tool."""
-    specifiers: t.MutableMappingKV[str, set[str]] = {}
+    specifiers: MutableMapping[str, set[str]] = {}
     for name, entries in tools.items():
         recorded: set[str] = set()
         for entry in entries if isinstance(entries, list) else [entries]:

@@ -1,6 +1,6 @@
 id: ban-raw-collection-default-factory
 snapshots:
-  "class Order(m.FrozenModel):\n    names: t.StrSequence = m.Field(default_factory=list, description=\"x\")\n":
+  "class Order(m.FrozenModel):\n    names: Sequence[str] = m.Field(default_factory=list, description=\"x\")\n":
     labels:
     - source: default_factory=list
       style: primary
@@ -14,25 +14,25 @@ snapshots:
       style: secondary
       start: 79
       end: 83
-    - source: "names: t.StrSequence = m.Field(default_factory=list, description=\"x\")"
+    - source: "names: Sequence[str] = m.Field(default_factory=list, description=\"x\")"
       style: secondary
       start: 32
       end: 101
-  "class Order(m.FrozenModel):\n    table: Annotated[t.StrMapping, m.Field(default_factory=dict, description=\"x\")]\n":
+  "class Order(m.FrozenModel):\n    table: Annotated[Mapping[str, str], m.Field(default_factory=dict, description=\"x\")]\n":
     labels:
     - source: default_factory=dict
       style: primary
-      start: 71
-      end: 91
+      start: 76
+      end: 96
     - source: default_factory
       style: secondary
-      start: 71
-      end: 86
+      start: 76
+      end: 91
     - source: dict
       style: secondary
-      start: 87
-      end: 91
-    - source: "table: Annotated[t.StrMapping, m.Field(default_factory=dict, description=\"x\")]"
+      start: 92
+      end: 96
+    - source: "table: Annotated[Mapping[str, str], m.Field(default_factory=dict, description=\"x\")]"
       style: secondary
       start: 32
-      end: 110
+      end: 115

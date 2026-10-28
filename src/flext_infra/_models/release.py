@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, Self
 
@@ -50,7 +51,7 @@ class FlextInfraModelsRelease:
         """Typed release input before native ownership and service composition."""
 
         projects: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.BeforeValidator(
                 lambda value: (value,) if isinstance(value, str) else value
             ),
@@ -194,7 +195,7 @@ class FlextInfraModelsRelease:
             m.Field(description="Validated public source roots in the sdist"),
         ]
         versions: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Resolved internal dependency versions"),
         ]
 

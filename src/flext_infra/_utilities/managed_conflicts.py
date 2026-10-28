@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping, Sequence
 from functools import lru_cache
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
@@ -95,7 +96,7 @@ class FlextInfraUtilitiesManagedConflicts:
     def recover_managed_assignments(
         content: str,
         *,
-        conflict_sections: t.StrSequence,
+        conflict_sections: Sequence[str],
     ) -> p.Result[str]:
         """Recover identical generated assignments without choosing between values.
 
@@ -107,7 +108,7 @@ class FlextInfraUtilitiesManagedConflicts:
             return r[str].ok(content)
         recovered: list[str] = []
         pending: list[str] = []
-        assignments: t.MutableMappingKV[str, str] = {}
+        assignments: MutableMapping[str, str] = {}
         section = ""
         for line in content.splitlines(keepends=True):
             header = c.Infra.TOML_SECTION_HEADER_RE.fullmatch(line.rstrip("\r\n"))
@@ -148,7 +149,7 @@ class FlextInfraUtilitiesManagedConflicts:
         return r[str].ok("".join(recovered))
 
     @staticmethod
-    def toml_section_is_owned(section: str, owned: t.StrSequence) -> bool:
+    def toml_section_is_owned(section: str, owned: Sequence[str]) -> bool:
         """True when ``section`` is an owned table or a child of one.
 
         Returns:
@@ -173,19 +174,19 @@ class FlextInfraUtilitiesManagedConflicts:
         )
 
     @classmethod
-    def pyproject_section_markers(cls, section_header: str) -> p.Result[t.StrSequence]:
+    def pyproject_section_markers(cls, section_header: str) -> p.Result[Sequence[str]]:
         """Render CUSTOM/MANAGED comments from the pyproject ManagedFileSpec.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         spec_result = cls.pyproject_managed_file()
         if spec_result.failure:
-            return r[t.StrSequence].from_failure(spec_result)
+            return r[Sequence[str]].from_failure(spec_result)
         spec = spec_result.value
         if not (section_header.startswith("[") and section_header.endswith("]")):
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         inner = section_header[1:-1]
         if inner == c.Infra.PROJECT:
             custom = ", ".join(spec.preserve_project_keys)
@@ -194,7 +195,7 @@ class FlextInfraUtilitiesManagedConflicts:
                 *((f"# [CUSTOM] {custom}",) if custom else ()),
                 *((f"# [MANAGED] {managed}",) if managed else ()),
             )
-            return r[t.StrSequence].ok(markers)
+            return r[Sequence[str]].ok(markers)
         owned = next(
             (
                 item
@@ -204,20 +205,20 @@ class FlextInfraUtilitiesManagedConflicts:
             None,
         )
         if owned is not None:
-            return r[t.StrSequence].ok((f"# [MANAGED] {owned}",))
+            return r[Sequence[str]].ok((f"# [MANAGED] {owned}",))
         if inner.startswith("tool.") and not cls.toml_section_is_owned(
             inner,
             spec.conflict_sections,
         ):
             tool_table = ".".join(inner.split(".")[:2])
-            return r[t.StrSequence].ok((f"# [CUSTOM] {tool_table}",))
-        return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok((f"# [CUSTOM] {tool_table}",))
+        return r[Sequence[str]].ok(())
 
     @staticmethod
     def recover_managed_toml(
         content: str,
         *,
-        conflict_sections: t.StrSequence,
+        conflict_sections: Sequence[str],
     ) -> p.Result[str]:
         """Choose current TOML bytes only inside explicitly owned sections.
 
@@ -289,7 +290,7 @@ class FlextInfraUtilitiesManagedConflicts:
         return section
 
     @staticmethod
-    def _skipped_ancestor_side(lines: t.SequenceOf[str], index: int) -> p.Result[int]:
+    def _skipped_ancestor_side(lines: Sequence[str], index: int) -> p.Result[int]:
         """Skip the ancestor side of a diff3 conflict to its separator.
 
         Returns:
@@ -307,16 +308,16 @@ class FlextInfraUtilitiesManagedConflicts:
 
     @staticmethod
     def _resolved_conflict_block(
-        lines: t.SequenceOf[str],
+        lines: Sequence[str],
         index: int,
-    ) -> p.Result[t.Pair[list[str], int]]:
+    ) -> p.Result[tuple[list[str], int]]:
         """Consume one full conflict block; return its current side and cursor.
 
         Returns:
             The resulting ``(current lines, next index)`` pair.
 
         """
-        pair = r[t.Pair[list[str], int]]
+        pair = r[tuple[list[str], int]]
         current: list[str] = []
         control = ""
         while index < len(lines):
@@ -347,7 +348,7 @@ class FlextInfraUtilitiesManagedConflicts:
         return pair.ok((current, scanned.value + 1))
 
     @staticmethod
-    def _incoming_side_end(lines: t.SequenceOf[str], index: int) -> p.Result[int]:
+    def _incoming_side_end(lines: Sequence[str], index: int) -> p.Result[int]:
         """Scan the incoming side to its closing marker.
 
         Returns:

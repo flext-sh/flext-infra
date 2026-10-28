@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 import zipfile
+from collections.abc import Mapping, Sequence
 from email.parser import BytesParser
 from pathlib import Path
 from time import monotonic
@@ -18,7 +19,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 _RUNTIME_PROBE = """
 import importlib
@@ -86,7 +87,7 @@ class TestsArtifactRuntime:
         producer: Path,
         tmp_path: Path,
         options: m.Cli.ProcessOptions,
-    ) -> tuple[Path, str, t.StrSequence, t.StrSequence]:
+    ) -> tuple[Path, str, Sequence[str], Sequence[str]]:
         """Resolve the built repository and its governed runtime identity.
 
         Args:
@@ -230,7 +231,7 @@ class TestsArtifactRuntime:
         return wheels[0], manifest_before
 
     @staticmethod
-    def _verified_wheel_requires_dist(wheel: Path, excluded: t.StrSequence) -> None:
+    def _verified_wheel_requires_dist(wheel: Path, excluded: Sequence[str]) -> None:
         """Assert the wheel metadata excludes every governed dev closure.
 
         Args:
@@ -246,7 +247,7 @@ class TestsArtifactRuntime:
             )
             tm.that(len(metadata_files), eq=1)
             metadata = BytesParser().parsebytes(archive.read(metadata_files[0]))
-        requires_dist: t.SequenceOf[str] = tuple(
+        requires_dist: Sequence[str] = tuple(
             metadata.get_all("Requires-Dist", ()),
         )
         declared: set[str] = set()
@@ -263,7 +264,7 @@ class TestsArtifactRuntime:
     @staticmethod
     def _synced_consumer_runtime(
         tmp_path: Path,
-        git_environment: t.StrMapping,
+        git_environment: Mapping[str, str],
         uv: str,
         wheel: Path,
         distribution: str,
@@ -348,7 +349,7 @@ class TestsArtifactRuntime:
     @pytest.mark.parametrize("archive_kind", ["wheel", "sdist"])
     def test_artifact_runs_with_runtime_dependencies_only(
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
         subject: str,
         archive_kind: str,
     ) -> None:

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Literal
 
@@ -318,7 +319,7 @@ class FlextInfraConstantsDocs:
         "tel",
     })
     DOCS_FRAGMENT_PREFIX: ClassVar[str] = "#"
-    PYTHON_FENCE_RUFF_EXTEND_IGNORE: ClassVar[t.StrSequence] = (
+    PYTHON_FENCE_RUFF_EXTEND_IGNORE: ClassVar[Sequence[str]] = (
         "undocumented-public-module",
         "undocumented-public-function",
         "undocumented-public-class",

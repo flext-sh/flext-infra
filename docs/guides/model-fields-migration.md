@@ -71,6 +71,12 @@ only by `make mod`.
 
 ## Compatibility-Alias Cutovers (`plan_semantic_cutover`)
 
+> Deprecated mechanism (ADR-028 Decision 17 amendment 2026-10-28): the LibCST
+> qualified-import analysis below is being exterminated — rope is the only
+> accepted Python interpreter in FLEXT's own code, and these cutovers migrate
+> to rope transforms over the single indexed project. The behavioral contract
+> (consumers, bindings, root-binding agreement) is preserved by the replacement.
+
 Compatibility-alias cutovers resolve module attribute reads through LibCST qualified
 import identities, not receiver spelling. Module aliases and dotted imports retain
 their import location, including function-local imports. Parameters, comprehension

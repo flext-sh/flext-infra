@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, r, t, u
@@ -27,19 +27,19 @@ class FlextInfraDepsPyreflyFixSteps:
         self,
         pyrefly: MutableMapping[str, t.JsonValue],
         project_dir: Path,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Synchronize tool.pyrefly.search-path from YAML rules.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
         if not isinstance(search_raw, list):
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         validated = u.validate_value(u.json_list_adapter(), list(search_raw))
         if validated.failure:
-            return r[t.StrSequence].fail_op("validate-search-path", validated.error)
+            return r[Sequence[str]].fail_op("validate-search-path", validated.error)
         current_search = [
             path_item for path_item in validated.value if isinstance(path_item, str)
         ]
@@ -48,8 +48,8 @@ class FlextInfraDepsPyreflyFixSteps:
         ).pyrefly_search_paths(project_dir=project_dir)
         if current_search != expected_search:
             pyrefly[c.Infra.SEARCH_PATH] = u.Cli.toml_array(expected_search)
-            return r[t.StrSequence].ok(["synchronized search-path from YAML rules"])
-        return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(["synchronized search-path from YAML rules"])
+        return r[Sequence[str]].ok(())
 
     def _sync_project_includes(
         self,
@@ -57,19 +57,19 @@ class FlextInfraDepsPyreflyFixSteps:
         project_dir: Path,
         *,
         is_root: bool,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Synchronize tool.pyrefly.project-includes from canonical path rules.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         includes_raw = pyrefly.get(c.Infra.PROJECT_INCLUDES)
         if not isinstance(includes_raw, list):
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         validated = u.validate_value(u.json_list_adapter(), list(includes_raw))
         if validated.failure:
-            return r[t.StrSequence].fail_op(
+            return r[Sequence[str]].fail_op(
                 "validate-project-includes",
                 validated.error,
             )
@@ -81,37 +81,37 @@ class FlextInfraDepsPyreflyFixSteps:
         ).pyrefly_project_includes(project_dir=project_dir, is_root=is_root)
         if current_includes != expected_includes:
             pyrefly[c.Infra.PROJECT_INCLUDES] = u.Cli.toml_array(expected_includes)
-            return r[t.StrSequence].ok([
+            return r[Sequence[str]].ok([
                 "synchronized project-includes from YAML rules",
             ])
-        return r[t.StrSequence].ok(())
+        return r[Sequence[str]].ok(())
 
     @staticmethod
     def _strip_ignored_sub_configs(
         pyrefly: MutableMapping[str, t.JsonValue],
-    ) -> p.Result[t.Pair[t.StrSequence, bool]]:
+    ) -> p.Result[tuple[Sequence[str], bool]]:
         """Drop ignore=true entries from tool.pyrefly.sub-config.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.StrSequence, bool]]``.
+            The resulting ``p.Result[tuple[Sequence[str], bool]]``.
 
         """
         sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if not isinstance(sub_configs, list):
-            return r[tuple[t.StrSequence, bool]].ok(((), False))
+            return r[tuple[Sequence[str], bool]].ok(((), False))
         validated_configs: p.Result[t.JsonList] = u.validate_value(
             t.Infra.INFRA_SEQ_ADAPTER,
             sub_configs,
         )
         if validated_configs.failure:
-            return r[tuple[t.StrSequence, bool]].fail_op(
+            return r[tuple[Sequence[str], bool]].fail_op(
                 "validate-sub-configs",
                 validated_configs.error,
             )
-        configs: t.SequenceOf[t.JsonValue] = validated_configs.value
-        fixes: t.MutableSequenceOf[str] = []
+        configs: Sequence[t.JsonValue] = validated_configs.value
+        fixes: MutableSequence[str] = []
         removed_ignore = False
-        new_configs: t.MutableSequenceOf[t.JsonValue] = []
+        new_configs: MutableSequence[t.JsonValue] = []
         for conf in configs:
             conf_out: t.JsonValue = conf
             if isinstance(conf, Mapping):
@@ -120,7 +120,7 @@ class FlextInfraDepsPyreflyFixSteps:
                     conf,
                 )
                 if validated_conf.failure:
-                    return r[tuple[t.StrSequence, bool]].fail_op(
+                    return r[tuple[Sequence[str], bool]].fail_op(
                         "validate-pyrefly-sub-config",
                         validated_conf.error,
                     )
@@ -139,7 +139,7 @@ class FlextInfraDepsPyreflyFixSteps:
             pyrefly[c.Infra.SUB_CONFIG] = list(
                 u.json_list_adapter().validate_python(new_configs),
             )
-        return r[tuple[t.StrSequence, bool]].ok((fixes, removed_ignore))
+        return r[tuple[Sequence[str], bool]].ok((fixes, removed_ignore))
 
     @staticmethod
     def _sync_project_excludes(
@@ -147,19 +147,19 @@ class FlextInfraDepsPyreflyFixSteps:
         *,
         codegen: m.Infra.CodegenConfigSpec,
         tool_config: m.Infra.ToolConfigDocument,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Synchronize tool.pyrefly.project-excludes from YAML rules.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
-        current_excludes: t.StrSequence = []
+        current_excludes: Sequence[str] = []
         excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
         if isinstance(excludes, list):
             validated = u.validate_value(u.json_list_adapter(), list(excludes))
             if validated.failure:
-                return r[t.StrSequence].fail_op(
+                return r[Sequence[str]].fail_op(
                     "validate-project-excludes",
                     validated.error,
                 )
@@ -174,10 +174,10 @@ class FlextInfraDepsPyreflyFixSteps:
         )
         if current_excludes != expected_excludes:
             pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Cli.toml_array(expected_excludes)
-            return r[t.StrSequence].ok([
+            return r[Sequence[str]].ok([
                 "synchronized project-excludes from YAML rules",
             ])
-        return r[t.StrSequence].ok(())
+        return r[Sequence[str]].ok(())
 
 
 __all__: list[str] = ["FlextInfraDepsPyreflyFixSteps"]

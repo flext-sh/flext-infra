@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -72,8 +73,8 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
         source: str,
         *,
         relative_path: str,
-        config: t.Pair[Path | None, str],
-        taplo: t.Triple[str, int, Path],
+        config: tuple[Path | None, str],
+        taplo: tuple[str, int, Path],
     ) -> p.Result[str]:
 
         taplo_result = FlextInfraUtilitiesPyprojectTomlPhases._taplo_binary(taplo[2])
@@ -138,11 +139,11 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
         cls,
         payload: t.MutableJsonMapping,
         *phases: m.Infra.DepsToml.PhaseConfig,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Apply declarative phases in order and return one flat change list.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return [
@@ -157,12 +158,12 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
         payload: t.MutableJsonMapping,
         phase: m.Infra.DepsToml.PhaseConfig,
         *,
-        parent_path: t.StrSequence,
-    ) -> t.StrSequence:
+        parent_path: Sequence[str],
+    ) -> Sequence[str]:
         """Apply one phase and its nested tables below ``parent_path``.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         phase_path = (*parent_path, *phase.root_path, *phase.table_path)
@@ -185,11 +186,11 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
         operation: m.Infra.DepsToml.SetOp
         | m.Infra.DepsToml.ListOp
         | m.Infra.DepsToml.RemoveOp,
-    ) -> t.SequenceOf[t.Pair[t.StrSequence, str]]:
+    ) -> Sequence[tuple[Sequence[str], str]]:
         """Apply one operation; return its ``(relative key path, outcome)`` change.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Pair[t.StrSequence, str]]``.
+            The resulting ``Sequence[tuple[Sequence[str], str]]``.
 
         """
         if isinstance(operation, m.Infra.DepsToml.SetOp):

@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,7 +19,7 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
     """Build real lazy-package projects and normalize sources through the engine."""
 
     @staticmethod
-    def _lazy_init(package_dir: Path, exports: t.StrMapping) -> None:
+    def _lazy_init(package_dir: Path, exports: Mapping[str, str]) -> None:
         """Write one generated-shape lazy ``__init__`` publishing ``exports``."""
         package_dir.mkdir(parents=True, exist_ok=True)
         entries = "".join(

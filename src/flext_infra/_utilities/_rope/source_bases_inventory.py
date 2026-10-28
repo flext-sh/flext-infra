@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 
 from flext_infra import m, t
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
@@ -30,7 +30,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
         definitions: MutableMapping[str, m.Infra.SourceClassDefinition],
         *,
         provider: t.Infra.RopePyModule | None = None,
-    ) -> t.MappingKV[str, m.Infra.SourceClassReference | None]:
+    ) -> Mapping[str, m.Infra.SourceClassReference | None]:
         """Index lexical bindings without installing a cross-module Rope overlay.
 
         A provider class is indexed at its native declaration line. Unreferenced

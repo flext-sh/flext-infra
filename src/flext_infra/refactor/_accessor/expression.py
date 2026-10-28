@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
@@ -27,8 +28,8 @@ class FlextInfraRefactorAccessorExpression:
         rope_project: t.Infra.RopeProject,
         py_file: Path,
         source: str,
-        rules: t.SequenceOf[m.Infra.AccessorMigrationRule],
-    ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+        rules: Sequence[m.Infra.AccessorMigrationRule],
+    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
         """Plan complete expression replacements from exact member identities.
 
         Returns:
@@ -40,9 +41,9 @@ class FlextInfraRefactorAccessorExpression:
         """
         tree = ast.parse(source, filename=str(py_file))
         resolver = FlextInfraRefactorAccessorOrigin(rope_project)
-        replacements: t.MutableSequenceOf[t.Triple[int, int, str]] = []
-        changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
-        imports: t.MutableMappingKV[str, str] = {}
+        replacements: MutableSequence[tuple[int, int, str]] = []
+        changes: MutableSequence[m.Infra.AccessorMigrationChange] = []
+        imports: MutableMapping[str, str] = {}
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
                 continue
@@ -134,7 +135,7 @@ class FlextInfraRefactorAccessorExpression:
         source: str,
         node: ast.Attribute,
         rule: m.Infra.AccessorMigrationRule,
-    ) -> t.Triple[int, int, str]:
+    ) -> tuple[int, int, str]:
         """Plan the exact source span for an owned accessor expression.
 
         Returns:
@@ -159,7 +160,7 @@ class FlextInfraRefactorAccessorExpression:
     def _apply_expression_replacements(
         py_file: Path,
         source: str,
-        replacements: t.SequenceOf[t.Triple[int, int, str]],
+        replacements: Sequence[tuple[int, int, str]],
     ) -> str:
         """Apply the complete non-overlapping expression plan.
 
@@ -186,7 +187,7 @@ class FlextInfraRefactorAccessorExpression:
         rope_project: t.Infra.RopeProject,
         py_file: Path,
         updated_source: str,
-        imports: t.MappingKV[str, ...],
+        imports: Mapping[str, str],
     ) -> str:
         """Plan imports against the complete expression snapshot.
 

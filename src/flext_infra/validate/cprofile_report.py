@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 from flext_infra import c, config, m, r, s, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCProfileReport(s[bool]):
@@ -141,7 +141,7 @@ class FlextInfraCProfileReport(s[bool]):
 
     def _recorded_context(
         self, parent: m.Infra.PytestRunContext
-    ) -> t.Pair[Path, m.Infra.PytestRunContext]:
+    ) -> tuple[Path, m.Infra.PytestRunContext]:
         """Load the run context recorded beside the parent receipt.
 
         Returns:

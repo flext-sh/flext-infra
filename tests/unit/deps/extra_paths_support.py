@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from tests import c, t
+from tests import c
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
@@ -20,8 +21,8 @@ class TestsFlextInfraExtraPathsSupport:
 
     @staticmethod
     def expected_pyrefly_paths(
-        project_dir: Path, generated_roots: t.StrSequence = ()
-    ) -> t.StrSequence:
+        project_dir: Path, generated_roots: Sequence[str] = ()
+    ) -> Sequence[str]:
         """Derive expected import identities from the configured path contract.
 
         Returns:
@@ -82,11 +83,11 @@ class TestsFlextInfraExtraPathsSupport:
         root: Path,
         *,
         uv_workspace: bool = True,
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Write one governed root and its ``flext-core`` dependency checkout.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         (root / c.GIT_DIR_NAME).mkdir()

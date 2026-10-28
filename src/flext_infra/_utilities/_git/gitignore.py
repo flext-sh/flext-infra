@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from itertools import pairwise
 from operator import itemgetter
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import FlextInfraConfig, c, m, p, r, t
+from flext_infra import FlextInfraConfig, c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -60,13 +61,19 @@ class FlextInfraUtilitiesGitignore:
             if entry.source_package is None:
                 msg = f"resource has no explicit package owner: {entry.destination}"
                 raise ValueError(msg)
+            # Per-repository resolution law: a declared artifact owner resolves
+            # inside the engine's own tree only. Installed environments are
+            # never consulted, where divergent member libraries would leak in
+            # as artifact sources.
+            engine_root = FlextInfraConfig.ssot_config_dir().parent.parent
             package = FlextInfraUtilitiesDiscovery.declared_package_dir(
                 entry.source_package,
+                search_paths=(str(engine_root),),
             )
             if package is None:
                 msg = (
-                    "resource source must name an importable package: "
-                    f"{entry.source_package}"
+                    "resource source must name a package inside the engine's own "
+                    f"tree: {entry.source_package}"
                 )
                 raise ValueError(msg)
             root = package.resolve()
@@ -132,7 +139,7 @@ class FlextInfraUtilitiesGitignore:
                 "gitignore codegen entry must declare a render template source",
             )
         templates_root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
-        project_patterns: t.StrSequence = ()
+        project_patterns: Sequence[str] = ()
         preserved_blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...] = ()
         if project_dir is not None:
             managed = FlextInfraUtilitiesProjectManagedArtifacts
@@ -257,48 +264,48 @@ class FlextInfraUtilitiesGitignore:
 
     @staticmethod
     def _locate_block_markers(
-        lines: t.SequenceOf[str],
+        lines: Sequence[str],
         markers: frozenset[str],
         destination: Path,
-    ) -> p.Result[t.MutableMappingKV[str, list[int]]]:
+    ) -> p.Result[MutableMapping[str, list[int]]]:
         """Index the exact marker lines, rejecting malformed marker prefixes.
 
         Returns:
-            The resulting ``p.Result[t.MutableMappingKV[str, list[int]]]``.
+            The resulting ``p.Result[MutableMapping[str, list[int]]]``.
 
         """
-        found: t.MutableMappingKV[str, list[int]] = {marker: [] for marker in markers}
+        found: MutableMapping[str, list[int]] = {marker: [] for marker in markers}
         for index, line in enumerate(lines):
             text = line.rstrip("\r\n")
             if text in found:
                 found[text].append(index)
             elif any(text.startswith(marker) for marker in markers):
-                return r[t.MutableMappingKV[str, list[int]]].fail(
+                return r[MutableMapping[str, list[int]]].fail(
                     f"malformed gitignore preserved marker: {destination}: {text!r}",
                 )
-        return r[t.MutableMappingKV[str, list[int]]].ok(found)
+        return r[MutableMapping[str, list[int]]].ok(found)
 
     @staticmethod
     def _block_sections(
         blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
-        found: t.MappingKV[str, list[int]],
-        lines: t.SequenceOf[str],
+        found: Mapping[str, list[int]],
+        lines: Sequence[str],
         destination: Path,
-    ) -> p.Result[tuple[t.Triple[int, int, str], ...]]:
+    ) -> p.Result[tuple[tuple[int, int, str], ...]]:
         """Slice one ordered, non-overlapping external section per declared block.
 
         Returns:
-            The resulting ``p.Result[tuple[t.Triple[int, int, str], ...]]``.
+            The resulting ``p.Result[tuple[tuple[int, int, str], ...]]``.
 
         """
-        sections: list[t.Triple[int, int, str]] = []
+        sections: list[tuple[int, int, str]] = []
         for block in blocks:
             begins = found[block.begin]
             ends = found[block.end]
             if not begins and not ends:
                 continue
             if len(begins) != 1 or len(ends) != 1 or begins[0] >= ends[0]:
-                return r[tuple[t.Triple[int, int, str], ...]].fail(
+                return r[tuple[tuple[int, int, str], ...]].fail(
                     f"ambiguous gitignore preserved block {block.begin!r}: "
                     f"{destination}",
                 )
@@ -309,10 +316,10 @@ class FlextInfraUtilitiesGitignore:
             ))
         sections.sort(key=itemgetter(0))
         if any(previous[1] >= current[0] for previous, current in pairwise(sections)):
-            return r[tuple[t.Triple[int, int, str], ...]].fail(
+            return r[tuple[tuple[int, int, str], ...]].fail(
                 f"overlapping gitignore preserved blocks: {destination}",
             )
-        return r[tuple[t.Triple[int, int, str], ...]].ok(tuple(sections))
+        return r[tuple[tuple[int, int, str], ...]].ok(tuple(sections))
 
     @staticmethod
     def _compose_preserved_blocks(
@@ -360,7 +367,7 @@ class FlextInfraUtilitiesGitignore:
         profile: c.Infra.MakeProfile,
         project_name: str | None = None,
         workspace: m.Infra.WorkspaceSpec | None = None,
-        project_patterns: t.StrSequence = (),
+        project_patterns: Sequence[str] = (),
     ) -> tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...]:
         """Derive the ordered ``.gitignore`` sections for one project.
 

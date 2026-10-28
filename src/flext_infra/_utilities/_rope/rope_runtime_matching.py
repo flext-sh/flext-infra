@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import ClassVar
 
-from flext_infra import p, t
+from flext_infra import p
 from flext_infra._utilities._rope.rope_runtime_base import (
     FlextInfraUtilitiesRopeRuntimeBase,
 )
@@ -22,8 +22,8 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
 
     _semantic_finders: ClassVar[
         ContextVar[
-            t.MutableMappingKV[
-                t.Pair[p.Infra.RopePyModule, t.VariadicTuple[t.Pair[str, str]]],
+            MutableMapping[
+                tuple[p.Infra.RopePyModule, tuple[tuple[str, str], ...]],
                 p.Infra.RopeSimilarFinder,
             ]
             | None
@@ -51,10 +51,10 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         module: p.Infra.RopePyModule,
         pattern: str,
         *,
-        arguments: t.MappingKV[str, str],
+        arguments: Mapping[str, str],
         start: int = 0,
         end: int | None = None,
-    ) -> t.VariadicTuple[t.Pair[int, int]]:
+    ) -> tuple[tuple[int, int], ...]:
         """Resolve source regions through Rope's identity-aware pattern matcher.
 
         Returns:
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         cls,
         module: p.Infra.RopePyModule,
         *,
-        arguments: t.MappingKV[str, str] | None = None,
+        arguments: Mapping[str, str] | None = None,
     ) -> p.Infra.RopeSimilarFinder:
         """Create a native matcher for one immutable module and binding context.
 
@@ -121,7 +121,7 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         captured: p.AttributeProbe | None,
-        constraints: str | t.StrSequence,
+        constraints: str | Sequence[str],
         *,
         name: str,
     ) -> bool:
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         cls,
         match: p.Infra.RopeContractMatch,
         variable: str,
-    ) -> t.Pair[int, int]:
+    ) -> tuple[int, int]:
         """Read a captured region through Rope's native match boundary.
 
         Args:

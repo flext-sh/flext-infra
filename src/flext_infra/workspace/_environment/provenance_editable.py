@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from importlib.metadata import Distribution
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -25,16 +26,16 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
     def distribution_installation(
         distribution_name: str,
         *,
-        metadata_paths: t.StrSequence,
+        metadata_paths: Sequence[str],
         environment_root: Path,
-    ) -> p.Result[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]:
+    ) -> p.Result[tuple[Distribution, str, m.Infra.DirectUrlReceipt]]:
         """Authenticate one installed distribution and its native PEP 610 record.
 
         Returns:
             The distribution, original receipt and validated source declaration.
 
         """
-        result = r[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]
+        result = r[tuple[Distribution, str, m.Infra.DirectUrlReceipt]]
         matches = u.installed_distributions(
             name=distribution_name,
             path=metadata_paths,
@@ -163,7 +164,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         declared = cls.editable_declared_packages(distribution, expected_root)
         if declared.failure:
             return r[bool].from_failure(declared)
-        exposed: set[t.Pair[str, Path | None]] = set()
+        exposed: set[tuple[str, Path | None]] = set()
         for entry in entries:
             elected = cls._editable_pth_source(
                 distribution, entry, expected_root, declared.value
@@ -183,14 +184,14 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         cls,
         distribution: str,
         expected_root: Path,
-    ) -> p.Result[tuple[t.Pair[str, Path | None], ...]]:
+    ) -> p.Result[tuple[tuple[str, Path | None], ...]]:
         """Elect the same package paths and Hatch source mappings as the producer.
 
         Returns:
             The complete deduplicated package declarations, including namespace roots.
 
         """
-        result = r[tuple[t.Pair[str, Path | None], ...]]
+        result = r[tuple[tuple[str, Path | None], ...]]
         package_name = u.Infra.project_package_name(expected_root)
         payload = FlextInfraUtilitiesPyprojectDocument.pyproject_payload(
             expected_root / c.PYPROJECT_FILENAME,
@@ -210,7 +211,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         if declared_paths.failure:
             return result.from_failure(declared_paths)
         primary_parts = tuple(package_name.split("."))
-        packages: list[t.Pair[str, Path | None]] = []
+        packages: list[tuple[str, Path | None]] = []
         for declared in declared_paths.value:
             relative = Path(declared)
             target = cls._editable_package_path(distribution, expected_root, declared)
@@ -263,15 +264,15 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         distribution: str,
         expected_root: Path,
         wheel: t.JsonMapping,
-    ) -> p.Result[tuple[t.Pair[str, Path | None], ...]]:
+    ) -> p.Result[tuple[tuple[str, Path | None], ...]]:
         """Validate every importable Hatch source remapping in declaration order.
 
         Returns:
             Exact package identities bound to authenticated source directories.
 
         """
-        result = r[tuple[t.Pair[str, Path | None], ...]]
-        packages: list[t.Pair[str, Path | None]] = []
+        result = r[tuple[tuple[str, Path | None], ...]]
+        packages: list[tuple[str, Path | None]] = []
         source_mapping = u.Cli.toml_mapping_child(wheel, "sources")
         if source_mapping is not None:
             bindings = t.Infra.STR_MAPPING_ADAPTER.validate_python(
@@ -295,15 +296,15 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         distribution: str,
         entry: str,
         expected_root: Path,
-        packages: t.SequenceOf[t.Pair[str, Path | None]],
-    ) -> p.Result[frozenset[t.Pair[str, Path | None]]]:
+        packages: Sequence[tuple[str, Path | None]],
+    ) -> p.Result[frozenset[tuple[str, Path | None]]]:
         """Prove one absolute .pth entry exposes a real declared package owner.
 
         Returns:
             Every package exposed by this entry, preserving complete coverage checks.
 
         """
-        result = r[frozenset[t.Pair[str, Path | None]]]
+        result = r[frozenset[tuple[str, Path | None]]]
         if not Path(entry).is_absolute():
             return result.fail(
                 "editable provenance pth entry is not an absolute source path: "

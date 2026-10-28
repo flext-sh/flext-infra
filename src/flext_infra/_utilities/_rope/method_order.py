@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import ClassVar
 
 from flext_infra import c, t
@@ -23,7 +24,7 @@ class FlextInfraUtilitiesRopeMethodOrder:
     ]
 
     @staticmethod
-    def categorize_method(name: str, decorators: t.StrSequence) -> str:
+    def categorize_method(name: str, decorators: Sequence[str]) -> str:
         """Categorize a method by its decorators and name pattern.
 
         Returns:

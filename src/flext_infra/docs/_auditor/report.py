@@ -6,12 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
 
 from flext_infra import c, m
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraDocsAuditorReport:
@@ -21,8 +18,8 @@ class FlextInfraDocsAuditorReport:
     def _audit_report(
         scope: m.Infra.DocScope,
         *,
-        issues: t.SequenceOf[m.Infra.AuditIssue],
-        checks: t.StrSequence,
+        issues: Sequence[m.Infra.AuditIssue],
+        checks: Sequence[str],
         params: m.Infra.AuditScopeParams,
         docstring_coverage: m.Infra.DocstringCoverage | None = None,
     ) -> m.Infra.DocsPhaseReport:

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
@@ -38,11 +39,11 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     ENFORCEMENT_CATALOG: ClassVar[str] = "enforcement-catalog"
 
     GATE_TOOLS_BY_KIND: ClassVar[
-        t.MappingKV[
+        Mapping[
             FlextInfraConstantsConfig.GateKind,
-            t.MappingKV[
+            Mapping[
                 str,
-                t.Quint[str, str, bool, bool, FlextInfraConstantsConfig.GateStage],
+                tuple[str, str, bool, bool, FlextInfraConstantsConfig.GateStage],
             ],
         ]
     ] = MappingProxyType({
@@ -214,7 +215,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     via the file-gate verbs, and the earliest approval stage its cost admits
     (``GateStage``), from which every context's check partition derives.
     """
-    GATE_ENFORCES: ClassVar[t.MappingKV[str, t.StrTuple]] = MappingProxyType({
+    GATE_ENFORCES: ClassVar[Mapping[str, t.StrTuple]] = MappingProxyType({
         "markdown-code": ("ENFORCE-021",),
         "pyrefly": ("ENFORCE-053",),
     })
@@ -223,12 +224,12 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     The enforcement catalog derives from these claims beside the other owners'
     declarations; a claim by an unregistered gate is inactive.
     """
-    GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConstantsConfig.GateKind]] = (
+    GATE_KINDS: ClassVar[Mapping[str, FlextInfraConstantsConfig.GateKind]] = (
         MappingProxyType({
             gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
         })
     )
-    GATE_STAGES: ClassVar[t.MappingKV[str, FlextInfraConstantsConfig.GateStage]] = (
+    GATE_STAGES: ClassVar[Mapping[str, FlextInfraConstantsConfig.GateStage]] = (
         MappingProxyType({
             gate: tool[4]
             for tools in GATE_TOOLS_BY_KIND.values()
@@ -239,7 +240,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     TYPE_CHECKER_GATES: ClassVar[frozenset[str]] = frozenset(
         GATE_TOOLS_BY_KIND[FlextInfraConstantsConfig.GateKind.TYPE_CHECKER],
     )
-    SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
+    SARIF_TOOL_INFO: ClassVar[Mapping[str, tuple[str, str]]] = MappingProxyType({
         gate: (tool[0], tool[1])
         for tools in GATE_TOOLS_BY_KIND.values()
         for gate, tool in tools.items()
@@ -425,7 +426,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     )
     MARKDOWN_FIXED_SUFFIX: ClassVar[str] = "[fixed]"
     "rumdl text-output suffix marking a finding its mutating pass repaired."
-    MARKDOWN_FORMAT_DIFF_HEADERS: ClassVar[t.StrPair] = ("--- ", "+++ ")
+    MARKDOWN_FORMAT_DIFF_HEADERS: ClassVar[tuple[str, str]] = ("--- ", "+++ ")
     MARKDOWN_FORMAT_RE: ClassVar[t.RegexPattern] = re.compile(
         # Prettier applies terminal SGR styling to the warning label in CI.
         r"^\[(?:\x1b\[[0-9;]*m)*warn(?:\x1b\[[0-9;]*m)*\]"
@@ -471,7 +472,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     QLTY_BINARY: ClassVar[str] = "qlty"
     QLTY_CONFIG_DIRNAME: ClassVar[str] = ".qlty"
     QLTY_CONFIG_FILENAME: ClassVar[str] = "qlty.toml"
-    SMELLS_QLTY_ARGS: ClassVar[t.StrSequence] = (
+    SMELLS_QLTY_ARGS: ClassVar[Sequence[str]] = (
         "smells",
         "--sarif",
         "--include-tests",
@@ -497,7 +498,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "Minimum tokens for a clone (R2: 10 lines ≈ 62 tokens)."
     JSCPD_THRESHOLD_PERCENT: ClassVar[int] = 0
     "Zero tolerance — every owned clone is an error."
-    JSCPD_SCOPE_DIRNAMES: ClassVar[t.StrSequence] = (
+    JSCPD_SCOPE_DIRNAMES: ClassVar[Sequence[str]] = (
         "src",
         "tests",
         "scripts",
@@ -512,7 +513,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     JSCPD_REPORT_DIRNAME: ClassVar[str] = ".reports/jscpd"
     JSCPD_CONFIG_FILENAME: ClassVar[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: ClassVar[str] = "jscpd-report.json"
-    JSCPD_REPORTERS: ClassVar[t.StrSequence] = (
+    JSCPD_REPORTERS: ClassVar[Sequence[str]] = (
         "json",
         "sarif",
     )
@@ -521,9 +522,9 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "SARIF feeds the coordinated multi-session review surface. Both are "
         "written beside each other in the shared report directory."
     )
-    JSCPD_FORMAT_EXTENSIONS: ClassVar[t.MappingKV[str, t.StrSequence]] = (
-        MappingProxyType({"django": ("j2",)})
-    )
+    JSCPD_FORMAT_EXTENSIONS: ClassVar[Mapping[str, Sequence[str]]] = MappingProxyType({
+        "django": ("j2",)
+    })
     "Parse Jinja projections in place; never duplicate templates into a scan tree."
     # NOTE: JSCPD_IGNORE_PATTERNS was removed: the duplication gate derives
     # its ignore list from the declared sgconfig fixture topology, the

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
@@ -55,7 +56,7 @@ class FlextInfraModelsWorktree:
             m.Field(description="Synthetic dirty-state checkpoint SHA"),
         ]
         changed_files: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Files changed by the isolated command"),
         ] = ()
         patch: Annotated[
@@ -94,11 +95,11 @@ class FlextInfraModelsWorktree:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         tool_internal: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Path fragments classifying tool-internal worktrees"),
         ] = ()
         deps_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Rebuildable dependency directories inside a worktree"),
         ] = ()
 
@@ -129,7 +130,7 @@ class FlextInfraModelsWorktree:
             m.Field(description="Optional bead rows for correlation"),
         ] = ()
         actor_evidence: Annotated[
-            t.MappingKV[str, t.Pair[str, str]] | None,
+            Mapping[str, tuple[str, str]] | None,
             m.Field(description="Optional worktree-path to (actor, session) evidence"),
         ] = None
 

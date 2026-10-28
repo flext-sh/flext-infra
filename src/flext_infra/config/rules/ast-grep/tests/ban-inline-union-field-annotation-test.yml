@@ -4,7 +4,7 @@ valid:
     class Order(m.FrozenModel):
         value: str | int | None = None
         total: t.Scalar
-        items: t.SequenceOf[str | int | float]
+        items: Sequence[str | int | float]
   - |
     class Order(m.FrozenModel):
         value: Annotated[str | None, m.Field(description="x")] = None

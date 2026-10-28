@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from multiprocessing import get_context
 from pathlib import Path
@@ -22,7 +22,6 @@ from tests import (
     m,
     p,
     r,
-    t,
     tm,
     utilities_conform,
 )
@@ -37,7 +36,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
     def scaffold_plan(
         root: Path,
         *,
-        members: t.StrSequence = (),
+        members: Sequence[str] = (),
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
     ) -> m.Infra.CodegenPlan:
         """Plan the artifacts conform renders for a fresh repository scaffold.
@@ -117,7 +116,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         root: Path,
         destination: str,
         *,
-        members: t.StrSequence = (),
+        members: Sequence[str] = (),
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
     ) -> str:
         """Return one rendered scaffold artifact, failing when it is not planned.
@@ -236,7 +235,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         """Create a real workspace with an empty, generation-eligible initializer.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         repository_root = tmp_path / project_name
@@ -290,7 +289,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         class_name: str,
         alias: str,
         docstring: str = "Test namespace.",
-        extra_class_names: t.StrSequence = (),
+        extra_class_names: Sequence[str] = (),
     ) -> None:
         """Write a namespace module fixture for lazy-export tests."""
         export_list = f'"{class_name}", "{alias}"'
@@ -349,11 +348,11 @@ class TestsFlextInfraUtilitiesCodegenMixin(
     def run_lazy_init_probe(
         probe: str,
         *,
-        python_paths: t.StrSequence = (),
+        python_paths: Sequence[str] = (),
         cwd: Path | None = None,
-        arguments: t.StrSequence = (),
+        arguments: Sequence[str] = (),
         runtime_root: Path | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Run ``probe`` in a fresh interpreter importing generated packages.
 
         The probe observes generated initializers through Python's real import
@@ -409,7 +408,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
     @staticmethod
     def lazy_init_effects(
         planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the destinations a successful lazy-init plan would change.
 
         Returns:
@@ -541,7 +540,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         """Create the workspace, write its namespace module, build the service.
 
         Returns:
-            The resulting ``t.Triple[Path, Path, FlextInfraCodegenLazyInit]``.
+            The resulting ``tuple[Path, Path, FlextInfraCodegenLazyInit]``.
 
         """
         repository_root, package_root = (
@@ -559,11 +558,11 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         return package_root, init_path, service
 
     @staticmethod
-    def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
+    def extract_lazy_init_exports(source: str) -> tuple[bool, Sequence[str]]:
         """Read the published lazy export contract through the public source reader.
 
         Returns:
-            The resulting ``t.Pair[bool, t.StrSequence]``.
+            The resulting ``tuple[bool, Sequence[str]]``.
 
         """
         exports = u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)

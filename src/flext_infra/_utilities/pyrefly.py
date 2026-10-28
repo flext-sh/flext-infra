@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import u
@@ -15,7 +16,7 @@ from flext_infra import c
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, t
+    from flext_infra import m
 
 
 class FlextInfraUtilitiesPyrefly:
@@ -24,10 +25,10 @@ class FlextInfraUtilitiesPyrefly:
     @staticmethod
     def pyrefly_target_args(
         project_dir: Path,
-        discovered_dirs: t.StrSequence,
+        discovered_dirs: Sequence[str],
         *,
         selected_files: tuple[Path, ...],
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Preserve native literal-file selection and discovery exclusions.
 
         Validated ``GateContext.selected_files`` carries explicit selection intent.
@@ -36,7 +37,7 @@ class FlextInfraUtilitiesPyrefly:
         keep generated and vendored trees outside its discovered roots.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if selected_files:
@@ -67,10 +68,10 @@ class FlextInfraUtilitiesPyrefly:
 
     @staticmethod
     def pyrefly_project_excludes(
-        declared_globs: t.StrSequence,
+        declared_globs: Sequence[str],
         *,
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Compose Pyrefly exclusions with the shared analysis artifact catalog.
 
         Every analyzer consumes the same declared file and directory patterns,

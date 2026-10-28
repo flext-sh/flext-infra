@@ -12,7 +12,7 @@ import shutil
 import signal
 import sys
 import time
-from importlib import metadata
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -50,7 +50,9 @@ class FlextInfraUtilitiesResourceLimits:
         return executable
 
     @staticmethod
-    def _environment_integer(process_env: t.StrMapping, name: str, default: int) -> int:
+    def _environment_integer(
+        process_env: Mapping[str, str], name: str, default: int
+    ) -> int:
         """Convert one ASCII integer environment value at the ingress boundary.
 
         Returns:
@@ -89,11 +91,11 @@ class FlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def mypy_arguments(invocation: m.Infra.MypyInvocation) -> t.StrSequence:
+    def mypy_arguments(invocation: m.Infra.MypyInvocation) -> Sequence[str]:
         """Build checker options shared by the CLI and public profiling API.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return (
@@ -111,11 +113,11 @@ class FlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def mypy_command(invocation: m.Infra.MypyInvocation) -> t.StrSequence:
+    def mypy_command(invocation: m.Infra.MypyInvocation) -> Sequence[str]:
         """Construct the owned checker entrypoint from typed data, never command text.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             FileNotFoundError: If managed workspace interpreter is missing; or if
@@ -170,16 +172,21 @@ class FlextInfraUtilitiesResourceLimits:
         lock content forced a cold full-fleet analysis after every relock
         and broke the bounded Mypy run. Projects keep distinct directories
         because their ``tests`` packages share one module name, and the
-        cache key carries the environment identity (interpreter plus the
-        installed core distribution version): distinct checkouts whose
+        cache key carries the per-repository environment identity (the
+        project's own elected runtime): distinct checkouts whose
         environments resolve different installed views never share a cache,
-        while relocks inside one environment stay warm.
+        while relocks inside one runtime stay warm. The identity reads the
+        repository's declared runtime owner only — never member metadata
+        through the running interpreter, where divergent member libraries
+        would leak into the key.
 
         Returns:
             The resulting ``Path``.
 
         """
-        identity = FlextInfraUtilitiesResourceLimits.environment_cache_identity()
+        identity = FlextInfraUtilitiesResourceLimits.environment_cache_identity(
+            project_dir,
+        )
         return (
             FlextInfraUtilitiesResourceLimits.project_cache_directory(
                 project_dir,
@@ -191,16 +198,16 @@ class FlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def environment_cache_identity() -> str:
-        """Derive the stable identity of the current analysis environment.
+    def environment_cache_identity(project_dir: Path) -> str:
+        """Derive the stable identity of a repository's own analysis runtime.
 
         Returns:
             The resulting ``str`` digest component.
 
         """
-        core_version = metadata.version("flext-core")
+        runtime = FlextInfraUtilitiesProjectDiscovery.runtime_python(project_dir)
         return hashlib.sha256(
-            f"{sys.executable}\0{core_version}".encode(),
+            f"{sys.executable}\0{runtime.resolve()}".encode(),
         ).hexdigest()[:12]
 
     @staticmethod
@@ -267,11 +274,11 @@ class FlextInfraUtilitiesResourceLimits:
         limit: m.Infra.MypyResourceLimit | None = None,
         *,
         host_system: str | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Bound the canonical checker; no caller-provided executable can run.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         validated_limit = (

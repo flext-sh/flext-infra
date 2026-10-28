@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -26,7 +27,7 @@ class FlextInfraProjectSelectionServiceBase[
     """
 
     selected_projects: Annotated[
-        t.StrSequence | None,
+        Sequence[str] | None,
         m.BeforeValidator(lambda value: (value,) if isinstance(value, str) else value),
         m.Field(
             default=None,

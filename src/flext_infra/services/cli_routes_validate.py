@@ -35,7 +35,7 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
     """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
     validation_routes: ClassVar[
-        MutableMapping[str, tuple[m.Cli.ResultCommandRoute], ...]
+        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
     ] = {
         c.Infra.CLI_GROUP_DOCS: (
             m.Cli.ResultCommandRoute(

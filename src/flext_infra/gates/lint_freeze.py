@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -31,8 +32,8 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
     def refresh_catalog(
         cls,
         root: Path,
-        states: t.SequenceOf[m.Infra.PyprojectDocumentState],
-    ) -> t.StrSequence:
+        states: Sequence[m.Infra.PyprojectDocumentState],
+    ) -> Sequence[str]:
         """Regenerate the operator catalog after a canonical projection run.
 
         Args:
@@ -103,7 +104,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
     @override
     def check_files(
         self,
-        files: t.SequenceOf[Path],
+        files: Sequence[Path],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
@@ -152,7 +153,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
         raise ValueError(message)
 
     @classmethod
-    def _frozen_tables(cls, payload: t.JsonMapping) -> t.JsonMapping:
+    def _frozen_tables(cls, payload: t.JsonMapping) -> dict[str, t.JsonValue]:
         """Extract the frozen lint-config tables of one pyproject payload.
 
         Returns:
@@ -179,7 +180,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
         return u.Cli.sha256_bytes(canonical.encode(c.DEFAULT_ENCODING))[:16]
 
     @classmethod
-    def _frozen_table_names(cls) -> t.StrSequence:
+    def _frozen_table_names(cls) -> Sequence[str]:
         """Read the frozen table names from the freeze constant order.
 
         Returns:

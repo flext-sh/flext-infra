@@ -198,7 +198,10 @@ class TestsFlextInfraAuditorLinks:
         """Audit and repair links through real native repository facts."""
 
         @pytest.fixture
-        def github_owner(self: Path) -> m.Infra.DocsGithubRepoSpec:
+        def github_owner(
+            self,
+            tmp_path: Path,
+        ) -> m.Infra.DocsGithubRepoSpec:
             """Publish the declared GitHub owner of the fixture repository.
 
             Returns:
@@ -206,10 +209,10 @@ class TestsFlextInfraAuditorLinks:
 
             """
             u.Tests.initialize_git_repo(
-                self,
+                tmp_path,
                 origin_url="https://github.com/fixture-owner/fixture-docs.git",
             )
-            directory = self / "config"
+            directory = tmp_path / "config"
             directory.mkdir(exist_ok=True)
             (directory / "codegen.yaml").write_text(
                 "Infra:\n  codegen:\n    repository:\n      integration:\n"
@@ -220,7 +223,7 @@ class TestsFlextInfraAuditorLinks:
                 u.Infra.docs_github_repo_lookup(
                     "fixture-owner",
                     "fixture-docs",
-                    repository_root=self,
+                    repository_root=tmp_path,
                 )
             )
 

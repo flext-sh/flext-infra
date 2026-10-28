@@ -9,24 +9,24 @@ snapshots:
     - source: |-
         class Finding(m.ContractModel):
             """Required fields consumed from one native finding."""
-
+        
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
-
+        
             code: str
       style: primary
       start: 0
       end: 179
-  "class FlextModelsDemo:\n    class Report(m.ContractModel):\n        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra=\"ignore\")\n        items: t.StrSequence\n":
+  "class FlextModelsDemo:\n    class Report(m.ContractModel):\n        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra=\"ignore\")\n        items: Sequence[str]\n":
     fixed: |
       class FlextModelsDemo:
           class Report(m.ExternalContractModel):
               
-              items: t.StrSequence
+              items: Sequence[str]
     labels:
     - source: |-
         class Report(m.ContractModel):
                 model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
-                items: t.StrSequence
+                items: Sequence[str]
       style: primary
       start: 27
       end: 162

@@ -82,7 +82,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
         """New tool options round-trip through native TOML without new fields."""
-        additions: t.SequenceOf[tuple[str, t.JsonValue]] = (
+        additions: Sequence[tuple[str, t.JsonValue]] = (
             ("defineConstant", {"FEATURE": True, "MODE": "validation"}),
             ("strict", ["src/z", "src/a"]),
         )

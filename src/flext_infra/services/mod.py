@@ -27,7 +27,7 @@ class FlextInfraModHandlers:
         decisions: Path,
         output: Path | None,
         request: p.Infra.ModRequest,
-    ) -> t.Pair[m.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
+    ) -> tuple[m.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
         """Validate configured decisions at their required-content boundary.
 
         Returns:

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import override
 
 from libcst import (
@@ -223,7 +224,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
 
         METADATA_DEPENDENCIES = (QualifiedNameProvider, ScopeProvider)
 
-        def __init__(self, selected: t.MappingKV[t.Pair[str, str], str]) -> None:
+        def __init__(self, selected: Mapping[tuple[str, str], str]) -> None:
             """Bind ``(alias, qualified import)`` to the imported name."""
             super().__init__()
             self._selected = selected
@@ -345,7 +346,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
     def _mergeable_import(
         module: t.Infra.CstModule,
         statement: t.Infra.CstStatement,
-    ) -> t.Pair[str, t.Infra.CstImport] | None:
+    ) -> tuple[str, t.Infra.CstImport] | None:
         """Return the module name and node of one absolute member import.
 
         Returns:
@@ -383,9 +384,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
         """
         module = parse_module(source)
         mergeable = FlextInfraUtilitiesCodegenFacadeSyntax._mergeable_import
-        members: t.MutableMappingKV[
-            str, t.MutableMappingKV[str, t.Infra.CstImportAlias]
-        ] = {}
+        members: MutableMapping[str, MutableMapping[str, t.Infra.CstImportAlias]] = {}
         for statement in module.body:
             found = mergeable(module, statement)
             if found is None or isinstance(found[1].names, ImportStar):
@@ -457,7 +456,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
     @staticmethod
     def _declared_facade_bases(
         owner: t.Infra.CstClass,
-        ordered: t.SequenceOf[str],
+        ordered: Sequence[str],
     ) -> tuple[t.Infra.CstArgument, ...]:
         """Build the reordered base arguments for the facade namespace.
 

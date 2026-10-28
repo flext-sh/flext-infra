@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
 from flext_cli import u
 
-from flext_infra import c, config, m, r, t
+from flext_infra import c, config, m, r
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsScopeBuild,
@@ -85,11 +86,11 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         )
 
     @staticmethod
-    def iter_markdown_files(repository_root: Path) -> t.SequenceOf[Path]:
+    def iter_markdown_files(repository_root: Path) -> Sequence[Path]:
         """Collect Markdown files under the configured documentation scope.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            The resulting ``Sequence[Path]``.
 
         """
         docs_root = repository_root / c.Infra.DIR_DOCS
@@ -104,11 +105,11 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         )
 
     @staticmethod
-    def iter_scope_markdown_files(scope: m.Infra.DocScope) -> t.SequenceOf[Path]:
+    def iter_scope_markdown_files(scope: m.Infra.DocScope) -> Sequence[Path]:
         """Collect the Markdown files governed by one documentation scope.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            The resulting ``Sequence[Path]``.
 
         """
         return FlextInfraUtilitiesDocsBase.docs_scope_markdown_paths(
@@ -118,12 +119,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
     @staticmethod
     def docs_scope_markdown_paths(
         scope: m.Infra.DocScope,
-        candidates: t.SequenceOf[Path],
-    ) -> t.SequenceOf[Path]:
+        candidates: Sequence[Path],
+    ) -> Sequence[Path]:
         """Apply scope policy to already captured candidate paths.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            The resulting ``Sequence[Path]``.
 
         """
         scope_root = scope.path
@@ -162,7 +163,7 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         ]
 
     @staticmethod
-    def write_markdown(path: Path, lines: t.StrSequence) -> p.Result[bool]:
+    def write_markdown(path: Path, lines: Sequence[str]) -> p.Result[bool]:
         """Write Markdown through the SDK file owner.
 
         Returns:
@@ -212,7 +213,7 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
     def docs_write_fmt_reports(
         scope: m.Infra.DocScope,
         *,
-        items: t.SequenceOf[m.Infra.DocsPhaseItemModel],
+        items: Sequence[m.Infra.DocsPhaseItemModel],
         apply: bool,
     ) -> None:
         """Persist the standard documentation formatting reports."""
@@ -231,14 +232,14 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
     def run_scoped(
         repository_root: Path,
         *,
-        projects: t.StrSequence | None,
+        projects: Sequence[str] | None,
         output_dir: Path | str,
         handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run the selected handler over the elected documentation scopes.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         return FlextInfraUtilitiesDocsScopeBuild.build_scopes(

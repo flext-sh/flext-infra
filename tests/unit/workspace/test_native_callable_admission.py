@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 
 from tests import t, u
@@ -329,7 +331,7 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
     )
     def test_native_callable_state_retains_real_behavior(
         real_python_package: t.DirectoryPath,
-        behavior: t.StrSequence,
+        behavior: Sequence[str],
     ) -> None:
         """Observe native callable arguments without invoking their operations."""
         factory, replacement, expression, expected, changed = behavior

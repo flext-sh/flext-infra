@@ -12,7 +12,7 @@ import re
 import shlex
 import sys
 from base64 import b64decode
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
@@ -20,7 +20,7 @@ from typing import ClassVar
 from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, settings, t
+from flext_infra import c, m, p, r, settings
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesGitAttestation(
         *,
         inputs: m.Infra.CodegenInputs,
         load_inputs: Callable[[Path], p.Result[m.Infra.CodegenInputs]],
-        read_runtime_identity: Callable[[t.StrSequence], p.Result[str]],
+        read_runtime_identity: Callable[[Sequence[str]], p.Result[str]],
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
@@ -466,7 +466,7 @@ class FlextInfraUtilitiesGitAttestation(
         """Capture producer-owned report bytes through the atomic read owner.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]``.
+            The resulting ``p.Result[tuple[m.Infra.GateReportEvidence, ...]]``.
 
         """
         reports: list[m.Infra.GateReportEvidence] = []

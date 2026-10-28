@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -172,7 +173,7 @@ class TestsFlextInfraReleaseProtocol:
     @staticmethod
     def _release_lane_workspace(
         tmp_path: Path,
-        runtime_environment: t.StrMapping | None = None,
+        runtime_environment: Mapping[str, str] | None = None,
     ) -> Path:
         """Return a pre-release workspace that can push to a local bare origin.
 
@@ -294,7 +295,7 @@ class TestsFlextInfraReleaseProtocol:
     def _lane_with_shim(
         cls,
         tmp_path: Path,
-        runtime_environment: t.StrMapping | None = None,
+        runtime_environment: Mapping[str, str] | None = None,
     ) -> Generator[tuple[Path, Path, m.Infra.GitLaneOwnershipReceipt]]:
         """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
@@ -811,7 +812,7 @@ class TestsFlextInfraReleaseProtocol:
     def test_apply_opens_the_release_pull_request(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """Stamp, commit on the release lane, push it, and open the pull request."""
         with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
@@ -902,7 +903,7 @@ class TestsFlextInfraReleaseProtocol:
     def test_rerun_continues_the_lane_without_a_second_commit(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """A retry from the integration branch is idempotent on the open lane."""
         with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
@@ -1061,7 +1062,7 @@ class TestsFlextInfraReleaseProtocol:
         @staticmethod
         def test_merged_release_commit_is_tagged_and_pushed(
             tmp_path: Path,
-            hermetic_git_environment: t.StrMapping,
+            hermetic_git_environment: Mapping[str, str],
         ) -> None:
             """After the release pull request merges, HEAD earns its tag once."""
             with TestsFlextInfraReleaseProtocol._lane_with_shim(

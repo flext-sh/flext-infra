@@ -21,4 +21,4 @@ invalid:
   class FlextModelsDemo:
       class Report(m.ContractModel):
           model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
-          items: t.StrSequence
+          items: Sequence[str]

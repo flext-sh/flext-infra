@@ -22,7 +22,10 @@ class TestsFlextInfraAuditorCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
     @pytest.fixture
-    def command_contract_scope(self: Path) -> m.Infra.DocScope:
+    def command_contract_scope(
+        self,
+        tmp_path: Path,
+    ) -> m.Infra.DocScope:
         """Declare the same repository identity in Git and the typed topology.
 
         Returns:
@@ -30,16 +33,16 @@ class TestsFlextInfraAuditorCommandContract:
 
         """
         name = "infra-pkg"
-        u.Tests.write_project_beads_config(self, name)
-        u.Tests.write_standalone_workspace_manifest(self, name)
+        u.Tests.write_project_beads_config(tmp_path, name)
+        u.Tests.write_standalone_workspace_manifest(tmp_path, name)
         u.Tests.initialize_git_repo(
-            self,
+            tmp_path,
             origin_url=u.Tests.repository_ref(name).url,
         )
         return m.Infra.DocScope(
             name=name,
-            path=self,
-            report_dir=self / ".reports" / "docs",
+            path=tmp_path,
+            report_dir=tmp_path / ".reports" / "docs",
             package_name="infra_pkg",
         )
 

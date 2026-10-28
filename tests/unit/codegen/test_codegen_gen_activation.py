@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 # Each scenario's candidate checkout is set up from its committed locks before
 # any item starts. Make test-full owns the native installer and conform boundary.
@@ -41,7 +41,7 @@ class TestsFlextInfraCodegenGenActivation:
 
     @staticmethod
     def test_gen_recovers_activation_and_orders_hooks(
-        provisioned_infra_checkout: t.Pair[str, Path],
+        provisioned_infra_checkout: tuple[str, Path],
     ) -> None:
         """Native failures stop post hooks; a valid producer activates only once."""
         scenario, root = provisioned_infra_checkout

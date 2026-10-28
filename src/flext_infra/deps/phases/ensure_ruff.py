@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -29,7 +30,7 @@ class FlextInfraEnsureRuffConfigPhase:
         self._codegen = codegen
 
     @staticmethod
-    def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
+    def _workspace_exclusion_globs(project_dir: Path) -> Sequence[str]:
         """Return immutable repository and explicit exclusion path globs.
 
         Content-only repositories are foreign, read-only trees and therefore
@@ -197,17 +198,17 @@ class FlextInfraEnsureRuffConfigPhase:
         payload: t.MutableJsonMapping,
         *,
         path: Path,
-        analysis_exclusions: t.StrSequence | None = None,
-        generated_python_roots: t.StrSequence = (),
+        analysis_exclusions: Sequence[str] | None = None,
+        generated_python_roots: Sequence[str] = (),
         repository_namespace_packages: t.StrTuple = (),
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Apply canonical Ruff settings directly to one normalized payload.
 
         ``analysis_exclusions`` is the caller's declared topology; ``None``
         derives the workspace exclusion globs on disk.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         changes = list(

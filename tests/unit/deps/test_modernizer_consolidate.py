@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from flext_infra.deps import FlextInfraConsolidateGroupsPhase
 from tests import c, t, tm, u
 
@@ -16,12 +18,12 @@ class TestsFlextInfraDepsModernizerConsolidate:
     @staticmethod
     def _consolidated(
         source: str,
-        canonical_dev: t.StrSequence = (),
-    ) -> t.Pair[t.JsonMapping, t.StrSequence]:
+        canonical_dev: Sequence[str] = (),
+    ) -> tuple[t.JsonMapping, Sequence[str]]:
         """Consolidate one payload twice; return the payload and first changes.
 
         Returns:
-            The resulting ``t.Pair[t.JsonMapping, t.StrSequence]``.
+            The resulting ``tuple[t.JsonMapping, Sequence[str]]``.
 
         """
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(

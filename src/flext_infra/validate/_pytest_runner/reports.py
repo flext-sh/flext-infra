@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 import time
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,7 @@ from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
@@ -53,7 +54,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             for item in manifest.markdown_collected
             if item.node_id not in manifest.node_ids
         )
-        violations: t.MutableSequenceOf[str] = []
+        violations: MutableSequence[str] = []
         if not cache_hit and set(diagnostics.reported_node_ids) != set(
             manifest.node_ids,
         ):
@@ -246,7 +247,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         log: Path,
         context: m.Infra.PytestRunContext,
         selection_plan: m.Infra.PytestSelectionPlan | None,
-    ) -> t.Pair[int, int | None]:
+    ) -> tuple[int, int | None]:
         """Reconcile the executed selection against the collection inventory.
 
         Returns:
@@ -440,19 +441,19 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         *,
         context: m.Infra.PytestRunContext,
         suite: m.Infra.PytestDiagnostics,
-    ) -> tuple[t.Pair[str, m.Infra.PytestDiagnostics], ...]:
+    ) -> tuple[tuple[str, m.Infra.PytestDiagnostics], ...]:
         """Read each subprocess receipt once in execution order.
 
         Whole-project FULL collection belongs to the suite process. Declared
         file and incremental requests retain their separate collection phases.
 
         Returns:
-            The resulting ``tuple[t.Pair[str, m.Infra.PytestDiagnostics], ...],``.
+            The resulting ``tuple[tuple[str, m.Infra.PytestDiagnostics], ...],``.
 
         """
         if context.execution_mode == c.Infra.PytestExecutionMode.FULL:
             return (("suite", suite),)
-        phases: t.MutableSequenceOf[t.Pair[str, m.Infra.PytestDiagnostics]] = []
+        phases: MutableSequence[tuple[str, m.Infra.PytestDiagnostics]] = []
         if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (report_dir / "selection-plan.json").read_text(encoding="utf-8"),
@@ -526,14 +527,14 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         report_dir: Path,
         diagnostics: m.Infra.PytestDiagnostics,
         *,
-        phases: tuple[t.Pair[str, m.Infra.PytestDiagnostics], ...],
+        phases: tuple[tuple[str, m.Infra.PytestDiagnostics], ...],
     ) -> None:
         """Persist each typed diagnostics channel."""
         u.Cli.atomic_write_text_file(
             report_dir / "diagnostics.json",
             diagnostics.model_dump_json(indent=2) + "\n",
         ).unwrap()
-        outputs: tuple[t.Triple[str, t.StrSequence, str], ...] = (
+        outputs: tuple[tuple[str, Sequence[str], str], ...] = (
             ("failed-tests.txt", diagnostics.failed_cases, "\n\n"),
             ("errors.txt", diagnostics.error_traces, "\n\n"),
             (

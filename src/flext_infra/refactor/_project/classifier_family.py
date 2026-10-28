@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
 from flext_infra.refactor._project import FlextInfraRefactorProjectClassifierDeps
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
     from pathlib import Path
 
     from flext_infra import t
@@ -35,15 +35,15 @@ class FlextInfraRefactorProjectClassifierFamily(
 
     def _discover_facade_inheritance(
         self,
-    ) -> t.Pair[t.MappingKV[str, t.Infra.StrSet], t.Infra.StrSet]:
+    ) -> tuple[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]:
         """Discover facade inheritance.
 
         Returns:
-            The resulting ``t.Pair[t.MappingKV[str, t.Infra.StrSet], t.Infra.StrSet]``.
+            The resulting ``tuple[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]``.
 
         """
         families = u.Infra.facade_families()
-        family_bases: t.MappingKV[str, t.Infra.StrSet] = {
+        family_bases: Mapping[str, t.Infra.StrSet] = {
             family: set() for family in families
         }
         local_facade_classes: t.Infra.StrSet = set()
@@ -66,11 +66,11 @@ class FlextInfraRefactorProjectClassifierFamily(
         self,
         file_path: Path,
         suffix: str,
-    ) -> t.Pair[t.Infra.StrSet, t.Infra.StrSet]:
+    ) -> tuple[t.Infra.StrSet, t.Infra.StrSet]:
         """Parse family file.
 
         Returns:
-            The resulting ``t.Pair[t.Infra.StrSet, t.Infra.StrSet]``.
+            The resulting ``tuple[t.Infra.StrSet, t.Infra.StrSet]``.
 
         """
         source = u.Cli.files_read_text(file_path).unwrap()
@@ -94,16 +94,16 @@ class FlextInfraRefactorProjectClassifierFamily(
     def _build_confirmed_family_chains(
         self,
         *,
-        internal_dependencies: t.StrSequence,
-        family_bases: t.MappingKV[str, t.Infra.StrSet],
-    ) -> t.MappingKV[str, t.StrSequence]:
+        internal_dependencies: Sequence[str],
+        family_bases: Mapping[str, t.Infra.StrSet],
+    ) -> Mapping[str, Sequence[str]]:
         """Build confirmed family chains.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.StrSequence]``.
+            The resulting ``Mapping[str, Sequence[str]]``.
 
         """
-        family_chains: MutableMapping[str, t.StrSequence] = {}
+        family_chains: MutableMapping[str, Sequence[str]] = {}
         for family, declared in u.Infra.facade_families().items():
             expected_parents = self._expected_parents_for_family(
                 family_suffix=declared.suffix,
@@ -123,15 +123,15 @@ class FlextInfraRefactorProjectClassifierFamily(
         self,
         *,
         family_suffix: str,
-        internal_dependencies: t.StrSequence,
-    ) -> t.StrSequence:
+        internal_dependencies: Sequence[str],
+    ) -> Sequence[str]:
         """Return the expected parents for a family.
 
         Returns:
             The expected parents for a family.
 
         """
-        expected: t.MutableSequenceOf[str] = []
+        expected: MutableSequence[str] = []
         for dependency in internal_dependencies:
             stem = self._dependency_to_class_stem(dependency)
             if not stem:
@@ -165,7 +165,7 @@ class FlextInfraRefactorProjectClassifierFamily(
     def _infer_project_kind(
         self,
         *,
-        internal_dependencies: t.StrSequence,
+        internal_dependencies: Sequence[str],
         local_facade_classes: t.Infra.StrSet,
     ) -> str:
         """Infer project kind.

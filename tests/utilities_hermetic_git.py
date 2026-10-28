@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -34,7 +35,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         root: Path,
         distribution: str,
         *,
-        dependencies: t.StrSequence = (),
+        dependencies: Sequence[str] = (),
         groups: str = "",
         uv: str = "",
     ) -> None:
@@ -72,7 +73,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
     def resolve_native_identity_fixture(
         root: Path,
         *,
-        git_environment: t.StrMapping | None = None,
+        git_environment: Mapping[str, str] | None = None,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Observe native resolution without network, installation or lock repair.
 
@@ -185,9 +186,9 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
 
     @staticmethod
     def _commit_origins(
-        databases: t.SequenceOf[Path],
-        commits: t.StrSequence,
-    ) -> t.MappingKV[str, Path]:
+        databases: Sequence[Path],
+        commits: Sequence[str],
+    ) -> Mapping[str, Path]:
         """Map each commit to the first local Git database that holds it.
 
         One batched object query per database replaces one process per
@@ -224,8 +225,8 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
     def build_git_mirrors(
         project_root: Path,
         mirrors: Path,
-        sources: t.SequenceOf[t.Triple[str, str, str]],
-    ) -> t.StrSequence:
+        sources: Sequence[t.Triple[str, str, str]],
+    ) -> Sequence[str]:
         """Mirror each locked source's exact commit under its host and path.
 
         ``sources`` is the caller's ``locked_git_sources`` result, read once:
@@ -242,7 +243,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         client whose uv cache lacks the history).
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             FileNotFoundError: If locked Git source is not held locally.
@@ -313,7 +314,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         return tuple(mirrored)
 
     @staticmethod
-    def hermetic_git_environment(mirrors: Path) -> t.StrMapping:
+    def hermetic_git_environment(mirrors: Path) -> Mapping[str, str]:
         """Route every mirrored host to its mirror and refuse any other transport.
 
         Git may speak only the ``file`` protocol, uv makes no network request
@@ -323,7 +324,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         the numbered configuration consists only of these declared mirrors.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         """
         hosts = sorted(path.name for path in mirrors.iterdir() if path.is_dir())
@@ -346,9 +347,9 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
 
     @staticmethod
     def route_declared_origins(
-        environment: t.StrMapping,
-        origins: t.MappingKV[str, Path],
-    ) -> t.StrMapping:
+        environment: Mapping[str, str],
+        origins: Mapping[str, Path],
+    ) -> Mapping[str, str]:
         """Serve each declared repository identity from its local bare origin.
 
         Git applies the longest matching ``insteadOf`` prefix, so an exact

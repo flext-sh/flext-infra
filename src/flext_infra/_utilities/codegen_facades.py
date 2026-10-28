@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Generator, MutableMapping
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from importlib.util import resolve_name
 from pathlib import Path
 from typing import Literal, override
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesCodegenFacades(
         def __init__(
             self,
             project: p.Infra.RopeProject,
-            sources: t.MappingKV[str, t.Pair[Path, str]],
+            sources: Mapping[str, tuple[Path, str]],
         ) -> None:
             self.project = project
             self.sources = sources
@@ -155,8 +155,8 @@ class FlextInfraUtilitiesCodegenFacades(
     def candidate_python_sources(
         cls,
         candidate: m.Infra.StageSourcePlan,
-        states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> t.MutableMappingKV[Path, str]:
+        states: tuple[m.Cli.AtomicFileState, ...],
+    ) -> MutableMapping[Path, str]:
         """Select the candidate's Python sources from the given file states.
 
         Returns:
@@ -172,8 +172,8 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def facade_original_sources(
         root: Path,
-        states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> t.MappingKV[Path, str]:
+        states: tuple[m.Cli.AtomicFileState, ...],
+    ) -> Mapping[Path, str]:
         """Select root-owned, non-ignored Python sources from file states.
 
         Returns:
@@ -196,7 +196,7 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         pkg_dir: Path,
         facade_path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         *,
         project: p.Infra.RopeProject,
     ) -> str:
@@ -372,10 +372,10 @@ class FlextInfraUtilitiesCodegenFacades(
     def _complete_type_owner(
         cls,
         pkg_dir: Path,
-        facade: t.Pair[Path, ast.ClassDef],
-        sources: t.MappingKV[Path, str],
+        facade: tuple[Path, ast.ClassDef],
+        sources: Mapping[Path, str],
         *,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[str, t.Pair[Path, str]]],
+        binding: tuple[p.Infra.RopeProject, Mapping[str, tuple[Path, str]]],
     ) -> m.Infra.SourceClassReference:
         """Admit one exported complete owner and its declaration-time facade base.
 
@@ -520,7 +520,7 @@ class FlextInfraUtilitiesCodegenFacades(
         family: str,
         *,
         project: p.Infra.RopeProject | None = None,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> Path | None:
         """Return the package module that declares facade letter ``family``.
 
@@ -577,7 +577,7 @@ class FlextInfraUtilitiesCodegenFacades(
             c.Infra.FacadeFamily.M,
         ] = "u",
         project: p.Infra.RopeProject | None = None,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Render uniquely discovered utility, protocol or model owners.
 
@@ -717,7 +717,7 @@ class FlextInfraUtilitiesCodegenFacades(
         *,
         family: c.Infra.FacadeFamily,
         project: p.Infra.RopeProject,
-    ) -> t.Pair[Path, str]:
+    ) -> tuple[Path, str]:
         """Derive one recursive domain publication from its elected family.
 
         Returns:
@@ -804,7 +804,7 @@ class FlextInfraUtilitiesCodegenFacades(
     @classmethod
     def family_subfacade_owners(
         cls, project: p.Infra.RopeProject, directory: Path
-    ) -> list[t.Pair[Path, str]]:
+    ) -> list[tuple[Path, str]]:
         """Elect authored compositions beside or inside their native child domain.
 
         A holder must compose another domain module's native class. Its own nested
@@ -826,10 +826,10 @@ class FlextInfraUtilitiesCodegenFacades(
                 project, sources={}
             )
         )
-        owners: list[t.Pair[Path, str]] = []
+        owners: list[tuple[Path, str]] = []
         classes: list[p.Infra.RopeSourceClass] = []
-        priorities: list[t.Pair[bool, t.Pair[bool, bool]]] = []
-        composition_suppliers: list[t.VariadicTuple[p.Infra.RopePyObject]] = []
+        priorities: list[tuple[bool, tuple[bool, bool]]] = []
+        composition_suppliers: list[tuple[p.Infra.RopePyObject, ...]] = []
         model = FlextInfraUtilitiesDeclarationPayload.identity_name(
             project, "pydantic.BaseModel"
         ).get_object()
@@ -962,7 +962,7 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @classmethod
     def _maximal_native_owner_indices(
-        cls, owners: t.SequenceOf[p.Infra.RopePyObject]
+        cls, owners: Sequence[p.Infra.RopePyObject]
     ) -> tuple[int, ...]:
         """Return owners not already composed by another strict native descendant."""
         ancestry = tuple(cls.class_ancestry(owner) for owner in owners)
@@ -1069,7 +1069,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_direct_method_call(
         node: ast.Call,
         declaration: ast.FunctionDef | ast.AsyncFunctionDef,
-        parents: t.MappingKV[int, p.Infra.RopeAstNode],
+        parents: Mapping[int, p.Infra.RopeAstNode],
     ) -> bool:
         """Exclude annotations and nested declarations from method call evidence.
 
@@ -1164,7 +1164,7 @@ class FlextInfraUtilitiesCodegenFacades(
         class_name: str,
         *,
         directory: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> str:
         """Keep the authored composition, or seed its generated declaration.
 
@@ -1244,7 +1244,7 @@ class FlextInfraUtilitiesCodegenFacades(
         *,
         family: c.Infra.FacadeFamily,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> str:
         """Compose a recursive domain through the same family MRO renderer.
 
@@ -1283,9 +1283,9 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @staticmethod
     def _component_stage_plans(
-        planned: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-        additions: t.SequenceOf[m.Infra.CodegenFilePlan],
+        planned: MutableMapping[Path, m.Infra.CodegenFilePlan],
+        staged: MutableMapping[Path, m.Infra.CodegenFilePlan],
+        additions: Sequence[m.Infra.CodegenFilePlan],
     ) -> None:
         """Admit stage effects only through the authenticated plan composer.
 
@@ -1333,11 +1333,11 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         *,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
-        planners: t.Pair[p.Infra.SourceInitializerPlanner, p.Infra.SourceViewProvider],
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        planners: tuple[p.Infra.SourceInitializerPlanner, p.Infra.SourceViewProvider],
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Compose recursive domains, root facades and exports in one candidate.
 
         Existing file plans retain their physical witnesses and tombstones.
@@ -1369,7 +1369,7 @@ class FlextInfraUtilitiesCodegenFacades(
         utility_paths: set[Path] = set()
 
         def elected_domains() -> p.Result[
-            t.SequenceOf[t.Triple[Path, Path, c.Infra.FacadeFamily]]
+            Sequence[tuple[Path, Path, c.Infra.FacadeFamily]]
         ]:
             """Elect the selected recursive domains from the observed capture.
 
@@ -1425,7 +1425,7 @@ class FlextInfraUtilitiesCodegenFacades(
             return r[bool].ok(value=True)
 
         def plan_cohort(
-            domains: t.SequenceOf[t.Triple[Path, Path, c.Infra.FacadeFamily]],
+            domains: Sequence[tuple[Path, Path, c.Infra.FacadeFamily]],
         ) -> p.Result[bool]:
             """Seed, move and render every domain, deepest first.
 
@@ -1494,11 +1494,11 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_rebind_imports(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-        planned: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        staged: MutableMapping[Path, m.Infra.CodegenFilePlan],
+        planned: MutableMapping[Path, m.Infra.CodegenFilePlan],
         *,
         source_view: p.Infra.SourceViewProvider,
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
     ) -> None:
         """Stage root-facade import rebinds after this cohort's recorded moves.
 
@@ -1520,10 +1520,10 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         snapshot: p.Infra.WorkspaceSnapshot,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
         *,
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Rebind unique native publications before querying generated ancestry.
 
         The component renderer still owns the final MRO. These import-only seeds
@@ -1549,10 +1549,10 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         package: Path,
         family: c.Infra.FacadeFamily,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Rewrite one generated root facade's relocated member imports.
 
         Returns:
@@ -1630,7 +1630,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_seed_publisher(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         directory: Path,
         prefix: str,
         name: str,
@@ -1696,10 +1696,10 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         utility_paths: set[Path],
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        staged: MutableMapping[Path, m.Infra.CodegenFilePlan],
         *,
         source_view: p.Infra.SourceViewProvider,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Close receiver rewrites before retiring their component publications.
 
         The shared candidate advances between these dependent steps. A file
@@ -1727,13 +1727,11 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         snapshot: p.Infra.WorkspaceSnapshot,
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        staged: MutableMapping[Path, m.Infra.CodegenFilePlan],
         *,
         source_view: p.Infra.SourceViewProvider,
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> p.Result[
-        t.VariadicTuple[t.Pair[m.Infra.CodegenFilePlan, c.Infra.FacadeFamily]]
-    ]:
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> p.Result[tuple[tuple[m.Infra.CodegenFilePlan, c.Infra.FacadeFamily], ...]]:
         """Plan root compositions against each updated shared candidate view.
 
         Returns:
@@ -1741,9 +1739,9 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         result_type = r[
-            t.VariadicTuple[t.Pair[m.Infra.CodegenFilePlan, c.Infra.FacadeFamily]]
+            tuple[tuple[m.Infra.CodegenFilePlan, c.Infra.FacadeFamily], ...]
         ]
-        planned: list[t.Pair[m.Infra.CodegenFilePlan, c.Infra.FacadeFamily]] = []
+        planned: list[tuple[m.Infra.CodegenFilePlan, c.Infra.FacadeFamily]] = []
         with source_view(root, declared_files=tuple(staged.values())) as binding:
             families = cls._component_root_families(
                 root, snapshot, binding, selection=selection
@@ -1766,10 +1764,10 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         paths: set[Path],
-        staged: t.MappingKV[Path, m.Infra.CodegenFilePlan],
+        staged: Mapping[Path, m.Infra.CodegenFilePlan],
         *,
         source_view: p.Infra.SourceViewProvider,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Retire exact stateless providers after their candidate consumers close.
 
         Native role, public composition and effective callable identity are all
@@ -1784,7 +1782,7 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         publications: dict[
-            t.Pair[p.Infra.RopeClassObject, str], p.Infra.RopeClassObject
+            tuple[p.Infra.RopeClassObject, str], p.Infra.RopeClassObject
         ] = {}
         updates: dict[Path, str] = {}
         with source_view(root, declared_files=tuple(staged.values())) as (
@@ -1882,7 +1880,7 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @staticmethod
     def _component_selection_error(
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
         final: m.Infra.CodegenFilePlan | None,
     ) -> str | None:
         """Validate that a selected facade retains its declared destination.
@@ -1904,17 +1902,17 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         snapshot: p.Infra.WorkspaceSnapshot,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
         *,
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> p.Result[t.VariadicTuple[t.Triple[Path, Path, c.Infra.FacadeFamily]]]:
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> p.Result[tuple[tuple[Path, Path, c.Infra.FacadeFamily], ...]]:
         """Inventory domains and validate selection in the shared source view.
 
         Returns:
             The selected domains or the unchanged selection failure diagnostic.
 
         """
-        result_type = r[t.VariadicTuple[t.Triple[Path, Path, c.Infra.FacadeFamily]]]
+        result_type = r[tuple[tuple[Path, Path, c.Infra.FacadeFamily], ...]]
         owned = cls.workspace_python_files(snapshot, root, project=binding[0])
         domains = cls._component_domains(
             root, {path: binding[1][path] for path in owned}
@@ -1961,10 +1959,10 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         root: Path,
         snapshot: p.Infra.WorkspaceSnapshot,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
         *,
-        selection: t.Pair[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> t.VariadicTuple[t.Pair[Path, c.Infra.FacadeFamily]]:
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> tuple[tuple[Path, c.Infra.FacadeFamily], ...]:
         """Inventory root families from the same epoch-bound source view.
 
         Returns:
@@ -2005,7 +2003,7 @@ class FlextInfraUtilitiesCodegenFacades(
         package: Path,
         family: c.Infra.FacadeFamily,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> m.Infra.CodegenFilePlan | None:
         """Plan one root family through its existing renderer and source witness.
 
@@ -2048,8 +2046,8 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @classmethod
     def _component_domains(
-        cls, root: Path, sources: t.MappingKV[Path, str]
-    ) -> t.VariadicTuple[t.Triple[Path, Path, c.Infra.FacadeFamily]]:
+        cls, root: Path, sources: Mapping[Path, str]
+    ) -> tuple[tuple[Path, Path, c.Infra.FacadeFamily], ...]:
         """Elect recursive private domains in deepest-first source order.
 
         Returns:
@@ -2078,12 +2076,12 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_seed(
         cls,
         root: Path,
-        domain: t.Triple[Path, Path, c.Infra.FacadeFamily],
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        domain: tuple[Path, Path, c.Infra.FacadeFamily],
+        staged: MutableMapping[Path, m.Infra.CodegenFilePlan],
         *,
         source_view: p.Infra.SourceViewProvider,
         ownership_project: p.Infra.RopeProject,
-    ) -> t.Pair[m.Infra.CodegenFilePlan, t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> tuple[m.Infra.CodegenFilePlan, tuple[m.Infra.CodegenFilePlan, ...]]:
         """Elect observed ownership and move it through the current candidate.
 
         Pending initializers may already withhold a consumed parent export. They
@@ -2098,7 +2096,7 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         family_root, directory, family = domain
-        moved: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        moved: tuple[m.Infra.CodegenFilePlan, ...] = ()
         path, name = cls.family_subfacade_identity(
             directory, family_root, family=family, project=ownership_project
         )
@@ -2159,11 +2157,11 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_candidate_owner(
         cls,
         project: p.Infra.RopeProject,
-        identity: t.Pair[Path, str],
+        identity: tuple[Path, str],
         directory: Path,
         *,
         observed_owner: Path | None,
-        declared_files: t.MappingKV[Path, m.Infra.CodegenFilePlan],
+        declared_files: Mapping[Path, m.Infra.CodegenFilePlan],
     ) -> Path | None:
         """Follow a recorded creation or move without discarding observed ownership.
 
@@ -2209,7 +2207,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_destination_conflict(
         cls,
         project: p.Infra.RopeProject,
-        identity: t.Pair[Path, str],
+        identity: tuple[Path, str],
         directory: Path,
         owner: Path | None,
     ) -> str:
@@ -2240,7 +2238,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_export_evidence(
         cls,
         module: p.Infra.RopeSemanticModule,
-        exports: t.VariadicTuple[str],
+        exports: tuple[str, ...],
     ) -> list[str]:
         """Describe declaration provenance without reading consumer payload values.
 
@@ -2289,9 +2287,9 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_seed_file(
         cls,
         root: Path,
-        identity: t.Pair[Path, str],
+        identity: tuple[Path, str],
         directory: Path,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
     ) -> m.Infra.CodegenFilePlan:
         """Seed one publication against its authentic physical before state.
 
@@ -2320,9 +2318,9 @@ class FlextInfraUtilitiesCodegenFacades(
     def _component_render(
         cls,
         root: Path,
-        domain: t.Triple[Path, Path, c.Infra.FacadeFamily],
+        domain: tuple[Path, Path, c.Infra.FacadeFamily],
         seed: m.Infra.CodegenFilePlan,
-        staged: t.MappingKV[Path, m.Infra.CodegenFilePlan],
+        staged: Mapping[Path, m.Infra.CodegenFilePlan],
         *,
         source_view: p.Infra.SourceViewProvider,
     ) -> m.Infra.CodegenFilePlan:
@@ -2349,10 +2347,10 @@ class FlextInfraUtilitiesCodegenFacades(
     def _render_explicit_class_facade(
         cls,
         pkg_dir: Path,
-        source_entry: t.Pair[Path, str],
+        source_entry: tuple[Path, str],
         *,
         family: c.Infra.FacadeFamily,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
         owners_dir: Path | None = None,
     ) -> str:
         """Preserve authored class publications without inheriting their owners.
@@ -2425,13 +2423,13 @@ class FlextInfraUtilitiesCodegenFacades(
     @classmethod
     def _explicit_publication_scope(
         cls,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[str, t.Pair[Path, str]]],
-        source_entry: t.Pair[Path, str],
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
-    ) -> t.Triple[
+        binding: tuple[p.Infra.RopeProject, Mapping[str, tuple[Path, str]]],
+        source_entry: tuple[Path, str],
+        declarations: Sequence[m.Infra.SourceClassReference],
+    ) -> tuple[
         p.Infra.RopeScope,
         ast.ClassDef,
-        t.VariadicTuple[p.Infra.RopeClassObject],
+        tuple[p.Infra.RopeClassObject, ...],
     ]:
         """Resolve authored publication aliases in their native lexical scope.
 
@@ -2482,7 +2480,7 @@ class FlextInfraUtilitiesCodegenFacades(
         path: Path,
         source: str,
         *,
-        captured_sources: t.MappingKV[Path, str],
+        captured_sources: Mapping[Path, str],
     ) -> str:
         """Compose upstream package letters and retain their inherited namespace.
 
@@ -2570,8 +2568,8 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def _captured_publication_sources(
         project: p.Infra.RopeProject,
-        captured_sources: t.MappingKV[Path, str],
-    ) -> t.MutableMappingKV[str, t.Pair[Path, str]]:
+        captured_sources: Mapping[Path, str],
+    ) -> MutableMapping[str, tuple[Path, str]]:
         """Index captured origins by their native publishing module identity.
 
         Returns:
@@ -2582,7 +2580,7 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         root = Path(project.root.real_path)
-        sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
+        sources: MutableMapping[str, tuple[Path, str]] = {}
         for source_path, captured_source in captured_sources.items():
             package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
                 source_path.parent, project_root=root, source_project=project
@@ -2612,7 +2610,7 @@ class FlextInfraUtilitiesCodegenFacades(
         tuple[
             tuple[str, p.Infra.RopePyObject, str],
             list[ast.Name],
-            t.Triple[str, str, str | None],
+            tuple[str, str, str | None],
         ]
     ]:
         """Resolve facade base imports through their publishing package identity.
@@ -2711,7 +2709,7 @@ class FlextInfraUtilitiesCodegenFacades(
         references: dict[tuple[int, int], str] = {}
         context = CodemodContext(full_package_name=module.get_name().rpartition(".")[0])
         elected: dict[str, p.Infra.RopePyObject] = {}
-        imports: set[t.Pair[str, str]] = set()
+        imports: set[tuple[str, str]] = set()
         removed_import = False
         for (
             publication,
@@ -2794,10 +2792,10 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         view: _UpstreamSourceView,
         module: p.Infra.RopePyModule,
-        binding: t.Pair[str, p.Infra.RopePyObject],
+        binding: tuple[str, p.Infra.RopePyObject],
         context: CodemodContext,
         *,
-        header: t.Pair[Path, ast.ClassDef],
+        header: tuple[Path, ast.ClassDef],
     ) -> list[ast.Name]:
         """Resolve native references and schedule only their imported owners.
 
@@ -2885,9 +2883,9 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         view: _UpstreamSourceView,
         module: p.Infra.RopePyModule,
-        names: t.SequenceOf[ast.Name],
+        names: Sequence[ast.Name],
         letter: str,
-        binding: t.Pair[Path, p.Infra.RopePyObject],
+        binding: tuple[Path, p.Infra.RopePyObject],
     ) -> bool:
         """Preserve lexical collisions and the facade's own type-alias publication.
 
@@ -3110,7 +3108,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _rewrite_upstream_references(
         context: CodemodContext,
         source: str,
-        references: t.MappingKV[tuple[int, int], str],
+        references: Mapping[tuple[int, int], str],
     ) -> str:
         """Batch reference and import edits before one native unused-import pass.
 
@@ -3181,7 +3179,7 @@ class FlextInfraUtilitiesCodegenFacades(
         source: str,
         *,
         family: c.Infra.FacadeFamily,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
         owners_dir: Path | None = None,
     ) -> str:
         """Import composed family owners through the family package's lazy exports.
@@ -3315,7 +3313,7 @@ class FlextInfraUtilitiesCodegenFacades(
         facade_path: Path,
         source: str,
         *,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
     ) -> str:
         """Compose protocol owners selected by their resolved consumers.
 
@@ -3423,7 +3421,7 @@ class FlextInfraUtilitiesCodegenFacades(
         ast.ClassDef,
         ast.ClassDef,
         p.Infra.RopeScope,
-        t.Pair[p.Infra.RopePyObject, p.Infra.RopePyObject],
+        tuple[p.Infra.RopePyObject, p.Infra.RopePyObject],
         tuple[p.Infra.RopePyObject, ...],
         frozenset[str],
     ]:
@@ -3506,7 +3504,7 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def _protocol_typing_objects(
         project: p.Infra.RopeProject,
-    ) -> t.Pair[p.Infra.RopePyObject, p.Infra.RopePyObject]:
+    ) -> tuple[p.Infra.RopePyObject, p.Infra.RopePyObject]:
         """Resolve the native typing identities.
 
         Returns:
@@ -3533,7 +3531,7 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         inherited: list[p.Infra.RopePyObject] = []
-        pending: list[t.Pair[p.Infra.RopePyObject, p.Infra.RopeClassObject | None]] = [
+        pending: list[tuple[p.Infra.RopePyObject, p.Infra.RopeClassObject | None]] = [
             (owner, None) for owner in base_objects
         ]
         while pending:
@@ -3566,7 +3564,7 @@ class FlextInfraUtilitiesCodegenFacades(
         source: str,
         namespace: ast.ClassDef,
         base_objects: tuple[p.Infra.RopePyObject, ...],
-        typing_objects: t.Pair[p.Infra.RopePyObject, p.Infra.RopePyObject],
+        typing_objects: tuple[p.Infra.RopePyObject, p.Infra.RopePyObject],
         scope: p.Infra.RopeScope,
     ) -> str:
         """Remove interface markers only from the selected plain namespace.
@@ -3622,7 +3620,7 @@ class FlextInfraUtilitiesCodegenFacades(
         member: ast.stmt,
         *,
         generated: bool = False,
-    ) -> t.Triple[str, ast.expr, ast.expr | None] | None:
+    ) -> tuple[str, ast.expr, ast.expr | None] | None:
         """Read only direct class bindings, without admitting calls or PEP 695 aliases.
 
         A PEP 613 ``Name: TypeAlias = Owner`` publication is the canonical form
@@ -3757,7 +3755,7 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @staticmethod
     def _alias_publication_statements(
-        source: str, publications: t.SequenceOf[ast.stmt]
+        source: str, publications: Sequence[ast.stmt]
     ) -> str:
         """Rewrite selected class bindings to PEP 613 aliases in one traversal.
 
@@ -3831,8 +3829,8 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @classmethod
     def facade_class_publications(
-        cls, root: Path, rows: t.MappingKV[Path, frozenset[int]]
-    ) -> frozenset[t.Triple[Path, int, int]]:
+        cls, root: Path, rows: Mapping[Path, frozenset[int]]
+    ) -> frozenset[tuple[Path, int, int]]:
         """Authenticate PEP 613 facade class publications at reported rows.
 
         A publication is ``Name: TypeAlias = Owner`` declared directly in an
@@ -3852,7 +3850,7 @@ class FlextInfraUtilitiesCodegenFacades(
         selected = {path.resolve(): wanted for path, wanted in rows.items() if wanted}
         if not selected:
             return frozenset()
-        publications: set[t.Triple[Path, int, int]] = set()
+        publications: set[tuple[Path, int, int]] = set()
         with cls.facade_source_project(root) as (project, sources):
             for path, wanted in sorted(selected.items()):
                 source = sources[path]
@@ -3893,7 +3891,7 @@ class FlextInfraUtilitiesCodegenFacades(
                         for child in module_scope.get_scopes()
                         if child.get_start() == owner.lineno
                     )
-                    members: list[t.Pair[p.Infra.RopeScope, ast.stmt]] = [
+                    members: list[tuple[p.Infra.RopeScope, ast.stmt]] = [
                         (module_scope, member) for member in owner.body
                     ]
                     members.extend(
@@ -3941,7 +3939,7 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         base_objects: tuple[p.Infra.RopePyObject, ...],
         names: frozenset[str],
-    ) -> t.MutableMappingKV[str, p.Infra.RopePyObject]:
+    ) -> MutableMapping[str, p.Infra.RopePyObject]:
         """Resolve effective inherited declarations in native-identity C3 order.
 
         Returns:
@@ -3952,9 +3950,9 @@ class FlextInfraUtilitiesCodegenFacades(
             str(id(owner)): owner
             for owner in cls._protocol_ancestor_objects(base_objects)
         }
-        lineages: t.MutableMappingKV[str, t.StrTuple] = {}
+        lineages: MutableMapping[str, t.StrTuple] = {}
 
-        def lineage(bases: t.SequenceOf[p.Infra.RopePyObject]) -> t.StrTuple:
+        def lineage(bases: Sequence[p.Infra.RopePyObject]) -> t.StrTuple:
             for base in bases:
                 identity = str(id(base))
                 if identity not in lineages:
@@ -3974,7 +3972,7 @@ class FlextInfraUtilitiesCodegenFacades(
                 message="Inconsistent facade namespace class lineage",
             )
 
-        members: t.MutableMappingKV[str, p.Infra.RopePyObject] = {}
+        members: MutableMapping[str, p.Infra.RopePyObject] = {}
         for identity in lineage(base_objects):
             owner = owners[identity]
             scope = (
@@ -3996,7 +3994,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _remove_namespace_class_shadows(
         cls,
         source: str,
-        namespace_binding: t.Pair[ast.ClassDef, p.Infra.RopeScope],
+        namespace_binding: tuple[ast.ClassDef, p.Infra.RopeScope],
         base_objects: tuple[p.Infra.RopePyObject, ...],
         *,
         family: Literal["protocol", "model", "utility"],
@@ -4085,7 +4083,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _namespace_member_is_retired(
         scope: p.Infra.RopeScope,
         expression: ast.expr,
-        owners: t.SequenceOf[p.Infra.RopePyObject],
+        owners: Sequence[p.Infra.RopePyObject],
     ) -> bool:
         """Recognize a removed member only on its exact inherited native owner.
 
@@ -4107,7 +4105,7 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def _namespace_class_annotation_target(
         scope: p.Infra.RopeScope,
-        alias: t.Triple[str, ast.expr, ast.expr | None],
+        alias: tuple[str, ast.expr, ast.expr | None],
         value: p.Infra.RopePyName | None,
         *,
         family: Literal["protocol", "model", "utility"],
@@ -4145,7 +4143,7 @@ class FlextInfraUtilitiesCodegenFacades(
         return target
 
     @staticmethod
-    def _remove_shadow_statements(source: str, shadows: t.SequenceOf[ast.stmt]) -> str:
+    def _remove_shadow_statements(source: str, shadows: Sequence[ast.stmt]) -> str:
         """Remove proven shadows and prune only imports belonging to those nodes.
 
         Returns:
@@ -4227,12 +4225,12 @@ class FlextInfraUtilitiesCodegenFacades(
     def _select_protocol_owner_bases(
         cls,
         facade_path: Path,
-        facades: t.Pair[ast.ClassDef, ast.ClassDef],
+        facades: tuple[ast.ClassDef, ast.ClassDef],
         *,
-        owners: t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
-        namespace_bindings: t.Pair[p.Infra.RopeScope, list[p.Infra.RopePyObject]],
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
-    ) -> list[t.Pair[str, str]]:
+        owners: tuple[tuple[str, str, frozenset[str]], ...],
+        namespace_bindings: tuple[p.Infra.RopeScope, list[p.Infra.RopePyObject]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
+    ) -> list[tuple[str, str]]:
         """Select unique missing owners from admitted native semantic modules.
 
         Returns:
@@ -4245,7 +4243,7 @@ class FlextInfraUtilitiesCodegenFacades(
         facade, namespace = facades
         scope, inherited = namespace_bindings
         pkg_dir = facade_path.parent
-        additions: list[t.Pair[str, str]] = []
+        additions: list[tuple[str, str]] = []
         declared = cls._declared_namespace_members(namespace)
         aliases = {
             alias[0]: alias[1]
@@ -4324,10 +4322,10 @@ class FlextInfraUtilitiesCodegenFacades(
     def _render_declared_facade(
         cls,
         pkg_dir: Path,
-        source_entry: t.Pair[Path, str],
+        source_entry: tuple[Path, str],
         *,
         family: c.Infra.FacadeFamily,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
         owners_dir: Path | None = None,
     ) -> str:
         """Compose explicitly exported declarations without reverse family imports.
@@ -4460,8 +4458,8 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def _declared_namespace_bases(
         request: m.Infra.SourceBindingInventoryRequest,
-        classes: t.Pair[ast.ClassDef, ast.ClassDef],
-    ) -> t.VariadicTuple[m.Infra.SourceClassReference]:
+        classes: tuple[ast.ClassDef, ast.ClassDef],
+    ) -> tuple[m.Infra.SourceClassReference, ...]:
         """Read a facade namespace's ordered bases through its source inventory.
 
         Returns:
@@ -4652,7 +4650,7 @@ class FlextInfraUtilitiesCodegenFacades(
         namespace: ast.ClassDef,
         contract: tuple[list[m.Infra.SourceClassReference], set[str], bool],
         *,
-        ordering: t.Pair[t.StrTuple, bool],
+        ordering: tuple[t.StrTuple, bool],
     ) -> str:
         """Apply the resolved base order and imports only for changed contracts.
 
@@ -4680,9 +4678,9 @@ class FlextInfraUtilitiesCodegenFacades(
         project: p.Infra.RopeProject,
         facade_path: Path,
         source: str,
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        declarations: Sequence[m.Infra.SourceClassReference],
         *,
-        binding: tuple[t.MappingKV[str, t.Pair[Path, str]], c.Infra.FacadeFamily],
+        binding: tuple[Mapping[str, tuple[Path, str]], c.Infra.FacadeFamily],
     ) -> bool:
         """Recognize definitive authored class-owner publications by identity.
 
@@ -4799,8 +4797,8 @@ class FlextInfraUtilitiesCodegenFacades(
     def _namespace_component_declarations(
         cls,
         view: _UpstreamSourceView,
-        source_entry: t.Pair[Path, str],
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        source_entry: tuple[Path, str],
+        declarations: Sequence[m.Infra.SourceClassReference],
         *,
         family: c.Infra.FacadeFamily = c.Infra.FacadeFamily.M,
     ) -> list[m.Infra.SourceClassReference]:
@@ -5000,8 +4998,8 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def _declared_facade_owners(
         project: p.Infra.RopeProject,
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        declarations: Sequence[m.Infra.SourceClassReference],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> list[p.Infra.RopeClassObject]:
         """Resolve publication owners through native module and attribute identity.
 
@@ -5037,8 +5035,8 @@ class FlextInfraUtilitiesCodegenFacades(
     def _require_model_namespaces(
         cls,
         project: p.Infra.RopeProject,
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        declarations: Sequence[m.Infra.SourceClassReference],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> None:
         """Require every composed model owner to be a namespace holder.
 
@@ -5113,7 +5111,7 @@ class FlextInfraUtilitiesCodegenFacades(
         facade_path: Path,
         *,
         family: Literal["model", "utility"],
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> str:
         """Resolve the rendered namespace before removing inherited shadows.
 
@@ -5146,7 +5144,7 @@ class FlextInfraUtilitiesCodegenFacades(
         source: str,
         namespace: ast.ClassDef,
         retired: frozenset[str],
-    ) -> t.Pair[str, CodemodContext]:
+    ) -> tuple[str, CodemodContext]:
         wrapper = MetadataWrapper(parse_module(source))
         owner = cls._facade_namespace_cst(wrapper, namespace)
         context = CodemodContext(full_package_name=package_name, wrapper=wrapper)
@@ -5172,10 +5170,10 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         independent: frozenset[str],
         declarations: list[m.Infra.SourceClassReference],
-        facades: t.Pair[ast.ClassDef, ast.ClassDef],
+        facades: tuple[ast.ClassDef, ast.ClassDef],
         *,
         composed: bool,
-        source_bases: t.SequenceOf[m.Infra.SourceClassReference],
+        source_bases: Sequence[m.Infra.SourceClassReference],
     ) -> tuple[list[m.Infra.SourceClassReference], set[str], bool]:
         """Filter declared owners, then append the namespace's own base owners.
 
@@ -5298,7 +5296,7 @@ class FlextInfraUtilitiesCodegenFacades(
         context: CodemodContext,
         source: str,
         namespace: ast.ClassDef,
-        ordered: t.SequenceOf[str],
+        ordered: Sequence[str],
     ) -> str:
         """Reorder the namespace bases and apply the registered imports.
 
@@ -5327,8 +5325,8 @@ class FlextInfraUtilitiesCodegenFacades(
     def _retired_owned_bases(
         cls,
         view: _UpstreamSourceView,
-        roots: t.Pair[Path, Path],
-        facade: t.Pair[Path, ast.ClassDef],
+        roots: tuple[Path, Path],
+        facade: tuple[Path, ast.ClassDef],
         declared_names: set[str],
     ) -> frozenset[str]:
         """Retire own bases whose source no longer publishes in this family.
@@ -5436,7 +5434,7 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         view: _UpstreamSourceView,
         pymodule: p.Infra.RopePyModule,
-        facade: t.Pair[Path, ast.ClassDef],
+        facade: tuple[Path, ast.ClassDef],
         base: ast.expr,
     ) -> p.Infra.RopePyName:
         """Resolve a base's native identity before deciding family retirement.
@@ -5470,8 +5468,8 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         view: _UpstreamSourceView,
         pymodule: p.Infra.RopePyModule,
-        facade: t.Pair[Path, ast.ClassDef],
-        reference: t.Triple[ast.expr, ast.expr, t.SequenceOf[str]],
+        facade: tuple[Path, ast.ClassDef],
+        reference: tuple[ast.expr, ast.expr, Sequence[str]],
     ) -> p.Infra.RopePyName:
         """Resolve the declaration-time binding through its public source origin.
 
@@ -5546,8 +5544,8 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def _enclosing_facade_base_binding(
         pymodule: p.Infra.RopePyModule,
-        facade: t.Pair[Path, ast.ClassDef],
-        reference: t.Triple[ast.expr, ast.expr, t.SequenceOf[str]],
+        facade: tuple[Path, ast.ClassDef],
+        reference: tuple[ast.expr, ast.expr, Sequence[str]],
     ) -> p.Infra.RopePyName | None:
         """Prove the raw local binding precedes the header before resolving aliases.
 
@@ -5603,7 +5601,7 @@ class FlextInfraUtilitiesCodegenFacades(
         value: p.Infra.RopePyObject,
         path: Path,
         owners_dir: Path,
-        contents: t.MappingKV[Path, str],
+        contents: Mapping[Path, str],
         *,
         projection_is_autogen: bool,
     ) -> bool:
@@ -5732,8 +5730,8 @@ class FlextInfraUtilitiesCodegenFacades(
         package_name: str,
         owners_dir: Path,
         source: str,
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        declarations: Sequence[m.Infra.SourceClassReference],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> str:
         """Import declared owners from their nearest publishing package.
 
@@ -5782,8 +5780,8 @@ class FlextInfraUtilitiesCodegenFacades(
 
     @staticmethod
     def _declared_owner_publications(
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-    ) -> t.Pair[dict[str, str], set[str]]:
+        sources: Mapping[str, tuple[Path, str]],
+    ) -> tuple[dict[str, str], set[str]]:
         """Map every public export to its nearest declaring package.
 
         A nested domain owns its own members, so each exported owner binds
@@ -5828,7 +5826,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _relocated_import_source(
         source: str,
         package_name: str,
-        imported: t.Pair[str, str],
+        imported: tuple[str, str],
         target: str,
     ) -> str:
         """Move one imported name to a new origin module, keeping its binding.
@@ -5884,10 +5882,10 @@ class FlextInfraUtilitiesCodegenFacades(
         pkg_dir: Path,
         owners_dir: Path,
         *,
-        contents: t.MappingKV[Path, str],
+        contents: Mapping[Path, str],
         project: p.Infra.RopeProject,
-    ) -> t.Triple[
-        t.MutableMappingKV[str, t.Pair[Path, str]],
+    ) -> tuple[
+        MutableMapping[str, tuple[Path, str]],
         list[m.Infra.SourceClassReference],
         str,
     ]:
@@ -5912,7 +5910,7 @@ class FlextInfraUtilitiesCodegenFacades(
             message = f"Facade package has no elected import namespace: {pkg_dir}"
             raise ValueError(message)
         cls._facade_source_membership(project, owners_dir)
-        sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
+        sources: MutableMapping[str, tuple[Path, str]] = {}
         declarations: list[m.Infra.SourceClassReference] = []
         package_prefix = f"{pkg_dir}/"
         captured = {
@@ -5960,7 +5958,7 @@ class FlextInfraUtilitiesCodegenFacades(
             {(item.target, item.attributes): item for item in declarations}.values()
         )
         declarations = cls._elect_declared_owner_names(project, declarations, sources)
-        competing: t.MutableMappingKV[str, list[str]] = {}
+        competing: MutableMapping[str, list[str]] = {}
         for item in declarations:
             competing.setdefault(item.qualified_base, []).append(
                 f"{item.target}:{'.'.join(item.attributes)}"
@@ -5979,7 +5977,7 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         project: p.Infra.RopeProject,
         declarations: list[m.Infra.SourceClassReference],
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> list[m.Infra.SourceClassReference]:
         """Keep native descendants when multiple modules publish the same name.
 
@@ -6006,7 +6004,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _independent_publishers(
         pkg_dir: Path,
         owners_dir: Path,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        sources: Mapping[str, tuple[Path, str]],
         *,
         package_name: str,
     ) -> frozenset[str]:
@@ -6045,7 +6043,7 @@ class FlextInfraUtilitiesCodegenFacades(
         *,
         nested_namespace: bool,
         namespace: str,
-        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+        binding: tuple[p.Infra.RopeProject, Mapping[Path, str]],
     ) -> frozenset[str]:
         """Collect consumed members through their actual imported Rope identities.
 
@@ -6094,7 +6092,7 @@ class FlextInfraUtilitiesCodegenFacades(
             )
             if not references:
                 continue
-            module_paths: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] = {}
+            module_paths: MutableMapping[p.Infra.RopeImportedModule, Path] = {}
             # A letter whose single binding is one module-level import resolves
             # every load to that import, so the module scope answers once for
             # the whole module; any other binding keeps Rope's per-position
@@ -6133,14 +6131,14 @@ class FlextInfraUtilitiesCodegenFacades(
         *,
         nested_namespace: bool,
         namespace: str,
-    ) -> t.VariadicTuple[t.Pair[ast.Name, str]]:
+    ) -> tuple[tuple[ast.Name, str], ...]:
         """Return each ``<family>[.<namespace>].<member>`` load with its receiver.
 
         Returns:
             The receiver name node and the consumed member, in walk order.
 
         """
-        references: list[t.Pair[ast.Name, str]] = []
+        references: list[tuple[ast.Name, str]] = []
         for reference in ast.walk(tree):
             if not isinstance(reference, ast.Attribute):
                 continue
@@ -6161,8 +6159,8 @@ class FlextInfraUtilitiesCodegenFacades(
         imported_binding: p.Infra.RopePyName | None,
         receiver: ast.Name,
         *,
-        owned: t.VariadicTuple[Path],
-        resolved: t.MutableMappingKV[p.Infra.RopeImportedModule, Path],
+        owned: tuple[Path, ...],
+        resolved: MutableMapping[p.Infra.RopeImportedModule, Path],
     ) -> bool:
         """Check an original native binding for the owned facade import.
 
@@ -6216,12 +6214,12 @@ class FlextInfraUtilitiesCodegenFacades(
     def _facade_protocol_owners(
         cls,
         owners_dir: Path,
-        contents: t.MappingKV[Path, str],
+        contents: Mapping[Path, str],
         *,
         project: p.Infra.RopeProject,
-    ) -> t.Pair[
-        t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
-        t.MappingKV[str, frozenset[str]],
+    ) -> tuple[
+        tuple[tuple[str, str, frozenset[str]], ...],
+        Mapping[str, frozenset[str]],
     ]:
         parents = {
             path.parent
@@ -6231,7 +6229,7 @@ class FlextInfraUtilitiesCodegenFacades(
         parents.add(owners_dir)
         for parent in sorted(parents):
             cls._facade_source_membership(project, parent)
-        owners: list[t.Triple[str, str, frozenset[str]]] = []
+        owners: list[tuple[str, str, frozenset[str]]] = []
         ancestors: MutableMapping[str, frozenset[str]] = {}
         for path, source in sorted(contents.items()):
             if (
@@ -6266,7 +6264,7 @@ class FlextInfraUtilitiesCodegenFacades(
         path: Path,
         *,
         ignored_bases: frozenset[str] = frozenset(),
-    ) -> t.Pair[ast.ClassDef, ast.ClassDef]:
+    ) -> tuple[ast.ClassDef, ast.ClassDef]:
         """Resolve one facade and its single declared utility namespace.
 
         Returns:
@@ -6334,7 +6332,7 @@ class FlextInfraUtilitiesCodegenFacades(
     @staticmethod
     def _insert_protocol_imports(
         source: str,
-        additions: t.SequenceOf[t.Pair[str, str]],
+        additions: Sequence[tuple[str, str]],
         *,
         package: str,
     ) -> str:
@@ -6371,7 +6369,7 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         source: str,
         namespace: ast.ClassDef,
-        additions: t.SequenceOf[t.Pair[str, str]],
+        additions: Sequence[tuple[str, str]],
     ) -> str:
         wrapper = MetadataWrapper(parse_module(source))
         owner = cls._facade_namespace_cst(wrapper, namespace)

@@ -55,7 +55,7 @@ invalid:
   from flext_cli import t
   from flext_core import u
 
-  ADAPTER = t.TypeAdapter(t.StrMapping)
+  ADAPTER = t.TypeAdapter(Mapping[str, str])
 - |
   from pydantic import TypeAdapter
 

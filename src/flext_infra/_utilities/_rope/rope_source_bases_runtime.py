@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+from collections.abc import Mapping, MutableMapping, Sequence
 from functools import cache, partial
 from pathlib import Path
 from types import MappingProxyType
@@ -35,7 +36,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         project: p.Infra.RopeProject,
         qualified: str | m.Infra.SourceClassReference,
         *,
-        sources: t.MappingKV[str, t.Pair[Path, str]] | None = None,
+        sources: Mapping[str, tuple[Path, str]] | None = None,
     ) -> p.Infra.RopePyName:
         """Resolve the first declared member along its authenticated native C3 order.
 
@@ -55,7 +56,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         cls,
         project: p.Infra.RopeProject,
         *,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> p.Infra.RopeSourceMemberResolver:
         """Bind reusable native member lookup to an immutable source mapping.
 
@@ -72,7 +73,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         cls,
         project: p.Infra.RopeProject,
         *,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> t.Infra.RopeSourceMemberResolverFactory:
         """Construct the existing resolver lazily once for this captured operation.
 
@@ -89,11 +90,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         )
 
     @staticmethod
-    def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
-        lineages: t.SequenceOf[t.SequenceOf[TIdentity]],
+    def merge_class_lineages[TIdentity: str | tuple[str, str]](
+        lineages: Sequence[Sequence[TIdentity]],
         *,
         message: str,
-    ) -> t.VariadicTuple[TIdentity]:
+    ) -> tuple[TIdentity, ...]:
         """Merge declared ancestor sequences using their C3 ordering.
 
         Returns:
@@ -139,8 +140,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_member_relocation(
         cls,
         project: p.Infra.RopeProject,
-        receiver: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
-        canonical: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+        receiver: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
+        canonical: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
         member: str,
     ) -> bool:
         """Prove canonical source ancestry and absence of a retired member.
@@ -179,8 +180,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def member_relocation_origin(
             self,
-            receiver: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
-            canonical: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+            receiver: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
+            canonical: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
             member: str,
         ) -> bool:
             """Prove both source lineages and refuse every existing old member.
@@ -295,9 +296,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def __init__(
             self,
             project: p.Infra.RopeProject,
-            sources: t.MappingKV[str, t.Pair[Path, str]],
-            roots: t.StrSequence,
-            extra_module_aliases: t.MappingKV[str, str] | None,
+            sources: Mapping[str, tuple[Path, str]],
+            roots: Sequence[str],
+            extra_module_aliases: Mapping[str, str] | None,
         ) -> None:
             """Bind the resolution inputs and initialize the derived state.
 
@@ -317,32 +318,28 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             names_by_path: dict[Path, list[str]] = {}
             for name, (path, _) in sources.items():
                 names_by_path.setdefault(path, []).append(name)
-            self._source_names_by_path: t.MappingKV[Path, t.StrTuple] = {
+            self._source_names_by_path: Mapping[Path, t.StrTuple] = {
                 path: tuple(names) for path, names in names_by_path.items()
             }
             self._roots = roots
             self._extra_module_aliases = extra_module_aliases
-            self._definitions: t.MutableMappingKV[
-                str, m.Infra.SourceClassDefinition
-            ] = {}
-            self._modules: t.MutableMappingKV[
+            self._definitions: MutableMapping[str, m.Infra.SourceClassDefinition] = {}
+            self._modules: MutableMapping[
                 str,
-                t.MappingKV[str, m.Infra.SourceClassReference | None],
+                Mapping[str, m.Infra.SourceClassReference | None],
             ] = {}
-            self._lazy_declarations: t.MutableMappingKV[
+            self._lazy_declarations: MutableMapping[
                 str,
-                t.MappingKV[str, m.Infra.SourceClassReference | None],
+                Mapping[str, m.Infra.SourceClassReference | None],
             ] = {}
-            self._providers: t.MutableMappingKV[str, t.Infra.RopePyModule] = {}
+            self._providers: MutableMapping[str, t.Infra.RopePyModule] = {}
             self._namespaces: set[str] = set()
-            self._module_aliases: t.MutableMappingKV[
-                str, m.Infra.SourceClassReference
-            ] = {}
-            self._external: t.MutableMappingKV[str, t.Infra.RopePyObject] = {}
-            self._class_bindings: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
-            self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
+            self._module_aliases: MutableMapping[str, m.Infra.SourceClassReference] = {}
+            self._external: MutableMapping[str, t.Infra.RopePyObject] = {}
+            self._class_bindings: MutableMapping[str, p.Infra.RopePyName] = {}
+            self._linearizations: MutableMapping[str, t.StrTuple] = {}
             self._active: set[str] = set()
-            self._resolved_memo: t.MutableMappingKV[str, str] = {}
+            self._resolved_memo: MutableMapping[str, str] = {}
             self._ordering_ready = False
             self._native_module_type = FlextInfraUtilitiesRopeRuntime.runtime_type(
                 "rope.base.builtins",
@@ -365,7 +362,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def class_order(
             self,
-            declarations: t.SequenceOf[m.Infra.SourceClassReference],
+            declarations: Sequence[m.Infra.SourceClassReference],
         ) -> t.StrTuple:
             """Order declared owners from their authoritative source ancestry.
 
@@ -437,9 +434,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def class_reaches(
             self,
-            declarations: t.SequenceOf[m.Infra.SourceClassReference],
-            anchors: t.SequenceOf[m.Infra.SourceClassReference],
-        ) -> t.VariadicTuple[frozenset[str]]:
+            declarations: Sequence[m.Infra.SourceClassReference],
+            anchors: Sequence[m.Infra.SourceClassReference],
+        ) -> tuple[frozenset[str], ...]:
             """Report which anchors each declaration's source C3 ancestry holds.
 
             Returns:
@@ -673,12 +670,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _inventory(
             self,
             module: str,
-            captured: t.Pair[Path, str],
+            captured: tuple[Path, str],
             *,
             required_line: int | None = None,
             allow_conditional: bool = False,
             provider: t.Infra.RopePyModule | None = None,
-        ) -> t.MappingKV[str, m.Infra.SourceClassReference | None]:
+        ) -> Mapping[str, m.Infra.SourceClassReference | None]:
             """Index lexical bindings without installing a cross-module overlay.
 
             A provider class is indexed at its native declaration line.
@@ -1081,7 +1078,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module_name: str,
             provider: p.Infra.RopeSourceModule,
             resource: p.Infra.RopeResource,
-        ) -> t.MappingKV[str, m.Infra.SourceClassReference | None]:
+        ) -> Mapping[str, m.Infra.SourceClassReference | None]:
             """Inventory a provider in its captured epoch using the native origin.
 
             Returns:
@@ -1471,7 +1468,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_lazy_bindings(
             self,
             module: t.Infra.RopeSemanticModule,
-        ) -> t.MappingKV[str, m.Infra.SourceClassReference]:
+        ) -> Mapping[str, m.Infra.SourceClassReference]:
             """Read a provider's declared lazy aliases from its native source module.
 
             Returns:
@@ -1559,7 +1556,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_imported_name_reference(
             self,
             binding: p.Infra.RopeImportedName,
-            remaining: t.StrSequence,
+            remaining: Sequence[str],
             target: str,
             visiting: frozenset[str],
             depth: int,
@@ -1601,7 +1598,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_imported_module_reference(
             self,
             binding: p.Infra.RopeImportedModule,
-            remaining: t.StrSequence,
+            remaining: Sequence[str],
             target: str,
             visiting: frozenset[str],
             depth: int,
@@ -1738,7 +1735,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _alias_rewritten_target(
             self,
             reference: m.Infra.SourceClassReference,
-        ) -> t.Pair[str, t.StrTuple]:
+        ) -> tuple[str, t.StrTuple]:
             """Rewrite facade-qualified targets through the lazy alias map.
 
             The alias map routes a published name to its provider module, so
@@ -1770,7 +1767,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             key: str,
             visiting: frozenset[str],
             depth: int,
-        ) -> t.Pair[str, list[str]]:
+        ) -> tuple[str, list[str]]:
             """Resolve a target that is not a direct definition key.
 
             Returns:
@@ -1798,12 +1795,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _resolve_namespace_prefix(
             self,
-            parts: t.StrSequence,
+            parts: Sequence[str],
             attributes: list[str],
             key: str,
             visiting: frozenset[str],
             depth: int,
-        ) -> t.Pair[str, list[str]]:
+        ) -> tuple[str, list[str]]:
             """Resolve a namespace-qualified target through its planned module.
 
             A name the planned module does not bind continues into the captured
@@ -2112,8 +2109,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_class_order(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        sources: Mapping[str, tuple[Path, str]],
+        declarations: Sequence[m.Infra.SourceClassReference],
     ) -> t.StrTuple:
         """Order declared owners by their strict source-backed C3.
 
@@ -2130,9 +2127,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_class_orders(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        groups: t.SequenceOf[t.SequenceOf[m.Infra.SourceClassReference]],
-    ) -> t.VariadicTuple[t.StrTuple]:
+        sources: Mapping[str, tuple[Path, str]],
+        groups: Sequence[Sequence[m.Infra.SourceClassReference]],
+    ) -> tuple[t.StrTuple, ...]:
         """Order several declaration groups through one source resolver.
 
         Every group shares the resolver's memoized resolutions and
@@ -2150,10 +2147,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_class_reaches(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
-        anchors: t.SequenceOf[m.Infra.SourceClassReference],
-    ) -> t.VariadicTuple[frozenset[str]]:
+        sources: Mapping[str, tuple[Path, str]],
+        declarations: Sequence[m.Infra.SourceClassReference],
+        anchors: Sequence[m.Infra.SourceClassReference],
+    ) -> tuple[frozenset[str], ...]:
         """Answer which anchors every declaration inherits, in one resolver.
 
         Each ancestor is resolved and linearized once from the captured
@@ -2171,9 +2168,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def runtime_bases(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        roots: t.StrSequence,
-        extra_module_aliases: t.MappingKV[str, str] | None = None,
+        sources: Mapping[str, tuple[Path, str]],
+        roots: Sequence[str],
+        extra_module_aliases: Mapping[str, str] | None = None,
     ) -> t.StrTuple:
         """Resolve owned classes in C3 order and external classes through Rope.
 

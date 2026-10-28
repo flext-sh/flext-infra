@@ -25,10 +25,10 @@ class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
 
         type SourceCandidate = Callable[
             [
-                FlextInfraTypes.MappingKV[Path, ...],
+                FlextInfraTypes.Mapping[Path, str],
                 FlextInfraTypes.VariadicTuple[Path],
             ],
-            FlextInfraTypes.MappingKV[Path, ...],
+            FlextInfraTypes.Mapping[Path, str],
         ]
 
 

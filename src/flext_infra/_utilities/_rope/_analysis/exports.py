@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableSequence, Sequence
 
 from flext_infra import c, m, t
 from flext_infra._utilities._rope._analysis.asthelpers import (
@@ -24,7 +25,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
     @staticmethod
     def scope_definitions(
         pymodule: t.Infra.RopePyModule,
-    ) -> t.SequenceOf[m.Infra.ScopeDefinition]:
+    ) -> Sequence[m.Infra.ScopeDefinition]:
         """Return every def/class scope in a module via rope's semantic tree.
 
         Uses ``PyModule.get_scope()`` and recursive ``PyScope.get_scopes()`` —
@@ -37,7 +38,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         """
         root_scope = pymodule.get_scope()
-        definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition] = []
+        definitions: MutableSequence[m.Infra.ScopeDefinition] = []
         FlextInfraUtilitiesRopeAnalysisExports._collect_scope_definitions(
             scope=root_scope,
             is_module_level=True,
@@ -50,7 +51,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         *,
         scope: t.Infra.RopeScope,
         is_module_level: bool,
-        definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition],
+        definitions: MutableSequence[m.Infra.ScopeDefinition],
     ) -> None:
         """Recurse the rope scope tree, appending one entry per child scope."""
         for child in scope.get_scopes():
@@ -103,7 +104,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         source: str,
         *,
         export_options: m.Infra.ExportOptions | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return module-local exports from one parsed source snapshot.
 
         Returns:
@@ -145,7 +146,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
                     if name.startswith("__") and name.endswith("__")
                 ),
             )
-        implicit_names: t.MutableSequenceOf[str] = [
+        implicit_names: MutableSequence[str] = [
             name
             for name, is_class in definitions
             if is_class
@@ -158,10 +159,10 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
     @staticmethod
     def _source_binding_inventory(
-        statements: t.SequenceOf[ast.stmt],
-    ) -> t.Triple[
-        t.MutableSequenceOf[str],
-        t.MutableSequenceOf[t.Pair[str, bool]],
+        statements: Sequence[ast.stmt],
+    ) -> tuple[
+        MutableSequence[str],
+        MutableSequence[tuple[str, bool]],
         bool,
     ]:
         """Inventory one statement list's assignments, definitions, and ``__all__``.
@@ -176,7 +177,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         return (collector.assignments, collector.definitions, collector.explicit_all)
 
     @staticmethod
-    def public_export_names_source(source: str) -> t.StrSequence:
+    def public_export_names_source(source: str) -> Sequence[str]:
         """Return the explicit public ABI declared by one module source.
 
         Returns:
@@ -237,7 +238,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         return bool(get_doc())
 
     @staticmethod
-    def assignment_docstrings_source(source: str) -> t.StrSequence:
+    def assignment_docstrings_source(source: str) -> Sequence[str]:
         """Return assignment names followed by a string literal (rope-parsed).
 
         Iterates the parsed module's body via ``_fields`` access and pairs each
@@ -275,7 +276,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         return tuple(dict.fromkeys(names))
 
     @staticmethod
-    def module_body_nodes_source(source: str) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def module_body_nodes_source(source: str) -> Sequence[t.Infra.RopeAstNode]:
         """Return top-level parsed statements for one source module.
 
         Returns:
@@ -286,7 +287,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         return ()
 
     @staticmethod
-    def module_reachable_nodes_source(source: str) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def module_reachable_nodes_source(source: str) -> Sequence[t.Infra.RopeAstNode]:
         """Return parsed nodes reachable from one source module.
 
         Returns:
@@ -301,11 +302,11 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         def __init__(self) -> None:
             """Initialize the empty inventory."""
-            self.assignments: t.MutableSequenceOf[str] = []
-            self.definitions: t.MutableSequenceOf[t.Pair[str, bool]] = []
+            self.assignments: MutableSequence[str] = []
+            self.definitions: MutableSequence[tuple[str, bool]] = []
             self.explicit_all = False
 
-        def collect_statements(self, statements: t.SequenceOf[ast.stmt]) -> None:
+        def collect_statements(self, statements: Sequence[ast.stmt]) -> None:
             """Inventory each statement in declaration order.
 
             Parameters:
@@ -354,11 +355,11 @@ class FlextInfraUtilitiesRopeAnalysisExports:
                 name for name in names if name != c.Infra.DUNDER_ALL
             )
 
-        def _bound_statement_names(self, statement: ast.stmt) -> t.StrSequence:
+        def _bound_statement_names(self, statement: ast.stmt) -> Sequence[str]:
             """Return the names one assignment statement binds.
 
             Returns:
-                The resulting ``t.StrSequence``.
+                The resulting ``Sequence[str]``.
 
             """
             if isinstance(statement, ast.Assign):
@@ -422,11 +423,11 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             }
             return names_in_test == {"__name__"} and values_in_test == {"__main__"}
 
-        def _bound_names(self, target: ast.expr) -> t.StrSequence:
+        def _bound_names(self, target: ast.expr) -> Sequence[str]:
             """Return the names one assignment target binds.
 
             Returns:
-                The resulting ``t.StrSequence``.
+                The resulting ``Sequence[str]``.
 
             """
             if isinstance(target, ast.Name):

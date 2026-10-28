@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, r, u
@@ -19,7 +20,7 @@ from flext_infra.codegen import FlextInfraCodegenExecution
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodegenPyTyped(FlextInfraCodegenExecution[bool]):
@@ -54,7 +55,7 @@ class FlextInfraCodegenPyTyped(FlextInfraCodegenExecution[bool]):
             The resulting ``int``.
 
         """
-        dirs_to_scan: t.SequenceOf[Path] = [
+        dirs_to_scan: Sequence[Path] = [
             self.repository_root / pattern.split("/*")[0]
             for pattern in c.Infra.ALL_SCAN_PATTERNS
             if (self.repository_root / pattern.split("/*")[0]).is_dir()

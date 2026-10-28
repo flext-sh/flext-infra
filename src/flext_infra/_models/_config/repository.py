@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from keyword import iskeyword
 from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
@@ -113,7 +114,7 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Upstream FLEXT facade module"),
         ]
         namespace_scan_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Production source roots the namespace validator enforces; "
@@ -122,7 +123,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         inherited_facets: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -137,7 +138,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         root_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -149,7 +150,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         repository_namespace_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Implicit namespace directories shipped from the repository root"
@@ -157,7 +158,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         root_modules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -168,7 +169,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         packaged_data_paths: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -178,7 +179,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         packaged_data_excludes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -199,7 +200,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = True
         runtime_dependency_overlay: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -379,7 +380,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = None
         duplication_trees: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Project-relative directory trees the duplication gate "
@@ -399,7 +400,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = None
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(
                 description=(
                     "Additional public Make verbs this repository dispatches "
@@ -490,7 +491,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = True
         external_dependency_paths: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
 
@@ -507,7 +508,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ]
         roots: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(

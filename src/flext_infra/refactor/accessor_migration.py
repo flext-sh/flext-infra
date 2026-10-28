@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from typing import Annotated, override
 
 from flext_cli import cli
@@ -42,12 +42,12 @@ class FlextInfraAccessorMigrationOrchestrator(
     ] = ""
 
     @property
-    def gate_names(self) -> t.StrSequence:
+    def gate_names(self) -> Sequence[str]:
         """Normalized lint gate names."""
         return u.Infra.normalize_cli_values(self.gates)
 
     @property
-    def lint_tool_names(self) -> t.StrSequence:
+    def lint_tool_names(self) -> Sequence[str]:
         """Selected lint tool names resolved from gate names."""
         return u.Infra.selected_lint_tool_names(self.gate_names)
 

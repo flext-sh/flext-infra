@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
@@ -119,12 +120,10 @@ class FlextInfraModelsConfigWorkspace:
         @classmethod
         def _validate_candidate_dependencies(
             cls,
-            values: t.VariadicTuple[
-                FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
+            values: tuple[
+                FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...
             ],
-        ) -> t.VariadicTuple[
-            FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
-        ]:
+        ) -> tuple[FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...]:
             """Require one immutable candidate per distribution and repository.
 
             Returns:
@@ -175,17 +174,15 @@ class FlextInfraModelsConfigWorkspace:
             default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
         )
         namespace_scan_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Own namespace analysis roots"),
         ] = ()
         candidate_bootstrap_targets: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec
-            ],
+            tuple[FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec, ...],
             m.Field(description="Declared candidate worktrees and recovery surfaces"),
         ] = ()
         workspace_inventory_command: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Own public host inventory argv; empty leaves host discovery "
@@ -317,10 +314,10 @@ class FlextInfraModelsConfigWorkspace:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         dependency_groups: Annotated[
-            t.MappingKV[
+            Mapping[
                 str,
-                t.VariadicTuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                tuple[
+                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
                 ],
             ],
             m.Field(
@@ -332,7 +329,7 @@ class FlextInfraModelsConfigWorkspace:
         @classmethod
         def toml_group_arrays(
             cls, value: t.JsonValue
-        ) -> t.JsonValue | t.MappingKV[str, t.JsonValue | tuple[t.JsonValue], ...]:
+        ) -> t.JsonValue | Mapping[str, t.JsonValue | tuple[t.JsonValue, ...]]:
             """Freeze TOML containers without converting inclusion tables to strings.
 
             Returns:
@@ -351,17 +348,15 @@ class FlextInfraModelsConfigWorkspace:
         @classmethod
         def local_group_graph(
             cls,
-            groups: t.MappingKV[
+            groups: Mapping[
                 str,
-                t.VariadicTuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                tuple[
+                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
                 ],
             ],
-        ) -> t.MappingKV[
+        ) -> Mapping[
             str,
-            t.VariadicTuple[
-                str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude
-            ],
+            tuple[str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...],
         ]:
             """Reject missing, ambiguous or cyclic local group inclusions.
 
@@ -426,17 +421,17 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ]
         dependencies: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 validation_alias=m.AliasPath("project", "dependencies"),
                 description="PEP 621 runtime requirements",
             ),
         ] = ()
         dependency_groups: Annotated[
-            t.MappingKV[
+            Mapping[
                 str,
-                t.VariadicTuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                tuple[
+                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
                 ],
             ],
             m.Field(
@@ -446,8 +441,8 @@ class FlextInfraModelsConfigWorkspace:
         ] = m.Field(
             default_factory=lambda: MappingProxyType[
                 str,
-                t.VariadicTuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                tuple[
+                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
                 ],
             ]({}),
         )
@@ -561,7 +556,7 @@ class FlextInfraModelsConfigWorkspace:
             default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
         )
         namespace_scan_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Repository-level production roots the namespace validator "
@@ -615,9 +610,7 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Declared candidate worktrees conformed by Infra"),
         ] = ()
         repository_policy_overlays: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigWorkspace.RepositoryPolicyOverlaySpec
-            ],
+            tuple[FlextInfraModelsConfigWorkspace.RepositoryPolicyOverlaySpec, ...],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
         external_consumers: Annotated[
@@ -720,9 +713,7 @@ class FlextInfraModelsConfigWorkspace:
         """Exact public host inventory envelope parsed once at ingress."""
 
         entries: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
-            ],
+            tuple[FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry, ...],
             m.Field(description="Canonical discovered checkout identities"),
         ]
 
@@ -806,7 +797,7 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = None
         namespace_scan_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Repository-level production roots the namespace validator "

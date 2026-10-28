@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, t, tf, tm, u
+from tests import c, tf, tm, u
 
 
 class TestsFlextInfraInfraVersioning:
@@ -30,9 +30,7 @@ class TestsFlextInfraInfraVersioning:
         ],
         ids=["standard", "development", "release-candidate", "zero", "large"],
     )
-    def test_parse_semver_valid(
-        version: str, expected: t.Triple[int, int, ...]
-    ) -> None:
+    def test_parse_semver_valid(version: str, expected: tuple[int, int, int]) -> None:
         """Accept only supported canonical PEP 440 release spellings."""
         tm.ok(u.Infra.parse_semver(version), eq=expected)
 

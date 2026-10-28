@@ -102,7 +102,7 @@ class FlextInfraModelsSonarcloud:
 
         api_path: Annotated[t.NonEmptyStr, m.Field(description="Web API endpoint")]
         form: Annotated[
-            tuple[t.Pair[str, str], ...],
+            tuple[tuple[str, str], ...],
             m.Field(min_length=2, description="Ordered form fields for the endpoint"),
         ]
 

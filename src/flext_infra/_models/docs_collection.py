@@ -87,7 +87,7 @@ class FlextInfraModelsDocsCollection:
         def _tuple_from_list(
             cls,
             value: t.JsonPayload,
-        ) -> t.JsonPayload | t.VariadicTuple[t.JsonValue]:
+        ) -> t.JsonPayload | tuple[t.JsonValue, ...]:
             """Convert lists from the canonical validation producer domain.
 
             Returns:
@@ -129,7 +129,7 @@ class FlextInfraModelsDocsCollection:
         def _tuple_from_list(
             cls,
             value: t.JsonPayload,
-        ) -> t.JsonPayload | t.VariadicTuple[t.JsonValue]:
+        ) -> t.JsonPayload | tuple[t.JsonValue, ...]:
             """Preserve native models and paths while converting source lists.
 
             Returns:

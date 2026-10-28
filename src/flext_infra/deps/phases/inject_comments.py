@@ -6,13 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
+
 from flext_infra import c, t, u
 
 
 class FlextInfraInjectCommentsPhase:
     """Inject managed/custom markers into pyproject.toml."""
 
-    _STRIP_PREFIXES: t.StrSequence = (
+    _STRIP_PREFIXES: Sequence[str] = (
         "# [MANAGED]",
         "# [CUSTOM]",
         "# [AUTO]",
@@ -45,17 +47,17 @@ class FlextInfraInjectCommentsPhase:
     @classmethod
     def _strip_managed_lines(
         cls,
-        lines: t.StrSequence,
-    ) -> t.Pair[t.StrSequence, t.StrSequence]:
+        lines: Sequence[str],
+    ) -> tuple[Sequence[str], Sequence[str]]:
         """Strip managed lines.
 
         Returns:
-            The resulting ``t.Pair[t.StrSequence, t.StrSequence]``.
+            The resulting ``tuple[Sequence[str], Sequence[str]]``.
 
         """
-        changes: t.MutableSequenceOf[str] = []
+        changes: MutableSequence[str] = []
         managed_lines = cls._managed_marker_lines()
-        cleaned: t.MutableSequenceOf[str] = []
+        cleaned: MutableSequence[str] = []
         skip_broken_group_section = False
         broken_removed = False
         for line in lines:
@@ -79,14 +81,14 @@ class FlextInfraInjectCommentsPhase:
         return cleaned, changes
 
     @staticmethod
-    def _collapse_blank_lines(lines: t.StrSequence) -> t.StrSequence:
+    def _collapse_blank_lines(lines: Sequence[str]) -> Sequence[str]:
         """Collapse repeated blank lines into a single canonical separator.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
-        normalized: t.MutableSequenceOf[str] = []
+        normalized: MutableSequence[str] = []
         previous_blank = False
         for line in lines:
             is_blank = not line.strip()
@@ -96,17 +98,17 @@ class FlextInfraInjectCommentsPhase:
             previous_blank = is_blank
         return normalized
 
-    def apply(self, rendered: str) -> t.Pair[str, t.StrSequence]:
+    def apply(self, rendered: str) -> tuple[str, Sequence[str]]:
         """Inject managed banner/markers and return updated TOML plus change messages.
 
         Returns:
-            The resulting ``t.Pair[str, t.StrSequence]``.
+            The resulting ``tuple[str, Sequence[str]]``.
 
         Raises:
             RuntimeError: If ``markers_result.failure``.
 
         """
-        changes: t.MutableSequenceOf[str] = []
+        changes: MutableSequence[str] = []
         lines = rendered.splitlines()
         cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
         changes.extend(cleanup_changes)
@@ -116,7 +118,7 @@ class FlextInfraInjectCommentsPhase:
             len(cleaned_lines),
         )
         content_lines = cleaned_lines[first_content:]
-        out: t.MutableSequenceOf[str] = [*banner_lines, ""]
+        out: MutableSequence[str] = [*banner_lines, ""]
         if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
         emitted_markers: set[str] = set()

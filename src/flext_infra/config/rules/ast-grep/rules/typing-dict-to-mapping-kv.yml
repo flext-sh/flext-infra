@@ -1,5 +1,5 @@
 # Mapping abstractions lose concrete dict APIs and Pydantic field semantics.
-# The exact DictKV alias preserves both; a canonical binding is still required.
+# The exact dict alias preserves both; a canonical binding is still required.
 id: typing-dict-missing-t-import
 language: python
 severity: error
@@ -14,9 +14,9 @@ rule:
             stopBy: end
             matches: t-locally-bound
 message: >-
-  typing.Dict must become the exact t.DictKV[K, V] contract, but a canonical `t`
+  typing.Dict must become the exact dict[K, V] contract, but a canonical `t`
   binding is not established. Resolve the facade binding before rewriting;
-  MappingKV and MutableMappingKV are not concrete dict replacements.
+  Mapping and MutableMapping are not concrete dict replacements.
 metadata:
   enforce: [ENFORCE-016, ENFORCE-031, ENFORCE-032]
 ---
@@ -38,10 +38,10 @@ transform:
     replace:
       source: $WHOLE
       replace: "^(?:typing\\.)?Dict"
-      by: "t.DictKV"
+      by: "dict"
 fix: $NEW
 message: >-
-  Replace typing.Dict with t.DictKV[K, V], preserving the exact concrete dict API,
+  Replace typing.Dict with dict[K, V], preserving the exact concrete dict API,
   mutations and Pydantic field contract rather than a mapping abstraction.
 metadata:
   enforce: [ENFORCE-016, ENFORCE-031, ENFORCE-032]

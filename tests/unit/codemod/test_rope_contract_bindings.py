@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import runpy
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +24,7 @@ class TestsFlextInfraRopeContractBindings:
     """Prove lexical identity and execution order without publishing unsafe edits."""
 
     @staticmethod
-    def _assertion_rules() -> t.SequenceOf[p.Infra.RopeContractRule]:
+    def _assertion_rules() -> Sequence[p.Infra.RopeContractRule]:
         """Declare the Python statement contract consumed by the native writer.
 
         Returns:
@@ -74,7 +75,7 @@ class TestsFlextInfraRopeContractBindings:
         ],
     )
     def test_assert_lowering_preserves_lazy_values_and_optimized_checks(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         infra_subprocess: p.Cli.CommandRunner,
         statement: str,
     ) -> None:
@@ -159,7 +160,7 @@ class TestsFlextInfraRopeContractBindings:
         ],
     )
     def test_assert_lowering_refuses_incomplete_effects_and_lost_trivia(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         source: str,
     ) -> None:
         """Unsupported native slices fail before an edit or a source write exists."""
@@ -192,7 +193,7 @@ class TestsFlextInfraRopeContractBindings:
         ],
     )
     def test_assert_lowering_requires_the_interpreter_exception_binding(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         source: str,
     ) -> None:
         """LOAD_ASSERTION_ERROR must not become a shadowed lexical constructor."""
@@ -217,7 +218,7 @@ class TestsFlextInfraRopeContractBindings:
         ],
     )
     def test_required_metadata_preserves_native_validation_and_schema(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
     ) -> None:
         """Required fields retain metadata, aliases, failures and JSON behavior."""
@@ -253,7 +254,7 @@ class TestsFlextInfraRopeContractBindings:
         ],
     )
     def test_defaulted_metadata_single_rule_preserves_concrete_default(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         argument: str,
         expression: str,
     ) -> None:
@@ -315,7 +316,7 @@ class TestsFlextInfraRopeContractBindings:
         ],
     )
     def test_defaulted_metadata_preserves_required_factories_and_invalid_calls(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         arguments: str,
     ) -> None:
         """Unsupported/default-conflicting calls retain their native behavior."""
@@ -346,7 +347,7 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     def test_defaulted_metadata_composes_distinct_shapes_in_one_native_epoch(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Native sequential shapes never overwrite another field's proposed edit."""
         source = (
@@ -364,7 +365,7 @@ class TestsFlextInfraRopeContractBindings:
         "metadata", ["description='Value'", "default_factory=None"]
     )
     def test_required_metadata_preserves_annotation_factory_precedence(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         metadata: str,
     ) -> None:
         """Moving assignment metadata does not invent or revive a factory."""
@@ -396,7 +397,7 @@ class TestsFlextInfraRopeContractBindings:
         ],
     )
     def test_required_metadata_rejects_unproved_annotation_calls(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         annotation: str,
     ) -> None:
         """Only native inert SDK metadata can cross the evaluation-order boundary."""
@@ -438,7 +439,7 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     def test_unset_private_annotation_preserves_native_descriptor_behavior(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Native private handling keeps missing state and per-instance values."""
         source = (
@@ -456,7 +457,7 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     def test_native_metadata_admission_preserves_nonfields_and_homonyms(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Class variables, nonmodels and unrelated factories are not fields."""
         rope, path = rope_contract_consumer
@@ -490,7 +491,7 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     def test_metadata_destination_cannot_capture_a_generic_parameter(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """An imported Annotated cannot replace an existing generic binding."""
         rope, path = rope_contract_consumer
@@ -579,7 +580,7 @@ class TestsFlextInfraRopeContractBindings:
         ids=["module-shadow", "parameter-shadow", "late-import"],
     )
     def test_destination_binding_refuses_invalid_publication(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         source: str,
         diagnostic: str,
     ) -> None:

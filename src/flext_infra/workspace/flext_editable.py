@@ -14,9 +14,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
 
 
@@ -165,7 +166,7 @@ class FlextInfraWorkspaceFlextEditable:
         )
 
     @classmethod
-    def admitted_sources(cls, runtime_root: Path) -> p.Result[t.MappingKV[str, Path]]:
+    def admitted_sources(cls, runtime_root: Path) -> p.Result[Mapping[str, Path]]:
         """Return the editable sources the local receipt admits, by distribution.
 
         CI never honours a selection, so every editable install there stays a
@@ -177,11 +178,11 @@ class FlextInfraWorkspaceFlextEditable:
         """
         receipt = cls.receipt_path(runtime_root)
         if cls._ci_context() or not receipt.is_file():
-            return r[t.MappingKV[str, Path]].ok({})
+            return r[Mapping[str, Path]].ok({})
         selection = m.Infra.FlextEditableSelection.model_validate_json(
             receipt.read_text(encoding=c.DEFAULT_ENCODING),
         )
-        return r[t.MappingKV[str, Path]].ok(selection.distributions)
+        return r[Mapping[str, Path]].ok(selection.distributions)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceFlextEditable"]

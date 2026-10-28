@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -17,7 +18,7 @@ from flext_infra import c, config, m, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
@@ -32,12 +33,12 @@ class FlextInfraLocCapGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Run scc over the project's Python directories, emitting per-file JSON.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         _ = project_dir, ctx
@@ -55,11 +56,11 @@ class FlextInfraLocCapGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         """Parse scc JSON into one Issue per over-cap module.
 
         Returns:
-            The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
 
         """
         del project_dir, ctx

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -105,7 +105,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         cls,
         runner: p.Cli.CommandRunner,
         mise: Path,
-        roots: t.SequenceOf[Path],
+        roots: Sequence[Path],
     ) -> p.Result[bool]:
         """Relock each governed repository in order, stopping at the first failure.
 
@@ -137,7 +137,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         )
 
     @staticmethod
-    def _mise_lock_command(runtime_root: Path, mise: Path) -> t.StrSequence:
+    def _mise_lock_command(runtime_root: Path, mise: Path) -> Sequence[str]:
         """Native Mise lock re-resolving moving selectors for this runtime.
 
         Returns:
@@ -152,7 +152,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         runner: p.Cli.CommandRunner,
         runtime_root: Path,
         mise: Path,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Tools whose locked version changes, then tools missing a platform.
 
         Returns:
@@ -174,7 +174,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         cls,
         preview: str,
         lock: t.JsonMapping,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Merge the previewed version changes with the platform gaps.
 
         Returns:
@@ -196,7 +196,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         runner: p.Cli.CommandRunner,
         runtime_root: Path,
         mise: Path,
-        tools: t.StrSequence,
+        tools: Sequence[str],
     ) -> p.Result[bool]:
         """Lock and verify exactly the selected tools for every declared platform.
 
@@ -217,7 +217,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         ).map(lambda _output: True)
 
     @staticmethod
-    def _incomplete_mise_tools(lock: t.JsonMapping) -> p.Result[t.StrSequence]:
+    def _incomplete_mise_tools(lock: t.JsonMapping) -> p.Result[Sequence[str]]:
         """Name every locked tool lacking a table for a declared platform.
 
         Returns:
@@ -226,14 +226,14 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         """
         locked = lock.get("tools")
         if not isinstance(locked, Mapping):
-            return r[t.StrSequence].fail(
+            return r[Sequence[str]].fail(
                 f"{c.Infra.MISE_LOCK_FILENAME} has no [tools] table; run make upg",
             )
         platforms = tuple(
             c.Infra.MISE_LOCK_PLATFORM_KEY.format(platform=platform)
             for platform in config.Infra.codegen.toolchain.mise_lockfile_platforms
         )
-        return r[t.StrSequence].ok(
+        return r[Sequence[str]].ok(
             tuple(
                 name
                 for name, versions in locked.items()
@@ -251,7 +251,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
     def _native_uv(
         runner: p.Cli.CommandRunner,
         runtime_root: Path,
-        arguments: t.StrSequence,
+        arguments: Sequence[str],
     ) -> p.Result[bool]:
         """Run one native uv project command with the runtime interpreter.
 
@@ -282,14 +282,14 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         )
 
     @classmethod
-    def _duplicated_sections(cls, text: str) -> t.StrSequence:
+    def _duplicated_sections(cls, text: str) -> Sequence[str]:
         """Enumerate table headers declared more than once in a corrupt lock.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
-        counts: t.MutableMappingKV[str, int] = {}
+        counts: MutableMapping[str, int] = {}
         for match in cls._TABLE_HEADER.finditer(text):
             key = (match.group(1) or match.group(2) or "").strip()
             counts[key] = counts.get(key, 0) + 1

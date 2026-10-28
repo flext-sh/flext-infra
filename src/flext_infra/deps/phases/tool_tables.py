@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -47,9 +48,9 @@ class FlextInfraToolTablesPhase:
     def first_party_namespaces(
         *,
         path: Path,
-        planned_sources: t.SequenceOf[Path] = (),
+        planned_sources: Sequence[Path] = (),
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Compose Ruff's import-order families over owned target namespaces.
 
         Returns:
@@ -71,10 +72,10 @@ class FlextInfraToolTablesPhase:
     def deptry_first_party_namespaces(
         *,
         path: Path,
-        planned_sources: t.SequenceOf[Path] = (),
-        repository_namespace_packages: t.StrSequence = (),
+        planned_sources: Sequence[Path] = (),
+        repository_namespace_packages: Sequence[str] = (),
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Derive only packages owned by this target's production tree.
 
         Peer distributions remain dependencies even when their source checkouts
@@ -108,11 +109,11 @@ class FlextInfraToolTablesPhase:
         project_dir: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Discover child project packages when generating repository root settings.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             ValueError: If ``discovered.failure``.
@@ -191,7 +192,7 @@ class FlextInfraToolTablesPhase:
         )
 
     def _mypy_phase(
-        self, mypy_search_paths: t.StrSequence
+        self, mypy_search_paths: Sequence[str]
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Combine native options with the Mypy execution policy.
 
@@ -280,7 +281,7 @@ class FlextInfraToolTablesPhase:
         return self._native_phase("vulture", payload)
 
     def _deptry_phase(
-        self, path: Path, repository_namespace_packages: t.StrSequence
+        self, path: Path, repository_namespace_packages: Sequence[str]
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Add target-owned namespaces to the elected native options.
 
@@ -327,9 +328,9 @@ class FlextInfraToolTablesPhase:
         self,
         *,
         path: Path,
-        repository_namespace_packages: t.StrSequence,
-        mypy_search_paths: t.StrSequence,
-    ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
+        repository_namespace_packages: Sequence[str],
+        mypy_search_paths: Sequence[str],
+    ) -> Sequence[m.Infra.DepsToml.PhaseConfig]:
         """Compose declarative tables and the registered semantic owners.
 
         Returns:
@@ -379,13 +380,13 @@ class FlextInfraToolTablesPhase:
         payload: t.MutableJsonMapping,
         *,
         path: Path,
-        repository_namespace_packages: t.StrSequence = (),
-        mypy_search_paths: t.StrSequence | None = None,
-    ) -> t.StrSequence:
+        repository_namespace_packages: Sequence[str] = (),
+        mypy_search_paths: Sequence[str] | None = None,
+    ) -> Sequence[str]:
         """Apply every policy table to one normalized payload.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         elected_mypy_paths = (

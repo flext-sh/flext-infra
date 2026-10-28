@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -114,7 +115,7 @@ class TestsFlextInfraCodemodDuplicateApply:
     @staticmethod
     def _objects(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
         name: str,
     ) -> tuple[m.Infra.Object, ...]:
         """Collect one name's rope inventory objects across module paths.
@@ -138,7 +139,7 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     @staticmethod
     def _group(
-        objects: t.SequenceOf[m.Infra.Object],
+        objects: Sequence[m.Infra.Object],
         *,
         value_identical: bool,
     ) -> m.Infra.DuplicateGroup:

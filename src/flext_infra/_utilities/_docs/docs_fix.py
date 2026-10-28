@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGithubLinks,
@@ -86,7 +87,7 @@ class FlextInfraUtilitiesDocsFix:
             f"{rel}#block.py",
             "-",
         )
-        replacements: t.MutableMappingKV[m.Cli.MarkdownFence, t.StrPair] = {}
+        replacements: MutableMapping[m.Cli.MarkdownFence, tuple[str, str]] = {}
         for fence in filter(
             FlextInfraUtilitiesDocsBase.docs_is_python_fence,
             u.Cli.markdown_fences(content),
@@ -114,7 +115,7 @@ class FlextInfraUtilitiesDocsFix:
         return u.Cli.markdown_rewrite_fences(content, replacements)
 
     @staticmethod
-    def docs_rewrite_bare_notest(content: str, info_format: str) -> t.Pair[str, int]:
+    def docs_rewrite_bare_notest(content: str, info_format: str) -> tuple[str, int]:
         """Rewrite every bare ``<lang> notest`` fence info through one format.
 
         ``pymdownx.superfences`` rejects the bare second token and leaks the
@@ -142,7 +143,7 @@ class FlextInfraUtilitiesDocsFix:
         md_file: Path,
         *,
         content: str,
-    ) -> t.Pair[str, m.Infra.DocsPhaseItemModel]:
+    ) -> tuple[str, m.Infra.DocsPhaseItemModel]:
         """Plan link, fence and TOC repairs without reading or writing the file.
 
         Returns:
@@ -177,7 +178,7 @@ class FlextInfraUtilitiesDocsFix:
     def docs_write_fix_reports(
         scope: m.Infra.DocScope,
         *,
-        items: t.SequenceOf[m.Infra.DocsPhaseItemModel],
+        items: Sequence[m.Infra.DocsPhaseItemModel],
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""

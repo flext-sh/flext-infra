@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import builtins
 
-from flext_infra import c, t
+from flext_infra import c
 
 
 class FlextInfraUtilitiesSemanticCutoverClassScope:
@@ -18,7 +18,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
     @staticmethod
     def _comprehension_parts(
         node: ast.ListComp | ast.SetComp | ast.GeneratorExp | ast.DictComp,
-    ) -> tuple[tuple[ast.AST], frozenset[str], ...]:
+    ) -> tuple[tuple[ast.AST, ...], frozenset[str]]:
         """Return a comprehension's evaluated parts and the targets it binds.
 
         Returns:
@@ -54,7 +54,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
     def evaluated_parts(
         cls,
         node: ast.AST,
-    ) -> tuple[tuple[t.VariadicTuple[ast.AST], frozenset[str]], ...]:
+    ) -> tuple[tuple[tuple[ast.AST, ...], frozenset[str]], ...]:
         """Return the children a suite evaluates now, each with names it binds.
 
         Function, lambda and nested class bodies run in their own scope, and a

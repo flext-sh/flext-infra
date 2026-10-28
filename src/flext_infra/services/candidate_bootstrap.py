@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import m, p, r, t, u
+from flext_infra import m, p, r, u
 
 
 class FlextInfraCandidateBootstrapService:
@@ -78,13 +79,13 @@ class FlextInfraCandidateBootstrapService:
 
     def plan_candidates(
         self,
-        roots: t.SequenceOf[Path],
+        roots: Sequence[Path],
         targets: m.Infra.CandidateBootstrapTargets,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Compose the file plans of every declared target.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
@@ -176,7 +177,7 @@ class FlextInfraCandidateBootstrapService:
 
     def _verify(
         self,
-        roots: t.SequenceOf[Path],
+        roots: Sequence[Path],
         targets: m.Infra.CandidateBootstrapTargets,
     ) -> p.Result[bool]:
         """Require a complete fixed point for every declared target.

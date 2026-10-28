@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
@@ -23,7 +24,7 @@ class FlextInfraCodegenLayoutGitignore:
     def _apply_gitignore(
         self,
         project_dir: Path,
-        patterns: t.StrSequence,
+        patterns: Sequence[str],
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Ensure gitignore patterns via the canonical render or appending.
 
@@ -89,7 +90,7 @@ class FlextInfraCodegenLayoutGitignore:
     @staticmethod
     def _gitignore_append_content(
         current: str,
-        patterns: t.StrSequence,
+        patterns: Sequence[str],
     ) -> str:
         """Derive missing layout patterns from the captured gitignore text.
 

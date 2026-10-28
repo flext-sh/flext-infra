@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections.abc import MutableSequence
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -26,7 +27,7 @@ class FlextInfraRopeTransformer:
     def __init__(self, *, on_change: t.Infra.ChangeCallback = None) -> None:
         """Initialize change tracking with an optional callback."""
         self._on_change = on_change
-        self.changes: t.MutableSequenceOf[str] = []
+        self.changes: MutableSequence[str] = []
 
     @abstractmethod
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:

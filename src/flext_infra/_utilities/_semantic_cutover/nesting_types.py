@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -40,7 +40,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         source: str,
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
-        protected: t.Pair[int, int] | None = None,
+        protected: tuple[int, int] | None = None,
     ) -> tuple[m.Infra.SourceRewrite, ...]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
@@ -60,9 +60,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
             and node.type_params
         )
         constants = cls._quoted_constants(source, tree)
-        regions: t.MutableMappingKV[
-            t.Pair[int, int], t.Pair[str, p.Infra.RopeScope]
-        ] = {}
+        regions: MutableMapping[tuple[int, int], tuple[str, p.Infra.RopeScope]] = {}
         for begin, end, _literal, scope in cls.quoted_type_regions(
             source, project, module
         ):
@@ -108,11 +106,9 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         return tuple(edits)
 
     @staticmethod
-    def _quoted_constants(
-        source: str, tree: ast.Module
-    ) -> list[t.Triple[int, int, str]]:
+    def _quoted_constants(source: str, tree: ast.Module) -> list[tuple[int, int, str]]:
         lines = source.splitlines(keepends=True)
-        constants: list[t.Triple[int, int, str]] = []
+        constants: list[tuple[int, int, str]] = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
                 continue
@@ -137,7 +133,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         source: str,
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
-        protected: t.Pair[int, int] | None = None,
+        protected: tuple[int, int] | None = None,
     ) -> str:
         edits = cls.quoted_type_edits(
             project,
@@ -154,10 +150,10 @@ class FlextInfraUtilitiesTypesSemanticNesting(
 
     @staticmethod
     def require_nesting_binding(
-        native: t.Triple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
         expression: str,
         offset: int,
-        sources: t.MappingKV[Path, ...],
+        sources: Mapping[Path, str],
     ) -> None:
         """Reuse native reaching-definition proof, including star provenance.
 

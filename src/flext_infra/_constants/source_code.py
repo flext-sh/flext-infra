@@ -72,7 +72,7 @@ class FlextInfraConstantsSourceCode:
         SEPARATOR = "separator"
         INCOMING = "incoming"
 
-    MERGE_CONFLICT_CONTROLS: ClassVar[tuple[t.Pair[MergeConflictControl, str], ...]] = (
+    MERGE_CONFLICT_CONTROLS: ClassVar[tuple[tuple[MergeConflictControl, str], ...]] = (
         (MergeConflictControl.CURRENT, "<<<<<<< "),
         (MergeConflictControl.ANCESTOR, "||||||| "),
         (MergeConflictControl.SEPARATOR, "======="),

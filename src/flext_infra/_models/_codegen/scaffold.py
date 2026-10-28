@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -53,11 +53,11 @@ class FlextInfraModelsCodegenScaffold:
         mutable state.
         """
 
-        files_created: t.StrSequence = m.Field(
+        files_created: Sequence[str] = m.Field(
             default_factory=tuple,
             description="Newly created file paths",
         )
-        files_skipped: t.StrSequence = m.Field(
+        files_skipped: Sequence[str] = m.Field(
             default_factory=tuple,
             description="Skipped (already existing) file paths",
         )
@@ -73,7 +73,7 @@ class FlextInfraModelsCodegenScaffold:
         target_dir: Annotated[Path, m.Field(description="Directory to scaffold")]
         prefix: Annotated[str, m.Field(description="Generated class name prefix")]
         modules: Annotated[
-            tuple[t.Quad[str, str, str, str], ...],
+            tuple[tuple[str, str, str, str], ...],
             m.Field(description="Module skeleton definitions"),
         ]
         test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
@@ -94,11 +94,11 @@ class FlextInfraModelsCodegenScaffold:
             m.Field(description="Whether to report creations without writing"),
         ]
         files_created: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Created file accumulator"),
         ]
         files_skipped: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Skipped file accumulator"),
         ]
 

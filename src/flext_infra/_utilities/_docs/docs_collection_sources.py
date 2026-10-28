@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m, t
+from flext_infra import m
 
 
 class FlextInfraUtilitiesDocsCollectionSources:
@@ -48,7 +49,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         """Inventory physical regular files, rejecting inaccessible sources.
 
         Returns:
-            The resulting ``t.VariadicTuple[Path]``.
+            The resulting ``tuple[Path, ...]``.
 
         Raises:
             FileNotFoundError: If ``chain.directories``.
@@ -119,7 +120,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     @staticmethod
     def collection_capture(
         path: Path,
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
     ) -> m.Cli.AtomicFileState:
         """Bind every influential read, including absence, to its first state.
 
@@ -148,7 +149,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         """Read the plan and its same-basename companion directory.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Cli.AtomicFileState]``.
+            The resulting ``tuple[m.Cli.AtomicFileState, ...]``.
 
         Raises:
             ValueError: If plan companion is a symlink.
@@ -179,7 +180,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         """Retain explicit source precision; never promote filesystem time.
 
         Returns:
-            The resulting ``t.Pair[str | None, str | None]``.
+            The resulting ``tuple[str | None, str | None]``.
 
         Raises:
             ValueError: If plan frontmatter has no closing delimiter.
@@ -222,13 +223,13 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         canonical: Path,
         projection: Path | None,
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
     ) -> tuple[m.Infra.PlanCollectionManifest, tuple[Path, ...]]:
         """Exclude only outputs attested by the canonical generated manifest.
 
         Returns:
-            The resulting ``t.Pair[m.Infra.PlanCollectionManifest,
-                t.VariadicTuple[Path]]``.
+            The resulting ``tuple[m.Infra.PlanCollectionManifest,
+                tuple[Path, ...]]``.
 
         """
         manifest_path = canonical / "collection-manifest.json"
@@ -349,7 +350,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         roots: tuple[Path, Path | None],
         manifest: m.Infra.PlanCollectionManifest,
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
         plans: set[Path],
         affected: set[Path],
     ) -> list[Path]:
@@ -388,7 +389,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         canonical: Path,
         projection: Path,
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
         before: m.Cli.AtomicFileState,
     ) -> Path | None:
         """Verify the mirrored manifest matches the canonical bytes.

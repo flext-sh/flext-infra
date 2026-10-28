@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import m, t
+from flext_infra import m
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 
 
@@ -19,14 +19,14 @@ class FlextInfraUtilitiesDocsScopeSelection:
     @staticmethod
     def _selected_project_scopes(
         repository_root: Path,
-        discovered: t.SequenceOf[m.Infra.ProjectInfo],
-        selected_names: t.StrSequence,
+        discovered: Sequence[m.Infra.ProjectInfo],
+        selected_names: Sequence[str],
         output_dir: Path | str,
-    ) -> t.SequenceOf[m.Infra.DocScope]:
+    ) -> Sequence[m.Infra.DocScope]:
         """Build docs scopes for selected project names.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.DocScope]``.
+            The resulting ``Sequence[m.Infra.DocScope]``.
 
         Raises:
             ValueError: If a requested documentation scope does not resolve.
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
 
     @staticmethod
     def _project_by_name(
-        discovered: t.SequenceOf[m.Infra.ProjectInfo],
+        discovered: Sequence[m.Infra.ProjectInfo],
     ) -> MutableMapping[str, m.Infra.ProjectInfo]:
         """Index discovered projects by canonical and directory names.
 

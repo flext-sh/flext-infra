@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,7 +41,7 @@ class FlextInfraRefactorAccessorOrigin:
         """
         self._rope_project = rope_project
         self._root = Path(rope_project.root.real_path)
-        self._pymodules: t.MutableMappingKV[str, t.Infra.RopePyModule] = {}
+        self._pymodules: MutableMapping[str, t.Infra.RopePyModule] = {}
         self._bindings: dict[str, dict[str, list[p.Infra.RopePyName]]] = {}
         self._owners: dict[int, p.Infra.RopePyObject] = {}
         self._names: dict[int, str] = {}
@@ -312,7 +313,7 @@ class FlextInfraRefactorAccessorOrigin:
         py_file: Path,
         source: str,
         *,
-        rules: t.SequenceOf[m.Infra.AccessorMigrationRule],
+        rules: Sequence[m.Infra.AccessorMigrationRule],
     ) -> tuple[m.Infra.AccessorMigrationChange, ...]:
         """Authenticate the snapshot and report selected introducing accessors.
 
@@ -498,7 +499,7 @@ class FlextInfraRefactorAccessorOrigin:
         return None
 
     def namespace_classes(
-        self, py_files: t.SequenceOf[Path], selector: str
+        self, py_files: Sequence[Path], selector: str
     ) -> tuple[p.Infra.RopePyObject, ...]:
         """Resolve a published facade alias and optional domain through real bindings.
 
@@ -544,7 +545,7 @@ class FlextInfraRefactorAccessorOrigin:
         py_file: Path,
         source: str,
         receiver: ast.expr,
-    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+    ) -> Mapping[str, p.Infra.RopePyName]:
         """Resolve actual receiver members without evaluating consumer code.
 
         Returns:
@@ -697,7 +698,7 @@ class FlextInfraRefactorAccessorOrigin:
         if not isinstance(tree, ast.Module):
             msg = "Accessor definition module has no Python module AST"
             raise TypeError(msg)
-        classes: t.MutableSequenceOf[ast.ClassDef] = [
+        classes: MutableSequence[ast.ClassDef] = [
             node
             for node in ast.walk(tree)
             if isinstance(node, ast.ClassDef)

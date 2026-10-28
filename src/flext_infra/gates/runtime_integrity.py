@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import FlextInfraGate
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -25,7 +26,7 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
     def native_execution(
         self,
         name: str,
-        command: t.StrSequence,
+        command: Sequence[str],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
@@ -67,7 +68,7 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
     def _waved_execution(
         self,
         name: str,
-        command: t.StrSequence,
+        command: Sequence[str],
         project_dir: Path,
         ctx: m.Infra.GateContext,
         signal_wave: p.Cli.SignalWave,
@@ -107,7 +108,7 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
         python = u.Infra.runtime_python(project_dir, runtime_root=runtime_root)
         uv = u.Infra.managed_mise_binary("uv", runtime_root).unwrap()
         infra = (str(python), "-m", "flext_infra")
-        commands: tuple[tuple[str, t.StrSequence], ...] = (
+        commands: tuple[tuple[str, Sequence[str]], ...] = (
             (
                 "pip-check",
                 (str(uv), "pip", "check", "--python", str(python)),

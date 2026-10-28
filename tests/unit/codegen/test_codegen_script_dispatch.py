@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 @pytest.mark.slow
@@ -253,7 +254,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         # The regeneration contract published on every projection speaks gen.
         tm.ok("# @flext-regenerate: make gen" in rendered)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
-        handler_policies: t.MutableMappingKV[str, m.Infra.CustomHandlerPolicy] = dict(
+        handler_policies: MutableMapping[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,
         )
         for policy in handler_policies.values():

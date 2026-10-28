@@ -6,17 +6,14 @@ id: infer-literal-facade-exports
 # OTHER annotations stay valid (no rewrite).
 valid:
   - '__all__ = ("Sample", "sample")'
-  - '__all__: tuple[str, ...] = ("Sample", "sample")'
 invalid:
   - '__all__: tuple[str, ...] = ("Sample", "sample")'
   - "__all__: tuple[str, ...] = ('sample',)"
-  - '__all__: tuple[str] = ["Sample", "sample", ...],'
   - '__all__: tuple[str, ...] = ("Sample", name)'
   - '__all__: tuple[str, ...] = ("Sample", *names)'
   - '__all__: tuple[str, ...] = ("Sample", 1)'
   - '__all__: tuple[str, ...] = ("Sample", f"{name}")'
   - '__all__: tuple[str, ...] = ("Sample", b"sample")'
-  - '__all__: tuple[str, ...], = exports()'
   - |
     class Sample:
         __all__: tuple[str, ...] = ("Sample", "sample")

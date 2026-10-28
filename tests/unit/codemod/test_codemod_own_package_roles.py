@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping, MutableSequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodemodOwnPackageRoles:
@@ -35,9 +36,9 @@ class TestsFlextInfraCodemodOwnPackageRoles:
         )
         package.mkdir(parents=True, exist_ok=True)
         (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
-        sources: t.MutableSequenceOf[Path] = []
+        sources: MutableSequence[Path] = []
         expected: set[Path] = set()
-        original: t.MutableMappingKV[Path, str] = {}
+        original: MutableMapping[Path, str] = {}
         for relative, source, finding in (
             ("_config.py", "from pydantic import BaseModel\n", False),
             ("_settings/part.py", "from pydantic import BaseModel\n", False),

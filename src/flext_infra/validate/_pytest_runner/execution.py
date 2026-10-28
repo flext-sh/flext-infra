@@ -11,6 +11,7 @@ import shlex
 import sys
 import time
 import traceback
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -336,10 +337,10 @@ class FlextInfraPytestRunnerExecution(
             u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
         )
         patterns = u.Infra.native_tool_setting(
-            tool_config, "pytest.ini_options", "python_files", TypeForm(t.StrSequence)
+            tool_config, "pytest.ini_options", "python_files", TypeForm(Sequence[str])
         )
         roots = u.Infra.native_tool_setting(
-            tool_config, "pytest.ini_options", "testpaths", TypeForm(t.StrSequence)
+            tool_config, "pytest.ini_options", "testpaths", TypeForm(Sequence[str])
         )
         for root in roots:
             base = self.repository_root / root
@@ -364,7 +365,7 @@ class FlextInfraPytestRunnerExecution(
 
     def _run_suite(
         self,
-        command: t.VariadicTuple[str],
+        command: tuple[str, ...],
         report_dir: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
@@ -740,7 +741,7 @@ class FlextInfraPytestRunnerExecution(
 
     @staticmethod
     def _phase_warning_lines(
-        phases: t.SequenceOf[t.Pair[str, m.Infra.PytestDiagnostics]],
+        phases: Sequence[tuple[str, m.Infra.PytestDiagnostics]],
     ) -> str:
         """Return one warnings line per phase.
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import glob
 import sysconfig
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def configuration_pairs(
-        entries: t.SequenceOf[t.Pair[str, t.JsonValue]],
+        entries: Sequence[tuple[str, t.JsonValue]],
     ) -> t.JsonDict:
         """Elect ordered pairs and isolate their mutable values from consumers.
 
@@ -120,7 +120,7 @@ class FlextInfraUtilitiesNativeTooling:
     @staticmethod
     def markdown_native_configuration(
         markdown: m.Infra.MarkdownConfig,
-        excludes: t.StrSequence,
+        excludes: Sequence[str],
     ) -> str:
         """Render native Markdown tables from the common policy and overrides.
 
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesNativeTooling:
     @staticmethod
     def native_tool_strings(
         document: m.Infra.ToolConfigDocument, table: str, key: str
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Validate one native string-array option.
 
         Returns:
@@ -210,11 +210,11 @@ class FlextInfraUtilitiesNativeTooling:
 
         """
         return FlextInfraUtilitiesNativeTooling.native_tool_setting(
-            document, table, key, TypeForm(t.StrSequence)
+            document, table, key, TypeForm(Sequence[str])
         )
 
     @staticmethod
-    def native_exclude_regex(globs: t.StrSequence) -> str:
+    def native_exclude_regex(globs: Sequence[str]) -> str:
         """Translate exclusion globs into one regex for regex-only tools.
 
         Mypy's ``exclude`` takes a single regular expression; the stdlib

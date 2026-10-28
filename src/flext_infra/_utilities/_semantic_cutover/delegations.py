@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from textwrap import indent
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -38,7 +39,7 @@ class FlextInfraUtilitiesSemanticDelegations(
     def materialize_delegations(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         editable: tuple[Path, ...],
         rule_id: str,
     ) -> list[p.Infra.RopeChangeContents]:
@@ -94,7 +95,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         rule_id: str,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> tuple[list[p.Infra.SourceRewrite], list[p.Infra.RopeImportInfo]]:
         tree = module.get_ast()
         if not isinstance(tree, ast.Module):
@@ -126,7 +127,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         context: tuple[ast.ClassDef, list[p.Infra.SourceRewrite]],
     ) -> list[p.Infra.SourceRewrite]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -165,7 +166,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         context: tuple[
             ast.FunctionDef,
             list[p.Infra.SourceRewrite],
-            t.MappingKV[Path, str],
+            Mapping[Path, str],
             ast.ClassDef,
         ],
     ) -> p.Infra.SourceRewrite | None:

@@ -10,10 +10,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, s, t, u
+from flext_infra import c, m, r, s, u
 from flext_infra.validate import FlextInfraValidatePytest
 
 if TYPE_CHECKING:
@@ -71,7 +72,7 @@ class FlextInfraPytestDiagExtractor(
         if not lines:
             msg = f"pytest report log contains no events: {report_log}"
             raise ValueError(msg)
-        warnings: t.MutableSequenceOf[m.Infra.PytestReportEvent] = []
+        warnings: MutableSequence[m.Infra.PytestReportEvent] = []
         for line in lines:
             event = m.Infra.PytestReportEvent.model_validate_json(line)
             if event.report_type == "WarningMessage":

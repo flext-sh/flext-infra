@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -79,7 +80,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.parametrize("verb", ["setup", "upg"])
     def test_setup_preserves_the_resolved_native_locks(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
         verb: str,
     ) -> None:
         """Both lifecycles use Mise's interpreter; setup preserves native locks."""
@@ -138,7 +139,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.slow
     def test_native_upg_repairs_the_generated_self_source_before_resolution(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
     ) -> None:
         """A stale generated self override cannot block its own upgrade producer."""
         profile = c.Infra.MakeProfile.STANDALONE
@@ -181,7 +182,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.slow
     def test_setup_rejects_invalid_lock_without_syncing_dependencies(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
     ) -> None:
         """The real setup refuses invalid lock input without changing packages."""
         profile = c.Infra.MakeProfile.STANDALONE
@@ -218,7 +219,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.slow
     def test_failed_native_upg_resolution_preserves_the_previous_lock(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
     ) -> None:
         """Invalid native manifest input fails without replacing the prior lock."""
         profile = c.Infra.MakeProfile.STANDALONE
@@ -249,7 +250,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     def test_only_upg_resolves_and_cold_setup_preserves_immutable_sources(
         self,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,
     ) -> None:
         """Native upgrade resolves the candidate; cold hosted setup preserves locks."""
@@ -312,7 +313,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @staticmethod
     def _assert_candidate_receipt_prefixes(
         parent: Path,
-        observed: t.SequenceOf[t.Pair[Path, Path]],
+        observed: Sequence[t.Pair[Path, Path]],
         source: t.Triple[str, str, ...],
     ) -> None:
         """Require each receipt to record the locked source and its environment."""
@@ -357,9 +358,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     def test_setup_holds_no_lock_verdict_and_audit_owns_it(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """Frozen setup provisions a stale native graph; audit reports the drift."""
         root = u.Tests.resolved_make_checkout(
@@ -467,7 +468,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.slow
     def test_failed_member_hook_prevents_containing_root_upgrade(
         tmp_path: Path,
-        generated_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        generated_make_templates: Mapping[c.Infra.MakeProfile, Path],
     ) -> None:
         """Actual public Make hooks propagate member failure without root effects."""
         workspace = tmp_path / "workspace"
@@ -523,7 +524,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.slow
     def test_member_upgrade_reconciles_runtime_before_failing_hook(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
     ) -> None:
         """Native root satisfaction holds before the member observes shared runtime."""
         root = u.Tests.resolved_make_checkout(

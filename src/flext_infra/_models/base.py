@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
@@ -83,7 +83,7 @@ class FlextInfraModelsBase:
         @classmethod
         def _normalize_project_filter(
             cls,
-            value: str | t.StrSequence | None,
+            value: str | Sequence[str] | None,
         ) -> str | None:
             """Normalize comma-separated and repeated whitespace selectors.
 
@@ -192,7 +192,7 @@ class FlextInfraModelsBase:
             m.Field(description="Replacement source content to write"),
         ]
         gates: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(description="Optional lint gate selection for validation"),
         ] = None
 
@@ -204,7 +204,7 @@ class FlextInfraModelsBase:
             m.Field(description="Repository root used for lint and pytest checks"),
         ]
         expected_sources: Annotated[
-            t.MappingKV[Path, str | None],
+            Mapping[Path, str | None],
             m.Field(
                 description=(
                     "Expected current source bytes keyed by updated path; None "
@@ -213,7 +213,7 @@ class FlextInfraModelsBase:
             ),
         ]
         gates: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(description="Optional lint gate selection for validation"),
         ] = None
         post_write: Annotated[
@@ -241,7 +241,7 @@ class FlextInfraModelsBase:
             m.Field(description="Callback that applies the file mutation"),
         ]
         gates: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(description="Optional lint gate selection for validation"),
         ] = None
 
@@ -253,7 +253,7 @@ class FlextInfraModelsBase:
             m.Field(description="Canonical lint tool name"),
         ]
         errors: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Diagnostic lines reported by the lint tool"),
         ] = m.Field(default_factory=tuple)
         output: Annotated[

@@ -25,7 +25,7 @@ import builtins
 import hashlib
 import operator
 import textwrap
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -92,7 +92,7 @@ class FlextInfraCodemodExtractDuplicate:
     def plan_project(
         cls,
         project_root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan the first safe extraction per file from one project's report.
 
         Returns:
@@ -103,10 +103,10 @@ class FlextInfraCodemodExtractDuplicate:
             project_root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_REPORT_FILENAME
         )
         if not report_path.is_file():
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
         loaded = u.Cli.json_parse(report_path.read_text(encoding=c.DEFAULT_ENCODING))
         if loaded.failure:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].from_failure(
                 loaded,
             )
         grouped = cls._intra_file_ranges(
@@ -118,14 +118,14 @@ class FlextInfraCodemodExtractDuplicate:
             edit = cls._plan_file(path, grouped[path])
             if edit is not None:
                 edits.append(edit)
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(edits))
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
 
     @classmethod
     def _intra_file_ranges(
         cls,
         data: t.JsonMapping,
         project_root: Path,
-    ) -> MutableMapping[Path, list[t.Quad[int, int, int, int]]]:
+    ) -> MutableMapping[Path, list[tuple[int, int, int, int]]]:
         """Group Python intra-file clone ranges by their owned module path.
 
         Returns:
@@ -133,7 +133,7 @@ class FlextInfraCodemodExtractDuplicate:
             second_start, second_end)`` line ranges.
 
         """
-        grouped: MutableMapping[Path, list[t.Quad[int, int, int, int]]] = {}
+        grouped: MutableMapping[Path, list[tuple[int, int, int, int]]] = {}
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
             if u.Cli.json_pick_str(duplicate, "format") != "python":
                 continue
@@ -161,7 +161,7 @@ class FlextInfraCodemodExtractDuplicate:
         return grouped
 
     @staticmethod
-    def _valid_span(span: t.Quad[int, int, int, int]) -> bool:
+    def _valid_span(span: tuple[int, int, int, int]) -> bool:
         """Return whether one reported clone span is a usable, disjoint range.
 
         Returns:
@@ -179,7 +179,7 @@ class FlextInfraCodemodExtractDuplicate:
     def _plan_file(
         cls,
         path: Path,
-        spans: t.SequenceOf[t.Quad[int, int, int, int]],
+        spans: Sequence[tuple[int, int, int, int]],
     ) -> m.Infra.SemanticMigrationEdit | None:
         """Plan one extraction for a file, or ``None`` when it is not safe.
 
@@ -206,7 +206,7 @@ class FlextInfraCodemodExtractDuplicate:
     def plan_source(
         cls,
         source: str,
-        spans: t.SequenceOf[t.Quad[int, int, int, int]],
+        spans: Sequence[tuple[int, int, int, int]],
     ) -> str | None:
         """Return the source with the first safe extraction applied, if any.
 
@@ -230,8 +230,8 @@ class FlextInfraCodemodExtractDuplicate:
         cls,
         source: str,
         tree: ast.Module,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
-        span: t.Quad[int, int, int, int],
+        parents: Mapping[int, t.Infra.RopeAstNode],
+        span: tuple[int, int, int, int],
     ) -> str | None:
         """Plan one extraction for a single reported clone span.
 
@@ -265,8 +265,8 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _pair_matches(
         cls,
-        first_block: t.SequenceOf[ast.stmt],
-        second_block: t.SequenceOf[ast.stmt],
+        first_block: Sequence[ast.stmt],
+        second_block: Sequence[ast.stmt],
     ) -> bool:
         """Return whether two statement slices are one safe, repeatable block.
 
@@ -296,7 +296,7 @@ class FlextInfraCodemodExtractDuplicate:
         """
         best: tuple[ast.stmt, ...] | None = None
         for node in ast.walk(tree):
-            raw: t.SequenceOf[ast.AST] | None = getattr(node, "body", None)
+            raw: Sequence[ast.AST] | None = getattr(node, "body", None)
             if not isinstance(raw, list) or not raw:
                 continue
             statements = [child for child in raw if isinstance(child, ast.stmt)]
@@ -314,7 +314,7 @@ class FlextInfraCodemodExtractDuplicate:
         return best
 
     @classmethod
-    def _dump(cls, block: t.SequenceOf[ast.stmt]) -> str:
+    def _dump(cls, block: Sequence[ast.stmt]) -> str:
         """Return the statement list's canonical structural digest.
 
         Returns:
@@ -324,7 +324,7 @@ class FlextInfraCodemodExtractDuplicate:
         return ast.dump(ast.Module(body=list(block), type_ignores=[]))
 
     @classmethod
-    def _block_is_safe(cls, block: t.SequenceOf[ast.stmt]) -> bool:
+    def _block_is_safe(cls, block: Sequence[ast.stmt]) -> bool:
         """Return whether the block survives extraction without behavior change.
 
         Returns:
@@ -367,7 +367,7 @@ class FlextInfraCodemodExtractDuplicate:
         return True
 
     @classmethod
-    def _block_bindings(cls, block: t.SequenceOf[ast.stmt]) -> frozenset[str]:
+    def _block_bindings(cls, block: Sequence[ast.stmt]) -> frozenset[str]:
         """Return every name the block binds.
 
         Returns:
@@ -391,7 +391,7 @@ class FlextInfraCodemodExtractDuplicate:
     def _bindings_escape(
         cls,
         tree: ast.Module,
-        block: t.SequenceOf[ast.stmt],
+        block: Sequence[ast.stmt],
         bound: frozenset[str],
     ) -> bool:
         """Return whether any name the block binds is read outside the block.
@@ -413,7 +413,7 @@ class FlextInfraCodemodExtractDuplicate:
 
     @staticmethod
     def _enclosing_class(
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: Mapping[int, t.Infra.RopeAstNode],
         node: ast.stmt,
     ) -> ast.ClassDef | None:
         """Return the innermost class enclosing ``node``, if any.
@@ -432,7 +432,7 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _class_is_module_level(
         cls,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: Mapping[int, t.Infra.RopeAstNode],
         owner: ast.ClassDef,
     ) -> bool:
         """Return whether the class name resolves as a module global.
@@ -454,7 +454,7 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _enclosing_functions(
         cls,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
+        parents: Mapping[int, t.Infra.RopeAstNode],
         node: ast.stmt,
     ) -> tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]:
         """Return the enclosing functions of ``node``, innermost first.
@@ -475,8 +475,8 @@ class FlextInfraCodemodExtractDuplicate:
     def _free_parameters(
         cls,
         tree: ast.Module,
-        parents: t.MappingKV[int, t.Infra.RopeAstNode],
-        block: t.SequenceOf[ast.stmt],
+        parents: Mapping[int, t.Infra.RopeAstNode],
+        block: Sequence[ast.stmt],
     ) -> tuple[tuple[str, str], ...] | None:
         """Return the typed parameters the helper needs, or ``None`` if untypable.
 
@@ -521,7 +521,7 @@ class FlextInfraCodemodExtractDuplicate:
     def _helper_name(
         cls,
         tree: ast.Module,
-        block: t.SequenceOf[ast.stmt],
+        block: Sequence[ast.stmt],
     ) -> str:
         """Return a deterministic helper name that is not already bound.
 
@@ -546,13 +546,13 @@ class FlextInfraCodemodExtractDuplicate:
     def _render(
         cls,
         source: str,
-        span: t.Quad[int, int, int, int],
-        plan: t.Triple[
+        span: tuple[int, int, int, int],
+        plan: tuple[
             ast.ClassDef,
             str,
-            t.VariadicTuple[t.Pair[str, str]],
+            tuple[tuple[str, str], ...],
         ],
-        block: t.SequenceOf[ast.stmt],
+        block: Sequence[ast.stmt],
     ) -> str | None:
         """Render the helper and rewire both occurrences to a single call.
 
@@ -603,7 +603,7 @@ class FlextInfraCodemodExtractDuplicate:
         return rendered
 
     @staticmethod
-    def _has_multiline_string(block: t.SequenceOf[ast.stmt]) -> bool:
+    def _has_multiline_string(block: Sequence[ast.stmt]) -> bool:
         """Return whether the block holds a multi-line string literal.
 
         Re-indenting a block whose indentation already matches the helper body
@@ -624,7 +624,7 @@ class FlextInfraCodemodExtractDuplicate:
 
     @staticmethod
     def _call_lines(
-        lines: t.SequenceOf[str],
+        lines: Sequence[str],
         start: int,
         owner: ast.ClassDef,
         helper_name: str,
@@ -767,7 +767,7 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _annotation_for(
         cls,
-        locals_of: t.SequenceOf[ast.FunctionDef | ast.AsyncFunctionDef],
+        locals_of: Sequence[ast.FunctionDef | ast.AsyncFunctionDef],
         name: str,
     ) -> str | None:
         """Return the source annotation binding ``name`` in the enclosing chain.
@@ -823,7 +823,7 @@ class FlextInfraCodemodExtractDuplicate:
     @classmethod
     def _collect_module_bindings(
         cls,
-        statements: t.SequenceOf[ast.stmt],
+        statements: Sequence[ast.stmt],
         bound: set[str],
     ) -> None:
         """Accumulate top-level bindings without descending into definitions."""
@@ -842,7 +842,7 @@ class FlextInfraCodemodExtractDuplicate:
                 cls._collect_module_bindings(body, bound)
 
     @staticmethod
-    def _nested_bodies(statement: ast.stmt) -> t.SequenceOf[tuple[ast.stmt, ...]]:
+    def _nested_bodies(statement: ast.stmt) -> Sequence[tuple[ast.stmt, ...]]:
         """Return the nested statement bodies owned by one compound statement.
 
         Returns:
@@ -851,7 +851,7 @@ class FlextInfraCodemodExtractDuplicate:
         """
         bodies: list[tuple[ast.stmt, ...]] = []
         for child in ast.iter_child_nodes(statement):
-            raw: t.SequenceOf[ast.AST] | None = getattr(child, "body", None)
+            raw: Sequence[ast.AST] | None = getattr(child, "body", None)
             if not isinstance(raw, list) or not raw:
                 continue
             candidate = tuple(item for item in raw if isinstance(item, ast.stmt))
@@ -861,7 +861,7 @@ class FlextInfraCodemodExtractDuplicate:
         return tuple(bodies)
 
     @staticmethod
-    def _statement_targets(statement: ast.stmt) -> t.SequenceOf[str]:
+    def _statement_targets(statement: ast.stmt) -> Sequence[str]:
         """Return names bound by one statement's own (non-nested) targets.
 
         Returns:

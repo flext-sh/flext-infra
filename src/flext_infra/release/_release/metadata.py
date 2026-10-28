@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 
 from flext_infra import c, m, p, r, t, u
@@ -25,7 +26,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         cls,
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
-        versions: t.StrMapping,
+        versions: Mapping[str, str],
         *,
         dependency_group: bool = False,
     ) -> p.Result[bool]:
@@ -68,7 +69,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         raw: t.JsonValue,
         *,
         dependency_group: bool,
-    ) -> p.Result[t.SequenceOf[str | m.Infra.DependencyGroupInclude]]:
+    ) -> p.Result[Sequence[str | m.Infra.DependencyGroupInclude]]:
         """Parse one TOML requirement array into its declared entries.
 
         Args:
@@ -79,7 +80,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
             The declared requirement entries, or the parse failure.
 
         """
-        result_type = r[t.SequenceOf[str | m.Infra.DependencyGroupInclude]]
+        result_type = r[Sequence[str | m.Infra.DependencyGroupInclude]]
         if dependency_group:
             parsed_group = u.validate_value(
                 m.Infra.DependencyGroupEntries,
@@ -102,7 +103,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         cls,
         source: str,
         version: str,
-        versions: t.StrMapping,
+        versions: Mapping[str, str],
     ) -> p.Result[str]:
         """Render a pyproject a public registry accepts: pinned, sourceless, bounded.
 
@@ -147,7 +148,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         project: t.Cli.TomlTable,
         groups: t.Cli.TomlTable | None,
         version: str,
-        versions: t.StrMapping,
+        versions: Mapping[str, str],
     ) -> p.Result[bool]:
         """Validate declared groups and pin every release requirement field.
 
@@ -226,23 +227,23 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         return r[bool].ok(value=True)
 
     @classmethod
-    def _sdist_boundary(cls, hatch: t.Cli.TomlTable) -> p.Result[t.StrSequence]:
+    def _sdist_boundary(cls, hatch: t.Cli.TomlTable) -> p.Result[Sequence[str]]:
         """Verify matching, bounded source selection for both archive targets.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         tables = cls._archive_targets(hatch)
         if tables.failure:
-            return r[t.StrSequence].from_failure(tables)
+            return r[Sequence[str]].from_failure(tables)
         _build, wheel, sdist = tables.value
         includes = cls._matching_includes(wheel, sdist)
         if includes.failure:
-            return r[t.StrSequence].from_failure(includes)
+            return r[Sequence[str]].from_failure(includes)
         sources = cls._forced_sources(wheel, sdist)
         if sources.failure:
-            return r[t.StrSequence].from_failure(sources)
+            return r[Sequence[str]].from_failure(sources)
         policy = cls._target_policy_verdicts(
             wheel,
             sdist,
@@ -250,25 +251,23 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
             sources.value,
         )
         if policy.failure:
-            return r[t.StrSequence].from_failure(policy)
+            return r[Sequence[str]].from_failure(policy)
         bounded = cls._bounded_sources(includes.value, sources.value)
         if bounded.failure:
-            return r[t.StrSequence].from_failure(bounded)
-        return r[t.StrSequence].ok(bounded.value)
+            return r[Sequence[str]].from_failure(bounded)
+        return r[Sequence[str]].ok(bounded.value)
 
     @staticmethod
     def _archive_targets(
         hatch: t.Cli.TomlTable,
-    ) -> p.Result[t.Triple[t.Cli.TomlTable | None, t.Cli.TomlTable, t.Cli.TomlTable]]:
+    ) -> p.Result[tuple[t.Cli.TomlTable | None, t.Cli.TomlTable, t.Cli.TomlTable]]:
         """Navigate to the declared Hatch build targets.
 
         Returns:
             The resulting ``(build, wheel, sdist)`` archive target tables.
 
         """
-        result_type = r[
-            t.Triple[t.Cli.TomlTable | None, t.Cli.TomlTable, t.Cli.TomlTable]
-        ]
+        result_type = r[tuple[t.Cli.TomlTable | None, t.Cli.TomlTable, t.Cli.TomlTable]]
         build = u.Cli.toml_table_child(hatch, "build")
         targets = (
             u.Cli.toml_table_child(build, "targets") if build is not None else None
@@ -295,46 +294,46 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
     def _matching_includes(
         wheel: t.Cli.TomlTable,
         sdist: t.Cli.TomlTable,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Validate and match the wheel and sdist source patterns.
 
         Returns:
             The resulting wheel source patterns.
 
         """
-        wheel_includes: p.Result[t.StrSequence] = u.validate_value(
+        wheel_includes: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             u.Cli.json_as_sequence(u.Cli.toml_value(wheel, "include")),
             strict=True,
         )
         if wheel_includes.failure:
-            return r[t.StrSequence].fail_op(
+            return r[Sequence[str]].fail_op(
                 "validate Hatch wheel include",
                 wheel_includes.error,
             )
-        sdist_includes: p.Result[t.StrSequence] = u.validate_value(
+        sdist_includes: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             u.Cli.json_as_sequence(u.Cli.toml_value(sdist, "include")),
             strict=True,
         )
         if sdist_includes.failure:
-            return r[t.StrSequence].fail_op(
+            return r[Sequence[str]].fail_op(
                 "validate Hatch sdist include",
                 sdist_includes.error,
             )
         if not wheel_includes.value or set(wheel_includes.value) != set(
             sdist_includes.value,
         ):
-            return r[t.StrSequence].fail(
+            return r[Sequence[str]].fail(
                 "Hatch wheel and sdist source patterns must match",
             )
-        return r[t.StrSequence].ok(wheel_includes.value)
+        return r[Sequence[str]].ok(wheel_includes.value)
 
     @staticmethod
     def _forced_sources(
         wheel: t.Cli.TomlTable,
         sdist: t.Cli.TomlTable,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Prove the sdist retains every forced and extra-metadata wheel source.
 
         A wheel built from the sdist reads both tables' sources from the sdist
@@ -351,29 +350,29 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
             if (table := u.Cli.toml_table_child(wheel, key)) is not None
             for source in table
         )
-        retained: t.StrMapping = {}
+        retained: Mapping[str, str] = {}
         if sdist_forced is not None:
-            parsed: p.Result[t.StrMapping] = u.validate_value(
+            parsed: p.Result[Mapping[str, str]] = u.validate_value(
                 t.Infra.STR_MAPPING_ADAPTER,
                 u.Cli.toml_value(sdist, "force-include"),
                 strict=True,
             )
             if parsed.failure:
-                return r[t.StrSequence].from_failure(parsed)
+                return r[Sequence[str]].from_failure(parsed)
             retained = parsed.value
         if retained != {source: source for source in sources}:
-            return r[t.StrSequence].fail(
+            return r[Sequence[str]].fail(
                 "Hatch sdist must retain every forced and extra-metadata wheel source",
             )
-        return r[t.StrSequence].ok(sources)
+        return r[Sequence[str]].ok(sources)
 
     @classmethod
     def _target_policy_verdicts(
         cls,
         wheel: t.Cli.TomlTable,
         sdist: t.Cli.TomlTable,
-        wheel_includes: t.StrSequence,
-        sources: t.StrSequence,
+        wheel_includes: Sequence[str],
+        sources: Sequence[str],
     ) -> p.Result[bool]:
         """Enforce the bounded source patterns and exclusion policy of both targets.
 
@@ -410,7 +409,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
     def _excluded_error(
         cls,
         excluded: t.JsonValue,
-        wheel_includes: t.StrSequence,
+        wheel_includes: Sequence[str],
     ) -> str:
         """Return why one exclusion leaves the declared data, or an empty string.
 
@@ -437,9 +436,9 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
     @classmethod
     def _bounded_sources(
         cls,
-        wheel_includes: t.StrSequence,
-        sources: t.StrSequence,
-    ) -> p.Result[t.StrSequence]:
+        wheel_includes: Sequence[str],
+        sources: Sequence[str],
+    ) -> p.Result[Sequence[str]]:
         """Prove every declared source stays inside the release boundary.
 
         Returns:
@@ -458,15 +457,15 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         for source in (*wheel_includes, *sources):
             error = cls._bounded_source_error(source, wheel_includes, roots)
             if error:
-                return r[t.StrSequence].fail(error)
-        return r[t.StrSequence].ok(roots)
+                return r[Sequence[str]].fail(error)
+        return r[Sequence[str]].ok(roots)
 
     @classmethod
     def _bounded_source_error(
         cls,
         source: str,
-        wheel_includes: t.StrSequence,
-        roots: t.StrSequence,
+        wheel_includes: Sequence[str],
+        roots: Sequence[str],
     ) -> str:
         """Return why one source leaves the release boundary, or an empty string.
 

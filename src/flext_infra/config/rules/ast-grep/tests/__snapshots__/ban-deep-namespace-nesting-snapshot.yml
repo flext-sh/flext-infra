@@ -1,38 +1,38 @@
 id: ban-deep-namespace-nesting
 snapshots:
-    "class FlextModelsDemo:\n    class Demo:\n        class Order:\n            class Line:\n                total: int\n":
-        labels:
-          - source: |-
-                class Line:
-                                total: int
-            style: primary
-            start: 72
-            end: 110
-          - source: |-
-                class FlextModelsDemo:
-                    class Demo:
-                        class Order:
-                            class Line:
-                                total: int
-            style: secondary
-            start: 0
-            end: 110
-          - source: |-
-                class Demo:
-                        class Order:
-                            class Line:
-                                total: int
-            style: secondary
-            start: 27
-            end: 110
-          - source: |-
+  "class FlextModelsDemo:\n    class Demo:\n        class Order:\n            class Line:\n                total: int\n":
+    labels:
+    - source: |-
+        class Line:
+                        total: int
+      style: primary
+      start: 72
+      end: 110
+    - source: |-
+        class FlextModelsDemo:
+            class Demo:
                 class Order:
-                            class Line:
-                                total: int
-            style: secondary
-            start: 47
-            end: 110
-          - source: Line
-            style: secondary
-            start: 78
-            end: 82
+                    class Line:
+                        total: int
+      style: secondary
+      start: 0
+      end: 110
+    - source: |-
+        class Demo:
+                class Order:
+                    class Line:
+                        total: int
+      style: secondary
+      start: 27
+      end: 110
+    - source: |-
+        class Order:
+                    class Line:
+                        total: int
+      style: secondary
+      start: 47
+      end: 110
+    - source: Line
+      style: secondary
+      start: 78
+      end: 82

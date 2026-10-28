@@ -8,18 +8,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraInfraSelection:
     """Test suite for u.Infra."""
 
     @pytest.fixture
-    def workspace_with_projects(self: Path) -> Path:
+    def workspace_with_projects(
+        self,
+        tmp_path: Path,
+    ) -> Path:
         """Create a temporary workspace with test projects.
 
         Returns:
@@ -27,7 +31,7 @@ class TestsFlextInfraInfraSelection:
 
         """
         for name in ["alpha", "beta", "gamma"]:
-            proj = self / name
+            proj = tmp_path / name
             proj.mkdir()
             (proj / c.GIT_DIR_NAME).mkdir()
             (proj / "Makefile").touch()
@@ -37,14 +41,14 @@ class TestsFlextInfraInfraSelection:
             package_dir = proj / "src" / name.replace("-", "_")
             package_dir.mkdir(parents=True)
             (package_dir / "__init__.py").write_text("")
-        (self / ".gitmodules").write_text(
+        (tmp_path / ".gitmodules").write_text(
             "".join(
                 f'[submodule "{name}"]\n\tpath = {name}\n'
                 f"\turl = https://github.com/flext-sh/{name}.git\n"
                 for name in ("alpha", "beta", "gamma")
             ),
         )
-        return self
+        return tmp_path
 
     @staticmethod
     @pytest.fixture
@@ -59,7 +63,10 @@ class TestsFlextInfraInfraSelection:
         return selector_cls
 
     @pytest.fixture
-    def workspace_with_declared_names(self: Path) -> Path:
+    def workspace_with_declared_names(
+        self,
+        tmp_path: Path,
+    ) -> Path:
         """Create projects whose declared names differ from directory names.
 
         Returns:
@@ -70,7 +77,7 @@ class TestsFlextInfraInfraSelection:
             ("core-alias", "flext-core"),
             ("cli-alias", "flext-cli"),
         ]:
-            proj = self / directory_name
+            proj = tmp_path / directory_name
             proj.mkdir()
             (proj / c.GIT_DIR_NAME).mkdir()
             (proj / "Makefile").touch()
@@ -80,7 +87,7 @@ class TestsFlextInfraInfraSelection:
                 f'[project]\nname = "{project_name}"\ndependencies = ["flext-core"]\n',
             )
             (package_dir / "__init__.py").write_text("")
-        (self / ".gitmodules").write_text(
+        (tmp_path / ".gitmodules").write_text(
             "".join(
                 f'[submodule "{directory}"]\n\tpath = {directory}\n'
                 f"\turl = https://github.com/flext-sh/{project}.git\n"
@@ -90,32 +97,35 @@ class TestsFlextInfraInfraSelection:
                 )
             ),
         )
-        return self
+        return tmp_path
 
     @pytest.fixture
-    def workspace_with_nested_members(self: Path) -> Path:
+    def workspace_with_nested_members(
+        self,
+        tmp_path: Path,
+    ) -> Path:
         """Provide ``workspace_with_nested_members``.
 
         Returns:
             The resulting ``Path``.
 
         """
-        (self / c.GIT_DIR_NAME).mkdir()
-        (self / "Makefile").touch()
-        (self / c.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.GIT_DIR_NAME).mkdir()
+        (tmp_path / "Makefile").touch()
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "workspace"\ndependencies = ["flext-core"]\n',
         )
-        (self / ".gitmodules").write_text(
+        (tmp_path / ".gitmodules").write_text(
             '[submodule "member-one"]\n\tpath = apps/member-one\n'
             "\turl = https://github.com/flext-sh/member-one.git\n"
             '[submodule "member-two"]\n\tpath = apps/member-two\n'
             "\turl = https://github.com/flext-sh/member-two.git\n",
         )
-        root_package = self / "src" / "workspace"
+        root_package = tmp_path / "src" / "workspace"
         root_package.mkdir(parents=True)
         (root_package / "__init__.py").touch()
         for name in ("member-one", "member-two"):
-            project = self / "apps" / name
+            project = tmp_path / "apps" / name
             project.mkdir(parents=True)
             (project / "Makefile").touch()
             (project / c.PYPROJECT_FILENAME).write_text(
@@ -124,7 +134,7 @@ class TestsFlextInfraInfraSelection:
             package = project / "src" / name.replace("-", "_")
             package.mkdir(parents=True)
             (package / "__init__.py").touch()
-        return self
+        return tmp_path
 
     @staticmethod
     def test_resolve_projects_all_projects(
@@ -133,7 +143,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolving all projects when names list is empty."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
@@ -144,7 +154,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolving specific projects by name."""
         result = selector.resolve_projects(workspace_with_projects, ["beta", "alpha"])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=2)
         tm.that([p.name for p in projects], eq=["alpha", "beta"])
 
@@ -155,7 +165,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolving a single project."""
         result = selector.resolve_projects(workspace_with_projects, ["gamma"])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=1)
         tm.that(projects[0].name, eq="gamma")
 
@@ -196,7 +206,7 @@ class TestsFlextInfraInfraSelection:
             workspace_with_projects,
             ["gamma", "alpha", "beta"],
         )
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
     @staticmethod
@@ -207,7 +217,7 @@ class TestsFlextInfraInfraSelection:
         """Test that result contains properly typed ProjectInfo items."""
         result = selector.resolve_projects(workspace_with_projects, [])
         tm.ok(result)
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
+        projects: Sequence[m.Infra.ProjectInfo] = result.value
         tm.that(len(projects), eq=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
@@ -221,7 +231,7 @@ class TestsFlextInfraInfraSelection:
             workspace_with_declared_names,
             ["core-alias", "cli-alias"],
         )
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.name for p in projects], eq=["flext-cli", "flext-core"])
 
     @staticmethod
@@ -234,7 +244,7 @@ class TestsFlextInfraInfraSelection:
             workspace_with_declared_names,
             ["flext-core", "flext-cli"],
         )
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.path.name for p in projects], eq=["cli-alias", "core-alias"])
 
     @staticmethod
@@ -244,7 +254,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test selector uses default discovery service implicitly."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=3)
 
     @staticmethod
@@ -254,7 +264,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolve_projects returns empty list when no projects match."""
         result = selector.resolve_projects(tmp_path, [])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, empty=True)
 
     @staticmethod
@@ -265,7 +275,7 @@ class TestsFlextInfraInfraSelection:
         """Test resolve projects includes root and nested members."""
         result = selector.resolve_projects(workspace_with_nested_members, ())
 
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(
             [project.name for project in projects],
             eq=["member-one", "member-two", "workspace"],
@@ -281,7 +291,7 @@ class TestsFlextInfraInfraSelection:
         """Test resolve projects accepts root aliases."""
         result = selector.resolve_projects(workspace_with_nested_members, (name,))
 
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([project.name for project in projects], eq=["workspace"])
 
     @staticmethod
@@ -295,5 +305,5 @@ class TestsFlextInfraInfraSelection:
             ("apps/member-one",),
         )
 
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([project.name for project in projects], eq=["member-one"])

@@ -7,16 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shlex
-from typing import TYPE_CHECKING
+from collections.abc import Mapping, MutableSequence, Sequence
 
 from flext_cli import u
 
 from flext_infra import c, config, m
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesDocsCommandContract:
@@ -27,8 +24,8 @@ class FlextInfraUtilitiesDocsCommandContract:
         line: str,
         *,
         fence_language: str | None,
-        spans: t.SequenceOf[m.Cli.MarkdownCodeSpan],
-    ) -> t.StrSequence:
+        spans: Sequence[m.Cli.MarkdownCodeSpan],
+    ) -> Sequence[str]:
         """Return executable shell snippets, excluding surrounding prose.
 
         Returns:
@@ -52,7 +49,7 @@ class FlextInfraUtilitiesDocsCommandContract:
     @staticmethod
     def _docs_fence_lines(
         content: str,
-    ) -> t.Pair[t.MappingKV[int, str], frozenset[int]]:
+    ) -> tuple[Mapping[int, str], frozenset[int]]:
         """Map fence body lines to their language and collect delimiter lines.
 
         Returns:
@@ -101,7 +98,7 @@ class FlextInfraUtilitiesDocsCommandContract:
     @staticmethod
     def _candidate_issue(
         candidate: str,
-        effective_verbs: t.SequenceOf[m.Infra.MakeVerbSpec],
+        effective_verbs: Sequence[m.Infra.MakeVerbSpec],
     ) -> str:
         """Return the command-contract issue one candidate command violates.
 
@@ -139,8 +136,8 @@ class FlextInfraUtilitiesDocsCommandContract:
         line: str,
         *,
         fence_language: str | None,
-        spans: t.SequenceOf[m.Cli.MarkdownCodeSpan],
-        effective_verbs: t.SequenceOf[m.Infra.MakeVerbSpec],
+        spans: Sequence[m.Cli.MarkdownCodeSpan],
+        effective_verbs: Sequence[m.Infra.MakeVerbSpec],
     ) -> str:
         """Return the command-contract issue one document line violates.
 
@@ -175,15 +172,15 @@ class FlextInfraUtilitiesDocsCommandContract:
         content: str,
         *,
         relative_path: str,
-        effective_verbs: t.SequenceOf[m.Infra.MakeVerbSpec],
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+        effective_verbs: Sequence[m.Infra.MakeVerbSpec],
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Return command-contract issues from one Markdown document.
 
         Returns:
             Command-contract issues from one Markdown document.
 
         """
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        issues: MutableSequence[m.Infra.AuditIssue] = []
         bodies, delimiters = cls._docs_fence_lines(content)
         spans: dict[int, list[m.Cli.MarkdownCodeSpan]] = {}
         for span in u.Cli.markdown_code_spans(content):
@@ -211,14 +208,14 @@ class FlextInfraUtilitiesDocsCommandContract:
     @staticmethod
     def docs_command_contract_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Collect live guide/standard issues through typed scope discovery.
 
         ``iter_scope_markdown_files`` owns every formal scope exclusion; this
         detector carries no path allowlist or bypass.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.AuditIssue]``.
+            The resulting ``Sequence[m.Infra.AuditIssue]``.
 
         Raises:
             ValueError: If ``loaded.failure``.
@@ -239,7 +236,7 @@ class FlextInfraUtilitiesDocsCommandContract:
                 else ()
             ),
         )
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        issues: MutableSequence[m.Infra.AuditIssue] = []
         docs_root = scope.path / c.Infra.DIR_DOCS
         for path in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             if not path.is_relative_to(docs_root):

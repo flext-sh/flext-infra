@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -27,15 +27,15 @@ class FlextInfraModelsCodegenLazyInit:
             description="Native syntax contains only documentation and future imports"
         )
         members: Annotated[
-            t.MappingKV[str, t.Infra.PythonMemberKind],
+            Mapping[str, t.Infra.PythonMemberKind],
             m.Field(description="Every bound top-level name, in declaration order"),
         ]
         imports: Annotated[
-            t.MappingKV[str, str],
+            Mapping[str, str],
             m.Field(description="Dotted import target of each imported name"),
         ]
         exports: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(
                 description=(
                     "Literal ``__all__`` names; empty when an entry is not a "
@@ -44,15 +44,15 @@ class FlextInfraModelsCodegenLazyInit:
             ),
         ]
         classes: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            Mapping[str, Sequence[str]],
             m.Field(description="Base expressions as written, per defined class"),
         ]
         class_exports: Annotated[
-            t.MappingKV[str, t.StrSequence | None],
+            Mapping[str, Sequence[str] | None],
             m.Field(description="Class-level ``__all__`` names per defined class"),
         ]
         values: Annotated[
-            t.MappingKV[str, str],
+            Mapping[str, str],
             m.Field(description="Source text of each assigned top-level value"),
         ]
 
@@ -71,11 +71,11 @@ class FlextInfraModelsCodegenLazyInit:
             m.Field(exclude=True, description="Import targets so far"),
         ]
         classes: Annotated[
-            t.Port[dict[str, t.StrSequence]],
+            t.Port[dict[str, Sequence[str]]],
             m.Field(exclude=True, description="Class bases so far"),
         ]
         class_exports: Annotated[
-            t.Port[dict[str, t.StrSequence | None]],
+            t.Port[dict[str, Sequence[str] | None]],
             m.Field(exclude=True, description="Class-level exports so far"),
         ]
         values: Annotated[
@@ -97,7 +97,7 @@ class FlextInfraModelsCodegenLazyInit:
             ),
         ]
         module_files: Annotated[
-            t.MappingKV[str, Path],
+            Mapping[str, Path],
             m.Field(description="Indexed module names elected before installed ones"),
         ]
         modules: Annotated[
@@ -117,7 +117,7 @@ class FlextInfraModelsCodegenLazyInit:
             m.Field(exclude=True, description="Resolved class ancestry by path"),
         ]
         project_notices: Annotated[
-            t.Port[dict[Path, t.Pair[t.Infra.DocumentationLanguage, str]]],
+            t.Port[dict[Path, tuple[t.Infra.DocumentationLanguage, str]]],
             m.Field(
                 exclude=True,
                 description=(
@@ -167,7 +167,7 @@ class FlextInfraModelsCodegenLazyInit:
             default=None,
             description="Actual ownership decision, never a failure suppression",
         )
-        exports: t.StrSequence = m.Field(
+        exports: Sequence[str] = m.Field(
             default_factory=tuple,
             description="Public exports for generated __init__.py.",
         )
@@ -185,7 +185,7 @@ class FlextInfraModelsCodegenLazyInit:
                 "package's own facades without an initialization cycle."
             ),
         )
-        child_packages_for_lazy: t.StrSequence = m.Field(
+        child_packages_for_lazy: Sequence[str] = m.Field(
             default_factory=tuple,
             description=(
                 "Importable direct child packages recorded as metadata; "

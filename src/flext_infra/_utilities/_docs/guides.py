@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -83,7 +84,7 @@ class FlextInfraUtilitiesDocsGuides:
     def _classified_guide_sources(
         source_root: Path,
         destination_root: Path,
-    ) -> t.Pair[t.MutableMappingKV[Path, str], t.MutableMappingKV[Path, str]]:
+    ) -> tuple[MutableMapping[Path, str], MutableMapping[Path, str]]:
         """Read the canonical guides and their current scope projections.
 
         Returns:
@@ -103,7 +104,7 @@ class FlextInfraUtilitiesDocsGuides:
     @staticmethod
     def _owned_destinations(
         scope: m.Infra.DocScope,
-        destinations: t.MappingKV[Path, str],
+        destinations: Mapping[Path, str],
     ) -> set[Path]:
         """Collect destination guides still carrying a canonical ownership header.
 
@@ -160,8 +161,8 @@ class FlextInfraUtilitiesDocsGuides:
         cls,
         scope: m.Infra.DocScope,
         workspace_root: Path,
-        sources: t.MappingKV[Path, str],
-        destinations: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
+        destinations: Mapping[Path, str],
         owned: set[Path],
     ) -> p.Result[list[t.Infra.DocsRenderedArtifactTuple]]:
         """Render every canonical guide and drop retired owned projections.
@@ -230,7 +231,7 @@ class FlextInfraUtilitiesDocsGuides:
         scope: m.Infra.DocScope,
         *,
         repository_root: Path,
-    ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Plan root-owned guide projections from the canonical guides.
 
         The canonical guides belong to the containing workspace elected by the
@@ -242,25 +243,25 @@ class FlextInfraUtilitiesDocsGuides:
 
         Returns:
             The resulting
-                ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
+                ``p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]``.
 
         """
         if not scope.path.is_relative_to(repository_root):
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].fail(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].fail(
                 f"docs guide scope escapes repository {repository_root}: {scope.path}",
             )
         workspace = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(
             repository_root,
         )
         if workspace.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 workspace,
             )
         source_root = workspace.value / c.Infra.DIR_DOCS / "guides"
         destination_root = scope.path / c.Infra.DIR_DOCS / "guides"
         if source_root == destination_root.resolve():
             # Same-root inputs are authoritative, never their own projections.
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(())
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].ok(())
         sources, destinations = cls._classified_guide_sources(
             source_root, destination_root
         )
@@ -273,7 +274,7 @@ class FlextInfraUtilitiesDocsGuides:
             owned,
         )
         if artifacts.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
                 artifacts,
             )
         return FlextInfraUtilitiesDocsGeneratePlan.docs_normalize_artifacts(

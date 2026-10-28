@@ -7,13 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraReadonlyNamespace:
@@ -28,8 +29,8 @@ class FlextInfraReadonlyNamespace:
     def exempt_identities(
         cls,
         project_dir: Path,
-        findings: t.SequenceOf[p.Infra.Issue],
-    ) -> frozenset[t.Pair[t.Triple[Path, int, int], str]]:
+        findings: Sequence[p.Infra.Issue],
+    ) -> frozenset[tuple[tuple[Path, int, int], str]]:
         """Authenticate the findings an operator-decided exemption names.
 
         The publication policy is authenticated per identity from source,
@@ -43,7 +44,7 @@ class FlextInfraReadonlyNamespace:
 
         """
         alias_rule = c.Infra.RUFF_NON_PEP695_TYPE_ALIAS
-        rows: t.MutableMappingKV[str, t.MutableMappingKV[Path, set[int]]] = {
+        rows: MutableMapping[str, MutableMapping[Path, set[int]]] = {
             alias_rule: {},
         }
         naming_rule = "invalid-function-name"
@@ -52,7 +53,7 @@ class FlextInfraReadonlyNamespace:
                 rows[finding.code].setdefault(Path(finding.file).resolve(), set()).add(
                     finding.line
                 )
-        exempt: set[t.Pair[t.Triple[Path, int, int], str]] = set()
+        exempt: set[tuple[tuple[Path, int, int], str]] = set()
         if rows[alias_rule]:
             exempt.update(
                 (identity, alias_rule)
@@ -77,8 +78,8 @@ class FlextInfraReadonlyNamespace:
     @staticmethod
     def _settings_branch_properties(
         project_dir: Path,
-        findings: t.SequenceOf[p.Infra.Issue],
-    ) -> tuple[t.Triple[Path, int, int], ...]:
+        findings: Sequence[p.Infra.Issue],
+    ) -> tuple[tuple[Path, int, int], ...]:
         """Authenticate capitalized protocol properties against settings fields.
 
         Returns:
@@ -86,7 +87,7 @@ class FlextInfraReadonlyNamespace:
             settings model, proven from native source.
 
         """
-        wanted: dict[str, list[t.Triple[Path, int, int]]] = {}
+        wanted: dict[str, list[tuple[Path, int, int]]] = {}
         for finding in findings:
             if finding.code != "invalid-function-name":
                 continue
@@ -98,7 +99,7 @@ class FlextInfraReadonlyNamespace:
             ))
         if not wanted:
             return ()
-        proven: list[t.Triple[Path, int, int]] = []
+        proven: list[tuple[Path, int, int]] = []
         for source_file in project_dir.rglob("*.py"):
             text = source_file.read_text(encoding=c.DEFAULT_ENCODING, errors="ignore")
             tree = ast.parse(text)

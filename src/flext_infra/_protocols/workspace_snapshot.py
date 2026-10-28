@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
     from pathlib import Path
 
     from flext_infra import m, p, t
@@ -135,7 +135,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def exports(self) -> MutableMapping[Path, t.StrSequence]:
+        def exports(self) -> MutableMapping[Path, Sequence[str]]:
             """Declared public names per module."""
             ...
 

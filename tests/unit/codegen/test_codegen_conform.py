@@ -155,7 +155,10 @@ class TestsFlextInfraCodegenConform:
         )
 
     @pytest.fixture(scope="module")
-    def conformed_template(self: pytest.TempPathFactory) -> Path:
+    def conformed_template(
+        self,
+        tmp_path_factory: pytest.TempPathFactory,
+    ) -> Path:
         """Conform one real seed tree once per module; each scenario clones it.
 
         Every recovery scenario begins its own transaction on a fresh clone of
@@ -167,7 +170,7 @@ class TestsFlextInfraCodegenConform:
             The resulting ``Path``.
 
         """
-        template = self.mktemp("conform-template") / "conformed"
+        template = tmp_path_factory.mktemp("conform-template") / "conformed"
         template.mkdir()
         u.Tests.initialize_git_repo(
             template,

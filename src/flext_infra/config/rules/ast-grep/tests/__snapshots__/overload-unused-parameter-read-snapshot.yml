@@ -1,6 +1,6 @@
 id: overload-unused-parameter-read
 snapshots:
-  "from typing import TYPE_CHECKING, overload\n\nclass Collection:\n    @overload\n    @staticmethod\n    def map[T, U](\n        items: tuple[T, ...],\n        mapper,\n    ) -> tuple[U, ...]:\n        _ = items, mapper\n        raise NotImplementedError\n":
+  "from typing import TYPE_CHECKING, overload\n\nclass Collection:\n    @overload\n    @staticmethod\n    def map[T, U](\n        items: tuple[T, ...]\n        mapper,\n    ) -> tuple[U, ...]:\n        _ = items, mapper\n        raise NotImplementedError\n":
     fixed: |
       from typing import TYPE_CHECKING, overload
       
@@ -17,8 +17,8 @@ snapshots:
         _ = items, mapper
                 raise NotImplementedError
       style: primary
-      start: 191
-      end: 242
+      start: 190
+      end: 241
     - source: "@overload"
       style: secondary
       start: 66
@@ -34,7 +34,7 @@ snapshots:
                 raise NotImplementedError
       style: secondary
       start: 66
-      end: 242
+      end: 241
     - source: |-
         def map[T, U](
                 items: tuple[T, ...]
@@ -44,7 +44,7 @@ snapshots:
                 raise NotImplementedError
       style: secondary
       start: 98
-      end: 242
+      end: 241
     - source: overload
       style: secondary
       start: 34
@@ -67,7 +67,7 @@ snapshots:
                 raise NotImplementedError
       style: secondary
       start: 0
-      end: 243
+      end: 242
   "from typing_extensions import overload\n\n@overload\ndef declaration(value: int) -> int:\n    _ = (value,)\n    raise NotImplementedError\n":
     fixed: |
       from typing_extensions import overload

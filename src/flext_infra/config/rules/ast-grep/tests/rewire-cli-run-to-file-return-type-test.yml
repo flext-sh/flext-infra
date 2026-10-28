@@ -3,12 +3,12 @@ valid:
   - |
     def run_to_file(
         cls,
-        cmd: t.StrSequence,
+        cmd: Sequence[str],
         output_file: t.Cli.TextPath,
         cwd: t.Cli.TextPath | None = None,
         timeout: int | None = None,
-        env: t.StrMapping | None = None,
-        remove_env_keys: t.StrSequence = (),
+        env: Mapping[str, str] | None = None,
+        remove_env_keys: Sequence[str] = (),
         input_data: str | bytes | None = None,
         *,
         live: bool = False,
@@ -32,12 +32,12 @@ invalid:
   - |
     def run_to_file(
         cls,
-        cmd: t.StrSequence,
+        cmd: Sequence[str],
         output_file: t.Cli.TextPath,
         cwd: t.Cli.TextPath | None = None,
         timeout: int | None = None,
-        env: t.StrMapping | None = None,
-        remove_env_keys: t.StrSequence = (),
+        env: Mapping[str, str] | None = None,
+        remove_env_keys: Sequence[str] = (),
         input_data: str | bytes | None = None,
         *,
         live: bool = False,

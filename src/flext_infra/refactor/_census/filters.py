@@ -7,13 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, ClassVar
+from collections.abc import MutableMapping, Sequence
+from typing import ClassVar
 
 from flext_infra import m
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraRefactorCensusFilters:
@@ -27,7 +24,7 @@ class FlextInfraRefactorCensusFilters:
 
     @staticmethod
     def duplicate_groups(
-        project_objects: tuple[t.SequenceOf[m.Infra.Object], ...],
+        project_objects: tuple[Sequence[m.Infra.Object], ...],
     ) -> tuple[m.Infra.DuplicateGroup, ...]:
         """Duplicate groups.
 
@@ -36,10 +33,10 @@ class FlextInfraRefactorCensusFilters:
 
         """
 
-        def object_location(item: m.Infra.Object) -> t.Triple[str, str, int]:
+        def object_location(item: m.Infra.Object) -> tuple[str, str, int]:
             return item.project, item.file_path, item.line
 
-        groups: MutableMapping[t.Triple[str, str, str], list[m.Infra.Object]] = (
+        groups: MutableMapping[tuple[str, str, str], list[m.Infra.Object]] = (
             defaultdict(list)
         )
         payloads: MutableMapping[str, list[m.Infra.Object]] = defaultdict(list)
@@ -117,7 +114,7 @@ class FlextInfraRefactorCensusFilters:
     def _include_rule(
         rule: str,
         *,
-        rule_names: t.StrSequence | None,
+        rule_names: Sequence[str] | None,
         selected_rules: frozenset[str] | None = None,
     ) -> bool:
         """Include rule.

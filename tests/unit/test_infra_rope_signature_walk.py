@@ -130,7 +130,7 @@ class TestsFlextInfraRopeSignaturePatch:
         )
         module_path = package_root / "quoted.py"
         source = (
-            "def render(values: t.StrDict) -> str:\n"
+            "def render(values: dict[str, str]) -> str:\n"
             '    return f"value={values["name"]}"\n'
         )
         module_path.write_text(source, encoding="utf-8")
@@ -158,11 +158,11 @@ class TestsFlextInfraRopeSignaturePatch:
         )
         module_path = package_root / "quoted_rename.py"
         source = (
-            "def render(values: t.StrDict) -> str:\n"
+            "def render(values: dict[str, str]) -> str:\n"
             '    return f"value={values["name"].upper()}"\n'
         )
         expected = (
-            "def render(items: t.StrDict) -> str:\n"
+            "def render(items: dict[str, str]) -> str:\n"
             '    return f"value={items["name"].upper()}"\n'
         )
         module_path.write_text(source, encoding="utf-8")

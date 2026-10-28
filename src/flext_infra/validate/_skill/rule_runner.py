@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -26,10 +26,10 @@ class FlextInfraValidateSkillRuleRunner:
 
     def _evaluate_single_rule(
         self,
-        rule_obj: t.MappingKV[str, t.JsonValue],
+        rule_obj: Mapping[str, t.JsonValue],
         context: m.Infra.SkillRuleEvaluationContext,
         counts: t.MutableIntMapping,
-        violations: t.MutableSequenceOf[str],
+        violations: MutableSequence[str],
     ) -> None:
         """Evaluate one rule entry of the skill pass and accumulate its outcome."""
         rule_id = u.Cli.json_get_str_key(rule_obj, c.Infra.RK_ID)
@@ -65,11 +65,11 @@ class FlextInfraValidateSkillRuleRunner:
     @classmethod
     def _run_ast_grep_count(
         cls,
-        rule: t.MappingKV[str, t.JsonValue],
+        rule: Mapping[str, t.JsonValue],
         skill_dir: Path,
         project_path: Path,
-        include_globs: t.StrSequence,
-        exclude_globs: t.StrSequence,
+        include_globs: Sequence[str],
+        exclude_globs: Sequence[str],
     ) -> int:
         """Run an ast-grep rule and return match count.
 
@@ -109,7 +109,7 @@ class FlextInfraValidateSkillRuleRunner:
     @classmethod
     def _rule_file_path(
         cls,
-        rule: t.MappingKV[str, t.JsonValue],
+        rule: Mapping[str, t.JsonValue],
         skill_dir: Path,
     ) -> Path:
         """Resolve one ast-grep rule's declared rule file path.
@@ -174,7 +174,7 @@ class FlextInfraValidateSkillRuleRunner:
 
     def _run_custom_count(
         self,
-        rule: t.MappingKV[str, t.JsonValue],
+        rule: Mapping[str, t.JsonValue],
         skill_dir: Path,
         project_path: Path,
         mode: c.Infra.OperationMode,
@@ -200,7 +200,7 @@ class FlextInfraValidateSkillRuleRunner:
         if not script.exists():
             msg = f"custom rule script does not exist: {script}"
             raise RuntimeError(msg)
-        cmd: t.MutableSequenceOf[str] = (
+        cmd: MutableSequence[str] = (
             [sys.executable, str(script)]
             if script.suffix == c.Infra.EXT_PYTHON
             else [str(script)]

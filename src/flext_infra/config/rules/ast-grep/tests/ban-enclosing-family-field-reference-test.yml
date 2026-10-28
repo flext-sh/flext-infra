@@ -23,7 +23,7 @@ invalid:
         class DepsToml:
             class PhaseConfig(m.ContractModel):
                 operations: Annotated[
-                    t.SequenceOf[
+                    Sequence[
                         Annotated[
                             FlextInfraModelsDepsToml.DepsToml.SetOp
                             | FlextInfraModelsDepsToml.DepsToml.ListOp,
@@ -39,7 +39,7 @@ invalid:
   - |
     class FlextModelsEnforcementBase:
         class Report(Base):
-            violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
+            violations: Sequence[FlextModelsEnforcementBase.Violation] = ()
   - |
     class FlextModelsHandler:
         class HandlerRuntimeState(Base):

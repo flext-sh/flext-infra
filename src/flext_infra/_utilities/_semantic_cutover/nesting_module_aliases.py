@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, p, t
@@ -37,12 +38,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
     def _nesting_import_route(
         cls,
         project: p.Infra.RopeProject,
-        modules: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyModule],
+        modules: tuple[p.Infra.RopePyModule, p.Infra.RopePyModule],
         owner: str,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         *,
         consumer: str,
-    ) -> t.Pair[str, str]:
+    ) -> tuple[str, str]:
         """Elect an existing public exposure, with native owner/MRO proof.
 
         Returns:
@@ -78,8 +79,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
     def _public_owner_inventory(
         project: p.Infra.RopeProject,
         package: str,
-        sources: t.MappingKV[Path, str],
-    ) -> t.Pair[t.MappingKV[str, t.Pair[str, bool]], p.Infra.RopeResource]:
+        sources: Mapping[Path, str],
+    ) -> tuple[Mapping[str, tuple[str, bool]], p.Infra.RopeResource]:
         native_package = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
             project.get_module(package),
         )
@@ -90,7 +91,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         package_root = Path(
             resource.real_path if resource.is_folder() else resource.parent.real_path,
         )
-        inventory: t.MutableMappingKV[str, t.Pair[str, bool]] = {}
+        inventory: MutableMapping[str, tuple[str, bool]] = {}
         for path, source in sources.items():
             if not path.is_relative_to(package_root):
                 continue
@@ -110,13 +111,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
     @staticmethod
     def _public_owner_route(
         project: p.Infra.RopeProject,
-        names: t.Pair[str, str],
-        original: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyName | None],
+        names: tuple[str, str],
+        original: tuple[p.Infra.RopePyModule, p.Infra.RopePyName | None],
         owner: str,
-        public_inventory: t.Pair[
-            t.MappingKV[str, t.Pair[str, bool]], p.Infra.RopeResource
-        ],
-    ) -> t.Pair[str, str]:
+        public_inventory: tuple[Mapping[str, tuple[str, bool]], p.Infra.RopeResource],
+    ) -> tuple[str, str]:
         module, package = names
         origin, original_owner = original
         inventory, public_resource = public_inventory

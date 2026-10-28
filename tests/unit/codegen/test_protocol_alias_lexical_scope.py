@@ -27,8 +27,8 @@ class TestsFlextInfraProtocolAliasLexicalScope:
         source = (
             "from collections.abc import Sequence\n"
             "class Types:\n"
-            "    type SequenceOf[ItemT] = Sequence[ItemT]\n"
-            "    type StrSequence = SequenceOf[str]\n"
+            "    type Sequence[ItemT] = Sequence[ItemT]\n"
+            "    type Sequence[str] = Sequence[str]\n"
         )
         path = tmp_path / "aliases.py"
         path.write_text(source, encoding="utf-8")
@@ -39,12 +39,12 @@ class TestsFlextInfraProtocolAliasLexicalScope:
                 resource=tm.not_none(u.Infra.fetch_python_resource(project, path)),
             )
             binding = tm.not_none(
-                u.Infra.expression_name(module.get_scope(), "Types.StrSequence"),
+                u.Infra.expression_name(module.get_scope(), "Types.Sequence[str]"),
             )
             declaration, scope = tm.not_none(
                 u.Infra.annotation_alias_definition(binding),
             )
-            tm.that(declaration.name.id, eq="StrSequence")
+            tm.that(declaration.name.id, eq="Sequence[str]")
             annotation = declaration.value
             tm.ok(isinstance(annotation, ast.Subscript))
             if not isinstance(annotation, ast.Subscript):

@@ -11,7 +11,7 @@ import stat
 import sys
 import tempfile
 import time
-from collections.abc import Generator, Mapping, MutableMapping
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import closing
 from pathlib import Path
 
@@ -29,7 +29,7 @@ class FlextInfraModGateEngine:
     def validate_rule_fixtures(
         cls,
         root: Path,
-        rules: t.SequenceOf[Path],
+        rules: Sequence[Path],
     ) -> p.Result[bool]:
         """Verify every fixture against its committed snapshots; never rewrite them.
 
@@ -87,10 +87,10 @@ class FlextInfraModGateEngine:
     def refresh_rule_snapshots(
         cls,
         root: Path,
-        rules: t.SequenceOf[Path],
+        rules: Sequence[Path],
         *,
         apply: bool,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Regenerate every governed owner's snapshots from its rule tests.
 
         The explicit counterpart of the verifying ``validate_rule_fixtures``:
@@ -100,7 +100,7 @@ class FlextInfraModGateEngine:
         snapshots their owner ships.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         changes: list[str] = []
@@ -134,7 +134,7 @@ class FlextInfraModGateEngine:
                         apply=apply,
                     ),
                 )
-        return r[t.StrSequence].ok(tuple(changes))
+        return r[Sequence[str]].ok(tuple(changes))
 
     @staticmethod
     def _governs(governed_root: Path, config_root: Path) -> bool:
@@ -172,12 +172,12 @@ class FlextInfraModGateEngine:
     def _fixture_owners(
         cls,
         root: Path,
-        rules: t.SequenceOf[Path],
-    ) -> t.SequenceOf[tuple[Path, t.SequenceOf[Path], bool]]:
+        rules: Sequence[Path],
+    ) -> Sequence[tuple[Path, Sequence[Path], bool]]:
         """Group rules by fixture owner and mark the owners this root governs.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[Path, t.SequenceOf[Path], bool]]``.
+            The resulting ``Sequence[tuple[Path, Sequence[Path], bool]]``.
 
         Raises:
             ValueError: If rule fixture scratch lies inside its source root.
@@ -193,7 +193,7 @@ class FlextInfraModGateEngine:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
             rules_by_owner.setdefault(owner, []).append(rule)
         scratch = settings.work_dir
-        owners: list[tuple[Path, t.SequenceOf[Path], bool]] = []
+        owners: list[tuple[Path, Sequence[Path], bool]] = []
         for config_root, owner_rules in sorted(rules_by_owner.items()):
             if scratch.resolve().is_relative_to(config_root.resolve()):
                 msg = "rule fixture scratch must be outside its source root"
@@ -283,10 +283,11 @@ class FlextInfraModGateEngine:
             if not isinstance(declared, list):
                 msg = f"ast-grep utilDirs must be a list: {staged_config}"
                 raise TypeError(msg)
-            payload[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [
-                *declared,
-                c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME,
-            ]
+            payload[c.Infra.CODEMOD_UTIL_DIRS_KEY] = (
+                [*declared, c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME]
+                if c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME not in declared
+                else declared
+            )
             u.Cli.yaml_dump(staged_config, payload).unwrap()
 
     @classmethod
@@ -295,7 +296,7 @@ class FlextInfraModGateEngine:
         *,
         config_root: Path,
         temp_root: Path,
-        owner_rules: t.SequenceOf[Path],
+        owner_rules: Sequence[Path],
     ) -> None:
         """Stage every rule document in one native multi-document file.
 
@@ -352,7 +353,7 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _split_utility_files(
-        config_root: Path, temp_root: Path, util_dirs: t.SequenceOf[Path]
+        config_root: Path, temp_root: Path, util_dirs: Sequence[Path]
     ) -> None:
         """Replace each staged multi-document utility file with one file per id."""
         for directory in util_dirs:
@@ -374,15 +375,15 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _staged_utility_bodies(
-        directories: t.SequenceOf[Path],
-    ) -> t.MappingKV[str, t.JsonMapping]:
+        directories: Sequence[Path],
+    ) -> Mapping[str, t.JsonMapping]:
         """Read the rule body of every staged utility by its identity.
 
         Returns:
             Each utility's rule body keyed by its id.
 
         """
-        bodies: t.MutableMappingKV[str, t.JsonMapping] = {}
+        bodies: MutableMapping[str, t.JsonMapping] = {}
         for directory in directories:
             if not directory.is_dir():
                 continue
@@ -401,7 +402,7 @@ class FlextInfraModGateEngine:
         config_root: Path,
         temp_root: Path,
         apply: bool,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Mirror only regenerated snapshot files back to source; report each change.
 
         Rules, utilities and tests are inputs of the regeneration and are never
@@ -409,7 +410,7 @@ class FlextInfraModGateEngine:
         belongs to a removed rule or test and is removed with the rest.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         pattern = f"*{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}"
@@ -472,7 +473,7 @@ class FlextInfraModGateEngine:
     @staticmethod
     def _run_tool(
         root: Path,
-        command: t.StrSequence,
+        command: Sequence[str],
         *,
         streams: tuple[Path, Path],
         artifact_root: Path,
@@ -596,8 +597,8 @@ class FlextInfraModGateEngine:
     def _elected(
         root: Path,
         report: m.Infra.ModScanReport,
-        rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
-        project_rule_ids: t.MappingKV[Path, t.StrSequence],
+        rules_by_id: Mapping[str, m.Infra.CodemodRule],
+        project_rule_ids: Mapping[Path, Sequence[str]],
     ) -> m.Infra.ModScanReport:
         """Keep each source's findings of its nearest governed project's plan.
 
@@ -616,8 +617,8 @@ class FlextInfraModGateEngine:
             elected, key=FlextInfraModGateEngine._path_depth, reverse=True
         )
         physical_root = root.resolve()
-        grouped: t.MutableMappingKV[Path, list[m.Infra.ModScanFinding]] = {}
-        owners: t.MutableMappingKV[Path, tuple[Path, Path]] = {}
+        grouped: MutableMapping[Path, list[m.Infra.ModScanFinding]] = {}
+        owners: MutableMapping[Path, tuple[Path, Path]] = {}
         for entry in report.entries:
             if entry.file not in owners:
                 source = (
@@ -702,7 +703,7 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _validate_expected_receipts(
-        rules: t.SequenceOf[m.Infra.CodemodRule],
+        rules: Sequence[m.Infra.CodemodRule],
         report: m.Infra.ModScanReport,
     ) -> p.Result[bool]:
         """Require every declared finding-count receipt to match exactly.
@@ -734,7 +735,7 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _finding_contract_error(
-        finding: t.MappingKV[str, t.JsonValue],
+        finding: Mapping[str, t.JsonValue],
         line: str,
         rule_files_by_id: Mapping[str, Path],
     ) -> str | None:
@@ -810,7 +811,7 @@ class FlextInfraModGateEngine:
     @staticmethod
     def _finding_repository(
         file_path: Path,
-        repository_roots: t.SequenceOf[Path],
+        repository_roots: Sequence[Path],
         root: Path,
     ) -> str:
         """Return the governed repository name owning one finding path.
@@ -832,7 +833,7 @@ class FlextInfraModGateEngine:
     @classmethod
     def _line_finding(
         cls,
-        record: tuple[str, t.MappingKV[str, t.JsonValue]],
+        record: tuple[str, Mapping[str, t.JsonValue]],
         root: Path,
         plan: tuple[Mapping[str, Path], frozenset[str]],
         context: m.Infra.ModScanSourceContext,
@@ -1034,8 +1035,8 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         ruleset: m.Infra.CodemodRuleset,
-        rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
-        selection: tuple[t.StrSequence, m.Infra.ModScanSourceContext],
+        rules_by_id: Mapping[str, m.Infra.CodemodRule],
+        selection: tuple[Sequence[str], m.Infra.ModScanSourceContext],
         *,
         artifact_root: Path,
     ) -> p.Result[m.Infra.ModScanReport]:
@@ -1106,7 +1107,7 @@ class FlextInfraModGateEngine:
         return r[m.Infra.ModScanReport].ok(report)
 
     @staticmethod
-    def _scan_source_paths(root: Path, targets: t.StrSequence) -> frozenset[Path]:
+    def _scan_source_paths(root: Path, targets: Sequence[str]) -> frozenset[Path]:
         """Enumerate the native selection through its canonical Python file owner.
 
         Args:
@@ -1169,7 +1170,7 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         plan: m.Infra.CodemodRulePlan,
-        targets: t.StrSequence,
+        targets: Sequence[str],
         context: m.Infra.ModScanSourceContext,
         *,
         artifact_root: Path | None = None,
@@ -1307,8 +1308,8 @@ class FlextInfraModGateEngine:
         root: Path,
         *,
         fix: bool,
-        selection: t.StrSequence | m.Infra.CodemodRulePlan | None = None,
-        source_files: t.SequenceOf[Path] | None = None,
+        selection: Sequence[str] | m.Infra.CodemodRulePlan | None = None,
+        source_files: Sequence[Path] | None = None,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply every ruleset elected by the composed rule-plan SSOT.
 

@@ -78,8 +78,9 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
             ),
         ] = ()
         preserved_blocks: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignorePreservedBlock
+            tuple[
+                FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignorePreservedBlock,
+                ...,
             ],
             m.Field(
                 description=(

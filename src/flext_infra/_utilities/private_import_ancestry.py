@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from importlib.util import resolve_name
 
 from flext_infra import c, t
@@ -21,16 +22,16 @@ class FlextInfraUtilitiesPrivateImportAncestry:
         def __init__(self, *, module: str, package: str) -> None:
             self._module = module
             self._package = package
-            self.bases: t.MutableMappingKV[str, tuple[str, ...]] = {}
+            self.bases: MutableMapping[str, tuple[str, ...]] = {}
             self.module_names: t.MutableStrMapping = {}
 
-        def collect_root(self, statements: t.SequenceOf[ast.stmt]) -> None:
+        def collect_root(self, statements: Sequence[ast.stmt]) -> None:
             """Walk the module body, seeding the module-level scope."""
             self.collect(statements, scope=self._module, names=self.module_names)
 
         def collect(
             self,
-            statements: t.SequenceOf[ast.stmt],
+            statements: Sequence[ast.stmt],
             *,
             scope: str,
             names: t.MutableStrMapping,
@@ -122,15 +123,15 @@ class FlextInfraUtilitiesPrivateImportAncestry:
 
     @staticmethod
     def class_bases(
-        sources: t.MappingKV[str, tuple[str, bool]],
-    ) -> t.MappingKV[str, tuple[str, ...]]:
+        sources: Mapping[str, tuple[str, bool]],
+    ) -> Mapping[str, tuple[str, ...]]:
         """Index static class ancestry, including private intermediate owners.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.VariadicTuple[str]]``.
+            The resulting ``Mapping[str, tuple[str, ...]]``.
 
         """
-        bases: t.MutableMappingKV[str, tuple[str, ...]] = {}
+        bases: MutableMapping[str, tuple[str, ...]] = {}
         for module, (source, is_package) in sources.items():
             tree = ast.parse(source, filename=module)
             package = module if is_package else module.rpartition(".")[0]

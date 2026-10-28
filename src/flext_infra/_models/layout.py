@@ -201,7 +201,7 @@ class FlextInfraModelsLayout:
             """Findings the engine acts on in apply mode (never review).
 
             Returns:
-                The resulting ``t.VariadicTuple[FlextInfraModelsLayout.LayoutFinding]``.
+                The resulting ``tuple[FlextInfraModelsLayout.LayoutFinding, ...]``.
 
             """
             return tuple(

@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,7 @@ from flext_infra import c, m, settings
 from flext_infra._utilities._promoted import FlextInfraUtilitiesPromotedInvocation
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesPromotedExecution(FlextInfraUtilitiesPromotedInvocation):
@@ -69,7 +70,7 @@ class FlextInfraUtilitiesPromotedExecution(FlextInfraUtilitiesPromotedInvocation
             )),
             env_name.SUBMODULE_ROOT: str(project_root.resolve()),
         })
-        interpreter: t.StrSequence = (
+        interpreter: Sequence[str] = (
             str(python),
             c.Infra.PromotedSelector.PYTHON_SAFE_PATH,
         )

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -49,7 +49,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Ordered workspace subproject records"),
         ] = ()
         environment_imports: Annotated[
-            tuple[t.Pair[t.NonEmptyStr, Path], ...],
+            tuple[tuple[t.NonEmptyStr, Path], ...],
             m.Field(
                 description="Declared package names and source roots for diagnostics"
             ),
@@ -274,7 +274,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Project-relative Hatch custom build hook module"),
         ] = None
         uv_cache_key_files: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Derived uv editable-build cache-key files"),
         ] = ()
         docs_audit: Annotated[
@@ -286,7 +286,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
         )
         namespace_scan_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Production source roots rendered as the namespace "
@@ -373,9 +373,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -420,13 +418,13 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Python import package name"),
         ]
         packaged_data_paths: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description="Validated relative data paths shipped in distributions",
             ),
         ]
         project_declaration_resource: Annotated[
-            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
+            tuple[t.NonEmptyStr, t.NonEmptyStr] | None,
             m.Field(
                 description=(
                     "Producer declaration source and wheel extra-metadata destination"
@@ -434,7 +432,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         packaged_data_excludes: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Validated files excluded from packaged data roots"),
         ] = ()
         class_stem: Annotated[

@@ -8,12 +8,10 @@ from __future__ import annotations
 
 import os
 import stat
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import ClassVar
-from weakref import WeakKeyDictionary
 
 from flext_cli import u
 from flext_core import FlextStrictYamlConfigSource
@@ -121,24 +119,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             Strict repository policy with current consulted source snapshots.
 
         """
-        if source_project is None:
-            return cls._repository_declaration_inputs(repository_root)
-        cache = cls._DECLARATION_CACHE.setdefault(source_project, {})
-        key = str(repository_root)
-        if key in cache:
-            return r[m.Infra.RepositoryDeclarationInputs].ok(cache[key])
-        loaded = cls._repository_declaration_inputs(
+        return cls._repository_declaration_inputs(
             repository_root, source_project=source_project
         )
-        if loaded.success:
-            cache[key] = loaded.value
-        return loaded
-
-    _DECLARATION_CACHE: ClassVar[
-        WeakKeyDictionary[
-            p.Infra.RopeProject, dict[str, m.Infra.RepositoryDeclarationInputs]
-        ]
-    ] = WeakKeyDictionary()
 
     @classmethod
     def _repository_declaration_inputs(
@@ -147,7 +130,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
-        """Load repository policy once through the captured YAML layers.
+        """Validate repository policy from the selected view's captured YAML layers.
 
         Returns:
             Strict repository policy with current consulted source snapshots.
@@ -762,9 +745,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         project_dir: Path,
         *,
-        read_committed_directory: Callable[
-            [Path, str], p.Result[t.MappingKV[str, bytes]]
-        ],
+        read_committed_directory: Callable[[Path, str], p.Result[Mapping[str, bytes]]],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Load ManagedArtifacts from the project's committed ``HEAD`` catalog.
 
@@ -792,9 +773,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         project_dir: Path,
         *,
-        read_committed_directory: Callable[
-            [Path, str], p.Result[t.MappingKV[str, bytes]]
-        ],
+        read_committed_directory: Callable[[Path, str], p.Result[Mapping[str, bytes]]],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
         """Capture and parse the committed catalog without physical source states.
 
@@ -815,7 +794,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 f"cannot open committed project config catalog at {resolved}: "
                 f"{blobs.error}",
             )
-        payloads: t.MutableMappingKV[Path, bytes] = {
+        payloads: MutableMapping[Path, bytes] = {
             resolved / c.CONFIG_DIR_NAME / name: content
             for name, content in sorted(blobs.value.items())
             if name.endswith(".yaml")
@@ -843,7 +822,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             The resulting ``p.Result[m.Infra.ProjectManagedArtifactsResolution]``.
 
         """
-        payloads: t.MutableMappingKV[Path, bytes] = {}
+        payloads: MutableMapping[Path, bytes] = {}
         for source_state in source_snapshot:
             if source_state.content is None:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail(
@@ -855,7 +834,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def _load_project_managed_artifacts_from_payloads(
         cls,
-        payloads: t.MappingKV[Path, bytes],
+        payloads: Mapping[Path, bytes],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one immutable path-to-bytes project YAML catalog.
 
@@ -910,7 +889,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def _merge_unique_keys[V](
         label: str,
         source: Path,
-        items: t.MappingKV[str, V],
+        items: Mapping[str, V],
         merged: MutableMapping[str, V],
         owners: MutableMapping[str, Path],
     ) -> str | None:
@@ -965,7 +944,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def _compose_project_fragments(
         cls,
-        fragments: t.SequenceOf[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]],
+        fragments: Sequence[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Compose source fragments in path order into one resolution.
 

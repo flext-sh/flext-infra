@@ -6,15 +6,13 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraNamespaceRelocationCascade
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraRefactorNamespaceEnforcerProject:
@@ -31,7 +29,7 @@ class FlextInfraRefactorNamespaceEnforcerProject:
         self,
         *,
         project_root: Path,
-        py_files: t.SequenceOf[Path],
+        py_files: Sequence[Path],
         before: m.Infra.ModScanReport,
         after: m.Infra.ModScanReport,
         rule_deltas: tuple[m.Infra.ViolationsRuleDelta, ...],

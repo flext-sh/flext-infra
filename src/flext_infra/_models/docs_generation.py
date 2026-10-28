@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
@@ -32,7 +33,7 @@ class FlextInfraModelsDocsGeneration:
             gt=0,
             description="Prose width elected once for the destination repository",
         )
-        exclude_docs: t.StrSequence = m.Field(
+        exclude_docs: Sequence[str] = m.Field(
             default=(),
             description="Repository-relative publication exclusion globs from codegen",
         )
@@ -198,9 +199,9 @@ class FlextInfraModelsDocsGeneration:
             tuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts, ...],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
-        metadata_files: t.VariadicTuple[
-            FlextInfraModelsConfigArtifact.CodegenFilePlan
-        ] = m.Field(default=(), description="Owned metadata published with this render")
+        metadata_files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = (
+            m.Field(default=(), description="Owned metadata published with this render")
+        )
         # The workspace root stays explicit: it may be excluded from `scopes`
         # (DECLARED conform scope), so it cannot be inferred from `scopes[0]`.
         repository_root: Annotated[

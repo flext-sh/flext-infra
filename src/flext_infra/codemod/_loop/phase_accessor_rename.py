@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraRefactorAccessor,
@@ -53,7 +54,7 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
         self,
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Plan origin-owned accessors on a separate immutable working view.
 
@@ -96,7 +97,7 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan accessor effects as final file plans.
 

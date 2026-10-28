@@ -19,7 +19,7 @@ The reliability rating on new code was E, from five findings returned by
 | `pythonbugs:S2583` | `src/flext_infra/gates/base_gate.py` (`self._runner or u.Cli`) | Fixed in `ef86e7952c` | The runner is now a required port whose typed default is `u.Cli`, so the always-true fallback branch is gone. |
 | `python:S8510` (×2) | `src/flext_infra/codemod/semantic_apply.py:353` | Fixed in `ef86e7952c` | The for-else family-suffix loop now uses its own `position`/`part` names instead of shadowing `index`/`word`. |
 | `python:S930` | `src/flext_infra/_utilities/rope_class_move.py:137` | False positive, operator-authorized | `directory` iterates over `target.parents`, where `target` is a `Path`. `Path.with_suffix(".py")` is a valid one-argument call. |
-| `python:S8495` | `src/flext_infra/_utilities/lazy_init_render.py:219` | False positive, operator-authorized | `_lazy_init_import` returns a variable-length sequence of output lines, typed `t.StrSequence`, not a fixed-length record. |
+| `python:S8495` | `src/flext_infra/_utilities/lazy_init_render.py:219` | False positive, operator-authorized | `_lazy_init_import` returns a variable-length sequence of output lines, typed `Sequence[str]`, not a fixed-length record. |
 
 Authorization: operator answer of 2026-10-24, recorded in tracker memory
 `operator-ruling-2026-10-24-security-cooldown-and-fp`.

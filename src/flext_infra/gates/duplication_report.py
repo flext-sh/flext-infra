@@ -49,7 +49,7 @@ class FlextInfraDuplicationReport:
         published per unordered span pair.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.Issue]]``.
+            The resulting ``p.Result[tuple[m.Infra.Issue, ...]]``.
 
         """
         if report is None:

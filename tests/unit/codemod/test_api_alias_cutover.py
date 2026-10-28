@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, m, t
+from flext_infra import infra, m
 from tests import c, tm, u
 
 
@@ -22,7 +22,7 @@ class TestsFlextInfraApiAliasCutover:
     def _service_workspace(
         tmp_path: Path,
         consumer: str,
-    ) -> t.Pair[Path, t.MappingKV[Path, str]]:
+    ) -> tuple[Path, Mapping[Path, str]]:
         """Build a real local foundation with the existing lazy root publisher.
 
         Returns:

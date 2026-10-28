@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,7 +24,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
 
     @staticmethod
     def _editable_sources(
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> tuple[tuple[Path, str], ...]:
         """Return resolved hand-written sources in stable path order.
 
@@ -52,13 +53,13 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
 
     @staticmethod
     def _semantic_edits(
-        items: t.SequenceOf[tuple[Path, str]],
+        items: Sequence[tuple[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
     ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan one edit per module, preserving the first original exception.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         edits: list[m.Infra.SemanticMigrationEdit] = []
@@ -78,7 +79,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
     @classmethod
     def _semantic_checked_edits(
         cls,
-        items: t.SequenceOf[tuple[Path, str]],
+        items: Sequence[tuple[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
     ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Keep declarative validation failures on their typed result boundary.

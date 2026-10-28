@@ -29,7 +29,7 @@ class {{ class_stem }}Cli:
         )
         self._register_commands()
 
-    def run(self, args: t.StrSequence | None = None) -> p.Result[bool]:
+    def run(self, args: Sequence[str] | None = None) -> p.Result[bool]:
         """Execute the CLI app through the public flext-cli facade."""
         result: p.Result[bool] = cli.execute_app(
             self._app, prog_name=config.{{ ns }}.name, args=args

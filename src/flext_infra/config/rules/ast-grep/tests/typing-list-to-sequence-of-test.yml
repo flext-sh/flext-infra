@@ -17,15 +17,15 @@ valid:
     ALIAS = List[str]
   - |
     from flext_core import t
-    ALIAS = t.SequenceOf[str]
+    ALIAS = Sequence[str]
   - |
     from flext_core import t
-    value: t.ListOf[str]
+    value: list[str]
   - |
     from flext_core import t
     from typing import List
 
-    REWRITE_TABLE = (("Dict[", "t.MappingKV"), ("List[", "t.SequenceOf"))
+    REWRITE_TABLE = (("Dict[", "Mapping"), ("List[", "Sequence"))
   - |
     from flext_core import t
     from typing import List
@@ -194,11 +194,11 @@ invalid:
     type Contract = Annotated[List[str], LEGACY]
     class LegacyBase(List[str]): ...
     # The model field obeys the runtime model law (list origins are rejected in
-    # pydantic fields: SequenceOf + u.empty factory); value positions keep the
+    # pydantic fields: Sequence + u.empty factory); value positions keep the
     # concrete list contract this rule preserves.
     class Payload(m.ArbitraryTypesModel):
-        values: t.SequenceOf[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.SequenceOf[str])))
-    def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
+        values: Sequence[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(Sequence[str])))
+    def make(values: List[str] = u.empty(TypeForm(list[str]))()) -> List[str]:
         return values
     assert get_origin(LEGACY) is list
     assert FACTORY() == []

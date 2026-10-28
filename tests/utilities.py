@@ -9,6 +9,7 @@ from __future__ import annotations
 import dataclasses
 import os
 import shutil
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_tests import FlextTestsUtilities
@@ -250,11 +251,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             *,
             bootstrap: bool = False,
             shape: MakeEnvironmentShape | None = None,
-        ) -> t.Pair[Path, Path]:
+        ) -> tuple[Path, Path]:
             """Build the generated Make and activation fixture consumed by real verbs.
 
             Returns:
-                The resulting ``t.Pair[Path, Path]``.
+                The resulting ``tuple[Path, Path]``.
 
             Raises:
                 ValueError: If the declared bootstrap source package is absent.
@@ -464,11 +465,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             return root
 
         @staticmethod
-        def hostile_uv_environment(hostile_venv: Path) -> t.StrMapping:
+        def hostile_uv_environment(hostile_venv: Path) -> Mapping[str, str]:
             """Point every uv and interpreter selector at a foreign environment.
 
             Returns:
-                The resulting ``t.StrMapping``.
+                The resulting ``Mapping[str, str]``.
 
             """
             hostile_bin = hostile_venv / "bin"

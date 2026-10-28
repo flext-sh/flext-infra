@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
 
@@ -29,7 +30,7 @@ class FlextInfraModelsCodegenTransaction:
         workspaces: tuple[Path, ...] = m.Field(
             default=(), description="Explicit composition scopes of the staged view"
         )
-        modes: t.MappingKV[Path, int] | None = m.Field(
+        modes: Mapping[Path, int] | None = m.Field(
             default=None,
             description="Declared file modes for the staged source updates",
         )
@@ -47,7 +48,7 @@ class FlextInfraModelsCodegenTransaction:
         workspaces: tuple[Path, ...] = m.Field(
             default=(), description="Explicit composition scopes of the staged view"
         )
-        modes: t.MappingKV[Path, int] | None = m.Field(
+        modes: Mapping[Path, int] | None = m.Field(
             default=None, description="Declared source modes preserved during staging"
         )
         declared_files: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] = m.Field(
@@ -79,12 +80,12 @@ class FlextInfraModelsCodegenTransaction:
         inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             description="Exact source and configuration observations"
         )
-        updates: t.MappingKV[Path, str | None] = m.Field(
+        updates: Mapping[Path, str | None] = m.Field(
             description=(
                 "Desired sources keyed by live destination; None retires an artifact"
             ),
         )
-        modes: t.MappingKV[Path, int] = m.Field(
+        modes: Mapping[Path, int] = m.Field(
             default_factory=lambda: MappingProxyType[Path, int]({}),
             description="Desired file-effect modes derived from original move sources",
         )

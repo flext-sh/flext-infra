@@ -26,7 +26,6 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
 from tests import p
 
 _RENAMES = {
@@ -50,11 +49,11 @@ def _legacy_module_source() -> str:
     )
 
 
-def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
+def _materialize_fixture(tmp_path: Path) -> tuple[Path, Path, Path]:
     """Build one workspace whose origin-named package owns the rename target.
 
     Returns:
-        The resulting ``t.Triple[Path, Path, Path]``.
+        The resulting ``tuple[Path, Path, Path]``.
 
     """
     workspace, project, pkg = u.Tests.namespace_workspace(

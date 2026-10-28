@@ -27,10 +27,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, r, t, u
+from flext_infra import m, r, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -74,19 +75,19 @@ class FlextInfraIndexDeclarationsGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _collect(project_dir: Path) -> p.Result[t.StrSequence]:
+    def _collect(project_dir: Path) -> p.Result[Sequence[str]]:
         """Compare every indexed gitlink against the `.gitmodules` declarations.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         gitlinks = u.Infra.git_index_gitlink_paths(project_dir)
         if gitlinks.failure:
-            return r[t.StrSequence].from_failure(gitlinks)
+            return r[Sequence[str]].from_failure(gitlinks)
         declared = u.Infra.git_submodule_declarations(project_dir)
         if declared.failure:
-            return r[t.StrSequence].from_failure(declared)
+            return r[Sequence[str]].from_failure(declared)
         declared_paths = {item.path.as_posix() for item in declared.unwrap()}
         defects = tuple(
             f"{path}: gitlink is not declared in .gitmodules — Git cannot resolve"
@@ -95,7 +96,7 @@ class FlextInfraIndexDeclarationsGate(FlextInfraGate):
             for path in gitlinks.unwrap()
             if path not in declared_paths
         )
-        return r[t.StrSequence].ok(defects)
+        return r[Sequence[str]].ok(defects)
 
 
 __all__: list[str] = ["FlextInfraIndexDeclarationsGate"]

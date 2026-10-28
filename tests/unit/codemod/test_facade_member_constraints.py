@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
 
@@ -20,6 +21,16 @@ import pytest
 
 from flext_infra import config
 from tests import c, t, tm, u
+
+
+def _member_search_paths() -> Sequence[str]:
+    """Resolve every governed workspace member's own source directory."""
+    workspace = Path(__file__).resolve().parents[4]
+    return tuple(
+        str(path / c.Infra.DEFAULT_SRC_DIR)
+        for path in sorted(workspace.iterdir())
+        if (path / c.Infra.DEFAULT_SRC_DIR).is_dir()
+    )
 
 
 class TestsFlextInfraFacadeMemberConstraints:
@@ -84,7 +95,12 @@ class TestsFlextInfraFacadeMemberConstraints:
     @staticmethod
     def test_lazy_facade_import_keeps_source_kind() -> None:
         """Classify a real lazy export through its declared source class."""
-        package_dir = tm.not_none(u.Infra.declared_package_dir("flext_cli"))
+        package_dir = tm.not_none(
+            u.Infra.declared_package_dir(
+                "flext_cli",
+                search_paths=_member_search_paths(),
+            )
+        )
         with u.Infra.codemod_workspace_snapshot(package_dir.parent.parent) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
@@ -293,7 +309,12 @@ class TestsFlextInfraFacadeMemberConstraints:
     ) -> None:
         """Classify real optional fields without importing their metadata owner."""
         module_name = "flext_infra._models._codegen.fix"
-        package_dir = tm.not_none(u.Infra.declared_package_dir("flext_infra"))
+        package_dir = tm.not_none(
+            u.Infra.declared_package_dir(
+                "flext_infra",
+                search_paths=_member_search_paths(),
+            )
+        )
         monkeypatch.setitem(sys.modules, module_name, None)
         with u.Infra.codemod_workspace_snapshot(package_dir.parent.parent) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
@@ -402,11 +423,16 @@ class TestsFlextInfraFacadeMemberConstraints:
 
     @classmethod
     def _project(cls) -> Path:
-        package_dir = tm.not_none(u.Infra.declared_package_dir(cls.PACKAGE))
+        package_dir = tm.not_none(
+            u.Infra.declared_package_dir(
+                cls.PACKAGE,
+                search_paths=_member_search_paths(),
+            )
+        )
         return package_dir.parent.parent
 
     @classmethod
-    def _ownership_rules(cls) -> t.MappingKV[str, t.JsonMapping]:
+    def _ownership_rules(cls) -> Mapping[str, t.JsonMapping]:
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             return u.Infra.codemod_facade_member_ownership_rules(snapshot, project)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import config, u
@@ -35,7 +36,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
 
         """
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
-        by_mode: t.MutableMappingKV[c.Infra.MakeProfile, c.Infra.MakeProfile] = {
+        by_mode: MutableMapping[c.Infra.MakeProfile, c.Infra.MakeProfile] = {
             c.Infra.MakeProfile.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
             c.Infra.MakeProfile.STANDALONE: c.Infra.MakeProfile.STANDALONE,
         }

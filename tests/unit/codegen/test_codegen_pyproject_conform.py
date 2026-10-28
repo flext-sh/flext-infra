@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -391,9 +392,9 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         ],
     )
     def test_overlay_replaces_duplicated_managed_lists(
-        table_path: t.StrSequence,
+        table_path: Sequence[str],
         key: str,
-        expected: t.StrSequence,
+        expected: Sequence[str],
     ) -> None:
         """Replace stale multiplicity without changing SSOT or CUSTOM tables."""
         header = f'[project]\nname = "workspace"\n[tool.{".".join(table_path)}]\n'

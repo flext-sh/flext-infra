@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextlib import closing
 from os.path import commonpath
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraStagedPackage
 
 
@@ -20,7 +21,7 @@ class FlextInfraTransformersSemanticPublication:
     @classmethod
     def publish_semantic_artifact_plans(
         cls,
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         repository_root: Path,
         options: m.Infra.SemanticPublicationOptions | None = None,
@@ -54,7 +55,7 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def _accepted_candidate(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         repository_root: Path,
         options: m.Infra.SemanticPublicationOptions,
     ) -> p.Result[bool]:
@@ -134,7 +135,7 @@ class FlextInfraTransformersSemanticPublication:
     @classmethod
     def publish_semantic_file_plans(
         cls,
-        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+        plans: Sequence[m.Infra.SemanticFilePlan],
         *,
         repository_root: Path,
         options: m.Infra.SemanticPublicationOptions | None = None,
@@ -157,7 +158,7 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def plan_semantic_file_plans(
-        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+        plans: Sequence[m.Infra.SemanticFilePlan],
         codegen: m.Infra.CodegenConfigSpec | None = None,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Convert every changed semantic plan into one owned codegen file plan.
@@ -205,7 +206,7 @@ class FlextInfraTransformersSemanticPublication:
     @staticmethod
     def edit_file_plans(
         root: Path,
-        edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
+        edits: Sequence[p.Infra.SemanticMigrationEdit],
         *,
         owner: str,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
@@ -241,7 +242,7 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def _pending_paths(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
     ) -> p.Result[tuple[Path, ...]]:
         """Report the destinations a publication of ``plans`` would change.
 
@@ -266,7 +267,7 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def _with_projections(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         repository_root: Path,
         projection_roots: tuple[Path, ...],
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:

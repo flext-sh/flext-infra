@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import MutableMapping
 from functools import partial
 from pathlib import Path
 
 import pytest
 
-from tests import c, m, p, r, t, tm, u
+from tests import c, m, p, r, tm, u
 from tests.unit.codegen._utility_facade_projection.publication import (
     UtilityFacadePublication,
 )
@@ -60,7 +61,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
     ) -> tuple[
         list[Path],
         list[m.Infra.RopeProjectLayout],
-        t.MutableMappingKV[Path, str],
+        MutableMapping[Path, str],
         list[str],
     ]:
         """Declare original and planned providers for each exposure scenario.
@@ -71,7 +72,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         """
         roots: list[Path] = []
         layouts: list[m.Infra.RopeProjectLayout] = []
-        desired: t.MutableMappingKV[Path, str] = {}
+        desired: MutableMapping[Path, str] = {}
         scripts: list[str] = []
         for suffix in ("first", "second") if scope == "independent" else ("first",):
             root, package = u.Tests.create_lazy_init_workspace(

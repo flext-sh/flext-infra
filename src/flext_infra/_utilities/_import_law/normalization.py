@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from pathlib import Path
 from typing import ClassVar
@@ -74,8 +75,8 @@ class FlextInfraUtilitiesImportLawNormalization(
     # Shared annotation-classification totals for one pass. Every class
     # detail emits at debug level; deferred (anomaly) classes keep one info
     # row each, and the pass owner emits one aggregate summary row.
-    _annotation_classified: ClassVar[t.MutableSetOf[t.Triple[str, str, int]]] = set()
-    _annotation_deferred: ClassVar[t.MutableSetOf[t.Triple[str, str, int]]] = set()
+    _annotation_classified: ClassVar[t.Infra.MutableSetOf[tuple[str, str, int]]] = set()
+    _annotation_deferred: ClassVar[t.Infra.MutableSetOf[tuple[str, str, int]]] = set()
 
     @classmethod
     def _import_law_annotation_summary(cls) -> None:
@@ -95,12 +96,12 @@ class FlextInfraUtilitiesImportLawNormalization(
     def plan_import_normalization(
         cls,
         project_root: Path,
-        files: t.SequenceOf[Path],
+        files: Sequence[Path],
         *,
-        sources: t.MappingKV[Path, str],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        sources: Mapping[Path, str],
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan import rewrites against the working sources.
 
         Returns:
@@ -171,8 +172,8 @@ class FlextInfraUtilitiesImportLawNormalization(
         cls,
         root: Path,
         project: p.Infra.RopeProject,
-        paths: t.SequenceOf[Path],
-        runtime_diagnostics: t.MappingKV[str, t.StrTuple],
+        paths: Sequence[Path],
+        runtime_diagnostics: Mapping[str, t.StrTuple],
     ) -> str | None:
         """Describe retained cycles using the verified candidate's native graph.
 
@@ -204,8 +205,8 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_import_resources(
-        cls, project: p.Infra.RopeProject, paths: t.SequenceOf[Path]
-    ) -> t.VariadicTuple[t.Infra.RopeFile]:
+        cls, project: p.Infra.RopeProject, paths: Sequence[Path]
+    ) -> tuple[t.Infra.RopeFile, ...]:
         """Elect only owned sources through their candidate native resources.
 
         Args:
@@ -234,16 +235,16 @@ class FlextInfraUtilitiesImportLawNormalization(
     def _import_law_plan_import_sources(
         cls,
         *,
-        location: t.Pair[Path, t.SequenceOf[Path]],
-        sources: t.MappingKV[Path, str],
+        location: tuple[Path, Sequence[Path]],
+        sources: Mapping[Path, str],
         snapshot: p.Infra.WorkspaceSnapshot,
-        native: t.Triple[
+        native: tuple[
             p.Infra.RopeProject,
-            t.MappingKV[str, frozenset[str]],
+            Mapping[str, frozenset[str]],
             p.Infra.RopeSourceMemberResolver,
         ],
-        runtime_diagnostics: t.MutableMappingKV[str, t.StrTuple] | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        runtime_diagnostics: MutableMapping[str, t.StrTuple] | None = None,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Normalize one elected cohort through its shared source resolver.
 
         Args:
@@ -306,8 +307,8 @@ class FlextInfraUtilitiesImportLawNormalization(
         project_root: Path,
         file_path: Path,
         source: str,
-        import_graph: t.MappingKV[str, frozenset[str]] | None = None,
-        sources: t.MappingKV[Path, str] | None = None,
+        import_graph: Mapping[str, frozenset[str]] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Return the canonical form of one module, or ``None`` when unchanged.
 
@@ -369,15 +370,15 @@ class FlextInfraUtilitiesImportLawNormalization(
     def _import_law_normalize_source(
         cls,
         *,
-        location: t.Pair[Path, Path],
+        location: tuple[Path, Path],
         source: str,
-        inputs: t.Triple[
-            t.MappingKV[str, frozenset[str]] | None,
-            t.MappingKV[Path, str] | None,
+        inputs: tuple[
+            Mapping[str, frozenset[str]] | None,
+            Mapping[Path, str] | None,
             p.Infra.RopeProject | None,
         ],
         member_resolver: p.Infra.RopeSourceMemberResolver | None = None,
-        runtime_diagnostics: t.MutableMappingKV[str, t.StrTuple] | None = None,
+        runtime_diagnostics: MutableMapping[str, t.StrTuple] | None = None,
     ) -> str | None:
         """Normalize against the caller's existing native inventory when supplied.
 
@@ -475,7 +476,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     def _import_law_deferred_class_lines(
         cls,
         tree: ast.Module,
-        parents: t.MappingKV[int, ast.AST],
+        parents: Mapping[int, ast.AST],
         module: str,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
     ) -> frozenset[int]:
@@ -572,7 +573,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         state: m.Infra.ImportLawPass,
         source: str,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
         rope_project: p.Infra.RopeProject | None = None,
         member_resolver: p.Infra.RopeSourceMemberResolver | None = None,
     ) -> str | None:
@@ -626,7 +627,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     def _import_law_validate_transition(
         state: m.Infra.ImportLawPass,
         candidate: str,
-        edits: t.SequenceOf[tuple[int, int, t.StrSequence]],
+        edits: Sequence[tuple[int, int, Sequence[str]]],
     ) -> None:
         """Preserve the first syntax failure with its exact line-edit transition.
 
@@ -671,7 +672,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         if member_resolver is None or state.source_project is None:
             message = "Own-family repair requires native source identity; use make mod"
             raise ValueError(message)
-        routes: dict[t.StrTuple, t.Triple[str, str, str]] = {}
+        routes: dict[t.StrTuple, tuple[str, str, str]] = {}
         for bound, (module, name) in elected.items():
             paths = cls._import_law_consumed_facade_paths(state, bound)
             if not paths:
@@ -692,14 +693,23 @@ class FlextInfraUtilitiesImportLawNormalization(
                     raise ValueError(message)
                 routes[bound, *path] = route
         cls._import_law_own_family_annotations(state.tree)
-        return FlextInfraUtilitiesSemanticCutoverOwnMro.rewrite_own_family_members(
-            source, routes, {bound: route[0] for bound, route in elected.items()}
-        )
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            scope.project_root,
+            planned_sources={scope.file_path: source},
+            source_project=state.source_project,
+        ) as (project, _sources):
+            return FlextInfraUtilitiesSemanticCutoverOwnMro.rewrite_own_family_members(
+                source,
+                routes,
+                {bound: route[0] for bound, route in elected.items()},
+                source_project=project,
+                file_path=scope.file_path,
+            )
 
     @classmethod
     def _import_law_own_family_imports(
         cls, state: m.Infra.ImportLawPass
-    ) -> t.MappingKV[str, t.Pair[str, str]]:
+    ) -> Mapping[str, tuple[str, str]]:
         """Elect root imports that the existing own-family boundary rejects.
 
         Returns:
@@ -715,7 +725,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         family = FlextInfraUtilitiesCodegenNamespace.facade_families()[
             scope.family_letter
         ]
-        imports: dict[str, t.Pair[str, str]] = {}
+        imports: dict[str, tuple[str, str]] = {}
         for node in cls._import_law_iter_imports(state.tree):
             if (
                 not isinstance(node, ast.ImportFrom)
@@ -746,7 +756,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         member: str,
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver,
-    ) -> t.Triple[str, str, str]:
+    ) -> tuple[str, str, str]:
         """Prove a member and its exported declaring owner share native identities.
 
         Returns:
@@ -783,7 +793,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @staticmethod
     def _import_law_own_family_owner(
         binding: p.Infra.RopePyName, current_module: str
-    ) -> t.Pair[p.Infra.RopeParsedModule, t.StrTuple]:
+    ) -> tuple[p.Infra.RopeParsedModule, t.StrTuple]:
         """Read enclosing native class scopes at the exact declaration location.
 
         Returns:

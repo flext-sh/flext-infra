@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -31,7 +32,7 @@ class TestsFlextInfraSemanticPhaseContract:
         consumer.write_text(
             "from flext_core import m, t, u\n"
             "from typing_extensions import TypeForm\n"
-            "type Bag[T] = t.MutableSequenceOf[T]\n"
+            "type Bag[T] = MutableSequence[T]\n"
             "class Consumer(m.ContractModel):\n"
             "    values: Bag[str] = m.Field(default_factory=u.empty("
             'TypeForm(Bag[str])), description="Consumer values")\n'
@@ -65,7 +66,7 @@ class TestsFlextInfraSemanticPhaseContract:
     ) -> None:
         """Equal contextual import names in separate projects remain independent."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
-        sources: t.MutableMappingKV[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
         consumers: list[Path] = []
         for name in ("first_member", "second_member"):
             member = u.Tests.mk_project(
@@ -169,7 +170,7 @@ class TestsFlextInfraSemanticPhaseContract:
     def _reviewed_behavior_provider(
         package: Path,
         variant: str,
-    ) -> t.MutableMappingKV[Path, str]:
+    ) -> MutableMapping[Path, str]:
         """Declare a governed provider with real core inheritance and utility MRO.
 
         Returns:

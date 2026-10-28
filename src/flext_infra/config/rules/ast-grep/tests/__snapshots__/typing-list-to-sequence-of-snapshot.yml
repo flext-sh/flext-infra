@@ -1,20 +1,20 @@
 id: typing-list-to-sequence-of
 snapshots:
-  ? "from flext_core import m, t, u\nfrom typing import Annotated, List, TypeAliasType, get_args, get_origin\nfrom typing_extensions import TypeForm\nLEGACY = List[str]\nFACTORY = list[str]\ntype Contract = Annotated[List[str], LEGACY]\nclass LegacyBase(List[str]): ...\n# The model field obeys the runtime model law (list origins are rejected in\n# pydantic fields: SequenceOf + u.empty factory); value positions keep the\n# concrete list contract this rule preserves.\nclass Payload(m.ArbitraryTypesModel):\n    values: t.SequenceOf[str] = m.Field(description=\"test values\", default_factory=u.empty(TypeForm(t.SequenceOf[str])))\ndef make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:\n    return values\nassert get_origin(LEGACY) is list\nassert FACTORY() == []\nassert isinstance(LegacyBase(), list)\nannotated_type, metadata = get_args(Contract.__value__)\nassert metadata is LEGACY\nassert Payload().values == []\nassert Payload().values is not Payload().values\npayload = Payload()\npayload.values.append(\"example\")\nassert payload.values == [\"example\"]\npayload.values[0] = \"updated\"\npayload.values.extend([\"another\"])\npayload.values.sort()\nassert payload.values.copy() + [\"last\"] == [\"another\", \"updated\", \"last\"]\nassert Payload.model_validate({\"values\": [\"input\"]}, strict=False).values == [\"input\"]\nassert Payload.model_validate_json(payload.model_dump_json()).values == payload.values\nassert make() == []\nfor annotation in (annotated_type, make.__annotations__[\"values\"], make.__annotations__[\"return\"]):\n    origin = get_origin(annotation)\n    # PEP 695 aliases retain identity while their values own concrete origins.\n    while isinstance(origin, TypeAliasType):\n        origin = get_origin(origin.__value__)\n    assert origin is get_origin(LEGACY)\n    assert get_args(annotation) == get_args(LEGACY)\n"
+  ? "from flext_core import m, t, u\nfrom typing import Annotated, List, TypeAliasType, get_args, get_origin\nfrom typing_extensions import TypeForm\nLEGACY = List[str]\nFACTORY = list[str]\ntype Contract = Annotated[List[str], LEGACY]\nclass LegacyBase(List[str]): ...\n# The model field obeys the runtime model law (list origins are rejected in\n# pydantic fields: Sequence + u.empty factory); value positions keep the\n# concrete list contract this rule preserves.\nclass Payload(m.ArbitraryTypesModel):\n    values: Sequence[str] = m.Field(description=\"test values\", default_factory=u.empty(TypeForm(Sequence[str])))\ndef make(values: List[str] = u.empty(TypeForm(list[str]))()) -> List[str]:\n    return values\nassert get_origin(LEGACY) is list\nassert FACTORY() == []\nassert isinstance(LegacyBase(), list)\nannotated_type, metadata = get_args(Contract.__value__)\nassert metadata is LEGACY\nassert Payload().values == []\nassert Payload().values is not Payload().values\npayload = Payload()\npayload.values.append(\"example\")\nassert payload.values == [\"example\"]\npayload.values[0] = \"updated\"\npayload.values.extend([\"another\"])\npayload.values.sort()\nassert payload.values.copy() + [\"last\"] == [\"another\", \"updated\", \"last\"]\nassert Payload.model_validate({\"values\": [\"input\"]}, strict=False).values == [\"input\"]\nassert Payload.model_validate_json(payload.model_dump_json()).values == payload.values\nassert make() == []\nfor annotation in (annotated_type, make.__annotations__[\"values\"], make.__annotations__[\"return\"]):\n    origin = get_origin(annotation)\n    # PEP 695 aliases retain identity while their values own concrete origins.\n    while isinstance(origin, TypeAliasType):\n        origin = get_origin(origin.__value__)\n    assert origin is get_origin(LEGACY)\n    assert get_args(annotation) == get_args(LEGACY)\n"
   : fixed: |
       from flext_core import m, t, u
       from typing import Annotated, List, TypeAliasType, get_args, get_origin
       from typing_extensions import TypeForm
       LEGACY = List[str]
       FACTORY = list[str]
-      type Contract = Annotated[t.ListOf[str], LEGACY]
+      type Contract = Annotated[list[str], LEGACY]
       class LegacyBase(List[str]): ...
       # The model field obeys the runtime model law (list origins are rejected in
-      # pydantic fields: SequenceOf + u.empty factory); value positions keep the
+      # pydantic fields: Sequence + u.empty factory); value positions keep the
       # concrete list contract this rule preserves.
       class Payload(m.ArbitraryTypesModel):
-          values: t.SequenceOf[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.SequenceOf[str])))
-      def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
+          values: Sequence[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(Sequence[str])))
+      def make(values: List[str] = u.empty(TypeForm(list[str]))()) -> List[str]:
           return values
       assert get_origin(LEGACY) is list
       assert FACTORY() == []
@@ -66,11 +66,11 @@ snapshots:
         type Contract = Annotated[List[str], LEGACY]
         class LegacyBase(List[str]): ...
         # The model field obeys the runtime model law (list origins are rejected in
-        # pydantic fields: SequenceOf + u.empty factory); value positions keep the
+        # pydantic fields: Sequence + u.empty factory); value positions keep the
         # concrete list contract this rule preserves.
         class Payload(m.ArbitraryTypesModel):
-            values: t.SequenceOf[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.SequenceOf[str])))
-        def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
+            values: Sequence[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(Sequence[str])))
+        def make(values: List[str] = u.empty(TypeForm(list[str]))()) -> List[str]:
             return values
         assert get_origin(LEGACY) is list
         assert FACTORY() == []
@@ -98,7 +98,7 @@ snapshots:
             assert get_args(annotation) == get_args(LEGACY)
       style: secondary
       start: 0
-      end: 1810
+      end: 1796
     - source: from flext_core import m, t, u
       style: secondary
       start: 0
@@ -112,11 +112,11 @@ snapshots:
         type Contract = Annotated[List[str], LEGACY]
         class LegacyBase(List[str]): ...
         # The model field obeys the runtime model law (list origins are rejected in
-        # pydantic fields: SequenceOf + u.empty factory); value positions keep the
+        # pydantic fields: Sequence + u.empty factory); value positions keep the
         # concrete list contract this rule preserves.
         class Payload(m.ArbitraryTypesModel):
-            values: t.SequenceOf[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.SequenceOf[str])))
-        def make(values: List[str] = u.empty(TypeForm(t.ListOf[str]))()) -> List[str]:
+            values: Sequence[str] = m.Field(description="test values", default_factory=u.empty(TypeForm(Sequence[str])))
+        def make(values: List[str] = u.empty(TypeForm(list[str]))()) -> List[str]:
             return values
         assert get_origin(LEGACY) is list
         assert FACTORY() == []
@@ -144,12 +144,12 @@ snapshots:
             assert get_args(annotation) == get_args(LEGACY)
       style: secondary
       start: 0
-      end: 1810
+      end: 1796
   "from flext_core import t\nfrom typing import Annotated as Metadata, List\nvalue: Metadata[List[str], List[str]]\n":
     fixed: |
       from flext_core import t
       from typing import Annotated as Metadata, List
-      value: Metadata[t.ListOf[str], List[str]]
+      value: Metadata[list[str], List[str]]
     labels:
     - source: List[str]
       style: primary
@@ -189,7 +189,7 @@ snapshots:
     fixed: |
       from flext_core import t
       from typing import Annotated, List
-      value: Annotated[t.ListOf[str], Field(default_factory=List[str])]
+      value: Annotated[list[str], Field(default_factory=List[str])]
     labels:
     - source: List[str]
       style: primary
@@ -230,7 +230,7 @@ snapshots:
       from flext_core import t
       from typing import List
       
-      def f(x: t.ListOf[str]) -> None: ...
+      def f(x: list[str]) -> None: ...
     labels:
     - source: List[str]
       style: primary
@@ -273,7 +273,7 @@ snapshots:
       from flext_core import t
       from typing import List
       
-      type ALIAS = t.ListOf[str]
+      type ALIAS = list[str]
     labels:
     - source: List[str]
       style: primary
@@ -316,7 +316,7 @@ snapshots:
       from flext_core import t
       from typing import List
       class Annotated: ...
-      value: Annotated[int, t.ListOf[str]]
+      value: Annotated[int, list[str]]
     labels:
     - source: List[str]
       style: primary
@@ -358,7 +358,7 @@ snapshots:
     fixed: |
       from flext_core import t
       from typing import List
-      def f() -> t.ListOf[str]: ...
+      def f() -> list[str]: ...
     labels:
     - source: List[str]
       style: primary
@@ -398,7 +398,7 @@ snapshots:
     fixed: |
       from flext_core import t
       from typing import List
-      def f(value: t.ListOf[str] = list[str]()) -> List[str]:
+      def f(value: list[str] = list[str]()) -> List[str]:
           return value
     labels:
     - source: List[str]
@@ -441,7 +441,7 @@ snapshots:
     fixed: |
       from flext_core import t
       from typing import List
-      value: tuple[t.ListOf[str], ...] | None = None
+      value: tuple[list[str], ...] | None = None
     labels:
     - source: List[str]
       style: primary
@@ -482,7 +482,7 @@ snapshots:
       from flext_core import t
       import typing
       
-      type ALIAS = t.ListOf[str]
+      type ALIAS = list[str]
     labels:
     - source: typing.List[str]
       style: primary
@@ -512,7 +512,7 @@ snapshots:
     fixed: |
       from flext_core import t
       import typing
-      def f(value: t.ListOf[str] = typing.List[str]): ...
+      def f(value: list[str] = typing.List[str]): ...
     labels:
     - source: typing.List[str]
       style: primary
@@ -542,7 +542,7 @@ snapshots:
       from flext_core import t
       import typing
       import typing as hints
-      value: hints.Annotated[t.ListOf[str], typing.List[str]]
+      value: hints.Annotated[list[str], typing.List[str]]
     labels:
     - source: typing.List[str]
       style: primary
@@ -572,7 +572,7 @@ snapshots:
     fixed: |
       from flext_core import t
       import typing
-      value: typing.Annotated[t.ListOf[str], typing.List[str]]
+      value: typing.Annotated[list[str], typing.List[str]]
     labels:
     - source: typing.List[str]
       style: primary
@@ -601,7 +601,7 @@ snapshots:
     fixed: |
       from flext_core import t
       import typing
-      value: t.ListOf[str] = Field(default_factory=list[str])
+      value: list[str] = Field(default_factory=list[str])
     labels:
     - source: typing.List[str]
       style: primary

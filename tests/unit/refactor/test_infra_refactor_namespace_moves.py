@@ -18,7 +18,7 @@ from tests import c, m, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import p, t
+from tests import p
 
 
 @pytest.mark.slow
@@ -54,7 +54,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             tm.that(target.parent.name.startswith("_"), eq=True)
 
     @staticmethod
-    def _module_move_workspace(tmp_path: Path) -> t.Quad[Path, Path, Path, Path]:
+    def _module_move_workspace(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         """Declare a real published owner and a consumer of its behavior.
 
         Returns:
@@ -97,7 +97,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     @staticmethod
     def _module_move_inputs(
         project: p.Infra.RopeProject,
-    ) -> t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> tuple[Mapping[Path, str], tuple[m.Cli.AtomicFileState, ...]]:
         """Capture the actual public planner inputs once through atomic reads.
 
         Returns:

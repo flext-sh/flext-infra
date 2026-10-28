@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import ClassVar
 
 import pytest
@@ -18,7 +19,7 @@ from tests import c, t, tm, u
 class TestsFlextInfraDepsModernizerHelpers:
     """Behavior contract for test_modernizer_helpers."""
 
-    _FULL_OPTIONAL_DEPS: ClassVar[t.MappingKV[str, t.StrSequence]] = {
+    _FULL_OPTIONAL_DEPS: ClassVar[Mapping[str, Sequence[str]]] = {
         "dev": ["pytest"],
         "docs": ["sphinx"],
         "security": ["bandit"],
@@ -45,7 +46,7 @@ class TestsFlextInfraDepsModernizerHelpers:
 
     @staticmethod
     def _doc_with_optional_deps(
-        optional_deps: t.MappingKV[str, t.StrSequence],
+        optional_deps: Mapping[str, Sequence[str]],
     ) -> t.Cli.TomlDocument:
         doc = u.Cli.toml_document()
         doc["project"] = {"optional-dependencies": optional_deps}
@@ -81,9 +82,9 @@ class TestsFlextInfraDepsModernizerHelpers:
         ],
     )
     def test_dedupe_specs(
-        specs: t.StrSequence,
+        specs: Sequence[str],
         expected_length: int,
-        expected_names: t.StrSequence,
+        expected_names: Sequence[str],
         *,
         check_sorted: bool,
     ) -> None:
@@ -134,10 +135,10 @@ class TestsFlextInfraDepsModernizerHelpers:
     )
     def test_as_string_list(
         value: t.Cli.TomlItem | None,
-        expected: t.StrSequence,
+        expected: Sequence[str],
     ) -> None:
         """Verify as string list."""
-        actual: t.StrSequence = (
+        actual: Sequence[str] = (
             [] if value is None else u.Cli.toml_as_string_list(value)
         )
         tm.that(list(actual), eq=list(expected))
@@ -157,7 +158,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         ("items", "expected"),
         [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
     )
-    def test_array(items: t.StrSequence, expected: int) -> None:
+    def test_array(items: Sequence[str], expected: int) -> None:
         """Verify TOML array construction preserves item count."""
         tm.that(len(u.Cli.toml_array(items)), eq=expected)
 
@@ -190,9 +191,9 @@ class TestsFlextInfraDepsModernizerHelpers:
     )
     def test_project_dev_groups(
         self,
-        optional_deps: t.MappingKV[str, t.StrSequence],
-        expected_dev: t.StrSequence,
-        expected_docs: t.StrSequence,
+        optional_deps: Mapping[str, Sequence[str]],
+        expected_dev: Sequence[str],
+        expected_docs: Sequence[str],
     ) -> None:
         """Verify project dev groups."""
         groups = u.Infra.project_dev_groups(self._doc_with_optional_deps(optional_deps))
@@ -216,7 +217,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     )
     def test_canonical_dev_dependencies(
         self,
-        optional_deps: t.MappingKV[str, t.StrSequence],
+        optional_deps: Mapping[str, Sequence[str]],
         expected_length: int,
         *,
         expect_pytest: bool,

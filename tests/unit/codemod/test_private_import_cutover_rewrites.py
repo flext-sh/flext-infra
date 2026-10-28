@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import dataclasses
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 
-from flext_infra import t, u
+from flext_infra import u
 from tests import tm
 from tests.unit.codemod.private_import_cutover_support import (
     TestsFlextInfraFacadeNaming,
@@ -451,8 +452,8 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         declaration: str,
         evaluation: str,
         *,
-        mode: t.Pair[bool, bool],
-        scope: t.Pair[bool, bool],
+        mode: tuple[bool, bool],
+        scope: tuple[bool, bool],
     ) -> None:
         """Defaults and class keywords use the enclosing dictionary."""
         shadowed, future_annotations = mode
@@ -596,7 +597,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             ("protocols", "p", "FlextSampleProtocolsBase", "Protocol"),
             ("typings", "t", "FlextSampleTypesBase", "Type"),
         )
-        sources: t.MutableMappingKV[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
         private_imports: list[str] = []
         annotations: list[str] = []
         for layer, alias, private_class, nested_class in layers:

@@ -9,12 +9,13 @@ from __future__ import annotations
 import os
 import re
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -335,7 +336,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
 
     @staticmethod
-    def _hostile_interpreter_probe(tmp_path: Path) -> tuple[Path, Path, t.StrMapping]:
+    def _hostile_interpreter_probe(
+        tmp_path: Path,
+    ) -> tuple[Path, Path, Mapping[str, str]]:
         """Build a foreign venv whose interpreter selectors must lose.
 
         Returns:
@@ -367,7 +370,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
     @pytest.mark.remote
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,
         *,
         provisioned: bool,
@@ -483,7 +486,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
     @staticmethod
     def _assert_lockless_setup_provisions(
         project_root: Path,
-        active_env: t.StrMapping,
+        active_env: Mapping[str, str],
     ) -> None:
         """Without a committed lock, setup provisions from the manifest.
 
@@ -548,7 +551,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
     def _assert_cold_storage_ci(
         template: Path,
         profile: c.Infra.MakeProfile,
-    ) -> t.MappingKV[str, bytes]:
+    ) -> Mapping[str, bytes]:
         """A cold CI storage installed every tool without auto-locking.
 
         A warm storage would skip installation and conceal an absent
@@ -581,8 +584,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         template: Path,
         parent: Path,
         profile: c.Infra.MakeProfile,
-        active_env: t.StrMapping,
-        resolved_locks: t.MappingKV[str, bytes],
+        active_env: Mapping[str, str],
+        resolved_locks: Mapping[str, bytes],
     ) -> None:
         """A drifted dependency declaration never rewrites a committed lock.
 
@@ -625,8 +628,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         template: Path,
         parent: Path,
         profile: c.Infra.MakeProfile,
-        active_env: t.StrMapping,
-        resolved_locks: t.MappingKV[str, bytes],
+        active_env: Mapping[str, str],
+        resolved_locks: Mapping[str, bytes],
     ) -> None:
         """A lock that does not pin a declared tool never stops setup.
 
@@ -671,7 +674,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
     def _setup_with_cold_storage(
         checkout: Path,
         *,
-        active_env: t.StrMapping,
+        active_env: Mapping[str, str],
         receipts: Path,
     ) -> p.Cli.CommandOutput:
         """Run ``make setup`` once against the run's cold Mise storage.
@@ -705,7 +708,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
     def test_setup_provisions_environment_before_project_runtime(
         self,
         tmp_path: Path,
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,
     ) -> None:
         """Setup creates the venv and syncs dependencies before any runtime use."""
@@ -740,7 +743,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
 
     @staticmethod
-    def _locks(root: Path) -> t.MappingKV[str, bytes]:
+    def _locks(root: Path) -> Mapping[str, bytes]:
         """Return every lock artifact ``make upg`` owns, keyed by relative path.
 
         Returns:

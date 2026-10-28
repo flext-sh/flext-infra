@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from re import escape
 
@@ -114,7 +115,7 @@ class TestsFlextInfraCodemodGate:
         project: Path,
         rule_id: str,
         tmp_path: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Project-relative files the bundled rule ``rule_id`` reports.
 
         Returns:

@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r
 from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform.file_plans import FlextInfraCodegenConformFilePlans
 
@@ -29,11 +30,11 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
     @staticmethod
     def _scaffold_python_dirs(
-        entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+        entries: Sequence[p.Infra.TemplateEntrySpec],
         profile: c.Infra.MakeProfile,
         *,
         package: bool = True,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return Python roots the selected scaffold manifest actually creates.
 
         Returns:
@@ -155,15 +156,15 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
     def _logical_make_lines(
         content: str,
         policy: m.Infra.CustomHandlerPolicy,
-    ) -> p.Result[tuple[t.Pair[int, str], ...]]:
+    ) -> p.Result[tuple[tuple[int, str], ...]]:
         """Collapse backslash continuations into reportable logical lines.
 
         Returns:
             The logical lines and their first physical line numbers.
 
         """
-        result_type = r[tuple[t.Pair[int, str], ...]]
-        logical_lines: list[t.Pair[int, str]] = []
+        result_type = r[tuple[tuple[int, str], ...]]
+        logical_lines: list[tuple[int, str]] = []
         pending_line: str | None = None
         pending_number: int = 0
         for line_number, raw_line in enumerate(content.splitlines(), start=1):

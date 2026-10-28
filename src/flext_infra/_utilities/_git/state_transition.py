@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m
 from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFiles
 
 
@@ -95,9 +96,7 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     @staticmethod
     def _state_require_encodable_symlinks(
         root: Path,
-        desired: t.IterableOf[
-            m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState
-        ],
+        desired: Iterable[m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState],
     ) -> None:
         """Require every desired symlink payload to decode as strict UTF-8."""
         for entry in desired:
@@ -115,8 +114,8 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
         path: Path,
         current: m.Infra.GitWorktreeFileState | None,
         *,
-        paths: t.IterableOf[Path],
-        desired: t.MappingKV[
+        paths: Iterable[Path],
+        desired: Mapping[
             Path,
             m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState,
         ],
@@ -176,7 +175,7 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
         snapshot: m.Infra.GitWorktreeStateSnapshot,
         actual: m.Infra.GitWorktreeStateSnapshot,
         root: Path,
-        baseline: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        baseline: Sequence[m.Infra.GitWorktreeIndexEntry],
         *,
         cleanup: bool,
     ) -> None:
@@ -250,7 +249,7 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
         cls,
         snapshot: m.Infra.GitWorktreeStateSnapshot,
         root: Path,
-        baseline: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        baseline: Sequence[m.Infra.GitWorktreeIndexEntry],
         *,
         cleanup: bool,
     ) -> None:

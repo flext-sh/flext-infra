@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import ast
 import hashlib
-from collections.abc import Generator, MutableMapping
-from contextlib import closing, contextmanager
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
+from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
 
 from flext_cli import u
@@ -42,11 +42,11 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         cls,
         root: Path,
         *,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
-        planned_sources: t.MappingKV[Path, str | None] | None = None,
-        project_roots: t.VariadicTuple[Path] = (),
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        planned_sources: Mapping[Path, str | None] | None = None,
+        project_roots: tuple[Path, ...] = (),
         source_project: p.Infra.RopeProject | None = None,
-    ) -> Generator[t.Pair[p.Infra.RopeProject, MutableMapping[Path, str]]]:
+    ) -> Generator[tuple[p.Infra.RopeProject, MutableMapping[Path, str]]]:
         """Bind authenticated planned overrides to the elected native project.
 
         A supplied invocation-owned project evolves only for this binding and
@@ -65,10 +65,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         if any(not project.is_relative_to(root) for project in project_roots):
             msg = "Rope declared project root is outside the original authority"
             raise ValueError(msg)
-        if planned_sources:
-            declared_files = cls._workspace_declared_sources(
-                root, declared_files, planned_sources
-            )
         original_root = next(path for path in (root, *root.parents) if path.is_dir())
         if (
             source_project is not None
@@ -76,23 +72,37 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         ):
             msg = "shared source project differs from the declared physical root"
             raise ValueError(msg)
-        folders = cls._workspace_planned_folders(
-            root, project_roots, declared_files, original_root=original_root
-        )
-        project_context = (
-            cls.workspace_overlay_project(
-                root,
-                project_roots,
-                declared_files=declared_files,
-                additional_source_folders=folders,
+        with ExitStack() as bindings:
+            if source_project is not None:
+                bindings.enter_context(
+                    source_project.source_view(
+                        declared_files=None, additional_source_folders=None
+                    )
+                )
+            if planned_sources is not None:
+                declared_files = cls._workspace_declared_sources(
+                    root,
+                    declared_files,
+                    planned_sources,
+                    source_project=source_project,
+                )
+            folders = cls._workspace_planned_folders(
+                root, project_roots, declared_files, original_root=original_root
             )
-            if source_project is None
-            else source_project.source_view(
-                declared_files=declared_files,
-                additional_source_folders=folders,
+            project_context = (
+                cls.workspace_overlay_project(
+                    root,
+                    project_roots,
+                    declared_files=declared_files,
+                    additional_source_folders=folders,
+                )
+                if source_project is None
+                else source_project.source_view(
+                    declared_files=declared_files,
+                    additional_source_folders=folders,
+                )
             )
-        )
-        with project_context as project:
+            project = bindings.enter_context(project_context)
             yield (
                 project,
                 {
@@ -147,9 +157,11 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @staticmethod
     def _workspace_declared_sources(
         root: Path,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        planned_sources: t.MappingKV[Path, str | None],
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        planned_sources: Mapping[Path, str | None],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Bind planned overrides to their original physical witnesses.
 
         Returns:
@@ -159,7 +171,18 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             ValueError: If planned bytes conflict with a declared plan.
 
         """
-        declarations = {plan.path: plan for plan in declared_files}
+        inherited = (
+            {plan.path: plan for plan in source_project.source_plans}
+            if source_project is not None
+            else {}
+        )
+        declarations: dict[Path, m.Infra.CodegenFilePlan] = {}
+        for plan in declared_files:
+            previous = declarations.get(plan.path)
+            if previous is not None and previous != plan:
+                message = f"Rope source has competing declarations: {plan.path}"
+                raise ValueError(message)
+            declarations[plan.path] = plan
         for supplied_path, source in planned_sources.items():
             path = supplied_path.resolve()
             content = source.encode(c.DEFAULT_ENCODING) if source is not None else None
@@ -169,32 +192,38 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                     message = f"Rope planned source has competing declarations: {path}"
                     raise ValueError(message)
                 continue
-            before = u.Cli.atomic_read_binary_file_state(path).unwrap()
+            prior = inherited.get(path)
+            before = (
+                prior.before
+                if prior is not None
+                else source_project.source_state(path, required=False)
+                if source_project is not None
+                else u.Cli.atomic_read_binary_file_state(path).unwrap()
+            )
+            mode = (
+                prior.desired_mode
+                if prior is not None and prior.desired_mode is not None
+                else before.mode
+            )
+            if mode is None:
+                mode = config.Infra.codegen.modes.file_default
             declarations[path] = m.Infra.CodegenFilePlan(
-                project=root,
+                project=prior.project if prior is not None else root,
                 path=path,
                 before=before,
                 desired_content=content,
-                desired_mode=(
-                    None
-                    if content is None
-                    else (
-                        before.mode
-                        if before.mode is not None
-                        else config.Infra.codegen.modes.file_default
-                    )
-                ),
+                desired_mode=None if content is None else mode,
             )
-        return tuple(declarations.values())
+        return tuple((inherited | declarations).values())
 
     @staticmethod
     @contextmanager
     def workspace_overlay_project(
         root: Path,
-        project_roots: t.VariadicTuple[Path],
+        project_roots: tuple[Path, ...],
         *,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
-        additional_source_folders: t.VariadicTuple[str] = (),
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        additional_source_folders: tuple[str, ...] = (),
     ) -> Generator[p.Infra.RopeProject]:
         """Open the native source engine project that reads planned sources first.
 
@@ -255,7 +284,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     def workspace_snapshot(
         cls,
         root: Path,
-        members: t.SequenceOf[Path],
+        members: Sequence[Path],
     ) -> Generator[p.Infra.WorkspaceSnapshot]:
         """Open one repository engine with explicit nested inventory ownership.
 
@@ -298,7 +327,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         member: Path,
         *,
         project: p.Infra.RopeProject | None = None,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Return one member's Python sources, listed through one project view.
 
         The snapshot's engine lists once per member; a planned view project
@@ -494,7 +523,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     def workspace_sources(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
-    ) -> t.MappingKV[Path, p.Infra.WorkspaceSnapshotSource]:
+    ) -> Mapping[Path, p.Infra.WorkspaceSnapshotSource]:
         """Read every member Python source once and return them all.
 
         Returns:
@@ -510,7 +539,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     def workspace_public_exports(
         snapshot: p.Infra.WorkspaceSnapshot,
         path: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Read a module's public exports once from its authenticated native tree.
 
         Returns:
@@ -557,7 +586,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         path: Path,
-    ) -> t.Pair[frozenset[str], frozenset[str]]:
+    ) -> tuple[frozenset[str], frozenset[str]]:
         """Return the modules one source imports at runtime and only for typing.
 
         An import under ``if TYPE_CHECKING:`` is a typing edge; every other
@@ -576,7 +605,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         base = module if path.name == c.Infra.INIT_PY else module.rpartition(".")[0]
         runtime: set[str] = set()
         typing: set[str] = set()
-        pending: list[t.Pair[ast.AST, bool]] = [
+        pending: list[tuple[ast.AST, bool]] = [
             (statement, False)
             for statement in cls.workspace_module_tree(snapshot, path).body
         ]
@@ -643,7 +672,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     def workspace_snapshot_rebase(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
     ) -> None:
         """Refresh this run's recorded states for paths the run itself wrote.
 
@@ -660,7 +689,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @staticmethod
     def workspace_snapshot_verify(
         snapshot: p.Infra.WorkspaceSnapshot,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
     ) -> p.Result[bool]:
         """Prove the given read files still carry the states the snapshot read.
 
@@ -710,7 +739,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         )
 
     @staticmethod
-    def _import_targets(node: ast.Import | ast.ImportFrom, base: str) -> t.StrSequence:
+    def _import_targets(node: ast.Import | ast.ImportFrom, base: str) -> Sequence[str]:
         """Return every module name one import statement can bind from.
 
         Returns:

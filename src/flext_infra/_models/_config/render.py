@@ -46,9 +46,7 @@ class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):
             m.Field(description="Per-request SonarCloud web API timeout"),
         ]
         issue_exclusions: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec
-            ],
+            tuple[FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec, ...],
             m.Field(
                 description=(
                     "Server-side issue exclusions applied through SonarCloud "

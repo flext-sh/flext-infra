@@ -17,11 +17,12 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, settings, t
+from flext_infra import c, config, m, settings
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesMiseBinary,
@@ -154,7 +155,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         )
 
     @staticmethod
-    def _preview_contents(preview: Path) -> t.MappingKV[Path, bytes]:
+    def _preview_contents(preview: Path) -> Mapping[Path, bytes]:
         """Read every Python source of the staged preview by relative path.
 
         Returns:
@@ -196,7 +197,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         project: Path,
         preview: Path,
         stage: m.Infra.ModStageConfig,
-        originals: t.MappingKV[Path, bytes],
+        originals: Mapping[Path, bytes],
     ) -> None:
         """Repair the selected Ruff codes on every source the cascade changed.
 
@@ -221,8 +222,8 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         cls,
         project: Path,
         plan: m.Infra.CodemodRulePlan,
-        sources: t.MappingKV[Path, bytes],
-    ) -> t.MappingKV[Path, bytes]:
+        sources: Mapping[Path, bytes],
+    ) -> Mapping[Path, bytes]:
         """Run every declared stage over a staged preview to its fixed point.
 
         ``sources`` are the project's authored Python sources (absolute path

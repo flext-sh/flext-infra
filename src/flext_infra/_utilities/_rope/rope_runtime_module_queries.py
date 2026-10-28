@@ -7,16 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import sys
-import sysconfig
-from importlib.machinery import BuiltinImporter, FrozenImporter, ModuleSpec, PathFinder
-from inspect import getsourcefile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
 from typing_extensions import TypeForm
 
-from flext_infra import config, m, p, r, t
+from flext_infra import config, m, p, t
 from flext_infra._utilities._rope.rope_runtime_base import (
     FlextInfraUtilitiesRopeRuntimeBase,
 )
@@ -31,7 +28,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
     @staticmethod
     def definition_location(
         binding: t.Infra.RopePyName,
-    ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
+    ) -> tuple[t.Infra.RopeParsedModule | None, int | None]:
         """Read native definition metadata, including annotation-only bindings.
 
         Returns:
@@ -174,7 +171,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         *,
         ropefolder: str,
         save_objectdb: bool,
-        filter_lists: t.Pair[t.SequenceOf[str], t.SequenceOf[str]],
+        filter_lists: tuple[Sequence[str], Sequence[str]],
     ) -> t.Infra.RopeProject:
         """Create one Rope project.
 
@@ -270,7 +267,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         cls,
         module_name: str,
         level: int,
-        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
+        names_and_aliases: Sequence[tuple[str, str | None]],
     ) -> t.Infra.RopeFromImport:
         """Build the native relative or absolute from-import record.
 
@@ -294,7 +291,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
     @classmethod
     def normal_import(
         cls,
-        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
+        names_and_aliases: Sequence[tuple[str, str | None]],
     ) -> t.Infra.RopeNormalImport:
         """Build Rope's native plain ``import`` record.
 
@@ -338,167 +335,6 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             msg = "rope ImportStatement does not satisfy p.Infra.RopeImportStatement"
             raise TypeError(msg)
         return statement
-
-    @classmethod
-    def native_module_source(cls, module_name: str) -> p.Result[Path]:
-        """Authenticate native module election without calling an upper service.
-
-        Returns:
-            The physical supplier source, or the authenticated native interpreter.
-
-        """
-        module = sys.modules[module_name]
-        native = module.__spec__
-        if (
-            native is None
-            or sys.modules.get(native.name) is not module
-            or (
-                native.name != module_name
-                and (
-                    native.origin not in {"built-in", "frozen"}
-                    or module_name.partition(".")[0] not in sys.stdlib_module_names
-                )
-            )
-        ):
-            return r[Path].fail(f"producer module lacks its native spec: {module_name}")
-        elected = cls._native_elected_spec(module_name, native)
-        if elected.failure:
-            return r[Path].from_failure(elected)
-        spec = elected.value
-        if (
-            spec.origin != native.origin
-            or type(spec.loader) is not type(native.loader)
-            or module.__loader__ is not native.loader
-        ):
-            return r[Path].fail(
-                f"producer module election differs from loaded spec: {module_name}; "
-                f"loaded_origin={native.origin!r}; "
-                f"cold_origin={spec.origin!r}; "
-                f"loaded_loader={type(native.loader).__module__}."
-                f"{type(native.loader).__qualname__}; "
-                f"cold_loader={type(spec.loader).__module__}."
-                f"{type(spec.loader).__qualname__}"
-            )
-        if spec.origin == "frozen" and (
-            (
-                native.loader is not spec.loader
-                or native.loader_state.origname != spec.loader_state.origname
-            )
-            or any(
-                observed is not None and observed != expected
-                for observed, expected in (
-                    (native.loader_state.filename, spec.loader_state.filename),
-                    (spec.loader_state.filename, getsourcefile(module)),
-                )
-            )
-        ):
-            return r[Path].fail(
-                f"producer frozen declaration source differs from native loader: "
-                f"{module_name}; loaded_state={native.loader_state!r}; "
-                f"cold_state={spec.loader_state!r}; source={getsourcefile(module)!r}"
-            )
-        if spec.origin is None or (
-            spec.origin not in {"built-in", "frozen"}
-            and getattr(module, "__file__", None) != spec.origin
-        ):
-            return r[Path].fail(
-                f"producer loaded module differs from cold origin: {module_name}"
-            )
-        return r[Path].ok(
-            Path(sys.executable).resolve()
-            if spec.origin in {"built-in", "frozen"}
-            else Path(spec.origin).absolute()
-        )
-
-    @classmethod
-    def _native_elected_spec(
-        cls,
-        module_name: str,
-        native: ModuleSpec,
-    ) -> p.Result[ModuleSpec]:
-        """Compare registered importers with the complete physical module election.
-
-        Returns:
-            The elected leaf spec, or the first physical/importer discrepancy.
-
-        """
-        elected = cls._native_root_spec(module_name, native)
-        if elected.failure or native.origin in {"built-in", "frozen"}:
-            return elected
-        spec: ModuleSpec | None = elected.value
-        components = module_name.split(".")
-        parent_path = None
-        for index in range(1, len(components)):
-            if spec is None or not spec.submodule_search_locations:
-                return r[ModuleSpec].fail(
-                    f"producer module has no cold parent: {module_name}"
-                )
-            parent_path = spec.submodule_search_locations
-            spec = PathFinder.find_spec(".".join(components[: index + 1]), parent_path)
-        registered = cls.runtime_callable("importlib._bootstrap", "_find_spec")(
-            module_name, parent_path
-        )
-        if (
-            not isinstance(registered, ModuleSpec)
-            or spec is None
-            or registered.origin != spec.origin
-            or registered.submodule_search_locations != spec.submodule_search_locations
-        ):
-            return r[ModuleSpec].fail(
-                f"registered producer importer disagrees with physical election: "
-                f"{module_name}"
-            )
-        return r[ModuleSpec].ok(registered)
-
-    @staticmethod
-    def _native_root_spec(
-        module_name: str,
-        native: ModuleSpec,
-    ) -> p.Result[ModuleSpec]:
-        """Elect the native root using the interpreter's physical search paths.
-
-        Returns:
-            The elected root spec, or the original physical authority failure.
-
-        """
-        namespace = module_name.partition(".")[0]
-        search: list[str] | None = None
-        if namespace in sys.stdlib_module_names:
-            base = Path(sys.base_prefix).resolve()
-            standard = Path(
-                sysconfig.get_path(
-                    "stdlib",
-                    vars={"base": sys.base_prefix, "platbase": sys.base_exec_prefix},
-                )
-            ).resolve()
-            extension = sysconfig.get_config_var("DESTSHARED")
-            if not isinstance(extension, str):
-                return r[ModuleSpec].fail(
-                    "producer Python base lacks its native extension directory"
-                )
-            extension_root = Path(extension).resolve()
-            if any(
-                not path.is_relative_to(base)
-                for path in (Path(sys.executable).resolve(), standard, extension_root)
-            ):
-                return r[ModuleSpec].fail(
-                    "producer standard library differs from native Python base"
-                )
-            physical = u.Cli.atomic_plan_directory_chain(standard)
-            if physical.failure:
-                return r[ModuleSpec].from_failure(physical)
-            search = [str(standard), str(extension_root)]
-        if native.origin == "built-in":
-            spec = BuiltinImporter.find_spec(native.name)
-        elif native.origin == "frozen":
-            spec = FrozenImporter.find_spec(native.name)
-        else:
-            spec = PathFinder.find_spec(namespace, search)
-        if spec is None:
-            return r[ModuleSpec].fail(
-                f"producer module has no cold root: {module_name}"
-            )
-        return r[ModuleSpec].ok(spec)
 
     @classmethod
     def native_class(
@@ -576,7 +412,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
     def snapshot_project(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         *,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
@@ -628,9 +464,10 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         *,
         election: p.Infra.RopeProjectElection,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> p.Infra.RopeProject:
-        """Open the overlay project owner over ``live`` with planned file effects.
+        """Open the overlay owner with captured reads and declared file effects.
 
         Returns:
             The overlaid project admitted at its project contract; the caller
@@ -652,6 +489,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             live,
             election=election,
             declared_files=declared_files,
+            observations=observations,
             additional_source_folders=additional_source_folders,
         )
         if not isinstance(snapshot, p.Infra.RopeProject):

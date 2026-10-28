@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from functools import partial
 from pathlib import Path
 
@@ -464,7 +464,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _integration_facts(
         cls,
         render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[t.Triple[m.Infra.ProviderIdentitySpec, str, t.Pair[str, ...]]]:
+    ) -> p.Result[tuple[m.Infra.ProviderIdentitySpec, str, tuple[str, str]]]:
         """Resolve the provider, integration branch, and FLEXT base URL.
 
         Internal flext-* floors render from the FLEXT line the checkout
@@ -473,12 +473,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         otherwise renders a mixed family and uv rejects conflicting URLs.
 
         Returns:
-            The resulting ``p.Result[t.Triple[m.Infra.ProviderIdentitySpec,
-                str, t.Pair[str, str]]]`` where the pair carries the FLEXT
+            The resulting ``p.Result[tuple[m.Infra.ProviderIdentitySpec,
+                str, tuple[str, str]]]`` where the pair carries the FLEXT
                 base URL and branch.
 
         """
-        result_type = r[t.Triple[m.Infra.ProviderIdentitySpec, str, t.Pair[str, str]]]
+        result_type = r[tuple[m.Infra.ProviderIdentitySpec, str, tuple[str, str]]]
         repository_provider = u.Infra.repository_provider(
             render_inputs.target.repository,
         )
@@ -515,7 +515,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository: m.Infra.RepositoryRef,
         codegen: m.Infra.CodegenConfigSpec,
         project: m.Infra.ProjectSpec,
-    ) -> p.Result[t.Pair[tuple[t.NonEmptyStr], t.StrSequence]]:
+    ) -> p.Result[tuple[tuple[t.NonEmptyStr], Sequence[str]]]:
         """Resolve declared and composed development dependencies of one render.
 
         Args:
@@ -529,7 +529,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             dependencies, or the first composition or validation failure.
 
         """
-        result_type = r[t.Pair[tuple[t.NonEmptyStr], t.StrSequence]]
+        result_type = r[tuple[tuple[t.NonEmptyStr], Sequence[str]]]
         declared = self._declared_dependency_facts(repository_root, project)
         if declared.failure:
             return result_type.from_failure(declared)
@@ -554,7 +554,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
-        planned_data_files: t.StrSequence = (),
+        planned_data_files: Sequence[str] = (),
         scaffold_sources: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates.
@@ -710,7 +710,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _declared_dependency_facts(
         repository_root: Path,
         project: m.Infra.ProjectSpec,
-    ) -> p.Result[t.Pair[tuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr], ...]]:
+    ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies
@@ -726,9 +726,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             development extras, or the first metadata failure.
 
         """
-        result_type = r[
-            t.Pair[tuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr], ...]
-        ]
+        result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
         if (repository_root / c.PYPROJECT_FILENAME).is_file():
             metadata = u.Infra.read_project_metadata_result(repository_root)
             if metadata.failure:
@@ -797,7 +795,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository_root: Path,
         project: m.Infra.ProjectSpec,
         profile: c.Infra.MakeProfile,
-        planned_data_files: t.StrSequence,
+        planned_data_files: Sequence[str],
     ) -> m.Infra.PackagedDataSelection:
         """Resolve the packaged data selection of the target make profile.
 

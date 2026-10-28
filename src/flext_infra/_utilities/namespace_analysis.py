@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, t
+from flext_infra import c
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRefactorNamespaceCommon,
@@ -23,7 +24,7 @@ class FlextInfraUtilitiesRefactorNamespaceFlext(
     """Helpers for future-import rewrites."""
 
     @staticmethod
-    def rewrite_missing_future_annotations(*, py_files: t.SequenceOf[Path]) -> None:
+    def rewrite_missing_future_annotations(*, py_files: Sequence[Path]) -> None:
         """Rewrite missing future annotations.
 
         Raises:

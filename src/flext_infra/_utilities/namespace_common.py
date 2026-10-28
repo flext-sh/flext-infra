@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, t
@@ -42,13 +43,13 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     @staticmethod
     def insert_import_lines(
         *,
-        lines: t.StrSequence,
-        imports: t.StrSequence,
-    ) -> t.StrSequence:
+        lines: Sequence[str],
+        imports: Sequence[str],
+    ) -> Sequence[str]:
         """Insert import lines.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if not imports:
@@ -84,13 +85,13 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     @staticmethod
     def find_top_level_block(
         *,
-        lines: t.StrSequence,
+        lines: Sequence[str],
         header: str,
-    ) -> t.Pair[int, int] | None:
+    ) -> tuple[int, int] | None:
         """Find top level block.
 
         Returns:
-            The resulting ``t.Pair[int, int] | None``.
+            The resulting ``tuple[int, int] | None``.
 
         """
         start_idx = -1

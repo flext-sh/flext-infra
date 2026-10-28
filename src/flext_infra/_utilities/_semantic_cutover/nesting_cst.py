@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -50,7 +51,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         owner: p.Infra.RopeSourceClass,
         *,
         wrapped: bool,
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         """Remove only the authenticated model header or transparent wrapper.
 
         Returns:
@@ -132,13 +133,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         source: str,
         *,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
-        bindings: t.Pair[
-            t.MappingKV[str, t.StrMapping],
-            t.MappingKV[str, p.Infra.RopeResource],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeFile],
+        bindings: tuple[
+            Mapping[str, Mapping[str, str]],
+            Mapping[str, p.Infra.RopeResource],
         ],
-        selection: t.Pair[t.StrMapping, bool],
-        sources: t.MappingKV[Path, str],
+        selection: tuple[Mapping[str, str], bool],
+        sources: Mapping[Path, str],
     ) -> str:
         """Return a binding-proven structural rewrite without filesystem effects.
 
@@ -163,11 +164,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     def _nesting_selection(
         cls,
         module: p.Infra.RopePyModule,
-        facts: t.SequenceOf[m.Infra.LogicalStatement],
-        definitions: t.StrMapping,
-    ) -> t.Pair[
-        t.SequenceOf[m.Infra.LogicalStatement],
-        t.MappingKV[str, p.Infra.RopeScope],
+        facts: Sequence[m.Infra.LogicalStatement],
+        definitions: Mapping[str, str],
+    ) -> tuple[
+        Sequence[m.Infra.LogicalStatement],
+        Mapping[str, p.Infra.RopeScope],
     ]:
         """Elect source statements and native scope identities from one parsed module.
 
@@ -195,8 +196,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         item: m.Infra.LogicalStatement,
         body: str,
-        native: t.Pair[p.Infra.RopePyModule, p.Infra.RopeSemanticModule],
-        rendering: t.Triple[str, t.StrMapping, int],
+        native: tuple[p.Infra.RopePyModule, p.Infra.RopeSemanticModule],
+        rendering: tuple[str, Mapping[str, str], int],
     ) -> str:
         """Render the original member category through its real native annotation.
 
@@ -265,15 +266,15 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     def _nested_member_edits(
         cls,
         source: str,
-        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
+        native: tuple[p.Infra.RopePyModule, MetadataWrapper],
         typing: p.Infra.RopeSemanticModule,
-        selection: t.Triple[
-            t.SequenceOf[m.Infra.LogicalStatement],
-            t.StrMapping,
+        selection: tuple[
+            Sequence[m.Infra.LogicalStatement],
+            Mapping[str, str],
             str,
         ],
         indentation: int,
-    ) -> t.Pair[list[m.Infra.SourceRewrite], str]:
+    ) -> tuple[list[m.Infra.SourceRewrite], str]:
         """Retain native member regions while rendering their ordered nested bodies.
 
         Returns:
@@ -319,8 +320,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     @staticmethod
     def _new_nesting_owner(
         module: p.Infra.RopePyModule,
-        owner: t.Triple[str, str, int],
-        edits: t.SequenceOf[m.Infra.SourceRewrite],
+        owner: tuple[str, str, int],
+        edits: Sequence[m.Infra.SourceRewrite],
     ) -> list[m.Infra.SourceRewrite]:
         """Build a real owner declaration at the first moved member's source region.
 
@@ -356,9 +357,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
 
     @staticmethod
     def _owner_body_start(
-        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
+        native: tuple[p.Infra.RopePyModule, MetadataWrapper],
         owner: p.Infra.RopeScope,
-    ) -> t.Pair[int, int]:
+    ) -> tuple[int, int]:
         """Elect the first owned member, including its native decorator region.
 
         Returns:
@@ -391,11 +392,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     def _existing_owner_edits(
         cls,
         source: str,
-        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
-        facts: t.SequenceOf[m.Infra.LogicalStatement],
+        native: tuple[p.Infra.RopePyModule, MetadataWrapper],
+        facts: Sequence[m.Infra.LogicalStatement],
         owner: p.Infra.RopeScope,
-        contents: t.Pair[str, int],
-    ) -> t.SequenceOf[m.Infra.SourceRewrite]:
+        contents: tuple[str, int],
+    ) -> Sequence[m.Infra.SourceRewrite]:
         """Extend the exact existing native owner body without rediscovering regions.
 
         Returns:
@@ -457,13 +458,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         source: str,
         module: p.Infra.RopePyModule,
-        structure: t.Triple[
-            t.SequenceOf[m.Infra.LogicalStatement],
-            t.MappingKV[str, p.Infra.RopeScope],
+        structure: tuple[
+            Sequence[m.Infra.LogicalStatement],
+            Mapping[str, p.Infra.RopeScope],
             MetadataWrapper,
         ],
-        contents: t.Triple[str, str, int],
-        edits: t.SequenceOf[m.Infra.SourceRewrite],
+        contents: tuple[str, str, int],
+        edits: Sequence[m.Infra.SourceRewrite],
     ) -> list[m.Infra.SourceRewrite]:
         """Choose the actual existing owner or create its source-defined declaration.
 
@@ -486,7 +487,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         ]
 
     @staticmethod
-    def _nested_exports(value: str, owner_name: str, definitions: t.StrMapping) -> str:
+    def _nested_exports(
+        value: str, owner_name: str, definitions: Mapping[str, str]
+    ) -> str:
         """Retain original public names while replacing moved members by their owner.
 
         Returns:
@@ -512,12 +515,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     def _nesting_export_edits(
         cls,
         source: str,
-        facts: t.SequenceOf[m.Infra.LogicalStatement],
+        facts: Sequence[m.Infra.LogicalStatement],
         owner_name: str,
-        definitions: t.StrMapping,
+        definitions: Mapping[str, str],
         *,
         is_pytest: bool = False,
-    ) -> t.SequenceOf[m.Infra.SourceRewrite]:
+    ) -> Sequence[m.Infra.SourceRewrite]:
         """Rewrite the actual top-level export statements after nesting the owner.
 
         Returns:
@@ -575,7 +578,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
         source: str,
-        definitions: t.StrMapping,
+        definitions: Mapping[str, str],
         *,
         is_pytest: bool = False,
     ) -> str:
@@ -691,7 +694,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     @classmethod
     def _publish_test_bindings(
         cls,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeResource],
         source: str,
         owner_name: str,
         *,
@@ -743,9 +746,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         owner: ast.ClassDef,
         tree: ast.Module,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
-        policy: t.Pair[frozenset[str] | None, bool],
-    ) -> t.Triple[t.MutableMappingKV[str, str], list[str], bool]:
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeResource],
+        policy: tuple[frozenset[str] | None, bool],
+    ) -> tuple[MutableMapping[str, str], list[str], bool]:
         project, resource = native
         original_bindings, composition = policy
         fixtures = {"fixture", "hookimpl"} | {
@@ -755,7 +758,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             for alias in node.names
             if alias.name in {"fixture", "hookimpl"}
         }
-        bindings: t.MutableMappingKV[str, str] = {}
+        bindings: MutableMapping[str, str] = {}
         metadata: list[str] = []
         registrations = False
         patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
@@ -811,7 +814,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         node: ast.FunctionDef | ast.AsyncFunctionDef,
         fixtures: set[str],
-        policy: t.Pair[bool, t.StrSequence],
+        policy: tuple[bool, Sequence[str]],
         resource_path: str,
     ) -> bool:
         decorators = [
@@ -848,7 +851,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
 
     @staticmethod
     def _publish_owner_exports(
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeResource],
         source: str,
         owner: ast.ClassDef,
         exports: str,
@@ -888,10 +891,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
 
     @staticmethod
     def _render_test_publication(
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeResource],
         source: str,
         owner_name: str,
-        publication: t.Triple[t.StrMapping, t.StrSequence, bool],
+        publication: tuple[Mapping[str, str], Sequence[str], bool],
     ) -> str:
         project, resource = native
         bindings, metadata, composition = publication
@@ -941,7 +944,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     @staticmethod
     def _nesting_statement_parts(
         statement: m.Infra.LogicalStatement,
-    ) -> t.SequenceOf[m.Infra.LogicalStatement]:
+    ) -> Sequence[m.Infra.LogicalStatement]:
         """Retain each simple declaration inside its original logical region.
 
         Returns:

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesDocsApi:
     """Extract public package metadata, exports, modules, and docstring issues."""
 
-    _ALIAS_EXPORTS: ClassVar[t.StrSequence] = (
+    _ALIAS_EXPORTS: ClassVar[Sequence[str]] = (
         "c",
         "d",
         "e",
@@ -39,11 +39,11 @@ class FlextInfraUtilitiesDocsApi:
     )
 
     @staticmethod
-    def _string_values(value: t.JsonValue | None) -> t.StrSequence:
+    def _string_values(value: t.JsonValue | None) -> Sequence[str]:
         """Normalize one infra sequence payload into strings.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if value is None:
@@ -52,11 +52,11 @@ class FlextInfraUtilitiesDocsApi:
         return [str(item) for item in items]
 
     @staticmethod
-    def _string_mapping(value: t.JsonValue | None) -> t.StrMapping:
+    def _string_mapping(value: t.JsonValue | None) -> Mapping[str, str]:
         """Normalize one infra mapping payload into string keys and values.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         """
         if value is None:
@@ -106,11 +106,11 @@ class FlextInfraUtilitiesDocsApi:
         module_name: str,
         symbol_name: str,
         visited: frozenset[str] = frozenset(),
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Resolve a literal string assignment through imported symbols.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         key = f"{module_name}:{symbol_name}"
@@ -167,7 +167,7 @@ class FlextInfraUtilitiesDocsApi:
         root_package: str,
         module_name: str,
         symbol_name: str,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Resolve one lazy-import map symbol into export target modules.
 
         Args:
@@ -177,7 +177,7 @@ class FlextInfraUtilitiesDocsApi:
             symbol_name: The map symbol being resolved.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         """
         return cls._resolve_symbol_targets(
@@ -193,8 +193,8 @@ class FlextInfraUtilitiesDocsApi:
         module_name: str,
         symbol_name: str,
         visited: frozenset[str],
-        context: t.Pair[Path, ...],
-    ) -> t.StrMapping:
+        context: tuple[Path, str],
+    ) -> Mapping[str, str]:
         """Resolve one symbol recursively against the shared project context.
 
         Args:
@@ -281,8 +281,8 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         *,
         package_name: str,
-        exports: t.StrSequence,
-    ) -> t.StrMapping:
+        exports: Sequence[str],
+    ) -> Mapping[str, str]:
         """Return target modules declared by the package lazy import map.
 
         Returns:
@@ -308,7 +308,7 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         package_name: str,
         source: str,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return runtime public exports from lazy-loader or ``__all__`` contracts.
 
         Returns:
@@ -530,16 +530,16 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _rope_public_symbols(
         project_root: Path,
-        target_map: t.StrMapping,
-    ) -> t.StrSequence:
+        target_map: Mapping[str, str],
+    ) -> Sequence[str]:
         """Use Rope to verify which exported symbols resolve in real modules.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
-            symbols: t.MutableSequenceOf[str] = []
+            symbols: MutableSequence[str] = []
             for export_name, module_name in target_map.items():
                 module_file = FlextInfraUtilitiesDocsApi._module_file(
                     project_root,
@@ -588,7 +588,7 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         package_name: str,
         source: str,
-    ) -> t.Pair[list[str], t.StrDict]:
+    ) -> tuple[list[str], dict[str, str]]:
         """Collect the public exports and their target modules from one facade.
 
         Returns:
@@ -621,8 +621,8 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _rope_validated_public_symbols(
         project_root: Path,
-        target_map: t.StrMapping,
-        symbol_exports: t.StrSequence,
+        target_map: Mapping[str, str],
+        symbol_exports: Sequence[str],
     ) -> list[str]:
         """Filter declared symbols down to the names Rope resolves.
 
@@ -742,13 +742,13 @@ class FlextInfraUtilitiesDocsApi:
 
     @staticmethod
     def _classify_exports(
-        all_exports: t.StrSequence,
-        target_map: t.StrMapping,
-    ) -> t.Triple[list[str], list[str], list[str]]:
+        all_exports: Sequence[str],
+        target_map: Mapping[str, str],
+    ) -> tuple[list[str], list[str], list[str]]:
         """Split ``__all__`` entries into ``(aliases, module_exports, symbol_exports)``.
 
         Returns:
-            The resulting ``t.Triple[list[str], list[str], list[str]]``.
+            The resulting ``tuple[list[str], list[str], list[str]]``.
 
         """
         aliases = [
@@ -774,7 +774,9 @@ class FlextInfraUtilitiesDocsApi:
         return aliases, module_exports, symbol_exports
 
     @staticmethod
-    def _resolve_modules(*, package_name: str, target_map: t.StrMapping) -> list[str]:
+    def _resolve_modules(
+        *, package_name: str, target_map: Mapping[str, str]
+    ) -> list[str]:
         """Compute doc-eligible modules from the resolved public export graph.
 
         Returns:
@@ -793,7 +795,7 @@ class FlextInfraUtilitiesDocsApi:
     def _iter_docstring_checks(
         project_root: Path,
         contract: t.JsonMapping,
-    ) -> t.SequenceOf[t.Triple[str, str, bool]]:
+    ) -> Sequence[tuple[str, str, bool]]:
         """Evaluate every public docstring target once (SSOT).
 
         Yields ``(rel_file, missing_message, documented)`` for the package
@@ -803,7 +805,7 @@ class FlextInfraUtilitiesDocsApi:
         docstring predicates can never drift apart.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[str, str, bool]]``.
+            The resulting ``Sequence[tuple[str, str, bool]]``.
 
         """
         package_name = str(contract.get("package_name", ""))
@@ -817,7 +819,7 @@ class FlextInfraUtilitiesDocsApi:
             tuple(target_map),
             target_map,
         )
-        results: t.MutableSequenceOf[t.Triple[str, str, bool]] = []
+        results: MutableSequence[tuple[str, str, bool]] = []
         module_docstring_checks = [
             (module_name, f"public module `{module_name}` is missing a docstring")
             for module_name in module_list
@@ -865,7 +867,7 @@ class FlextInfraUtilitiesDocsApi:
     def docstring_issues(
         project_root: Path,
         contract: t.JsonMapping,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings.
 
         Returns:

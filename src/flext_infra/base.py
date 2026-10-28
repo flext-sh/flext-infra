@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Self, override
 
 from flext_core import FlextService
 
-from flext_infra import FlextInfraBasePayload, c, m, p, r, settings, t
+from flext_infra import FlextInfraBasePayload, c, m, p, r, settings
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
@@ -43,12 +44,12 @@ class FlextInfraServiceBase[TDomainResult](
 
     def _filtered_projects(
         self,
-        projects: t.SequenceOf[p.Infra.ProjectInfo],
-    ) -> t.SequenceOf[p.Infra.ProjectInfo]:
+        projects: Sequence[p.Infra.ProjectInfo],
+    ) -> Sequence[p.Infra.ProjectInfo]:
         """Apply the comma-separated ``project_filter`` when one is configured.
 
         Returns:
-            The resulting ``t.SequenceOf[p.Infra.ProjectInfo]``.
+            The resulting ``Sequence[p.Infra.ProjectInfo]``.
 
         """
         if self.project_filter is None:

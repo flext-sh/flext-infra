@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -49,8 +49,8 @@ class FlextInfraGateRegistry:
     def __init__(
         self,
         *,
-        runners: t.MappingKV[str, p.Cli.CommandRunner] | None = None,
-        project_gates: t.SequenceOf[m.Infra.MakeProjectCheckGateSpec] = (),
+        runners: Mapping[str, p.Cli.CommandRunner] | None = None,
+        project_gates: Sequence[m.Infra.MakeProjectCheckGateSpec] = (),
     ) -> None:
         """Build the gate-id to gate-class mapping used by check execution.
 
@@ -98,7 +98,7 @@ class FlextInfraGateRegistry:
 
     def applicable_gate_ids(
         self,
-        gate_ids: t.StrSequence,
+        gate_ids: Sequence[str],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrTuple:
@@ -158,10 +158,10 @@ class FlextInfraGateRegistry:
 
     def delegated_lint_rules(
         self,
-        owners: t.StrMapping,
+        owners: Mapping[str, str],
         *,
-        check_gates: t.StrSequence,
-        repair_gates: t.StrSequence,
+        check_gates: Sequence[str],
+        repair_gates: Sequence[str],
     ) -> t.StrTuple:
         """Derive native delegation only for elected checking and repair owners.
 
@@ -200,7 +200,7 @@ class FlextInfraGateRegistry:
 
     def runtime_identity(
         self,
-        gate_ids: t.StrSequence,
+        gate_ids: Sequence[str],
         *,
         installed_identity: str,
     ) -> p.Result[str]:

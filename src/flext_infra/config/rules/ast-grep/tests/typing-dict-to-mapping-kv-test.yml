@@ -7,10 +7,10 @@ valid:
   # already canonical
   - |
     from flext_core import t
-    def f(x: t.MappingKV[str, int]) -> None: ...
+    def f(x: Mapping[str, int]) -> None: ...
   - |
     from flext_core import t
-    value: t.DictKV[str, int]
+    value: dict[str, int]
   # `Dict` is a locally defined class, not typing.Dict
   - |
     from flext_core import t
@@ -27,14 +27,14 @@ valid:
     def f(x: Dict[str, int]) -> None: ...
   # docstring text describing the pattern is not a type node
   - |
-    """Rewrite ``Dict[K, V]`` to ``t.MappingKV[K, V]``."""
+    """Rewrite ``Dict[K, V]`` to ``Mapping[K, V]``."""
     from flext_core import t
     from typing import Dict
   # a string literal in a rewrite table is not a type node
   - |
     from flext_core import t
     from typing import Dict
-    _REWRITES = (("Dict[", "t.MappingKV"), ("typing.Dict[", "t.MappingKV"))
+    _REWRITES = (("Dict[", "Mapping"), ("typing.Dict[", "Mapping"))
   # a comment is not a type node
   - |
     from flext_core import t
@@ -205,11 +205,11 @@ invalid:
     type Contract = Annotated[Dict[str, int], LEGACY]
     class LegacyBase(Dict[str, int]): ...
     # The model field obeys the runtime model law (dict origins are rejected in
-    # pydantic fields: MappingKV + u.empty factory); value positions keep the
+    # pydantic fields: Mapping + u.empty factory); value positions keep the
     # concrete dict contract this rule preserves.
     class Payload(m.ArbitraryTypesModel):
-        values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
-    def make(values: Dict[str, int] = u.empty(TypeForm(t.DictKV[str, int]))()) -> Dict[str, int]:
+        values: Mapping[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(Mapping[str, int])))
+    def make(values: Dict[str, int] = u.empty(TypeForm(dict[str, int]))()) -> Dict[str, int]:
         return values
     assert get_origin(LEGACY) is dict
     assert FACTORY() == {}

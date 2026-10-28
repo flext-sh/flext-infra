@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,7 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
 
-    def _elected_rule(self, tmp_path: Path, name: str) -> t.Pair[str, frozenset[str]]:
+    def _elected_rule(self, tmp_path: Path, name: str) -> tuple[str, frozenset[str]]:
         """Read the catalog rule a fixture file declares and its elected identities.
 
         A partitioned catalog rule is elected through the partitions the
@@ -699,7 +699,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                     )
                 ),
             )
-            cases = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
+            cases = u.type_adapter(TypeForm(Sequence[str])).validate_python(
                 document["valid"],
             )
             for source in cases:
@@ -725,7 +725,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, tuple(rules)))
 
     @staticmethod
-    def _snapshots(path: Path) -> t.MappingKV[str, t.JsonMapping]:
+    def _snapshots(path: Path) -> Mapping[str, t.JsonMapping]:
         """Validate one native snapshot document at its input boundary.
 
         Returns:
@@ -773,7 +773,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         root: Path,
         *,
         fix: str = "bar($A)",
-        invalid: t.StrSequence = ("foo(1)",),
+        invalid: Sequence[str] = ("foo(1)",),
         catalog_root: Path | None = None,
     ) -> Path:
         """Declare one governed rule with its test in the local catalog.
@@ -855,7 +855,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             pyproject.read_text(encoding=c.DEFAULT_ENCODING), "project"
         )
         version = tm.instance(project["version"], str)
-        dependencies = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
+        dependencies = u.type_adapter(TypeForm(Sequence[str])).validate_python(
             project["dependencies"],
         )
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))

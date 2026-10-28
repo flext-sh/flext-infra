@@ -13,7 +13,7 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.version import Version
 
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraModernizerFloorOwner:
@@ -30,7 +30,7 @@ class TestsFlextInfraModernizerFloorOwner:
         ).run()
 
     @staticmethod
-    def _resolved_requirement() -> t.Pair[str, str]:
+    def _resolved_requirement() -> tuple[str, str]:
         """Select an actually provisioned package with a valid release floor.
 
         Returns:

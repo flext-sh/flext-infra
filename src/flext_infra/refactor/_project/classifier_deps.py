@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, t, u
@@ -22,8 +22,8 @@ class FlextInfraRefactorProjectClassifierDeps:
     def _append_project_dependencies(
         self,
         *,
-        raw_project: t.MappingKV[str, t.JsonValue],
-        dependencies: t.MutableSequenceOf[str],
+        raw_project: Mapping[str, t.JsonValue],
+        dependencies: MutableSequence[str],
     ) -> None:
         """Append project dependencies."""
         raw_dependencies = raw_project.get(c.Infra.DEPENDENCIES)
@@ -41,8 +41,8 @@ class FlextInfraRefactorProjectClassifierDeps:
     def _append_poetry_dependencies(
         self,
         *,
-        raw_poetry: t.MappingKV[str, t.JsonValue],
-        dependencies: t.MutableSequenceOf[str],
+        raw_poetry: Mapping[str, t.JsonValue],
+        dependencies: MutableSequence[str],
     ) -> None:
         """Append poetry dependencies."""
         self._append_poetry_dependency_mapping(
@@ -59,7 +59,7 @@ class FlextInfraRefactorProjectClassifierDeps:
     @staticmethod
     def _as_mapping(
         raw_value: t.JsonValue | None,
-    ) -> t.MappingKV[str, t.JsonValue]:
+    ) -> Mapping[str, t.JsonValue]:
         """Validate one metadata mapping at the shared parsing boundary.
 
         Returns:
@@ -67,7 +67,7 @@ class FlextInfraRefactorProjectClassifierDeps:
 
         """
         if isinstance(raw_value, Mapping):
-            validated: t.MappingKV[str, t.JsonValue] = (
+            validated: Mapping[str, t.JsonValue] = (
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
             )
             return validated
@@ -76,8 +76,8 @@ class FlextInfraRefactorProjectClassifierDeps:
     def _append_poetry_dependency_mapping(
         self,
         *,
-        raw_mapping: t.MappingKV[str, t.JsonValue],
-        dependencies: t.MutableSequenceOf[str],
+        raw_mapping: Mapping[str, t.JsonValue],
+        dependencies: MutableSequence[str],
     ) -> None:
         """Append poetry dependency mapping."""
         dependency_keys = self._ordered_mapping_keys(raw_mapping)
@@ -92,12 +92,12 @@ class FlextInfraRefactorProjectClassifierDeps:
 
     def _ordered_mapping_keys(
         self,
-        raw_mapping: t.MappingKV[str, t.JsonValue],
-    ) -> t.StrSequence:
+        raw_mapping: Mapping[str, t.JsonValue],
+    ) -> Sequence[str]:
         """Ordered mapping keys.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         keys = list(raw_mapping.keys())
@@ -107,7 +107,7 @@ class FlextInfraRefactorProjectClassifierDeps:
 
     @staticmethod
     def _mapping_order_is_trusted(
-        raw_mapping: t.MappingKV[str, t.JsonValue],
+        raw_mapping: Mapping[str, t.JsonValue],
     ) -> bool:
         """Check whether the mapping order is trusted.
 
@@ -121,7 +121,7 @@ class FlextInfraRefactorProjectClassifierDeps:
     def _append_unique_dependency(
         *,
         dependency_name: str,
-        dependencies: t.MutableSequenceOf[str],
+        dependencies: MutableSequence[str],
     ) -> None:
         """Append unique dependency."""
         if (not dependency_name) or (dependency_name in dependencies):
@@ -131,9 +131,9 @@ class FlextInfraRefactorProjectClassifierDeps:
     @staticmethod
     def _internal_dependencies(
         *,
-        dependencies: t.StrSequence,
+        dependencies: Sequence[str],
         project_name: str,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the internal dependencies.
 
         Returns:

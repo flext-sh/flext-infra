@@ -7,8 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 
-from flext_infra import FlextInfraPytestClock, c, settings, t
+from flext_infra import FlextInfraPytestClock, c, settings
 from flext_infra.services import FlextInfraCliDispatchService
 
 
@@ -16,7 +17,7 @@ class FlextInfraCli(FlextInfraCliDispatchService):
     """Single CLI entry surface for every flext-infra command group."""
 
     @staticmethod
-    def docs_main(args: t.StrSequence | None = None) -> int:
+    def docs_main(args: Sequence[str] | None = None) -> int:
         """Run the docs group directly (``flext-docs`` == ``flext-infra docs``).
 
         Returns:
@@ -27,7 +28,7 @@ class FlextInfraCli(FlextInfraCliDispatchService):
         return FlextInfraCli().main([c.Infra.CLI_GROUP_DOCS, *cli_args])
 
     @staticmethod
-    def infra_main(args: t.StrSequence | None = None) -> int:
+    def infra_main(args: Sequence[str] | None = None) -> int:
         """Run the canonical flext-infra CLI (console script ``flext-infra``).
 
         Returns:

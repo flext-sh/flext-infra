@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from uuid import uuid4
 
@@ -36,7 +37,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
     def run_real_detector(
         root: Path,
         *arguments: str,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
         repository_root: Path | None = None,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run the public detector in its provisioned interpreter, without overrides.

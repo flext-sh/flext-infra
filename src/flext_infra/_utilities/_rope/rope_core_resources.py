@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, t
@@ -101,7 +102,7 @@ class FlextInfraUtilitiesRopeCoreResources:
     @staticmethod
     def python_resources(
         rope_project: t.Infra.RopeProject,
-    ) -> t.SequenceOf[t.Infra.RopeFile]:
+    ) -> Sequence[t.Infra.RopeFile]:
         """Return native Python resources from their project's source election.
 
         Every yielded resource passed the ``file_resource`` predicate, so the
@@ -125,7 +126,7 @@ class FlextInfraUtilitiesRopeCoreResources:
         )
 
     @staticmethod
-    def python_file_paths(rope_project: t.Infra.RopeProject) -> t.SequenceOf[Path]:
+    def python_file_paths(rope_project: t.Infra.RopeProject) -> Sequence[Path]:
         """Return stable Python file paths for one Rope project.
 
         Returns:

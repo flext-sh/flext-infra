@@ -7,19 +7,15 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, u
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraRefactorAccessorWarnings:
     """Load the configuration-owned accessor migrations once per request."""
 
     @staticmethod
-    def migration_rules() -> t.SequenceOf[m.Infra.AccessorMigrationRule]:
+    def migration_rules() -> Sequence[m.Infra.AccessorMigrationRule]:
         """Load and strictly validate the declared accessor migrations.
 
         Returns:

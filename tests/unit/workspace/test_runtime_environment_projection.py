@@ -44,7 +44,7 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
         cls,
         parent: Path,
         mode: Literal["standalone", "workspace", "member", "nested-member", "worktree"],
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Create the actual attachment or independent checkout under test.
 
         Returns:
@@ -112,13 +112,13 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
         )
         tm.that(tuple(mypy_interpreters), eq=(editor_interpreter,))
         executed = tm.ok(
-            u.Cli.run_checked(
+            u.Cli.capture(
                 (str(selected), "-c", "import sys; print(sys.prefix)"),
                 cwd=project,
             )
-        )
+        ).strip()
         tm.that(
-            Path(executed.stdout.strip()).resolve(),
+            Path(executed).resolve(),
             eq=(owner / c.Infra.ENVIRONMENT_DIRECTORY).resolve(),
         )
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
@@ -134,7 +134,7 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
         environment_name = u.type_adapter(str).validate_python(table["venv"])
         tm.that(
             (project / environment_parent / environment_name).resolve(),
-            eq=Path(executed.stdout.strip()).resolve(),
+            eq=Path(executed).resolve(),
         )
         tm.that(
             phase.apply_payload(payload, context=context, analysis_exclusions=()),

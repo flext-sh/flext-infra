@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, u
@@ -59,7 +60,7 @@ class FlextInfraValidatePytestDiagXml:
         """
         msg = (element.attrib.get(c.Infra.RK_MESSAGE) or "").strip()
         trace = (element.text or "").strip()
-        chunk: t.MutableSequenceOf[str] = [f"=== {heading}: {label} ==="]
+        chunk: MutableSequence[str] = [f"=== {heading}: {label} ==="]
         if msg:
             chunk.append(msg)
         if trace:
@@ -70,11 +71,11 @@ class FlextInfraValidatePytestDiagXml:
     def _process_testcase(
         case: p.Infra.XmlElementLike,
         diag: m.Infra.DiagResult,
-    ) -> t.Pair[float, str]:
+    ) -> tuple[float, str]:
         """Process a single testcase element; returns (seconds, label).
 
         Returns:
-            The resulting ``t.Pair[float, str]``.
+            The resulting ``tuple[float, str]``.
 
         """
         classname = case.attrib.get("classname", "")
@@ -155,7 +156,7 @@ class FlextInfraValidatePytestDiagXml:
         if root is None:
             msg = f"JUnit XML has no root element: {junit_path}"
             raise ValueError(msg)
-        slow_rows: t.MutableSequenceOf[t.Pair[float, str]] = []
+        slow_rows: MutableSequence[tuple[float, str]] = []
         for case_raw in root.iter("testcase"):
             case = FlextInfraValidatePytestDiagXml._as_xml_element(case_raw)
             slow_rows.append(

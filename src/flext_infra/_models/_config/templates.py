@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from functools import cached_property
 from keyword import iskeyword
 from pathlib import Path
@@ -61,10 +61,10 @@ class FlextInfraModelsConfigTemplates:
         ] = ()
 
         stripped_map_keys: Annotated[
-            Mapping[str, tuple[str], ...],
+            Mapping[str, tuple[str, ...]],
             m.Field(description="Retired keys inside language-specific setting maps"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(Mapping[str, tuple[str], ...]),
+            default_factory=flext_core.u.empty(Mapping[str, tuple[str, ...]]),
             validate_default=True,
         )
 
@@ -421,7 +421,7 @@ class FlextInfraModelsConfigTemplates:
             )
 
         @property
-        def artifact_requirements(self) -> t.MappingKV[str, t.StrSequence]:
+        def artifact_requirements(self) -> Mapping[str, Sequence[str]]:
             """Expose each catalog key's declared artifact dependencies."""
             return {
                 destination: declaration.requires_artifacts
@@ -499,9 +499,7 @@ class FlextInfraModelsConfigTemplates:
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
@@ -509,9 +507,7 @@ class FlextInfraModelsConfigTemplates:
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",

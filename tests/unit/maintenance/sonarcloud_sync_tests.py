@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
@@ -56,7 +57,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
 
     @staticmethod
     def _server_payload(
-        pairs: tuple[t.Pair[str, str], ...],
+        pairs: tuple[tuple[str, str], ...],
         *,
         inherited: bool = False,
         include_setting: bool = True,
@@ -80,11 +81,11 @@ class TestsFlextInfraSonarcloudSettingsSync:
         return tm.ok(u.Cli.json_dumps({"settings": settings}))
 
     @staticmethod
-    def _pairs(spec: m.Infra.SonarcloudSpec) -> tuple[t.Pair[str, str], ...]:
+    def _pairs(spec: m.Infra.SonarcloudSpec) -> tuple[tuple[str, str], ...]:
         """Read expectations from the exact typed config the service receives.
 
         Returns:
-            The resulting ``tuple[t.Pair[str, str], ...],``.
+            The resulting ``tuple[tuple[str, str], ...],``.
 
         """
         return tuple(
@@ -95,14 +96,14 @@ class TestsFlextInfraSonarcloudSettingsSync:
     @staticmethod
     def _cli(
         repository_root: Path,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
         *,
         verb: str = c.Infra.VERB_SONARCLOUD_SYNC,
-    ) -> t.Pair[int, str]:
+    ) -> tuple[int, str]:
         """Run a public SonarCloud route in a child process.
 
         Returns:
-            The resulting ``t.Pair[int, str]``.
+            The resulting ``tuple[int, str]``.
 
         """
         result = tm.ok(

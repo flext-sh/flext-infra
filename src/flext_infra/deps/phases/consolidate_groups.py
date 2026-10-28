@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSequence, Sequence
+
 from flext_infra import c, t, u
 
 
@@ -14,13 +16,13 @@ class FlextInfraConsolidateGroupsPhase:
 
     @staticmethod
     def _merged_dev_requirements(
-        existing: t.MappingKV[str, t.StrSequence],
-        canonical_dev: t.StrSequence,
-    ) -> t.StrSequence:
+        existing: Mapping[str, Sequence[str]],
+        canonical_dev: Sequence[str],
+    ) -> Sequence[str]:
         """Merge the canonical dev requirements with every legacy dev group.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return u.Infra.dedupe_specs([
@@ -35,15 +37,15 @@ class FlextInfraConsolidateGroupsPhase:
     def apply_payload(
         self,
         payload: t.MutableJsonMapping,
-        canonical_dev: t.StrSequence,
-    ) -> t.StrSequence:
+        canonical_dev: Sequence[str],
+    ) -> Sequence[str]:
         """Merge legacy groups into one canonical dev group in one plain payload.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
-        changes: t.MutableSequenceOf[str] = []
+        changes: MutableSequence[str] = []
         project = u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)
         optional = u.Cli.toml_mapping_ensure_table(
             project,

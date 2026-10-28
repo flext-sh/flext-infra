@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import sys
 import threading
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra import codemod, infra, transformers, workspace
-from tests import c, m, p, r, t, tm, u
+from tests import c, m, p, r, tm, u
 
 
 class TestsFlextInfraSemanticPublicationTransactions:
@@ -550,8 +551,8 @@ class TestsFlextInfraSemanticPublicationTransactions:
         plans: list[m.Infra.SemanticFilePlan] = []
         for path in (previous, current):
             before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-            outgoing: t.StrSequence = ["DeclaredService"] if path == previous else []
-            incoming: t.StrSequence = [] if path == previous else ["DeclaredService"]
+            outgoing: Sequence[str] = ["DeclaredService"] if path == previous else []
+            incoming: Sequence[str] = [] if path == previous else ["DeclaredService"]
             plans.append(
                 m.Infra.SemanticFilePlan(
                     project=mod_workspace,

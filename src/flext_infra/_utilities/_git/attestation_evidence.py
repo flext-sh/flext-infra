@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesBase
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
@@ -542,7 +543,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _pytest_report_outcome(
         cls,
         repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        reports: Sequence[m.Infra.GateReportEvidence],
         expected_process: m.Cli.ProcessOutcome,
     ) -> p.Result[c.Infra.ToolOutcome]:
         result_type = r[c.Infra.ToolOutcome]
@@ -607,7 +608,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _report_contract_bytes(
         cls,
         repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        reports: Sequence[m.Infra.GateReportEvidence],
         kind: c.Infra.GateEvidenceReportKind,
     ) -> p.Result[bytes]:
         selected = tuple(report for report in reports if report.kind == kind)
@@ -640,7 +641,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _verified_report_evidence(
         cls,
         repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        reports: Sequence[m.Infra.GateReportEvidence],
     ) -> p.Result[bool]:
         for report in reports:
             original = cls._report_bytes(repo_root, report)

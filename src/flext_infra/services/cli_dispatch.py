@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import FlextCli, u
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra.services import FlextInfraCliRouteService
 
 if TYPE_CHECKING:
@@ -26,7 +27,7 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
     shared_bool_flags: ClassVar[frozenset[str]] = c.Infra.SHARED_BOOL_FLAGS
     shared_value_flags: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
 
-    def main(self, args: t.StrSequence | None = None) -> int:
+    def main(self, args: Sequence[str] | None = None) -> int:
         """Run the centralized dispatcher.
 
         Returns:
@@ -61,7 +62,7 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
                 c.Cli.MessageTypes.INFO,
             )
 
-    def normalize_group_args(self, args: t.StrSequence) -> list[str]:
+    def normalize_group_args(self, args: Sequence[str]) -> list[str]:
         """Normalize group arguments.
 
         Returns:
@@ -83,7 +84,7 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
         """Register one group's command routes."""
         self.register_result_routes(app, self.route_table_for(group, command=command))
 
-    def run_group(self, group: str, args: t.StrSequence) -> int:
+    def run_group(self, group: str, args: Sequence[str]) -> int:
         """Execute one registered flext-cli command group.
 
         Returns:

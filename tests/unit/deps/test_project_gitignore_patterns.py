@@ -12,14 +12,14 @@ import pytest
 
 from flext_infra import config, m, u
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, t, tm
+from tests import c, tm
 
 
 class TestsFlextInfraProjectGitignorePatterns:
     """A project declares the ignores the fleet scaffold cannot know."""
 
     @staticmethod
-    def _project(root: Path, documents: t.MappingKV[str, str]) -> Path:
+    def _project(root: Path, documents: Mapping[str, str]) -> Path:
         root.mkdir(parents=True)
         (root / "config").mkdir()
         for name, body in documents.items():

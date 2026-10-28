@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -14,7 +15,7 @@ from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -192,7 +193,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
     def test_conform_preserves_explicit_project_table_boundary(
         tmp_path: Path,
         description: str,
-        sort_first: t.StrSequence | None,
+        sort_first: Sequence[str] | None,
     ) -> None:
         """Keep project scalars explicit for arbitrary valid top-level orders."""
         u.Tests.copy_tracked_mise_seeds(tmp_path)
@@ -205,7 +206,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 config.Infra.tooling,
                 "tomlsort",
                 "sort_first",
-                TypeForm(t.StrSequence),
+                TypeForm(Sequence[str]),
             )
             if sort_first is None
             else sort_first

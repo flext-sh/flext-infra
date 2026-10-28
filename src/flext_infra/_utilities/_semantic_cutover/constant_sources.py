@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -62,10 +63,10 @@ class FlextInfraUtilitiesSemanticConstantSources:
     def _constant_declaration_bindings(
         cls,
         project: p.Infra.RopeProject,
-        public: t.MappingKV[str, p.Infra.RopePyName],
-    ) -> t.MappingKV[
+        public: Mapping[str, p.Infra.RopePyName],
+    ) -> Mapping[
         Path,
-        t.Pair[p.Infra.RopePyModule, list[t.Pair[p.Infra.RopePyName, int]]],
+        tuple[p.Infra.RopePyModule, list[tuple[p.Infra.RopePyName, int]]],
     ]:
         """Group unique assignments by their native module and definition line.
 
@@ -76,11 +77,11 @@ class FlextInfraUtilitiesSemanticConstantSources:
             TypeError: A declaration has no native source module.
 
         """
-        declarations: t.MutableMappingKV[
+        declarations: MutableMapping[
             Path,
-            t.Pair[
+            tuple[
                 p.Infra.RopePyModule,
-                list[t.Pair[p.Infra.RopePyName, int]],
+                list[tuple[p.Infra.RopePyName, int]],
             ],
         ] = {}
         for reference, candidate in public.items():
@@ -144,11 +145,11 @@ class FlextInfraUtilitiesSemanticConstantSources:
     def _literal_constant_patterns(
         cls,
         project: p.Infra.RopeProject,
-        public: t.MappingKV[str, p.Infra.RopePyName],
+        public: Mapping[str, p.Infra.RopePyName],
         *,
         literal_type: str = "__builtin__.str",
         frozen: bool = False,
-    ) -> tuple[t.Pair[str, str], ...]:
+    ) -> tuple[tuple[str, str], ...]:
         """Prove exact literal boundaries, decimal tokens and native constructors.
 
         Returns:
@@ -157,7 +158,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
-        found: list[t.Pair[str, str]] = []
+        found: list[tuple[str, str]] = []
         arguments = dict[str, str]()
         if frozen:
             arguments["frozen"] = "name=__builtin__.frozenset"
@@ -232,7 +233,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        visited: set[t.Pair[Path, str]] = set()
+        visited: set[tuple[Path, str]] = set()
         while isinstance(binding, p.Infra.RopeImportedName):
             resource = runtime.imported_module_resource(project, binding)
             path = Path(resource.real_path).resolve()
@@ -307,7 +308,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
     @classmethod
     def _constant_reference(
         cls,
-        paths: t.MappingKV[str, p.Infra.RopePyName],
+        paths: Mapping[str, p.Infra.RopePyName],
         binding: p.Infra.RopePyName,
         path: Path,
     ) -> str | None:
@@ -337,7 +338,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         cls,
         project: p.Infra.RopeProject,
         package: str,
-    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+    ) -> Mapping[str, p.Infra.RopePyName]:
         """Enumerate native public facade members without importing the target.
 
         Returns:
@@ -350,9 +351,9 @@ class FlextInfraUtilitiesSemanticConstantSources:
         facade = module.get_attributes().get("c")
         if facade is None:
             return {}
-        found: t.MutableMappingKV[str, p.Infra.RopePyName] = {"c": facade}
-        pending: t.MutableSequenceOf[
-            t.Triple[str, p.Infra.RopePyObject, tuple[p.Infra.RopePyObject], ...]
+        found: MutableMapping[str, p.Infra.RopePyName] = {"c": facade}
+        pending: MutableSequence[
+            tuple[str, p.Infra.RopePyObject, tuple[p.Infra.RopePyObject, ...]]
         ] = [("c", facade.get_object(), ())]
         while pending:
             prefix, owner, ancestors = pending.pop()

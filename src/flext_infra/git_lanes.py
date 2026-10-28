@@ -6,15 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class FlextInfraGitLanes:
@@ -230,7 +227,7 @@ class FlextInfraGitLanes:
         return r[m.Infra.GitLaneEvidence].ok(evidence)
 
     @staticmethod
-    def _read_ownership(command: t.StrSequence, cwd: Path) -> p.Result[str]:
+    def _read_ownership(command: Sequence[str], cwd: Path) -> p.Result[str]:
         """Execute one explicitly selected public read, without retries or startup.
 
         Returns:

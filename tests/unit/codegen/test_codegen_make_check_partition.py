@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from tests import c, e, m, t, tm, u
+from tests import c, e, m, tm, u
 from tests.unit.codegen.test_ci_integration_branch_triggers import (
     TestsFlextInfraCiIntegrationBranchTriggers,
 )
@@ -427,7 +428,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
         tm.ok(u.Tests.create_python_environment(root))
         policy = config.Infra.codegen.make
-        environment: t.StrMapping
+        environment: Mapping[str, str]
         if context == "ci":
             environment = {policy.ci.variable: policy.ci.value}
         elif context == "local":

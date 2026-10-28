@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
@@ -15,7 +16,7 @@ from flext_infra.gates import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraPyrightGate(FlextInfraGate):
@@ -32,11 +33,11 @@ class FlextInfraPyrightGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Use the project pyright config as SSOT when it exists.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if self._has_project_pyright_config(project_dir):
@@ -48,8 +49,8 @@ class FlextInfraPyrightGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Run Pyright on the workspace interpreter with its JSON report.
 
         Returns:
@@ -93,7 +94,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Grade Pyright's JSON report together with its own summary counts.
 
         Returns:
@@ -120,7 +121,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 ),
             )
         report = validated.value
-        diagnostics: t.SequenceOf[p.Infra.Issue] = tuple(
+        diagnostics: Sequence[p.Infra.Issue] = tuple(
             m.Infra.Issue(
                 file=diag.file,
                 line=diag.range.start.line + 1 if diag.range is not None else 0,

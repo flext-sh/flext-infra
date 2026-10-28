@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, p, t
@@ -69,7 +70,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     @classmethod
     def annotation_assignment_outer_type(
         cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
-    ) -> t.Pair[p.Infra.RopePyName, bool] | None:
+    ) -> tuple[p.Infra.RopePyName, bool] | None:
         """Resolve an annotation's native identity and whether it is the value.
 
         Returns:
@@ -402,7 +403,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         cls,
         binding: p.Infra.RopePyName | None,
         *,
-        visited: frozenset[t.Pair[str, int]] = frozenset(),
+        visited: frozenset[tuple[str, int]] = frozenset(),
         classes_only: bool = True,
     ) -> p.Infra.RopePyName | None:
         """Resolve a class alias through its native pre-assignment name view.
@@ -484,23 +485,21 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope = cls.scope_at(holder, rhs_offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
             return None
-        candidates = [
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
-            and node.value is not None
-            and cls.source_offset(source, node.value) == rhs_offset
-        ]
-        if not candidates:
+        # Single-read law (ADR-028 D17): one offset index per native tree,
+        # not one whole-module walk per binding. The index is keyed by tree
+        # identity; rope rebuilds the tree on change, so a rebuilt module
+        # naturally becomes a new index and never serves stale offsets.
+        tree_index = cls._tree_assignment_index(tree, source)
+        declaration = tree_index.get(rhs_offset)
+        if declaration is None:
+            if rhs_offset in tree_index:
+                msg = (
+                    "native class alias RHS has no unique statement: "
+                    f"{holder.get_name()}:{rhs_offset}"
+                )
+                raise ValueError(msg)
             # Native loop/context/pattern bindings are outside class alias policy.
             return None
-        if len(candidates) != 1:
-            msg = (
-                "native class alias RHS has no unique statement: "
-                f"{holder.get_name()}:{rhs_offset}"
-            )
-            raise ValueError(msg)
-        declaration = candidates[0]
         if not isinstance(declaration.value, c.Infra.AST_NAME_REFERENCE_TYPES):
             return None
         offset = cls.source_offset(source, declaration)
@@ -512,6 +511,52 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             primary = primary.value
         return holder, declaration, scope, offset, primary
 
+    # Pass-scoped memo (single-invocation lifecycle): tree identity keys
+    # keep entries fresh; the process boundary is the cache boundary.
+    _TREE_ASSIGNMENT_INDEXES: t.ClassVar[
+        dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None
+    ] = None
+
+    @classmethod
+    def _tree_assignment_index(
+        cls,
+        tree: ast.AST,
+        source: str,
+    ) -> dict[int, ast.AST | None]:
+        """Return the tree's assignment-value offset index, walked once.
+
+        A None entry marks an offset shared by two statements (ambiguous).
+        The entry keeps a strong reference to its tree so an index cannot
+        outlive the tree its identity keys.
+
+        Returns:
+            The map of each assignment value's source offset to its node,
+            or None where the offset is ambiguous.
+
+        """
+        indexes = cls._TREE_ASSIGNMENT_INDEXES
+        if indexes is None:
+            indexes = {}
+            cls._TREE_ASSIGNMENT_INDEXES = indexes
+        entry = indexes.get(id(tree))
+        if entry is not None and entry[0] is tree:
+            return entry[1]
+        index: dict[int, ast.AST | None] = {}
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
+                and node.value is not None
+            ):
+                offset = cls.source_offset(source, node.value)
+                if offset in index and index[offset] is not node:
+                    # Two statements share one value offset: the offset is
+                    # ambiguous and lookups must stay loud about it.
+                    index[offset] = None
+                else:
+                    index[offset] = node
+        indexes[id(tree)] = (tree, index)
+        return index
+
     @classmethod
     def _class_alias_namespace(
         cls,
@@ -520,9 +565,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope: p.Infra.RopeScope,
         primary: ast.Name,
         offset: int,
-    ) -> t.Pair[p.Infra.RopeScope, t.DictKV[str, p.Infra.RopePyName]] | None:
+    ) -> tuple[p.Infra.RopeScope, dict[str, p.Infra.RopePyName]] | None:
         source = holder.source_code
-        selected: t.DictKV[str, p.Infra.RopePyName] = {}
+        selected: dict[str, p.Infra.RopePyName] = {}
         prior = scope.get_defined_names().get(primary.id)
         if prior is not None:
             declarations = cls._scope_binding_nodes(tree, scope, primary.id)
@@ -600,7 +645,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         declaration: ast.Assign | ast.AnnAssign,
         *,
         binding: p.Infra.RopePyName,
-        visited: frozenset[t.Pair[str, int]],
+        visited: frozenset[tuple[str, int]],
         classes_only: bool,
     ) -> p.Infra.RopePyName | None:
         attributes: list[str] = []
@@ -644,7 +689,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         tree: ast.AST,
         scope: p.Infra.RopeScope,
         name: str,
-    ) -> list[t.Pair[ast.AST, bool]]:
+    ) -> list[tuple[ast.AST, bool]]:
         """Elect structural lexical writes and their actual execution positions.
 
         Returns:
@@ -659,7 +704,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             ast.AsyncFunctionDef,
             ast.Lambda,
         )
-        selected: list[t.Pair[ast.AST, bool]] = []
+        selected: list[tuple[ast.AST, bool]] = []
         for node in ast.walk(tree):
             if name not in FlextInfraUtilitiesRopeAstBindings.bound_identifiers(node):
                 continue
@@ -743,7 +788,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         project: p.Infra.RopeProject,
         binding: p.Infra.RopeImportedName,
         *,
-        resolved: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] | None = None,
+        resolved: MutableMapping[p.Infra.RopeImportedModule, Path] | None = None,
     ) -> Path:
         """Resolve import provenance through Rope without evaluating its target.
 
@@ -831,13 +876,13 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         module: p.Infra.RopeParsedModule,
         module_name: str,
         name: str | None,
-    ) -> t.Pair[str, str]:
+    ) -> tuple[str, str]:
         """Plan an import and use the expression elected by Rope's import owner.
 
         ``name=None`` elects the module binding rather than a member binding.
 
         Returns:
-            The resulting ``t.Pair[str, str]``.
+            The resulting ``tuple[str, str]``.
 
         Raises:
             TypeError: If Rope add_import returned an invalid source and binding pair;
@@ -929,9 +974,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         resource: t.Infra.RopeResource,
         offset: int,
         *,
-        resources: t.SequenceOf[t.Infra.RopeResource] | None,
+        resources: Sequence[t.Infra.RopeResource] | None,
         in_hierarchy: bool,
-    ) -> t.SequenceOf[t.Infra.RopeLocation]:
+    ) -> Sequence[t.Infra.RopeLocation]:
         finder = cls.runtime_callable("rope.contrib.findit", "find_occurrences")
         raw_locations = finder(
             rope_project,
@@ -943,7 +988,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if not isinstance(raw_locations, p.Infra.RopeRuntimeSequence):
             msg = "rope find_occurrences returned non-sequence locations"
             raise TypeError(msg)
-        locations: t.MutableSequenceOf[t.Infra.RopeLocation] = []
+        locations: MutableSequence[t.Infra.RopeLocation] = []
         for location in raw_locations:
             if not isinstance(location, p.Infra.RopeLocation):
                 msg = "rope find_occurrences returned an invalid location"

@@ -16,12 +16,12 @@ snapshots:
       style: primary
       start: 16
       end: 195
-  "class Spec:\n    roots: Annotated[t.StrSequence, m.Field(default=(), description=\"d\")]\n":
+  "class Spec:\n    roots: Annotated[Sequence[str], m.Field(default=(), description=\"d\")]\n":
     fixed: |
       class Spec:
-          roots: Annotated[t.StrSequence, m.Field(description="d")] = ()
+          roots: Annotated[Sequence[str], m.Field(description="d")] = ()
     labels:
-    - source: "roots: Annotated[t.StrSequence, m.Field(default=(), description=\"d\")]"
+    - source: "roots: Annotated[Sequence[str], m.Field(default=(), description=\"d\")]"
       style: primary
       start: 16
       end: 85

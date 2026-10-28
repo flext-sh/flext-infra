@@ -16,7 +16,7 @@ from tests import c, tm, u
 
 if TYPE_CHECKING:
     from flext_infra.codegen import FlextInfraCodegenLazyInit
-from tests import p, t
+from tests import p
 
 
 def expect_read_only_drift(
@@ -44,11 +44,11 @@ class TestsFlextInfraCodegenLazyInitService:
         check_only: bool = True,
         apply_changes: bool = False,
         dry_run: bool = False,
-    ) -> t.Quad[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
+    ) -> tuple[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
         """Run one lazy-init pass without writing and return its observable drift.
 
         Returns:
-            The resulting ``t.Quad[FlextInfraCodegenLazyInit, p.Result[bool], Path,
+            The resulting ``tuple[FlextInfraCodegenLazyInit, p.Result[bool], Path,
                 bytes]``.
 
         """

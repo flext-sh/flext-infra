@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -38,19 +39,19 @@ class FlextInfraDocFormatter(FlextInfraDocServiceBase):
         self,
         repository_root: Path,
         *,
-        projects: t.StrSequence | None = None,
+        projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
         apply: bool = False,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run markdown formatting across project scopes.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         gate_factory = self.format_gate
         if gate_factory is None:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 "docs formatting requires the facade-bound markdown format gate; "
                 "run it through FlextInfra.docs_format",
             )

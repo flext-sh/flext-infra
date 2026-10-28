@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from fnmatch import fnmatchcase
 from pathlib import Path
 
@@ -282,11 +283,11 @@ class FlextInfraCodegenLayoutPlan:
         self,
         override: m.Infra.LayoutProjectOverrideSpec,
         project_dir: Path,
-    ) -> t.SequenceOf[m.Infra.LayoutFinding]:
+    ) -> Sequence[m.Infra.LayoutFinding]:
         """Explicit per-project moves whose nested source still exists.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.LayoutFinding]``.
+            The resulting ``Sequence[m.Infra.LayoutFinding]``.
 
         """
         return tuple(
@@ -301,11 +302,11 @@ class FlextInfraCodegenLayoutPlan:
         override: m.Infra.LayoutProjectOverrideSpec,
         project_dir: Path,
         project_name: str,
-    ) -> t.SequenceOf[m.Infra.LayoutFinding]:
+    ) -> Sequence[m.Infra.LayoutFinding]:
         """Override directories archived once override moves have emptied them.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.LayoutFinding]``.
+            The resulting ``Sequence[m.Infra.LayoutFinding]``.
 
         """
         findings: list[m.Infra.LayoutFinding] = []
@@ -334,11 +335,11 @@ class FlextInfraCodegenLayoutPlan:
         spec: m.Infra.LayoutSpec,
         override: m.Infra.LayoutProjectOverrideSpec | None,
         project_dir: Path,
-    ) -> t.SequenceOf[m.Infra.LayoutFinding]:
+    ) -> Sequence[m.Infra.LayoutFinding]:
         """Missing ``.gitignore`` patterns required by the layout SSOT.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.LayoutFinding]``.
+            The resulting ``Sequence[m.Infra.LayoutFinding]``.
 
         """
         required = [f"{spec.archive_root}/"]
@@ -372,7 +373,7 @@ class FlextInfraCodegenLayoutPlan:
             The resulting ``m.Infra.LayoutFinding``.
 
         """
-        messages: t.MappingKV[t.Infra.LayoutRule, str] = {
+        messages: Mapping[t.Infra.LayoutRule, str] = {
             "move": f"move {path} -> {target}",
             "archive": f"archive {path} -> {target}",
             "gitignore": f"add .gitignore entry: {target}",

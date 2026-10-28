@@ -6,4 +6,4 @@ valid:
 # `invalid` MUST match: the accidental Annotated[<alias>, None] conversion.
 invalid:
   - adapter = TypeAdapter(Annotated[FlextTypingBase.Scalar, None])
-  - adapter = u.type_adapter(Annotated[t.ScalarMapping, None])
+  - adapter = u.type_adapter(Annotated[Mapping[str, t.Scalar], None])

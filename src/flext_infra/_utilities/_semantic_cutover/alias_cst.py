@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -43,7 +44,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
         def __init__(
             self,
             plan: m.Infra.CompatibilityAliasRewritePlan,
-            positions: t.MappingKV[t.Infra.Cst.CSTNode, CodeRange],
+            positions: Mapping[t.Infra.Cst.CSTNode, CodeRange],
         ) -> None:
             self.plan = plan
             self.positions = positions

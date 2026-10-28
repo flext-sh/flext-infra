@@ -4,13 +4,13 @@ id: pydantic-annotated-field-default-assignment
 valid:
   - |
     class Spec:
-        roots: Annotated[t.StrSequence, m.Field(description="d")] = ()
+        roots: Annotated[Sequence[str], m.Field(description="d")] = ()
   - |
     class Spec:
         name: Annotated[t.NonEmptyStr, m.Field(description="d")]
   - |
     class Spec:
-        roots: Annotated[t.StrSequence, m.Field(default=(), description="d")] = ()
+        roots: Annotated[Sequence[str], m.Field(default=(), description="d")] = ()
   - |
     class Spec:
         project_id: Annotated[t.NonEmptyStr | None, m.Field(default=None)]
@@ -20,7 +20,7 @@ valid:
 invalid:
   - |
     class Spec:
-        roots: Annotated[t.StrSequence, m.Field(default=(), description="d")]
+        roots: Annotated[Sequence[str], m.Field(default=(), description="d")]
   - |
     class Spec:
         home_cache_directory: Annotated[

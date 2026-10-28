@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -150,11 +151,11 @@ class FlextInfraUtilitiesBase:
         return m.Infra.CommandContext.model_validate({"report_path": value}).report_path
 
     @staticmethod
-    def normalize_cli_values(*values: str | None) -> t.StrSequence:
+    def normalize_cli_values(*values: str | None) -> Sequence[str]:
         """Normalize comma-separated or whitespace-separated CLI selectors.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         normalized = m.Infra.CommandContext.model_validate(
@@ -163,11 +164,11 @@ class FlextInfraUtilitiesBase:
         return tuple(normalized.split(",")) if normalized else ()
 
     @staticmethod
-    def normalize_sequence_values(values: t.StrSequence | None) -> t.StrSequence | None:
+    def normalize_sequence_values(values: Sequence[str] | None) -> Sequence[str] | None:
         """Normalize repeated CLI sequence fields into a compact selector list.
 
         Returns:
-            The resulting ``t.StrSequence | None``.
+            The resulting ``Sequence[str] | None``.
 
         """
         names = FlextInfraUtilitiesBase.normalize_cli_values(*(values or ()))
@@ -188,7 +189,7 @@ class FlextInfraUtilitiesBase:
         """Order paths by depth and then their stable POSIX representation.
 
         Returns:
-            The resulting ``t.Pair[int, str]``.
+            The resulting ``tuple[int, str]``.
 
         """
         return FlextInfraUtilitiesBase.path_depth(path), path.as_posix()
@@ -275,15 +276,15 @@ class FlextInfraUtilitiesBase:
     def ast_grep_scan_command(
         rule_path: Path,
         *,
-        rule_ids: t.StrSequence = (),
-        targets: t.StrSequence = (".",),
+        rule_ids: Sequence[str] = (),
+        targets: Sequence[str] = (".",),
         json_stream: bool = False,
         update_all: bool = False,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Build one ast-grep scan command with explicit cwd-relative targets.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             ValueError: If ast-grep scan targets must be nonempty and cwd-relative; or
@@ -391,7 +392,7 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def result_routes(
-        rows: t.SequenceOf[
+        rows: Sequence[
             tuple[
                 str,
                 str,

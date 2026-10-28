@@ -9,11 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -125,7 +123,7 @@ class FlextInfraProtocolsPromoted(Protocol):
         def commands(
             self,
             verb: str,
-        ) -> t.MappingKV[str, FlextInfraProtocolsPromoted.PromotedCommand]: ...
+        ) -> Mapping[str, FlextInfraProtocolsPromoted.PromotedCommand]: ...
 
         def command(
             self,
@@ -133,9 +131,9 @@ class FlextInfraProtocolsPromoted(Protocol):
             what: str,
         ) -> FlextInfraProtocolsPromoted.PromotedCommand: ...
 
-        def verbs(self) -> t.StrSequence: ...
+        def verbs(self) -> Sequence[str]: ...
 
-        def aliases_for(self, verb: str) -> t.StrSequence: ...
+        def aliases_for(self, verb: str) -> Sequence[str]: ...
 
         def has(self, verb: str, what: str) -> bool: ...
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import config
@@ -19,7 +20,7 @@ class TestsFlextInfraEnforcementCatalogGate:
     """Owner claims derive the catalog; duplicate and orphan claims fail it."""
 
     @staticmethod
-    def _provider(tmp_path: Path, rules: t.SequenceOf[t.JsonMapping]) -> Path:
+    def _provider(tmp_path: Path, rules: Sequence[t.JsonMapping]) -> Path:
         """Write one ast-grep provider whose rules carry the given documents.
 
         Returns:
@@ -35,7 +36,7 @@ class TestsFlextInfraEnforcementCatalogGate:
         return provider
 
     @staticmethod
-    def _rule(rule_id: str, enforce: t.StrSequence, severity: str) -> t.JsonMapping:
+    def _rule(rule_id: str, enforce: Sequence[str], severity: str) -> t.JsonMapping:
         """Build one detection rule document claiming the given law ids.
 
         Returns:

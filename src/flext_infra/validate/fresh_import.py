@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, get_type_hints, override
@@ -22,7 +23,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Verify consumers and publication contracts without inherited import state."""
 
     packages: Annotated[
-        t.StrSequence,
+        Sequence[str],
         m.Field(description="Packages to validate in fresh subprocesses"),
     ] = (c.Infra.PKG_CORE_UNDERSCORE, "flext_infra", "flext_tests")
     runtime_root: Annotated[
@@ -39,10 +40,10 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
     def build_report(
         self,
-        packages: t.StrSequence = (),
+        packages: Sequence[str] = (),
         *,
-        publications: t.SequenceOf[m.Infra.LazyInitPlan] = (),
-        repository_roots: t.SequenceOf[Path] = (),
+        publications: Sequence[m.Infra.LazyInitPlan] = (),
+        repository_roots: Sequence[Path] = (),
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate complete publications, stopping at the first causal failure.
 
@@ -55,7 +56,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             return r[m.Infra.ValidationReport].from_failure(layouts_result)
         layouts = layouts_result.value
         origin_code = self._origin_code(layouts)
-        probes: t.MutableSequenceOf[m.Infra.FreshImportProbe] = []
+        probes: MutableSequence[m.Infra.FreshImportProbe] = []
         for layout in layouts:
             built = self._layout_probes(layout, origin_code, publications)
             if built.failure:
@@ -77,7 +78,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
     @staticmethod
     def _project_layouts(
-        repository_roots: t.SequenceOf[Path],
+        repository_roots: Sequence[Path],
     ) -> p.Result[tuple[m.Infra.RopeProjectLayout, ...]]:
         """Resolve one Rope layout per requested repository root.
 
@@ -85,7 +86,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             The resulting project layouts.
 
         """
-        layouts: t.MutableSequenceOf[m.Infra.RopeProjectLayout] = []
+        layouts: MutableSequence[m.Infra.RopeProjectLayout] = []
         for root in repository_roots:
             layout = u.Infra.layout(root)
             if layout is None:
@@ -96,7 +97,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         return r[tuple[m.Infra.RopeProjectLayout, ...]].ok(tuple(layouts))
 
     @staticmethod
-    def _origin_code(layouts: t.SequenceOf[m.Infra.RopeProjectLayout]) -> str:
+    def _origin_code(layouts: Sequence[m.Infra.RopeProjectLayout]) -> str:
         """Render the origin-containment guard code for the probed layouts.
 
         Returns:
@@ -116,8 +117,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         self,
         layout: m.Infra.RopeProjectLayout,
         origin_code: str,
-        publications: t.SequenceOf[m.Infra.LazyInitPlan],
-    ) -> p.Result[t.MutableSequenceOf[m.Infra.FreshImportProbe]]:
+        publications: Sequence[m.Infra.LazyInitPlan],
+    ) -> p.Result[MutableSequence[m.Infra.FreshImportProbe]]:
         """Build one layout's entry-point and export probes.
 
         Returns:
@@ -126,40 +127,40 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         """
         source = u.Cli.files_read_text(layout.project_root / c.PYPROJECT_FILENAME)
         if source.failure:
-            return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].from_failure(source)
+            return r[MutableSequence[m.Infra.FreshImportProbe]].from_failure(source)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
-            return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].fail(
+            return r[MutableSequence[m.Infra.FreshImportProbe]].fail(
                 f"invalid published pyproject in {layout.project_root}",
             )
         metadata = m.Infra.FreshImportMetadata.model_validate(payload).project
         probes = self._entry_point_probes(layout, metadata, origin_code)
         export = self._export_probe(layout, origin_code, publications)
         if export.failure:
-            return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].from_failure(export)
+            return r[MutableSequence[m.Infra.FreshImportProbe]].from_failure(export)
         probes.append(export.value)
-        return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].ok(probes)
+        return r[MutableSequence[m.Infra.FreshImportProbe]].ok(probes)
 
     @staticmethod
     def _entry_point_probes(
         layout: m.Infra.RopeProjectLayout,
         metadata: m.Infra.FreshImportEntryPoints,
         origin_code: str,
-    ) -> t.MutableSequenceOf[m.Infra.FreshImportProbe]:
+    ) -> MutableSequence[m.Infra.FreshImportProbe]:
         """Build one probe per declared console, GUI, and entry point.
 
         Returns:
             The entry-point probes of the layout.
 
         """
-        groups: list[tuple[str, t.StrMapping]] = []
+        groups: list[tuple[str, Mapping[str, str]]] = []
         if metadata.scripts is not None:
             groups.append(("console_scripts", metadata.scripts))
         if metadata.gui_scripts is not None:
             groups.append(("gui_scripts", metadata.gui_scripts))
         if metadata.entry_points is not None:
             groups.extend(metadata.entry_points.items())
-        probes: t.MutableSequenceOf[m.Infra.FreshImportProbe] = []
+        probes: MutableSequence[m.Infra.FreshImportProbe] = []
         for group, entries in groups:
             for name, value in entries.items():
                 probes.append(
@@ -177,7 +178,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     def _export_probe(
         layout: m.Infra.RopeProjectLayout,
         origin_code: str,
-        publications: t.SequenceOf[m.Infra.LazyInitPlan],
+        publications: Sequence[m.Infra.LazyInitPlan],
     ) -> p.Result[m.Infra.FreshImportProbe]:
         """Build one layout's public-export probe from its plan contract.
 
@@ -240,19 +241,19 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
     @staticmethod
     def _package_probes(
-        packages: t.StrSequence,
+        packages: Sequence[str],
         origin_code: str,
-    ) -> p.Result[t.MutableSequenceOf[m.Infra.FreshImportProbe]]:
+    ) -> p.Result[MutableSequence[m.Infra.FreshImportProbe]]:
         """Build one whole-package import probe per declared package name.
 
         Returns:
             The resulting package probes.
 
         """
-        probes: t.MutableSequenceOf[m.Infra.FreshImportProbe] = []
+        probes: MutableSequence[m.Infra.FreshImportProbe] = []
         for package in packages:
             if not c.Infra.PYTHON_IMPORT_NAME_RE.fullmatch(package):
-                return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].fail(
+                return r[MutableSequence[m.Infra.FreshImportProbe]].fail(
                     f"{package}: not a valid Python package name",
                 )
             probes.append(
@@ -264,12 +265,12 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                     + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(exports=()),
                 ),
             )
-        return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].ok(probes)
+        return r[MutableSequence[m.Infra.FreshImportProbe]].ok(probes)
 
     def _execute_probes(
         self,
-        probes: t.SequenceOf[m.Infra.FreshImportProbe],
-        layouts: t.SequenceOf[m.Infra.RopeProjectLayout],
+        probes: Sequence[m.Infra.FreshImportProbe],
+        layouts: Sequence[m.Infra.RopeProjectLayout],
     ) -> p.Result[m.Infra.ValidationReport]:
         """Run every probe in the declared runtime and judge the outcomes.
 
@@ -342,13 +343,13 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         """
         package = module.__name__.partition(".")[0]
-        pending: t.MutableSequenceOf[type] = [
+        pending: MutableSequence[type] = [
             value
             for name in getattr(module, c.Infra.DUNDER_ALL, ())
             if isinstance(value := getattr(module, name), type)
         ]
         seen: set[type] = set()
-        incomplete: t.MutableSequenceOf[type] = []
+        incomplete: MutableSequence[type] = []
         while pending:
             klass = pending.pop()
             if klass in seen or not klass.__module__.startswith(c.Infra.PKG_ROOT):
@@ -375,7 +376,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         FlextInfraValidateFreshImport._require_schema_fields(package, seen)
 
     @staticmethod
-    def _require_schema_fields(package: str, classes: t.IterableOf[type]) -> None:
+    def _require_schema_fields(package: str, classes: Iterable[type]) -> None:
         """Fail on the first field that only builds by ``arbitrary_types_allowed``.
 
         Every model of the probed package that sets or inherits the flag has
@@ -399,7 +400,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
         )
         for klass in models:
-            fields: t.MappingKV[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
+            fields: Mapping[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
             # A deferred model keeps its field annotations as forward
             # references; the stdlib evaluator resolves them in the model's
             # own module and class namespace, as pydantic does on build, and
@@ -423,7 +424,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         self,
         probe: m.Infra.FreshImportProbe,
         *,
-        source_roots: t.SequenceOf[Path] = (),
+        source_roots: Sequence[Path] = (),
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run the selected native consumer in its declared physical runtime.
 
@@ -469,12 +470,12 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
     def _workspace_import_env(
         self,
-        source_roots: t.SequenceOf[Path] = (),
-    ) -> t.StrMapping:
+        source_roots: Sequence[Path] = (),
+    ) -> Mapping[str, str]:
         """Prefer the complete candidate fleet over inherited editable installs.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         """
         inherited_env = u.Cli.process_env()
@@ -510,4 +511,4 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         )
 
 
-__all__: t.StrSequence = ("FlextInfraValidateFreshImport",)
+__all__: Sequence[str] = ("FlextInfraValidateFreshImport",)

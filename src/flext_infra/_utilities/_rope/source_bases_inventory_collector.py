@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import ast
 import builtins
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_base import (
     FlextInfraUtilitiesRopeRuntimeBase,
@@ -33,7 +33,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def collect(
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
-        statements: t.SequenceOf[ast.stmt],
+        statements: Sequence[ast.stmt],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
         scope: str,
     ) -> None:
@@ -239,7 +239,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
+        targets: Sequence[ast.expr],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:
         """Classify one non-name assignment target mutation.
@@ -275,8 +275,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _foreign_attribute_mutation(
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        targets: Sequence[ast.expr],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None],
     ) -> bool:
         """Limit class mutation admission to the receiver's exact binding.
 
@@ -325,7 +325,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
     @staticmethod
     def _opaque_attribute_mutation(
-        targets: t.SequenceOf[ast.expr],
+        targets: Sequence[ast.expr],
         node: ast.Assign | ast.AnnAssign,
     ) -> bool:
         """Whether the mutation carries an opaque computed attribute rebind.
@@ -348,7 +348,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         )
 
     @staticmethod
-    def _subscript_mutation(targets: t.SequenceOf[ast.expr]) -> bool:
+    def _subscript_mutation(targets: Sequence[ast.expr]) -> bool:
         """Whether every target writes through an already-declared container.
 
         A ``name[...] = ...`` statement mutates a binding the class body
@@ -385,8 +385,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _provider_metadata_rebind(
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        targets: Sequence[ast.expr],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None],
     ) -> bool:
         """Return whether every target only annotates provider metadata.
 
@@ -449,8 +449,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _module_table_mutation(
         cls,
-        targets: t.SequenceOf[ast.expr],
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None] | None = None,
+        targets: Sequence[ast.expr],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None] | None = None,
     ) -> bool:
         """Recognize runtime table stores without rebinding a live class.
 
@@ -468,7 +468,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _is_module_table_target(
         cls,
         target: ast.Subscript,
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None] | None,
+        bindings: Mapping[str, m.Infra.SourceClassReference | None] | None,
     ) -> bool:
         """Return whether one subscript target only writes a runtime table.
 
@@ -489,8 +489,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @staticmethod
     def _completes_class_namespace(
         node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        targets: Sequence[ast.expr],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None],
     ) -> bool:
         """Recognize a non-structural store on a bound receiver.
 
@@ -516,7 +516,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
+        targets: Sequence[ast.expr],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> bool:
         """Update only the exact inventoried class receiver's member map.
@@ -561,7 +561,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @staticmethod
     def _nested_class_receiver(
         reference: m.Infra.SourceClassReference,
-        definitions: t.MappingKV[str, m.Infra.SourceClassDefinition],
+        definitions: Mapping[str, m.Infra.SourceClassDefinition],
     ) -> m.Infra.SourceClassReference | None:
         """Resolve a receiver only through inventoried nested class identities.
 
@@ -601,7 +601,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None],
     ) -> m.Infra.SourceClassReference | None:
         """Capture a name assignment's class or real Boolean reference.
 
@@ -754,10 +754,10 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _merge_exception_bindings(
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
-        branches: t.SequenceOf[
+        branches: Sequence[
             tuple[
-                t.MappingKV[str, m.Infra.SourceClassReference | None],
-                t.SequenceOf[ast.stmt],
+                Mapping[str, m.Infra.SourceClassReference | None],
+                Sequence[ast.stmt],
             ]
         ],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
@@ -837,7 +837,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         spec: m.Infra.SourceBindingCollectorSpec,
         name: str,
         reference: m.Infra.SourceClassReference | None,
-        statements: t.SequenceOf[ast.stmt],
+        statements: Sequence[ast.stmt],
     ) -> tuple[p.Infra.RopePyObject | None, bool]:
         """Resolve an alternative through its native provider or RHS context.
 
@@ -892,7 +892,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @staticmethod
     def _exception_binding_expression(
         name: str,
-        statements: t.SequenceOf[ast.stmt],
+        statements: Sequence[ast.stmt],
     ) -> ast.expr | None:
         """Locate a direct branch RHS without replacing native name resolution.
 
@@ -920,7 +920,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         test: ast.expr,
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None],
     ) -> bool | None:
         """Resolve only literal guards and captured constant provenance.
 
@@ -990,7 +990,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _base_reference(
         cls,
         expression: ast.expr,
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None],
         spec: m.Infra.SourceBindingCollectorSpec,
     ) -> m.Infra.SourceClassReference:
         """Resolve one class base, including a ``type(<class>)`` metaclass base.
@@ -1044,7 +1044,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @staticmethod
     def _reference(
         expression: ast.expr,
-        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        bindings: Mapping[str, m.Infra.SourceClassReference | None],
         spec: m.Infra.SourceBindingCollectorSpec,
     ) -> m.Infra.SourceClassReference:
         """Capture the binding visible when a base expression is evaluated.

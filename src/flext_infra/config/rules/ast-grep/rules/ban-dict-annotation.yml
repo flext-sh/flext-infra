@@ -5,11 +5,11 @@
 #
 # Two targets, chosen by context, never by guess:
 # - inside a function (parameters, returns, locals) the exact concrete contract
-#   is `t.DictKV[K, V]`, the same target as the typing.Dict modernization; the
+#   is `dict[K, V]`, the same target as the typing.Dict modernization; the
 #   rewrite preserves the concrete dict API.
 # - outside a function (model fields, class attributes, module annotations,
 #   PEP 695 aliases) the runtime model law rejects dict origins in Pydantic
-#   fields: the contract is `t.MappingKV`/`t.MutableMappingKV` with a `u.empty`
+#   fields: the contract is `Mapping`/`MutableMapping` with a `u.empty`
 #   factory, which changes the default as well, so that document is
 #   detection-only and the semantic fix belongs to its owner.
 id: dict-annotation-missing-t-import
@@ -31,8 +31,8 @@ rule:
             stopBy: end
             matches: t-locally-bound
 message: >-
-  `dict[K, V]` in a type context must become a typings member (t.DictKV in a
-  function, t.MappingKV in a field), but a canonical `t` binding is not
+  `dict[K, V]` in a type context must become a typings member (dict in a
+  function, Mapping in a field), but a canonical `t` binding is not
   established. Resolve the facade binding first.
 metadata:
   enforce: [ENFORCE-030]
@@ -63,10 +63,10 @@ transform:
     replace:
       source: $WHOLE
       replace: "^dict"
-      by: "t.DictKV"
+      by: "dict"
 fix: $NEW
 message: >-
-  Replace the builtin `dict[K, V]` type with the typings member t.DictKV[K, V].
+  Replace the builtin `dict[K, V]` type with the typings member dict[K, V].
 metadata:
   enforce: [ENFORCE-030]
 ---
@@ -93,7 +93,7 @@ rule:
           matches: t-locally-bound
 message: >-
   `dict[K, V]` declared outside a function: a field or alias contract is
-  t.MappingKV[K, V] (t.MutableMappingKV when mutated) with a `u.empty` factory,
+  Mapping[K, V] (MutableMapping when mutated) with a `u.empty` factory,
   never a dict origin.
 metadata:
   enforce: [ENFORCE-030]

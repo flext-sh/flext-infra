@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, r, t, u
@@ -22,7 +23,7 @@ class FlextInfraCodegenConsolidatorSteps:
     these workers across selected projects.
     """
 
-    _ALL_LINT_GATES: ClassVar[t.StrSequence] = tuple(
+    _ALL_LINT_GATES: ClassVar[Sequence[str]] = tuple(
         entry[0] for entry in c.Infra.LINT_TOOLS
     )
 
@@ -30,21 +31,21 @@ class FlextInfraCodegenConsolidatorSteps:
     def _build_value_map_from_constants_file(
         cls,
         constants_file: Path,
-    ) -> p.Result[t.StrMapping]:
+    ) -> p.Result[Mapping[str, str]]:
         """Build value map from a constants file.
 
         Missing file → empty map (nothing to consolidate); an existing-but-unreadable
         file is surfaced as a failure (never silently treated as empty).
 
         Returns:
-            The resulting ``p.Result[t.StrMapping]``.
+            The resulting ``p.Result[Mapping[str, str]]``.
 
         """
         if not constants_file.is_file():
-            return r[t.StrMapping].ok({})
+            return r[Mapping[str, str]].ok({})
         read = u.Cli.files_read_text(constants_file)
         if read.failure:
-            return r[t.StrMapping].from_failure(read)
+            return r[Mapping[str, str]].from_failure(read)
         value_map: t.MutableStrMapping = {}
         for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
             read.value.splitlines(),
@@ -61,13 +62,13 @@ class FlextInfraCodegenConsolidatorSteps:
                 inner = raw[1:-1]
                 value_map[f"'{inner}'"] = canonical
                 value_map[f'"{inner}"'] = canonical
-        return r[t.StrMapping].ok(value_map)
+        return r[Mapping[str, str]].ok(value_map)
 
     def _scan_file(
         self,
         rope_project: t.Infra.RopeProject,
         python_file: Path,
-        value_map: t.StrMapping,
+        value_map: Mapping[str, str],
     ) -> m.Infra.ConsolidatorScannedFile | None:
         """Scan file.
 
@@ -94,18 +95,18 @@ class FlextInfraCodegenConsolidatorSteps:
 
     @staticmethod
     def _match_assignments(
-        symbols: t.SequenceOf[m.Infra.SymbolInfo],
+        symbols: Sequence[m.Infra.SymbolInfo],
         # Use the canonical scalar sequence alias directly.
-        source_lines: t.StrSequence,
-        value_to_ref: t.StrMapping,
-    ) -> t.SequenceOf[t.Triple[m.Infra.SymbolInfo, str, str]]:
+        source_lines: Sequence[str],
+        value_to_ref: Mapping[str, str],
+    ) -> Sequence[tuple[m.Infra.SymbolInfo, str, str]]:
         """Match assignments.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[m.Infra.SymbolInfo, str, str]]``.
+            The resulting ``Sequence[tuple[m.Infra.SymbolInfo, str, str]]``.
 
         """
-        matches: t.MutableSequenceOf[t.Triple[m.Infra.SymbolInfo, str, str]] = []
+        matches: MutableSequence[tuple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
             # Widen the validated constrained int for indexing.
             line_number: int = symbol.line
@@ -152,8 +153,8 @@ class FlextInfraCodegenConsolidatorSteps:
         original_source = scanned.source
         src_lines = original_source.splitlines(keepends=True)
         rel = py_file.relative_to(workspace)
-        edits: t.MutableSequenceOf[t.Triple[int, int, str]] = []
-        descs: t.MutableSequenceOf[str] = []
+        edits: MutableSequence[tuple[int, int, str]] = []
+        descs: MutableSequence[str] = []
         for symbol, ref, value in scanned.matches:
             line_number = symbol.line
             if line_number < 1 or line_number > len(src_lines):

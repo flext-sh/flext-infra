@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
@@ -50,10 +51,10 @@ class FlextInfraWorkspaceCheckUnion:
 
     def _union_gate_ids(
         self,
-        projects: t.SequenceOf[m.Infra.CheckProjectTarget],
-        resolved_gates: t.StrSequence,
+        projects: Sequence[m.Infra.CheckProjectTarget],
+        resolved_gates: Sequence[str],
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Elect the gates whose tool runs once over every project's targets.
 
         A multi-project run executes each multi-root tool in one invocation;
@@ -68,7 +69,7 @@ class FlextInfraWorkspaceCheckUnion:
         """
         if len(projects) < c.Infra.UNION_GATE_MIN_PROJECTS or ctx.selected_files:
             return ()
-        elected: t.MutableSequenceOf[str] = []
+        elected: MutableSequence[str] = []
         for gate_id in resolved_gates:
             gate = self._registry.create(gate_id, self._repository_root)
             if gate is None:
@@ -80,10 +81,10 @@ class FlextInfraWorkspaceCheckUnion:
 
     def _run_union_gates(
         self,
-        projects: t.SequenceOf[m.Infra.CheckProjectTarget],
-        union_gates: t.StrSequence,
+        projects: Sequence[m.Infra.CheckProjectTarget],
+        union_gates: Sequence[str],
         ctx: m.Infra.GateContext,
-    ) -> t.MappingKV[str, t.MappingKV[Path, m.Infra.GateExecution]]:
+    ) -> Mapping[str, Mapping[Path, m.Infra.GateExecution]]:
         """Run every union gate once per configuration group, split per project.
 
         Returns:
@@ -93,23 +94,21 @@ class FlextInfraWorkspaceCheckUnion:
             ValueError: If a union gate is not registered.
 
         """
-        executions: t.MutableMappingKV[
-            str, t.MappingKV[Path, m.Infra.GateExecution]
-        ] = {}
+        executions: MutableMapping[str, Mapping[Path, m.Infra.GateExecution]] = {}
         for gate_id in union_gates:
             gate = self._registry.create(gate_id, self._repository_root)
             if gate is None:
                 msg = f"{gate_id} gate not registered"
                 raise ValueError(msg)
-            groups: t.MutableMappingKV[
-                str, t.MutableSequenceOf[m.Infra.CheckProjectTarget]
+            groups: MutableMapping[
+                str, MutableSequence[m.Infra.CheckProjectTarget]
             ] = {}
             for target in projects:
                 if gate_id in target.applicable_gates:
                     groups.setdefault(gate.union_group_key(target.path), []).append(
                         target,
                     )
-            split: t.MutableMappingKV[Path, m.Infra.GateExecution] = {}
+            split: MutableMapping[Path, m.Infra.GateExecution] = {}
             for selected in groups.values():
                 owner_ctx = self._isolate_context(ctx, selected[0])
                 _ = u.Cli.ensure_dir(owner_ctx.reports_dir)
@@ -133,8 +132,8 @@ class FlextInfraWorkspaceCheckUnion:
     @staticmethod
     def _split_union_execution(
         execution: m.Infra.GateExecution,
-        selected: t.SequenceOf[m.Infra.CheckProjectTarget],
-    ) -> t.MappingKV[Path, m.Infra.GateExecution]:
+        selected: Sequence[m.Infra.CheckProjectTarget],
+    ) -> Mapping[Path, m.Infra.GateExecution]:
         """Assign each finding of one union group to its deepest owning project.
 
         A native tool error fails every selected project with the complete
@@ -156,7 +155,7 @@ class FlextInfraWorkspaceCheckUnion:
             reverse=True,
         )
         native_error = execution.outcome is c.Infra.ToolOutcome.ERROR
-        owned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.Issue]] = {
+        owned: MutableMapping[Path, MutableSequence[m.Infra.Issue]] = {
             target.path: [] for target in selected
         }
         for issue in execution.issues:
@@ -200,8 +199,8 @@ class FlextInfraWorkspaceCheckUnion:
     @staticmethod
     def _merged_union_result(
         project_result: m.Infra.ProjectResult,
-        resolved_gates: t.StrSequence,
-        union_executions: t.MappingKV[str, m.Infra.GateExecution],
+        resolved_gates: Sequence[str],
+        union_executions: Mapping[str, m.Infra.GateExecution],
     ) -> m.Infra.ProjectResult:
         """Report the union and per-project executions in declared gate order.
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -31,11 +32,11 @@ class TestsFlextInfraDepsModernizerToolTables:
         source: str = "",
         *,
         tool_config: m.Infra.ToolConfigDocument | None = None,
-    ) -> t.Pair[t.MutableJsonMapping, t.StrSequence]:
+    ) -> tuple[t.MutableJsonMapping, Sequence[str]]:
         """Apply the phase to one named project payload; return payload and changes.
 
         Returns:
-            The resulting ``t.Pair[t.MutableJsonMapping, t.StrSequence]``.
+            The resulting ``tuple[t.MutableJsonMapping, Sequence[str]]``.
 
         """
         project_dir = tmp_path / "flext-sample"
@@ -141,7 +142,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         [(), ("custom.plugin",), ("pydantic.mypy", "pydantic.v1.mypy")],
     )
     def test_mypy_rejects_missing_or_v1_pydantic_plugin(
-        plugins: t.StrSequence,
+        plugins: Sequence[str],
     ) -> None:
         """The typed policy cannot remove mandatory Pydantic 2 support."""
         tooling = config.Infra.tooling
@@ -382,7 +383,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             list(u.Tests.toml_strings(tomlsort["sort_first"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+                    tooling, "tomlsort", "sort_first", TypeForm(Sequence[str])
                 )
             ),
         )
@@ -425,7 +426,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                     config.Infra.tooling,
                     "coverage.run",
                     "omit",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 )
             ),
         )

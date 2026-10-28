@@ -118,9 +118,13 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
 
     """
     if not callback:
+
+        def automated(report: m.Infra.AccessorMigrationReport) -> bool:
+            return bool(report.automated_change_count)
+
         return infra.accessor_migrate(
             m.Infra.AccessorMigrationInput(repository_root=project, apply=True)
-        ).map(lambda report: bool(report.automated_change_count))
+        ).map(automated)
     with infra.rope_workspace(project) as rope:
         preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
         return FlextInfraCodemodLoopPhaseAccessorRename().apply(

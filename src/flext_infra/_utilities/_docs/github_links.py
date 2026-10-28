@@ -9,10 +9,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flext_infra import FlextInfraConfig, c, config, m, t
+from flext_infra import FlextInfraConfig, c, config, m
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -74,7 +75,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
             policy_branch=inputs.spec.branch_policy.integration_branch,
             inputs=inputs,
         ).unwrap()
-        declarations: list[t.Triple[str, str, Path]] = []
+        declarations: list[tuple[str, str, Path]] = []
         if identity.origin_remote is not None:
             declarations.append(
                 (
@@ -345,11 +346,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
         raw: str,
         target: str,
         repository_root: Path,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> Sequence[m.Infra.AuditIssue]:
         """Emit audit issues for stale or locally-missing GitHub doc URLs.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.AuditIssue]``.
+            The resulting ``Sequence[m.Infra.AuditIssue]``.
 
         """
         issues: list[m.Infra.AuditIssue] = []

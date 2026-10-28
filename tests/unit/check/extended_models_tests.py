@@ -17,7 +17,7 @@ class TestsFlextInfraModels:
     @staticmethod
     @pytest.mark.parametrize("end", [None, (12, 0)])
     def test_sarif_locations_preserve_optional_spans_and_related_order(
-        end: t.Pair[int, int] | None,
+        end: tuple[int, int] | None,
     ) -> None:
         """Source models retain their coordinates and emit native SARIF aliases."""
         primary = m.Infra.SarifLocation.model_validate({
@@ -79,11 +79,11 @@ class TestsFlextInfraModels:
             tm.that(published_region, eq=region or {})
 
     @staticmethod
-    def _sample_issues() -> t.Triple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
+    def _sample_issues() -> tuple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
         """Build three distinct sample gate issues for summary assertions.
 
         Returns:
-            The resulting ``t.Triple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]``.
+            The resulting ``tuple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]``.
 
         """
         issue1 = m.Infra.Issue(

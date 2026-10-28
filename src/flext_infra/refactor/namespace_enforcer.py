@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
@@ -43,9 +44,9 @@ class FlextInfraNamespaceEnforcer(
         self,
         *,
         apply: bool = False,
-        project_names: t.StrSequence | None = None,
+        project_names: Sequence[str] | None = None,
         module: str | None = None,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
 
@@ -187,15 +188,15 @@ class FlextInfraNamespaceEnforcer(
     def _resolve_project_roots(
         self,
         *,
-        project_names: t.StrSequence | None = None,
-    ) -> t.SequenceOf[Path]:
+        project_names: Sequence[str] | None = None,
+    ) -> Sequence[Path]:
         """Resolve the selected namespace-enabled roots through the topology owner.
 
         ``.`` names this repository itself; an unknown name is a caller error
         and escapes loud instead of silently enforcing nothing.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            The resulting ``Sequence[Path]``.
 
         Raises:
             ValueError: If ``resolved.failure``.

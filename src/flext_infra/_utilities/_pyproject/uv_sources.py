@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping, Sequence
 
 from flext_cli import u
 from packaging.requirements import Requirement
@@ -34,7 +34,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         document: t.Cli.TomlDocument,
         *,
         development: bool = True,
-        extras: t.StrSequence | None = None,
+        extras: Sequence[str] | None = None,
     ) -> p.Result[list[str]]:
         """Read declared requirements without resolving or flattening a graph.
 
@@ -110,8 +110,8 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
     @staticmethod
     def _uv_override_wire(
-        entries: t.SequenceOf[str | m.Infra.UvScopedOverride],
-    ) -> t.JsonValueList:
+        entries: Sequence[str | m.Infra.UvScopedOverride],
+    ) -> list[t.JsonValue]:
         """Elect declared global overrides while preserving native scoped policy.
 
         Returns:
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     @classmethod
     def _declared_internal_overrides(
         cls, document: t.Cli.TomlDocument
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Derive internal overrides from this project's own Git URL requirements.
 
         Every declared internal requirement carrying a direct Git URL (runtime,
@@ -171,9 +171,9 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         """
         lines = cls.document_requirement_lines(document)
         if lines.failure:
-            return r[t.StrSequence].from_failure(lines)
+            return r[Sequence[str]].from_failure(lines)
         own = cls._own_distribution(document)
-        urls: t.MutableMappingKV[str, str] = {}
+        urls: MutableMapping[str, str] = {}
         for line in lines.value:
             name = cls._internal_dependency_name(
                 line, declared_sources={}, candidate_sources={}
@@ -184,11 +184,11 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             if url is None or not url.startswith(c.Infra.GIT_URL_SCHEME_PREFIX):
                 continue
             if urls.setdefault(name, url) != url:
-                return r[t.StrSequence].fail(
+                return r[Sequence[str]].fail(
                     f"internal requirement {name} declares conflicting Git URLs: "
                     f"{urls[name]} and {url}"
                 )
-        return r[t.StrSequence].ok(
+        return r[Sequence[str]].ok(
             tuple(f"{name} @ {url}" for name, url in sorted(urls.items()))
         )
 
@@ -216,7 +216,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         lines = cls.document_requirement_lines(document)
         if lines.failure:
             return result_type.from_failure(lines)
-        migrations: t.MutableMappingKV[
+        migrations: MutableMapping[
             tuple[str, str], m.Infra.GitSourceReferenceMigration
         ] = {}
         for line in lines.value:
@@ -248,8 +248,8 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         uv: t.Cli.TomlTable,
         document: t.Cli.TomlDocument,
         *,
-        candidate_sources: t.StrMapping,
-        requirements: t.StrSequence,
+        candidate_sources: Mapping[str, str],
+        requirements: Sequence[str],
         resolution: m.Infra.UvResolutionSpec,
     ) -> None:
         """Publish declared, derived internal and candidate overrides once.
@@ -286,7 +286,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             is not None
             and name != own
         })
-        exclusions: t.JsonValueList = [
+        exclusions: list[t.JsonValue] = [
             {"package": {"name": name}, "dependencies": [own]}
             for name in internal
             if own is not None
@@ -327,9 +327,9 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         document: t.Cli.TomlDocument,
         *,
         resolution: m.Infra.UvResolutionSpec,
-        candidate_sources: t.StrMapping,
+        candidate_sources: Mapping[str, str],
         workspace: m.Infra.WorkspaceSpec,
-        local_requirements: t.StrSequence,
+        local_requirements: Sequence[str],
     ) -> p.Result[bool]:
         """Publish native workspace membership without altering package requirements.
 
@@ -394,7 +394,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         # A workspace root lowers its members through native workspace sources;
         # only a project resolving its internal requirements by URL derives them.
         derived = (
-            r[t.StrSequence].ok(())
+            r[Sequence[str]].ok(())
             if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else cls._declared_internal_overrides(document)
         )

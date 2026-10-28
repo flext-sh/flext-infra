@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-
-from flext_core import u
 
 import flext_infra
 from flext_infra import c, check, m, p, r, t, u, workspace
@@ -64,7 +63,7 @@ class FlextInfraWorkspaceRoutes:
     def _tests_full(
         cls, params: m.Infra.WorkspaceTestsRequest
     ) -> p.Cli.ErasedCommandResult:
-        """Run incremental then complete native suites through the same boundary.
+        """Run one complete native suite without Testmon or an incremental pre-run.
 
         Returns:
             The native result, preserving the first failing status.
@@ -185,7 +184,7 @@ class FlextInfraWorkspaceRoutes:
             else params
         )
 
-        def runtime_identity(gates: t.StrSequence) -> p.Result[str]:
+        def runtime_identity(gates: Sequence[str]) -> p.Result[str]:
             return check.FlextInfraGateRegistry(
                 project_gates=inputs.spec.make.project_check_gates
             ).runtime_identity(

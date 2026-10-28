@@ -7,13 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, settings, u
 from flext_infra._promoted import FlextInfraPromotedDiscovery
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
     from flext_infra import p

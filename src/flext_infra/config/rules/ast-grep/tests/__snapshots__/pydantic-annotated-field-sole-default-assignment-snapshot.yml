@@ -1,13 +1,13 @@
 id: pydantic-annotated-field-sole-default-assignment
 snapshots:
-  "class Spec:\n    flags: Annotated[\n        t.StrSequence,\n        m.Field(default=()),\n    ]\n":
+  "class Spec:\n    flags: Annotated[\n        Sequence[str],\n        m.Field(default=()),\n    ]\n":
     fixed: |
       class Spec:
-          flags: t.StrSequence = ()
+          flags: Sequence[str] = ()
     labels:
     - source: |-
         flags: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(default=()),
             ]
       style: primary

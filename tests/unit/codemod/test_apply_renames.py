@@ -60,10 +60,13 @@ class TestsFlextInfraApplyRenames:
             )
 
     @pytest.fixture
-    def campaign_runtime(self: Path) -> None:
+    def campaign_runtime(
+        self,
+        tmp_path: Path,
+    ) -> None:
         """Every publication consumes its checkout's independently owned runtime."""
-        u.Tests.provision_checkout(self)
-        u.Tests.provision_runtime_environment(self)
+        u.Tests.provision_checkout(tmp_path)
+        u.Tests.provision_runtime_environment(tmp_path)
 
     @staticmethod
     def test_rejected_joint_runtime_never_publishes_provider_or_receivers(

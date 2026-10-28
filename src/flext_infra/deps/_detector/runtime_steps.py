@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 
 
@@ -24,7 +24,7 @@ class FlextInfraDepsDetectorRuntimeSteps:
         params: m.Infra.DetectCommand,
         root: Path,
         venv_bin: Path,
-    ) -> p.Result[t.SequenceOf[Path]]:
+    ) -> p.Result[Sequence[Path]]:
         """Discover projects and verify deptry.
 
         Returns:
@@ -37,18 +37,18 @@ class FlextInfraDepsDetectorRuntimeSteps:
             projects_filter=u.Infra.normalize_sequence_values(params.projects),
         )
         if projects_result.failure:
-            return r[t.SequenceOf[Path]].from_failure(projects_result)
-        projects: t.SequenceOf[Path] = projects_result.value
+            return r[Sequence[Path]].from_failure(projects_result)
+        projects: Sequence[Path] = projects_result.value
         if not projects:
             detector.log.error("deps_no_projects_found")
-            return r[t.SequenceOf[Path]].fail("no projects found")
+            return r[Sequence[Path]].fail("no projects found")
         deptry_path = venv_bin / c.Infra.DEPTRY
         if not deptry_path.exists():
             detector.log.error("deps_deptry_missing", path=str(deptry_path))
-            return r[t.SequenceOf[Path]].fail(
+            return r[Sequence[Path]].fail(
                 f"Deptry executable not found at {deptry_path}",
             )
-        return r[t.SequenceOf[Path]].ok(projects)
+        return r[Sequence[Path]].ok(projects)
 
     def _run_project_detection(
         self,

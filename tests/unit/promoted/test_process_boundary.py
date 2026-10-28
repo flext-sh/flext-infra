@@ -11,17 +11,13 @@ import os
 import select
 import signal
 import sys
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
 import pytest
 
-from tests import c
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-
-from tests import t
+from tests import c, t
 
 
 @dataclasses.dataclass(frozen=True)
@@ -129,7 +125,7 @@ raise SystemExit(
         cls,
         command: Path,
         *,
-        env: t.StrMapping,
+        env: Mapping[str, str],
         stdout: int | None = None,
         stderr: int | None = None,
         process_group: bool = False,

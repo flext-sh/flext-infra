@@ -16,7 +16,7 @@ import ast
 import functools
 import re
 from bisect import bisect_right
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -171,7 +171,7 @@ class FlextInfraModTextGateEngine:
 
         """
         rules: list[m.Infra.ModTextRule] = []
-        owners: t.MutableMappingKV[str, Path] = {}
+        owners: MutableMapping[str, Path] = {}
         for snapshot in snapshots:
             parsed = cls._rules_from_state(snapshot)
             if parsed.failure:
@@ -227,15 +227,15 @@ class FlextInfraModTextGateEngine:
     def _validated_entry(
         raw: t.JsonValue,
         source: Path,
-    ) -> p.Result[t.MappingKV[str, t.JsonValue]]:
+    ) -> p.Result[Mapping[str, t.JsonValue]]:
         """Require one catalogue entry to be a mapping with only known keys.
 
         Returns:
-            The resulting ``p.Result[t.MappingKV[str, t.JsonValue]]``.
+            The resulting ``p.Result[Mapping[str, t.JsonValue]]``.
 
         """
         if not isinstance(raw, dict):
-            return r[t.MappingKV[str, t.JsonValue]].fail(
+            return r[Mapping[str, t.JsonValue]].fail(
                 f"text rule entry must be a mapping in {source}: {raw!r}",
             )
         unknown = set(raw).difference((
@@ -251,14 +251,14 @@ class FlextInfraModTextGateEngine:
             c.Infra.CODEMOD_TEXT_KEY_DISTRIBUTIONS,
         ))
         if unknown:
-            return r[t.MappingKV[str, t.JsonValue]].fail(
+            return r[Mapping[str, t.JsonValue]].fail(
                 f"unknown text rule keys {sorted(unknown)} in {source}",
             )
-        return r[t.MappingKV[str, t.JsonValue]].ok(raw)
+        return r[Mapping[str, t.JsonValue]].ok(raw)
 
     @staticmethod
     def _entry_sequence(
-        entry: t.MappingKV[str, t.JsonValue],
+        entry: Mapping[str, t.JsonValue],
         key: str,
     ) -> tuple[t.JsonValue, ...]:
         """Read one entry field as a JSON sequence under bare iteration semantics.
@@ -275,7 +275,7 @@ class FlextInfraModTextGateEngine:
 
     @staticmethod
     def _validated_pattern_fields(
-        entry: t.MappingKV[str, t.JsonValue],
+        entry: Mapping[str, t.JsonValue],
         source: Path,
     ) -> p.Result[tuple[str, tuple[str, ...], re.Pattern[str]]]:
         """Validate the find regex and its declared flag names.
@@ -313,14 +313,14 @@ class FlextInfraModTextGateEngine:
 
     @staticmethod
     def _validated_captures(
-        entry: t.MappingKV[str, t.JsonValue],
+        entry: Mapping[str, t.JsonValue],
         source: Path,
         compiled: re.Pattern[str],
-    ) -> p.Result[t.MappingKV[str, str]]:
+    ) -> p.Result[Mapping[str, str]]:
         """Validate the capture_equals map against the compiled pattern groups.
 
         Returns:
-            The resulting ``p.Result[t.MappingKV[str, str]]``.
+            The resulting ``p.Result[Mapping[str, str]]``.
 
         """
         raw_captures = entry.get(c.Infra.CODEMOD_TEXT_KEY_CAPTURE_EQUALS, {})
@@ -333,17 +333,17 @@ class FlextInfraModTextGateEngine:
             captures[name] = value
         unknown_captures = set(captures).difference(compiled.groupindex)
         if unknown_captures:
-            return r[t.MappingKV[str, str]].fail(
+            return r[Mapping[str, str]].fail(
                 f"unknown regex captures {sorted(unknown_captures)} in {source}",
             )
-        return r[t.MappingKV[str, str]].ok(captures)
+        return r[Mapping[str, str]].ok(captures)
 
     @staticmethod
     def _validated_selector_fields(
-        entry: t.MappingKV[str, t.JsonValue],
+        entry: Mapping[str, t.JsonValue],
         source: Path,
         compiled: re.Pattern[str],
-    ) -> p.Result[tuple[tuple[str, ...], t.MappingKV[str, str], int | None]]:
+    ) -> p.Result[tuple[tuple[str, ...], Mapping[str, str], int | None]]:
         """Validate distributions, the capture map, and the expected receipt.
 
         Returns:
@@ -370,16 +370,16 @@ class FlextInfraModTextGateEngine:
         )
         if captures.failure:
             return r[
-                tuple[tuple[str], t.MappingKV[str, str], int | None, ...]
+                tuple[tuple[str], Mapping[str, str], int | None, ...]
             ].from_failure(captures)
         expected = entry.get(c.Infra.CODEMOD_TEXT_KEY_EXPECTED)
         if expected is not None and (
             not isinstance(expected, int) or isinstance(expected, bool) or expected < 0
         ):
-            return r[tuple[tuple[str], t.MappingKV[str, str], int | None, ...]].fail(
+            return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].fail(
                 f"text rule expected receipt must be non-negative in {source}",
             )
-        return r[tuple[tuple[str], t.MappingKV[str, str], int | None, ...]].ok((
+        return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].ok((
             distributions,
             captures.value,
             expected,
@@ -388,28 +388,28 @@ class FlextInfraModTextGateEngine:
     @staticmethod
     def _selector_failure(
         source: Path,
-    ) -> p.Result[tuple[tuple[str, ...], t.MappingKV[str, str], int | None]]:
+    ) -> p.Result[tuple[tuple[str, ...], Mapping[str, str], int | None]]:
         """Report invalid distribution declarations with the canonical message.
 
         Returns:
             The resulting failure for one invalid distributions declaration.
 
         """
-        return r[tuple[tuple[str], t.MappingKV[str, str], int | None, ...]].fail(
+        return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].fail(
             f"text rule distributions must be unique non-empty names in {source}",
         )
 
     @staticmethod
     def _captures_failure(
         source: Path,
-    ) -> p.Result[t.MappingKV[str, str]]:
+    ) -> p.Result[Mapping[str, str]]:
         """Report invalid capture maps with the canonical message.
 
         Returns:
             The resulting failure for one invalid capture_equals mapping.
 
         """
-        return r[t.MappingKV[str, str]].fail(
+        return r[Mapping[str, str]].fail(
             f"text rule capture_equals must map captures to strings in {source}",
         )
 
@@ -442,7 +442,7 @@ class FlextInfraModTextGateEngine:
         if selector.failure:
             return r[m.Infra.ModTextRule].from_failure(selector)
         distributions, captures, expected = selector.value
-        scopes: t.MutableMappingKV[str, tuple[str, ...]] = {}
+        scopes: MutableMapping[str, tuple[str, ...]] = {}
         for key in (
             c.Infra.CODEMOD_TEXT_KEY_INCLUDE,
             c.Infra.CODEMOD_TEXT_KEY_EXCLUDE,
@@ -509,7 +509,7 @@ class FlextInfraModTextGateEngine:
         root: Path,
         rules: tuple[m.Infra.ModTextRule, ...],
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> p.Result[tuple[Path, ...]]:
         """Inventory Python sources and only explicitly declared Markdown globs.
 
@@ -553,7 +553,7 @@ class FlextInfraModTextGateEngine:
         cls,
         root: Path,
         rules: tuple[m.Infra.ModTextRule, ...],
-        sources: t.MappingKV[Path, str] | None,
+        sources: Mapping[Path, str] | None,
     ) -> p.Result[tuple[Path, ...]]:
         """Authenticate the explicitly elected Markdown sources.
 
@@ -618,7 +618,7 @@ class FlextInfraModTextGateEngine:
         cls,
         root: Path,
     ) -> p.Result[
-        t.Triple[
+        tuple[
             tuple[m.Cli.AtomicFileState, ...],
             m.Cli.AtomicFileState,
             tuple[m.Infra.ModTextRule, ...],
@@ -633,7 +633,7 @@ class FlextInfraModTextGateEngine:
         catalogues = cls._catalogue_states(root)
         if catalogues.failure:
             return r[
-                t.Triple[
+                tuple[
                     tuple[m.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
                     tuple[m.Infra.ModTextRule, ...],
@@ -642,7 +642,7 @@ class FlextInfraModTextGateEngine:
         loaded = cls._rules_from_states(catalogues.value)
         if loaded.failure:
             return r[
-                t.Triple[
+                tuple[
                     tuple[m.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
                     tuple[m.Infra.ModTextRule, ...],
@@ -654,7 +654,7 @@ class FlextInfraModTextGateEngine:
         )
         if identity.failure:
             return r[
-                t.Triple[
+                tuple[
                     tuple[m.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
                     tuple[m.Infra.ModTextRule, ...],
@@ -663,14 +663,14 @@ class FlextInfraModTextGateEngine:
         selected = cls._selected_rules(identity.value, loaded.value)
         if selected.failure:
             return r[
-                t.Triple[
+                tuple[
                     tuple[m.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
                     tuple[m.Infra.ModTextRule, ...],
                 ]
             ].from_failure(selected)
         return r[
-            t.Triple[
+            tuple[
                 tuple[m.Cli.AtomicFileState, ...],
                 m.Cli.AtomicFileState,
                 tuple[m.Infra.ModTextRule, ...],
@@ -681,19 +681,19 @@ class FlextInfraModTextGateEngine:
     def _scan_paths(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
         rules: tuple[m.Infra.ModTextRule, ...],
         *,
         fix: bool,
-        sources: t.MappingKV[Path, str] | None = None,
-    ) -> p.Result[t.Pair[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan], ...]]:
+        sources: Mapping[Path, str] | None = None,
+    ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
         """Plan each elected source; the first unsafe target fails loud.
 
         Returns:
             Reported matches and the final file plans, or the first failure.
 
         """
-        outcome = r[t.Pair[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan], ...]]
+        outcome = r[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]
         entries: list[m.Infra.ModTextFinding] = []
         plans: list[m.Infra.CodegenFilePlan] = []
         for path in paths:
@@ -748,16 +748,16 @@ class FlextInfraModTextGateEngine:
         cls,
         root: Path,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
         validate_receipts: bool = False,
-    ) -> p.Result[t.Pair[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan], ...]]:
+    ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
         """Plan the complete text cascade without publishing any source.
 
         Returns:
             The workspace report and its final file plans, or the first failure.
 
         """
-        outcome = r[t.Pair[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan], ...]]
+        outcome = r[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]
         root = root.absolute()
         entries: list[m.Infra.ModTextFinding] = []
         files: set[Path] = set()
@@ -819,15 +819,15 @@ class FlextInfraModTextGateEngine:
         *,
         fix: bool,
         validate_receipts: bool,
-        sources: t.MappingKV[Path, str] | None = None,
-    ) -> p.Result[t.Pair[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan], ...]]:
+        sources: Mapping[Path, str] | None = None,
+    ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
         """Plan one member's rules using its declared distribution identity.
 
         Returns:
             Reported matches and final file plans, or the first failure.
 
         """
-        outcome = r[t.Pair[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan], ...]]
+        outcome = r[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]
         context = cls._elected_rules(root)
         if context.failure:
             return outcome.from_failure(context)
@@ -900,11 +900,11 @@ class FlextInfraModTextGateEngine:
         source: str,
         target: str,
         rules: tuple[m.Infra.ModTextRule, ...],
-    ) -> t.Triple[str, list[m.Infra.ModTextFinding], int]:
+    ) -> tuple[str, list[m.Infra.ModTextFinding], int]:
         """Rewrite one source text through every elected rule entry.
 
         Returns:
-            The resulting ``t.Triple[str, list[m.Infra.ModTextFinding], int]``.
+            The resulting ``tuple[str, list[m.Infra.ModTextFinding], int]``.
 
         """
         updated = source
@@ -938,7 +938,7 @@ class FlextInfraModTextGateEngine:
     def _expand_match(
         rule: m.Infra.ModTextRule,
         target: str,
-        line_starts: t.SequenceOf[int],
+        line_starts: Sequence[int],
         found: list[m.Infra.ModTextFinding],
         match: re.Match[str],
     ) -> str:

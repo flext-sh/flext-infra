@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -44,11 +44,11 @@ class FlextInfraModelsCheck:
         """Required Bandit JSON arrays, including a clean pair of empty arrays."""
 
         results: Annotated[
-            t.SequenceOf[FlextInfraModelsCheck.BanditFinding],
+            Sequence[FlextInfraModelsCheck.BanditFinding],
             m.Field(description="Native security findings"),
         ]
         errors: Annotated[
-            t.SequenceOf[FlextInfraModelsCheck.BanditScanError],
+            Sequence[FlextInfraModelsCheck.BanditScanError],
             m.Field(description="Source files that were not audited"),
         ]
 
@@ -56,7 +56,7 @@ class FlextInfraModelsCheck:
         """Canonical CLI payload for ``flext-infra check run``.
 
         Inherits canonical ``repository_root`` (``--repository-root``),
-        ``gates`` (parsed to ``t.StrSequence``), ``apply``/``dry_run``,
+        ``gates`` (parsed to ``Sequence[str]``), ``apply``/``dry_run``,
         ``projects`` and ``verbose`` from ``WriteMixin``; the scope
         root has exactly one owner so an unmapped option can never fall back
         to the current directory.
@@ -152,7 +152,7 @@ class FlextInfraModelsCheck:
         name: Annotated[str, m.Field(description="Display/project name")]
         path: Annotated[Path, m.Field(description="Resolved project root path")]
         applicable_gates: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Requested gates elected for this project's inputs"),
         ] = ()
         source_identity: Annotated[
@@ -362,7 +362,7 @@ class FlextInfraModelsCheck:
 
         gate: Annotated[str, m.Field(description="Gate name")]
         passed: Annotated[bool, m.Field(description="Gate execution status")]
-        errors: t.StrSequence = m.Field(
+        errors: Sequence[str] = m.Field(
             default_factory=tuple,
             description="Gate error messages",
         )
@@ -437,7 +437,7 @@ class FlextInfraModelsCheck:
             m.Field(description="Executions owned by a composite gate"),
         ] = m.Field(default_factory=dict)
         requested_components: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Native component inventory elected before execution"),
         ] = ()
 
@@ -689,14 +689,14 @@ class FlextInfraModelsCheck:
             ),
         ] = c.Infra.CheckPhase.COMPLETE
         requested_gates: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 min_length=1,
                 description="Resolved gate inventory requested before execution",
             ),
         ]
         pending_gates: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Requested gates whose project applicability is still pending"

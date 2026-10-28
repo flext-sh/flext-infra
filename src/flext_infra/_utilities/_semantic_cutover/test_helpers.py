@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
@@ -33,8 +33,8 @@ class FlextInfraUtilitiesSemanticTestHelpers(
     def _test_helper_edits(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
 
         class _MovedExports(cst.CSTTransformer):
             """Retire only the original declaration's former module export."""
@@ -135,7 +135,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
         path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         editable: frozenset[Path],
     ) -> m.Infra.ClassMoveRequest | None:
 
@@ -241,7 +241,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
     def _test_utilities_owner(
         workspace: p.Infra.RopeWorkspaceDsl,
         path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> Path:
         """Elect the unique declared utilities facade in this helper's tier.
 

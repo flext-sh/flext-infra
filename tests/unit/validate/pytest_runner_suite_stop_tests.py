@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import sqlite3
 import time
+from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
 
@@ -63,7 +64,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         )
 
     @staticmethod
-    def _slow_module(test_names: t.StrSequence) -> str:
+    def _slow_module(test_names: Sequence[str]) -> str:
         """Render one slow-marked module exercising the fixture package.
 
         Returns:

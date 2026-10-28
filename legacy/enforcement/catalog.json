@@ -948,7 +948,7 @@
     },
     {
       "id": "ENFORCE-091",
-      "description": "`from typing import ClassVar, List` — banned in favor of list / t.SequenceOf.",
+      "description": "`from typing import ClassVar, List` — banned in favor of list / Sequence.",
       "severity": "HIGH",
       "source": {
         "kind": "flext_infra_rule",
@@ -963,7 +963,7 @@
     },
     {
       "id": "ENFORCE-092",
-      "description": "`typing.List` attribute usage — use t.SequenceOf or collections.abc.Sequence.",
+      "description": "`typing.List` attribute usage — use Sequence or collections.abc.Sequence.",
       "severity": "HIGH",
       "source": {
         "kind": "flext_infra_rule",

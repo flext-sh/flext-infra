@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Generator, MutableMapping
+from collections.abc import Generator, MutableMapping, Sequence
 from functools import cache
 from typing import ClassVar
 
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @cache
     def class_base_names(
         source: str,
-    ) -> tuple[t.Pair[str, frozenset[str]], ...]:
+    ) -> tuple[tuple[str, frozenset[str]], ...]:
         """Name every class one module source declares with its base spellings.
 
         Classes are statements, so only statement bodies are traversed;
@@ -63,14 +63,14 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @staticmethod
     def module_class_base_names(
         module: ast.Module,
-    ) -> tuple[t.Pair[str, frozenset[str]], ...]:
+    ) -> tuple[tuple[str, frozenset[str]], ...]:
         """Read class names and base spellings from the existing module tree.
 
         Returns:
             Each class and its syntactic base names, including nested bodies.
 
         """
-        found: list[t.Pair[str, frozenset[str]]] = []
+        found: list[tuple[str, frozenset[str]]] = []
         pending: list[ast.AST] = [module]
         while pending:
             node = pending.pop()
@@ -204,9 +204,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         )
 
     @classmethod
-    def _module_level_statements(
-        cls, body: t.SequenceOf[ast.stmt]
-    ) -> Generator[ast.stmt]:
+    def _module_level_statements(cls, body: Sequence[ast.stmt]) -> Generator[ast.stmt]:
         """Yield statements executed in the module scope, including guarded blocks.
 
         Yields:
@@ -247,7 +245,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                     pass
 
     @staticmethod
-    def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> t.StrSequence:
+    def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> Sequence[str]:
         """Return string entries from a parsed literal sequence node.
 
         Returns:
@@ -279,7 +277,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return tuple(values)
 
     @staticmethod
-    def export_declaration_body(module: ast.Module) -> t.SequenceOf[ast.stmt]:
+    def export_declaration_body(module: ast.Module) -> Sequence[ast.stmt]:
         """Read metadata from the module or its single class-owned root.
 
         A module declaration wins over class metadata; unrelated nested classes
@@ -335,7 +333,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         )
         for node in body:
             if isinstance(node, ast.Assign):
-                targets: t.SequenceOf[ast.expr] = node.targets
+                targets: Sequence[ast.expr] = node.targets
             elif isinstance(node, ast.AnnAssign):
                 targets = (node.target,)
             else:
@@ -369,17 +367,17 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return ""
 
     @classmethod
-    def module_assignment_strings_source(cls, source: str, name: str) -> t.StrSequence:
+    def module_assignment_strings_source(cls, source: str, name: str) -> Sequence[str]:
         """Collect literal module strings, including class-owned export metadata.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return cls.module_assignment_strings(cls.parsed_module(source), name)
 
     @classmethod
-    def module_assignment_strings(cls, module: ast.Module, name: str) -> t.StrSequence:
+    def module_assignment_strings(cls, module: ast.Module, name: str) -> Sequence[str]:
         """Read literal and named-sequence strings from an existing parse.
 
         Returns:
@@ -402,12 +400,12 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         cls,
         source: str,
         name: str,
-    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
+    ) -> tuple[tuple[tuple[str, Sequence[str]], ...], Sequence[str]]:
         """Collect mapping entries and referenced names from an assignment.
 
         Returns:
-            The resulting ``t.Pair[tuple[t.Pair[str, t.StrSequence], ...],
-                t.StrSequence]``.
+            The resulting ``tuple[tuple[tuple[str, Sequence[str]], ...],
+                Sequence[str]]``.
 
         """
         return cls.mapping_entries_refs(cls._top_level_value(source, name))
@@ -415,7 +413,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @staticmethod
     def mapping_entries_refs(
         node: t.Infra.RopeAstNode | None,
-    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
+    ) -> tuple[tuple[tuple[str, Sequence[str]], ...], Sequence[str]]:
         """Return literal mapping entries plus variable references.
 
         Returns:
@@ -438,7 +436,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def _call_entries_refs(
         cls,
         node: t.Infra.RopeAstNode,
-    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
+    ) -> tuple[tuple[tuple[str, Sequence[str]], ...], Sequence[str]]:
         """Return entries and references of one mapping-producing call.
 
         Returns:
@@ -461,7 +459,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 )
         if function_name != "merge_lazy_imports":
             return ((), ())
-        entries: list[t.Pair[str, t.StrSequence]] = []
+        entries: list[tuple[str, Sequence[str]]] = []
         refs: list[str] = []
         for argument in args:
             if not FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(argument):
@@ -476,7 +474,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @staticmethod
     def _dict_entries_refs(
         node: t.Infra.RopeAstNode,
-    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
+    ) -> tuple[tuple[tuple[str, Sequence[str]], ...], Sequence[str]]:
         """Return string-sequence dict entries and unpack references.
 
         Returns:
@@ -485,7 +483,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         """
         keys = getattr(node, "keys", ()) or ()
         values = getattr(node, "values", ()) or ()
-        entries: list[t.Pair[str, t.StrSequence]] = []
+        entries: list[tuple[str, Sequence[str]]] = []
         refs: list[str] = []
         for key_node, value_node in zip(keys, values, strict=False):
             if key_node is None:
@@ -542,7 +540,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         current_module: str,
         symbol_name: str,
         package_module: bool,
-    ) -> t.Pair[str, str]:
+    ) -> tuple[str, str]:
         """Return ``(module, original_name)`` for one imported symbol binding.
 
         Returns:
@@ -589,7 +587,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return None
 
     @staticmethod
-    def class_bases_source(source: str, class_name: str) -> t.StrSequence:
+    def class_bases_source(source: str, class_name: str) -> Sequence[str]:
         """Return declared base names for one class in source.
 
         Returns:
@@ -770,7 +768,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return next((item.value for item in call.keywords if item.arg == keyword), None)
 
     @classmethod
-    def lazy_public_exports_source(cls, source: str) -> t.Pair[t.StrSequence, str]:
+    def lazy_public_exports_source(cls, source: str) -> tuple[Sequence[str], str]:
         """Return lazy-loader public exports or the local symbol holding them.
 
         Returns:
@@ -793,7 +791,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def lazy_import_mapping_source(
         cls,
         source: str,
-    ) -> t.Pair[tuple[t.Pair[str, t.StrSequence]], t.StrSequence, ...]:
+    ) -> tuple[tuple[tuple[str, Sequence[str]], ...], Sequence[str]]:
         """Read elected installer targets, including immutable inline mappings.
 
         Cache parsing by exact source content, not a path or filesystem timestamp.
@@ -848,7 +846,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def export_target_modules_source(
         source: str,
         package_name: str,
-        exports: t.StrSequence,
+        exports: Sequence[str],
     ) -> MutableMapping[str, str]:
         """Map exports → defining module via rope's parsed-source import table.
 

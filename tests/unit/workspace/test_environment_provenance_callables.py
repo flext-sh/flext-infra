@@ -188,7 +188,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
             return
         member_root = (runtime / live_repository.path).resolve()
         metadata = tm.ok(u.Infra.read_project_metadata_result(member_root))
-        package = u.Infra.declared_package_dir(metadata.package_name)
+        package = u.Infra.declared_package_dir(
+            metadata.package_name,
+            search_paths=(str(member_root / c.Infra.DEFAULT_SRC_DIR),),
+        )
         tm.that(package is not None, eq=True, msg=live_repository.distribution)
         if package is not None:
             tm.that(

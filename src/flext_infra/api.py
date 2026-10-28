@@ -378,7 +378,7 @@ class FlextInfra(
     def _project_captured_runtime(
         resolved: Path,
         root: Path,
-    ) -> p.Result[t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]]:
+    ) -> p.Result[tuple[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]]:
         """Load the root codegen policy and elect the workspace runtime context.
 
         Args:
@@ -392,14 +392,14 @@ class FlextInfra(
         captured = flext_infra.u.Infra.load_codegen_inputs(root)
         if captured.failure:
             return r[
-                t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
+                tuple[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
             ].from_failure(captured)
         runtime = workspace.FlextInfraWorkspaceDetector.resolution_context(resolved)
         if runtime.failure:
             return r[
-                t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
+                tuple[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
             ].from_failure(runtime)
-        return r[t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]].ok(
+        return r[tuple[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]].ok(
             (captured.value, runtime.value),
         )
 
@@ -407,7 +407,7 @@ class FlextInfra(
     def _project_workspace_target(
         root: Path,
         captured: m.Infra.CodegenInputs,
-    ) -> p.Result[t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]]:
+    ) -> p.Result[tuple[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]]:
         """Load the workspace spec and resolve its conform target.
 
         Args:
@@ -424,7 +424,7 @@ class FlextInfra(
         )
         if observed.failure:
             return r[
-                t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
+                tuple[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
             ].from_failure(observed)
         target = workspace.FlextInfraWorkspaceDetector.conform_target(
             root,
@@ -433,9 +433,9 @@ class FlextInfra(
         )
         if target.failure:
             return r[
-                t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
+                tuple[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
             ].from_failure(target)
-        return r[t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]].ok(
+        return r[tuple[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]].ok(
             (observed.value, target.value),
         )
 

@@ -5,9 +5,9 @@ valid:
   - |
     adapter = u.type_adapter(TypeForm(t.JsonDict))
   - |
-    factory = u.empty(contract_factory=lambda: TypeForm(t.SequenceOf[Item]))
+    factory = u.empty(contract_factory=lambda: TypeForm(Sequence[Item]))
 invalid:
   - |
     adapter = u.type_adapter(t.TypeForm(t.JsonDict))
   - |
-    factory = u.empty(contract_factory=lambda: t.TypeForm(t.SequenceOf[Item]))
+    factory = u.empty(contract_factory=lambda: t.TypeForm(Sequence[Item]))

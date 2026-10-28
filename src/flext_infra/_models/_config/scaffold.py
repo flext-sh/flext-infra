@@ -223,9 +223,7 @@ class FlextInfraModelsConfigScaffold:
             m.Field(description="Functional scaffold example"),
         ]
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Generated Git ignore sections"),
         ]
 

@@ -1,0 +1,47 @@
+# Engine-map D1 (flext-pipol / flext-u9h2i, W1 census): rope is the only
+# Python interpreter in FLEXT-authored engine code (engine-map section 0,
+# law 2). A module of the flext-infra engine that imports the stdlib `ast`
+# module re-derives by hand what the single rope PyModules index already
+# models; the import is the census anchor of the deprecated route, so every
+# consumer of the route is a finding here until the W2 waves migrate the
+# queries to the rope index and the route is deleted at census zero.
+#
+# The practice-level ban, not per-file marks: the `_rope` family is the
+# sanctioned rope adapter and owns its internal analysis bridging (its
+# migration is the adapter's own cutover), and the two BLOCKED sites below
+# are whitelisted by engine-map section 2 pending the operator-authorized
+# runtime probe (flext-u9h2i).
+id: ban-engine-python-ast
+language: Python
+severity: error
+files:
+  - "flext-infra/src/flext_infra/**/*.py"
+  - "src/flext_infra/**/*.py"
+ignores:
+  # The rope adapter family: its internal bridging is the capability the
+  # engine routes through (engine-map section 0, law 6; D17).
+  - "**/_utilities/_rope/**"
+  # BLOCKED-ON-ROPE-CAPABILITY flext-u9h2i, probe pending operator
+  # (engine-map section 2 BLOCKED list: both generators).
+  - "**/codemod_type_set_rules.py"
+  # BLOCKED-ON-ROPE-CAPABILITY flext-u9h2i, probe pending operator
+  # (engine-map section 2 BLOCKED list: :764 and :794).
+  - "**/codemod_native_package_utilities.py"
+rule:
+  any:
+    - all:
+        - kind: import_statement
+        - has:
+            stopBy: end
+            kind: dotted_name
+            regex: "^ast(?:\\.|$)"
+    - all:
+        - kind: import_from_statement
+        - has:
+            field: module_name
+            regex: "^ast(?:\\.|$)"
+message: >-
+  Engine code imports the stdlib `ast` module: rope is the only Python
+  interpreter in FLEXT-authored engine code (engine-map D1); migrate the
+  queries to the single rope PyModules index. compat: stdlib_ast_analysis ->
+  rope_pymodules_index; fix: rewire via make mod.

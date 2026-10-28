@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
-from flext_infra import c, p, r, t
+from flext_infra import c, p, r
 
 
 class FlextInfraUtilitiesGitRequirementSource:
@@ -59,7 +59,7 @@ class FlextInfraUtilitiesGitRequirementSource:
         return c.Infra.GIT_COMMIT_OID_RE.fullmatch(ref) is not None
 
     @staticmethod
-    def declared_git_source(requirement: str) -> p.Result[t.Pair[str, str]]:
+    def declared_git_source(requirement: str) -> p.Result[tuple[str, str]]:
         """Parse one requirement's declared direct Git source.
 
         Returns ``(canonical_url, ref)`` for a requirement that declares
@@ -73,36 +73,36 @@ class FlextInfraUtilitiesGitRequirementSource:
         caller's decision (``ref_is_commit``).
 
         Returns:
-            The resulting ``p.Result[t.Pair[str, str]]``.
+            The resulting ``p.Result[tuple[str, str]]``.
 
         """
         requirement_part, _, _ = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
-            return r[t.Pair[str, str]].fail(f"invalid requirement head: {requirement}")
+            return r[tuple[str, str]].fail(f"invalid requirement head: {requirement}")
         _, at_separator, source = requirement_part.partition("@")
         if not at_separator:
             # Plain workspace requirement: no direct git source is declared.
             # Success payloads are never None (flext-core result law), so the
             # caller reads the empty pair as "no declared source".
-            return r[t.Pair[str, str]].ok(("", ""))
+            return r[tuple[str, str]].ok(("", ""))
         source = source.strip()
         if not source.startswith(c.Infra.GIT_URL_SCHEME_PREFIX):
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 f"internal dependency direct source must be a git URL: {requirement}",
             )
         url, ref_separator, ref = source.rpartition("@")
         url = url.removeprefix(c.Infra.GIT_URL_SCHEME_PREFIX).strip()
         ref = ref.strip()
         if not ref_separator or not ref:
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 f"internal dependency git source must declare a branch or ref: "
                 f"{requirement}",
             )
         canonical = FlextInfraUtilitiesGitRequirementSource._canonical_https_url(url)
         if canonical.failure:
-            return r[t.Pair[str, str]].from_failure(canonical)
-        return r[t.Pair[str, str]].ok((canonical.value, ref))
+            return r[tuple[str, str]].from_failure(canonical)
+        return r[tuple[str, str]].ok((canonical.value, ref))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitRequirementSource"]

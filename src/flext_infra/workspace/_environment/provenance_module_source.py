@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
+from collections.abc import Mapping, Sequence
 from importlib.machinery import (
     BuiltinImporter,
     ExtensionFileLoader,
@@ -48,7 +49,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
     def _module_spec_source(
         cls,
         module_name: str,
-        namespace: t.MappingKV[str, t.Infra.NativeOperand],
+        namespace: Mapping[str, t.Infra.NativeOperand],
         native: ModuleSpec,
     ) -> p.Result[Path]:
         """Resolve an authenticated native spec through its declared loader.
@@ -89,15 +90,15 @@ class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
     def _native_child_parent(
         module_name: str,
         module: ModuleType,
-        namespace: t.MappingKV[str, t.Infra.NativeOperand],
-    ) -> p.Result[t.Pair[str, ModuleType]]:
+        namespace: Mapping[str, t.Infra.NativeOperand],
+    ) -> p.Result[tuple[str, ModuleType]]:
         """Observe the exact registrations used by native module construction.
 
         Returns:
             The canonical parent registration or the first identity mismatch.
 
         """
-        result_type = r[t.Pair[str, ModuleType]]
+        result_type = r[tuple[str, ModuleType]]
         name = namespace.get("__name__")
         if type(module) is not ModuleType or not isinstance(name, str):
             return result_type.fail(
@@ -131,7 +132,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
         cls,
         module_name: str,
         module: ModuleType,
-        namespace: t.MappingKV[str, t.Infra.NativeOperand],
+        namespace: Mapping[str, t.Infra.NativeOperand],
     ) -> p.Result[Path]:
         """Bind a spec-less native child to its parent's real binary authority.
 
@@ -210,7 +211,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
     @staticmethod
     def _namespace_module_source(
         module_name: str,
-        locations: t.SequenceOf[str] | None,
+        locations: Sequence[str] | None,
         declared_paths: tuple[t.Infra.NativeOperand, ...],
     ) -> p.Result[Path]:
         """Bind a namespace's native search path to exactly one physical origin.

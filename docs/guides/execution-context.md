@@ -424,10 +424,36 @@ Opaque binary exports are admitted from their installed stub declaration before
 source-only alias traversal; a binary resource is never treated as Python source.
 An annotation-only global in that stub declares a value, not a type alias. It
 retains the constant owner; duplicate class/value declarations remain ambiguous.
-Project dependency inspection uses Rope and LibCST source analysis only; generation
-does not import the analyzed project or require its Pulumi SDK to be installed in
-the Infra runtime. Native extensions remain subject to the supplied Rope project's
-declared native-module election, without an independent import-spec probe.
+Project dependency inspection and semantic Python transformations must use the
+existing native project and its capabilities under
+[ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17).
+The owning `c/t/p/m/u` families provide configuration, vocabulary, aliases,
+protocols, DTOs and adapters; composition roots inject capability-named contracts
+into services instead of exposing library names. Preserve the same native model
+and refresh affected resources incrementally; do not add a parallel parser,
+semantic index or engine to compensate for repeated work.
+
+Retire custom Python analysis or source rewriting through LibCST, regex or
+independent parsing at the native owner, closing its consumers with public
+runtime proof. FLEXT code consumes native scopes, bindings, objects and planned
+refactoring changes; it does not interpret an AST itself, including one supplied
+by Rope. Prove and report a missing SDK capability at its owner instead of
+adding an AST walker, another parser or a fallback. These are target
+contracts, not evidence that the remaining migrations or SourceView acceptance
+have completed.
+
+This boundary does not remove template generation, non-Python format parsing,
+Ruff, ast-grep or other canonical check/fix/format tooling, and does not change
+frozen gate policy. Generation must not import the analyzed project or require
+its Pulumi SDK in the Infra runtime. Native extensions remain subject to the
+supplied project's declared native-module election, without an independent
+import-spec probe.
+
+A DSL consumer that updates one working source binds it through the existing
+source-view owner. That binding retains the entry candidate's foreign/provider
+plans and their original witnesses and modes; an owned-source mapping must not
+silently replace the complete cohort. Explicit declarations still reject
+competing bytes before the native view changes.
 
 Type-facade admission evaluates the class, exports and alias bindings from one
 parsed view of the planned source. Node identity from a different parse cannot
@@ -736,15 +762,24 @@ restoration tracked by `flext-vjj1s.8`. Its complete native inventory and source
 module ownership determine coverage and destinations; a consumed-model filter is
 not the accepted scope. The ADR owns the structural data/callable distinction,
 runtime boundaries, grouping, collision failure, pilot matrix and expansion order.
-The ADR's enrollment/phase admission mechanism is a **proposal awaiting an
-explicit operator decision**, not part of its accepted protocol target. Drift
-admission for live pilot cohorts versus staged pilot qualification before global
-rollout remains undecided; no gate-policy change follows from the pilot request
-alone. Complete workspace discovery/planning and Python checker scopes remain
-unchanged. Staged validation is not evidence of a published pilot. Another pattern
+The operator explicitly authorized drift admission by coherent cohort on
+2026-10-28, with pilots published and integrated before fleet rollout. The existing
+transaction/admission owner implements this bounded change; it is not a new
+projector, loop or a reduction of Python checker scope. Complete workspace
+discovery/planning remains visible, and unadmitted cohorts remain explicitly
+incomplete. Recompose the admitted candidate through the same planners rather
+than filter a final global file list whose shared exports can reference pending
+outputs. Staged validation is not evidence of a published pilot. Another pattern
 waits for this entire pattern's fleet and consumer cutover, runtime/gates and
 integration closure under the ADR. Beads owns progress; publisher receipts supply
 evidence, not a second tracker.
+The accepted DSL integration is `RopeWorkspaceDsl.protocol_projection()` with a
+typed invocation-local projection plan, consumed by both generation and an
+existing `ModLoopPhase.plan` callback. Share the invocation's authenticated native
+session/snapshot across callbacks and refresh changed resources incrementally.
+No fake static restructure patterns or per-symbol catalogs represent this dynamic
+projection. The entry, callback, cohort policy and runtime receipts remain
+implementation/validation work, not proven capabilities of the current engine.
 Authored rewiring and obsolete-owner retirement run through `make mod`; its coherent
 candidate includes dependent projection through the existing generation owner.
 `make gen` continues to derive protocols and fails before effects if publication
@@ -3782,6 +3817,11 @@ snapshot's source inventory only. Configuration, local workspace metadata and
 the conformance target are resolved by the managed pass that consumes them;
 initializer planning does not repeat that resolution for every member. Both
 passes retain the same source authentication and publication boundaries.
+Declared facade parents outside that inventory resolve through the bound native
+project's elected package resources, including the consumer's admitted editable
+suppliers. They remain read-only inputs, never additional plan targets. Namespace
+spelling does not establish a sibling directory; do not construct substitute
+paths or run another ambient-import election beside the native source model.
 The codemod generic-specialization fact is declaration-only, before migration:
 it passes the injected `snapshot.engine` to the facade-member owner, resolves
 the published `p` and `t` classes and their inherited members through native

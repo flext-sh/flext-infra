@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -76,7 +77,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
         member: m.Infra.RepositoryRef,
-        quality: t.MappingKV[tuple[Path, str], int],
+        quality: Mapping[tuple[Path, str], int],
     ) -> m.Infra.FleetRepoGaps:
         """Probe one declared member at its composed path.
 
@@ -97,7 +98,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     def _external_consumer_row(
         self,
         consumer: m.Infra.ExternalConsumerSpec,
-        quality: t.MappingKV[tuple[Path, str], int],
+        quality: Mapping[tuple[Path, str], int],
     ) -> m.Infra.FleetRepoGaps:
         """Probe one declared external consumer at its absolute root.
 
@@ -118,7 +119,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         *,
         name: str,
         declared: str | None,
-        quality: t.MappingKV[tuple[Path, str], int],
+        quality: Mapping[tuple[Path, str], int],
     ) -> m.Infra.FleetRepoGaps:
         """Assemble one row from the checkout's own Git, provider, and report facts.
 
@@ -152,11 +153,11 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         )
 
     @staticmethod
-    def _dirty_paths(repo_root: Path) -> t.StrSequence:
+    def _dirty_paths(repo_root: Path) -> Sequence[str]:
         """Return the checkout's porcelain status paths.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repo_root))
@@ -175,7 +176,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         """List the checkout's open pull requests; a provider failure is empty.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.FleetPullRequest]``.
+            The resulting ``tuple[m.Infra.FleetPullRequest, ...]``.
 
         """
         run = u.Cli.run_raw(
@@ -268,7 +269,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         self,
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[t.MappingKV[tuple[Path, str], int]]:
+    ) -> p.Result[Mapping[tuple[Path, str], int]]:
         """Read only explicit native SARIF receipts, before unrelated probes.
 
         A full-project completed lint/Pyrefly execution owns its count. Missing
@@ -279,8 +280,8 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             Counts keyed by canonical checkout root and executed quality gate.
 
         """
-        result = r[t.MappingKV[tuple[Path, str], int]]
-        counts: t.MutableMappingKV[tuple[Path, str], int] = {}
+        result = r[Mapping[tuple[Path, str], int]]
+        counts: MutableMapping[tuple[Path, str], int] = {}
         if self.quality_receipts is None:
             return result.ok(counts)
         roots = frozenset(
@@ -350,7 +351,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         path: Path,
         summary: m.Infra.CheckReportSummary,
         roots: frozenset[Path],
-        counts: t.MutableMappingKV[tuple[Path, str], int],
+        counts: MutableMapping[tuple[Path, str], int],
     ) -> p.Result[bool]:
         """Add one receipt's full-project lint/Pyrefly counts, refusing ambiguity.
 

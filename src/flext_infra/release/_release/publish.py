@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from glob import escape
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.release import FlextInfraReleaseReleaseBuild
 
 
@@ -258,15 +259,15 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
         cls,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         release_id: int,
-        artifacts: t.SequenceOf[m.Infra.BuildArtifact],
-    ) -> p.Result[t.StrSequence]:
+        artifacts: Sequence[m.Infra.BuildArtifact],
+    ) -> p.Result[Sequence[str]]:
         """Preflight the full upload set before the first remote mutation.
 
         Returns:
             Missing local artifact paths only after existing assets are verified.
 
         """
-        result_type = r[t.StrSequence]
+        result_type = r[Sequence[str]]
         inventory = u.Cli.capture(
             [
                 c.Infra.GH,
@@ -291,7 +292,7 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
         remote = {asset.name: asset for asset in parsed.value.assets}
         if len(remote) != len(parsed.value.assets):
             return result_type.fail("remote release contains duplicate asset names")
-        missing: t.MutableSequenceOf[str] = []
+        missing: MutableSequence[str] = []
         for artifact in artifacts:
             asset = remote.get(Path(artifact.path).name)
             if asset is None:

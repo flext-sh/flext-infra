@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, p, r, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, p, r, u
 
 
 class FlextInfraReleaseReleaseBoundary(FlextInfraProjectSelectionServiceBase[bool]):
@@ -79,8 +80,8 @@ class FlextInfraReleaseReleaseBoundary(FlextInfraProjectSelectionServiceBase[boo
 
     @staticmethod
     def _sdist_member_allowed(
-        parts: t.StrSequence,
-        allowed_roots: t.StrSequence,
+        parts: Sequence[str],
+        allowed_roots: Sequence[str],
     ) -> bool:
         """Return whether one regular sdist member is inside the public boundary.
 
@@ -102,12 +103,12 @@ class FlextInfraReleaseReleaseBoundary(FlextInfraProjectSelectionServiceBase[boo
 
     @staticmethod
     def _record(
-        target: t.Pair[str, Path],
+        target: tuple[str, Path],
         log: Path,
         *,
         exit_code: int,
-        artifacts: t.SequenceOf[m.Infra.BuildArtifact] = (),
-        source: t.Pair[m.Infra.SourceSnapshot, str] | None = None,
+        artifacts: Sequence[m.Infra.BuildArtifact] = (),
+        source: tuple[m.Infra.SourceSnapshot, str] | None = None,
     ) -> m.Infra.BuildRecord:
         """Model one strict build record with absolute paths.
 

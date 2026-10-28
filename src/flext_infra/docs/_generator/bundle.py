@@ -6,32 +6,33 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 from time import perf_counter
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 
-type _DocsScopeArtifacts = t.Pair[
+type _DocsScopeArtifacts = tuple[
     m.Infra.DocScope,
-    tuple[t.Triple[Path, Path, str | None], ...],
+    tuple[tuple[Path, Path, str | None], ...],
 ]
 
 
 class FlextInfraDocsGeneratorBundle:
     """Render the configured docs inventory once before planning."""
 
-    type _DocsPresentationInputs = t.Pair[
+    type _DocsPresentationInputs = tuple[
         m.Infra.CodegenBootstrapSource | None,
         tuple[m.Infra.CodegenFilePlan, ...],
     ]
-    type _DocsRenderedInventory = t.Pair[
+    type _DocsRenderedInventory = tuple[
         list[_DocsScopeArtifacts], tuple[m.Infra.CodegenFilePlan, ...]
     ]
 
     @staticmethod
     def _presentation_metadata(
-        scopes: t.SequenceOf[m.Infra.DocScope],
+        scopes: Sequence[m.Infra.DocScope],
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Prepare only authorial YAML and the owned pyproject locale leaf.
@@ -134,7 +135,7 @@ class FlextInfraDocsGeneratorBundle:
 
     @staticmethod
     def _validate_scope_targets(
-        scopes: t.SequenceOf[m.Infra.DocScope],
+        scopes: Sequence[m.Infra.DocScope],
         output_dir: Path,
     ) -> p.Result[bool]:
         """Require builders to preserve each lexical scope and report target.
@@ -227,7 +228,7 @@ class FlextInfraDocsGeneratorBundle:
         request: m.Infra.DocsGenerateRequest,
         output_dir: Path,
     ) -> p.Result[
-        t.Pair[
+        tuple[
             tuple[m.Infra.DocScope, ...],
             tuple[m.Infra.DocScope, ...],
         ]
@@ -239,7 +240,7 @@ class FlextInfraDocsGeneratorBundle:
 
         """
         result_type = r[
-            t.Pair[
+            tuple[
                 tuple[m.Infra.DocScope, ...],
                 tuple[m.Infra.DocScope, ...],
             ]
@@ -276,7 +277,7 @@ class FlextInfraDocsGeneratorBundle:
     def _rendered_scopes(
         cls,
         repository_root: Path,
-        scopes: t.Pair[
+        scopes: tuple[
             tuple[m.Infra.DocScope, ...],
             tuple[m.Infra.DocScope, ...],
         ],

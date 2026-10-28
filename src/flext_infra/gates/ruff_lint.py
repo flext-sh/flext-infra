@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -15,7 +15,7 @@ from flext_infra.gates import FlextInfraGate
 from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraRuffLintGate(FlextInfraGate):
@@ -33,11 +33,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Keep native cache writes outside authenticated source candidates.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         """
         return {
@@ -52,11 +52,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Ruff always runs — never skip.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         del ctx
@@ -67,8 +67,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Lint read-only with the config-owned check flags.
 
         Returns:
@@ -87,12 +87,12 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
-    ) -> t.StrSequence:
+        targets: Sequence[str],
+    ) -> Sequence[str]:
         """Build the explicit Ruff fix command.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         del project_dir
@@ -145,8 +145,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _project_overrides(
         self,
         project_dir: Path,
-        issues: t.SequenceOf[p.Infra.Issue],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        issues: Sequence[p.Infra.Issue],
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
     ) -> frozenset[tuple[str, str]]:
         """Index the methods on an override chain of this project.
 
@@ -183,11 +183,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @staticmethod
     def _phase_findings(
-        issues: t.SequenceOf[p.Infra.Issue],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        issues: Sequence[p.Infra.Issue],
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
         phase: frozenset[c.Infra.LintFixRecipe],
-        hooks: t.StrSequence,
-    ) -> t.MappingKV[Path, t.SequenceOf[p.Infra.Issue]]:
+        hooks: Sequence[str],
+    ) -> Mapping[Path, Sequence[p.Infra.Issue]]:
         """Group by file the findings one recipe phase repairs.
 
         Returns:
@@ -206,14 +206,14 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _apply_phase(
         self,
         project_dir: Path,
-        by_file: t.MappingKV[Path, t.SequenceOf[p.Infra.Issue]],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        by_file: Mapping[Path, Sequence[p.Infra.Issue]],
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
         *,
         tooling: m.Infra.ToolConfigDocument,
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
-            import_graph: t.MappingKV[str, frozenset[str]] = (
+            import_graph: Mapping[str, frozenset[str]] = (
                 u.Infra.project_import_graph(project_dir)[0]
                 if any(
                     recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
@@ -224,7 +224,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             )
             # A module the recipes cannot place stops the phase with nothing
             # written.
-            planned: t.MutableSequenceOf[tuple[m.Cli.AtomicFileState, str]] = []
+            planned: MutableSequence[tuple[m.Cli.AtomicFileState, str]] = []
             for path, issues in sorted(by_file.items()):
                 before = u.Cli.atomic_read_binary_file_state(
                     path,
@@ -244,11 +244,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @staticmethod
     def _static_hook_keys(
-        issues: t.SequenceOf[p.Infra.Issue],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        issues: Sequence[p.Infra.Issue],
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
         resolver: Callable[..., tuple[p.Infra.Issue, ...]],
         **extras: frozenset[tuple[str, str]],
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Render the static-method findings one resolver leaves to their owner.
 
         Returns:
@@ -275,9 +275,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _repaired_source(
         project_dir: Path,
         before: m.Cli.AtomicFileState,
-        issues: t.SequenceOf[p.Infra.Issue],
+        issues: Sequence[p.Infra.Issue],
         *,
-        import_graph: t.MappingKV[str, frozenset[str]],
+        import_graph: Mapping[str, frozenset[str]],
         tooling: m.Infra.ToolConfigDocument,
     ) -> str:
         """Apply one module's recipes: whole-module rewrites, then planned edits.
@@ -320,7 +320,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 wrapped,
                 limit=u.Infra.native_tool_setting(tooling, "ruff", "line-length", int),
             )
-        planned: t.SequenceOf[p.Infra.Issue] = [
+        planned: Sequence[p.Infra.Issue] = [
             issue
             for issue in issues
             if owned[issue.code]
@@ -335,10 +335,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @staticmethod
     def _overridden_hooks(
-        issues: t.SequenceOf[p.Infra.Issue],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        issues: Sequence[p.Infra.Issue],
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
         overridden: frozenset[tuple[str, str]],
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Retain instance-method contracts without suppressing their findings.
 
         Returns:
@@ -362,13 +362,13 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _lint_command(
         self,
         ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
-        mode_args: t.StrSequence,
-    ) -> t.StrSequence:
+        targets: Sequence[str],
+        mode_args: Sequence[str],
+    ) -> Sequence[str]:
         """Keep check and fix on the same Ruff lint invocation contract.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return self._python_module_command(
@@ -388,7 +388,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Parse Ruff's JSON report into findings named by their Ruff rule.
 
         Ruff names every finding by rule name (a syntax error included, as
@@ -419,7 +419,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _check_output_outcome(
         self,
         result: p.Cli.CommandOutput,
-        issues: t.SequenceOf[p.Infra.Issue],
+        issues: Sequence[p.Infra.Issue],
         project_dir: Path,
     ) -> c.Infra.ToolOutcome:
         """Retain the native explanation of an authenticated exemption-only exit.
@@ -446,7 +446,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     @staticmethod
     def _native_issues(
         result: p.Cli.CommandOutput,
-    ) -> t.MutableSequenceOf[m.Infra.Issue]:
+    ) -> MutableSequence[m.Infra.Issue]:
         """Read original Ruff diagnostics before applying identity policy.
 
         Returns:
@@ -460,7 +460,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         for entry in report:
             if not isinstance(entry, Mapping):
                 msg = f"Ruff JSON finding is not an object: {type(entry).__name__}"
@@ -481,8 +481,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     @staticmethod
     def _without_exempt_identities(
         project_dir: Path,
-        issues: t.SequenceOf[m.Infra.Issue],
-    ) -> t.SequenceOf[m.Infra.Issue]:
+        issues: Sequence[m.Infra.Issue],
+    ) -> Sequence[m.Infra.Issue]:
         """Remove exactly the findings an authenticated identity exempts.
 
         The readonly-namespace owner authenticates each operator-decided

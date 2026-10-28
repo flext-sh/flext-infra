@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
 
@@ -31,7 +32,11 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
         return repository_root / dir_docs / docs_config
 
     @staticmethod
-    def load_config(repository_root: Path) -> t.JsonMapping:
+    def load_config(
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.JsonMapping:
         """Load the minimal docs policy settings if present.
 
         Returns:
@@ -46,14 +51,25 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
         # An absent optional config has no parent identity to authenticate. A
         # present parent is delegated to the atomic owner, which still rejects
         # symlinks, unsafe identities, and every real read failure.
-        if not path.parent.exists():
+        if source_project is not None:
+            if not source_project.source_query(path.parent, "isdir"):
+                return {}
+            source_project.source_state(path, required=False)
+            content = (
+                source_project.source_bytes(path)
+                if source_project.source_query(path, "isfile")
+                else None
+            )
+        else:
+            if not path.parent.exists():
+                return {}
+            state = u.Cli.atomic_read_binary_file_state(path, required=False)
+            if state.failure:
+                raise ValueError(state.error or f"docs config is unsafe: {path}")
+            content = state.value.content
+        if content is None:
             return {}
-        state = u.Cli.atomic_read_binary_file_state(path, required=False)
-        if state.failure:
-            raise ValueError(state.error or f"docs config is unsafe: {path}")
-        if state.value.content is None:
-            return {}
-        parsed = u.Cli.json_loads(state.value.content)
+        parsed = u.Cli.json_loads(content)
         if parsed.failure:
             raise ValueError(parsed.error or f"docs config JSON is invalid: {path}")
         value = parsed.value
@@ -64,7 +80,11 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
         return dict(validated)
 
     @staticmethod
-    def excluded_roots(repository_root: Path) -> t.Infra.StrSet:
+    def excluded_roots(
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.Infra.StrSet:
         """Return every explicitly excluded root directory.
 
         The existing documentation scope owns exclusions; workspace composition
@@ -75,7 +95,7 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
 
         """
         owner = FlextInfraUtilitiesDocsScopePolicy
-        payload = owner.load_config(repository_root)
+        payload = owner.load_config(repository_root, source_project=source_project)
         scope = payload.get("scope")
         if not isinstance(scope, dict):
             return set()
@@ -169,7 +189,7 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
         return "domain"
 
     @staticmethod
-    def required_project_files() -> t.StrSequence:
+    def required_project_files() -> Sequence[str]:
         """Return the required standard docs contract for FLEXT projects.
 
         Returns:

@@ -13,11 +13,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, MutableMapping
+from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -29,7 +28,7 @@ class FlextInfraUtilitiesPythonModel:
     @staticmethod
     def python_model_run(
         source_project: p.Infra.RopeProject,
-        module_files: t.MappingKV[str, Path],
+        module_files: Mapping[str, Path],
         *,
         module_facts: MutableMapping[
             t.Infra.RopeNativeParsedModule, m.Infra.PythonModuleFacts
@@ -251,7 +250,7 @@ class FlextInfraUtilitiesPythonModel:
                 yield from cls._python_model_statements(child)
 
     @staticmethod
-    def _python_model_assigned(node: ast.Assign | ast.AnnAssign) -> t.StrSequence:
+    def _python_model_assigned(node: ast.Assign | ast.AnnAssign) -> Sequence[str]:
         """Return the plain names one assignment binds.
 
         An unpacking or subscript target binds no static name, so the whole
@@ -267,7 +266,7 @@ class FlextInfraUtilitiesPythonModel:
         return tuple(target.id for target in targets if isinstance(target, ast.Name))
 
     @classmethod
-    def _python_model_class_exports(cls, node: ast.ClassDef) -> t.StrSequence | None:
+    def _python_model_class_exports(cls, node: ast.ClassDef) -> Sequence[str] | None:
         """Return the class-level ``__all__`` a class body declares.
 
         Returns:
@@ -320,7 +319,7 @@ class FlextInfraUtilitiesPythonModel:
             return [None]
         if isinstance(value, ast.Starred):
             return cls._python_model_entries(value.value)
-        parts: t.SequenceOf[ast.expr]
+        parts: Sequence[ast.expr]
         if isinstance(value, ast.BinOp):
             parts = (value.left, value.right)
         elif isinstance(value, (ast.List, ast.Set, ast.Tuple)):
@@ -337,8 +336,8 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def _python_model_literal(
-        entries: t.SequenceOf[str | None] | None,
-    ) -> t.StrSequence | None:
+        entries: Sequence[str | None] | None,
+    ) -> Sequence[str] | None:
         """Normalize declared entries: all literal, or empty when any is not.
 
         Returns:
@@ -386,50 +385,22 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_locate(cls, run: m.Infra.PythonModelRun, name: str) -> Path | None:
-        """Resolve a dotted module name: indexed sources, then installed packages.
+        """Resolve a dotted module name through this run's one indexed tree.
+
+        Per-repository resolution law: a name absent from the run's single
+        rope-project index resolves nowhere. Installed environments are never
+        consulted, where divergent member libraries would leak into the plan.
 
         Returns:
             The module's source file, or ``None`` when no source declares it.
 
         """
-        indexed = run.module_files.get(name)
-        if indexed is not None:
-            return indexed
-        head, *rest = name.split(".")
-        folder = cls.python_model_package_dir(head)
-        if folder is None:
-            return None
-        folder = folder.joinpath(*rest)
-        return next(
-            (
-                candidate
-                for candidate in (
-                    folder / c.Infra.INIT_PY,
-                    folder.with_suffix(c.Infra.EXT_PYTHON),
-                )
-                if run.source_project.source_query(candidate, "isfile")
-            ),
-            None,
-        )
-
-    @staticmethod
-    def python_model_package_dir(name: str) -> Path | None:
-        """Return the installed package directory of a dotted package name.
-
-        Returns:
-            The package directory, or ``None`` for a plain module or unknown name.
-
-        """
-        return (
-            FlextInfraUtilitiesDiscovery.declared_package_dir(name)
-            if all(part.isidentifier() for part in name.split("."))
-            else None
-        )
+        return run.module_files.get(name)
 
     @staticmethod
     def python_model_exports(
         module: m.Infra.PythonModuleFacts,
-    ) -> t.StrSequence | None:
+    ) -> Sequence[str] | None:
         """Return the explicit ``__all__`` names, ``None`` if absent.
 
         A single root class owning ``__all__`` declares the module's exports
@@ -450,7 +421,7 @@ class FlextInfraUtilitiesPythonModel:
     @staticmethod
     def python_model_implicit_exports(
         module: m.Infra.PythonModuleFacts,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the classes and assignments a module binds itself.
 
         Returns:
@@ -474,7 +445,7 @@ class FlextInfraUtilitiesPythonModel:
         return frozenset(module.members)
 
     @staticmethod
-    def python_model_imports(module: m.Infra.PythonModuleFacts) -> t.StrMapping:
+    def python_model_imports(module: m.Infra.PythonModuleFacts) -> Mapping[str, str]:
         """Return every imported name with its dotted import target.
 
         Returns:
@@ -508,7 +479,7 @@ class FlextInfraUtilitiesPythonModel:
     @staticmethod
     def python_model_class_bases(
         module: m.Infra.PythonModuleFacts,
-    ) -> t.MappingKV[str, t.StrSequence]:
+    ) -> Mapping[str, Sequence[str]]:
         """Return each top-level class with its base expressions as written.
 
         Returns:
@@ -559,7 +530,7 @@ class FlextInfraUtilitiesPythonModel:
     @classmethod
     def python_model_facade_owner(
         cls, module: m.Infra.PythonModuleFacts
-    ) -> t.StrPair | None:
+    ) -> tuple[str, str] | None:
         """Return the published ``(alias, class)`` facade pair of one module.
 
         Returns:

@@ -31,7 +31,7 @@ class FlextInfraTypes(FlextCliTypes):
 
     Infra-specific types are nested under the ``Infra`` inner class to
     keep the namespace explicit (``t.Infra.Payload``, ``t.JsonMapping``).
-    Parent types (``t.Scalar``, ``t.StrMapping``, etc.) are inherited
+    Parent types (``t.Scalar``, ``Mapping[str, str]``, etc.) are inherited
     transparently from ``FlextTypes`` via FLEXT.
     """
 

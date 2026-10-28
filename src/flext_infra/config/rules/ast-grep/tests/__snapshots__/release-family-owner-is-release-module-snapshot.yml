@@ -5,8 +5,8 @@ snapshots:
     labels:
     - source: FlextInfraModelsConfigArtifact.BuildConstraintSpec
       style: primary
-      start: 22
-      end: 72
+      start: 12
+      end: 62
   "policy: FlextInfraModelsConfigArtifact.ReleasePolicySpec":
     fixed: "policy: FlextInfraModelsConfigRelease.ReleasePolicySpec"
     labels:

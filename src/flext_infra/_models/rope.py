@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -46,13 +46,13 @@ class FlextInfraModelsRope:
 
         pattern: t.NonEmptyStr = m.Field(description="Native Rope match template")
         goal: t.NonEmptyStr = m.Field(description="Native Rope replacement template")
-        arguments: t.MappingKV[str, str | t.StrSequence] = m.Field(
+        arguments: Mapping[str, str | Sequence[str]] = m.Field(
             description="Native wildcard constraints and exact identity alternatives",
         )
-        resources: t.SequenceOf[t.Port[p.Infra.RopeResource]] = m.Field(
+        resources: Sequence[t.Port[p.Infra.RopeResource]] = m.Field(
             description="The complete resource inventory selected for this operation",
         )
-        imports: t.StrSequence | t.MappingKV[str, str] = m.Field(
+        imports: Sequence[str] | Mapping[str, str] = m.Field(
             default=(),
             description="Native imports, optionally keyed by reusable lexical bindings",
         )
@@ -90,7 +90,7 @@ class FlextInfraModelsRope:
         """Exact project roots selected for one production-source scan."""
 
         project_roots: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 min_length=1,
                 description="Non-empty ordered project roots to scan",
@@ -166,7 +166,7 @@ class FlextInfraModelsRope:
         """Semantic class info from rope — name, line, bases in one shot."""
 
         name: Annotated[str, m.Field(description="Class name")]
-        bases: Annotated[t.StrSequence, m.Field(description="Base class names")] = ()
+        bases: Annotated[Sequence[str], m.Field(description="Base class names")] = ()
 
     class SourceClassReference(m.ContractModel):
         """A lexical binding and its attribute path, distinct from Ruff's spelling."""
@@ -189,11 +189,11 @@ class FlextInfraModelsRope:
             m.Field(description="Qualified identity of the declared class"),
         ]
         bases: Annotated[
-            t.VariadicTuple[FlextInfraModelsRope.SourceClassReference],
+            tuple[FlextInfraModelsRope.SourceClassReference, ...],
             m.Field(description="Ordered base references of the declaration"),
         ]
         members: Annotated[
-            t.MappingKV[str, FlextInfraModelsRope.SourceClassReference | None],
+            Mapping[str, FlextInfraModelsRope.SourceClassReference | None],
             m.Field(description="Member name to shadowing reference mapping"),
         ]
 
@@ -374,7 +374,7 @@ class FlextInfraModelsRope:
             m.Field(description="Rope identity of the flattened namespace wrapper"),
         ]
         names: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Wrapper member names mapped to promoted names"),
         ]
 
@@ -410,7 +410,7 @@ class FlextInfraModelsRope:
             m.Field(description="Source captured at scan; restored on failed gates"),
         ]
         matches: Annotated[
-            t.SequenceOf[t.Triple[FlextInfraModelsRope.SymbolInfo, str, str]],
+            Sequence[tuple[FlextInfraModelsRope.SymbolInfo, str, str]],
             m.Field(description="Matched symbol, canonical reference, and raw value"),
         ]
 
@@ -418,15 +418,15 @@ class FlextInfraModelsRope:
         """Unified semantic snapshot for one Rope module analysis pass."""
 
         class_infos: Annotated[
-            t.VariadicTuple[FlextInfraModelsRope.ClassInfo],
+            tuple[FlextInfraModelsRope.ClassInfo, ...],
             m.Field(description="Local classes discovered in the module"),
         ] = ()
         declared_imports: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Declared import targets by name"),
         ]
         semantic_imports: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Resolved import targets by name"),
         ]
 
@@ -487,7 +487,7 @@ class FlextInfraModelsRope:
             ),
         ] = None
         modules: Annotated[
-            t.VariadicTuple[FlextInfraModelsRope.RopeModuleIndexEntry],
+            tuple[FlextInfraModelsRope.RopeModuleIndexEntry, ...],
             m.Field(
                 description=(
                     "Direct Python module resources that belong to this package"
@@ -495,13 +495,13 @@ class FlextInfraModelsRope:
             ),
         ] = ()
         direct_child_dirs: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="Direct child package directories discovered from Rope",
             ),
         ] = ()
         descendant_child_dirs: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="All descendant package directories discovered from Rope",
             ),
@@ -517,25 +517,25 @@ class FlextInfraModelsRope:
             ),
         ]
         package_dirs: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="All package directories discovered from Rope resources",
             ),
         ] = ()
         packages_by_dir: Annotated[
-            t.MappingKV[str, FlextInfraModelsRope.RopePackageIndexEntry],
+            Mapping[str, FlextInfraModelsRope.RopePackageIndexEntry],
             m.Field(description="Package entries keyed by absolute directory path"),
         ]
         modules_by_path: Annotated[
-            t.MappingKV[str, FlextInfraModelsRope.RopeModuleIndexEntry],
+            Mapping[str, FlextInfraModelsRope.RopeModuleIndexEntry],
             m.Field(description="Module entries keyed by absolute file path"),
         ]
         package_dir_by_name: Annotated[
-            t.MappingKV[str, Path],
+            Mapping[str, Path],
             m.Field(description="Importable package directory keyed by package name"),
         ]
         project_package_by_root: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 description="Canonical source package name keyed by project root path",
             ),
@@ -566,7 +566,7 @@ class FlextInfraModelsRope:
             m.Field(exclude=True, description="Package contexts by directory"),
         ]
         parents: Annotated[
-            t.Port[dict[Path, t.StrSequence]],
+            t.Port[dict[Path, Sequence[str]]],
             m.Field(exclude=True, description="Facade parents by package directory"),
         ]
         declared: Annotated[
@@ -609,13 +609,13 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package __init__.py path"),
         ]
         runtime_aliases: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(
                 description="Canonical runtime aliases published by the package root",
             ),
         ] = ()
         repository_namespace_packages: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Independent packages from the captured declaration"),
         ]
 
@@ -667,11 +667,11 @@ class FlextInfraModelsRope:
             m.Field(description="Full source text used to compute fingerprints"),
         ]
         parameter_lines: Annotated[
-            t.MappingKV[t.Pair[int, str], int],
+            Mapping[tuple[int, str], int],
             m.Field(description="Parameter positions from the module snapshot"),
         ]
         constant_bindings: Annotated[
-            frozenset[t.Pair[int, str]],
+            frozenset[tuple[int, str]],
             m.Field(
                 description="Identity-proven immutable declarations in the snapshot"
             ),
@@ -694,11 +694,11 @@ class FlextInfraModelsRope:
             m.Field(description="Module convention metadata for tier/facade checks"),
         ]
         scope_chain: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Nested scope path leading to the symbol"),
         ] = ()
         class_chain: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Nested class path leading to the symbol"),
         ] = ()
         child_scope: Annotated[

@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, override
 from flext_infra import c, r, s, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 
 class FlextInfraCleanService(s[int]):
@@ -63,7 +63,7 @@ class FlextInfraCleanService(s[int]):
         cls,
         root: Path,
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> t.Pair[
+    ) -> tuple[
         tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
         tuple[m.Cli.AtomicFileState, ...],
     ]:

@@ -147,7 +147,7 @@ class FlextInfraWorktreeService(s[str]):
         """Pair every registered worktree root with the branch it checks out.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[t.Pair[Path, str]]]``.
+            The resulting ``p.Result[tuple[tuple[Path, str], ...]]``.
 
         """
         listed = u.Infra.git_list_worktrees(

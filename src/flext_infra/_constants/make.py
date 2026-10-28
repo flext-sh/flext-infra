@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
@@ -102,7 +103,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     TIMEOUT_COMMAND: ClassVar[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: ClassVar[int] = 5
 
-    ORCHESTRATOR_REMOVE_ENV_KEYS: ClassVar[t.StrSequence] = (
+    ORCHESTRATOR_REMOVE_ENV_KEYS: ClassVar[Sequence[str]] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",
         "MAKEFILES",
@@ -136,7 +137,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     PYTEST_ENV_CI: ClassVar[str] = "CI"
     PYTEST_ENV_TESTMON_DATAFILE: ClassVar[str] = "TESTMON_DATAFILE"
     PYTEST_WARNING_EVENTS_SUFFIX: ClassVar[str] = ".warnings.jsonl"
-    PYTEST_INHERITED_ENV_REMOVE_KEYS: ClassVar[t.StrSequence] = (
+    PYTEST_INHERITED_ENV_REMOVE_KEYS: ClassVar[Sequence[str]] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
     )

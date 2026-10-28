@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
@@ -14,7 +15,7 @@ from flext_infra import config, m, u
 from flext_infra.refactor import FlextInfraRefactorCensusCollect
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
@@ -32,7 +33,7 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
     )
 
     @staticmethod
-    def _should_collect_object_references(rule_names: t.StrSequence | None) -> bool:
+    def _should_collect_object_references(rule_names: Sequence[str] | None) -> bool:
         """Decide whether to collect object references.
 
         Returns:

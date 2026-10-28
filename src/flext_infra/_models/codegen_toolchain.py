@@ -103,9 +103,7 @@ class FlextInfraModelsCodegenToolchain:
             ),
         ] = None
         projects: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout
-            ],
+            tuple[FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout, ...],
             m.Field(description="Ordered Mise workspace participants"),
         ]
         file_participants: Annotated[
@@ -115,9 +113,10 @@ class FlextInfraModelsCodegenToolchain:
 
         @m.model_validator(mode="after")
         def _validate_participants(self) -> Self:
-            participants: t.VariadicTuple[
+            participants: tuple[
                 FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout
-                | FlextInfraModelsCodegenToolchain.CodegenFileParticipant
+                | FlextInfraModelsCodegenToolchain.CodegenFileParticipant,
+                ...,
             ] = (*self.projects, *self.file_participants)
             if not participants:
                 msg = "generation layout requires an explicit participant"

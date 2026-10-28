@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraConformSupport:
@@ -91,7 +91,7 @@ class TestsFlextInfraConformSupport:
         )
 
     @staticmethod
-    def project_tree(root: Path) -> tuple[t.Pair[str, bytes], ...]:
+    def project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
         """Return the versionable project tree independently of Git test fixtures.
 
         Returns:
@@ -132,8 +132,8 @@ class TestsFlextInfraConformSupport:
 
     @staticmethod
     def project_tree_diff(
-        expected: tuple[t.Pair[str, bytes], ...],
-        actual: tuple[t.Pair[str, bytes], ...],
+        expected: tuple[tuple[str, bytes], ...],
+        actual: tuple[tuple[str, bytes], ...],
     ) -> str:
         """Render only differing generated files when a fixed-point contract fails.
 
@@ -197,11 +197,11 @@ class TestsFlextInfraConformSupport:
     @staticmethod
     def self_check_conform_service(
         root: Path,
-    ) -> t.Pair[FlextInfraCodegenConform.Generate, m.Infra.CodegenConformRequest]:
+    ) -> tuple[FlextInfraCodegenConform.Generate, m.Infra.CodegenConformRequest]:
         """Materialize the standalone root fixture and its CHECK-mode conform service.
 
         Returns:
-            The resulting ``t.Pair[FlextInfraCodegenConform.Generate,
+            The resulting ``tuple[FlextInfraCodegenConform.Generate,
                 m.Infra.CodegenConformRequest]``.
 
         """
@@ -227,11 +227,11 @@ class TestsFlextInfraConformSupport:
         workspace: m.Infra.WorkspaceSpec,
         *,
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-    ) -> t.Pair[FlextInfraCodegenConform.Generate, m.Infra.CodegenConformRequest]:
+    ) -> tuple[FlextInfraCodegenConform.Generate, m.Infra.CodegenConformRequest]:
         """Build the CHECK-mode conform service bound to one declared workspace.
 
         Returns:
-            The resulting ``t.Pair[FlextInfraCodegenConform.Generate,
+            The resulting ``tuple[FlextInfraCodegenConform.Generate,
                 m.Infra.CodegenConformRequest]``.
 
         """

@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -49,7 +50,7 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
             ),
         )
 
-    def _project_violations(self, project_root: Path) -> t.StrSequence:
+    def _project_violations(self, project_root: Path) -> Sequence[str]:
         project_state = u.Infra.project_state(project_root)
         allowed_shared_imports = frozenset({
             project_state.package_name,
@@ -175,7 +176,7 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
     def _facet_violation(
         cls,
         imported: str,
-        imported_parts: t.StrSequence,
+        imported_parts: Sequence[str],
         source_facet: str | None,
     ) -> str | None:
         """Return the canonical test-facet edge violation, or ``None``.
@@ -207,4 +208,4 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
         return self._report_execution(self.build_report(self.repository_root))
 
 
-__all__: t.StrSequence = ("FlextInfraValidateTestImportDag",)
+__all__: Sequence[str] = ("FlextInfraValidateTestImportDag",)

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 
@@ -215,7 +216,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         legacy_path: Path,
     ) -> (
         p.Result[
-            t.Triple[
+            tuple[
                 m.Cli.AtomicFileState,
                 m.Infra.RepositoryDeltaSpec,
                 m.Infra.WorkspaceManifestSpec,
@@ -231,7 +232,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
 
         """
         result_type = r[
-            t.Triple[
+            tuple[
                 m.Cli.AtomicFileState,
                 m.Infra.RepositoryDeltaSpec,
                 m.Infra.WorkspaceManifestSpec,
@@ -494,17 +495,16 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     @staticmethod
     def _retired_destinations(
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]:
+    ) -> p.Result[tuple[Sequence[str], dict[str, str]]]:
         """Collect declared retired projections with their removal evidence.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.SequenceOf[str],
-                t.MappingKV[str, str]]]``.
+            The resulting ``p.Result[tuple[Sequence[str], dict[str, str]]]``.
 
         """
-        result_type = r[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]
+        result_type = r[tuple[Sequence[str], dict[str, str]]]
         extra: list[str] = []
-        evidence_by_path: t.StrDict = {}
+        evidence_by_path: dict[str, str] = {}
         for retired in codegen.retired_projections:
             declared = retired if isinstance(retired, str) else retired.path
             relative = Path(declared)
@@ -527,7 +527,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         profile: c.Infra.MakeProfile,
         *,
         inputs: m.Infra.CodegenInputs | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Plan removal of generated projections this profile no longer renders.
 
         A projection retires either because its template entry excludes this
@@ -536,13 +536,13 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         a file carrying the generated marker is removed.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[Sequence[m.Infra.CodegenFilePlan]]``.
 
         """
         if inputs is None:
             loaded = u.Infra.load_codegen_inputs(root)
             if loaded.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(loaded)
+                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(loaded)
             inputs = loaded.value
         destinations: list[str] = [
             entry.destination
@@ -551,7 +551,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         ]
         collected = cls._retired_destinations(inputs.spec)
         if collected.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(collected)
+            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(collected)
         extra_destinations, evidence_by_path = collected.value
         destinations.extend(extra_destinations)
         retired = cls._retired_destination_plans(
@@ -560,23 +560,23 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             evidence_by_path,
         )
         if retired.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(retired)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(retired.value)
+            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(retired)
+        return r[Sequence[m.Infra.CodegenFilePlan]].ok(retired.value)
 
     @classmethod
     def _retired_destination_plans(
         cls,
         root: Path,
-        destinations: t.SequenceOf[str],
-        evidence_by_path: t.MappingKV[str, ...],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        destinations: Sequence[str],
+        evidence_by_path: dict[str, str],
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Plan removal of every still-present retired destination file.
 
         Returns:
             The absence plans.
 
         """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
         planned: list[m.Infra.CodegenFilePlan] = []
         # A retired directory retires each file under it; the generated
         # marker (or declared evidence) below still guards every removal.

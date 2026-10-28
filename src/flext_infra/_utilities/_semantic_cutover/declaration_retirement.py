@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -48,8 +49,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     @staticmethod
     def contract_transfer_binding(
         project: p.Infra.RopeProject,
-        identity: t.Pair[str, str],
-        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
+        identity: tuple[str, str],
+        owned_modules: Mapping[str, t.Infra.RopeSourcePath],
     ) -> p.Infra.RopePyName | None:
         """Resolve only an original owned resource, never an installed SDK fallback.
 
@@ -77,10 +78,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def retire_contract_owners(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
-        rules: t.SequenceOf[p.Infra.RopeContractRule],
-        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
-    ) -> t.Pair[t.Infra.RopeImplementationPaths, t.Infra.RopeImplementationPaths]:
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
+        rules: Sequence[p.Infra.RopeContractRule],
+        owned_modules: Mapping[str, t.Infra.RopeSourcePath],
+    ) -> tuple[t.Infra.RopeImplementationPaths, t.Infra.RopeImplementationPaths]:
         """Retire elected declarations only after native receiver completeness.
 
         Returns:
@@ -130,11 +131,11 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
-        ownership: tuple[Path, t.MappingKV[str, t.Infra.RopeSourcePath]],
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
+        ownership: tuple[Path, Mapping[str, t.Infra.RopeSourcePath]],
         *,
-        destinations: t.SequenceOf[p.Infra.RopePyName],
-    ) -> t.Pair[t.Infra.RopeSourcePath | None, t.Infra.RopeSourcePath | None]:
+        destinations: Sequence[p.Infra.RopePyName],
+    ) -> tuple[t.Infra.RopeSourcePath | None, t.Infra.RopeSourcePath | None]:
         """Retire one elected ownership transfer after receiver completeness.
 
         Returns:
@@ -190,8 +191,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _authenticated_retirement_owner(
         cls,
         binding: p.Infra.RopePyName,
-        proposed: t.MappingKV[t.Infra.RopeSourcePath, str],
-    ) -> t.Pair[p.Infra.RopePyModule, t.Pair[t.Infra.RopeSourcePath, str]]:
+        proposed: Mapping[t.Infra.RopeSourcePath, str],
+    ) -> tuple[p.Infra.RopePyModule, tuple[t.Infra.RopeSourcePath, str]]:
         """Authenticate the native class or function owner of the binding.
 
         Returns:
@@ -224,7 +225,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         module: p.Infra.RopePyModule,
         definition: p.Infra.RopeSourceDefinition,
         path: t.Infra.RopeSourcePath,
-    ) -> t.Pair[p.Infra.RopePyName | None, p.Infra.RopeAstNode]:
+    ) -> tuple[p.Infra.RopePyName | None, p.Infra.RopeAstNode]:
         """Resolve the retiring declaration and its provably empty wrappers.
 
         Returns:
@@ -325,7 +326,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _drop_changed_orphaned_imports(
         cls,
         project: p.Infra.RopeProject,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
     ) -> None:
         """Remove newly orphaned imports from every changed governed module."""
         for changed, after in tuple(proposed.items()):
@@ -399,10 +400,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         project: p.Infra.RopeProject,
         binding: p.Infra.RopePyName,
         destination: p.Infra.RopePyName,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
         *,
-        destinations: t.SequenceOf[p.Infra.RopePyName],
-    ) -> t.Pair[t.Infra.RopeSourcePath, bool]:
+        destinations: Sequence[p.Infra.RopePyName],
+    ) -> tuple[t.Infra.RopeSourcePath, bool]:
         """Remove only the native declaration and provably empty lexical owners.
 
         Returns:
@@ -528,7 +529,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     @classmethod
     def _native_contract_signature(
         cls, binding: p.Infra.RopePyName
-    ) -> t.Pair[t.Infra.RopeCallableSignature, str]:
+    ) -> tuple[t.Infra.RopeCallableSignature, str]:
         """Include native binding kind without executing the authored callable.
 
         Returns:
@@ -555,7 +556,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _require_governed_inventory(
         cls,
         project: p.Infra.RopeProject,
-        observed: t.MappingKV[t.Infra.RopeSourcePath, str],
+        observed: Mapping[t.Infra.RopeSourcePath, str],
     ) -> None:
         """Require every workspace Python file in the governed inventory.
 
@@ -580,10 +581,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _prove_contract_retirement(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
+        sources: Mapping[t.Infra.RopeSourcePath, str],
         *,
         owners: tuple[p.Infra.RopePyName, p.Infra.RopePyName | None],
-        destinations: t.SequenceOf[p.Infra.RopePyName],
+        destinations: Sequence[p.Infra.RopePyName],
         span: tuple[Path, int, int],
     ) -> None:
         """Prove all governed uses without evaluating opaque receiver expressions."""
@@ -609,9 +610,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         project: p.Infra.RopeProject,
         entry: tuple[Path, str],
         owners: tuple[p.Infra.RopePyName, p.Infra.RopePyName | None],
-        callees: tuple[
-            t.SequenceOf[p.Infra.RopePyName], t.SequenceOf[p.Infra.RopePyName]
-        ],
+        callees: tuple[Sequence[p.Infra.RopePyName], Sequence[p.Infra.RopePyName]],
         span: tuple[Path, int, int],
     ) -> None:
         path, source = entry
@@ -688,7 +687,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             p.Infra.RopePyName,
             p.Infra.RopePyName | None,
             Path,
-            tuple[t.SequenceOf[p.Infra.RopePyName], t.SequenceOf[p.Infra.RopePyName]],
+            tuple[Sequence[p.Infra.RopePyName], Sequence[p.Infra.RopePyName]],
         ],
     ) -> None:
         binding, container, path, callees = context
@@ -823,7 +822,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     @staticmethod
     def _prove_retirement_reference(
         node: ast.Name | ast.Attribute,
-        parents: t.MappingKV[int, p.Infra.RopeAstNode],
+        parents: Mapping[int, p.Infra.RopeAstNode],
         resolves: Callable[[p.Infra.RopeAstNode], p.Infra.RopePyName | None],
         probes: tuple[
             Callable[[p.Infra.RopePyName | None], bool],
@@ -873,8 +872,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         whole_owner: Callable[[p.Infra.RopePyName | None], bool],
         carries: Callable[[p.Infra.RopeAstNode], bool],
         context: tuple[
-            t.SequenceOf[p.Infra.RopePyName],
-            t.SequenceOf[p.Infra.RopePyName],
+            Sequence[p.Infra.RopePyName],
+            Sequence[p.Infra.RopePyName],
             str,
             Path,
         ],
@@ -910,7 +909,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _retire_contract_bases(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        sources: MutableMapping[t.Infra.RopeSourcePath, str],
         container: p.Infra.RopePyName,
     ) -> None:
         """Remove only class-header edges to the proven empty native container.
@@ -997,7 +996,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         scope: p.Infra.RopeScope,
         node: ast.ClassDef,
         path: Path,
-    ) -> t.Pair[str, t.Triple[p.Infra.RopeWorder, int, int]]:
+    ) -> tuple[str, tuple[p.Infra.RopeWorder, int, int]]:
         owner = FlextInfraUtilitiesRopeRuntimeModules.expression_name(scope, node.name)
         if owner is None:
             message = f"retiring base has no native declaring class: {path}:{node.name}"

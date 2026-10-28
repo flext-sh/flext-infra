@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, s, t, u
@@ -28,14 +29,14 @@ class FlextInfraTextPatternScanner(s[bool]):
 
     pattern: Annotated[str, m.Field(description="Regex pattern")]
     include: Annotated[
-        t.StrSequence,
+        Sequence[str],
         m.Field(
             default_factory=tuple,
             description="Glob patterns included in the scan.",
         ),
     ] = m.Field(default_factory=tuple)
     exclude: Annotated[
-        t.StrSequence,
+        Sequence[str],
         m.Field(
             default_factory=tuple,
             description="Glob patterns excluded from the scan.",
@@ -48,7 +49,7 @@ class FlextInfraTextPatternScanner(s[bool]):
 
     @staticmethod
     def _count_matches(
-        files: t.SequenceOf[Path],
+        files: Sequence[Path],
         regex: t.RegexPattern,
     ) -> p.Result[int]:
         """Count regex matches across files; surface any unreadable file as failure.
@@ -70,8 +71,8 @@ class FlextInfraTextPatternScanner(s[bool]):
         scan_root: Path,
         pattern: str,
         *,
-        includes: t.StrSequence,
-        excludes: t.StrSequence | None = None,
+        includes: Sequence[str],
+        excludes: Sequence[str] | None = None,
         match_mode: c.Infra.MatchMode = c.Infra.MatchMode.PRESENT,
     ) -> p.Result[t.ConfigurationMapping]:
         """Scan files under scan_root for regex matches.
@@ -90,7 +91,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         """
         error = self._validate_scan_inputs(scan_root, includes)
         if error is not None:
-            return r[t.ScalarMapping].fail(error)
+            return r[Mapping[str, t.Scalar]].fail(error)
         try:
             return self._scan_validated(
                 scan_root,
@@ -100,12 +101,12 @@ class FlextInfraTextPatternScanner(s[bool]):
                 match_mode,
             )
         except c.Infra.REGEX_ERROR as exc:
-            return r[t.ScalarMapping].fail(
+            return r[Mapping[str, t.Scalar]].fail(
                 f"invalid regex pattern: {exc}",
                 exception=exc,
             )
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[t.ScalarMapping].fail_op("text pattern scan", exc)
+            return r[Mapping[str, t.Scalar]].fail_op("text pattern scan", exc)
 
     @staticmethod
     def _violation_count(matches: int, match_mode: c.Infra.MatchMode) -> int:
@@ -123,8 +124,8 @@ class FlextInfraTextPatternScanner(s[bool]):
         self,
         scan_root: Path,
         pattern: str,
-        includes: t.StrSequence,
-        excludes: t.StrSequence,
+        includes: Sequence[str],
+        excludes: Sequence[str],
         match_mode: c.Infra.MatchMode,
     ) -> p.Result[t.ConfigurationMapping]:
         """Scan a validated root with a compiled regex.
@@ -141,14 +142,14 @@ class FlextInfraTextPatternScanner(s[bool]):
         )
         matches_result = self._count_matches(files, regex)
         if matches_result.failure:
-            return r[t.ScalarMapping].from_failure(matches_result)
+            return r[Mapping[str, t.Scalar]].from_failure(matches_result)
         matches = matches_result.value
         result: t.MutableConfigurationMapping = {
             "violation_count": self._violation_count(matches, match_mode),
             "match_count": matches,
             "files_scanned": len(files),
         }
-        return r[t.ScalarMapping].ok(result)
+        return r[Mapping[str, t.Scalar]].ok(result)
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -173,7 +174,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _validate_scan_inputs(scan_root: Path, includes: t.StrSequence) -> str | None:
+    def _validate_scan_inputs(scan_root: Path, includes: Sequence[str]) -> str | None:
         """Return an error message if scan inputs are invalid, else None.
 
         Returns:

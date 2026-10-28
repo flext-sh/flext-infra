@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesDependencyRequirements:
     def active_requirement(
         requirement: str,
         *,
-        environment: t.StrMapping,
+        environment: Mapping[str, str],
     ) -> str | None:
         """Evaluate a strictly parsed requirement on the consumer interpreter.
 
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesDependencyRequirements:
         )
 
     @staticmethod
-    def dependency_extras(requirements: t.StrSequence, name: str) -> str:
+    def dependency_extras(requirements: Sequence[str], name: str) -> str:
         """Retain the union of requested extras for one selected distribution.
 
         Returns:
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesDependencyRequirements:
         return normalized or None
 
     @staticmethod
-    def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
+    def dedupe_specs(specs: Sequence[str]) -> Sequence[str]:
         """Return deterministic unique dependency specs keyed by normalized name.
 
         Returns:

@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
@@ -34,16 +35,16 @@ class FlextInfraModelsScan:
             c.Infra.ModScanCommand, m.Field(description="Actual native scan operation")
         ]
         scope: Annotated[
-            t.StrSequence, m.Field(description="Actual governed scan scope")
+            Sequence[str], m.Field(description="Actual governed scan scope")
         ]
         relative_path: Annotated[
             Path, m.Field(description="Invocation evidence destination under root")
         ] = c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
         repositories: Annotated[
-            t.StrSequence, m.Field(description="Observed repository inventory")
+            Sequence[str], m.Field(description="Observed repository inventory")
         ] = ()
         rule_ids: Annotated[
-            t.StrSequence, m.Field(description="Actual elected rule inventory")
+            Sequence[str], m.Field(description="Actual elected rule inventory")
         ] = ()
 
     class ScanViolation(FlextInfraModelsMixins.PositiveLineMixin, m.ContractModel):
@@ -64,7 +65,7 @@ class FlextInfraModelsScan:
 
         file_path: Annotated[Path, m.Field(description="Path to the scanned file")]
         violations: Annotated[
-            t.SequenceOf[FlextInfraModelsScan.ScanViolation],
+            Sequence[FlextInfraModelsScan.ScanViolation],
             m.Field(description="Violations found in the file"),
         ] = m.Field(default_factory=tuple)
         detector_name: Annotated[
@@ -197,11 +198,11 @@ class FlextInfraModelsScan:
         """One scan's per-file authentication and ownership indexes."""
 
         project_source_roots: Annotated[
-            t.MappingKV[Path, Path] | None,
+            Mapping[Path, Path] | None,
             m.Field(description="Physical scan roots for logical catalog projects"),
         ] = None
         inventory: Annotated[
-            t.MappingKV[Path, m.Cli.AtomicFileState],
+            Mapping[Path, m.Cli.AtomicFileState],
             m.Field(description="Exact sources captured before the native scan"),
         ]
         repository_roots: Annotated[
@@ -209,13 +210,11 @@ class FlextInfraModelsScan:
             m.Field(description="Governed roots in nearest-owner precedence"),
         ]
         authenticated: Annotated[
-            t.MutableMappingKV[
-                str, t.Port[p.Result[t.Pair[Path, m.Cli.AtomicFileState]]]
-            ],
+            MutableMapping[str, t.Port[p.Result[tuple[Path, m.Cli.AtomicFileState]]]],
             m.Field(description="One authentication per file"),
         ] = m.Field(default_factory=dict)
         repositories: Annotated[
-            t.MutableMappingKV[Path, str],
+            MutableMapping[Path, str],
             m.Field(description="One ownership election per file"),
         ] = m.Field(default_factory=dict[Path, str])
 
@@ -239,7 +238,7 @@ class FlextInfraModelsScan:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         entries: Annotated[
-            t.VariadicTuple[FindingT],
+            tuple[FindingT, ...],
             m.Field(description="Every validated ast-grep finding in stable order"),
         ]
 
@@ -347,15 +346,15 @@ class FlextInfraModelsScan:
             m.Field(description="Human-readable rewrite intent"),
         ] = ""
         include: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="fnmatch globs a target path must match"),
         ] = ()
         exclude: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="fnmatch globs a target path must not match"),
         ] = ()
         distributions: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Declared project distributions selected "
@@ -372,11 +371,11 @@ class FlextInfraModelsScan:
             m.Field(description="Expansion template replacing each match"),
         ] = ""
         flags: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Regex flag names from the SSOT map"),
         ] = ()
         capture_equals: Annotated[
-            t.MappingKV[str, str],
+            Mapping[str, str],
             m.Field(description="Named regex captures and their required exact values"),
         ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
         expected: Annotated[
@@ -418,7 +417,7 @@ class FlextInfraModelsScan:
             m.Field(description="Files containing findings"),
         ]
         entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsScan.ModTextFinding],
+            tuple[FlextInfraModelsScan.ModTextFinding, ...],
             m.Field(description="Every validated text finding in stable order"),
         ]
 
@@ -452,19 +451,19 @@ class FlextInfraModelsScan:
         ]
         root: Annotated[Path, m.Field(description="Absolute scanned workspace root")]
         scope: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Exact ast-grep target scope"),
         ]
         totals_by_class: Annotated[
-            t.MappingKV[c.Infra.ModScanFindingClass, t.NonNegativeInt],
+            Mapping[c.Infra.ModScanFindingClass, t.NonNegativeInt],
             m.Field(description="Complete finding totals by mutability class"),
         ]
         totals_by_repository: Annotated[
-            t.MappingKV[str, t.NonNegativeInt],
+            Mapping[str, t.NonNegativeInt],
             m.Field(description="Complete finding totals by repository"),
         ]
         totals_by_rule: Annotated[
-            t.MappingKV[str, t.NonNegativeInt],
+            Mapping[str, t.NonNegativeInt],
             m.Field(description="Complete finding totals by rule identifier"),
         ]
 

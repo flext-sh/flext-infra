@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -42,7 +42,7 @@ class TestsFlextInfraCodegenConformHatchHook:
     def _planned_hook_pyproject(
         root: Path,
         hook_path: str | Path | None,
-    ) -> t.Triple[
+    ) -> tuple[
         FlextInfraCodegenConform.Generate,
         m.Infra.CodegenConformRequest,
         m.Infra.CodegenFilePlan,
@@ -50,7 +50,7 @@ class TestsFlextInfraCodegenConformHatchHook:
         """Plan the canonical pyproject through the public conform owner.
 
         Returns:
-            The resulting ``t.Triple[FlextInfraCodegenConform.Generate,
+            The resulting ``tuple[FlextInfraCodegenConform.Generate,
                 m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan]``.
 
         """

@@ -6,15 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 from flext_infra.refactor import FlextInfraRefactorWrapper
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
 
 
 class FlextInfraWrapperRootNamespaceRefactor(
@@ -69,8 +66,8 @@ class FlextInfraWrapperRootNamespaceRefactor(
     def _scan_workspace(
         self,
     ) -> p.Result[
-        t.Triple[
-            t.SequenceOf[Path],
+        tuple[
+            Sequence[Path],
             MutableMapping[str, frozenset[str]],
             frozenset[str],
         ]
@@ -78,18 +75,18 @@ class FlextInfraWrapperRootNamespaceRefactor(
         """Resolve project paths and discover Python files + runtime alias map.
 
         Returns:
-            The resulting ``p.Result[t.Triple[t.SequenceOf[Path], MutableMapping[str,
+            The resulting ``p.Result[tuple[Sequence[Path], MutableMapping[str,
                 frozenset[str]], frozenset[str]]]``.
 
         """
-        selected_projects: t.StrSequence = (
+        selected_projects: Sequence[str] = (
             self.project_names if self.project_names is not None else ()
         )
         resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
             return r[
                 tuple[
-                    t.SequenceOf[Path],
+                    Sequence[Path],
                     MutableMapping[str, frozenset[str]],
                     frozenset[str],
                 ]
@@ -102,7 +99,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if iter_result.failure:
             return r[
                 tuple[
-                    t.SequenceOf[Path],
+                    Sequence[Path],
                     MutableMapping[str, frozenset[str]],
                     frozenset[str],
                 ]
@@ -114,7 +111,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         }
         return r[
             tuple[
-                t.SequenceOf[Path],
+                Sequence[Path],
                 MutableMapping[str, frozenset[str]],
                 frozenset[str],
             ]
@@ -174,7 +171,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         per_project_replacements_payload: t.JsonDict = dict(
             accumulator.per_project_replacements.items(),
         )
-        changed_files_preview: t.JsonValueList = list(accumulator.changed_files[:200])
+        changed_files_preview: list[t.JsonValue] = list(accumulator.changed_files[:200])
         report_payload: t.JsonDict = {
             "files_scanned": files_scanned,
             "files_changed": len(accumulator.changed_files),
