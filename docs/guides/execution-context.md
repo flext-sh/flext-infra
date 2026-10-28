@@ -454,6 +454,10 @@ The Rope DSL import organizer constructs the installed native
 change through `organize_imports(resource)`. File writes narrow native resources
 through the existing typed file-resource owner before publication.
 
+Incremental workspace indexing accepts its prior typed index and changed paths
+as one refresh request. Module evolution and package assembly remain in the
+existing workspace-index owner; equal package records retain their prior identity.
+
 A DSL consumer that updates one working source binds it through the existing
 source-view owner. That binding retains the entry candidate's foreign/provider
 plans and their original witnesses and modes; an owned-source mapping must not

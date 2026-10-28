@@ -6,19 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 import ast
 from collections.abc import MutableSequence, Sequence
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -110,7 +101,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
     @staticmethod
     def module_export_names_source(
-        source: str,
+        source_module: p.Infra.RopeSourceModule,
         *,
         export_options: m.Infra.ExportOptions | None = None,
     ) -> Sequence[str]:
@@ -119,9 +110,15 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         Returns:
             Module-local exports from one parsed source snapshot.
 
+        Raises:
+            TypeError: If Native export inventory requires its original module syntax.
+
         """
         resolved_options = export_options or m.Infra.ExportOptions()
-        module = ast.parse(source)
+        module = source_module.get_ast()
+        if not isinstance(module, ast.Module):
+            msg = "Native export inventory requires its original module syntax"
+            raise TypeError(msg)
         inventory = FlextInfraUtilitiesRopeAnalysisExports._source_binding_inventory(
             module.body,
         )
@@ -140,7 +137,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             return tuple(
                 dict.fromkeys(
                     FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
-                        source,
+                        source_module,
                         c.Infra.DUNDER_ALL,
                     ),
                 ),
@@ -186,8 +183,10 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         return (collector.assignments, collector.definitions, collector.explicit_all)
 
     @staticmethod
-    def public_export_names_source(source: str) -> Sequence[str]:
-        """Return the explicit public ABI declared by one module source.
+    def public_export_names_source(
+        source_module: p.Infra.RopeSourceModule,
+    ) -> Sequence[str]:
+        """Return the explicit public ABI through the bound native module's DSL.
 
         Returns:
             The explicit public ABI declared by one module source.
@@ -195,7 +194,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         """
         return (
             FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
-                source,
+                source_module,
                 c.Infra.DUNDER_ALL,
             )
         )

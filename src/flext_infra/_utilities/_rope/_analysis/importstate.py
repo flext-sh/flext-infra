@@ -6,15 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 import ast
 import importlib.util as _importlib_util
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -584,7 +575,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         """
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            resource.read(),
+            module,
         )
         attributes = module.get_attributes()
         missing_aliases = frozenset(
@@ -634,14 +625,18 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         Returns:
             Explicitly exported names bound to this exact class object.
 
+        Raises:
+            TypeError: If Facade alias exports require their native source module.
+
         """
         module = target.get_module()
         if module is None or (resource := module.get_resource()) is None:
             return frozenset()
+        if not FlextInfraUtilitiesRopeRuntime.source_module(module):
+            message = "Facade alias exports require their native source module"
+            raise TypeError(message)
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                resource, target.get_name()
-            ).read(),
+            module,
         )
         return frozenset(
             name

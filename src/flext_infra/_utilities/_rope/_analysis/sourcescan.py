@@ -12,15 +12,6 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from collections.abc import Generator, MutableMapping, Sequence
 from functools import cache
 from typing import ClassVar
@@ -537,6 +528,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         Returns:
             The declared strings using the source reader's export semantics.
 
+        Raises:
+            ValueError: If Cyclic native string-sequence declaration.
+
         """
         module_scope = source_module.get_scope()
         scope = module_scope
@@ -587,15 +581,30 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         *,
         depth: int,
     ) -> tuple[int, int] | None:
-        """Select the first direct assignment that declares the requested name."""
+        """Select the first direct assignment that declares the requested name.
+
+        Returns:
+            The resulting ``tuple[int, int] | None``.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
+        binding = scope.get_defined_names().get(name)
+        if binding is None:
+            return None
         index = module.get_source_binding_index()
+        occurrences = tuple(
+            occurrence.offset
+            for occurrence in runtime.create_occurrence_finder(
+                scope.pycore.project, name, binding, imports=False, in_hierarchy=False
+            ).find_occurrences(pymodule=module)
+        )
         direct = tuple(
             fragment
             for fragment in index.fragments
             if fragment.depth == depth
             and index.context_at(fragment.start).structural_scope.pyobject
             is scope.pyobject
+            and any(fragment.start <= offset < fragment.end for offset in occurrences)
         )
         for fragment in direct:
             arity = sum(
@@ -608,12 +617,13 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 f"{name}: ${{annotation}} = ${{value}}",
                 *(
                     (
-                        " = ".join(
-                            (*(
+                        " = ".join((
+                            *(
                                 name if index == selected else f"${{target{index}}}"
                                 for index in range(arity - 1)
-                            ), "${value}")
-                        )
+                            ),
+                            "${value}",
+                        ))
                         for selected in range(arity - 1)
                     )
                     if arity > 1
@@ -635,7 +645,12 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def _native_assignment_capture(
         module: p.Infra.RopeSourceModule, region: tuple[int, int]
     ) -> tuple[int, int] | None:
-        """Capture an indexed assignment's value with the native DSL."""
+        """Capture an indexed assignment's value with the native DSL.
+
+        Returns:
+            The resulting ``tuple[int, int] | None``.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
         fragments = module.get_source_binding_index().fragments
         statement = next(
@@ -651,14 +666,21 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         patterns = (
             "${target}: ${annotation} = ${value}",
             *(
-                (" = ".join((*(f"${{target{i}}}" for i in range(arity - 1)), "${value}")),)
+                (
+                    " = ".join((
+                        *(f"${{target{i}}}" for i in range(arity - 1)),
+                        "${value}",
+                    )),
+                )
                 if arity > 1
                 else ()
             ),
         )
         finder = runtime.semantic_finder(module, arguments={})
         for pattern in patterns:
-            for match in finder.get_matches(pattern, {}, start=region[0], end=region[1]):
+            for match in finder.get_matches(
+                pattern, {}, start=region[0], end=region[1]
+            ):
                 if match.get_region() == region:
                     return runtime.semantic_capture_region(match, "value")
         return None
@@ -667,11 +689,20 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def _native_sequence_strings(
         module: p.Infra.RopeSourceModule, region: tuple[int, int]
     ) -> tuple[str, ...] | None:
-        """Read a literal collection's captures through the native matcher/compiler."""
+        """Read a literal collection's captures through the native matcher/compiler.
+
+        Returns:
+            The resulting ``tuple[str, ...] | None``.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
         fragments = module.get_source_binding_index().fragments
         value = max(
-            (fragment for fragment in fragments if (fragment.start, fragment.end) == region),
+            (
+                fragment
+                for fragment in fragments
+                if (fragment.start, fragment.end) == region
+            ),
             key=lambda fragment: fragment.depth,
         )
         count = sum(
@@ -680,17 +711,37 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             for child in fragments
         )
         items = ", ".join(f"${{item{i}}}" for i in range(count))
-        patterns = (f"[{items}]", f"({items}{',' if count == 1 else ''})", f"{{{items}}}")
+        patterns = (
+            f"[{items}]",
+            f"({items}{',' if count == 1 else ''})",
+            f"{{{items}}}",
+        )
         finder = runtime.semantic_finder(module, arguments={})
         for pattern in patterns:
-            for match in finder.get_matches(pattern, {}, start=region[0], end=region[1]):
+            for match in finder.get_matches(
+                pattern, {}, start=region[0], end=region[1]
+            ):
                 if match.get_region() != region:
                     continue
                 strings: list[str] = []
                 for index in range(count):
                     begin, end = runtime.semantic_capture_region(match, f"item{index}")
-                    item = runtime.literal_string(module.source_code[begin:end])
+                    candidate = module.source_code[begin:end]
+                    literals = runtime.ignored_regions(candidate)
+                    position = 0
+                    residue: list[str] = []
+                    for left, right, _metadata in literals:
+                        residue.append(candidate[position:left])
+                        position = right
+                    residue.append(candidate[position:])
+                    if not literals or "".join(residue).strip():
+                        return ()
+                    item = runtime.literal_string(candidate)
                     if item is None:
+                        return ()
+                    if (begin, end) not in runtime.semantic_regions(
+                        module, repr(item), arguments={}, start=begin, end=end
+                    ):
                         return ()
                     strings.append(item)
                 return tuple(strings)
@@ -700,9 +751,20 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def _native_sequence_reference(
         module: p.Infra.RopeSourceModule, region: tuple[int, int]
     ) -> str:
-        """Read a sole native name or the supported one-name constructor call."""
+        """Read a sole native name or the supported one-name constructor call.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If Native string-sequence query requires the word finder
+                contract.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntime
-        word = runtime.runtime_callable("rope.base.worder", "Worder")(module.source_code)
+        word = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
         if not isinstance(word, p.Infra.RopeWorder):
             msg = "Native string-sequence query requires the word finder contract"
             raise TypeError(msg)

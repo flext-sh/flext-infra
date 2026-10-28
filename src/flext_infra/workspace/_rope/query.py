@@ -6,15 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
@@ -182,6 +173,10 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             One indexed module entry for the requested file path.
 
         """
+        if not file_path.absolute().is_relative_to(
+            Path(self.rope_project.root.real_path)
+        ):
+            return None
         raw = self.workspace_index.modules_by_path.get(
             str(self._source_path(file_path))
         )
@@ -199,6 +194,10 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             One indexed package entry for the requested directory.
 
         """
+        if not package_dir.absolute().is_relative_to(
+            Path(self.rope_project.root.real_path)
+        ):
+            return None
         raw = self.workspace_index.packages_by_dir.get(
             str(self._source_path(package_dir))
         )

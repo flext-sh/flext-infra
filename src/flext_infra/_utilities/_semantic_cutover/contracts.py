@@ -682,11 +682,8 @@ class FlextInfraUtilitiesSemanticContracts(
             if path not in working:
                 msg = f"{rule.id}: effect is outside captured consumers: {path}"
                 raise ValueError(msg)
-            proposed = (
-                FlextInfraUtilitiesSemanticDeclarationRelocation
-                .remove_orphaned_imports(
-                    project, change.resource, working[path], change.new_contents
-                )
+            proposed = FlextInfraUtilitiesSemanticDeclarationRelocation.remove_orphaned_imports(
+                project, change.resource, working[path], change.new_contents
             )
             if proposed != working[path]:
                 working[path] = proposed

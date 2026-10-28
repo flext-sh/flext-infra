@@ -9,15 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import TYPE_CHECKING, override

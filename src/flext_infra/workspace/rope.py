@@ -6,15 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from keyword import iskeyword
@@ -237,8 +228,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                 self.snapshot,
                 self.repository_root,
                 project=project,
-                previous_index=index,
-                changed_paths=changed,
+                refresh=(index, changed),
             )
         if self._import_dependents_index is not None:
             self._refresh_candidate_imports(changed)

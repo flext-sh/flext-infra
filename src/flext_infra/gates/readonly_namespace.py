@@ -103,12 +103,11 @@ class FlextInfraReadonlyNamespace:
         if not selected:
             return ()
         runtime = FlextInfraUtilitiesRopeRuntime
-        protocol = (
-            source_project
-            .get_module("typing")
-            .get_attributes()["Protocol"]
-            .get_object()
-        )
+        typing_module = source_project.get_module("typing")
+        if not isinstance(typing_module, p.Infra.RopePyObject):
+            msg = "Protocol owner requires a native module attribute contract"
+            raise TypeError(msg)
+        protocol = typing_module.get_attribute("Protocol").get_object()
         modules: dict[Path, p.Infra.RopeSourceModule] = {}
         wanted: dict[str, list[tuple[Path, int, int]]] = {}
         for finding in selected:

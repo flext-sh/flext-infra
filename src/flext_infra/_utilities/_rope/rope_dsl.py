@@ -13,20 +13,12 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
+from collections.abc import Sequence
 from fnmatch import fnmatch
 
+from flext_core import r
 from rope.refactor.importutils import ImportOrganizer
 
-from flext_core import r
 from flext_infra import m, p, t
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,

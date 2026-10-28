@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Literal, override
 
 from flext_cli import u
+from flext_core import r
 from libcst import (
     AnnAssign,
     Annotation,
@@ -44,8 +45,6 @@ from libcst import (
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
-
-from flext_core import r
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
@@ -743,9 +742,8 @@ class FlextInfraUtilitiesCodegenFacades(
         path = directory.parent / f"{directory.name.lstrip('_')}.py"
         owners = cls.family_subfacade_owners(project, directory)
         if len(owners) > 1:
-            resolver_factory = (
-                FlextInfraUtilitiesRopeSourceBasesRuntime
-                .source_member_resolver_factory(project, sources={})
+            resolver_factory = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                project, sources={}
             )
             evidence: list[str] = []
             for owner_path, owner_name in owners:
@@ -3869,8 +3867,10 @@ class FlextInfraUtilitiesCodegenFacades(
         ):
             for path, wanted in sorted(selected.items()):
                 if path not in sources:
-                    msg = (f"Facade publication source is outside its native election: "
-                           f"{path}")
+                    msg = (
+                        f"Facade publication source is outside its native election: "
+                        f"{path}"
+                    )
                     raise ValueError(msg)
                 resource = project.get_file(
                     path.relative_to(Path(project.root.real_path)).as_posix()

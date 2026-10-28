@@ -6,15 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from tests.unit.codegen._utility_facade_projection.behavior import UtilityFacadeBehavior
 from tests.unit.codegen._utility_facade_projection.planning import UtilityFacadePlanning
 from tests.unit.codegen._utility_facade_projection.publication import (

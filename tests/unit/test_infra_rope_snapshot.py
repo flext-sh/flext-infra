@@ -6,15 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from pathlib import Path
 
 import pytest
@@ -205,6 +196,7 @@ class TestsFlextInfraRopeSnapshot:
             )
             tm.that(source.read_bytes(), eq=changed)
 
+
 class TestsFlextInfraRopeCandidateViews:
     """Validate nested native candidate bindings and their retained witnesses."""
 
@@ -239,13 +231,20 @@ class TestsFlextInfraRopeCandidateViews:
                 tm.that(candidate is project, eq=True)
                 projected_module = candidate.get_pymodule(resource, force_errors=True)
                 tm.that(projected_module is not original_module, eq=True)
-                tm.that(candidate.get_pymodule(other, force_errors=True) is independent_module, eq=True)
+                tm.that(
+                    candidate.get_pymodule(other, force_errors=True)
+                    is independent_module,
+                    eq=True,
+                )
                 tm.that(candidate_sources[source], eq=proposed.decode())
                 tm.that(original_sources[source], eq=physical.decode())
                 tm.that(candidate.source_state(source) is before, eq=True)
                 tm.that(source.read_bytes(), eq=physical)
             tm.that(project.source_bytes(source), eq=physical)
-            tm.that(project.get_pymodule(other, force_errors=True) is independent_module, eq=True)
+            tm.that(
+                project.get_pymodule(other, force_errors=True) is independent_module,
+                eq=True,
+            )
 
     @staticmethod
     def test_planned_override_preserves_bound_foreign_candidate(tmp_path: Path) -> None:

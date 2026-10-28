@@ -6,15 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 import operator
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
@@ -466,6 +457,49 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             project_package_by_root[str(project_root)] = package_name
 
     @classmethod
+    def _refresh_module_entries(
+        cls,
+        source_project: p.Infra.RopeProject,
+        resolved_root: Path,
+        refresh: tuple[m.Infra.RopeWorkspaceIndex, Sequence[Path]],
+    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
+        """Evolve only affected native module entries from the prior index.
+
+        Returns:
+            The current entries with unaffected identities retained.
+
+        """
+        previous_index, changed_paths = refresh
+        entries = dict(previous_index.modules_by_path)
+        directory_facts: MutableMapping[Path, tuple[Path | None, str]] = {}
+        changed = {
+            Path(source_project.fscommands.realpath(str(path)))
+            for path in changed_paths
+        }
+        metadata_roots = {
+            path.parent for path in changed if path.name == c.PYPROJECT_FILENAME
+        }
+        changed.update(
+            entry.file_path
+            for entry in entries.values()
+            if entry.project_root in metadata_roots
+        )
+        for path in changed:
+            resolved_path = path
+            entries.pop(str(resolved_path), None)
+            if (
+                resolved_path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
+                or not source_project.source_query(resolved_path, "isfile")
+            ):
+                continue
+            entry = cls._module_entry(
+                resolved_path, resolved_root, source_project, directory_facts
+            )
+            if entry is not None:
+                entries[str(resolved_path)] = entry
+        return tuple(entries.values())
+
+    @classmethod
     def index_rope_workspace(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
@@ -473,8 +507,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         *,
         project: p.Infra.RopeProject | None = None,
         project_roots: Sequence[Path] | None = None,
-        previous_index: m.Infra.RopeWorkspaceIndex | None = None,
-        changed_paths: Sequence[Path] = (),
+        refresh: tuple[m.Infra.RopeWorkspaceIndex, Sequence[Path]] | None = None,
     ) -> m.Infra.RopeWorkspaceIndex:
         """Build a Rope workspace index as a view over the run snapshot's listing.
 
@@ -493,40 +526,19 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """
         source_project = snapshot.engine if project is None else project
         resolved_root = Path(source_project.fscommands.realpath(str(repository_root)))
-        if previous_index is not None:
-            if previous_index.repository_root != resolved_root:
+        previous_index = refresh[0] if refresh is not None else None
+        if refresh is not None:
+            if refresh[0].repository_root != resolved_root:
                 message = "incremental Rope index belongs to another repository"
                 raise ValueError(message)
-            entries = dict(previous_index.modules_by_path)
-            directory_facts: MutableMapping[Path, tuple[Path | None, str]] = {}
-            changed = {
-                Path(source_project.fscommands.realpath(str(path)))
-                for path in changed_paths
-            }
-            metadata_roots = {
-                path.parent for path in changed if path.name == c.PYPROJECT_FILENAME
-            }
-            changed.update(
-                entry.file_path
-                for entry in entries.values()
-                if entry.project_root in metadata_roots
+            entries = cls._refresh_module_entries(
+                source_project, resolved_root, refresh
             )
-            for path in changed:
-                resolved_path = path
-                entries.pop(str(resolved_path), None)
-                if (
-                    resolved_path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
-                    or not source_project.source_query(resolved_path, "isfile")
-                ):
-                    continue
-                entry = cls._module_entry(
-                    resolved_path, resolved_root, source_project, directory_facts
-                )
-                if entry is not None:
-                    entries[str(resolved_path)] = entry
-            if entries == previous_index.modules_by_path:
-                return previous_index
-            collected = cls._module_maps(tuple(entries.values()))
+            if {str(entry.file_path): entry for entry in entries} == (
+                refresh[0].modules_by_path
+            ):
+                return refresh[0]
+            collected = cls._module_maps(entries)
         else:
             listing = tuple(
                 path
@@ -553,6 +565,27 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 listing,
                 snapshot.directory_facts if project is None else {},
             )
+        return cls._assemble_workspace_index(resolved_root, collected, previous_index)
+
+    @classmethod
+    def _assemble_workspace_index(
+        cls,
+        resolved_root: Path,
+        collected: tuple[
+            MutableMapping[str, m.Infra.RopeModuleIndexEntry],
+            MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]],
+            MutableMapping[str, Path],
+            MutableMapping[str, str],
+            set[Path],
+        ],
+        previous_index: m.Infra.RopeWorkspaceIndex | None,
+    ) -> m.Infra.RopeWorkspaceIndex:
+        """Assemble package records while retaining equal prior records.
+
+        Returns:
+            The workspace index over the elected module cohort.
+
+        """
         (
             modules_by_path,
             modules_by_dir,
@@ -566,46 +599,21 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
         packages_by_dir: MutableMapping[str, m.Infra.RopePackageIndexEntry] = {}
         for package_dir in sorted_package_dirs:
-            (
-                dir_modules,
-                init_path,
-                project_root,
-                package_name,
-            ) = cls._package_identity(package_dir, modules_by_dir, modules_by_path)
+            package = cls._indexed_package(
+                package_dir,
+                modules_by_dir,
+                modules_by_path,
+                (direct_children_by_dir, descendants_by_dir),
+                previous_index,
+            )
             cls._register_package_identity(
                 package_dir,
-                project_root,
-                package_name,
+                package.project_root,
+                package.package_name,
                 package_dir_by_name,
                 project_package_by_root,
             )
-            previous_package = (
-                previous_index.packages_by_dir.get(str(package_dir))
-                if previous_index is not None
-                else None
-            )
-            children = tuple(direct_children_by_dir.get(package_dir, ()))
-            descendants = tuple(descendants_by_dir.get(package_dir, ()))
-            if (
-                previous_package is not None
-                and previous_package.init_path == init_path
-                and previous_package.package_name == package_name
-                and previous_package.project_root == project_root
-                and previous_package.modules == dir_modules
-                and previous_package.direct_child_dirs == children
-                and previous_package.descendant_child_dirs == descendants
-            ):
-                packages_by_dir[str(package_dir)] = previous_package
-                continue
-            packages_by_dir[str(package_dir)] = m.Infra.RopePackageIndexEntry(
-                package_dir=package_dir,
-                init_path=init_path,
-                package_name=package_name,
-                project_root=project_root,
-                modules=dir_modules,
-                direct_child_dirs=children,
-                descendant_child_dirs=descendants,
-            )
+            packages_by_dir[str(package_dir)] = package
         return m.Infra.RopeWorkspaceIndex(
             repository_root=resolved_root,
             package_dirs=sorted_package_dirs,
@@ -614,6 +622,42 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             package_dir_by_name=package_dir_by_name,
             project_package_by_root=project_package_by_root,
         )
+
+    @classmethod
+    def _indexed_package(
+        cls,
+        package_dir: Path,
+        modules_by_dir: Mapping[Path, list[m.Infra.RopeModuleIndexEntry]],
+        modules_by_path: Mapping[str, m.Infra.RopeModuleIndexEntry],
+        family_maps: tuple[
+            Mapping[Path, Sequence[Path]], Mapping[Path, Sequence[Path]]
+        ],
+        previous_index: m.Infra.RopeWorkspaceIndex | None,
+    ) -> m.Infra.RopePackageIndexEntry:
+        """Elect the package record and preserve its prior identity when equal.
+
+        Returns:
+            The authenticated package record for the current module cohort.
+
+        """
+        modules, init_path, project_root, package_name = cls._package_identity(
+            package_dir, modules_by_dir, modules_by_path
+        )
+        candidate = m.Infra.RopePackageIndexEntry(
+            package_dir=package_dir,
+            init_path=init_path,
+            package_name=package_name,
+            project_root=project_root,
+            modules=modules,
+            direct_child_dirs=tuple(family_maps[0].get(package_dir, ())),
+            descendant_child_dirs=tuple(family_maps[1].get(package_dir, ())),
+        )
+        previous = (
+            previous_index.packages_by_dir.get(str(package_dir))
+            if previous_index is not None
+            else None
+        )
+        return previous if previous == candidate and previous is not None else candidate
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisWorkspace"]
