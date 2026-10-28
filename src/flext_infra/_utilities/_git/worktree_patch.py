@@ -11,14 +11,14 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitWorktreeCheckpoint,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitWorktreePatchMixin(
-    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
+class FlextInfraUtilitiesGitWorktreePatch(
+    FlextInfraUtilitiesGitWorktreeCheckpoint,
 ):
     """Own worktree patch operations."""
 
@@ -212,4 +212,4 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
         return cls._git_apply_gitlinks(delta.source_root, delta.patch)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreePatchMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreePatch"]

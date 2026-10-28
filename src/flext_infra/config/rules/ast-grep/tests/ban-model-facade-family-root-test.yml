@@ -5,7 +5,7 @@ id: ban-model-facade-family-root
 # namespace nesting the model.
 valid:
   - |
-    class FlextFooModels:
+    class FlextModelsFoo:
         class State(m.BaseModel):
             name: str
   - |
@@ -15,9 +15,9 @@ valid:
         return Local
 invalid:
   - |
-    class FlextFooModels(FlextCliModels):
+    class FlextModelsFoo(FlextCliModels):
         pass
   - |
-    class FlextFooModels(StateModel, FlextCliModels):
+    class FlextModelsFoo(StateModel, FlextCliModels):
         class State(m.BaseModel):
             name: str

@@ -13,14 +13,15 @@ from typing import TYPE_CHECKING
 from flext_infra import m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesPrivateImportAncestry as ImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
     FlextInfraUtilitiesProjectDiscovery,
+)
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
 )
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from pathlib import Path

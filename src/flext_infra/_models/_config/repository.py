@@ -13,13 +13,13 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
+from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config.make import FlextInfraModelsConfigMake
+from flext_infra._models._config.templates import FlextInfraModelsConfigTemplates
 
 
-class FlextInfraConfigModelsRepository:
+class FlextInfraModelsConfigRepository:
     """Repository identity, project declaration, and conformance target models."""
 
     @staticmethod
@@ -47,7 +47,7 @@ class FlextInfraConfigModelsRepository:
             raise ValueError(msg)
         return value
 
-    class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ProjectSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
@@ -261,11 +261,11 @@ class FlextInfraConfigModelsRepository:
         @m.field_validator("hatch_build_hook_path")
         @classmethod
         def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
-            return FlextInfraConfigModelsRepository.validated_hatch_build_hook_path(
+            return FlextInfraModelsConfigRepository.validated_hatch_build_hook_path(
                 value,
             )
 
-    class WorkspaceIntegrationSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class WorkspaceIntegrationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Declared integration provider and branch of one repository."""
 
         provider: Annotated[
@@ -285,7 +285,7 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="Optional provider base URL override"),
         ] = None
 
-    class RepositoryRef(FlextInfraConfigModelsContract.ConfigContract):
+    class RepositoryRef(FlextInfraModelsConfigContract.ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
@@ -399,7 +399,7 @@ class FlextInfraConfigModelsRepository:
             ),
         ] = None
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
             m.Field(
                 description=(
                     "Additional public Make verbs this repository dispatches "
@@ -408,7 +408,7 @@ class FlextInfraConfigModelsRepository:
             ),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraConfigModelsRepository.ScriptDispatchSpec | None,
+            FlextInfraModelsConfigRepository.ScriptDispatchSpec | None,
             m.Field(
                 description=(
                     "Opt-in script command-framework routing for non-builtin "
@@ -417,13 +417,13 @@ class FlextInfraConfigModelsRepository:
             ),
         ] = None
 
-    class RepositoryConformTarget(FlextInfraConfigModelsContract.ConfigContract):
+    class RepositoryConformTarget(FlextInfraModelsConfigContract.ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
-            FlextInfraConfigModelsRepository.RepositoryRef,
+            FlextInfraModelsConfigRepository.RepositoryRef,
             m.Field(description="Declared immutable repository identity"),
         ]
         root: Annotated[
@@ -437,7 +437,7 @@ class FlextInfraConfigModelsRepository:
             ),
         ]
         vscode_spec: Annotated[
-            FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
+            FlextInfraModelsConfigTemplates.CodegenVscodeSpec | None,
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
         vscode_sources: Annotated[
@@ -451,11 +451,11 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
-            FlextInfraConfigModelsBeads.BeadsProjectSpec | None,
+            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         project: Annotated[
-            FlextInfraConfigModelsRepository.ProjectSpec | None,
+            FlextInfraModelsConfigRepository.ProjectSpec | None,
             m.Field(
                 description=(
                     "Declared project metadata of the manifest, when the "
@@ -494,7 +494,7 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
 
-    class ScriptDispatchSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScriptDispatchSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
         dispatcher: Annotated[
@@ -518,4 +518,4 @@ class FlextInfraConfigModelsRepository:
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsRepository"]
+__all__: list[str] = ["FlextInfraModelsConfigRepository"]

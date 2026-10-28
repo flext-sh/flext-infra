@@ -34,8 +34,8 @@ from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
     FlextInfraUtilitiesLintSourcePositions,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyprojectConform,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 

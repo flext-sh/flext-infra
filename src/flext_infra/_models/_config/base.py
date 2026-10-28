@@ -6,37 +6,37 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
-from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-from flext_infra._models._config.render import FlextInfraConfigModelsRender
-from flext_infra._models._config.root import FlextInfraConfigModelsRoot
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models._config.static import FlextInfraConfigModelsStatic
-from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
+from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
+from flext_infra._models._config.contexts import FlextInfraModelsConfigContexts
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config.make import FlextInfraModelsConfigMake
+from flext_infra._models._config.provider import FlextInfraModelsConfigProvider
+from flext_infra._models._config.release import FlextInfraModelsConfigRelease
+from flext_infra._models._config.render import FlextInfraModelsConfigRender
+from flext_infra._models._config.root import FlextInfraModelsConfigRoot
+from flext_infra._models._config.scaffold import FlextInfraModelsConfigScaffold
+from flext_infra._models._config.static import FlextInfraModelsConfigStatic
+from flext_infra._models._config.templates import FlextInfraModelsConfigTemplates
+from flext_infra._models._config.workspace import FlextInfraModelsConfigWorkspace
 
 
-class FlextInfraConfigModels(
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsProvider,
-    FlextInfraConfigModelsRender,
-    FlextInfraConfigModelsRoot,
-    FlextInfraConfigModelsScaffold,
-    FlextInfraConfigModelsStatic,
-    FlextInfraConfigModelsMake,
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsTemplates,
-    FlextInfraConfigModelsContexts,
-    FlextInfraConfigModelsWorkspace,
-    FlextInfraConfigModelsRelease,
-    FlextInfraConfigModelsArtifact,
+class FlextInfraModelsConfig(
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigProvider,
+    FlextInfraModelsConfigRender,
+    FlextInfraModelsConfigRoot,
+    FlextInfraModelsConfigScaffold,
+    FlextInfraModelsConfigStatic,
+    FlextInfraModelsConfigMake,
+    FlextInfraModelsConfigBeads,
+    FlextInfraModelsConfigTemplates,
+    FlextInfraModelsConfigContexts,
+    FlextInfraModelsConfigWorkspace,
+    FlextInfraModelsConfigRelease,
+    FlextInfraModelsConfigArtifact,
 ):
     """Every config family joined in dependency order, foundations first."""
 
 
-__all__: list[str] = ["FlextInfraConfigModels"]
+__all__: list[str] = ["FlextInfraModelsConfig"]

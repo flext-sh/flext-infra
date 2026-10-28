@@ -77,6 +77,9 @@ class TestsFlextInfraFacadeMemberRelocation:
         # The census decides each move: a member relocates when its owner
         # letter binds it and the receiver binds no object or the identical one.
         with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             _lineage, references, _names = u.Infra.facade_member_census(
                 mod_workspace, source_project=snapshot.engine
             )
@@ -86,6 +89,7 @@ class TestsFlextInfraFacadeMemberRelocation:
                         snapshot.engine,
                         f"{c.Infra.PKG_CORE_UNDERSCORE}.m.{name}",
                     ),
+                    resolver_factory=resolver_factory,
                     source_project=snapshot.engine,
                 )
                 for name in names

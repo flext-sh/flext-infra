@@ -12,10 +12,8 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import FlextInfraUtilities, c, m, p, r, t, u
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesPyprojectDocument,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectDocument
 
 
 class FlextInfraWorkspaceEnvironmentProvenanceEditable(

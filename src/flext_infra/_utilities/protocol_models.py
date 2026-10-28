@@ -13,17 +13,21 @@ from pathlib import Path
 from flext_infra import c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesSemanticCutover,
+)
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
-    FlextInfraUtilitiesSemanticCutover,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
-class FlextInfraUtilitiesProtocolModels:
+class FlextInfraModelsUtilitiesProtocol:
     """Restore the source projection removed in 7a76fa5a9c, without its CLI."""
 
     @classmethod
@@ -928,4 +932,4 @@ class FlextInfraUtilitiesProtocolModels:
             return value
 
 
-__all__: list[str] = ["FlextInfraUtilitiesProtocolModels"]
+__all__: list[str] = ["FlextInfraModelsUtilitiesProtocol"]

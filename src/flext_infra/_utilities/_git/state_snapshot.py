@@ -13,13 +13,13 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
+class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
     """Canonical scoped state discovery for capture, verification and cleanup."""
 
     @staticmethod
@@ -339,4 +339,4 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateSnapshotMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateSnapshot"]

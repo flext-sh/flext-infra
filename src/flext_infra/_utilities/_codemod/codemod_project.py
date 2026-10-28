@@ -20,15 +20,17 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCodemodBindingChain,
-    FlextInfraUtilitiesCodemodNativeCascade,
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-    FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativeCascade,
+    FlextInfraUtilitiesCodemodNativePackage,
+)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -37,14 +39,14 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 
 
 class FlextInfraUtilitiesCodemodProject(
     FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
-    FlextInfraUtilitiesCodemodNativeUtilities,
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodNativeCascade,
     FlextInfraUtilitiesImportLaw,
 ):
@@ -77,7 +79,7 @@ class FlextInfraUtilitiesCodemodProject(
         ) as snapshot:
             project = snapshot.engine
             resources = tuple(
-                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                     project.get_resource(path.relative_to(resolved).as_posix()),
                     path,
                 )
@@ -425,7 +427,7 @@ class FlextInfraUtilitiesCodemodProject(
         elected: set[Path] = set()
         with FlextInfraUtilitiesRopeCore.open_project(root) as project:
             for path, calls in candidates.items():
-                resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                     project.get_resource(path.relative_to(root).as_posix()), path
                 )
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
@@ -479,7 +481,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         fields = {keyword.arg: keyword.value for keyword in node.keywords}
         if set(fields) != set(m.Cli.PythonScriptExecution.model_fields):
             return None
@@ -545,7 +547,7 @@ class FlextInfraUtilitiesCodemodProject(
             msg = "implementation-owner requires a module and public primitive"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         module_name, expression = condition.arg
         primitive = runtime.qualified_name(
             project, expression, module_name=module_name
@@ -590,7 +592,7 @@ class FlextInfraUtilitiesCodemodProject(
             TypeError: If the module has no supported AST.
 
         """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         pending: list[p.Infra.RopePyObject] = []
         if not (types.py_class(target) or types.py_function(target)):
             return None
@@ -647,7 +649,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         pending: list[p.Infra.RopePyObject] = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call) or not (

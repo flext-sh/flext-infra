@@ -25,18 +25,18 @@ from libcst.metadata import (
 )
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodemodBindingChain,
-    FlextInfraUtilitiesQualifiedNames,
-    FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
-    FlextInfraUtilitiesSemanticNestingTypes,
-)
+from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraTypesUtilitiesSemanticNesting,
+    FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
 )
 
 
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 t.Triple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
             ] = []
             for module, bindings in bindings_by_module.items():
-                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                provider = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
                     FlextInfraUtilitiesRopeCore.resolve_pymodule(
                         self.project,
                         providers_by_module[module],
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ):
                 msg = f"occupied native nesting destination: {selected}"
                 raise ValueError(msg)
-            return FlextInfraUtilitiesSemanticNestingTypes.checked_type_reference(
+            return FlextInfraTypesUtilitiesSemanticNesting.checked_type_reference(
                 scope,
                 selected,
             )
@@ -181,7 +181,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self._reject_ambiguous_alias(expression, declarations)
             if not matches:
                 return None
-            FlextInfraUtilitiesSemanticNestingTypes.require_nesting_binding(
+            FlextInfraTypesUtilitiesSemanticNesting.require_nesting_binding(
                 (self.project, self.original, scope),
                 expression,
                 offset,
@@ -247,11 +247,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 if receiver_name is None:
                     msg = f"unresolved native nesting receiver: {expression}"
                     raise ValueError(msg)
-                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                provider = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
                     receiver_name.get_object(),
                 )
             elif isinstance(actual, p.Infra.RopeImportedName):
-                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                provider = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
                     actual.imported_module.get_object(),
                 )
             module, prefix = self.import_route(
@@ -395,7 +395,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             match actual:
                 case p.Infra.RopeImportedName():
                     provider = (
-                        FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                        FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
                             actual.imported_module.get_object(),
                         )
                     )
@@ -779,7 +779,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 cls._nesting_import_route,
             ),
         )
-        edits = FlextInfraUtilitiesSemanticNestingTypes.quoted_type_edits(
+        edits = FlextInfraTypesUtilitiesSemanticNesting.quoted_type_edits(
             native[0],
             native[1],
             source,

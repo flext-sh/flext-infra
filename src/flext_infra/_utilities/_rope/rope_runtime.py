@@ -13,14 +13,14 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 )
 
 
 class FlextInfraUtilitiesRopeRuntime(
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 ):
     """Compose typed Rope runtime boundary helpers."""
 

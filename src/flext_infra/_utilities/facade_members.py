@@ -17,16 +17,15 @@ import ast
 import builtins
 import re
 from pathlib import Path
-from typing import ClassVar
 
 from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyprojectConform,
 )
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodNative
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -38,7 +37,7 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
@@ -54,20 +53,13 @@ from flext_infra._utilities._semantic_cutover.declaration_payload import (
 class FlextInfraUtilitiesFacadeMembers:
     """Derive facade member kinds and their single owner letter."""
 
-    _census_cache: ClassVar[
-        dict[
-            tuple[str, int],
-            t.Triple[
-                t.StrSequence,
-                t.MappingKV[str, frozenset[str]],
-                t.MappingKV[str, frozenset[str]],
-            ],
-        ]
-    ] = {}
-
     @classmethod
     def facade_member_kind(
-        cls, value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+        cls,
+        value: p.Infra.RopePyName,
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        source_project: p.Infra.RopeProject,
     ) -> c.Infra.FacadeMemberKind:
         """Classify a proven native declaration, never an unknown inference.
 
@@ -79,7 +71,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         binding = value
         while True:
             annotation_kind = cls._annotation_kind(
@@ -115,7 +107,11 @@ class FlextInfraUtilitiesFacadeMembers:
         module = origin.get_module()
         module_name = "" if module is None else module.get_name()
         if types.abstract_class(origin):
-            return cls._class_kind(origin, source_project=source_project)
+            return cls._class_kind(
+                origin,
+                resolver_factory=resolver_factory,
+                source_project=source_project,
+            )
         if types.py_function(origin) or isinstance(
             origin, runtime.runtime_type("rope.base.builtins", "BuiltinFunction")
         ):
@@ -148,7 +144,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         imported = runtime.class_assignment_binding(value, classes_only=False)
         visited: set[int] = set()
         while imported is not None:
@@ -334,7 +330,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         supplier = runtime.class_assignment_binding(
             runtime.source_import_binding(value), classes_only=False
         )
@@ -372,7 +368,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         supplier = runtime.class_assignment_binding(
             runtime.source_import_binding(value), classes_only=False
         )
@@ -410,7 +406,10 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @staticmethod
     def _class_kind(
-        origin: p.Infra.RopeClassObject, *, source_project: p.Infra.RopeProject
+        origin: p.Infra.RopeClassObject,
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        source_project: p.Infra.RopeProject,
     ) -> c.Infra.FacadeMemberKind:
         """Classify native class ancestry and its declared structural contract.
 
@@ -419,7 +418,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         kind = c.Infra.FacadeMemberKind
         ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(origin)
         if any(
@@ -438,7 +437,10 @@ class FlextInfraUtilitiesFacadeMembers:
         ):
             return kind.PROTOCOL
         if FlextInfraUtilitiesFacadeMembers._model_class(
-            origin, ancestry, source_project=source_project
+            origin,
+            ancestry,
+            resolver_factory=resolver_factory,
+            source_project=source_project,
         ):
             return kind.MODEL
         own = (
@@ -461,6 +463,7 @@ class FlextInfraUtilitiesFacadeMembers:
         origin: p.Infra.RopeClassObject,
         ancestry: t.SequenceOf[p.Infra.RopePyObject],
         *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
     ) -> bool:
         """Recognize the canonical structural model contract and native TypedDict.
@@ -472,8 +475,8 @@ class FlextInfraUtilitiesFacadeMembers:
             ValueError: The canonical model protocol declares no public members.
 
         """
-        model = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
-            source_project, f"{c.Infra.PKG_CORE_UNDERSCORE}.p.ModelType"
+        model = resolver_factory()(
+            f"{c.Infra.PKG_CORE_UNDERSCORE}.p.ModelType"
         ).get_object()
         required = frozenset(
             name for name in model.get_attributes() if not name.startswith("_")
@@ -542,7 +545,11 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @classmethod
     def facade_member_owner(
-        cls, value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+        cls,
+        value: p.Infra.RopePyName,
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        source_project: p.Infra.RopeProject,
     ) -> str:
         """Return the configured owner of the member's native declaration.
 
@@ -551,7 +558,11 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         return config.Infra.tooling.facade_members.owners[
-            cls.facade_member_kind(value, source_project=source_project)
+            cls.facade_member_kind(
+                value,
+                resolver_factory=resolver_factory,
+                source_project=source_project,
+            )
         ]
 
     @classmethod
@@ -567,7 +578,12 @@ class FlextInfraUtilitiesFacadeMembers:
             ValueError: If the member's owner cannot be determined.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                source_project, sources={}
+            )
+        )
+        module = FlextInfraUtilitiesTypesRopeRuntime.require_parsed_module(
             source_project.get_module(library)
         )
         owned: list[str] = []
@@ -576,7 +592,11 @@ class FlextInfraUtilitiesFacadeMembers:
                 continue
             try:
                 if (
-                    cls.facade_member_owner(binding, source_project=source_project)
+                    cls.facade_member_owner(
+                        binding,
+                        resolver_factory=resolver_factory,
+                        source_project=source_project,
+                    )
                     != letter
                 ):
                     continue
@@ -638,7 +658,7 @@ class FlextInfraUtilitiesFacadeMembers:
             ValueError: A receiver is a module or lacks a proven class publication.
 
         """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         module = types.require_parsed_module(source_project.get_module(package))
         resource = module.get_resource()
         if isinstance(resource, p.Infra.RopeRoot):
@@ -690,19 +710,30 @@ class FlextInfraUtilitiesFacadeMembers:
                 if unpublished:
                     continue
             target = None if binding is None else binding.get_object()
-            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(target):
+            if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(target):
                 message = f"unresolved specialization facade: {package}.{letter}"
                 raise ValueError(message)
             owner = target.get_module()
-            if FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
-                source_project,
-                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                    None if owner is None else owner.get_resource(),
-                    f"{package}.{letter}",
-                ),
-            ) != (letter, target.get_name()):
+            observed_owner = (
+                FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
+                    source_project,
+                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                        None if owner is None else owner.get_resource(),
+                        f"{package}.{letter}",
+                    ),
+                )
+            )
+            expected_owner = (letter, target.get_name())
+            if observed_owner != expected_owner:
                 message = f"unproven specialization publication: {package}.{letter}"
-                raise ValueError(message)
+                failure = ValueError(message)
+                failure.add_note(
+                    f"route_target={None if route is None else route.target}; "
+                    f"route_attributes={None if route is None else route.attributes}; "
+                    f"binding_type={type(binding).__qualname__}; "
+                    f"expected_owner={expected_owner}; observed_owner={observed_owner}"
+                )
+                raise failure
             facades[letter] = target
         return facades
 
@@ -723,7 +754,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         alias = runtime.annotation_alias_definition(binding)
         if alias is None:
             value = binding.get_object()
@@ -773,6 +804,7 @@ class FlextInfraUtilitiesFacadeMembers:
         *,
         facades: t.MappingKV[str, p.Infra.RopeClassObject],
         bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
         declarations: t.MappingKV[
             str, t.MappingKV[str, t.SequenceOf[p.Infra.RopePyObject]]
@@ -808,7 +840,11 @@ class FlextInfraUtilitiesFacadeMembers:
             return None
         value = bindings[letter][member]
         try:
-            owner = cls.facade_member_owner(value, source_project=source_project)
+            owner = cls.facade_member_owner(
+                value,
+                resolver_factory=resolver_factory,
+                source_project=source_project,
+            )
         except ValueError as failure:
             failure.add_note(f"Facade census reference: {package}.{letter}.{member}")
             raise
@@ -820,7 +856,11 @@ class FlextInfraUtilitiesFacadeMembers:
             and cls._same_binding(members[member], value, source_project=source_project)
         ):
             return c.Infra.FacadeMemberPlacement.EXPOSED
-        kind = cls.facade_member_kind(value, source_project=source_project)
+        kind = cls.facade_member_kind(
+            value,
+            resolver_factory=resolver_factory,
+            source_project=source_project,
+        )
         # A ``type`` alias is a type declaration by construction (t), except an
         # alias of a structural contract, which p owns; only a strongly typed
         # object whose owner binds nothing yet must move.
@@ -868,10 +908,12 @@ class FlextInfraUtilitiesFacadeMembers:
             project's duplicate names by declaring letter.
 
         """
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                source_project, sources={}
+            )
+        )
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
-        cache_key = (str(project.resolve()), id(source_project))
-        if cache_key in cls._census_cache:
-            return cls._census_cache[cache_key]
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         lineage = cls.facade_member_lineage(
             package, letters, source_project=source_project
@@ -894,7 +936,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 ):
                     members = (
                         ancestor.get_scope().get_defined_names()
-                        if FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor)
+                        if FlextInfraUtilitiesTypesRopeRuntime.py_class(ancestor)
                         else ancestor.get_attributes()
                     )
                     for member in members:
@@ -907,6 +949,7 @@ class FlextInfraUtilitiesFacadeMembers:
                             (root, letter, member),
                             facades=facades,
                             bindings=bindings,
+                            resolver_factory=resolver_factory,
                             source_project=source_project,
                             declarations=declarations,
                         )
@@ -914,7 +957,9 @@ class FlextInfraUtilitiesFacadeMembers:
                     ):
                         continue
                     owner = cls.facade_member_owner(
-                        value, source_project=source_project
+                        value,
+                        resolver_factory=resolver_factory,
+                        source_project=source_project,
                     )
                     references.setdefault(owner, set()).add(f"{letter}.{member}")
                     if root == package:
@@ -923,17 +968,16 @@ class FlextInfraUtilitiesFacadeMembers:
                 root,
                 facades,
                 bindings,
+                resolver_factory=resolver_factory,
                 source_project=source_project,
                 declarations=declarations,
             ):
                 references.setdefault(owner, set()).add(reference)
-        result = (
+        return (
             lineage,
             {owner: frozenset(found) for owner, found in sorted(references.items())},
             {letter: frozenset(found) for letter, found in sorted(names.items())},
         )
-        cls._census_cache[cache_key] = result
-        return result
 
     @classmethod
     def facade_member_lineage(
@@ -959,7 +1003,7 @@ class FlextInfraUtilitiesFacadeMembers:
             ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(facade)
             for ancestor in ancestry:
                 module = ancestor.get_module()
-                if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+                if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
                     continue
                 exports = FlextInfraUtilitiesRopeAnalysisExports
                 exported = exports.public_export_names_source(module.source_code)
@@ -968,7 +1012,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 state = FlextInfraUtilitiesRopeAnalysisImportState
                 published = state.published_facade_owner(
                     source_project,
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                         module.get_resource(), module.get_name()
                     ),
                 )
@@ -1013,6 +1057,7 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: t.MappingKV[str, p.Infra.RopeClassObject],
         bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
         *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
         declarations: t.MappingKV[
             str, t.MappingKV[str, t.SequenceOf[p.Infra.RopePyObject]]
@@ -1034,6 +1079,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 root,
                 facades,
                 bindings,
+                resolver_factory=resolver_factory,
                 source_project=source_project,
                 declarations=declarations,
             )
@@ -1054,6 +1100,7 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: t.MappingKV[str, p.Infra.RopeClassObject],
         bindings: t.MappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
         *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
         declarations: t.MappingKV[
             str, t.MappingKV[str, t.SequenceOf[p.Infra.RopePyObject]]
@@ -1078,7 +1125,11 @@ class FlextInfraUtilitiesFacadeMembers:
                 ):
                     continue
                 if (
-                    cls.facade_member_owner(value, source_project=source_project)
+                    cls.facade_member_owner(
+                        value,
+                        resolver_factory=resolver_factory,
+                        source_project=source_project,
+                    )
                     == owner
                 ):
                     owned.append((owner, value, member))
@@ -1199,6 +1250,11 @@ class FlextInfraUtilitiesFacadeMembers:
             package that declares no facade receivers.
 
         """
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                source_project, sources={}
+            )
+        )
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         facades = cls.facade_source_classes(
             package, letters, source_project=source_project
@@ -1216,6 +1272,7 @@ class FlextInfraUtilitiesFacadeMembers:
                     (package, letter, member),
                     facades=facades,
                     bindings=bindings,
+                    resolver_factory=resolver_factory,
                     source_project=source_project,
                 )
                 is c.Infra.FacadeMemberPlacement.MISSING
@@ -1252,9 +1309,7 @@ class FlextInfraUtilitiesFacadeMembers:
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         sources = sorted({
             *lineage,
-            *FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(
-                project
-            ),
+            *FlextInfraUtilitiesCodemodNative.codemod_own_package_names(project),
         })
         rule_id = (
             f"{c.Infra.FACADE_MEMBER_RELOCATE_SHAPE}"
@@ -1582,7 +1637,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 if member
                 in (
                     ancestor.get_scope().get_defined_names()
-                    if FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor)
+                    if FlextInfraUtilitiesTypesRopeRuntime.py_class(ancestor)
                     else ancestor.get_attributes()
                 )
             ]
@@ -1617,7 +1672,7 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         del source_project
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         aliases = tuple(
             runtime.annotation_alias_definition(value) for value in (left, right)
         )

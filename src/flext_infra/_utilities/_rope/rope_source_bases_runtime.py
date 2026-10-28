@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+from functools import cache, partial
 from pathlib import Path
 from types import MappingProxyType
 
@@ -64,6 +65,27 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         """
         return cls._RuntimeBaseResolver(
             project, MappingProxyType(dict(sources)), (), None
+        )
+
+    @classmethod
+    def source_member_resolver_factory(
+        cls,
+        project: p.Infra.RopeProject,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+    ) -> t.Infra.RopeSourceMemberResolverFactory:
+        """Construct the existing resolver lazily once for this captured operation.
+
+        Returns:
+            The operation-local factory; construction failures escape unchanged.
+
+        """
+        return cache(
+            partial(
+                cls.source_member_resolver,
+                project,
+                sources=MappingProxyType(dict(sources)),
+            )
         )
 
     @staticmethod

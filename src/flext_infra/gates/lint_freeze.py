@@ -140,6 +140,7 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
         candidates = (
             project_dir / "config" / "lint_freeze_catalog.json",
             cls._catalog_path(project_dir.parent),
+            cls._catalog_path(project_dir),
         )
         for catalog in candidates:
             if catalog.is_file():

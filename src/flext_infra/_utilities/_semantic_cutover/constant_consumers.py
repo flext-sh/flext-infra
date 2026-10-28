@@ -23,11 +23,7 @@ from flext_cli import cli
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesSemanticConstantSources,
-    FlextInfraUtilitiesSemanticContracts,
-    FlextInfraUtilitiesSemanticCutoverEdits,
 )
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -37,9 +33,15 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticConstantSources,
+    FlextInfraUtilitiesSemanticContracts,
+    FlextInfraUtilitiesSemanticCutoverEdits,
+)
 
 
 class FlextInfraUtilitiesSemanticConstantConsumers(
@@ -200,7 +202,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         signatures: list[t.Pair[str, p.Infra.RopePyName]] = []
         for binding in (original, target):
             if (
-                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                not FlextInfraTypesUtilitiesRopeRuntime.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 return False
@@ -464,7 +466,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if module is None or line is None:
             return False
         module = module.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
             message = "Constant declarations require a native source module"
             raise TypeError(message)
         owner = runtime.scope_at(module, module.lines.get_line_start(line)).pyobject
@@ -651,7 +653,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         for reference, candidate in public.items():
             binding = cls._constant_terminal(project, candidate, reference)
             if (
-                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                not FlextInfraTypesUtilitiesRopeRuntime.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 continue
@@ -659,7 +661,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             if module is None or line is None:
                 continue
             module = module.get_module()
-            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
                 message = "Constant bindings require a native source module"
                 raise TypeError(message)
             resource = module.get_resource()
@@ -808,7 +810,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(resource, path),
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(resource, path),
         )
         statements = cls._constant_imports(project, module)
         if not cls._has_constant_imports(rope_workspace, project, module, statements):
@@ -952,7 +954,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             reference
             for reference, binding in public.items()
             if reference.count(".") == 1
-            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
+            and FlextInfraTypesUtilitiesRopeRuntime.abstract_class(binding.get_object())
             and binding.get_object().get_module() is owner_module
         }
         destinations: t.MutableMappingKV[str, list[str]] = {}
@@ -1194,7 +1196,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 declaration = owner.parent.get_child(c.Infra.CONSTANTS_PY)
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                         declaration, declaration.path
                     ),
                 )
@@ -1231,7 +1233,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             resource = resource.get_child(c.Infra.INIT_PY)
         return FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                 resource, qualified
             ),
         )
@@ -1459,7 +1461,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Public reference paths bound to their native declaration identities.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+        module = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
             project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
         )
         facade = module.get_attributes().get("c")
@@ -1473,7 +1475,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             prefix, owner, ancestors = pending.pop()
             if owner in ancestors:
                 continue
-            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
+            if not FlextInfraTypesUtilitiesRopeRuntime.abstract_class(owner):
                 continue
             for name, binding in owner.get_attributes().items():
                 if name.startswith("_"):
@@ -1481,7 +1483,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 reference = f"{prefix}.{name}"
                 found[reference] = binding
                 value = binding.get_object()
-                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
+                if FlextInfraTypesUtilitiesRopeRuntime.abstract_class(value):
                     pending.append((reference, value, (*ancestors, owner)))
         return found
 
@@ -1496,7 +1498,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         return FlextInfraUtilitiesRopeRuntimeModules.same_name(candidate, binding) or (
-            FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
+            FlextInfraTypesUtilitiesRopeRuntime.abstract_class(binding.get_object())
             and binding.get_object()
             in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
                 candidate.get_object()
@@ -1520,7 +1522,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 continue
             if (
                 binding.get_object()
-                in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                in FlextInfraTypesUtilitiesRopeRuntime.require_class_object(
                     scope.pyobject, "constant facade composition"
                 ).get_superclasses()
             ):

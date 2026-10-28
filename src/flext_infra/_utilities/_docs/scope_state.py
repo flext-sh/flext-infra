@@ -12,11 +12,9 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopePaths
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 
 class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):

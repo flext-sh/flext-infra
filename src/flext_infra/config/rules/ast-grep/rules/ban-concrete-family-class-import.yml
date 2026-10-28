@@ -14,13 +14,13 @@ id: ban-concrete-family-class-import
 language: python
 severity: error
 files:
-  - "**/*.py"
+- "**/*.py"
 ignores:
-  - "**/__init__.py"
+- "**/__init__.py"
 metadata:
-  enforce: [ENFORCE-046]
+  enforce: [ ENFORCE-046 ]
   scope:
-    in: [facade-module]
+    in: [ facade-module ]
     partition:
       variable: NAME
       holds: true
@@ -42,10 +42,6 @@ constraints:
   MODULE:
     matches: facade-package
 message: >-
-  Facade module imports the concrete class `$NAME` from `$MODULE`: read it
-  through that package's facade letter.
+  Facade module imports the concrete class `$NAME` from `$MODULE`: read it through that package's facade letter.
 note: >-
-  Where: this import. Why: a facade module composes the facade alphabet; a
-  concrete class import bypasses it. How: import the letter
-  (`from $MODULE import <letter>`) and read the member through it, or import
-  the same-family peer facade class it extends.
+  Where: this import. Why: a facade module composes the facade alphabet; a concrete class import bypasses it. How: import the letter (`from $MODULE import <letter>`) and read the member through it, or import the same-family peer facade class it extends.

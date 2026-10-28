@@ -1,7 +1,7 @@
 id: ban-deep-namespace-nesting
 valid:
   - |
-    class FlextDemoModels:
+    class FlextModelsDemo:
         class Demo:
             class Order:
                 total: int
@@ -21,7 +21,7 @@ valid:
                     OPEN = "open"
 invalid:
   - |
-    class FlextDemoModels:
+    class FlextModelsDemo:
         class Demo:
             class Order:
                 class Line:

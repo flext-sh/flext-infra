@@ -11,13 +11,15 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
-from flext_infra._utilities import (
+from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
-from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
 
 if TYPE_CHECKING:
     from collections.abc import Callable

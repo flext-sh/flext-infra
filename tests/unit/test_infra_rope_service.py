@@ -164,7 +164,7 @@ class TestsFlextInfraInfraRopeService:
         sibling_module_path = sibling_package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             sibling_module_path,
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
             docstring="Models.",
         )
@@ -450,7 +450,7 @@ class TestsFlextInfraInfraRopeService:
                         rope.rope_project,
                         tm.not_none(rope.resource(sibling_module_path)),
                     )
-                    tm.not_none(dependency.get_attribute("FlextDemoModels"))
+                    tm.not_none(dependency.get_attribute("FlextModelsDemo"))
 
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""

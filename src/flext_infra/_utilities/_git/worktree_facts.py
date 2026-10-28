@@ -18,11 +18,11 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMeasureMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMeasure
 
 
-class FlextInfraUtilitiesGitWorktreeFactsMixin(
-    FlextInfraUtilitiesGitWorktreeMeasureMixin,
+class FlextInfraUtilitiesGitWorktreeFacts(
+    FlextInfraUtilitiesGitWorktreeMeasure,
 ):
     """Own FS-only worktree facts discovery and stale-deps planning."""
 
@@ -288,4 +288,4 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeFactsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeFacts"]

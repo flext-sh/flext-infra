@@ -17,15 +17,15 @@ from git import (
 )
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticLaneMixin,
+    FlextInfraUtilitiesGitSemanticLane,
 )
 
 
-class FlextInfraUtilitiesGitSemanticIdentityMixin(
-    FlextInfraUtilitiesGitSemanticLaneMixin,
+class FlextInfraUtilitiesGitSemanticIdentity(
+    FlextInfraUtilitiesGitSemanticLane,
 ):
     """Own semantic identity operations."""
 
@@ -353,4 +353,4 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticIdentityMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticIdentity"]

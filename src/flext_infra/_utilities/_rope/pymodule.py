@@ -14,7 +14,7 @@ from flext_infra import t
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
-class FlextInfraUtilitiesRopeCorePyModuleMixin:
+class FlextInfraUtilitiesRopeCorePyModule:
     """PyModule resolution + import-table + identifier-offset helpers.
 
     Composed into FlextInfraUtilitiesRopeCore via inheritance so the helpers
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
         offsets = (
             line_start + match.start()
             for match in (
-                FlextInfraUtilitiesRopeCorePyModuleMixin._IDENTIFIER_PATTERN.finditer(
+                FlextInfraUtilitiesRopeCorePyModule._IDENTIFIER_PATTERN.finditer(
                     source_line,
                 )
             )
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
         try:
             module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
                 rope_project,
-                FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                     rope_project,
                     resource,
                 ),
@@ -181,4 +181,4 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
         return result
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRopeCorePyModuleMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeCorePyModule"]

@@ -10,11 +10,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitSemanticPublishMixin,
-    FlextInfraUtilitiesGitSemanticRefsMixin,
-    FlextInfraUtilitiesGitWorktreeRemovalMixin,
-    FlextInfraUtilitiesGitWorktreeStatusMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
+    FlextInfraUtilitiesGitWorktreeRemoval,
+    FlextInfraUtilitiesGitWorktreeStatus,
 )
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ class FlextInfraWorktreeLifecycle:
         setup_error: str,
     ) -> p.Result[str]:
 
-        status = FlextInfraUtilitiesGitWorktreeStatusMixin.git_status(
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
             m.Infra.GitStatusRequest(repo_root=lane),
         )
         if status.failure:
@@ -41,14 +41,14 @@ class FlextInfraWorktreeLifecycle:
                 f"worktree setup failed: {setup_error}; preserving lane {lane} "
                 "because setup left worktree changes",
             )
-        cleanup = FlextInfraUtilitiesGitWorktreeRemovalMixin.git_remove_clean_worktree(
+        cleanup = FlextInfraUtilitiesGitWorktreeRemoval.git_remove_clean_worktree(
             primary_root,
             lane,
         )
         if cleanup.failure:
             return r[str].from_failure(cleanup)
         if created_branch_oid is not None:
-            branch_cleanup = FlextInfraUtilitiesGitSemanticPublishMixin.git_delete_ref(
+            branch_cleanup = FlextInfraUtilitiesGitSemanticPublish.git_delete_ref(
                 m.Infra.GitDeleteRefRequest(
                     repo_root=primary_root,
                     reference=f"refs/heads/{branch}",
@@ -75,7 +75,7 @@ class FlextInfraWorktreeLifecycle:
         )
         if preflight.failure:
             return r[str].from_failure(preflight)
-        resolved_base = FlextInfraUtilitiesGitSemanticRefsMixin.git_resolve_commit(
+        resolved_base = FlextInfraUtilitiesGitSemanticRefs.git_resolve_commit(
             m.Infra.GitCommitishRequest(repo_root=lane, commitish=base),
         )
         if resolved_base.failure:
@@ -95,7 +95,7 @@ class FlextInfraWorktreeLifecycle:
         """
         if not lane.is_dir():
             return r[bool].fail(f"worktree lane does not exist: {lane}")
-        refs = FlextInfraUtilitiesGitSemanticRefsMixin
+        refs = FlextInfraUtilitiesGitSemanticRefs
         current_branch = refs.git_current_branch(
             m.Infra.GitRepoRequest(repo_root=lane),
         )
@@ -106,7 +106,7 @@ class FlextInfraWorktreeLifecycle:
                 f"worktree lane branch mismatch: expected {branch}, "
                 f"found {current_branch.value.text}",
             )
-        status = FlextInfraUtilitiesGitWorktreeStatusMixin.git_status(
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
             m.Infra.GitStatusRequest(repo_root=lane),
         )
         if status.failure:
@@ -126,14 +126,14 @@ class FlextInfraWorktreeLifecycle:
             The resulting ``p.Result[str]``.
 
         """
-        contains_base = FlextInfraUtilitiesGitSemanticRefsMixin.git_is_ancestor(
+        contains_base = FlextInfraUtilitiesGitSemanticRefs.git_is_ancestor(
             m.Infra.GitAncestryRequest(repo_root=lane, ancestor=base_oid),
         )
         if contains_base.failure:
             return r[str].from_failure(contains_base)
         if contains_base.value.value:
             return r[str].ok(str(lane))
-        updated = FlextInfraUtilitiesGitSemanticPublishMixin.git_merge_no_edit(
+        updated = FlextInfraUtilitiesGitSemanticPublish.git_merge_no_edit(
             m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid),
         )
         if updated.failure:

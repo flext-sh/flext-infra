@@ -11,7 +11,7 @@ from typing import Annotated, Literal
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+from flext_infra._models._config.workspace import FlextInfraModelsConfigWorkspace
 
 
 class FlextInfraModelsDepsToml:
@@ -23,7 +23,7 @@ class FlextInfraModelsDepsToml:
         """Declarative TOML sync model domain."""
 
         class MemberRequirements(
-            FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations
+            FlextInfraModelsConfigWorkspace.DependencyGroupDeclarations
         ):
             """Typed dependency declarations needed to provision one member."""
 

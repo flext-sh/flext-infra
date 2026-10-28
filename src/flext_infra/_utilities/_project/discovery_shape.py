@@ -9,10 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, p
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -3,15 +3,15 @@
 # matches. Another package's private modules are ban-private-import's.
 id: ban-own-family-internal-import
 valid:
-  - from ai_hub import c, m, t, u
-  - from ai_hub.models import AiHubModels
-  - import ai_hub
-  - import os.path
-  - import __future__
-  - from flext_core._models.base import FlextModelsBase
+- from ai_hub import c, m, t, u
+- from ai_hub.models import AiHubModels
+- import ai_hub
+- import os.path
+- import __future__
+- from flext_core._models.base import FlextModelsBase
 invalid:
-  - from ai_hub._models.base import AiHubModelsBase
-  - from ai_hub._utilities import AiHubUtilities
-  - from ai_hub.services._parts.runner import AiHubRunner
-  - import ai_hub._typings.base
-  - import ai_hub._protocols.base as base
+- from ai_hub._models.base import AiHubModelsBase
+- from ai_hub._utilities import AiHubUtilities
+- from ai_hub.services._parts.runner import AiHubRunner
+- import ai_hub._typings.base
+- import ai_hub._protocols.base as base

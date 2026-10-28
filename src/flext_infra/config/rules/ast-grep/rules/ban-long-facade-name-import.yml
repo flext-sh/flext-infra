@@ -4,7 +4,7 @@
 # their private packages), the api, base, settings and config composition
 # modules and the generated package roots compose facades by their long names.
 # A facade name is `Flext<Project><Family>`; a component class whose name
-# continues after a family word (FlextInfraUtilitiesSemanticNestingTypes) is a
+# continues after a family word (FlextInfraTypesUtilitiesSemanticNesting) is a
 # family part, not the facade.
 id: ban-long-facade-name-import
 language: python

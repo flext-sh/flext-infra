@@ -24,11 +24,11 @@ from flext_cli import u
 from flext_infra import c, config, m, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesMiseBinary,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
 )
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
 
 
 class FlextInfraUtilitiesCodemodNativeCascade:

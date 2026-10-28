@@ -71,7 +71,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             module_path,
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
             docstring="Models.",
         )
@@ -130,14 +130,14 @@ class TestsFlextInfraInfraRopeServiceObjects:
             (
                 "from __future__ import annotations\n\n"
                 "VALUE = 1\n\n"
-                "class FlextDemoModels:\n"
+                "class FlextModelsDemo:\n"
                 "    FLAG = VALUE\n\n"
                 "    def build(self, payload: int) -> int:\n"
                 "        local = payload + VALUE\n\n"
                 "        def nested(extra: int) -> int:\n"
                 "            return local + extra\n\n"
                 "        return nested(1)\n\n"
-                "m = FlextDemoModels\n"
+                "m = FlextModelsDemo\n"
             ),
             encoding="utf-8",
         )
@@ -146,20 +146,20 @@ class TestsFlextInfraInfraRopeServiceObjects:
                 any(entry.file_path == module_path for entry in rope.modules()),
                 eq=True,
             )
-            tm.that(rope.source(module_path), has="class FlextDemoModels")
+            tm.that(rope.source(module_path), has="class FlextModelsDemo")
             objects = {
                 (item.scope_path, item.kind): item for item in rope.objects(module_path)
             }
             tm.that(objects.get(("VALUE", "constant")), none=False)
-            tm.that(objects.get(("FlextDemoModels", "class")), none=False)
-            tm.that(objects.get(("FlextDemoModels.build", "method")), none=False)
+            tm.that(objects.get(("FlextModelsDemo", "class")), none=False)
+            tm.that(objects.get(("FlextModelsDemo.build", "method")), none=False)
             tm.that(
-                objects.get(("FlextDemoModels.build.payload", "parameter")),
+                objects.get(("FlextModelsDemo.build.payload", "parameter")),
                 none=False,
             )
-            tm.that(objects.get(("FlextDemoModels.build.local", "local")), none=False)
+            tm.that(objects.get(("FlextModelsDemo.build.local", "local")), none=False)
             tm.that(
-                objects.get(("FlextDemoModels.build.nested", "function")),
+                objects.get(("FlextModelsDemo.build.nested", "function")),
                 none=False,
             )
 
@@ -350,7 +350,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             )
             u.Tests.write_lazy_init_namespace_module(
                 package_root / "models.py",
-                class_name="FlextDemoModels",
+                class_name="FlextModelsDemo",
                 alias="m",
                 docstring="Models.",
             )
@@ -561,14 +561,14 @@ class TestsFlextInfraInfraRopeServiceObjects:
             tmp_path,
             "models.py",
             "from __future__ import annotations\n\n"
-            "class FlextDemoModels:\n"
+            "class FlextModelsDemo:\n"
             "    pass\n\n"
-            "m = FlextDemoModels\n",
+            "m = FlextModelsDemo\n",
         )
 
         objects = self._module_objects_by_name(repository_root, module_path)
 
-        tm.fail(objects["FlextDemoModels"].is_facade_member)
+        tm.fail(objects["FlextModelsDemo"].is_facade_member)
         tm.fail(objects["m"].is_facade_member)
 
     def test_workspace_dsl_skips_reference_scan_for_private_names(

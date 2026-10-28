@@ -1,9 +1,9 @@
 id: target-ldap-test-public-target-type
 snapshots:
-  "def consume(target: Sinks.FlextTargetLdapModels.Target) -> None: pass":
+  "def consume(target: Sinks.FlextModelsTargetLdap.Target) -> None: pass":
     fixed: "def consume(target: FlextTargetLdap) -> None: pass"
     labels:
-    - source: Sinks.FlextTargetLdapModels.Target
+    - source: Sinks.FlextModelsTargetLdap.Target
       style: primary
       start: 20
       end: 54

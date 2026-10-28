@@ -29,21 +29,27 @@ from packaging.utils import canonicalize_name
 from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-    FlextInfraUtilitiesCodemodNativeUtilities,
+    FlextInfraUtilitiesFacadeMembers,
+    FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesCodemodScopes,
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesFacadeMembers,
-    FlextInfraUtilitiesImportLaw,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
 )
 
 
@@ -62,8 +68,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         return {
             c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY: (
-                FlextInfraUtilitiesCodemodNativeUtilities.codemod_module_names_rule(
-                    FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages(
+                FlextInfraUtilitiesCodemodNative.codemod_module_names_rule(
+                    FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages(
                         snapshot, project
                     )
                 )
@@ -106,9 +112,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         exports: dict[str, frozenset[str]] = {}
-        for (
-            package
-        ) in FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages(
+        for package in FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages(
             snapshot, project
         ):
             spec = find_spec(package)
@@ -142,7 +146,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         leaves = c.Infra.FAMILY_COMPOSE_MODULES
-        runtime = FlextInfraUtilitiesCodemodNativeUtilities.codemod_runtime_modules
+        runtime = FlextInfraUtilitiesCodemodNative.codemod_runtime_modules
         modules = {
             *(
                 f"{own}.{leaf}"
@@ -204,7 +208,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 families.setdefault(letter, []).append(relative.as_posix())
         return {
             c.Infra.CODEMOD_LAYER_ZERO_SCOPE: (
-                FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_layer_zero_files(
+                FlextInfraUtilitiesCodemodNativePackage.codemod_layer_zero_files(
                     snapshot, root
                 )
             ),
@@ -351,7 +355,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             ):
                 scopes.setdefault(selector, []).append(relative.as_posix())
         scopes[c.Infra.CODEMOD_FAMILY_ROLE_SCOPE] = list(
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_role_files(
+            FlextInfraUtilitiesCodemodNativePackage.codemod_role_files(
                 snapshot, root, (c.Infra.IMPORT_LAW_FAMILY_ROLE,)
             )
         )
@@ -607,7 +611,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         return frozenset(
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_role_files(
+            FlextInfraUtilitiesCodemodNativePackage.codemod_role_files(
                 snapshot, root, (c.Infra.IMPORT_LAW_FAMILY_ROLE,)
             )
         )
@@ -729,9 +733,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             The specialized alias names across the reached facade packages.
 
         """
-        packages = (
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages
-        )
+        packages = FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages
         return tuple(
             sorted({
                 name
@@ -933,9 +935,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         if layout is None:
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
-        packages = (
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages
-        )
+        packages = FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages
         return {
             package: (
                 frozenset(layout.runtime_aliases)

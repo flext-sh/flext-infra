@@ -1,29 +1,29 @@
 id: require-facade-mro-completeness
 snapshots:
-  "class FlextFooModels(FlextCliModels):\n    class Foo(FlextFooModelsBase):\n        pass\n":
+  "class FlextModelsFoo(FlextCliModels):\n    class Foo(FlextModelsFooBase):\n        pass\n":
     labels:
     - source: |-
-        class Foo(FlextFooModelsBase):
+        class Foo(FlextModelsFooBase):
                 pass
       style: primary
       start: 42
       end: 85
     - source: |
-        class FlextFooModels(FlextCliModels):
-            class Foo(FlextFooModelsBase):
+        class FlextModelsFoo(FlextCliModels):
+            class Foo(FlextModelsFooBase):
                 pass
       style: secondary
       start: 0
       end: 86
     - source: |-
-        class FlextFooModels(FlextCliModels):
-            class Foo(FlextFooModelsBase):
+        class FlextModelsFoo(FlextCliModels):
+            class Foo(FlextModelsFooBase):
                 pass
       style: secondary
       start: 0
       end: 85
     - source: |-
-        class Foo(FlextFooModelsBase):
+        class Foo(FlextModelsFooBase):
                 pass
       style: secondary
       start: 42

@@ -16,14 +16,14 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.check import FlextInfraWorkspaceCheckUnionMixin
+from flext_infra.check import FlextInfraWorkspaceCheckUnion
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
     from flext_infra.gates import FlextInfraGate
 
 
-class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
+class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
     """Gate execution, project loop, and individual gate runner methods."""
 
     _repository_root: Path
@@ -523,4 +523,4 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
         return gate_instance.check(project_dir, ctx)
 
 
-__all__: list[str] = ["FlextInfraWorkspaceCheckGatesMixin"]
+__all__: list[str] = ["FlextInfraWorkspaceCheckGates"]

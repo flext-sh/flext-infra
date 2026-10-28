@@ -14,11 +14,7 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
 from flext_infra import c
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodemodProject,
-    FlextInfraUtilitiesSemanticCutoverEdits,
-    FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
-)
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -26,7 +22,11 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverEdits,
+    FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
 )
 
 if TYPE_CHECKING:
@@ -366,7 +366,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         builtin = (
-            FlextInfraUtilitiesRopeRuntimeTypes
+            FlextInfraTypesUtilitiesRopeRuntime
             .require_semantic_module(project.get_module("__builtin__"))
             .get_attributes()
             .get(keyword.value.id)

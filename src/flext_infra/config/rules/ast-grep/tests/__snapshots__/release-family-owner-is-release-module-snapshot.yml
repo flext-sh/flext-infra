@@ -1,16 +1,16 @@
 id: release-family-owner-is-release-module
 snapshots:
-  "pins: t.VariadicTuple[FlextInfraConfigModelsArtifact.BuildConstraintSpec]":
-    fixed: "pins: t.VariadicTuple[FlextInfraConfigModelsRelease.BuildConstraintSpec]"
+  "pins: t.VariadicTuple[FlextInfraModelsConfigArtifact.BuildConstraintSpec]":
+    fixed: "pins: t.VariadicTuple[FlextInfraModelsConfigRelease.BuildConstraintSpec]"
     labels:
-    - source: FlextInfraConfigModelsArtifact.BuildConstraintSpec
+    - source: FlextInfraModelsConfigArtifact.BuildConstraintSpec
       style: primary
       start: 22
       end: 72
-  "policy: FlextInfraConfigModelsArtifact.ReleasePolicySpec":
-    fixed: "policy: FlextInfraConfigModelsRelease.ReleasePolicySpec"
+  "policy: FlextInfraModelsConfigArtifact.ReleasePolicySpec":
+    fixed: "policy: FlextInfraModelsConfigRelease.ReleasePolicySpec"
     labels:
-    - source: FlextInfraConfigModelsArtifact.ReleasePolicySpec
+    - source: FlextInfraModelsConfigArtifact.ReleasePolicySpec
       style: primary
       start: 8
       end: 56

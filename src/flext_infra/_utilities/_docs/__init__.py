@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""docs package.
+"""Flext Infra. Utilities. Docs package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,47 +13,75 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._docs.audit_detectors import FlextInfraUtilitiesDocsAuditDetectors
-    from flext_infra._docs.command_contract import (
+    from flext_infra._utilities._docs.audit_detectors import (
+        FlextInfraUtilitiesDocsAuditDetectors,
+    )
+    from flext_infra._utilities._docs.command_contract import (
         FlextInfraUtilitiesDocsCommandContract,
     )
-    from flext_infra._docs.docs_api import FlextInfraUtilitiesDocsApi
-    from flext_infra._docs.docs_audit import FlextInfraUtilitiesDocsAudit
-    from flext_infra._docs.docs_build import FlextInfraUtilitiesDocsBuild
-    from flext_infra._docs.docs_collection import FlextInfraUtilitiesDocsCollection
-    from flext_infra._docs.docs_collection_sources import (
+    from flext_infra._utilities._docs.docs_api import FlextInfraUtilitiesDocsApi
+    from flext_infra._utilities._docs.docs_audit import FlextInfraUtilitiesDocsAudit
+    from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
+    from flext_infra._utilities._docs.docs_build import FlextInfraUtilitiesDocsBuild
+    from flext_infra._utilities._docs.docs_collection import (
+        FlextInfraUtilitiesDocsCollection,
+    )
+    from flext_infra._utilities._docs.docs_collection_sources import (
         FlextInfraUtilitiesDocsCollectionSources,
     )
-    from flext_infra._docs.docs_contract import FlextInfraUtilitiesDocsContract
-    from flext_infra._docs.docs_fix import FlextInfraUtilitiesDocsFix
-    from flext_infra._docs.docs_generate import FlextInfraUtilitiesDocsGenerate
-    from flext_infra._docs.docs_render import FlextInfraUtilitiesDocsRender
-    from flext_infra._docs.docs_scope import FlextInfraUtilitiesDocsScope
-    from flext_infra._docs.docs_scope_projects import (
-        FlextInfraUtilitiesDocsScopeProjectsMixin,
+    from flext_infra._utilities._docs.docs_contract import (
+        FlextInfraUtilitiesDocsContract,
     )
-    from flext_infra._docs.docs_validate import FlextInfraUtilitiesDocsValidate
-    from flext_infra._docs.generate_plan import FlextInfraUtilitiesDocsGeneratePlan
-    from flext_infra._docs.generate_project import (
+    from flext_infra._utilities._docs.docs_fix import FlextInfraUtilitiesDocsFix
+    from flext_infra._utilities._docs.docs_generate import (
+        FlextInfraUtilitiesDocsGenerate,
+    )
+    from flext_infra._utilities._docs.docs_render import FlextInfraUtilitiesDocsRender
+    from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
+    from flext_infra._utilities._docs.docs_scope_projects import (
+        FlextInfraUtilitiesDocsScopeProjects,
+    )
+    from flext_infra._utilities._docs.docs_validate import (
+        FlextInfraUtilitiesDocsValidate,
+    )
+    from flext_infra._utilities._docs.generate_plan import (
+        FlextInfraUtilitiesDocsGeneratePlan,
+    )
+    from flext_infra._utilities._docs.generate_project import (
         FlextInfraUtilitiesDocsGenerateProject,
     )
-    from flext_infra._docs.generate_root import FlextInfraUtilitiesDocsGenerateRoot
-    from flext_infra._docs.generate_sources import (
+    from flext_infra._utilities._docs.generate_root import (
+        FlextInfraUtilitiesDocsGenerateRoot,
+    )
+    from flext_infra._utilities._docs.generate_sources import (
         FlextInfraUtilitiesDocsGenerateSources,
     )
-    from flext_infra._docs.github_links import FlextInfraUtilitiesDocsGithubLinks
-    from flext_infra._docs.guides import FlextInfraUtilitiesDocsGuides
-    from flext_infra._docs.scope_build import FlextInfraUtilitiesDocsScopeBuild
-    from flext_infra._docs.scope_paths import FlextInfraUtilitiesDocsScopePaths
-    from flext_infra._docs.scope_policy import FlextInfraUtilitiesDocsScopePolicy
-    from flext_infra._docs.scope_selection import FlextInfraUtilitiesDocsScopeSelection
-    from flext_infra._docs.scope_state import FlextInfraUtilitiesDocsScopeState
+    from flext_infra._utilities._docs.github_links import (
+        FlextInfraUtilitiesDocsGithubLinks,
+    )
+    from flext_infra._utilities._docs.guides import FlextInfraUtilitiesDocsGuides
+    from flext_infra._utilities._docs.scope_build import (
+        FlextInfraUtilitiesDocsScopeBuild,
+    )
+    from flext_infra._utilities._docs.scope_paths import (
+        FlextInfraUtilitiesDocsScopePaths,
+    )
+    from flext_infra._utilities._docs.scope_policy import (
+        FlextInfraUtilitiesDocsScopePolicy,
+    )
+    from flext_infra._utilities._docs.scope_selection import (
+        FlextInfraUtilitiesDocsScopeSelection,
+    )
+    from flext_infra._utilities._docs.scope_state import (
+        FlextInfraUtilitiesDocsScopeState,
+    )
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsApi",
     "FlextInfraUtilitiesDocsAudit",
     "FlextInfraUtilitiesDocsAuditDetectors",
+    "FlextInfraUtilitiesDocsBase",
     "FlextInfraUtilitiesDocsBuild",
     "FlextInfraUtilitiesDocsCollection",
     "FlextInfraUtilitiesDocsCollectionSources",
@@ -72,7 +100,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeBuild",
     "FlextInfraUtilitiesDocsScopePaths",
     "FlextInfraUtilitiesDocsScopePolicy",
-    "FlextInfraUtilitiesDocsScopeProjectsMixin",
+    "FlextInfraUtilitiesDocsScopeProjects",
     "FlextInfraUtilitiesDocsScopeSelection",
     "FlextInfraUtilitiesDocsScopeState",
     "FlextInfraUtilitiesDocsValidate",
@@ -85,6 +113,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsApi": ".docs_api",
         "FlextInfraUtilitiesDocsAudit": ".docs_audit",
         "FlextInfraUtilitiesDocsAuditDetectors": ".audit_detectors",
+        "FlextInfraUtilitiesDocsBase": ".docs_base",
         "FlextInfraUtilitiesDocsBuild": ".docs_build",
         "FlextInfraUtilitiesDocsCollection": ".docs_collection",
         "FlextInfraUtilitiesDocsCollectionSources": ".docs_collection_sources",
@@ -103,7 +132,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsScopeBuild": ".scope_build",
         "FlextInfraUtilitiesDocsScopePaths": ".scope_paths",
         "FlextInfraUtilitiesDocsScopePolicy": ".scope_policy",
-        "FlextInfraUtilitiesDocsScopeProjectsMixin": ".docs_scope_projects",
+        "FlextInfraUtilitiesDocsScopeProjects": ".docs_scope_projects",
         "FlextInfraUtilitiesDocsScopeSelection": ".scope_selection",
         "FlextInfraUtilitiesDocsScopeState": ".scope_state",
         "FlextInfraUtilitiesDocsValidate": ".docs_validate",

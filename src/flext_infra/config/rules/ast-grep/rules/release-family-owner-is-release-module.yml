@@ -16,14 +16,13 @@ id: release-family-owner-is-release-module
 language: python
 severity: error
 files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
+- "src/**/*.py"
+- "tests/**/*.py"
 rule:
-  pattern: FlextInfraConfigModelsArtifact.$ATTR
+  pattern: FlextInfraModelsConfigArtifact.$ATTR
 constraints:
   ATTR:
     regex: "^(?:ReleasePolicySpec|ReleaseAutomationSpec|ReleaseAutomationOverrideSpec|BuildConstraintSpec)$"
-fix: FlextInfraConfigModelsRelease.$ATTR
+fix: FlextInfraModelsConfigRelease.$ATTR
 message: >-
-  The release config family is owned by the release module; the artifact copy
-  is split residue and binding to it splits the config root from the facade.
+  The release config family is owned by the release module; the artifact copy is split residue and binding to it splits the config root from the facade.

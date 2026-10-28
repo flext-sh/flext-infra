@@ -14,21 +14,21 @@ from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitMutationScopeMixin,
-    FlextInfraUtilitiesGitStateTreesMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitMutationScope,
+    FlextInfraUtilitiesGitStateTrees,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateCheckpointMixin(FlextInfraUtilitiesGitStateTreesMixin):
+class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
     """Keep index-only and working-byte versions reachable after a save commit."""
 
     @classmethod
     @contextmanager
     def _state_leases(cls, roots: t.SequenceOf[Path]) -> Generator[None]:
         locks = {
-            FlextInfraUtilitiesGitMutationScopeMixin.mutation_lock_path(root).unwrap()
+            FlextInfraUtilitiesGitMutationScope.mutation_lock_path(root).unwrap()
             for root in roots
         }
         with ExitStack() as stack:
@@ -201,4 +201,4 @@ class FlextInfraUtilitiesGitStateCheckpointMixin(FlextInfraUtilitiesGitStateTree
         return r[bool].ok(value=True)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateCheckpointMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateCheckpoint"]

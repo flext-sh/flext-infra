@@ -245,7 +245,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
         u.Tests.write_lazy_init_namespace_module(
             parent_root / "models_ns.py",
-            class_name="FlextTestInheritParentModelsNs",
+            class_name="FlextModelsTestInheritParentNs",
             alias="m",
         )
         u.Tests.write_lazy_init_namespace_module(

@@ -10,14 +10,14 @@ from typing import Annotated
 
 from flext_cli import m, t
 
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.sonarcloud import FlextInfraConfigModelsSonarcloud
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config.sonarcloud import FlextInfraModelsConfigSonarcloud
 
 
-class FlextInfraConfigModelsRender(FlextInfraConfigModelsSonarcloud):
+class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):
     """Policy declarations consumed by the configuration contract."""
 
-    class SonarcloudSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class SonarcloudSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Fleet SonarCloud automatic-analysis scope policy."""
 
         exclusions: Annotated[
@@ -47,7 +47,7 @@ class FlextInfraConfigModelsRender(FlextInfraConfigModelsSonarcloud):
         ]
         issue_exclusions: Annotated[
             t.VariadicTuple[
-                FlextInfraConfigModelsSonarcloud.SonarcloudIssueExclusionSpec
+                FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec
             ],
             m.Field(
                 description=(
@@ -58,4 +58,4 @@ class FlextInfraConfigModelsRender(FlextInfraConfigModelsSonarcloud):
         ] = ()
 
 
-__all__: list[str] = ["FlextInfraConfigModelsRender"]
+__all__: list[str] = ["FlextInfraModelsConfigRender"]

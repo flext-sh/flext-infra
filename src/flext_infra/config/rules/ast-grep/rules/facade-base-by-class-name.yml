@@ -38,74 +38,69 @@ id: facade-base-by-class-name
 language: python
 severity: error
 files:
-  - "**/*.py"
+- "**/*.py"
 constraints:
   C:
     regex: "^(?:Tests)?Flext[A-Z]"
 rule:
   all:
-    - kind: assignment
-    - has:
-        field: left
-        kind: identifier
-        pattern: $L
-    - has:
-        field: right
-        kind: identifier
-        pattern: $C
-    - inside:
-        kind: expression_statement
-        inside:
-          kind: module
-    # The import binds $B before the class is inspected: ast-grep never
-    # backtracks, so a class with several bases must meet an already bound $B.
-    - inside:
+  - kind: assignment
+  - has:
+      field: left
+      kind: identifier
+      pattern: $L
+  - has:
+      field: right
+      kind: identifier
+      pattern: $C
+  - inside:
+      kind: expression_statement
+      inside:
         kind: module
-        stopBy: end
+  # The import binds $B before the class is inspected: ast-grep never
+  # backtracks, so a class with several bases must meet an already bound $B.
+  - inside:
+      kind: module
+      stopBy: end
+      has:
+        kind: import_from_statement
         has:
-          kind: import_from_statement
-          has:
-            field: name
-            any:
-              - all:
-                  - kind: dotted_name
-                  - pattern: $L
-                  - pattern: $B
-              - all:
-                  - kind: aliased_import
-                  - has:
-                      field: name
-                      pattern: $L
-                  - has:
-                      field: alias
-                      pattern: $B
-              - all:
-                  - kind: aliased_import
-                  - has:
-                      field: alias
-                      all:
-                        - pattern: $L
-                        - pattern: $B
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          kind: class_definition
-          all:
+          field: name
+          any:
+          - all:
+            - kind: dotted_name
+            - pattern: $L
+            - pattern: $B
+          - all:
+            - kind: aliased_import
             - has:
                 field: name
-                pattern: $C
+                pattern: $L
             - has:
-                field: superclasses
-                has:
-                  kind: identifier
-                  pattern: $B
+                field: alias
+                pattern: $B
+          - all:
+            - kind: aliased_import
+            - has:
+                field: alias
+                all:
+                - pattern: $L
+                - pattern: $B
+  - inside:
+      kind: module
+      stopBy: end
+      has:
+        kind: class_definition
+        all:
+        - has:
+            field: name
+            pattern: $C
+        - has:
+            field: superclasses
+            has:
+              kind: identifier
+              pattern: $B
 message: >-
-  Facade `$C` extends the parent letter `$B` and rebinds `$L`; extend the class
-  the parent declares for `$L` in its own `__all__` and rebind `$L = $C`.
+  Facade `$C` extends the parent letter `$B` and rebinds `$L`; extend the class the parent declares for `$L` in its own `__all__` and rebind `$L = $C`.
 note: >-
-  Run `make mod`: the facade-base semantic phase derives the parent class name
-  from the parent module's `__all__` and rewrites the import, the base, and an
-  annotated rebind atomically. Only FLEXT family facades (`Flext*`,
-  `TestsFlext*`) are selected; a consumer facade keeps its letter base
-  (flext-core ENFORCE-046).
+  Run `make mod`: the facade-base semantic phase derives the parent class name from the parent module's `__all__` and rewrites the import, the base, and an annotated rebind atomically. Only FLEXT family facades (`Flext*`, `TestsFlext*`) are selected; a consumer facade keeps its letter base (flext-core ENFORCE-046).

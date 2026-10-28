@@ -17,9 +17,9 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesPythonModel,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 

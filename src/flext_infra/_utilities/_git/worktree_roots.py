@@ -14,11 +14,11 @@ from flext_cli import u
 from git import Git, GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeFactsMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeFacts
 
 
-class FlextInfraUtilitiesGitWorktreeRootsMixin(
-    FlextInfraUtilitiesGitWorktreeFactsMixin,
+class FlextInfraUtilitiesGitWorktreeRoots(
+    FlextInfraUtilitiesGitWorktreeFacts,
 ):
     """Own worktree roots and the superproject's ``.gitmodules`` declarations."""
 
@@ -306,4 +306,4 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         return result.ok(declaration)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeRootsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeRoots"]

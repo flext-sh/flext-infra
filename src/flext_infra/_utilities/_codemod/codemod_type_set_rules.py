@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import TypeGuard, TypeIs
 
 from flext_infra import c, p, t
-from flext_infra._utilities import FlextInfraUtilitiesCodemodNativePackageUtilities
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodNativePackage
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
@@ -266,9 +266,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
         )
         names = {old: f"to-{index}" for index, old in enumerate(sorted(moves))}
-        exact = (
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_exact_names_rule
-        )
+        exact = FlextInfraUtilitiesCodemodNativePackage.codemod_exact_names_rule
         return {
             rule_id: {
                 "id": rule_id,

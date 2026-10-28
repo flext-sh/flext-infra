@@ -126,7 +126,7 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
             config.Infra.tooling, codegen=config.Infra.codegen
         )
         context = m.Infra.PyprojectAnalyzerContext(
-            is_root=False, repository_root=project, project_dir=project
+            is_root=mode == "workspace", repository_root=owner, project_dir=project
         )
         phase.apply_payload(payload, context=context, analysis_exclusions=())
         table = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["pyright"])

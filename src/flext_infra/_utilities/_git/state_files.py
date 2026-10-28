@@ -14,14 +14,14 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import m, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitStatePublicationMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStatePublication,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateFilesMixin(
-    FlextInfraUtilitiesGitStatePublicationMixin,
+class FlextInfraUtilitiesGitStateFiles(
+    FlextInfraUtilitiesGitStatePublication,
 ):
     """Consume CLI physical-state primitives under the shared writer lease."""
 
@@ -259,4 +259,4 @@ class FlextInfraUtilitiesGitStateFilesMixin(
         u.Cli.atomic_cleanup_physical_tree_guarded(manifest).unwrap()
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateFilesMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateFiles"]

@@ -17,18 +17,16 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesWorkspaceInventory,
 )
-from flext_infra._utilities._rope.pymodule import (
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
+from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.rope_core_resources import (
-    FlextInfraUtilitiesRopeCoreResourcesMixin,
+    FlextInfraUtilitiesRopeCoreResources,
 )
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCore(
-    FlextInfraUtilitiesRopeCoreResourcesMixin,
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
+    FlextInfraUtilitiesRopeCoreResources,
+    FlextInfraUtilitiesRopeCorePyModule,
 ):
     """Core Rope lifecycle helpers."""
 

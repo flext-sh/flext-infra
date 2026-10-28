@@ -11,13 +11,13 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsMakeClean:
+class FlextInfraModelsConfigMakeClean:
     """Declarative clean policy composed into the Make config family."""
 
-    class MakeCleanSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeCleanSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Disposable artifacts the generated clean verb removes.
 
         Stale caches and traces cause FALSE DIAGNOSES, so the disposable set is
@@ -43,4 +43,4 @@ class FlextInfraConfigModelsMakeClean:
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsMakeClean"]
+__all__: list[str] = ["FlextInfraModelsConfigMakeClean"]

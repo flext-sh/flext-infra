@@ -15,7 +15,7 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
+from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodRulesDistributions,
     FlextInfraUtilitiesCodemodScopes,
 )

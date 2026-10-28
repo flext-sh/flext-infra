@@ -11,13 +11,13 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsStatic:
+class FlextInfraModelsConfigStatic:
     """Source discovery specification models."""
 
-    class SourceScanSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class SourceScanSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Canonical production roots and recursively ignored directories."""
 
         roots: Annotated[
@@ -26,4 +26,4 @@ class FlextInfraConfigModelsStatic:
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsStatic"]
+__all__: list[str] = ["FlextInfraModelsConfigStatic"]

@@ -13,7 +13,7 @@ from flext_infra import c, t
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
-class FlextInfraUtilitiesRopeCoreResourcesMixin:
+class FlextInfraUtilitiesRopeCoreResources:
     """Filesystem-to-Rope resource helpers."""
 
     @staticmethod
@@ -60,14 +60,14 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
             The resulting ``t.Infra.RopeFile | None``.
 
         """
-        if not FlextInfraUtilitiesRopeCoreResourcesMixin._python_resource_allowed(
+        if not FlextInfraUtilitiesRopeCoreResources._python_resource_allowed(
             file_path,
             skip_protected=skip_protected,
             skip_settings=skip_settings,
             skip_init_py=skip_init_py,
         ):
             return None
-        return FlextInfraUtilitiesRopeCoreResourcesMixin.resolve_resource_from_path(
+        return FlextInfraUtilitiesRopeCoreResources.resolve_resource_from_path(
             rope_project,
             file_path,
         )
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
             Stable Python file paths for one Rope project.
 
         """
-        resources = FlextInfraUtilitiesRopeCoreResourcesMixin.python_resources(
+        resources = FlextInfraUtilitiesRopeCoreResources.python_resources(
             rope_project,
         )
         return tuple(
@@ -142,7 +142,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
                     for resource in resources
                     if (
                         file_path
-                        := FlextInfraUtilitiesRopeCoreResourcesMixin.resource_file_path(
+                        := FlextInfraUtilitiesRopeCoreResources.resource_file_path(
                             rope_project,
                             resource,
                         )
@@ -170,4 +170,4 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         return Path(root_real_path, resource.path).resolve()
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRopeCoreResourcesMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeCoreResources"]

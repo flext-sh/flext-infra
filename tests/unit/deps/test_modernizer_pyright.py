@@ -123,7 +123,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_editor_projection_preserves_other_tables_and_converges(
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        """The small editor projection uses the normal phase without venv bindings."""
+        """The editor projection replaces stale environment bindings and converges."""
         source = (
             "# Project-owned metadata\n"
             "[project]\nname='fixture'\nversion='0.1.0'\n"
@@ -145,8 +145,8 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(tools["unrelated"], eq={"keep": c.ParserBooleanToken.YES})
         tm.that(document["project"], eq={"name": "fixture", "version": "0.1.0"})
         pyright = u.Tests.toml_mapping(tools["pyright"])
-        tm.that(pyright, lacks="venv")
-        tm.that(pyright, lacks="venvPath")
+        tm.that(pyright["venv"], eq=c.Infra.ENVIRONMENT_DIRECTORY)
+        tm.that(pyright["venvPath"], eq=".")
         for key, value in u.Infra.native_tool_settings(
             tool_config_document, c.Infra.PYRIGHT
         ).items():
@@ -163,6 +163,7 @@ class TestsFlextInfraDepsModernizerPyright:
             The resulting ``t.JsonMapping``.
 
         """
+        project = context.repository_root if context.is_root else context.project_dir
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
         phase = FlextInfraEnsurePyrightConfigPhase(
             tool_config_document,
@@ -172,9 +173,12 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(changes[0], empty=False)
         tm.that(changes[1], empty=True)
         pyright = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["pyright"])
-        # Shared config leaves environment selection to Make.
-        tm.that(pyright, lacks="venv")
-        tm.that(pyright, lacks="venvPath")
+        tm.that(pyright["venv"], eq=c.Infra.ENVIRONMENT_DIRECTORY)
+        environment_parent = u.type_adapter(str).validate_python(pyright["venvPath"])
+        if project is None:
+            tm.that(environment_parent, eq=".")
+        else:
+            tm.that((project / environment_parent).resolve(), eq=project.resolve())
         return pyright
 
     @staticmethod
@@ -195,6 +199,7 @@ class TestsFlextInfraDepsModernizerPyright:
             encoding="utf-8",
         )
         u.Tests.write_project_beads_config(project_dir, "flext-sample")
+        u.Tests.initialize_git_repo(project_dir)
         return project_dir
 
     @staticmethod
@@ -215,6 +220,7 @@ class TestsFlextInfraDepsModernizerPyright:
             u.Tests.write_project_beads_config(tmp_path / member, member)
         u.Tests.declare_workspace_projects(tmp_path, members)
         u.Tests.write_project_beads_config(tmp_path, "workspace")
+        u.Tests.initialize_git_repo(tmp_path)
 
     @staticmethod
     def test_python_discovery_ignores_member_only_container(
@@ -396,6 +402,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         u.Tests.declare_workspace_projects(tmp_path, ("flext-core", "flext-api"))
         u.Tests.write_project_beads_config(tmp_path, "workspace")
+        u.Tests.initialize_git_repo(tmp_path)
         pyright = self._applied(
             tool_config_document,
             m.Infra.PyprojectAnalyzerContext(is_root=True, repository_root=tmp_path),
@@ -538,6 +545,7 @@ class TestsFlextInfraDepsModernizerPyright:
             "VALUE = 1\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
 
         pyright = self._applied(
             tool_config_document,
@@ -648,6 +656,7 @@ class TestsFlextInfraDepsModernizerPyright:
             project_name,
             pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n[tool.flext.docs]\npackage_name='{u.Tests.project_spec(project_name).package_name}'\n",
         )
+        u.Tests.initialize_git_repo(project_dir)
         package_name = u.Tests.project_spec(project_name).package_name
         active_roots = (
             rules.source_dir,
@@ -847,6 +856,7 @@ class TestsFlextInfraDepsModernizerPyright:
             encoding="utf-8",
         )
         u.Tests.write_project_beads_config(tmp_path, "workspace")
+        u.Tests.initialize_git_repo(tmp_path)
         excluded_top_dirs = FlextInfraWorkspaceDetector.analysis_excluded_top_dirs(
             tmp_path,
         ).unwrap()

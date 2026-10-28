@@ -20,8 +20,8 @@ from flext_infra._models import (
     FlextInfraModelsRope,
 )
 from flext_infra._models._config import (
-    FlextInfraConfigModels,
-    FlextInfraConfigModelsContexts,
+    FlextInfraModelsConfig,
+    FlextInfraModelsConfigContexts,
 )
 from flext_infra._models._git import FlextInfraModelsGitIdentity
 
@@ -606,7 +606,7 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         workspace_beads: Annotated[
-            FlextInfraConfigModels.BeadsProjectSpec | None,
+            FlextInfraModelsConfig.BeadsProjectSpec | None,
             m.Field(description="Workspace Beads ledger spec; absent disables routing"),
         ] = None
         allow_unprovisioned_members: Annotated[
@@ -620,7 +620,7 @@ class FlextInfraModelsWorkspace:
         ] = False
 
         declared_member: Annotated[
-            FlextInfraConfigModelsContexts.RepositoryRef | None,
+            FlextInfraModelsConfigContexts.RepositoryRef | None,
             m.Field(
                 description="Catalog-declared member reference for this entry",
             ),
@@ -655,11 +655,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Observed Git identity, absent outside a repository"),
         ] = None
         workspace: Annotated[
-            FlextInfraConfigModels.WorkspaceSpec | None,
+            FlextInfraModelsConfig.WorkspaceSpec | None,
             m.Field(description="Governed workspace contract when declared"),
         ] = None
         target: Annotated[
-            FlextInfraConfigModels.RepositoryConformTarget | None,
+            FlextInfraModelsConfig.RepositoryConformTarget | None,
             m.Field(description="Effective governed project properties"),
         ] = None
         governed: Annotated[

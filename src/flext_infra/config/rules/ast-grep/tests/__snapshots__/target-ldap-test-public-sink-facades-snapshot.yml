@@ -1,21 +1,21 @@
 id: target-ldap-test-public-sink-facades
 snapshots:
-  "from tests import tm\ndef consume(sink: Sinks.FlextTargetLdapModels.BaseSink) -> None: pass\n":
+  "from tests import tm\ndef consume(sink: Sinks.FlextModelsTargetLdap.BaseSink) -> None: pass\n":
     fixed: |
       from tests import m, p, tm
-      def consume(sink: Sinks.FlextTargetLdapModels.BaseSink) -> None: pass
+      def consume(sink: Sinks.FlextModelsTargetLdap.BaseSink) -> None: pass
     labels:
     - source: from tests import tm
       style: primary
       start: 0
       end: 20
-    - source: Sinks.FlextTargetLdapModels.BaseSink
+    - source: Sinks.FlextModelsTargetLdap.BaseSink
       style: secondary
       start: 39
       end: 75
     - source: |
         from tests import tm
-        def consume(sink: Sinks.FlextTargetLdapModels.BaseSink) -> None: pass
+        def consume(sink: Sinks.FlextModelsTargetLdap.BaseSink) -> None: pass
       style: secondary
       start: 0
       end: 91

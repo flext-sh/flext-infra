@@ -14,21 +14,21 @@ from flext_cli import m, t
 
 from flext_infra import c
 from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 from flext_infra._models._config.external_cache import (
     FlextInfraExternalCacheDirectorySpec,
 )
-from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
-from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
+from flext_infra._models._config.make_clean import FlextInfraModelsConfigMakeClean
+from flext_infra._models._config.make_docs import FlextInfraModelsConfigMakeDocs
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 def _effective_custom_handler_policies(
-    base: FlextInfraConfigModelsMake.CustomHandlerPolicy,
+    base: FlextInfraModelsConfigMake.CustomHandlerPolicy,
     overrides: tuple[
-        tuple[str, FlextInfraConfigModelsMake.CustomHandlerPolicyOverride], ...
+        tuple[str, FlextInfraModelsConfigMake.CustomHandlerPolicyOverride], ...
     ],
-) -> Mapping[str, FlextInfraConfigModelsMake.CustomHandlerPolicy]:
+) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
     """Derive the effective per-profile policy from frozen policy inputs.
 
     Pure function of frozen models: the returned mapping is read-only.
@@ -39,7 +39,7 @@ def _effective_custom_handler_policies(
 
     Returns:
         The resulting ``Mapping[str,
-            FlextInfraConfigModelsMake.CustomHandlerPolicy]``.
+            FlextInfraModelsConfigMake.CustomHandlerPolicy]``.
 
     """
     # Keys are normalised to the profile's string value: MakeProfile is a
@@ -60,13 +60,13 @@ def _effective_custom_handler_policies(
     }
 
 
-class FlextInfraConfigModelsMake(
-    FlextInfraConfigModelsMakeClean,
-    FlextInfraConfigModelsMakeDocs,
+class FlextInfraModelsConfigMake(
+    FlextInfraModelsConfigMakeClean,
+    FlextInfraModelsConfigMakeDocs,
 ):
     """Make workflow, verb, CI, and cache specification models."""
 
-    class MakeProjectCheckGateSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeProjectCheckGateSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One repository-owned native module check in the shared registry."""
 
         name: Annotated[
@@ -113,7 +113,7 @@ class FlextInfraConfigModelsMake(
             ),
         ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME.value
 
-    class MakeCiSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeCiSpec(FlextInfraModelsConfigContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
@@ -160,7 +160,7 @@ class FlextInfraConfigModelsMake(
                 raise ValueError(msg)
             return self
 
-    class MakeVerbSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeVerbSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One selector-free public Make operation."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
@@ -192,7 +192,7 @@ class FlextInfraConfigModelsMake(
             ),
         ] = tuple(FlextInfraConstantsConfig.MakeProfile)
 
-    class MakeOperationSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeOperationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One typed public operation and its distinct checker evidence phase."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public Make verb")]
@@ -240,7 +240,7 @@ class FlextInfraConfigModelsMake(
             ),
         ]
 
-    class MakeWorkflowRequirementSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeWorkflowRequirementSpec(FlextInfraModelsConfigContract.ConfigContract):
         """An earlier phase required in explicitly declared execution contexts."""
 
         step: Annotated[
@@ -271,7 +271,7 @@ class FlextInfraConfigModelsMake(
             ),
         ]
         requires: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeWorkflowRequirementSpec],
+            t.VariadicTuple[FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec],
             m.Field(
                 description=(
                     "Earlier workflow identities whose green result admits this step "
@@ -300,7 +300,7 @@ class FlextInfraConfigModelsMake(
                 raise ValueError(msg)
             return self
 
-    class TestmonCachePolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+    class TestmonCachePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
         """Declarative Actions-cache policy for the shared testmon database.
 
         Implements the preserved #1001 delta (bead flext-j0u23): two-phase
@@ -379,7 +379,7 @@ class FlextInfraConfigModelsMake(
         FlextInfraExternalCacheDirectorySpec.Directory[
             FlextInfraConstantsConfig.MypyCacheEnvironment
         ],
-        FlextInfraConfigModelsContract.ConfigContract,
+        FlextInfraModelsConfigContract.ConfigContract,
     ):
         """Project-keyed shared Mypy cache, one analysis reused across relocks."""
 
@@ -435,7 +435,7 @@ class FlextInfraConfigModelsMake(
                     raise ValueError(msg)
             return self
 
-    class MakeRuffSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeRuffSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
@@ -500,10 +500,10 @@ class FlextInfraConfigModelsMake(
                 raise ValueError(msg)
             return self
 
-    class MakeSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
-        class TestmonCachePolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+        class TestmonCachePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
             """Declarative Actions-cache policy for the shared testmon database.
 
             Implements the preserved #1001 delta (bead flext-j0u23): two-phase
@@ -579,7 +579,7 @@ class FlextInfraConfigModelsMake(
             FlextInfraExternalCacheDirectorySpec.Directory[
                 FlextInfraConstantsConfig.PytestCacheEnvironment
             ],
-            FlextInfraConfigModelsContract.ConfigContract,
+            FlextInfraModelsConfigContract.ConfigContract,
         ):
             """Persistent pytest-testmon database and runner paths."""
 
@@ -649,7 +649,7 @@ class FlextInfraConfigModelsMake(
                     raise ValueError(msg)
                 return self
 
-        class PytestScratchSpec(FlextInfraConfigModelsContract.ConfigContract):
+        class PytestScratchSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Scratch root every pytest-running verb declares (storage law).
 
             The root is ``$<home>/<home_relative_directory>/<state_directory_name>``
@@ -727,7 +727,7 @@ class FlextInfraConfigModelsMake(
             m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
         ]
         ruff: Annotated[
-            FlextInfraConfigModelsMake.MakeRuffSpec,
+            FlextInfraModelsConfigMake.MakeRuffSpec,
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
         ]
         fmt_gates: Annotated[
@@ -757,17 +757,17 @@ class FlextInfraConfigModelsMake(
             ),
         ] = False
         workflow: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeWorkflowStepSpec],
+            t.VariadicTuple[FlextInfraModelsConfigMake.MakeWorkflowStepSpec],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         lifecycle_steps: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeLifecycleStepSpec],
+            t.VariadicTuple[FlextInfraModelsConfigMake.MakeLifecycleStepSpec],
             m.Field(
                 min_length=1, description="Ordered public runtime acceptance steps"
             ),
         ]
         ci: Annotated[
-            FlextInfraConfigModelsMake.MakeCiSpec,
+            FlextInfraModelsConfigMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
         ]
         native_environment_unset: Annotated[
@@ -834,7 +834,7 @@ class FlextInfraConfigModelsMake(
             ),
         ]
         testmon_cache_policy: Annotated[
-            FlextInfraConfigModelsMake.TestmonCachePolicySpec,
+            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
             m.Field(
                 description=(
                     "Declarative save/budget/quota policy for the shared"
@@ -843,17 +843,17 @@ class FlextInfraConfigModelsMake(
             ),
         ]
         mypy_cache: Annotated[
-            FlextInfraConfigModelsMake.MypyCacheSpec,
+            FlextInfraModelsConfigMake.MypyCacheSpec,
             m.Field(
                 description="Project-keyed shared Mypy analysis cache policy",
             ),
         ]
         ruff_cache: Annotated[
-            FlextInfraConfigModelsMake.RuffCacheSpec,
+            FlextInfraModelsConfigMake.RuffCacheSpec,
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
         verbs: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            t.VariadicTuple[FlextInfraModelsConfigMake.MakeVerbSpec],
             m.Field(description="Ordered canonical public verbs"),
         ]
         violations_sweep_repair_verbs: Annotated[
@@ -875,26 +875,26 @@ class FlextInfraConfigModelsMake(
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
         clean: Annotated[
-            FlextInfraConfigModelsMake.MakeCleanSpec,
+            FlextInfraModelsConfigMake.MakeCleanSpec,
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
-            FlextInfraConfigModelsMake.MakeDocsSpec,
+            FlextInfraModelsConfigMake.MakeDocsSpec,
             m.Field(description="Public documentation lifecycle policy"),
         ]
         custom_handler_policy: Annotated[
-            FlextInfraConfigModelsMake.CustomHandlerPolicy,
+            FlextInfraModelsConfigMake.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraConfigModelsMake.CustomHandlerPolicyOverride,
+                FlextInfraModelsConfigMake.CustomHandlerPolicyOverride,
             ],
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeProjectCheckGateSpec],
+            t.VariadicTuple[FlextInfraModelsConfigMake.MakeProjectCheckGateSpec],
             m.Field(
                 default=(),
                 description=(
@@ -1127,7 +1127,7 @@ class FlextInfraConfigModelsMake(
             self._validate_admission_requirements()
 
         def _validate_test_admission(
-            self, tests: FlextInfraConfigModelsMake.MakeWorkflowStepSpec
+            self, tests: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
         ) -> None:
             """Require primary evidence in every context of each test invocation.
 
@@ -1357,7 +1357,7 @@ class FlextInfraConfigModelsMake(
         @property
         def custom_handler_policies(
             self,
-        ) -> Mapping[str, FlextInfraConfigModelsMake.CustomHandlerPolicy]:
+        ) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
             """Effective custom-handler policy for every Make profile.
 
             The base policy states the strictest contract (private handlers
@@ -1368,7 +1368,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``Mapping[str,
-                    FlextInfraConfigModelsMake.CustomHandlerPolicy]``.
+                    FlextInfraModelsConfigMake.CustomHandlerPolicy]``.
 
             """
             base = self.custom_handler_policy
@@ -1378,7 +1378,7 @@ class FlextInfraConfigModelsMake(
                 tuple(sorted(overrides.items())),
             )
 
-    class CustomHandlerPolicy(FlextInfraConfigModelsContract.ConfigContract):
+    class CustomHandlerPolicy(FlextInfraModelsConfigContract.ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
 
         filename: Annotated[
@@ -1394,7 +1394,7 @@ class FlextInfraConfigModelsMake(
             description="Permit toolchain declarations",
         )
 
-    class CustomHandlerPolicyOverride(FlextInfraConfigModelsContract.ConfigContract):
+    class CustomHandlerPolicyOverride(FlextInfraModelsConfigContract.ConfigContract):
         """Per-profile relaxation of the strict custom-handler contract.
 
         Every field is optional: a profile declares ONLY what it relaxes, so a
@@ -1412,4 +1412,4 @@ class FlextInfraConfigModelsMake(
         )
 
 
-__all__: list[str] = ["FlextInfraConfigModelsMake"]
+__all__: list[str] = ["FlextInfraModelsConfigMake"]

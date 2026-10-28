@@ -12,23 +12,23 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
+    FlextInfraModelsUtilitiesProtocol,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesProtocolModels,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
@@ -47,7 +47,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesProtocolModels,
+    FlextInfraModelsUtilitiesProtocol,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,

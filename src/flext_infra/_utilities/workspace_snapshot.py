@@ -45,8 +45,13 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
         planned_sources: t.MappingKV[Path, str | None] | None = None,
         project_roots: t.VariadicTuple[Path] = (),
+        source_project: p.Infra.RopeProject | None = None,
     ) -> Generator[t.Pair[p.Infra.RopeProject, MutableMapping[Path, str]]]:
-        """Open the native source view with authenticated planned overrides.
+        """Bind authenticated planned overrides to the elected native project.
+
+        A supplied invocation-owned project evolves only for this binding and
+        restores its entry view on exit. Independent callers acquire a project
+        through the same existing overlay owner.
 
         Yields:
             The native project and its elected captured Python sources.
@@ -65,15 +70,29 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 root, declared_files, planned_sources
             )
         original_root = next(path for path in (root, *root.parents) if path.is_dir())
+        if (
+            source_project is not None
+            and Path(source_project.root.real_path) != original_root
+        ):
+            msg = "shared source project differs from the declared physical root"
+            raise ValueError(msg)
         folders = cls._workspace_planned_folders(
             root, project_roots, declared_files, original_root=original_root
         )
-        with cls.workspace_overlay_project(
-            root,
-            project_roots,
-            declared_files=declared_files,
-            additional_source_folders=folders,
-        ) as project:
+        project_context = (
+            cls.workspace_overlay_project(
+                root,
+                project_roots,
+                declared_files=declared_files,
+                additional_source_folders=folders,
+            )
+            if source_project is None
+            else source_project.source_view(
+                declared_files=declared_files,
+                additional_source_folders=folders,
+            )
+        )
+        with project_context as project:
             yield (
                 project,
                 {

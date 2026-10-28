@@ -7,7 +7,7 @@ valid:
     class FlextFooService(s[bool]):
         pass
   - |
-    class FlextFooModels:
+    class FlextModelsFoo:
         class Item(m.ContractModel):
             pass
   - |
@@ -17,8 +17,8 @@ valid:
   - |
     class FlextFooPlanner(
         m.ArbitraryTypesModel,
-        FlextFooAliasesMixin,
-        FlextFooCacheMixin,
+        FlextFooAliases,
+        FlextFooCache,
     ):
         pass
 invalid:

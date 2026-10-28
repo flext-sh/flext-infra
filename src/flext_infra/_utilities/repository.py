@@ -23,9 +23,11 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesGitSemanticPublishMixin,
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
     FlextInfraUtilitiesProjectManagedArtifacts,
+)
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitWorktreeDiscovery,
 )
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
@@ -371,7 +373,7 @@ class FlextInfraUtilitiesRepository(
                 f"infrastructure source must be the {distribution} repository: {url}",
             )
         organization, separator, _ = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_remote_identity(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
                 url,
             ).partition("/")
         )
@@ -482,7 +484,7 @@ class FlextInfraUtilitiesRepository(
             The validated origin URL and integration branch.
 
         """
-        origin = FlextInfraUtilitiesGitSemanticPublishMixin.git_remote_url(
+        origin = FlextInfraUtilitiesGitSemanticPublish.git_remote_url(
             m.Infra.GitRemoteUrlRequest(
                 repo_root=repository_root,
                 remote=c.Infra.GIT_DEFAULT_REMOTE,
@@ -779,7 +781,7 @@ class FlextInfraUtilitiesRepository(
         """
         result_type = r[str]
         declarations = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_submodule_declarations(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_submodule_declarations(
                 repository_root,
             )
         )
@@ -828,7 +830,7 @@ class FlextInfraUtilitiesRepository(
         """
         url = repository.url.strip()
         organization, separator, _ = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_remote_identity(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
                 url,
             ).partition("/")
         )
@@ -864,7 +866,7 @@ class FlextInfraUtilitiesRepository(
         if provider.failure:
             return r[str].from_failure(provider)
         owner, separator, name = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_remote_identity(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
                 repository.url,
             ).partition("/")
         )
@@ -1072,7 +1074,7 @@ class FlextInfraUtilitiesRepository(
             The declared integration line the repository publishes.
 
         """
-        branch_probe = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
+        branch_probe = FlextInfraUtilitiesGitSemanticPublish.git_ref_exists(
             m.Infra.GitRefRequest(
                 repo_root=repository_root,
                 reference=f"refs/remotes/origin/{declared_branch}",
@@ -1080,7 +1082,7 @@ class FlextInfraUtilitiesRepository(
         )
         if branch_probe.failure:
             return r[str].from_failure(branch_probe)
-        tag_probe = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
+        tag_probe = FlextInfraUtilitiesGitSemanticPublish.git_ref_exists(
             m.Infra.GitRefRequest(
                 repo_root=repository_root,
                 reference=f"refs/tags/{declared_branch}",

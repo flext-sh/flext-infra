@@ -86,16 +86,27 @@ class TestsFlextInfraFacadeMemberConstraints:
         """Classify a real lazy export through its declared source class."""
         package_dir = tm.not_none(u.Infra.declared_package_dir("flext_cli"))
         with u.Infra.codemod_workspace_snapshot(package_dir.parent.parent) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             module = u.Infra.require_semantic_module(
                 snapshot.engine.get_module("flext_cli.utilities")
             )
             binding = module.get_attributes()["FlextCliUtilitiesAtomicFileCleanup"]
             tm.that(
-                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=c.Infra.FacadeMemberKind.TYPE,
             )
             tm.that(
-                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_owner(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq="t",
             )
 
@@ -103,17 +114,28 @@ class TestsFlextInfraFacadeMemberConstraints:
     def test_binary_stub_exception_keeps_source_kind(cls) -> None:
         """Use the installed Pydantic core stub, not the binary's unknown Rope type."""
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             module = u.Infra.require_semantic_module(
                 snapshot.engine.get_module("flext_core._constants.pydantic")
             )
             owner = module.get_attributes()["FlextConstantsPydantic"].get_object()
             binding = owner.get_attributes()["ValidationError"]
             tm.that(
-                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=c.Infra.FacadeMemberKind.EXCEPTION,
             )
             tm.that(
-                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_owner(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq="c",
             )
 
@@ -121,17 +143,28 @@ class TestsFlextInfraFacadeMemberConstraints:
     def test_source_exception_alias_keeps_native_ancestor(cls) -> None:
         """Follow the source alias and the original native builtin exception."""
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             module = u.Infra.require_semantic_module(
                 snapshot.engine.get_module("flext_core._constants.pydantic")
             )
             owner = module.get_attributes()["FlextConstantsPydantic"].get_object()
             binding = owner.get_attributes()["PydanticImportError"]
             tm.that(
-                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=c.Infra.FacadeMemberKind.EXCEPTION,
             )
             tm.that(
-                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_owner(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq="c",
             )
 
@@ -139,17 +172,28 @@ class TestsFlextInfraFacadeMemberConstraints:
     def test_pep695_validation_error_keeps_type_owner(cls) -> None:
         """Keep the source alias kind without confusing its runtime exception class."""
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             module = u.Infra.require_semantic_module(
                 snapshot.engine.get_module("flext_core._typings.pydantic")
             )
             owner = module.get_attributes()["FlextTypesPydantic"].get_object()
             alias = owner.get_attributes()["ValidationError"]
             tm.that(
-                u.Infra.facade_member_kind(alias, source_project=snapshot.engine),
+                u.Infra.facade_member_kind(
+                    alias,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=c.Infra.FacadeMemberKind.TYPE,
             )
             tm.that(
-                u.Infra.facade_member_owner(alias, source_project=snapshot.engine),
+                u.Infra.facade_member_owner(
+                    alias,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=config.Infra.tooling.facade_members.owners[
                     c.Infra.FacadeMemberKind.TYPE
                 ],
@@ -159,6 +203,9 @@ class TestsFlextInfraFacadeMemberConstraints:
     def test_value_origin_classification_preserves_declarations(cls) -> None:
         """Keep value bindings while classifying their authenticated declarations."""
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             module = u.Infra.require_semantic_module(
                 snapshot.engine.get_module("flext_core._constants.pydantic")
             )
@@ -170,7 +217,11 @@ class TestsFlextInfraFacadeMemberConstraints:
                 binding = owner.get_attributes()[name]
                 tm.that(u.Infra.class_assignment_binding(binding) is binding, eq=True)
                 tm.that(
-                    u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                    u.Infra.facade_member_kind(
+                        binding,
+                        resolver_factory=resolver_factory,
+                        source_project=snapshot.engine,
+                    ),
                     eq=kind,
                 )
 
@@ -178,15 +229,26 @@ class TestsFlextInfraFacadeMemberConstraints:
     def test_installed_strict_string_keeps_its_annotation_owner(cls) -> None:
         """The real Pydantic Annotated assignment keeps its configured type owner."""
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             binding = u.Infra.require_semantic_module(
                 snapshot.engine.get_module("pydantic.types")
             ).get_attributes()["StrictStr"]
             tm.that(
-                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=c.Infra.FacadeMemberKind.TYPE,
             )
             tm.that(
-                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_owner(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=config.Infra.tooling.facade_members.owners[
                     c.Infra.FacadeMemberKind.TYPE
                 ],
@@ -196,6 +258,9 @@ class TestsFlextInfraFacadeMemberConstraints:
     def test_facade_strict_string_alias_keeps_its_annotation_owner(cls) -> None:
         """Classify the real facade alias through its imported Annotated assignment."""
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             facade = u.Infra.facade_source_classes(
                 cls.PACKAGE, ("t",), source_project=snapshot.engine
             )["t"]
@@ -203,11 +268,19 @@ class TestsFlextInfraFacadeMemberConstraints:
                 facade, source_project=snapshot.engine
             )["StrictStr"]
             tm.that(
-                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=c.Infra.FacadeMemberKind.TYPE,
             )
             tm.that(
-                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_owner(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=config.Infra.tooling.facade_members.owners[
                     c.Infra.FacadeMemberKind.TYPE
                 ],
@@ -223,11 +296,14 @@ class TestsFlextInfraFacadeMemberConstraints:
         package_dir = tm.not_none(u.Infra.declared_package_dir("flext_infra"))
         monkeypatch.setitem(sys.modules, module_name, None)
         with u.Infra.codemod_workspace_snapshot(package_dir.parent.parent) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             module = u.Infra.require_semantic_module(
                 snapshot.engine.get_module(module_name)
             )
             owner = module.get_attributes()[
-                "FlextInfraModelsCodegenFixModels"
+                "FlextInfraModelsModelsCodegenFix"
             ].get_object()
             policy = owner.get_attributes()["NamespaceModulePolicy"].get_object()
             if not u.Infra.abstract_class(policy):
@@ -236,11 +312,19 @@ class TestsFlextInfraFacadeMemberConstraints:
                 policy, source_project=snapshot.engine
             )[name]
             tm.that(
-                u.Infra.facade_member_kind(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=c.Infra.FacadeMemberKind.CONSTANT,
             )
             tm.that(
-                u.Infra.facade_member_owner(binding, source_project=snapshot.engine),
+                u.Infra.facade_member_owner(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=snapshot.engine,
+                ),
                 eq=config.Infra.tooling.facade_members.owners[
                     c.Infra.FacadeMemberKind.CONSTANT
                 ],
@@ -262,11 +346,18 @@ class TestsFlextInfraFacadeMemberConstraints:
             encoding=c.DEFAULT_ENCODING,
         )
         with closing(u.Infra.init_rope_project(root)) as project:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                project, sources={}
+            )
             binding = u.Infra.require_semantic_module(
                 project.get_module(f"{package.name}.annotations")
             ).get_attributes()["Strict"]
             tm.that(
-                u.Infra.facade_member_kind(binding, source_project=project),
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=project,
+                ),
                 eq=c.Infra.FacadeMemberKind.TYPE,
             )
 
@@ -298,11 +389,18 @@ class TestsFlextInfraFacadeMemberConstraints:
             encoding=c.DEFAULT_ENCODING,
         )
         with closing(u.Infra.init_rope_project(root)) as project:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                project, sources={}
+            )
             binding = u.Infra.require_semantic_module(
                 project.get_module(f"{package.name}.annotations")
             ).get_attributes()["Strict"]
             with pytest.raises(ValueError, match="unknown facade member kind:"):
-                u.Infra.facade_member_kind(binding, source_project=project)
+                u.Infra.facade_member_kind(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=project,
+                )
 
     @classmethod
     def _project(cls) -> Path:
@@ -344,6 +442,9 @@ class TestsFlextInfraFacadeMemberConstraints:
         """Each census reference is a non-owner reference bound to its owner."""
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             _lineage, relocations, _names = u.Infra.facade_member_census(
                 project, source_project=snapshot.engine
             )
@@ -356,7 +457,9 @@ class TestsFlextInfraFacadeMemberConstraints:
                     )
                     tm.that(
                         u.Infra.facade_member_owner(
-                            value, source_project=snapshot.engine
+                            value,
+                            resolver_factory=resolver_factory,
+                            source_project=snapshot.engine,
                         ),
                         eq=owner,
                     )
@@ -393,12 +496,16 @@ class TestsFlextInfraFacadeMemberConstraints:
         misplaced = cls._by_shape(c.Infra.FACADE_MEMBER_WRONG_LAYER_SHAPE)
         retirements = cls._by_shape(c.Infra.FACADE_MEMBER_RETIRE_SHAPE)
         with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine, sources={}
+            )
             for letter, names in misplaced.items():
                 for name in names:
                     owner = u.Infra.facade_member_owner(
                         u.Infra.source_member_binding(
                             snapshot.engine, f"{cls.PACKAGE}.{letter}.{name}"
                         ),
+                        resolver_factory=resolver_factory,
                         source_project=snapshot.engine,
                     )
                     holder = u.Infra.facade_source_classes(

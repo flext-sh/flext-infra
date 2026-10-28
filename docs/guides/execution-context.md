@@ -721,24 +721,35 @@ neither a repeated failure nor an unchanged finding count proves validation succ
 ### Facade Projection and Model-to-Protocol Generation
 
 Facade projection composes constants, utilities and models from the exports and
-base order declared in their configured private family. Protocol facade projection
-composes authored consumer-owned `p` contracts through the same native declaration
-and MRO owners; it never copies model fields or public signatures into a second
-typing surface. A dependency port declares only capabilities its consumers use.
-Existing-project conformance and new-project scaffolding generate ordinary facades
-and lazy exports. The one exception is the model→protocol stage, which the operator
-ordered restored and run on every `make gen` (2026-10-24: "fazer os protocolos de
-forma automática por flext-infra (já existe e tem que estar ativo e sempre rodar no
-make)"). Its generated `p.*` protocols are projections of the declared models, not
-authored mirrors. Restoration is tracked by bead `flext-vjj1s.8`. The restored
-projection reads the invocation's authenticated native model inventory and C3
-declarations, selects consumed structural data contracts and closes their model
-dependencies without importing the target package. It emits annotated attributes,
-not model methods, defaults, validators or SDK signatures. Protocol sources join
-the existing candidate before recursive facade and lazy-export convergence and use
-the same publisher and read-only drift comparison. It adds no CLI route, per-model
-catalog or separate publication engine. Runtime acceptance remains with the
-coordinator; this source restoration alone is not generation or gate evidence.
+base order declared in their configured private family. Authored dependency ports
+retain their consumer-owned capability contracts and normal `p` facade composition.
+The accepted 2026-10-28 [model and service protocol projection](../../../docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
+contract owns the automatic first-party projection, extending the model-to-`p`
+restoration tracked by `flext-vjj1s.8`. Its complete native inventory and source
+module ownership determine coverage and destinations; a consumed-model filter is
+not the accepted scope. The ADR owns the structural data/callable distinction,
+runtime boundaries, grouping, collision failure, pilot matrix and expansion order.
+The ADR's enrollment/phase admission mechanism is a **proposal awaiting an
+explicit operator decision**, not part of its accepted protocol target. Drift
+admission for live pilot cohorts versus staged pilot qualification before global
+rollout remains undecided; no gate-policy change follows from the pilot request
+alone. Complete workspace discovery/planning and Python checker scopes remain
+unchanged. Staged validation is not evidence of a published pilot. Another pattern
+waits for this entire pattern's fleet and consumer cutover, runtime/gates and
+integration closure under the ADR. Beads owns progress; publisher receipts supply
+evidence, not a second tracker.
+Authored rewiring and obsolete-owner retirement run through `make mod`; its coherent
+candidate includes dependent projection through the existing generation owner.
+`make gen` continues to derive protocols and fails before effects if publication
+needs an unplanned authored cutover. The ADR's retirement safeguard preserves every
+consumer in that same candidate; prefix/header matching does not authorize deletion.
+Neither operation invokes the other public verb. Protocol sources and every affected
+workspace consumer converge with their facades and lazy exports through the same
+publisher and read-only drift comparison. No target-package import, separate
+scanner, per-model catalog or publication engine supplies the projection. This is
+an accepted target; source restoration alone is not generation, pilot coverage,
+gate or integration
+evidence. The original MRO/Pydantic analyzer/environment plan remains incomplete.
 The workspace snapshot and injected native candidate own source authentication;
 the projector consumes their existing source-access contract, not a separate
 project flag. Builtin annotation identities use the native semantic-module
@@ -2617,10 +2628,11 @@ process waits are parent wall time, not child CPU or evidence of child hot funct
 Retain the existing immutable raw captures and termination checkpoints, rendering
 them only through the public `validate cprofile-report` owner. Bind evidence to the
 actual source, runtime, configuration, command and selected scope; an interrupted
-capture is incomplete failure, never successful modification. The universal command
-deadline includes startup and children: request termination by 118 seconds and
-finish by 120 seconds, using an enclosing deadline when the native operation has no
-such bound. Capture repair alone proves neither a timing improvement nor a green
+capture is incomplete failure, never successful modification. The active Make
+deadline includes startup, preflight, lock waits, children and termination within
+sixty seconds. Reserve termination time inside that bound and use an enclosing
+deadline when the native operation has none; do not allocate a fresh budget to
+each stage. Capture repair alone proves neither a timing improvement nor a green
 generation, modification or gate result.
 
 The transport delegates directly to the single native capture owner. Existing
@@ -2703,7 +2715,7 @@ declaration removal, before collecting the resulting report. Deleted or added
 initializer projections must be reflected in the source inventory it reads.
 
 Constant source discovery is separate from consumer orchestration. Native import
-provenance, facade publications, assignment identities and inert literal discovery
+provenance,FlextInfraUtilitiess, assignment identities and inert literal discovery
 belong to `FlextInfraUtilitiesSemanticConstantSources`, exposed only through the
 consumer facade's `ConstantSources` class binding. Project-owned native
 `ownership_transfer` contracts in the constant-consumer phase authenticate
@@ -3599,6 +3611,13 @@ Within one unchanged candidate, domain-owner election retains the exact member
 suppliers authenticated during admission for its subsequent composition comparison.
 This reuse ends with that election call; it neither skips the initial integrity
 checks nor adds superclass or callable suppliers to the comparison's evidence.
+Member classification receives an operation-owned lazy factory for the existing
+native member resolver. It captures the same declared source mapping and constructs
+that resolver only at the first model-contract query. Subsequent queries reuse its
+native resolution state, not cached declaration kinds. Exception, enum and protocol
+classification still precede that query; unresolved contracts, empty contracts and
+invalid ancestry retain their failures. The factory is discarded when its operation
+or captured source view ends, never retained across publication or source changes.
 The method admission predicate reads the class's cached native AST, including
 conditional definitions and excluding methods owned by nested classes. Native
 member bindings are evaluated only when superclass suppliers do not elect it.
@@ -3703,6 +3722,14 @@ parallel cross-repository model. Only the `u.Infra` snapshot and adapter owners 
 underlying implementation; orchestrators, models, protocols and external consumers see
 the generic `p.Infra` capability.
 
+The native project's identity remains stable across candidate bindings; identity
+alone therefore does not authenticate a derived memo. Derived facade census and
+resolver observations belong to the active source binding, rather than a
+process-global `id(project)` key. Reuse the native parsed facts and their own
+invalidation; do not add another versioned cache or counter merely to preserve
+that stale memo. Physical before-images remain authenticated separately and are
+never rebaselined by a candidate transition.
+
 Every derived fact is a lazy memo on the snapshot, computed on first query and
 reused for the rest of the run:
 
@@ -3760,6 +3787,10 @@ compatibility branch or second classifier is retained.
 Repository planning emits an exception's original traceback when capturing its
 failed outcome. The final report retains that same cause; interruption before
 the cohort finishes cannot hide the first failure behind a timeout.
+Returned planning failures retain and emit the same original exception as raised
+failures. Publication-identity diagnostics attach the already-observed route,
+binding kind and expected/observed owner to that exception; they do not resolve
+another candidate, manufacture a cause or replace the failing publication check.
 Each repository keeps its own module index and name bindings, including internal
 packages whose names may also occur in another member. The source engine shares
 directory facts keyed by physical path and module facts keyed by native parsed-module

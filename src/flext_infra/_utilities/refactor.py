@@ -20,7 +20,7 @@ from flext_cli import u
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
 from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
+    FlextInfraUtilitiesGitSemanticIdentity,
 )
 
 
@@ -999,7 +999,7 @@ class FlextInfraUtilitiesRefactor:
             The exact worktree Git directory, or the original identity failure.
 
         """
-        return FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_git_dir(root)
+        return FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_git_dir(root)
 
     @staticmethod
     def publish_refactor_report_evidence(

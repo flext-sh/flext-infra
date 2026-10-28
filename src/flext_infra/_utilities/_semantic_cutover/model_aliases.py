@@ -10,11 +10,7 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticNestingTypes,
-)
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -24,7 +20,11 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraTypesUtilitiesSemanticNesting,
+    FlextInfraUtilitiesDeclarationPayload,
 )
 
 
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         assignments: tuple[ast.Assign, ...],
     ) -> tuple[dict[str, p.Infra.RopePyName], dict[str, tuple[str, str]]] | None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        namespace = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        namespace = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
             wrapper.get_object(), str(path)
         )
         scope = namespace.get_scope()
@@ -194,7 +194,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             ):
                 msg = f"unresolved model alias target identity: {path}:{alias}"
                 raise ValueError(msg)
-            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
+            if not FlextInfraTypesUtilitiesRopeRuntime.py_class(value):
                 return None
             provider = value.get_module()
             provider_resource = provider.get_resource()
@@ -414,7 +414,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         targets: t.MappingKV[str, t.Pair[str, str]],
         sources: t.MutableMappingKV[Path, str],
     ) -> frozenset[Path]:
-        name = FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+        name = FlextInfraTypesUtilitiesRopeRuntime.require_named_object(
             wrapper.get_object(), "model alias namespace"
         ).get_name()
         observed = dict(sources)
@@ -635,7 +635,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 project, scope, expression, (path, required), context
             )
 
-        rewritten = FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
+        rewritten = FlextInfraTypesUtilitiesSemanticNesting.rewrite_quoted_types(
             project, resource, source, quoted
         )
         if rewritten == source:

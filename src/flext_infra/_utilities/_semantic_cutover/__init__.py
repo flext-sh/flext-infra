@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""semantic cutover package.
+"""Flext Infra. Utilities. Semantic Cutover package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,120 +13,121 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._semantic_cutover.alias_cst import (
+    from flext_infra._utilities._semantic_cutover.alias_cst import (
         FlextInfraUtilitiesSemanticCutoverAliasCst,
     )
-    from flext_infra._semantic_cutover.aliases import (
+    from flext_infra._utilities._semantic_cutover.aliases import (
         FlextInfraUtilitiesSemanticCutoverAliases,
     )
-    from flext_infra._semantic_cutover.base import (
+    from flext_infra._utilities._semantic_cutover.base import (
         FlextInfraUtilitiesSemanticCutoverBase,
     )
-    from flext_infra._semantic_cutover.bindings import (
+    from flext_infra._utilities._semantic_cutover.bindings import (
         FlextInfraUtilitiesSemanticCutoverBindings,
     )
-    from flext_infra._semantic_cutover.class_scope import (
+    from flext_infra._utilities._semantic_cutover.class_scope import (
         FlextInfraUtilitiesSemanticCutoverClassScope,
     )
-    from flext_infra._semantic_cutover.composition import (
+    from flext_infra._utilities._semantic_cutover.composition import (
         FlextInfraUtilitiesSemanticComposition,
     )
-    from flext_infra._semantic_cutover.constant_consumers import (
+    from flext_infra._utilities._semantic_cutover.constant_consumers import (
         FlextInfraUtilitiesSemanticConstantConsumers,
     )
-    from flext_infra._semantic_cutover.constant_sources import (
+    from flext_infra._utilities._semantic_cutover.constant_sources import (
         FlextInfraUtilitiesSemanticConstantSources,
     )
-    from flext_infra._semantic_cutover.contracts import (
+    from flext_infra._utilities._semantic_cutover.contracts import (
         FlextInfraUtilitiesSemanticContracts,
     )
-    from flext_infra._semantic_cutover.declaration_payload import (
+    from flext_infra._utilities._semantic_cutover.declaration_payload import (
         FlextInfraUtilitiesDeclarationPayload,
     )
-    from flext_infra._semantic_cutover.declaration_relocation import (
+    from flext_infra._utilities._semantic_cutover.declaration_relocation import (
         FlextInfraUtilitiesSemanticDeclarationRelocation,
     )
-    from flext_infra._semantic_cutover.declaration_retirement import (
+    from flext_infra._utilities._semantic_cutover.declaration_retirement import (
         FlextInfraUtilitiesSemanticDeclarationRetirement,
     )
-    from flext_infra._semantic_cutover.delegations import (
+    from flext_infra._utilities._semantic_cutover.delegations import (
         FlextInfraUtilitiesSemanticDelegations,
     )
-    from flext_infra._semantic_cutover.dynamic_environment import (
+    from flext_infra._utilities._semantic_cutover.dynamic_environment import (
         FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     )
-    from flext_infra._semantic_cutover.edits import (
+    from flext_infra._utilities._semantic_cutover.edits import (
         FlextInfraUtilitiesSemanticCutoverEdits,
     )
-    from flext_infra._semantic_cutover.facade_base_cst import (
+    from flext_infra._utilities._semantic_cutover.facade_base_cst import (
         FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
     )
-    from flext_infra._semantic_cutover.facade_bases import (
+    from flext_infra._utilities._semantic_cutover.facade_bases import (
         FlextInfraUtilitiesSemanticCutoverFacadeBases,
     )
-    from flext_infra._semantic_cutover.facade_owners import (
+    from flext_infra._utilities._semantic_cutover.facade_owners import (
         FlextInfraUtilitiesSemanticCutoverFacadeOwners,
     )
-    from flext_infra._semantic_cutover.family_flatten import (
+    from flext_infra._utilities._semantic_cutover.family_flatten import (
         FlextInfraUtilitiesSemanticFamilyFlatten,
     )
-    from flext_infra._semantic_cutover.family_references import (
+    from flext_infra._utilities._semantic_cutover.family_references import (
         FlextInfraUtilitiesSemanticFamilyReferences,
     )
-    from flext_infra._semantic_cutover.family_type_references import (
+    from flext_infra._utilities._semantic_cutover.family_type_references import (
         FlextInfraUtilitiesSemanticFamilyTypeReferences,
     )
-    from flext_infra._semantic_cutover.helper_references import (
+    from flext_infra._utilities._semantic_cutover.helper_references import (
         FlextInfraUtilitiesSemanticHelperReferences,
     )
-    from flext_infra._semantic_cutover.model_aliases import (
+    from flext_infra._utilities._semantic_cutover.model_aliases import (
         FlextInfraUtilitiesSemanticModelAliases,
     )
-    from flext_infra._semantic_cutover.model_fields import (
+    from flext_infra._utilities._semantic_cutover.model_fields import (
         FlextInfraUtilitiesSemanticCutoverModelFields,
     )
-    from flext_infra._semantic_cutover.model_fields_bindings import (
+    from flext_infra._utilities._semantic_cutover.model_fields_bindings import (
         FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
     )
-    from flext_infra._semantic_cutover.module_layout import (
+    from flext_infra._utilities._semantic_cutover.module_layout import (
         FlextInfraUtilitiesSemanticCutoverModuleLayout,
     )
-    from flext_infra._semantic_cutover.nesting import (
+    from flext_infra._utilities._semantic_cutover.nesting import (
         FlextInfraUtilitiesSemanticCutoverNesting,
     )
-    from flext_infra._semantic_cutover.nesting_cst import (
+    from flext_infra._utilities._semantic_cutover.nesting_cst import (
         FlextInfraUtilitiesSemanticCutoverNestingCst,
     )
-    from flext_infra._semantic_cutover.nesting_module_aliases import (
+    from flext_infra._utilities._semantic_cutover.nesting_module_aliases import (
         FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
     )
-    from flext_infra._semantic_cutover.nesting_owner import (
+    from flext_infra._utilities._semantic_cutover.nesting_owner import (
         FlextInfraUtilitiesSemanticCutoverNestingOwner,
     )
-    from flext_infra._semantic_cutover.nesting_references import (
+    from flext_infra._utilities._semantic_cutover.nesting_references import (
         FlextInfraUtilitiesSemanticCutoverNestingReferences,
     )
-    from flext_infra._semantic_cutover.nesting_types import (
-        FlextInfraUtilitiesSemanticNestingTypes,
+    from flext_infra._utilities._semantic_cutover.nesting_types import (
+        FlextInfraTypesUtilitiesSemanticNesting,
     )
-    from flext_infra._semantic_cutover.own_mro import (
+    from flext_infra._utilities._semantic_cutover.own_mro import (
         FlextInfraUtilitiesSemanticCutoverOwnMro,
     )
-    from flext_infra._semantic_cutover.private_import_cst import (
+    from flext_infra._utilities._semantic_cutover.private_import_cst import (
         FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
     )
-    from flext_infra._semantic_cutover.private_imports import (
+    from flext_infra._utilities._semantic_cutover.private_imports import (
         FlextInfraUtilitiesSemanticCutoverPrivateImports,
     )
-    from flext_infra._semantic_cutover.self_facade import (
+    from flext_infra._utilities._semantic_cutover.self_facade import (
         FlextInfraUtilitiesSemanticCutoverSelfFacade,
     )
-    from flext_infra._semantic_cutover.test_helpers import (
+    from flext_infra._utilities._semantic_cutover.test_helpers import (
         FlextInfraUtilitiesSemanticTestHelpers,
     )
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraTypesUtilitiesSemanticNesting",
     "FlextInfraUtilitiesDeclarationPayload",
     "FlextInfraUtilitiesSemanticComposition",
     "FlextInfraUtilitiesSemanticConstantConsumers",
@@ -162,7 +163,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
     "FlextInfraUtilitiesSemanticHelperReferences",
     "FlextInfraUtilitiesSemanticModelAliases",
-    "FlextInfraUtilitiesSemanticNestingTypes",
     "FlextInfraUtilitiesSemanticTestHelpers",
 )
 
@@ -186,11 +186,15 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticCutoverFacadeBases": ".facade_bases",
         "FlextInfraUtilitiesSemanticCutoverFacadeOwners": ".facade_owners",
         "FlextInfraUtilitiesSemanticCutoverModelFields": ".model_fields",
-        "FlextInfraUtilitiesSemanticCutoverModelFieldsBindings": ".model_fields_bindings",
+        "FlextInfraUtilitiesSemanticCutoverModelFieldsBindings": (
+            ".model_fields_bindings"
+        ),
         "FlextInfraUtilitiesSemanticCutoverModuleLayout": ".module_layout",
         "FlextInfraUtilitiesSemanticCutoverNesting": ".nesting",
         "FlextInfraUtilitiesSemanticCutoverNestingCst": ".nesting_cst",
-        "FlextInfraUtilitiesSemanticCutoverNestingModuleAliases": ".nesting_module_aliases",
+        "FlextInfraUtilitiesSemanticCutoverNestingModuleAliases": (
+            ".nesting_module_aliases"
+        ),
         "FlextInfraUtilitiesSemanticCutoverNestingOwner": ".nesting_owner",
         "FlextInfraUtilitiesSemanticCutoverNestingReferences": ".nesting_references",
         "FlextInfraUtilitiesSemanticCutoverOwnMro": ".own_mro",
@@ -205,7 +209,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
-        "FlextInfraUtilitiesSemanticNestingTypes": ".nesting_types",
+        "FlextInfraTypesUtilitiesSemanticNesting": ".nesting_types",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
     }),
     public_exports=__all__,

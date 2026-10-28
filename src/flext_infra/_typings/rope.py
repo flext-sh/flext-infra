@@ -30,6 +30,10 @@ from flext_infra._typings import FlextInfraTypesRopeNative
 class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     """Rope type aliases — accessed via t.Infra.*."""
 
+    type RopeSourceMemberResolverFactory = Callable[
+        [], FlextInfraProtocolsRopeRuntime.RopeSourceMemberResolver
+    ]
+
     class Cst:
         """libcst node classes for annotation positions; runtime classes live on c."""
 

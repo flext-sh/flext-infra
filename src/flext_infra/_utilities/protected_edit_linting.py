@@ -26,10 +26,12 @@ from libcst.codemod.visitors import RemoveImportsVisitor
 from flext_infra import c, codegen, config, gates, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesGitMutationScopeMixin,
-    FlextInfraUtilitiesGitSemanticPathsMixin,
     FlextInfraUtilitiesProcess,
     FlextInfraUtilitiesResourceLimits,
+)
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitMutationScope,
+    FlextInfraUtilitiesGitSemanticPaths,
 )
 
 if TYPE_CHECKING:
@@ -152,7 +154,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result_type = r[tuple[Path, ...]]
-        lock = FlextInfraUtilitiesGitMutationScopeMixin.mutation_lock_path(root)
+        lock = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(root)
         if lock.failure:
             return result_type.from_failure(lock)
         changes = cls.normalized_codegen_changes(plans)
@@ -173,7 +175,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         for plan in plans:
             if plan.index_before is None:
                 continue
-            retired = FlextInfraUtilitiesGitSemanticPathsMixin.git_retire_index_file(
+            retired = FlextInfraUtilitiesGitSemanticPaths.git_retire_index_file(
                 m.Infra.GitIndexRetirementRequest(
                     repo_root=plan.project, entry=plan.index_before
                 ),

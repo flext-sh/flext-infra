@@ -10,13 +10,13 @@ import threading
 from pathlib import Path
 
 from flext_infra import c, m, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-    FlextInfraUtilitiesGitSemanticIndexMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitSemanticIndex,
 )
 
 
-class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin):
+class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitSemanticIndex):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     class ScopeFacts:
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
             """
             scope = str(scope_root.resolve())
-            mixin = FlextInfraUtilitiesGitScopeMixin
+            mixin = FlextInfraUtilitiesGitScope
             with self._lock:
                 if scope in self._scopes:
                     return self._scopes[scope]
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
         """
         resolved_scope = Path(scope_root).resolve()
-        probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree
+        probe = FlextInfraUtilitiesGitSemanticIdentity.git_is_inside_work_tree
         probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
         if probed.failure:
             raise OSError(probed.error or "failed to probe Git work tree")
@@ -294,4 +294,4 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         return f"{relative_prefix}{c.PYPROJECT_FILENAME}" in tracked_paths
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitScopeMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitScope"]

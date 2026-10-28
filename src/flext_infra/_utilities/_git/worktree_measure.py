@@ -15,11 +15,11 @@ import time
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeStatusMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeStatus
 
 
-class FlextInfraUtilitiesGitWorktreeMeasureMixin(
-    FlextInfraUtilitiesGitWorktreeStatusMixin,
+class FlextInfraUtilitiesGitWorktreeMeasure(
+    FlextInfraUtilitiesGitWorktreeStatus,
 ):
     """Own the bounded tree measurement for worktree facts."""
 
@@ -125,4 +125,4 @@ class FlextInfraUtilitiesGitWorktreeMeasureMixin(
         return stat.st_size, stat.st_mtime
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMeasureMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMeasure"]

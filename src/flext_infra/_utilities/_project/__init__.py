@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""project package.
+"""Flext Infra. Utilities. Project package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._project.discovery_candidates import (
+    from flext_infra._utilities._project.discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidates,
     )
-    from flext_infra._project.discovery_shape import (
+    from flext_infra._utilities._project.discovery_shape import (
         FlextInfraUtilitiesProjectDiscoveryShape,
     )
 

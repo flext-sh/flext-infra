@@ -14,7 +14,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
-class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
+class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
     """Own worktree status operations."""
 
     @classmethod
@@ -191,4 +191,4 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeStatusMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeStatus"]

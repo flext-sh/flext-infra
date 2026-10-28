@@ -14,15 +14,13 @@ from typing import override
 import libcst as cst
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesQualifiedNames,
-    FlextInfraUtilitiesSemanticHelperReferences,
-)
-from flext_infra._utilities._rope.pymodule import (
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
+from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticHelperReferences,
 )
 
 
@@ -164,7 +162,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             ):
                 continue
             find_offset = (
-                FlextInfraUtilitiesRopeCorePyModuleMixin.find_identifier_offset_in_lines
+                FlextInfraUtilitiesRopeCorePyModule.find_identifier_offset_in_lines
             )
             offset = find_offset(
                 sources[path].splitlines(keepends=True),
@@ -189,7 +187,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 continue
             target = cls._test_utilities_owner(workspace, path, sources)
             target_resource = project.get_resource(target.relative_to(root).as_posix())
-            target_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            target_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project, target_resource
             )
             if name in target_module.get_attributes() and not (
@@ -231,7 +229,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         ):
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        expected = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, source
         ).get_attribute(name)
         return runtime.same_name(expected, bound) and (

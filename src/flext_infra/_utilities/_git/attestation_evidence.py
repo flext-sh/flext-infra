@@ -12,14 +12,14 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesBase,
+from flext_infra._utilities import FlextInfraUtilitiesBase
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
+    FlextInfraUtilitiesGitSemanticIdentity,
 )
 
 
-class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo):
+class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     """Admit original receipts and producer reports before a gate is attested."""
 
     @classmethod
@@ -238,7 +238,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
                     f"{refuse}has no original source identity for {target.path}; "
                     "rerun make check",
                 )
-            observed = FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_root(
+            observed = FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_root(
                 target.path
             )
             if observed.failure:
@@ -649,4 +649,4 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         return r[bool].ok(value=True)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitAttestationEvidenceMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitAttestationEvidence"]

@@ -1,21 +1,21 @@
 id: rewire-consumer-deep-import-to-root
 valid:
-  - from flext_meltano import FlextMeltanoTapServiceBase
-  - from flext_meltano.services.singer_sdk import FlextMeltanoSingerTapAdapter as Adapter
-  - from flext_meltano.services.abstractions import FlextMeltanoAbstractions, FlextMeltanoServiceBase
-  - |
-    from flext_meltano.services.consumer_bases.tap_service_base import (
-        FlextMeltanoTapServiceBase,
-        FlextMeltanoTargetServiceBase,
-    )
-  - from .services import FlextMeltanoAbstractions
-  - import flext_meltano.services.singer_sdk
-  - from flext_core.lazy import install_lazy_exports
+- from flext_meltano import FlextMeltanoTapServiceBase
+- from flext_meltano.services.singer_sdk import FlextMeltanoSingerTapAdapter as Adapter
+- from flext_meltano.services.abstractions import FlextMeltanoAbstractions, FlextMeltanoServiceBase
+- |
+  from flext_meltano.services.consumer_bases.tap_service_base import (
+      FlextMeltanoTapServiceBase,
+      FlextMeltanoTargetServiceBase,
+  )
+- from .services import FlextMeltanoAbstractions
+- import flext_meltano.services.singer_sdk
+- from flext_core.lazy import install_lazy_exports
 invalid:
-  - from flext_meltano.services.singer_sdk import FlextMeltanoSingerTapAdapter
-  - from flext_meltano.services.abstractions import FlextMeltanoAbstractions
-  - from flext_meltano._models.singer import FlextMeltanoModelsSinger
-  - |
-    from flext_meltano.services.consumer_bases.tap_service_base import (
-        FlextMeltanoTapServiceBase,
-    )
+- from flext_meltano.services.singer_sdk import FlextMeltanoSingerTapAdapter
+- from flext_meltano.services.abstractions import FlextMeltanoAbstractions
+- from flext_meltano._models.singer import FlextMeltanoModelsSinger
+- |
+  from flext_meltano.services.consumer_bases.tap_service_base import (
+      FlextMeltanoTapServiceBase,
+  )

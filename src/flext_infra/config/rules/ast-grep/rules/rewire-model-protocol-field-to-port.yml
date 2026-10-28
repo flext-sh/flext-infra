@@ -22,81 +22,79 @@ id: rewire-model-protocol-field-to-port
 language: python
 severity: error
 files:
-  - "**/*.py"
+- "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/protocols.py"
-  - "**/_protocols/**"
-  - "**/config/rules/ast-grep/tests/**"
+- "**/.git/**"
+- "**/.venv/**"
+- "**/legado/**"
+- "**/legacy/**"
+- "**/node_modules/**"
+- "**/protocols.py"
+- "**/_protocols/**"
+- "**/config/rules/ast-grep/tests/**"
 rule:
   all:
-    - pattern: $PORT
-    - any:
-        - kind: attribute
-          regex: "^p(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"
-          not:
-            any:
-              - inside:
-                  kind: attribute
-              - inside:
-                  kind: subscript
-                  field: value
+  - pattern: $PORT
+  - any:
+    - kind: attribute
+      regex: "^p(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"
+      not:
+        any:
+        - inside:
+            kind: attribute
+        - inside:
+            kind: subscript
+            field: value
+    - kind: subscript
+      has:
+        field: value
+        kind: attribute
+        regex: "^p(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"
+  - not:
+      inside:
+        stopBy: end
+        kind: subscript
+        has:
+          field: value
+          regex: "^t\\.Port$"
+  - not:
+      inside:
+        stopBy: end
+        kind: call
+  - not:
+      inside:
+        stopBy: end
+        any:
+        - kind: subscript
+          has:
+            field: value
+            regex: "(?:^|\\.)(?:Callable|type|Type)$"
+        - kind: generic_type
+          has:
+            kind: identifier
+            regex: "^(?:Callable|type|Type)$"
         - kind: subscript
           has:
             field: value
             kind: attribute
-            regex: "^p(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"
-    - not:
+            not:
+              regex: "^[tp]\\."
+  - inside:
+      stopBy: end
+      kind: type
+      inside:
+        kind: assignment
+        matches: model-field-assignment
         inside:
-          stopBy: end
-          kind: subscript
-          has:
-            field: value
-            regex: "^t\\.Port$"
-    - not:
-        inside:
-          stopBy: end
-          kind: call
-    - not:
-        inside:
-          stopBy: end
-          any:
-            - kind: subscript
-              has:
-                field: value
-                regex: "(?:^|\\.)(?:Callable|type|Type)$"
-            - kind: generic_type
-              has:
-                kind: identifier
-                regex: "^(?:Callable|type|Type)$"
-            - kind: subscript
-              has:
-                field: value
-                kind: attribute
-                not:
-                  regex: "^[tp]\\."
-    - inside:
-        stopBy: end
-        kind: type
-        inside:
-          kind: assignment
-          matches: model-field-assignment
+          kind: expression_statement
           inside:
-            kind: expression_statement
+            kind: block
             inside:
-              kind: block
-              inside:
-                kind: class_definition
+              kind: class_definition
+              has:
+                field: superclasses
                 has:
-                  field: superclasses
-                  has:
-                    regex: "^(?:m|FlextModels[A-Za-z0-9_]*)\\.|^s\\[|(?:Model|Settings)$"
+                  regex: "^(?:m|FlextModels[A-Za-z0-9_]*)\\.|^s\\[|(?:Model|Settings)$"
 fix: t.Port[$PORT]
 message: >-
-  Model field annotation references the protocol `$PORT` bare: wrap it in
-  `t.Port[...]` so the model validates it by `isinstance` without
-  `arbitrary_types_allowed`.
+  Model field annotation references the protocol `$PORT` bare: wrap it in `t.Port[...]` so the model validates it by `isinstance` without `arbitrary_types_allowed`.

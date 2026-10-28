@@ -19,14 +19,7 @@ import libcst as cst
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesPrivateImportFacades,
-    FlextInfraUtilitiesSemanticCutoverClassScope,
-    FlextInfraUtilitiesSemanticCutoverEdits,
-    FlextInfraUtilitiesSemanticCutoverNestingCst,
-    FlextInfraUtilitiesSemanticCutoverNestingOwner,
-    FlextInfraUtilitiesSemanticFamilyFlatten,
-    FlextInfraUtilitiesSemanticTestHelpers,
 )
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -39,9 +32,18 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverClassScope,
+    FlextInfraUtilitiesSemanticCutoverEdits,
+    FlextInfraUtilitiesSemanticCutoverNestingCst,
+    FlextInfraUtilitiesSemanticCutoverNestingOwner,
+    FlextInfraUtilitiesSemanticFamilyFlatten,
+    FlextInfraUtilitiesSemanticTestHelpers,
+)
 
 
 class FlextInfraUtilitiesSemanticCutoverNesting(
@@ -198,7 +200,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ValueError: When a native alias lacks captured source evidence.
 
         """
-        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        resource = FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
             project.get_resource(
                 file_path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -239,7 +241,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if (
                 name is None
                 or binding is None
-                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                or not FlextInfraTypesUtilitiesRopeRuntime.abstract_class(
                     name.get_object()
                 )
                 or target.id not in exports
@@ -318,7 +320,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 }:
                     continue
                 pytest_module = (
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                    FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
                         project.get_module("pytest"),
                     )
                 )
@@ -394,7 +396,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if isinstance(body, ast.Raise):
             actual = runtime.expression_name(module.get_scope(), ast.unparse(call.func))
-            builtin = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            builtin = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
                 project.get_module("builtins")
             )
             if (
@@ -410,7 +412,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if target is None:
             return False
         holder, _line = target.get_definition_location()
-        return holder is module and FlextInfraUtilitiesRopeRuntimeTypes.py_function(
+        return holder is module and FlextInfraTypesUtilitiesRopeRuntime.py_function(
             target.get_object()
         )
 
@@ -497,7 +499,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ast.unparse(target.value),
         )
         return binding is not None and (
-            FlextInfraUtilitiesRopeRuntimeTypes.py_class(binding.get_object())
+            FlextInfraTypesUtilitiesRopeRuntime.py_class(binding.get_object())
             and binding.get_object().get_module() is module
         )
 
@@ -1554,10 +1556,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         target = owner.get_attribute(site.namespace.name).get_object()
         destinations = [
             base
-            for base in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+            for base in FlextInfraTypesUtilitiesRopeRuntime.require_class_object(
                 target, site.namespace.name
             ).get_superclasses()
-            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base)
+            if FlextInfraTypesUtilitiesRopeRuntime.abstract_class(base)
             and base.get_name() == child.name
         ]
         if len(destinations) != 1:
@@ -1604,7 +1606,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 outside the editable inventory, or is already occupied.
 
         """
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(destination):
+        if not FlextInfraTypesUtilitiesRopeRuntime.py_class(destination):
             msg = "namespace declaration owner has no source scope"
             raise ValueError(msg)
         module = destination.get_module()
@@ -1911,7 +1913,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     path.relative_to(Path(project.root.real_path)).as_posix()
                 ),
             )
-            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
                 continue
             rewrites = cls._model_namespace_declaration_plan(project, module, sources)
             if rewrites is None:
@@ -2009,7 +2011,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 scope = pending.pop()
                 pending.extend(scope.get_scopes())
                 owner = scope.pyobject
-                if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner) or (
+                if not FlextInfraTypesUtilitiesRopeRuntime.py_class(owner) or (
                     owner is target
                     or target
                     not in FlextInfraUtilitiesDeclarationPayload.class_ancestry(owner)
@@ -2117,7 +2119,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             path: cls._nesting_declaration_destinations(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                         project.get_resource(
                             path.relative_to(Path(project.root.real_path)).as_posix()
                         ),

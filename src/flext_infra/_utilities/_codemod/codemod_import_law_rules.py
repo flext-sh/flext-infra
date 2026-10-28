@@ -19,16 +19,18 @@ from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-    FlextInfraUtilitiesCodemodNativeUtilities,
-    FlextInfraUtilitiesCodemodProject,
-    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativePackage,
+    FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesCodemodRules,
+)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
@@ -107,7 +109,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         layer_zero = frozenset(
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_layer_zero_files(
+            FlextInfraUtilitiesCodemodNativePackage.codemod_layer_zero_files(
                 snapshot, root
             )
         )
@@ -115,7 +117,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         facts = (
             cls._runtime_letter_ranks(order),
             cls._reverse_import_targets(ranks),
-            FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(root),
+            FlextInfraUtilitiesCodemodNative.codemod_own_package_names(root),
         )
         guard = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH,
@@ -270,9 +272,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         later_modules = sorted(
             module for module, rank in targets.items() if owner < rank < ceiling
         )
-        exact = (
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_exact_names_rule
-        )
+        exact = FlextInfraUtilitiesCodemodNativePackage.codemod_exact_names_rule
         branches: list[t.JsonValue] = []
         if later_letters:
             branches.append({

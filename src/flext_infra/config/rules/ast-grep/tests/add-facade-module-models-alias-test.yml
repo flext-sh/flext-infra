@@ -1,14 +1,14 @@
 id: add-facade-module-models-alias
 valid:
-  - |
-    class FlextDemoModels:
-        pass
-    m = FlextDemoModels
-    __all__: list[str] = ["FlextDemoModels", "m"]
-  - |
-    __all__: list[str] = ["load"]
+- |
+  class FlextModelsDemo:
+      pass
+  m = FlextModelsDemo
+  __all__: list[str] = ["FlextModelsDemo", "m"]
+- |
+  __all__: list[str] = ["load"]
 invalid:
-  - |
-    class FlextDemoModels:
-        pass
-    __all__: list[str] = ["FlextDemoModels"]
+- |
+  class FlextModelsDemo:
+      pass
+  __all__: list[str] = ["FlextModelsDemo"]

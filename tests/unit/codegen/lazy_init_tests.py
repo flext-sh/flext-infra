@@ -226,7 +226,7 @@ class TestsFlextInfraCodegenLazyInit:
             repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
             u.Tests.write_lazy_init_namespace_module(
                 package / "models.py",
-                class_name="FlextScopedModels",
+                class_name="FlextModelsScoped",
                 alias="m",
                 docstring="Owned models.",
             )

@@ -14,8 +14,8 @@ from flext_core import m
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._models._config import (
-    FlextInfraConfigModelsArtifact,
-    FlextInfraConfigModelsWorkspace,
+    FlextInfraModelsConfigArtifact,
+    FlextInfraModelsConfigWorkspace,
 )
 
 
@@ -59,7 +59,7 @@ class FlextInfraModelsDocsGeneration:
         )
 
         governance_source: (
-            FlextInfraConfigModelsWorkspace.CodegenBootstrapSource | None
+            FlextInfraModelsConfigWorkspace.CodegenBootstrapSource | None
         ) = m.Field(
             default=None, description="Captured source and ref owning governance links"
         )
@@ -199,7 +199,7 @@ class FlextInfraModelsDocsGeneration:
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
         metadata_files: t.VariadicTuple[
-            FlextInfraConfigModelsArtifact.CodegenFilePlan
+            FlextInfraModelsConfigArtifact.CodegenFilePlan
         ] = m.Field(default=(), description="Owned metadata published with this render")
         # The workspace root stays explicit: it may be excluded from `scopes`
         # (DECLARED conform scope), so it cannot be inferred from `scopes[0]`.

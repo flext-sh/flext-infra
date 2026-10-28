@@ -12,13 +12,13 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsProvider:
+class FlextInfraModelsConfigProvider:
     """Provider, repository source, and CI private-submodule models."""
 
-    class ProviderIdentitySpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ProviderIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
         """Git provider identity detected from one repository's own declarations.
 
         flext-infra ships no provider registry: the name is the key the
@@ -38,7 +38,7 @@ class FlextInfraConfigModelsProvider:
             m.Field(description="HTTPS base URL detected from the declared URL"),
         ]
 
-    class RepositorySourceSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class RepositorySourceSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Portable repository identity derived through one declared provider."""
 
         distribution: Annotated[
@@ -62,7 +62,7 @@ class FlextInfraConfigModelsProvider:
             namespace, _, _ = self.distribution.partition("-")
             return f"{namespace}-"
 
-    class BranchPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+    class BranchPolicySpec(FlextInfraModelsConfigContract.ConfigContract):
         """Global branch policy shared by every provider."""
 
         lane_remote: Annotated[
@@ -122,7 +122,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
 
-    class GithubActionPinSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class GithubActionPinSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One GitHub Action reference from the codegen catalog."""
 
         repository: Annotated[
@@ -135,7 +135,7 @@ class FlextInfraConfigModelsProvider:
         ]
 
     class CiPrivateSubmoduleDeployKeySpec(
-        FlextInfraConfigModelsContract.ConfigContract,
+        FlextInfraModelsConfigContract.ConfigContract,
     ):
         """One read-only deploy key unlocking a private subproject in CI."""
 
@@ -165,7 +165,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
 
-    class CiPrivateDependencyAuthSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CiPrivateDependencyAuthSpec(FlextInfraModelsConfigContract.ConfigContract):
         """GitHub App identity minting installation tokens for private deps."""
 
         app_id_secret: Annotated[
@@ -190,7 +190,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
 
-    class CiSuperprojectCheckoutSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CiSuperprojectCheckoutSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Containing workspace a member's CI checks out to install the root lock.
 
         A workspace member tracks no lock of its own: its CI checks out the
@@ -214,7 +214,7 @@ class FlextInfraConfigModelsProvider:
             m.Field(description="Member checkout path below the workspace root"),
         ]
 
-    class CiPrivateSubmodulesSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CiPrivateSubmodulesSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
         _KNOWN_HOSTS_FIELD_COUNT: ClassVar[int] = 3
@@ -238,7 +238,7 @@ class FlextInfraConfigModelsProvider:
         ]
         deploy_keys: Annotated[
             t.VariadicTuple[
-                FlextInfraConfigModelsProvider.CiPrivateSubmoduleDeployKeySpec
+                FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec
             ],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
@@ -283,4 +283,4 @@ class FlextInfraConfigModelsProvider:
             return self
 
 
-__all__: list[str] = ["FlextInfraConfigModelsProvider"]
+__all__: list[str] = ["FlextInfraModelsConfigProvider"]

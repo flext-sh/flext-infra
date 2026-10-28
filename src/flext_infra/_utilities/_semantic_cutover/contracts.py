@@ -17,17 +17,10 @@ from typing_extensions import TypeForm
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodProject,
-    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesSemanticCutoverClassScope,
-    FlextInfraUtilitiesSemanticCutoverModelFields,
-    FlextInfraUtilitiesSemanticDeclarationRelocation,
-    FlextInfraUtilitiesSemanticDeclarationRetirement,
-    FlextInfraUtilitiesSemanticDelegations,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -40,7 +33,16 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverClassScope,
+    FlextInfraUtilitiesSemanticCutoverModelFields,
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+    FlextInfraUtilitiesSemanticDeclarationRetirement,
+    FlextInfraUtilitiesSemanticDelegations,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
@@ -299,7 +301,7 @@ class FlextInfraUtilitiesSemanticContracts(
             owned_modules = {
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                         project.get_resource(
                             path.relative_to(Path(project.root.real_path)).as_posix()
                         ),
@@ -739,7 +741,7 @@ class FlextInfraUtilitiesSemanticContracts(
                     )
                     raise ValueError(message)
                 return False
-            unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+            unknown = FlextInfraTypesUtilitiesRopeRuntime.runtime_callable(
                 "rope.base.pyobjects", "get_unknown"
             )()
             if actual is None or actual.get_object() == unknown:
@@ -791,7 +793,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 message = f"{rule.id}: read-only contract has no native expression"
                 raise ValueError(message)
             origin = runtime.annotation_origin(project, contract, scope)
-            unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+            unknown = FlextInfraTypesUtilitiesRopeRuntime.runtime_callable(
                 "rope.base.pyobjects", "get_unknown"
             )()
             if (
@@ -1023,7 +1025,7 @@ class FlextInfraUtilitiesSemanticContracts(
         unknown = u.type_adapter(
             TypeForm(t.Port[t.Infra.RopeNativeObject])
         ).validate_python(
-            FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+            FlextInfraTypesUtilitiesRopeRuntime.runtime_callable(
                 c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"
             )(),
             strict=True,
@@ -1066,7 +1068,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if closure is None:
             raise ValueError(context[1])
         holder = lexical.pyobject.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(holder):
             raise ValueError(context[1])
         source = ast.unparse(expression[0])
         tree = ast.parse(source, mode="eval")
@@ -1263,7 +1265,7 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> bool:
         if not isinstance(
             value,
-            FlextInfraUtilitiesRopeRuntimeTypes.runtime_type(
+            FlextInfraTypesUtilitiesRopeRuntime.runtime_type(
                 c.Infra.ROPE_PYOBJECTS_MODULE, "PyObject"
             ),
         ):
@@ -1303,7 +1305,7 @@ class FlextInfraUtilitiesSemanticContracts(
             project, "pydantic.fields.FieldInfo.metadata_lookup"
         )
         owner, line = runtime.definition_location(lookup)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(owner):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(owner):
             raise ValueError(failure)
         owner_tree = owner.get_ast()
         if not isinstance(owner_tree, ast.AST):
@@ -1348,7 +1350,7 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> bool:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         origin, location = runtime.definition_location(binding)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(origin):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(origin):
             raise ValueError(failure)
         origin_tree = origin.get_ast()
         if not isinstance(origin_tree, ast.AST):
@@ -1456,7 +1458,7 @@ class FlextInfraUtilitiesSemanticContracts(
             raise ValueError(failure)
         holder = lexical.pyobject.get_module()
         callee = ast.unparse(node.func)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder) or not all(
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(holder) or not all(
             FlextInfraUtilitiesCodemodProject.single_reaching_binding(
                 holder, lexical, candidate, len(holder.source_code)
             )
@@ -1480,7 +1482,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if binding is None:
             raise ValueError(failure)
         module = lexical.pyobject.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module) or not (
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module) or not (
             FlextInfraUtilitiesCodemodProject.stable_binding_chain(
                 (project, module, lexical),
                 ast.unparse(node),
@@ -1490,7 +1492,7 @@ class FlextInfraUtilitiesSemanticContracts(
         ):
             raise ValueError(failure)
         holder, location = runtime.definition_location(binding)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(holder):
             raise ValueError(failure)
         if location is None:
             raise ValueError(failure)

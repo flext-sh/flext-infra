@@ -9,12 +9,10 @@ from __future__ import annotations
 import ast
 
 from flext_infra import c, t
-from flext_infra._utilities._rope.method_order import (
-    FlextInfraUtilitiesRopeMethodOrderMixin,
-)
+from flext_infra._utilities._rope.method_order import FlextInfraUtilitiesRopeMethodOrder
 
 
-class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrderMixin):
+class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrder):
     """AST definition spans and method-order helpers."""
 
     @staticmethod

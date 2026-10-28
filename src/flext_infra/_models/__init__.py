@@ -14,43 +14,43 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._models._codegen.base import FlextInfraCodegen
-    from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
+    from flext_infra._models._codegen.fix import FlextInfraModelsModelsCodegenFix
     from flext_infra._models._codegen.lazy_init import (
-        FlextInfraModelsCodegenLazyInitModels,
+        FlextInfraModelsModelsCodegenLazyInit,
     )
     from flext_infra._models._codegen.pipeline import (
-        FlextInfraModelsCodegenPipelineModels,
+        FlextInfraModelsModelsCodegenPipeline,
     )
     from flext_infra._models._codegen.scaffold import (
-        FlextInfraModelsCodegenScaffoldModels,
+        FlextInfraModelsModelsCodegenScaffold,
     )
     from flext_infra._models._codegen.transaction import (
-        FlextInfraModelsCodegenTransactionModels,
+        FlextInfraModelsModelsCodegenTransaction,
     )
-    from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
-    from flext_infra._models._config.base import FlextInfraConfigModels
-    from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-    from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-    from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+    from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
+    from flext_infra._models._config.base import FlextInfraModelsConfig
+    from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
+    from flext_infra._models._config.contexts import FlextInfraModelsConfigContexts
+    from flext_infra._models._config.contract import FlextInfraModelsConfigContract
     from flext_infra._models._config.external_cache import (
         FlextInfraExternalCacheDirectorySpec,
     )
-    from flext_infra._models._config.make import FlextInfraConfigModelsMake
-    from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
-    from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
-    from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
+    from flext_infra._models._config.make import FlextInfraModelsConfigMake
+    from flext_infra._models._config.make_clean import FlextInfraModelsConfigMakeClean
+    from flext_infra._models._config.make_docs import FlextInfraModelsConfigMakeDocs
+    from flext_infra._models._config.provider import FlextInfraModelsConfigProvider
     from flext_infra._models._config.refactor_campaigns import (
-        FlextInfraConfigModelsRefactorCampaigns,
+        FlextInfraModelsConfigRefactorCampaigns,
     )
-    from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-    from flext_infra._models._config.render import FlextInfraConfigModelsRender
-    from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
-    from flext_infra._models._config.root import FlextInfraConfigModelsRoot
-    from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-    from flext_infra._models._config.sonarcloud import FlextInfraConfigModelsSonarcloud
-    from flext_infra._models._config.static import FlextInfraConfigModelsStatic
-    from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-    from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+    from flext_infra._models._config.release import FlextInfraModelsConfigRelease
+    from flext_infra._models._config.render import FlextInfraModelsConfigRender
+    from flext_infra._models._config.repository import FlextInfraModelsConfigRepository
+    from flext_infra._models._config.root import FlextInfraModelsConfigRoot
+    from flext_infra._models._config.scaffold import FlextInfraModelsConfigScaffold
+    from flext_infra._models._config.sonarcloud import FlextInfraModelsConfigSonarcloud
+    from flext_infra._models._config.static import FlextInfraModelsConfigStatic
+    from flext_infra._models._config.templates import FlextInfraModelsConfigTemplates
+    from flext_infra._models._config.workspace import FlextInfraModelsConfigWorkspace
     from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
     from flext_infra._models._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
     from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
@@ -111,7 +111,7 @@ if TYPE_CHECKING:
     from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.rope_move import FlextInfraModelsRopeMove
     from flext_infra._models.scan import FlextInfraModelsScan
-    from flext_infra._models.settings import FlextInfraSettingsModels
+    from flext_infra._models.settings import FlextInfraModelsSettings
     from flext_infra._models.sonarcloud import FlextInfraModelsSonarcloud
     from flext_infra._models.testmon import FlextInfraModelsTestmon
     from flext_infra._models.transformers import FlextInfraModelsTransformers
@@ -123,37 +123,32 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraCodegen",
-    "FlextInfraConfigModels",
-    "FlextInfraConfigModelsArtifact",
-    "FlextInfraConfigModelsBeads",
-    "FlextInfraConfigModelsContexts",
-    "FlextInfraConfigModelsContract",
-    "FlextInfraConfigModelsMake",
-    "FlextInfraConfigModelsMakeClean",
-    "FlextInfraConfigModelsMakeDocs",
-    "FlextInfraConfigModelsProvider",
-    "FlextInfraConfigModelsRefactorCampaigns",
-    "FlextInfraConfigModelsRelease",
-    "FlextInfraConfigModelsRender",
-    "FlextInfraConfigModelsRepository",
-    "FlextInfraConfigModelsRoot",
-    "FlextInfraConfigModelsScaffold",
-    "FlextInfraConfigModelsSonarcloud",
-    "FlextInfraConfigModelsStatic",
-    "FlextInfraConfigModelsTemplates",
-    "FlextInfraConfigModelsWorkspace",
     "FlextInfraExternalCacheDirectorySpec",
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
-    "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenLazyInitModels",
-    "FlextInfraModelsCodegenPipelineModels",
     "FlextInfraModelsCodegenRender",
-    "FlextInfraModelsCodegenScaffoldModels",
     "FlextInfraModelsCodegenToolchain",
-    "FlextInfraModelsCodegenTransactionModels",
     "FlextInfraModelsCodemod",
+    "FlextInfraModelsConfig",
+    "FlextInfraModelsConfigArtifact",
+    "FlextInfraModelsConfigBeads",
+    "FlextInfraModelsConfigContexts",
+    "FlextInfraModelsConfigContract",
+    "FlextInfraModelsConfigMake",
+    "FlextInfraModelsConfigMakeClean",
+    "FlextInfraModelsConfigMakeDocs",
+    "FlextInfraModelsConfigProvider",
+    "FlextInfraModelsConfigRefactorCampaigns",
+    "FlextInfraModelsConfigRelease",
+    "FlextInfraModelsConfigRender",
+    "FlextInfraModelsConfigRepository",
+    "FlextInfraModelsConfigRoot",
+    "FlextInfraModelsConfigScaffold",
+    "FlextInfraModelsConfigSonarcloud",
+    "FlextInfraModelsConfigStatic",
+    "FlextInfraModelsConfigTemplates",
+    "FlextInfraModelsConfigWorkspace",
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
@@ -181,6 +176,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsMiseToolchainBase",
     "FlextInfraModelsMiseToolchainRepair",
     "FlextInfraModelsMixins",
+    "FlextInfraModelsModelsCodegenFix",
+    "FlextInfraModelsModelsCodegenLazyInit",
+    "FlextInfraModelsModelsCodegenPipeline",
+    "FlextInfraModelsModelsCodegenScaffold",
+    "FlextInfraModelsModelsCodegenTransaction",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsPromoted",
     "FlextInfraModelsRefactor",
@@ -189,13 +189,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsRope",
     "FlextInfraModelsRopeMove",
     "FlextInfraModelsScan",
+    "FlextInfraModelsSettings",
     "FlextInfraModelsSonarcloud",
     "FlextInfraModelsTestmon",
     "FlextInfraModelsTransformers",
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorkspaceSnapshot",
     "FlextInfraModelsWorktree",
-    "FlextInfraSettingsModels",
 )
 
 install_lazy_exports(
@@ -203,36 +203,36 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraCodegen": "._codegen.base",
-        "FlextInfraConfigModels": "._config.base",
-        "FlextInfraConfigModelsArtifact": "._config.artifact",
-        "FlextInfraConfigModelsBeads": "._config.beads",
-        "FlextInfraConfigModelsContexts": "._config.contexts",
-        "FlextInfraConfigModelsContract": "._config.contract",
-        "FlextInfraConfigModelsMake": "._config.make",
-        "FlextInfraConfigModelsMakeClean": "._config.make_clean",
-        "FlextInfraConfigModelsMakeDocs": "._config.make_docs",
-        "FlextInfraConfigModelsProvider": "._config.provider",
-        "FlextInfraConfigModelsRefactorCampaigns": "._config.refactor_campaigns",
-        "FlextInfraConfigModelsRelease": "._config.release",
-        "FlextInfraConfigModelsRender": "._config.render",
-        "FlextInfraConfigModelsRepository": "._config.repository",
-        "FlextInfraConfigModelsRoot": "._config.root",
-        "FlextInfraConfigModelsScaffold": "._config.scaffold",
-        "FlextInfraConfigModelsSonarcloud": "._config.sonarcloud",
-        "FlextInfraConfigModelsStatic": "._config.static",
-        "FlextInfraConfigModelsTemplates": "._config.templates",
-        "FlextInfraConfigModelsWorkspace": "._config.workspace",
+        "FlextInfraModelsConfig": "._config.base",
+        "FlextInfraModelsConfigArtifact": "._config.artifact",
+        "FlextInfraModelsConfigBeads": "._config.beads",
+        "FlextInfraModelsConfigContexts": "._config.contexts",
+        "FlextInfraModelsConfigContract": "._config.contract",
+        "FlextInfraModelsConfigMake": "._config.make",
+        "FlextInfraModelsConfigMakeClean": "._config.make_clean",
+        "FlextInfraModelsConfigMakeDocs": "._config.make_docs",
+        "FlextInfraModelsConfigProvider": "._config.provider",
+        "FlextInfraModelsConfigRefactorCampaigns": "._config.refactor_campaigns",
+        "FlextInfraModelsConfigRelease": "._config.release",
+        "FlextInfraModelsConfigRender": "._config.render",
+        "FlextInfraModelsConfigRepository": "._config.repository",
+        "FlextInfraModelsConfigRoot": "._config.root",
+        "FlextInfraModelsConfigScaffold": "._config.scaffold",
+        "FlextInfraModelsConfigSonarcloud": "._config.sonarcloud",
+        "FlextInfraModelsConfigStatic": "._config.static",
+        "FlextInfraModelsConfigTemplates": "._config.templates",
+        "FlextInfraModelsConfigWorkspace": "._config.workspace",
         "FlextInfraExternalCacheDirectorySpec": "._config.external_cache",
         "FlextInfraModelsBase": ".base",
         "FlextInfraModelsCensus": ".census",
         "FlextInfraModelsCheck": ".check",
-        "FlextInfraModelsCodegenFixModels": "._codegen.fix",
-        "FlextInfraModelsCodegenLazyInitModels": "._codegen.lazy_init",
-        "FlextInfraModelsCodegenPipelineModels": "._codegen.pipeline",
+        "FlextInfraModelsModelsCodegenFix": "._codegen.fix",
+        "FlextInfraModelsModelsCodegenLazyInit": "._codegen.lazy_init",
+        "FlextInfraModelsModelsCodegenPipeline": "._codegen.pipeline",
         "FlextInfraModelsCodegenRender": ".codegen_render",
-        "FlextInfraModelsCodegenScaffoldModels": "._codegen.scaffold",
+        "FlextInfraModelsModelsCodegenScaffold": "._codegen.scaffold",
         "FlextInfraModelsCodegenToolchain": ".codegen_toolchain",
-        "FlextInfraModelsCodegenTransactionModels": "._codegen.transaction",
+        "FlextInfraModelsModelsCodegenTransaction": "._codegen.transaction",
         "FlextInfraModelsCodemod": ".codemod",
         "FlextInfraModelsCore": ".validate",
         "FlextInfraModelsDeps": ".deps",
@@ -275,7 +275,7 @@ install_lazy_exports(
         "FlextInfraModelsWorkspace": ".workspace",
         "FlextInfraModelsWorkspaceSnapshot": ".workspace_snapshot",
         "FlextInfraModelsWorktree": ".worktree",
-        "FlextInfraSettingsModels": ".settings",
+        "FlextInfraModelsSettings": ".settings",
     }),
     public_exports=__all__,
 )

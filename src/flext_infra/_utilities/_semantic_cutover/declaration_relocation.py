@@ -13,13 +13,10 @@ from textwrap import dedent, indent
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodProject,
-    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesSemanticCutoverEdits,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -29,11 +26,16 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverEdits,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
@@ -502,7 +504,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 raise TypeError(msg)
             file_resource = provider_resource.get_child(c.Infra.INIT_PY)
             provider_path /= c.Infra.INIT_PY
-        return provider_path, FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        return provider_path, FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
             file_resource,
             provider_path,
         )
@@ -675,7 +677,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if any(
                 child.pyobject in bases
                 for ancestor in cls.class_ancestry(value)
-                if FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor)
+                if FlextInfraTypesUtilitiesRopeRuntime.py_class(ancestor)
                 for child in ancestor.get_scope().get_scopes()
                 if child.get_kind() == "Class"
             ):
@@ -702,7 +704,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         exports = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
             initializer_module.get_name(),
             initializer,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                 resource,
                 initializer,
             ).read(),
@@ -711,7 +713,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if exports.get("m") != facade.get_name():
             return ()
-        public = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        public = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
             facade.get_attribute("m").get_object(), "public model facade"
         )
         routes: list[t.Pair[p.Infra.RopePyObject, str]] = [(public, "m")]
@@ -954,7 +956,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -1039,7 +1041,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -1159,10 +1161,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             message = "payload declaration has no enclosing source scope"
             raise TypeError(message)
         outer_name = node.parent.pyobject.get_name()
-        outer = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        outer = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
             origin_module.get_attribute(outer_name).get_object(), outer_name
         ).get_scope()
-        payload = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        payload = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
             outer.pyobject.get_attribute(node.pyobject.get_name()).get_object(),
             node.pyobject.get_name(),
         ).get_scope()
@@ -1221,7 +1223,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         destination = runtime.build_string_module(
             project, updated[target[0]], resource=resource
         )
-        owner = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        owner = FlextInfraTypesUtilitiesRopeRuntime.require_source_object(
             destination.get_attribute(target[1]).get_object(), target[1]
         ).get_scope()
         target_lines = cls._source_lines(updated[target[0]])
@@ -1268,7 +1270,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     ]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
-        source = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        source = FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
             project.get_resource(origin.relative_to(root).as_posix()),
             origin,
         ).read()
@@ -1278,7 +1280,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         ).get_scope()
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                 project.get_resource(origin.relative_to(root).as_posix()), origin
             ),
         )
@@ -1502,7 +1504,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         dependencies: t.MutableMappingKV[t.Pair[int, int], str] = {}
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
         module = context[1].pyobject.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
             message = "payload dependency scope has no native source module"
             raise TypeError(message)
         source = module.source_code
@@ -1653,7 +1655,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if provider is None or line is None:
             return None
         provider = provider.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(provider):
             message = "nested declaration requires a native source module"
             raise TypeError(message)
         resource = provider.get_resource()
@@ -1698,14 +1700,14 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         """
         owners: list[t.Triple[p.Infra.RopePyModule, str, str]] = []
         for ancestor in cls.class_ancestry(composed):
-            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor):
+            if not FlextInfraTypesUtilitiesRopeRuntime.py_class(ancestor):
                 continue
             scope = ancestor.get_scope()
             provider = ancestor.get_module()
             resource = provider.get_resource()
             if resource is None:
                 continue
-            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider):
+            if not FlextInfraTypesUtilitiesRopeRuntime.source_module(provider):
                 message = "declaration owner requires a native source module"
                 raise TypeError(message)
             path = Path(resource.real_path).resolve()

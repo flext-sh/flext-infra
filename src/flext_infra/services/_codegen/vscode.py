@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenVscodeMixin:
+class FlextInfraCodegenVscode:
     """Produce the canonical ``.vscode/settings.json`` document for one root."""
 
     @classmethod
@@ -292,7 +292,7 @@ class FlextInfraCodegenVscodeMixin:
                 index += 1
                 continue
             if char == '"':
-                index = FlextInfraCodegenVscodeMixin._copy_string_literal(
+                index = FlextInfraCodegenVscode._copy_string_literal(
                     content,
                     index,
                     output,
@@ -323,7 +323,7 @@ class FlextInfraCodegenVscodeMixin:
         while index < len(content):
             char = content[index]
             if char == '"':
-                index = FlextInfraCodegenVscodeMixin._copy_string_literal(
+                index = FlextInfraCodegenVscode._copy_string_literal(
                     content,
                     index,
                     output,
@@ -512,4 +512,4 @@ class FlextInfraCodegenVscodeMixin:
         return changed
 
 
-__all__: list[str] = ["FlextInfraCodegenVscodeMixin"]
+__all__: list[str] = ["FlextInfraCodegenVscode"]

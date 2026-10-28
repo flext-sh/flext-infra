@@ -19,12 +19,12 @@ from flext_infra._models import (
     FlextInfraModelsMixins,
 )
 from flext_infra._models._config import (
-    FlextInfraConfigModels,
-    FlextInfraConfigModelsContract,
+    FlextInfraModelsConfig,
+    FlextInfraModelsConfigContract,
 )
 
 
-class FlextInfraModelsCodegenPipelineModels:
+class FlextInfraModelsModelsCodegenPipeline:
     """Phase analysis and pipeline state models."""
 
     class CodegenCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
@@ -64,7 +64,7 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
 
-    class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenRepositoryPlanOutcome(FlextInfraModelsConfigContract.ConfigContract):
         """One repository's planned files and environment, or its failure."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
@@ -80,11 +80,11 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Planned repository name"),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
+            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan],
             m.Field(description="Governed and retired file plans"),
         ] = ()
         environment: Annotated[
-            FlextInfraConfigModels.UvEnvironmentPlan | None,
+            FlextInfraModelsConfig.UvEnvironmentPlan | None,
             m.Field(description="uv environment plan of the repository"),
         ] = None
         error: Annotated[
@@ -120,7 +120,7 @@ class FlextInfraModelsCodegenPipelineModels:
                 or self.exception is not None
             )
 
-    class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenPlan(FlextInfraModelsConfigContract.ConfigContract):
         """Fully validated plan produced before any managed-file write."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
@@ -136,19 +136,19 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Validated public request"),
         ]
         repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
+            t.VariadicTuple[FlextInfraModelsConfig.RepositoryRef],
             m.Field(description="Selected repositories in deterministic order"),
         ]
         workspace: Annotated[
-            FlextInfraConfigModels.WorkspaceSpec,
+            FlextInfraModelsConfig.WorkspaceSpec,
             m.Field(description="Workspace governing the selection"),
         ]
         uv_environments: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.UvEnvironmentPlan],
+            t.VariadicTuple[FlextInfraModelsConfig.UvEnvironmentPlan],
             m.Field(description="uv plans paired with selected repositories"),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
+            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan],
             m.Field(description="All render results validated before application"),
         ]
         issues: Annotated[
@@ -160,7 +160,7 @@ class FlextInfraModelsCodegenPipelineModels:
         """The generation plan and the files its publication changed."""
 
         plan: Annotated[
-            FlextInfraModelsCodegenPipelineModels.CodegenPlan,
+            FlextInfraModelsModelsCodegenPipeline.CodegenPlan,
             m.Field(description="The plan actually used by the producer"),
         ]
         written_files: t.VariadicTuple[Path] = m.Field(
@@ -232,14 +232,14 @@ class FlextInfraModelsCodegenPipelineModels:
             description="Validated projection request retained by reference",
         )
         provider_plans: (
-            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] | None
+            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan] | None
         ) = m.Field(
             default=None,
             exclude=True,
             description="Original cohort plans available to native source reads",
         )
         completed_source_plans: (
-            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] | None
+            t.VariadicTuple[FlextInfraModelsConfig.CodegenFilePlan] | None
         ) = m.Field(
             default=None,
             exclude=True,
@@ -252,7 +252,7 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Generation tool repository",
         )
-        initial_workspace: FlextInfraConfigModels.WorkspaceSpec | None = m.Field(
+        initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = m.Field(
             default=None,
             exclude=True,
             description="Declared scaffold specification",
@@ -289,4 +289,4 @@ class FlextInfraModelsCodegenPipelineModels:
         )
 
 
-__all__: list[str] = ["FlextInfraModelsCodegenPipelineModels"]
+__all__: list[str] = ["FlextInfraModelsModelsCodegenPipeline"]

@@ -16,13 +16,13 @@ from flext_infra import c, config, m, r, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import FlextInfraGate
 from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
-from flext_infra.gates.duplication_report import FlextInfraDuplicationReportMixin
+from flext_infra.gates.duplication_report import FlextInfraDuplicationReport
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate):
+class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
     """Report every clone owned by one project from a fresh scan of that project.
 
     R2 extension: consumer+family scope via [tool.flext.project] config keys;

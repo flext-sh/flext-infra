@@ -42,33 +42,33 @@ class TestsFlextInfraRefactorMainCli:
     # is never inferred from the module's file family.
     _UNBOUND_RUNTIME_ALIAS_EXPORT_MODULE = (
         "from __future__ import annotations\n\n"
-        '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
-        "class FlextDemoModels:\n"
+        '__all__: list[str] = ["FlextModelsDemo", "m"]\n\n'
+        "class FlextModelsDemo:\n"
         "    pass\n"
     )
 
     _UNDECLARED_RUNTIME_ALIAS_MODULE = (
         "from __future__ import annotations\n\n"
-        '__all__: list[str] = ["FlextDemoModels"]\n\n'
-        "class FlextDemoModels:\n"
+        '__all__: list[str] = ["FlextModelsDemo"]\n\n'
+        "class FlextModelsDemo:\n"
         "    pass\n"
     )
 
     _DUPLICATE_RUNTIME_ALIAS_MODULE = (
         "from __future__ import annotations\n\n"
-        '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
-        "class FlextDemoModels:\n"
+        '__all__: list[str] = ["FlextModelsDemo", "m"]\n\n'
+        "class FlextModelsDemo:\n"
         "    pass\n\n"
-        "m = FlextDemoModels\n"
-        "m = FlextDemoModels\n"
+        "m = FlextModelsDemo\n"
+        "m = FlextModelsDemo\n"
     )
 
     _FACADE_MEMBER_MODULE = (
         "from __future__ import annotations\n\n"
-        '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
-        "class FlextDemoModels:\n"
+        '__all__: list[str] = ["FlextModelsDemo", "m"]\n\n'
+        "class FlextModelsDemo:\n"
         "    pass\n\n"
-        "m = FlextDemoModels\n"
+        "m = FlextModelsDemo\n"
     )
 
     _COMPATIBILITY_ALIAS_MODULE = (

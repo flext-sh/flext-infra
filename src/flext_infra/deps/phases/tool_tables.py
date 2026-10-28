@@ -20,7 +20,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesNativeTooling,
     FlextInfraUtilitiesProjectDiscovery,
 )
-from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeProjectsMixin
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeProjects
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
@@ -156,9 +156,7 @@ class FlextInfraToolTablesPhase:
             raise ValueError(observed.error)
         if observed.value.repository.role != c.Infra.MakeProfile.WORKSPACE:
             return ()
-        discovered = FlextInfraUtilitiesDocsScopeProjectsMixin.discover_projects(
-            project_dir
-        )
+        discovered = FlextInfraUtilitiesDocsScopeProjects.discover_projects(project_dir)
         if discovered.failure:
             # A real discovery error (malformed pyproject, IO) must never
             # silently generate root Ruff settings with an empty child-package

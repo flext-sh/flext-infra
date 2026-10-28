@@ -16,14 +16,14 @@ import flext_core
 from flext_cli import m, u
 
 from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config.scaffold import FlextInfraModelsConfigScaffold
 
 
-class FlextInfraConfigModelsTemplates:
+class FlextInfraModelsConfigTemplates:
     """Managed file and template entry specification models."""
 
-    class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenVscodeSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed editor declarations shared by target and artifact planning."""
 
         model_config = m.ConfigDict(extra="forbid")
@@ -100,7 +100,7 @@ class FlextInfraConfigModelsTemplates:
             return self
 
     class CodegenVscodeDeclarationDelta(
-        FlextInfraConfigModelsContract.ConfigContract,
+        FlextInfraModelsConfigContract.ConfigContract,
     ):
         """Portable editor overrides extracted from one captured document."""
 
@@ -111,7 +111,7 @@ class FlextInfraConfigModelsTemplates:
             ),
         ]
 
-    class CodegenLayerProjection(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenLayerProjection(FlextInfraModelsConfigContract.ConfigContract):
         """An owned declaration delta projected into one elected config layer."""
 
         path: Annotated[Path, m.Field(description="Exact target config layer")]
@@ -120,7 +120,7 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="JSON-compatible declaration fragment"),
         ]
 
-    class ConfigDocumentInputs(FlextInfraConfigModelsContract.ConfigContract):
+    class ConfigDocumentInputs(FlextInfraModelsConfigContract.ConfigContract):
         """One composed F.yaml document with its consulted physical sources."""
 
         values: Annotated[
@@ -135,7 +135,7 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = ()
 
-    class ManagedFileOwnership(FlextInfraConfigModelsContract.ConfigContract):
+    class ManagedFileOwnership(FlextInfraModelsConfigContract.ConfigContract):
         """Path-independent ownership shared by declarations and planned views."""
 
         model_config = m.ConfigDict(extra="forbid")
@@ -216,7 +216,7 @@ class FlextInfraConfigModelsTemplates:
                 ),
             )
 
-    class TemplateDeclarationSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class TemplateDeclarationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Path-independent template body stored under one destination key."""
 
         model_config = m.ConfigDict(extra="forbid")
@@ -262,7 +262,7 @@ class FlextInfraConfigModelsTemplates:
             m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
         ownership: Annotated[
-            FlextInfraConfigModelsTemplates.ManagedFileOwnership | None,
+            FlextInfraModelsConfigTemplates.ManagedFileOwnership | None,
             m.Field(
                 description=(
                     "Explicit generated-file ownership, or null for an authored "
@@ -385,7 +385,7 @@ class FlextInfraConfigModelsTemplates:
                 raise ValueError(msg)
             return self
 
-    class TemplatesSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class TemplatesSpec(FlextInfraModelsConfigContract.ConfigContract):
         """The single ordered catalog of generated artifacts and authored seeds."""
 
         model_config = m.ConfigDict(
@@ -399,7 +399,7 @@ class FlextInfraConfigModelsTemplates:
         catalog: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraConfigModelsTemplates.TemplateDeclarationSpec,
+                FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
             ],
             m.Field(
                 alias="entries",
@@ -410,10 +410,10 @@ class FlextInfraConfigModelsTemplates:
         @cached_property
         def entries(
             self,
-        ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.TemplateEntrySpec]:
+        ) -> t.VariadicTuple[FlextInfraModelsConfigTemplates.TemplateEntrySpec]:
             """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
-                FlextInfraConfigModelsTemplates.TemplateEntrySpec.model_validate({
+                FlextInfraModelsConfigTemplates.TemplateEntrySpec.model_validate({
                     **dict(declaration),
                     "destination": destination,
                 })
@@ -495,22 +495,22 @@ class FlextInfraConfigModelsTemplates:
                 raise ValueError(msg)
             return self
 
-    class GitignoreRenderContext(FlextInfraConfigModelsContract.ConfigContract):
+    class GitignoreRenderContext(FlextInfraModelsConfigContract.ConfigContract):
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
             t.VariadicTuple[
-                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
+                FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
             ],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
-    class GitignoreRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class GitignoreRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
             t.VariadicTuple[
-                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
+                FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
             ],
             m.Field(
                 min_length=1,
@@ -518,8 +518,8 @@ class FlextInfraConfigModelsTemplates:
             ),
         ]
 
-    class StaticTextRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class StaticTextRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Empty typed context for a variable-free governed text template."""
 
 
-__all__: list[str] = ["FlextInfraConfigModelsTemplates"]
+__all__: list[str] = ["FlextInfraModelsConfigTemplates"]

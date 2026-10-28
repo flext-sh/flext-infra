@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceManifest,
 )
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsScopeSelection,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 if TYPE_CHECKING:
     from pathlib import Path

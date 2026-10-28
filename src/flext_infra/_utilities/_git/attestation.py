@@ -23,18 +23,20 @@ from git import GitCommandError
 from flext_infra import c, m, p, r, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-    FlextInfraUtilitiesGitWorktreeIO,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitWorktreeIO,
+)
 from flext_infra._utilities._git.attestation_evidence import (
-    FlextInfraUtilitiesGitAttestationEvidenceMixin,
+    FlextInfraUtilitiesGitAttestationEvidence,
 )
 
 
-class FlextInfraUtilitiesGitAttestationMixin(
-    FlextInfraUtilitiesGitAttestationEvidenceMixin,
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
+class FlextInfraUtilitiesGitAttestation(
+    FlextInfraUtilitiesGitAttestationEvidence,
+    FlextInfraUtilitiesGitSemanticIdentity,
 ):
     """Create and verify immutable SSH-signed gate tags."""
 
@@ -1035,4 +1037,4 @@ class FlextInfraUtilitiesGitAttestationMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitAttestationMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitAttestation"]

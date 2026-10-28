@@ -13,13 +13,13 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsRelease:
+class FlextInfraModelsConfigRelease:
     """Release automation and override specification models."""
 
-    class ReleaseAutomationOverrideSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ReleaseAutomationOverrideSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One distribution's deviation from the shared release contract."""
 
         release_branch: Annotated[
@@ -35,7 +35,7 @@ class FlextInfraConfigModelsRelease:
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
 
-    class ReleaseAutomationSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ReleaseAutomationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Automated semantic versioning, owned by the market tool.
 
         Why: bump_version/parse_semver and the release orchestrator already
@@ -89,7 +89,7 @@ class FlextInfraConfigModelsRelease:
         overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraConfigModelsRelease.ReleaseAutomationOverrideSpec,
+                FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec,
             ],
             m.Field(description="Per-distribution deviations from the shared contract"),
         ]
@@ -111,7 +111,7 @@ class FlextInfraConfigModelsRelease:
                     raise ValueError(msg)
             return self
 
-    class ReleasePolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ReleasePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
         """The release protocol's declared data: who publishes, what bumps, where.
 
         Why: `ReleaseOrchestrator._build_targets` hardcoded
@@ -186,7 +186,7 @@ class FlextInfraConfigModelsRelease:
             ),
         ] = c.Infra.PYPI_UPLOAD_URL
         build_constraints: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsRelease.BuildConstraintSpec],
+            t.VariadicTuple[FlextInfraModelsConfigRelease.BuildConstraintSpec],
             m.Field(
                 min_length=1,
                 description=(
@@ -212,7 +212,7 @@ class FlextInfraConfigModelsRelease:
                 raise ValueError(msg)
             return self
 
-    class BuildConstraintSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class BuildConstraintSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One hash-pinned build requirement (``uv build --require-hashes``)."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
@@ -222,7 +222,7 @@ class FlextInfraConfigModelsRelease:
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
 
-    class UvEnvironmentPlan(FlextInfraConfigModelsContract.ConfigContract):
+    class UvEnvironmentPlan(FlextInfraModelsConfigContract.ConfigContract):
         """One deterministic uv environment operation plan."""
 
         project_root: Annotated[Path, m.Field(description="Selected project root")]
@@ -240,4 +240,4 @@ class FlextInfraConfigModelsRelease:
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsRelease"]
+__all__: list[str] = ["FlextInfraModelsConfigRelease"]

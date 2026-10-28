@@ -12,29 +12,29 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitAttestationMixin,
-    FlextInfraUtilitiesGitLaneHygieneMixin,
-    FlextInfraUtilitiesGitMutationScopeMixin,
-    FlextInfraUtilitiesGitScopeMixin,
-    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
-    FlextInfraUtilitiesGitStateCaptureMixin,
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
-    FlextInfraUtilitiesGitWorktreeMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitAttestation,
+    FlextInfraUtilitiesGitLaneHygiene,
+    FlextInfraUtilitiesGitMutationScope,
+    FlextInfraUtilitiesGitRequirementSource,
+    FlextInfraUtilitiesGitScope,
+    FlextInfraUtilitiesGitSemanticSubmodule,
+    FlextInfraUtilitiesGitStateCapture,
+    FlextInfraUtilitiesGitWorktree,
+    FlextInfraUtilitiesGitWorktreeDiscovery,
 )
-from flext_infra._utilities._git import FlextInfraUtilitiesGitRequirementSource
 
 
 class FlextInfraUtilitiesGit(
     FlextInfraUtilitiesGitRequirementSource,
-    FlextInfraUtilitiesGitMutationScopeMixin,
-    FlextInfraUtilitiesGitWorktreeMixin,
-    FlextInfraUtilitiesGitAttestationMixin,
-    FlextInfraUtilitiesGitScopeMixin,
-    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
-    FlextInfraUtilitiesGitLaneHygieneMixin,
-    FlextInfraUtilitiesGitStateCaptureMixin,
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+    FlextInfraUtilitiesGitMutationScope,
+    FlextInfraUtilitiesGitWorktree,
+    FlextInfraUtilitiesGitAttestation,
+    FlextInfraUtilitiesGitScope,
+    FlextInfraUtilitiesGitSemanticSubmodule,
+    FlextInfraUtilitiesGitLaneHygiene,
+    FlextInfraUtilitiesGitStateCapture,
+    FlextInfraUtilitiesGitWorktreeDiscovery,
 ):
     """Canonical Git owner for flext-infra: scope + worktree + checkpoint/patch.
 

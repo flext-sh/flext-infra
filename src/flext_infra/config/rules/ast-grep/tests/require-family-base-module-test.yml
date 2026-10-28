@@ -1,7 +1,7 @@
 id: require-family-base-module
 valid:
-  - |
-    names = ["x"]
+- |
+  names = ["x"]
 invalid:
-  - |
-    __all__ = ["FlextFooModelsItem"]
+- |
+  __all__ = ["FlextModelsFooItem"]

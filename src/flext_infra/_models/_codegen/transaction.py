@@ -13,10 +13,10 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsRope
-from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraModelsConfig
 
 
-class FlextInfraModelsCodegenTransactionModels:
+class FlextInfraModelsModelsCodegenTransaction:
     """Source candidate models for the codegen pipeline."""
 
     class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
@@ -37,7 +37,7 @@ class FlextInfraModelsCodegenTransactionModels:
             default=(),
             description="Original source observations materialized in the view",
         )
-        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+        declared_files: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] = m.Field(
             default=(), description="Original declarations of the candidate effects"
         )
 
@@ -50,7 +50,7 @@ class FlextInfraModelsCodegenTransactionModels:
         modes: t.MappingKV[Path, int] | None = m.Field(
             default=None, description="Declared source modes preserved during staging"
         )
-        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+        declared_files: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] = m.Field(
             default=(), description="Authenticated candidate file declarations"
         )
         inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
@@ -88,7 +88,7 @@ class FlextInfraModelsCodegenTransactionModels:
             default_factory=lambda: MappingProxyType[Path, int]({}),
             description="Desired file-effect modes derived from original move sources",
         )
-        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+        declared_files: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] = m.Field(
             default=(),
             description=(
                 "Original file/absence witnesses with the current desired effects"
@@ -110,7 +110,7 @@ class FlextInfraModelsCodegenTransactionModels:
     class SemanticSourcePlan(m.ImmutableValueModel):
         """Authenticated source campaign independent of explicit rename intent."""
 
-        candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
+        candidate: FlextInfraModelsModelsCodegenTransaction.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )
         consumer_roots: t.VariadicTuple[Path] = m.Field(
@@ -119,4 +119,4 @@ class FlextInfraModelsCodegenTransactionModels:
         )
 
 
-__all__: list[str] = ["FlextInfraModelsCodegenTransactionModels"]
+__all__: list[str] = ["FlextInfraModelsModelsCodegenTransaction"]

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""promoted package.
+"""Flext Infra. Utilities. Promoted package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,11 +13,21 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._promoted.commands import FlextInfraUtilitiesPromotedCommands
-    from flext_infra._promoted.execution import FlextInfraUtilitiesPromotedExecution
-    from flext_infra._promoted.invocation import FlextInfraUtilitiesPromotedInvocation
-    from flext_infra._promoted.rendering import FlextInfraUtilitiesPromotedRendering
-    from flext_infra._promoted.workspace import FlextInfraUtilitiesPromotedWorkspace
+    from flext_infra._utilities._promoted.commands import (
+        FlextInfraUtilitiesPromotedCommands,
+    )
+    from flext_infra._utilities._promoted.execution import (
+        FlextInfraUtilitiesPromotedExecution,
+    )
+    from flext_infra._utilities._promoted.invocation import (
+        FlextInfraUtilitiesPromotedInvocation,
+    )
+    from flext_infra._utilities._promoted.rendering import (
+        FlextInfraUtilitiesPromotedRendering,
+    )
+    from flext_infra._utilities._promoted.workspace import (
+        FlextInfraUtilitiesPromotedWorkspace,
+    )
 
 
 __all__: tuple[str, ...] = (

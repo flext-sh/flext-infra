@@ -3,69 +3,69 @@
 # the module's own __all__ (utils/declared-in-module-all.yml).
 id: ban-runtime-alias-rebind
 valid:
-  # ENFORCE-046 Pattern-A: an imported letter rebound to the consumer-named
-  # class the module defines and declares.
-  - |
-    from flext_core import FlextModels, m
-    class AiHubModels(FlextModels):
-        pass
-    m = AiHubModels
-    __all__ = ["AiHubModels", "m"]
-  # A name that is no runtime alias of the project is out of scope.
-  - |
-    class FlextFooConstants:
-        pass
-    limit = FlextFooConstants
-  - |
-    from flext_core import c
-    __all__ = ["c"]
-  - |
-    class FlextFooConstants:
-        LIMIT = 3
+# ENFORCE-046 Pattern-A: an imported letter rebound to the consumer-named
+# class the module defines and declares.
+- |
+  from flext_core import FlextModels, m
+  class AiHubModels(FlextModels):
+      pass
+  m = AiHubModels
+  __all__ = ["AiHubModels", "m"]
+# A name that is no runtime alias of the project is out of scope.
+- |
+  class FlextFooConstants:
+      pass
+  limit = FlextFooConstants
+- |
+  from flext_core import c
+  __all__ = ["c"]
+- |
+  class FlextFooConstants:
+      LIMIT = 3
 invalid:
-  - |
-    class FlextFooConstants:
-        pass
-    c = FlextFooConstants
-    __all__ = ["FlextFooConstants"]
-  - |
-    class FlextFooConstants:
-        pass
-    c = FlextFooConstants
-    c = FlextFooConstants
-    __all__ = ["FlextFooConstants", "c"]
-  - |
-    from flext_core import FlextConstants
-    c = FlextConstants
-    __all__ = ["c"]
-  - |
-    from flext_core import s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  - |
-    from flext_core import FlextSettings, s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  - |
-    from flext_core import FlextSettings, FlextService as s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  - |
-    from flext_core import FlextService as s
-    class FlextFooServiceBase(s):
-        pass
-    s = FlextFooServiceBase
-    __all__ = ["FlextFooServiceBase", "s"]
-  # A peer-named target stays a finding even in a consumer-style module.
-  - |
-    from flext_cli import p
-    class FlextFooProtocols(p):
-        pass
-    p = FlextFooProtocols
-    __all__ = ["FlextFooProtocols", "p"]
+- |
+  class FlextFooConstants:
+      pass
+  c = FlextFooConstants
+  __all__ = ["FlextFooConstants"]
+- |
+  class FlextFooConstants:
+      pass
+  c = FlextFooConstants
+  c = FlextFooConstants
+  __all__ = ["FlextFooConstants", "c"]
+- |
+  from flext_core import FlextConstants
+  c = FlextConstants
+  __all__ = ["c"]
+- |
+  from flext_core import s
+  class FlextFooServiceBase(s):
+      pass
+  s = FlextFooServiceBase
+  __all__ = ["FlextFooServiceBase", "s"]
+- |
+  from flext_core import FlextSettings, s
+  class FlextFooServiceBase(s):
+      pass
+  s = FlextFooServiceBase
+  __all__ = ["FlextFooServiceBase", "s"]
+- |
+  from flext_core import FlextSettings, FlextService as s
+  class FlextFooServiceBase(s):
+      pass
+  s = FlextFooServiceBase
+  __all__ = ["FlextFooServiceBase", "s"]
+- |
+  from flext_core import FlextService as s
+  class FlextFooServiceBase(s):
+      pass
+  s = FlextFooServiceBase
+  __all__ = ["FlextFooServiceBase", "s"]
+# A peer-named target stays a finding even in a consumer-style module.
+- |
+  from flext_cli import p
+  class FlextFooProtocols(p):
+      pass
+  p = FlextFooProtocols
+  __all__ = ["FlextFooProtocols", "p"]

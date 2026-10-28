@@ -33,21 +33,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     _source_views: (
         t.Pair[
             ExitStack,
-            t.MutableMappingKV[
-                t.Pair[Path, frozenset[t.Pair[Path, bytes | None]]],
-                t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
-            ],
+            t.MutableMappingKV[Path, p.Infra.RopeProject],
         ]
         | None
     ) = m.PrivateAttr(default=None)
 
     @contextmanager
     def shared_source_views(self) -> Generator[None]:
-        """Keep each distinct source view of one repository plan open once.
+        """Keep the elected native project of each repository plan open once.
 
-        Every planning phase of the repository binds through this scope, so
-        phases whose declared plans carry the same effects share one native
-        Rope project and its inference instead of rebuilding it.
+        Candidate bindings evolve and restore this project's overlay through
+        native resource invalidation, rather than constructing another project
+        for every distinct tuple of planned bytes.
 
         Yields:
             Nothing; the scope is active until the repository plan completes.
@@ -66,10 +63,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         root: Path,
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> Generator[t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]]]:
-        """Bind the source view the declared effects determine, opening it once.
+        """Bind candidate bytes for the lifetime of one native source consumer.
 
-        Plans without an effect equal the physical tree, so only the effective
-        declared payloads distinguish one view from another.
+        Exiting restores the entry overlay, preserving observed ownership for
+        the next phase. Every binding gets its own source mapping; native
+        resource identity and inference remain owned by the elected project.
 
         Yields:
             The shared native project and its planned sources.
@@ -82,34 +80,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             msg = "source views require an open repository planning scope"
             raise RuntimeError(msg)
         stack, opened = self._source_views
-        key = (
-            root,
-            frozenset(
-                (plan.path, plan.desired_content)
-                for plan in declared_files
-                if u.Infra.codegen_file_requires_effect(plan)
-            ),
-        )
-        if key not in opened:
+        if root not in opened:
             snapshot = self.state.snapshot
             if (
                 snapshot is not None
                 and snapshot.workspace_root == root
                 and Path(snapshot.engine.root.real_path) == root
-                and not key[1]
             ):
-                opened[key] = (
-                    snapshot.engine,
-                    {
-                        path: u.Infra.workspace_source(snapshot, path).text
-                        for path in u.Infra.workspace_python_files(snapshot, root)
-                    },
-                )
+                opened[root] = snapshot.engine
             else:
-                opened[key] = stack.enter_context(
-                    u.Infra.facade_source_project(root, declared_files=declared_files)
-                )
-        yield opened[key]
+                opened[root] = stack.enter_context(u.Infra.facade_source_project(root))[
+                    0
+                ]
+        with u.Infra.facade_source_project(
+            root,
+            declared_files=declared_files,
+            source_project=opened[root],
+        ) as binding:
+            yield binding
 
     def _plan_existing_repository(
         self,
@@ -394,9 +382,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             and contract.destinations <= self._pyproject_destinations(codegen)
         )
         # Custom convergence seeds exports before resolving its facade imports.
+        # The planned initializers are always seeded, including custom
+        # contracts: a stale on-disk initializer otherwise breaks rope
+        # resolution of facade imports before the convergence loop can heal
+        # it (a stale initializer never blocks its own regeneration).
         lazy_result = (
             r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
-            if metadata_only or contract.custom
+            if metadata_only
             else self._existing_lazy_sources(root)
         )
         if lazy_result.failure:

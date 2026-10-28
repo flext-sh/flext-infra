@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""analysis package.
+"""Flext Infra. Utilities. Rope. Analysis package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,21 +13,25 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._analysis.asthelpers import (
+    from flext_infra._utilities._rope._analysis.asthelpers import (
         FlextInfraUtilitiesRopeAnalysisAstHelpers,
     )
-    from flext_infra._analysis.base import FlextInfraUtilitiesRopeAnalysisBase
-    from flext_infra._analysis.exports import FlextInfraUtilitiesRopeAnalysisExports
-    from flext_infra._analysis.importstate import (
+    from flext_infra._utilities._rope._analysis.base import (
+        FlextInfraUtilitiesRopeAnalysisBase,
+    )
+    from flext_infra._utilities._rope._analysis.exports import (
+        FlextInfraUtilitiesRopeAnalysisExports,
+    )
+    from flext_infra._utilities._rope._analysis.importstate import (
         FlextInfraUtilitiesRopeAnalysisImportState,
     )
-    from flext_infra._analysis.rope_analysis_introspection import (
+    from flext_infra._utilities._rope._analysis.rope_analysis_introspection import (
         FlextInfraUtilitiesRopeAnalysisIntrospection,
     )
-    from flext_infra._analysis.rope_analysis_workspace import (
+    from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
         FlextInfraUtilitiesRopeAnalysisWorkspace,
     )
-    from flext_infra._analysis.sourcescan import (
+    from flext_infra._utilities._rope._analysis.sourcescan import (
         FlextInfraUtilitiesRopeAnalysisSourceScan,
     )
 

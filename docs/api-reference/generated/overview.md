@@ -20,11 +20,11 @@
   Generators, Typing :: Typed
 - Project class: `infra`
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
-- Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayloadMixin`,
+- Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayload`,
   `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
   `FlextInfraGitLanes`, `FlextInfraGitService` (+17 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayloadMixin`,
+- Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayload`,
   `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
   `FlextInfraGitLanes`, `FlextInfraGitService`, `FlextInfraModels`,
   `FlextInfraPreviewWiring` (+18 more)

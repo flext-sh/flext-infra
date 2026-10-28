@@ -9,11 +9,11 @@ from __future__ import annotations
 from git import GitCommandError
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeMaterializationMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMaterialization
 
 
-class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
-    FlextInfraUtilitiesGitWorktreeMaterializationMixin,
+class FlextInfraUtilitiesGitWorktreeCheckpoint(
+    FlextInfraUtilitiesGitWorktreeMaterialization,
 ):
     """Own worktree checkpoint operations."""
 
@@ -108,4 +108,4 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeCheckpointMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeCheckpoint"]

@@ -10,13 +10,13 @@ from typing import Annotated
 
 from flext_cli import m, t
 
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsSonarcloud:
+class FlextInfraModelsConfigSonarcloud:
     """SonarCloud policy records resolved before aggregate configuration."""
 
-    class SonarcloudIssueExclusionSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class SonarcloudIssueExclusionSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One SonarCloud issue exclusion applied as a server-side project setting.
 
         SonarCloud automatic analysis ignores ``sonar.issue.ignore.*`` in
@@ -39,4 +39,4 @@ class FlextInfraConfigModelsSonarcloud:
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsSonarcloud"]
+__all__: list[str] = ["FlextInfraModelsConfigSonarcloud"]

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraDuplicationReportMixin:
+class FlextInfraDuplicationReport:
     """Map one native jscpd report to the clones a project owns."""
 
     gate_id: ClassVar[str]
@@ -155,4 +155,4 @@ class FlextInfraDuplicationReportMixin:
         )
 
 
-__all__: list[str] = ["FlextInfraDuplicationReportMixin"]
+__all__: list[str] = ["FlextInfraDuplicationReport"]

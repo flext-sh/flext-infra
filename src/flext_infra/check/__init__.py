@@ -19,20 +19,16 @@ if TYPE_CHECKING:
     from flext_infra.check.gate_registry import FlextInfraGateRegistry
     from flext_infra.check.workspace import FlextInfraCheckWorkspace
     from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-    from flext_infra.check.workspace_check_gates import (
-        FlextInfraWorkspaceCheckGatesMixin,
-    )
-    from flext_infra.check.workspace_check_union import (
-        FlextInfraWorkspaceCheckUnionMixin,
-    )
+    from flext_infra.check.workspace_check_gates import FlextInfraWorkspaceCheckGates
+    from flext_infra.check.workspace_check_union import FlextInfraWorkspaceCheckUnion
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraCheckWorkspace",
     "FlextInfraCheckWorkspaceCheckReports",
     "FlextInfraGateRegistry",
-    "FlextInfraWorkspaceCheckGatesMixin",
-    "FlextInfraWorkspaceCheckUnionMixin",
+    "FlextInfraWorkspaceCheckGates",
+    "FlextInfraWorkspaceCheckUnion",
     "FlextInfraWorkspaceChecker",
 )
 
@@ -43,8 +39,8 @@ install_lazy_exports(
         "FlextInfraCheckWorkspace": ".workspace",
         "FlextInfraCheckWorkspaceCheckReports": "._workspace.check_reports",
         "FlextInfraGateRegistry": ".gate_registry",
-        "FlextInfraWorkspaceCheckGatesMixin": ".workspace_check_gates",
-        "FlextInfraWorkspaceCheckUnionMixin": ".workspace_check_union",
+        "FlextInfraWorkspaceCheckGates": ".workspace_check_gates",
+        "FlextInfraWorkspaceCheckUnion": ".workspace_check_union",
         "FlextInfraWorkspaceChecker": ".workspace_check",
     }),
     public_exports=__all__,

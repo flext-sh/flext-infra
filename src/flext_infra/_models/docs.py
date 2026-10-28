@@ -17,7 +17,7 @@ from flext_infra._models import (
     FlextInfraModelsDocsCollection,
     FlextInfraModelsDocsGeneration,
 )
-from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraModelsConfig
 
 
 # Docs transport
@@ -366,7 +366,7 @@ class FlextInfraModelsDocs(
             m.Field(description="Exact canonical project metadata model"),
         ]
         repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef | None,
+            FlextInfraModelsConfig.RepositoryRef | None,
             m.Field(description="Exact repository catalog model"),
         ] = None
         package_name: Annotated[str, m.Field(description="Documented package name")]

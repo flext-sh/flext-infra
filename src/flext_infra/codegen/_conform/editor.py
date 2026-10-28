@@ -12,12 +12,12 @@ from flext_infra import c, deps as dependency_services, m, p, r, t, u
 from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
-from flext_infra.services._codegen.vscode import FlextInfraCodegenVscodeMixin
+from flext_infra.services._codegen.vscode import FlextInfraCodegenVscode
 
 
 class FlextInfraCodegenConformEditor(
     FlextInfraCodegenConformArtifactRender,
-    FlextInfraCodegenVscodeMixin,
+    FlextInfraCodegenVscode,
 ):
     """Compose existing editor, analyzer and Git-ignore owners into one plan."""
 

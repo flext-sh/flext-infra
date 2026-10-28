@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
 
 
-class FlextInfraWorkspaceCheckUnionMixin:
+class FlextInfraWorkspaceCheckUnion:
     """Run each multi-root gate once per configuration group and split it back."""
 
     _repository_root: Path
@@ -221,4 +221,4 @@ class FlextInfraWorkspaceCheckUnionMixin:
         )
 
 
-__all__: list[str] = ["FlextInfraWorkspaceCheckUnionMixin"]
+__all__: list[str] = ["FlextInfraWorkspaceCheckUnion"]

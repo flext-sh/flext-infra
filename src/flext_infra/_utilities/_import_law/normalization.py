@@ -17,16 +17,20 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
+from flext_infra._utilities._import_law import (
     FlextInfraUtilitiesImportLawGraph,
     FlextInfraUtilitiesImportLawPlacement,
     FlextInfraUtilitiesImportLawRoutes,
-    FlextInfraUtilitiesProjectDiscovery,
+)
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._semantic_cutover.own_mro import (
     FlextInfraUtilitiesSemanticCutoverOwnMro,

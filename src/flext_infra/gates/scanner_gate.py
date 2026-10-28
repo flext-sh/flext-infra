@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraScannerGateMixin(FlextInfraGate):
+class FlextInfraScannerGate(FlextInfraGate):
     """Mixin for gates that detect per-file issues via a rope-backed scanner.
 
     Subclasses provide ``scan_error_message`` and implement
@@ -89,4 +89,4 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
         return ()
 
 
-__all__: list[str] = ["FlextInfraScannerGateMixin"]
+__all__: list[str] = ["FlextInfraScannerGate"]

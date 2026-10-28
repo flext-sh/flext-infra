@@ -11,14 +11,14 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
-    FlextInfraUtilitiesGitStateCheckpointMixin,
+    FlextInfraUtilitiesGitStateCheckpoint,
 )
 
 
-class FlextInfraUtilitiesGitStatePublicationMixin(
-    FlextInfraUtilitiesGitStateCheckpointMixin,
+class FlextInfraUtilitiesGitStatePublication(
+    FlextInfraUtilitiesGitStateCheckpoint,
 ):
     """Bind retained history to one configured credential-free Git endpoint."""
 
@@ -310,4 +310,4 @@ class FlextInfraUtilitiesGitStatePublicationMixin(
         return r[bool].ok(value=True)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStatePublicationMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStatePublication"]

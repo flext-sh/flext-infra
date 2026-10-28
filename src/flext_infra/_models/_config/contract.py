@@ -17,7 +17,7 @@ from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
 from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
-class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
+class FlextInfraModelsConfigContract(FlextInfraModelsMiseToolchain):
     """Shared config contract base and inherited toolchain declarations."""
 
     class ConfigContract(FlextInfraModelsMiseToolchainBase.SchemaRecord):
@@ -97,4 +97,4 @@ class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
             return self
 
 
-__all__: list[str] = ["FlextInfraConfigModelsContract"]
+__all__: list[str] = ["FlextInfraModelsConfigContract"]

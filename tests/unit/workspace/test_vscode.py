@@ -28,8 +28,12 @@ class TestsFlextInfraCodegenVscode:
         tmp_path: Path,
     ) -> None:
         """Enforce canonical keys while deleting stale generated map entries."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
+        project_root = u.Tests.git_repository(tmp_path, "project")
+        canonical = u.Tests.json_payload(
+            tm.ok(
+                FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
+            )
+        )
         self._write_settings(
             project_root,
             tm.ok(
@@ -54,9 +58,9 @@ class TestsFlextInfraCodegenVscode:
             config.Infra.codegen.vscode
         )
         interpreter = "python.defaultInterpreterPath"
-        tm.that(doc[interpreter], eq=declared[interpreter])
+        tm.that(doc[interpreter], eq=canonical[interpreter])
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-        tm.that(doc[search_paths_key], eq=declared[search_paths_key])
+        tm.that(doc[search_paths_key], eq=canonical[search_paths_key])
         excludes = u.Tests.toml_mapping(doc["files.exclude"])
         tm.fail("**/.retired-cache" in excludes)
         tm.that(excludes, eq=dict(config.Infra.codegen.vscode_files_exclude_map))
@@ -67,8 +71,7 @@ class TestsFlextInfraCodegenVscode:
 
     def test_strips_retired_keys_owning_pyright_config(self, tmp_path: Path) -> None:
         """Strip keys owned by [tool.pyright] to avoid Pylance warnings."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
+        project_root = u.Tests.git_repository(tmp_path, "project")
         self._write_settings(
             project_root,
             tm.ok(
@@ -98,8 +101,7 @@ class TestsFlextInfraCodegenVscode:
 
     def test_render_reaches_fixed_point(self, tmp_path: Path) -> None:
         """Rendering a document that was already rendered produces no drift."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
+        project_root = u.Tests.git_repository(tmp_path, "project")
 
         first = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
         tm.ok(first)
@@ -109,12 +111,11 @@ class TestsFlextInfraCodegenVscode:
         tm.that(second.value, eq=first.value)
 
     @staticmethod
-    def test_python_environment_settings_are_independent_from_repository_topology(
+    def test_workspace_root_and_standalone_bind_their_own_environment(
         tmp_path: Path,
     ) -> None:
-        """Keep opened-folder settings canonical for roots and subprojects."""
-        project_root = tmp_path / "workspace"
-        project_root.mkdir()
+        """Both environment owners render the same portable relative bindings."""
+        project_root = u.Tests.git_repository(tmp_path, "workspace")
         provider = u.Tests.provider()
         (project_root / c.Infra.GITMODULES).write_text(
             '[submodule "app-a"]\n'
@@ -129,8 +130,7 @@ class TestsFlextInfraCodegenVscode:
         )
 
         result = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
-        standalone_root = tmp_path / "standalone"
-        standalone_root.mkdir()
+        standalone_root = u.Tests.git_repository(tmp_path, "standalone")
         standalone = FlextInfraCodegenConform.Generate.render_vscode_settings(
             standalone_root
         )
@@ -139,12 +139,13 @@ class TestsFlextInfraCodegenVscode:
         tm.ok(standalone)
         tm.that(result.value.encode(), eq=standalone.value.encode())
         doc = u.Tests.json_payload(result.value)
-        search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+        interpreter = u.type_adapter(str).validate_python(
+            doc["python.defaultInterpreterPath"]
+        )
+        selected = Path(interpreter.replace("${workspaceFolder}", str(project_root)))
         tm.that(
-            doc[search_paths_key],
-            eq=FlextInfraCodegenConform.Generate.vscode_settings(
-                config.Infra.codegen.vscode
-            )[search_paths_key],
+            selected.parent.parent.resolve(),
+            eq=(project_root / c.Infra.ENVIRONMENT_DIRECTORY).resolve(),
         )
 
     def test_invalid_json_fails_without_producing_a_document(
@@ -152,8 +153,7 @@ class TestsFlextInfraCodegenVscode:
         tmp_path: Path,
     ) -> None:
         """Return a typed failure when the existing settings are unparseable."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
+        project_root = u.Tests.git_repository(tmp_path, "project")
         self._write_settings(project_root, "{ invalid json")
 
         result = FlextInfraCodegenConform.Generate.render_vscode_settings(project_root)
@@ -165,6 +165,7 @@ class TestsFlextInfraCodegenVscode:
         self, tmp_path: Path
     ) -> None:
         """Use the elected project catalog for file and directory exclusions."""
+        u.Tests.initialize_git_repo(tmp_path)
         directory = m.Infra.CodegenArtifactSpec(
             name="fixture-cache", analysis_exclude=True
         )
@@ -205,6 +206,7 @@ class TestsFlextInfraCodegenVscode:
         self, tmp_path: Path
     ) -> None:
         """Remove obsolete owned entries without replacing language preferences."""
+        u.Tests.initialize_git_repo(tmp_path)
         retired = config.Infra.codegen.vscode.stripped_map_keys
         settings: t.JsonDict = {
             language: {
@@ -228,6 +230,7 @@ class TestsFlextInfraCodegenVscode:
         tmp_path: Path,
     ) -> None:
         """Settings remain generic JSON values with deterministic object ordering."""
+        u.Tests.initialize_git_repo(tmp_path)
         values: t.JsonMapping = {
             "operator.enabled": True,
             "operator.ratio": 0.75,
@@ -262,6 +265,7 @@ class TestsFlextInfraCodegenVscode:
         tmp_path: Path,
     ) -> None:
         """The explicit removal declaration wins even over the final setting pair."""
+        u.Tests.initialize_git_repo(tmp_path)
         key = "operator.retiredSetting"
         specification = m.Infra.CodegenVscodeSpec.model_validate({
             **config.Infra.codegen.vscode.model_dump(),
@@ -279,6 +283,7 @@ class TestsFlextInfraCodegenVscode:
         self, tmp_path: Path
     ) -> None:
         """An explicitly merged map supports JSON values beyond scalar options."""
+        u.Tests.initialize_git_repo(tmp_path)
         key = "[fixture]"
         local: t.JsonDict = {"operator.local": [{"name": "retained"}]}
         declared: t.JsonMapping = {
@@ -308,6 +313,7 @@ class TestsFlextInfraCodegenVscode:
         self, tmp_path: Path
     ) -> None:
         """An explicit JSON value owns its full map after default map unions."""
+        u.Tests.initialize_git_repo(tmp_path)
         key = "[fixture]"
         self._write_settings(
             tmp_path,

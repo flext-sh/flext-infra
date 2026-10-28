@@ -34,14 +34,14 @@ from typing_extensions import TypeForm
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesImportLaw,
-    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 
-class FlextInfraUtilitiesCodemodNativeUtilities:
+class FlextInfraUtilitiesCodemodNative:
     """Derive native ast-grep utility rules from project sources of truth."""
 
     @staticmethod
@@ -240,7 +240,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         )
         progress(f"runtime dependency closure finish distributions={len(closure)}")
         progress("runtime import package metadata start")
-        owner = FlextInfraUtilitiesCodemodNativeUtilities
+        owner = FlextInfraUtilitiesCodemodNative
         packages = owner.codemod_installed_import_packages()
         progress(f"runtime import package metadata finish packages={len(packages)}")
         selected: set[str] = set()
@@ -815,4 +815,4 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         return MappingProxyType(dict(sorted(documents.items())))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesCodemodNativeUtilities"]
+__all__: list[str] = ["FlextInfraUtilitiesCodemodNative"]

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""pyproject package.
+"""Flext Infra. Utilities. Pyproject package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,17 +13,27 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._pyproject.base import FlextInfraUtilitiesPyprojectConformBase
-    from flext_infra._pyproject.conform import FlextInfraUtilitiesPyprojectConform
-    from flext_infra._pyproject.document import FlextInfraUtilitiesPyprojectDocument
-    from flext_infra._pyproject.overlay import FlextInfraUtilitiesPyprojectOverlay
-    from flext_infra._pyproject.requirements import (
+    from flext_infra._utilities._pyproject.base import (
+        FlextInfraUtilitiesPyprojectConformBase,
+    )
+    from flext_infra._utilities._pyproject.conform import (
+        FlextInfraUtilitiesPyprojectConform,
+    )
+    from flext_infra._utilities._pyproject.document import (
+        FlextInfraUtilitiesPyprojectDocument,
+    )
+    from flext_infra._utilities._pyproject.overlay import (
+        FlextInfraUtilitiesPyprojectOverlay,
+    )
+    from flext_infra._utilities._pyproject.requirements import (
         FlextInfraUtilitiesPyprojectRequirements,
     )
-    from flext_infra._pyproject.toml_phases import (
+    from flext_infra._utilities._pyproject.toml_phases import (
         FlextInfraUtilitiesPyprojectTomlPhases,
     )
-    from flext_infra._pyproject.uv_sources import FlextInfraUtilitiesPyprojectUvSources
+    from flext_infra._utilities._pyproject.uv_sources import (
+        FlextInfraUtilitiesPyprojectUvSources,
+    )
 
 
 __all__: tuple[str, ...] = (

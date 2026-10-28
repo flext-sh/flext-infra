@@ -29,44 +29,41 @@ id: recursive-type-alias
 language: python
 severity: warning
 message: >-
-  Self-recursive `type` alias with a container RHS — Mypy expands it without a
-  fixpoint (35 GiB memory-explosion class). Replace with the finite `t.JsonValue`
-  / `t.JsonMapping` alias or a `p.*` protocol / `m.*` model; remove the recursive
-  `type` statement. No suppression.
+  Self-recursive `type` alias with a container RHS — Mypy expands it without a fixpoint (35 GiB memory-explosion class). Replace with the finite `t.JsonValue` / `t.JsonMapping` alias or a `p.*` protocol / `m.*` model; remove the recursive `type` statement. No suppression.
 rule:
   kind: type_alias_statement
   all:
-    # Bind $NAME to the alias name (the statement's first identifier child).
-    - has: { pattern: $NAME }
-    # Require the SAME $NAME inside a recursive container in the RHS — ast-grep
-    # enforces cross-`has` metavar equality, so a finite `type X = dict[str, str]`
-    # never matches, only a true self-reference `type X = ... dict[str, X] ...`.
-    - has:
-        stopBy: end
-        any:
-          # Bare self-reference (module-level alias): `type X = ... list[X] ...`.
-          - pattern: list[$NAME]
-          - pattern: set[$NAME]
-          - pattern: frozenset[$NAME]
-          - pattern: tuple[$$$T, $NAME]
-          - pattern: dict[$K, $NAME]
-          - pattern: Mapping[$K, $NAME]
-          - pattern: MutableMapping[$K, $NAME]
-          - pattern: Sequence[$NAME]
-          - pattern: MutableSequence[$NAME]
-          - pattern: Callable[$ARGS, $NAME]
-          - pattern: Callable[..., $NAME]
-          # Qualified self-reference (class-scoped alias): a nested-class alias
-          # refers to itself as `Owner.X`, e.g.
-          # `type X = ... list[FlextTestsMakeTypesMixin.X] ...`.
-          - pattern: list[$CLS.$NAME]
-          - pattern: set[$CLS.$NAME]
-          - pattern: frozenset[$CLS.$NAME]
-          - pattern: tuple[$$$T, $CLS.$NAME]
-          - pattern: dict[$K, $CLS.$NAME]
-          - pattern: Mapping[$K, $CLS.$NAME]
-          - pattern: MutableMapping[$K, $CLS.$NAME]
-          - pattern: Sequence[$CLS.$NAME]
-          - pattern: MutableSequence[$CLS.$NAME]
-          - pattern: Callable[$ARGS, $CLS.$NAME]
-          - pattern: Callable[..., $CLS.$NAME]
+  # Bind $NAME to the alias name (the statement's first identifier child).
+  - has: { pattern: $NAME }
+  # Require the SAME $NAME inside a recursive container in the RHS — ast-grep
+  # enforces cross-`has` metavar equality, so a finite `type X = dict[str, str]`
+  # never matches, only a true self-reference `type X = ... dict[str, X] ...`.
+  - has:
+      stopBy: end
+      any:
+      # Bare self-reference (module-level alias): `type X = ... list[X] ...`.
+      - pattern: list[$NAME]
+      - pattern: set[$NAME]
+      - pattern: frozenset[$NAME]
+      - pattern: tuple[$$$T, $NAME]
+      - pattern: dict[$K, $NAME]
+      - pattern: Mapping[$K, $NAME]
+      - pattern: MutableMapping[$K, $NAME]
+      - pattern: Sequence[$NAME]
+      - pattern: MutableSequence[$NAME]
+      - pattern: Callable[$ARGS, $NAME]
+      - pattern: Callable[..., $NAME]
+      # Qualified self-reference (class-scoped alias): a nested-class alias
+      # refers to itself as `Owner.X`, e.g.
+      # `type X = ... list[FlextTestsTypesMake.X] ...`.
+      - pattern: list[$CLS.$NAME]
+      - pattern: set[$CLS.$NAME]
+      - pattern: frozenset[$CLS.$NAME]
+      - pattern: tuple[$$$T, $CLS.$NAME]
+      - pattern: dict[$K, $CLS.$NAME]
+      - pattern: Mapping[$K, $CLS.$NAME]
+      - pattern: MutableMapping[$K, $CLS.$NAME]
+      - pattern: Sequence[$CLS.$NAME]
+      - pattern: MutableSequence[$CLS.$NAME]
+      - pattern: Callable[$ARGS, $CLS.$NAME]
+      - pattern: Callable[..., $CLS.$NAME]

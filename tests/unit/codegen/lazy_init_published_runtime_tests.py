@@ -131,11 +131,11 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         package_root.joinpath("models.py").write_text(
             "from __future__ import annotations\n"
             "from flext_core import FlextModels\n"
-            "class FlextRuntimeModels(FlextModels):\n"
+            "class FlextModelsRuntime(FlextModels):\n"
             "    class Payload(FlextModels.ContractModel):\n"
             '        count: int = FlextModels.Field(description="Payload count.")\n'
-            "m = FlextRuntimeModels\n"
-            "__all__ = ('FlextRuntimeModels', 'm')\n",
+            "m = FlextModelsRuntime\n"
+            "__all__ = ('FlextModelsRuntime', 'm')\n",
             encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
@@ -145,7 +145,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
             "import flext_runtime_model as package\n"
             "print('flext_runtime_model.models' not in sys.modules)\n"
             "models = package.m\n"
-            "print(models is package.FlextRuntimeModels is package.m)\n"
+            "print(models is package.FlextModelsRuntime is package.m)\n"
             "print(issubclass(models, FlextModels))\n"
             "payload = models.Payload.model_validate({'count': 7})\n"
             "print(payload.count == 7)\n"
@@ -291,7 +291,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         )
         u.Tests.write_lazy_init_namespace_module(
             package / "models.py",
-            class_name="FlextSourceOnlyModels",
+            class_name="FlextModelsSourceOnly",
             alias="m",
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
@@ -360,7 +360,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
                 "print(package.FlextSourceOnlyApi is FlextSourceOnlyApi)\n"
                 "print(issubclass(package.child.FlextSourceOnlyChild, "
                 "FlextSourceOnlyApi))\n"
-                "print(package.m is package.FlextSourceOnlyModels)\n"
+                "print(package.m is package.FlextModelsSourceOnly)\n"
                 "print(dir(package) == list(package.__all__))\n"
                 "print(all(getattr(package, name) is not None "
                 "for name in package.__all__))\n",
@@ -384,7 +384,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
             package_name="flext_source_only",
         )
         u.Tests.write_lazy_init_namespace_module(
-            package / "models.py", class_name="FlextSourceOnlyModels", alias="m"
+            package / "models.py", class_name="FlextModelsSourceOnly", alias="m"
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         authored = package / "api.py"
@@ -444,7 +444,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         declaration = package / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             declaration,
-            class_name="FlextRebuiltModels",
+            class_name="FlextModelsRebuilt",
             alias="m",
             docstring="Models.",
         )
@@ -467,8 +467,8 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         tm.that(
             u.Tests.run_lazy_init_probe(
                 "import flext_rebuilt as generated\n"
-                "from flext_rebuilt.models import FlextRebuiltModels\n"
-                "print(generated.m is FlextRebuiltModels)\n"
+                "from flext_rebuilt.models import FlextModelsRebuilt\n"
+                "print(generated.m is FlextModelsRebuilt)\n"
                 "print(all(hasattr(generated, name) for name in generated.__all__))\n",
                 python_paths=(str(repository / c.Infra.DEFAULT_SRC_DIR),),
             ),

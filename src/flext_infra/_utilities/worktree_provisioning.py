@@ -13,12 +13,12 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-    FlextInfraUtilitiesGitSemanticIndexMixin,
-    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
-    FlextInfraUtilitiesProjectDiscovery,
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitSemanticIndex,
+    FlextInfraUtilitiesGitSemanticSubmodule,
+    FlextInfraUtilitiesGitWorktreeDiscovery,
 )
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ class FlextInfraWorktreeProvisioning:
             )
         if git_marker.exists():
             return r[bool].ok(value=True)
-        initialized = FlextInfraUtilitiesGitSemanticSubmoduleMixin.git_submodule_init(
+        initialized = FlextInfraUtilitiesGitSemanticSubmodule.git_submodule_init(
             m.Infra.GitRefRequest(repo_root=lane, reference=reference),
         )
         if initialized.failure:
@@ -55,7 +55,7 @@ class FlextInfraWorktreeProvisioning:
     ) -> p.Result[bool]:
 
         reference = member_path.as_posix()
-        identity = FlextInfraUtilitiesGitSemanticIdentityMixin.git_identity(
+        identity = FlextInfraUtilitiesGitSemanticIdentity.git_identity(
             m.Infra.GitRepoRequest(repo_root=lane / member_path),
         )
         if identity.failure:
@@ -63,7 +63,7 @@ class FlextInfraWorktreeProvisioning:
         if identity.value.dirty:
             return r[bool].fail(f"governed gitlink is dirty: {reference}")
         origin = identity.value.origin_remote
-        discovery = FlextInfraUtilitiesGitWorktreeDiscoveryMixin
+        discovery = FlextInfraUtilitiesGitWorktreeDiscovery
         if origin is None or discovery.git_remote_identity(
             origin,
         ) != discovery.git_remote_identity(declared_url):
@@ -82,13 +82,13 @@ class FlextInfraWorktreeProvisioning:
     ) -> p.Result[bool]:
 
         reference = member_path.as_posix()
-        submodule = FlextInfraUtilitiesGitSemanticSubmoduleMixin
+        submodule = FlextInfraUtilitiesGitSemanticSubmodule
         contract = submodule.git_submodule_declaration(
             m.Infra.GitSubmoduleContractRequest(repo_root=lane, member_path=reference),
         )
         if contract.failure:
             return r[bool].from_failure(contract)
-        recorded = FlextInfraUtilitiesGitSemanticIndexMixin.git_staged_gitlink_oid(
+        recorded = FlextInfraUtilitiesGitSemanticIndex.git_staged_gitlink_oid(
             m.Infra.GitRefRequest(repo_root=lane, reference=reference),
         )
         if recorded.failure:
@@ -105,7 +105,7 @@ class FlextInfraWorktreeProvisioning:
 
     @classmethod
     def _prepare_governed_gitlinks(cls, lane: Path) -> p.Result[bool]:
-        submodule = FlextInfraUtilitiesGitSemanticSubmoduleMixin
+        submodule = FlextInfraUtilitiesGitSemanticSubmodule
         declared = submodule.git_submodule_declarations(lane)
         if declared.failure:
             return r[bool].from_failure(declared)

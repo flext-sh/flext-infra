@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 from flext_cli import c, m, t
 
 
-class FlextInfraSettingsModels:
+class FlextInfraModelsSettings:
     """Private namespace for validated settings payloads."""
 
     class InfraSettings(m.BaseSettings):
@@ -138,4 +138,4 @@ class FlextInfraSettingsModels:
         )
 
 
-__all__: list[str] = ["FlextInfraSettingsModels"]
+__all__: list[str] = ["FlextInfraModelsSettings"]

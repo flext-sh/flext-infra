@@ -15,7 +15,7 @@ from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.check import (
     FlextInfraCheckWorkspace,
     FlextInfraGateRegistry,
-    FlextInfraWorkspaceCheckGatesMixin,
+    FlextInfraWorkspaceCheckGates,
 )
 from flext_infra.workspace import (
     FlextInfraRuntimeDependencyCollector,
@@ -25,7 +25,7 @@ from flext_infra.workspace import (
 
 class FlextInfraWorkspaceChecker(
     FlextInfraServiceBase[bool],
-    FlextInfraWorkspaceCheckGatesMixin,
+    FlextInfraWorkspaceCheckGates,
     FlextInfraCheckWorkspace,
 ):
     """Run workspace quality gates and generate reports.

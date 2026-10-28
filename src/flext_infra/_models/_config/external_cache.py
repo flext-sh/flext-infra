@@ -11,14 +11,14 @@ from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
 class FlextInfraExternalCacheDirectorySpec:
     """Models namespace owning the shared external-cache placement contract."""
 
     class Directory[Environment: str = str](
-        FlextInfraConfigModelsContract.ConfigContract,
+        FlextInfraModelsConfigContract.ConfigContract,
     ):
         """One typed external-cache placement every tool cache consumes."""
 

@@ -12,10 +12,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFilesMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFiles
 
 
-class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFilesMixin):
+class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     """Accept only captured, baseline, or planned kind-transition absence."""
 
     @staticmethod
@@ -102,11 +102,9 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         """Require every desired symlink payload to decode as strict UTF-8."""
         for entry in desired:
             if entry.mode == "120000":
-                payload = (
-                    FlextInfraUtilitiesGitStateTransitionMixin._state_blob_payload(
-                        root,
-                        entry.oid,
-                    )
+                payload = FlextInfraUtilitiesGitStateTransition._state_blob_payload(
+                    root,
+                    entry.oid,
                 )
                 os.fsdecode(payload).encode(c.DEFAULT_ENCODING, errors="strict")
 
@@ -307,4 +305,4 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateTransitionMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateTransition"]

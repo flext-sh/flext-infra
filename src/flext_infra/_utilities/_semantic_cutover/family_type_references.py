@@ -19,7 +19,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 
@@ -567,7 +567,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             source,
             "quoted types require native Rope delimiters",
         )
-        typing = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+        typing = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
             project.get_module("typing")
         )
         protected: set[t.Pair[int, int]] = set()
@@ -601,7 +601,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             flatten.project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )

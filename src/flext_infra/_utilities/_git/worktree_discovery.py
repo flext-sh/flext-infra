@@ -17,11 +17,11 @@ from flext_infra._constants import (
     FlextInfraConstantsSharedInfra,
 )
 from flext_infra._utilities import FlextInfraUtilitiesBase
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRootsMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRoots
 
 
-class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
-    FlextInfraUtilitiesGitWorktreeRootsMixin,
+class FlextInfraUtilitiesGitWorktreeDiscovery(
+    FlextInfraUtilitiesGitWorktreeRoots,
 ):
     """Own worktree discovery operations."""
 
@@ -103,4 +103,4 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeDiscoveryMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeDiscovery"]

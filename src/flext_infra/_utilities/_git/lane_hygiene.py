@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import config, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefsMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefs
 
 
-class FlextInfraUtilitiesGitLaneHygieneMixin:
+class FlextInfraUtilitiesGitLaneHygiene:
     """Collect observations through canonical primitives without policy decisions."""
 
     @staticmethod
@@ -31,14 +31,14 @@ class FlextInfraUtilitiesGitLaneHygieneMixin:
         errors: list[str] = []
         refs: list[m.Infra.GitLaneRef] = []
         stash_oids: tuple[str, ...] = ()
-        stashes = FlextInfraUtilitiesGitSemanticRefsMixin.git_stash_oids(request)
+        stashes = FlextInfraUtilitiesGitSemanticRefs.git_stash_oids(request)
         if stashes.failure:
             errors.append(f"stash read error: {stashes.error}")
         else:
             stash_oids = tuple(stashes.value.oids)
         remote = config.Infra.codegen.branch_policy.lane_remote
         for namespace in ("refs/heads", f"refs/remotes/{remote}"):
-            heads = FlextInfraUtilitiesGitSemanticRefsMixin.git_ref_heads(
+            heads = FlextInfraUtilitiesGitSemanticRefs.git_ref_heads(
                 m.Infra.GitRefHeadsRequest(
                     repo_root=request.repo_root,
                     namespace=namespace,
@@ -61,4 +61,4 @@ class FlextInfraUtilitiesGitLaneHygieneMixin:
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitLaneHygieneMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitLaneHygiene"]

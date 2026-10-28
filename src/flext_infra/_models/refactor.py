@@ -25,7 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen import FlextInfraModelsCodegenTransactionModels
+from flext_infra._models._codegen import FlextInfraModelsModelsCodegenTransaction
 
 
 class FlextInfraModelsRefactor(
@@ -211,7 +211,7 @@ class FlextInfraModelsRefactor(
         )
 
     class SemanticRenamePlan(
-        FlextInfraModelsCodegenTransactionModels.SemanticSourcePlan
+        FlextInfraModelsModelsCodegenTransaction.SemanticSourcePlan
     ):
         """Reversible native rename artifact with its complete authenticated closure."""
 

@@ -51,16 +51,16 @@ from flext_infra._models import (
     FlextInfraModelsRope,
     FlextInfraModelsRopeMove,
     FlextInfraModelsScan,
+    FlextInfraModelsSettings,
     FlextInfraModelsSonarcloud,
     FlextInfraModelsTestmon,
     FlextInfraModelsTransformers,
     FlextInfraModelsWorkspace,
     FlextInfraModelsWorkspaceSnapshot,
     FlextInfraModelsWorktree,
-    FlextInfraSettingsModels,
 )
 from flext_infra._models._codegen import FlextInfraCodegen
-from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraModelsConfig
 
 
 class FlextInfraModels(FlextCliModels):
@@ -101,7 +101,7 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsRope,
         FlextInfraModelsRopeMove,
         FlextInfraModelsScan,
-        FlextInfraSettingsModels,
+        FlextInfraModelsSettings,
         FlextInfraModelsSonarcloud,
         FlextInfraModelsTestmon,
         FlextInfraModelsTransformers,
@@ -109,7 +109,7 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsWorkspace,
         FlextInfraModelsWorkspaceSnapshot,
         FlextInfraModelsWorktree,
-        FlextInfraConfigModels,
+        FlextInfraModelsConfig,
         FlextInfraModelsMiseToolchain,
         FlextInfraCodegen,
         FlextInfraModelsCodegenToolchain,

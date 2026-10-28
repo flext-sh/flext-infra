@@ -18,7 +18,7 @@ from flext_infra._utilities import (
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopePolicy
 
 
-class FlextInfraUtilitiesDocsScopeProjectsMixin(
+class FlextInfraUtilitiesDocsScopeProjects(
     FlextInfraUtilitiesDocsScopePolicy,
 ):
     """Discover governed projects from the authenticated workspace topology."""
@@ -34,7 +34,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectInfo]]``.
 
         """
-        owner = FlextInfraUtilitiesDocsScopeProjectsMixin
+        owner = FlextInfraUtilitiesDocsScopeProjects
         discovered = owner.discover_projects(repository_root)
         if discovered.failure:
             return r[t.SequenceOf[m.Infra.ProjectInfo]].from_failure(discovered)
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             ValueError: If ``declared.failure``.
 
         """
-        root = FlextInfraUtilitiesDocsScopeProjectsMixin.absolute_lexical(
+        root = FlextInfraUtilitiesDocsScopeProjects.absolute_lexical(
             repository_root,
         )
         declared = FlextInfraUtilitiesGit.git_submodule_declarations(root)
@@ -103,8 +103,8 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             The resulting ``m.Infra.ProjectInfo | None``.
 
         """
-        entry = FlextInfraUtilitiesDocsScopeProjectsMixin.absolute_lexical(entry)
-        project_state = FlextInfraUtilitiesDocsScopeProjectsMixin.project_state(entry)
+        entry = FlextInfraUtilitiesDocsScopeProjects.absolute_lexical(entry)
+        project_state = FlextInfraUtilitiesDocsScopeProjects.project_state(entry)
         project_section = project_state.payload.get("project")
         project_name = (
             project_section.get("name") if isinstance(project_section, dict) else None
@@ -116,14 +116,14 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         ):
             return None
         is_workspace_declared_repository = entry in workspace_declared_repositories
-        if not FlextInfraUtilitiesDocsScopeProjectsMixin.docs_scope_enabled(
+        if not FlextInfraUtilitiesDocsScopeProjects.docs_scope_enabled(
             project_state.docs_meta,
         ):
             return None
-        has_src = FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
+        has_src = FlextInfraUtilitiesDocsScopeProjects.physical_directory_exists(
             entry / c.Infra.DEFAULT_SRC_DIR,
         )
-        has_tests = FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
+        has_tests = FlextInfraUtilitiesDocsScopeProjects.physical_directory_exists(
             entry / c.Infra.DIR_TESTS,
         )
         has_deps = bool(project_section.get("dependencies"))
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             return None
         make_profile = (
             c.Infra.MakeProfile.WORKSPACE
-            if FlextInfraUtilitiesDocsScopeProjectsMixin._physical_file_exists(
+            if FlextInfraUtilitiesDocsScopeProjects._physical_file_exists(
                 entry / c.Infra.GITMODULES,
             )
             else c.Infra.MakeProfile.STANDALONE
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             has_tests=has_tests,
             has_src=has_src,
             project_class=(
-                FlextInfraUtilitiesDocsScopeProjectsMixin.classify_project_from_meta(
+                FlextInfraUtilitiesDocsScopeProjects.classify_project_from_meta(
                     project_state.project_name,
                     project_state.docs_meta,
                 )
@@ -168,7 +168,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectInfo]]``.
 
         """
-        owner = FlextInfraUtilitiesDocsScopeProjectsMixin
+        owner = FlextInfraUtilitiesDocsScopeProjects
         roots = owner.docs_repository_roots(repository_root)
         if roots.failure:
             return r[t.SequenceOf[m.Infra.ProjectInfo]].from_failure(roots)
@@ -204,4 +204,4 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(projects)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesDocsScopeProjectsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsScopeProjects"]

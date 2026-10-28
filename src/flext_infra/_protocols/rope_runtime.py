@@ -47,6 +47,22 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
 
     @runtime_checkable
+    class RopeChangeObserver(Protocol):
+        """Native resource notifications used by source candidate transitions."""
+
+        def resource_changed(
+            self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        ) -> None: ...
+
+        def resource_created(
+            self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        ) -> None: ...
+
+        def resource_removed(
+            self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        ) -> None: ...
+
+    @runtime_checkable
     class RopeResourceObserver(Protocol):
         """Native observer registration without claiming a semantic payload read."""
 
@@ -309,6 +325,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         imported_name: str
 
     @runtime_checkable
+    class SourceConclusions(Protocol):
+        """Native inferred facts, separate from retained parsed source modules."""
+
+        def forget_all_data(self) -> None: ...
+
+    @runtime_checkable
     class RopePyCore(Protocol):
         """Native graph owner retaining the original project of scopes and sources."""
 
@@ -317,6 +339,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         @property
         def extension_modules(self) -> AbstractSet[str]: ...
+
+        @property
+        def module_cache(self) -> FlextInfraProtocolsRopeRuntime.SourceConclusions: ...
 
     @runtime_checkable
     class RopeScope(Protocol):
@@ -484,6 +509,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     @runtime_checkable
     class RopeSourceAccess(Protocol):
         """Source reads through the project's overlaid filesystem view."""
+
+        def source_view(
+            self,
+            *,
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+            additional_source_folders: t.VariadicTuple[str] = (),
+        ) -> AbstractContextManager[Self]: ...
 
         def source_state(
             self, path: Path, *, required: bool = True

@@ -49,7 +49,7 @@ class TestsFlextInfraLazyInitHelpers:
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
             docstring="Models.",
         )
@@ -60,7 +60,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(init_content, has="import install_lazy_exports")
         tm.that(init_content, has='"m": ".models"')
-        tm.that(exports_content, has='"FlextDemoModels"')
+        tm.that(exports_content, has='"FlextModelsDemo"')
         tm.that(exports_content, has='"m"')
 
     @staticmethod
@@ -166,7 +166,7 @@ class TestsFlextInfraLazyInitHelpers:
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         declared_contract = (
             f"{c.Infra.AUTOGEN_HEADER}\n"
-            '__all__: tuple[str, ...] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+            '__all__: tuple[str, ...] = ("FlextModelsDemo", "FlextDemoMissing", "m")\n'
         )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
             declared_contract,
@@ -174,7 +174,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
         )
 
@@ -183,7 +183,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         # The prior projection is never an ABI
         # owner; regeneration converges it to declarations that still exist.
-        tm.that(generated, has='"FlextDemoModels"')
+        tm.that(generated, has='"FlextModelsDemo"')
         tm.that(generated, has='"m"')
         tm.that(generated, lacks="FlextDemoMissing")
         tm.that(generated, ne=declared_contract)
@@ -223,7 +223,7 @@ class TestsFlextInfraLazyInitHelpers:
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
         )
         utilities_dir = package_root / "_utilities"
@@ -274,27 +274,27 @@ class TestsFlextInfraLazyInitHelpers:
                 "",
                 encoding=c.DEFAULT_ENCODING,
             )
-        parts_dir.joinpath("flextdemomodelsbase_part_01.py").write_text(
-            "class FlextDemoModelsBase:\n"
+        parts_dir.joinpath("Flextmodelsdemobase_part_01.py").write_text(
+            "class FlextModelsDemoBase:\n"
             '    """Private implementation part."""\n\n'
-            '__all__ = ["FlextDemoModelsBase"]\n',
+            '__all__ = ["FlextModelsDemoBase"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
         models_dir.joinpath("base.py").write_text(
-            "from ._base.flextdemomodelsbase_part_01 import "
-            "FlextDemoModelsBase as FlextDemoModelsBasePart01\n\n"
-            "class FlextDemoModelsBase(FlextDemoModelsBasePart01):\n"
+            "from ._base.Flextmodelsdemobase_part_01 import "
+            "FlextModelsDemoBase as FlextModelsDemoBasePart01\n\n"
+            "class FlextModelsDemoBase(FlextModelsDemoBasePart01):\n"
             '    """Public facade."""\n\n'
-            '__all__ = ["FlextDemoModelsBase"]\n',
+            '__all__ = ["FlextModelsDemoBase"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = u.Tests.generated_init(package_root)
 
-        tm.that(generated, lacks="FlextDemoModelsBase")
+        tm.that(generated, lacks="FlextModelsDemoBase")
         tm.that(generated, lacks="._models.base")
-        tm.that(generated, lacks="._models._base.flextdemomodelsbase_part_01")
+        tm.that(generated, lacks="._models._base.Flextmodelsdemobase_part_01")
 
     @staticmethod
     def test_explicit_all_exports_keep_public_aliases_only(
@@ -345,7 +345,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         u.Tests.write_lazy_init_namespace_module(
             child_dir / "models.py",
-            class_name="FlextDemoServicesModels",
+            class_name="FlextModelsDemoServices",
             alias="m",
             docstring="Models.",
         )
@@ -355,7 +355,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(exports_content, has='"services"')
         child_content = u.Tests.generated_init(child_dir)
-        for name in ("FlextDemoService", "BLUE", "FlextDemoServicesModels", "m"):
+        for name in ("FlextDemoService", "BLUE", "FlextModelsDemoServices", "m"):
             tm.that(exports_content, lacks=f'"{name}"')
             tm.that(child_content, has=f'"{name}"')
         tm.that(child_content, lacks='"main"')
@@ -368,7 +368,7 @@ class TestsFlextInfraLazyInitHelpers:
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
         )
 

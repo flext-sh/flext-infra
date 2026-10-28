@@ -26,18 +26,20 @@ from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-    FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativePackage,
+)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -246,7 +248,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 scope = context.environment
                 receiver = runtime.resolve_symbol(scope, reference.value)
                 if receiver is None or not (
-                    FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                    FlextInfraUtilitiesTypesRopeRuntime.abstract_class(
                         owner := receiver.get_object()
                     )
                 ):
@@ -314,13 +316,13 @@ class FlextInfraUtilitiesFacadeComponents:
             while pending:
                 holder, target = pending.pop()
                 holders.append((holder, target))
-                if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(holder):
+                if not FlextInfraUtilitiesTypesRopeRuntime.py_class(holder):
                     message = f"facade namespace has no native scope: {root}.{target}"
                     raise ValueError(message)
                 for nested in holder.get_scope().get_scopes():
                     if nested.get_kind() != "Class":
                         continue
-                    value = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                    value = FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                         nested.pyobject, f"{root}.{target}"
                     )
                     if not value.get_name().startswith("_"):
@@ -353,7 +355,7 @@ class FlextInfraUtilitiesFacadeComponents:
         while pending:
             _owner, _index, candidate = pending.pop()
             try:
-                base = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                base = FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                     candidate, "facade component ancestry"
                 )
             except TypeError:
@@ -415,7 +417,7 @@ class FlextInfraUtilitiesFacadeComponents:
             if members.declared_by_package(
                 base, member, root, source_project=source_project
             )
-            and FlextInfraUtilitiesRopeRuntimeTypes.py_function(binding.get_object())
+            and FlextInfraUtilitiesTypesRopeRuntime.py_function(binding.get_object())
             and member in holder_members
             and holder_members[member].get_object() is binding.get_object()
         )
@@ -548,7 +550,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         offset = runtime.source_offset(module.source_code, reference)
         scope = module.get_source_binding_index().context_at(offset).environment
         receiver = runtime.resolve_symbol(scope, reference.value)
@@ -617,10 +619,10 @@ class FlextInfraUtilitiesFacadeComponents:
         resource = engine.get_file(
             path.relative_to(Path(engine.root.real_path)).as_posix()
         )
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+        module = FlextInfraUtilitiesTypesRopeRuntime.require_parsed_module(
             engine.get_pymodule(resource, force_errors=True)
         )
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             message = f"component consumer has no native source module: {path}"
             raise TypeError(message)
         return module
@@ -790,11 +792,11 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         root = project.absolute()
-        native = FlextInfraUtilitiesCodemodNativePackageUtilities
+        native = FlextInfraUtilitiesCodemodNativePackage
         known = {
             *sys.stdlib_module_names,
             *native.codemod_facade_packages(snapshot, root),
-            *FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(root),
+            *FlextInfraUtilitiesCodemodNative.codemod_own_package_names(root),
         }
         providers = packages_distributions()
         return tuple(

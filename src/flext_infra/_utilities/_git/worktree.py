@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRemovalMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRemoval
 
 
-class FlextInfraUtilitiesGitWorktreeMixin(FlextInfraUtilitiesGitWorktreeRemovalMixin):
+class FlextInfraUtilitiesGitWorktree(FlextInfraUtilitiesGitWorktreeRemoval):
     """Compose worktree discovery, materialization, checkpoint, patch, and removal."""
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktree"]

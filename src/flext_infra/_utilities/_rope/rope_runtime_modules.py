@@ -18,7 +18,7 @@ from flext_infra._utilities._rope.rope_runtime_module_queries import (
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 )
 
 
@@ -44,12 +44,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         supplier = cls.source_import_binding(binding)
         if (
             supplier is None
-            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
+            or not FlextInfraTypesUtilitiesRopeRuntime.assigned_name(supplier)
             or supplier.assignments
         ):
             return None
         module, _line = cls.definition_location(supplier)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
             return None
         tree = module.get_ast()
         if not isinstance(tree, ast.AST):
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         """
         supplier = cls.source_import_binding(binding)
-        if supplier is None or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(
+        if supplier is None or not FlextInfraTypesUtilitiesRopeRuntime.assigned_name(
             supplier
         ):
             return None
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         assigned = assignment.ast_node
         annotation = assignment.type_hint
         module, _line = cls.definition_location(supplier)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
             return None
         # Scalar model fields carry the same declaration proof as generic fields.
         if isinstance(annotation, ast.Name | ast.Attribute | ast.Subscript):
@@ -180,19 +180,19 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         """
         if not isinstance(expression, ast.Call) or (
             inferred is not None
-            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(inferred)
+            and FlextInfraTypesUtilitiesRopeRuntime.abstract_class(inferred)
         ):
             return False
         binding = cls.resolve_symbol(scope, expression.func)
         function = None if binding is None else binding.get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(function):
+        if not FlextInfraTypesUtilitiesRopeRuntime.py_function(function):
             return False
         declaration = function.get_ast()
         module = function.get_module()
         if (
             not isinstance(declaration, ast.FunctionDef)
             or declaration.returns is None
-            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or not FlextInfraTypesUtilitiesRopeRuntime.source_module(module)
         ):
             return False
         context = module.get_source_binding_index().context_at(
@@ -275,7 +275,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             message = f"Rope identity requires an attribute: {expression}"
             raise ValueError(message)
         try:
-            value = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            value = FlextInfraTypesUtilitiesRopeRuntime.require_semantic_module(
                 project.get_module(module),
             )
         except TypeError as error:
@@ -476,7 +476,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     ):
         if not binding.assignments or (rhs := binding.assignments[0].ast_node) is None:
             return None
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(holder):
             message = "native class assignment has no source module"
             raise TypeError(message)
         source = holder.source_code
@@ -631,7 +631,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if (
             classes_only
             and result is not None
-            and not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+            and not FlextInfraTypesUtilitiesRopeRuntime.abstract_class(
                 result.get_object()
             )
         ):
@@ -778,7 +778,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         pymodule: t.Infra.RopeParsedModule,
     ) -> t.Infra.RopeModuleImports:
         source_module = pymodule.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(source_module):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(source_module):
             message = "Rope import operations require a source module"
             raise TypeError(message)
         loader = cls.runtime_callable(
@@ -845,7 +845,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         """
         source_module = module.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(source_module):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(source_module):
             message = "Rope import insertion requires a source module"
             raise TypeError(message)
         result = cls.runtime_callable(c.Infra.ROPE_IMPORTUTILS_MODULE, "add_import")(
@@ -883,7 +883,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         """
         loader = cls.runtime_callable("rope.base.libutils", "path_to_resource")
-        return FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        return FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
             loader(rope_project, str(path), type="file"), path
         )
 
@@ -902,7 +902,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             else cls.runtime_callable("rope.base.project", "get_no_project")()
         )
         pymodule = loader(project, source, resource=resource, force_errors=True)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(pymodule):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(pymodule):
             msg = "rope get_string_module returned non-PyModule"
             raise TypeError(msg)
         return pymodule

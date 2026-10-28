@@ -11,7 +11,7 @@ from typing import ClassVar
 from flext_infra import c, t
 
 
-class FlextInfraUtilitiesRopeMethodOrderMixin:
+class FlextInfraUtilitiesRopeMethodOrder:
     """Categorize methods by decorators and name pattern.
 
     Composed into FlextInfraUtilitiesRopeHelpers via inheritance (no state).
@@ -37,7 +37,7 @@ class FlextInfraUtilitiesRopeMethodOrderMixin:
             for (
                 decorator_name,
                 category,
-            ) in FlextInfraUtilitiesRopeMethodOrderMixin._DECORATOR_TO_CATEGORY:
+            ) in FlextInfraUtilitiesRopeMethodOrder._DECORATOR_TO_CATEGORY:
                 if decorator_name in decorators:
                     result = category
                     break
@@ -53,4 +53,4 @@ class FlextInfraUtilitiesRopeMethodOrderMixin:
         return result
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRopeMethodOrderMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeMethodOrder"]

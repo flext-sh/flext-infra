@@ -1328,6 +1328,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 },
             )
         if planned.failure:
+            planning_failure = (
+                planned.exception
+                if planner.state.planning_exception is None
+                else planner.state.planning_exception
+            )
+            if planning_failure is not None:
+                traceback.print_exception(planning_failure)
             outcome = m.Infra.CodegenRepositoryPlanOutcome(
                 repository=repository.name,
                 files=tuple(
@@ -1336,10 +1343,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     if file.project == repository_root
                 ),
                 error=planned.error or f"planning failed: {repository.name}",
-                exception=(
-                    planned.exception
-                    if planner.state.planning_exception is None
-                    else planner.state.planning_exception
+                exception=planning_failure,
+                error_type=(
+                    f"{type(planning_failure).__module__}."
+                    f"{type(planning_failure).__qualname__}"
+                    if planning_failure is not None
+                    else ""
+                ),
+                error_traceback=(
+                    "".join(traceback.format_exception(planning_failure))
+                    if planning_failure is not None
+                    else ""
                 ),
                 issues=tuple(planner.state.planning_issues),
                 elapsed=time.monotonic() - started,

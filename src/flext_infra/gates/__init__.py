@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate
     from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
-    from flext_infra.gates.duplication_report import FlextInfraDuplicationReportMixin
+    from flext_infra.gates.duplication_report import FlextInfraDuplicationReport
     from flext_infra.gates.enforcement_catalog import FlextInfraEnforcementCatalogGate
     from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
     from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
     from flext_infra.gates.runtime_integrity import FlextInfraRuntimeIntegrityGate
-    from flext_infra.gates.scanner_gate import FlextInfraScannerGateMixin
+    from flext_infra.gates.scanner_gate import FlextInfraScannerGate
     from flext_infra.gates.smells import FlextInfraSmellsGate
 
 
@@ -53,7 +53,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDirenvGate",
     "FlextInfraDuplicationEvidence",
     "FlextInfraDuplicationGate",
-    "FlextInfraDuplicationReportMixin",
+    "FlextInfraDuplicationReport",
     "FlextInfraEnforcementCatalogGate",
     "FlextInfraFreshImportGate",
     "FlextInfraGate",
@@ -74,7 +74,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeIntegrityGate",
-    "FlextInfraScannerGateMixin",
+    "FlextInfraScannerGate",
     "FlextInfraSmellsGate",
 )
 
@@ -89,7 +89,7 @@ install_lazy_exports(
         "FlextInfraDirenvGate": ".direnv",
         "FlextInfraDuplicationEvidence": ".duplication_evidence",
         "FlextInfraDuplicationGate": ".duplication",
-        "FlextInfraDuplicationReportMixin": ".duplication_report",
+        "FlextInfraDuplicationReport": ".duplication_report",
         "FlextInfraEnforcementCatalogGate": ".enforcement_catalog",
         "FlextInfraFreshImportGate": ".fresh_import",
         "FlextInfraGate": ".base_gate",
@@ -110,7 +110,7 @@ install_lazy_exports(
         "FlextInfraRuffFormatGate": ".ruff_format",
         "FlextInfraRuffLintGate": ".ruff_lint",
         "FlextInfraRuntimeIntegrityGate": ".runtime_integrity",
-        "FlextInfraScannerGateMixin": ".scanner_gate",
+        "FlextInfraScannerGate": ".scanner_gate",
         "FlextInfraSmellsGate": ".smells",
     }),
     public_exports=__all__,

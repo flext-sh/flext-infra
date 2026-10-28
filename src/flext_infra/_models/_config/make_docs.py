@@ -12,13 +12,13 @@ from typing import Annotated, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsMakeDocs:
+class FlextInfraModelsConfigMakeDocs:
     """Generated Makefile docs verb lifecycle and documentation link models."""
 
-    class DocsOverviewPreviewLimitsSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class DocsOverviewPreviewLimitsSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Maximum list sizes in the generated public API overview."""
 
         aliases: Annotated[int, m.Field(gt=0, description="Alias preview limit")]
@@ -33,7 +33,7 @@ class FlextInfraConfigModelsMakeDocs:
         ]
         keywords: Annotated[int, m.Field(gt=0, description="Keyword preview limit")]
 
-    class DocsGithubRepoSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class DocsGithubRepoSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One governed GitHub repository used for cross-repo doc links."""
 
         organization: Annotated[
@@ -55,7 +55,7 @@ class FlextInfraConfigModelsMakeDocs:
             ),
         ] = ""
 
-    class MakeDocsSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeDocsSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
         actions: Annotated[
@@ -77,7 +77,7 @@ class FlextInfraConfigModelsMakeDocs:
             m.Field(description="Repository-relative docs reports directory"),
         ]
         overview_preview_limits: Annotated[
-            FlextInfraConfigModelsMakeDocs.DocsOverviewPreviewLimitsSpec,
+            FlextInfraModelsConfigMakeDocs.DocsOverviewPreviewLimitsSpec,
             m.Field(description="Maximum preview sizes for generated API overviews"),
         ]
         cross_project_relative_link_pattern: Annotated[
@@ -138,4 +138,4 @@ class FlextInfraConfigModelsMakeDocs:
             return self
 
 
-__all__: list[str] = ["FlextInfraConfigModelsMakeDocs"]
+__all__: list[str] = ["FlextInfraModelsConfigMakeDocs"]

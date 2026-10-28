@@ -21,11 +21,11 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentityMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
 
 
-class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
+class FlextInfraUtilitiesGitSemanticSubmodule(
+    FlextInfraUtilitiesGitSemanticIdentity,
 ):
     """Own ``.gitmodules`` composition and its derivations."""
 
@@ -287,4 +287,4 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
         return tuple(sorted(pending))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticSubmoduleMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticSubmodule"]

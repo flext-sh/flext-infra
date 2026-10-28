@@ -12,13 +12,13 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import c, m, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitStateSnapshotMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStateSnapshot,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotMixin):
+class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     """Read and assemble checkpoint trees without touching a real index."""
 
     @classmethod
@@ -193,4 +193,4 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
                 raise ValueError(msg)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateTreesMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateTrees"]

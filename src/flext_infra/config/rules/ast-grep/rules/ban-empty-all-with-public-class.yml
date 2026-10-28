@@ -20,12 +20,12 @@ utils:
     has:
       kind: assignment
       all:
-        - has:
-            field: left
-            regex: ^__all__$
-        - has:
-            field: right
-            regex: ^(?:\(\s*\)|\[\s*\])$
+      - has:
+          field: left
+          regex: ^__all__$
+      - has:
+          field: right
+          regex: ^(?:\(\s*\)|\[\s*\])$
   decorated-class:
     kind: decorated_definition
     has:
@@ -36,44 +36,41 @@ rule:
   inside:
     kind: module
     all:
-      - has:
-          kind: class_definition
-          has:
-            field: name
-            regex: ^[A-Za-z]
-            pattern: $NAME
-          not:
-            any:
-              - follows:
-                  stopBy: end
-                  kind: class_definition
-              - precedes:
-                  stopBy: end
-                  kind: class_definition
-      - has:
-          kind: expression_statement
-          has:
-            kind: assignment
-            all:
-              - has:
-                  field: left
-                  kind: identifier
-                  pattern: $ALIAS
-              - has:
-                  field: right
-                  kind: identifier
-                  pattern: $NAME
-      - not:
-          has:
-            matches: decorated-class
+    - has:
+        kind: class_definition
+        has:
+          field: name
+          regex: ^[A-Za-z]
+          pattern: $NAME
+        not:
+          any:
+          - follows:
+              stopBy: end
+              kind: class_definition
+          - precedes:
+              stopBy: end
+              kind: class_definition
+    - has:
+        kind: expression_statement
+        has:
+          kind: assignment
+          all:
+          - has:
+              field: left
+              kind: identifier
+              pattern: $ALIAS
+          - has:
+              field: right
+              kind: identifier
+              pattern: $NAME
+    - not:
+        has:
+          matches: decorated-class
 fix: '__all__: list[str] = ["$NAME", "$ALIAS"]'
 message: >-
-  `__all__` is empty while the module declares the public class `$NAME`
-  and its alias `$ALIAS`: the generated lazy init exports nothing.
+  `__all__` is empty while the module declares the public class `$NAME` and its alias `$ALIAS`: the generated lazy init exports nothing.
 note: >-
-  Where: this module's `__all__`. Why: an empty declaration hides the class
-  and its alias from the generated lazy exports. How: `make mod` publishes the
-  class and its alias.
+  Where: this module's `__all__`. Why: an empty declaration hides the class and its alias from the generated lazy exports. How: `make mod` publishes the class and its alias.
 ---
 id: declare-empty-all-single-class
 language: python
@@ -86,12 +83,12 @@ utils:
     has:
       kind: assignment
       all:
-        - has:
-            field: left
-            regex: ^__all__$
-        - has:
-            field: right
-            regex: ^(?:\(\s*\)|\[\s*\])$
+      - has:
+          field: left
+          regex: ^__all__$
+      - has:
+          field: right
+          regex: ^(?:\(\s*\)|\[\s*\])$
   decorated-class:
     kind: decorated_definition
     has:
@@ -102,43 +99,41 @@ rule:
   inside:
     kind: module
     all:
-      - has:
-          kind: class_definition
+    - has:
+        kind: class_definition
+        has:
+          field: name
+          regex: ^[A-Za-z]
+          pattern: $NAME
+        not:
+          any:
+          - follows:
+              stopBy: end
+              kind: class_definition
+          - precedes:
+              stopBy: end
+              kind: class_definition
+    - not:
+        has:
+          kind: expression_statement
           has:
-            field: name
-            regex: ^[A-Za-z]
-            pattern: $NAME
-          not:
-            any:
-              - follows:
-                  stopBy: end
-                  kind: class_definition
-              - precedes:
-                  stopBy: end
-                  kind: class_definition
-      - not:
-          has:
-            kind: expression_statement
-            has:
-              kind: assignment
-              all:
-                - has:
-                    field: left
-                    kind: identifier
-                - has:
-                    field: right
-                    kind: identifier
-                    pattern: $NAME
-      - not:
-          has:
-            matches: decorated-class
+            kind: assignment
+            all:
+            - has:
+                field: left
+                kind: identifier
+            - has:
+                field: right
+                kind: identifier
+                pattern: $NAME
+    - not:
+        has:
+          matches: decorated-class
 fix: '__all__: list[str] = ["$NAME"]'
 message: >-
-  `__all__` is empty while the module declares the public class `$NAME`:
-  the generated lazy init exports nothing.
+  `__all__` is empty while the module declares the public class `$NAME`: the generated lazy init exports nothing.
 note: >-
-  Where: this module's `__all__`. Why: an empty declaration hides the class
-  from the generated lazy exports. How: `make mod` publishes the class.
+  Where: this module's `__all__`. Why: an empty declaration hides the class from the generated lazy exports. How: `make mod` publishes the class.
 ---
 id: ban-empty-all-with-public-classes
 language: python
@@ -151,32 +146,32 @@ utils:
     has:
       kind: assignment
       all:
-        - has:
-            field: left
-            regex: ^__all__$
-        - has:
-            field: right
-            regex: ^(?:\(\s*\)|\[\s*\])$
+      - has:
+          field: left
+          regex: ^__all__$
+      - has:
+          field: right
+          regex: ^(?:\(\s*\)|\[\s*\])$
   public-class:
     any:
-      - kind: class_definition
+    - kind: class_definition
+      has:
+        field: name
+        regex: ^[A-Za-z]
+    - kind: decorated_definition
+      has:
+        field: definition
+        kind: class_definition
         has:
           field: name
           regex: ^[A-Za-z]
-      - kind: decorated_definition
-        has:
-          field: definition
-          kind: class_definition
-          has:
-            field: name
-            regex: ^[A-Za-z]
   any-class:
     any:
-      - kind: class_definition
-      - kind: decorated_definition
-        has:
-          field: definition
-          kind: class_definition
+    - kind: class_definition
+    - kind: decorated_definition
+      has:
+        field: definition
+        kind: class_definition
 rule:
   matches: empty-all
   inside:
@@ -184,17 +179,14 @@ rule:
     has:
       matches: public-class
       any:
-        - follows:
-            stopBy: end
-            matches: any-class
-        - precedes:
-            stopBy: end
-            matches: any-class
-        - kind: decorated_definition
+      - follows:
+          stopBy: end
+          matches: any-class
+      - precedes:
+          stopBy: end
+          matches: any-class
+      - kind: decorated_definition
 message: >-
-  `__all__` is empty while the module declares public top-level classes: the
-  generated lazy init exports nothing.
+  `__all__` is empty while the module declares public top-level classes: the generated lazy init exports nothing.
 note: >-
-  Where: this module's `__all__`. Why: an empty declaration hides every class
-  from the generated lazy exports. How: list the published classes (one owner
-  class per module) in `__all__`.
+  Where: this module's `__all__`. Why: an empty declaration hides every class from the generated lazy exports. How: list the published classes (one owner class per module) in `__all__`.

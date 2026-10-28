@@ -11,10 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodemodBindingChain,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -23,11 +20,14 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
-class FlextInfraUtilitiesSemanticNestingTypes(
+class FlextInfraTypesUtilitiesSemanticNesting(
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 ):
     """Share native annotation regions and original lexical binding identity."""
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
     ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraTypesUtilitiesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = expression.partition(".")[0]
         module = scope.pyobject.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(module):
             msg = "quoted type scope has no declaring module"
             raise ValueError(msg)
         local = runtime.expression_name(scope, root)
@@ -223,4 +223,4 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         return expression
 
 
-__all__: list[str] = ["FlextInfraUtilitiesSemanticNestingTypes"]
+__all__: list[str] = ["FlextInfraTypesUtilitiesSemanticNesting"]

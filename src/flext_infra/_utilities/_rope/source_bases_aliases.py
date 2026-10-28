@@ -20,7 +20,7 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraTypesUtilitiesRopeRuntime,
 )
 
 
@@ -173,7 +173,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 project, source
             )
         )
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(parsed):
+        if not FlextInfraTypesUtilitiesRopeRuntime.source_module(parsed):
             message = "Lazy aliases require a native Rope source module"
             raise TypeError(message)
         if parsed.source_code != source:
@@ -310,14 +310,14 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             binding = runtime.resolve_symbol(scope, node)
             if (
                 binding is None
-                or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                or not FlextInfraTypesUtilitiesRopeRuntime.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 message = "Lazy alias mapping requires one native assignment"
                 raise ValueError(message)
             provider, line = runtime.definition_location(binding)
             if (
-                not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider)
+                not FlextInfraTypesUtilitiesRopeRuntime.source_module(provider)
                 or line is None
             ):
                 message = "Lazy alias mapping requires a source declaration"
@@ -367,7 +367,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraTypesUtilitiesRopeRuntime
         if isinstance(expression, ast.Name):
             binding = runtime.resolve_symbol(scope, expression)
             if not types.imported_name(binding):

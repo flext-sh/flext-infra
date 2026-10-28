@@ -16,16 +16,11 @@ from typing import Final
 from flext_cli import u
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesSemanticNestingTypes,
-)
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope.move_publication import (
     FlextInfraUtilitiesRopeMovePublication,
 )
-from flext_infra._utilities._rope.pymodule import (
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
+from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities._rope.rope_module_patch import (
@@ -34,6 +29,9 @@ from flext_infra._utilities._rope.rope_module_patch import (
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraTypesUtilitiesSemanticNesting,
 )
 
 
@@ -464,14 +462,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         root = Path(project.root.real_path).resolve()
-        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        expected = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, cls._resource(project, root, source)
         )
         resolved = project.find_module(expected.get_name())
         if resolved is None or Path(resolved.real_path).resolve() != source:
             msg = f"native module identity does not select its source file: {source}"
             raise ValueError(msg)
-        destination = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        destination = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, cls._resource(project, root, target)
         ).get_name()
         resolved = project.find_module(destination)
@@ -485,19 +483,15 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             project, candidate, declared_files=declared_files
         )
         try:
-            destination_module = (
-                FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                    composed, cls._resource(composed, root, target)
-                )
+            destination_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                composed, cls._resource(composed, root, target)
             )
 
             for path, original_text in tuple(candidate.items()):
                 consumer_text = cls._divergence_diagnostic(project, path, original_text)
                 if path.name == c.Infra.INIT_PY and path != source:
-                    consumer = (
-                        FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                            composed, cls._resource(composed, root, path)
-                        )
+                    consumer = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                        composed, cls._resource(composed, root, path)
                     )
                     package = consumer.get_name().removesuffix(".__init__")
                     consumer_text = cls.rewrite_module_move_publications(
@@ -538,7 +532,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             project, candidate, declared_files=declared_files
         )
         try:
-            relocated = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            relocated = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 verified, cls._resource(verified, root, target)
             )
 
@@ -624,10 +618,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source, target, path = paths
         root = Path(project.root.real_path).resolve()
         resource = cls._resource(composed, root, path)
-        original = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        original = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, cls._resource(project, root, source if path == target else path)
         )
-        module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             composed, resource
         )
         rewritten, required = cls._module_quoted_rewrite(
@@ -694,7 +688,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return selected
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        rewritten = FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
+        rewritten = FlextInfraTypesUtilitiesSemanticNesting.rewrite_quoted_types(
             composed, resource, text, replacement
         )
         if binding is not None:
@@ -783,7 +777,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         """
         paths, identities, destination = destination_info
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesSemanticNestingTypes
+        types = FlextInfraTypesUtilitiesSemanticNesting
         parts = expression.split(".")
         for count in range(1, len(parts) + 1):
             prefix = ".".join(parts[:count])
@@ -903,9 +897,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         """
         root = Path(project.root.real_path).resolve()
         resource = cls._resource(project, root, path)
-        module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-            project, resource
-        )
+        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(project, resource)
         positions = {
             id(scope): key for key, scope in cls._module_scopes(module).items()
         }
@@ -927,7 +919,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 raise ValueError(msg)
             seen.add(key)
 
-        FlextInfraUtilitiesSemanticNestingTypes.quoted_type_edits(
+        FlextInfraTypesUtilitiesSemanticNesting.quoted_type_edits(
             project, resource, text, validate
         )
         if seen != set(required):
@@ -1075,7 +1067,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         )
         try:
             source_resource = cls._resource(original, root, source)
-            source_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            source_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 original, source_resource
             )
             source_module_name = source_module.get_name()
@@ -1126,7 +1118,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 declared_files=virtual,
             )
             try:
-                destination = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                destination = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                     package_plan,
                     cls._resource(
                         package_plan, root, request.target_file.parent / c.Infra.INIT_PY
@@ -1222,14 +1214,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         root = Path(project.root.real_path).resolve()
-        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        expected = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, source
         ).get_attribute(name)
         owners: list[str] = []
         for path in sorted(sources):
             if path.name != c.Infra.INIT_PY:
                 continue
-            module_name = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            module_name = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project,
                 cls._resource(project, root, path),
             ).get_name()
@@ -1502,12 +1494,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise FileNotFoundError(source_file)
         source_resource = cls._resource(request.rope_project, root, source_file)
         source = source_resource.read()
-        offset = (
-            FlextInfraUtilitiesRopeCorePyModuleMixin.find_identifier_offset_in_lines(
-                source.splitlines(keepends=True),
-                line=request.line,
-                symbol=request.class_name,
-            )
+        offset = FlextInfraUtilitiesRopeCorePyModule.find_identifier_offset_in_lines(
+            source.splitlines(keepends=True),
+            line=request.line,
+            symbol=request.class_name,
         )
         if offset is None:
             msg = f"class {request.class_name} was not found at line {request.line}"

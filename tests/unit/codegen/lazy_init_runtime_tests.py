@@ -616,11 +616,11 @@ class TestsFlextInfraLazyInitRuntime:
         package.joinpath("models.py").write_text(
             "from flext_core import m as parent\n"
             "from ._models import FlextPlannedErrors\n"
-            "class FlextPlannedModels(FlextPlannedErrors):\n"
+            "class FlextModelsPlanned(FlextPlannedErrors):\n"
             "    class Response(FlextPlannedErrors.Payload):\n"
             '        code: int = parent.Field(description="Response code.")\n'
-            "m = FlextPlannedModels\n"
-            "__all__ = ('FlextPlannedModels', 'm')\n",
+            "m = FlextModelsPlanned\n"
+            "__all__ = ('FlextModelsPlanned', 'm')\n",
             encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
@@ -693,11 +693,11 @@ class TestsFlextInfraLazyInitRuntime:
         package.joinpath("models.py").write_text(
             "from flext_core import m as parent\n"
             "from ._models import FlextStaleErrors\n"
-            "class FlextStaleModels(FlextStaleErrors):\n"
+            "class FlextModelsStale(FlextStaleErrors):\n"
             "    class Response(FlextStaleErrors.Payload):\n"
             '        code: int = parent.Field(description="Response code.")\n'
-            "m = FlextStaleModels\n"
-            "__all__ = ('FlextStaleModels', 'm')\n",
+            "m = FlextModelsStale\n"
+            "__all__ = ('FlextModelsStale', 'm')\n",
             encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)

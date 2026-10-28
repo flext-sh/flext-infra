@@ -50,12 +50,15 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesSemanticCutover,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeCore,
@@ -63,13 +66,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesInventory,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
-    FlextInfraUtilitiesSemanticCutover,
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
     FlextInfraUtilitiesRopeAnalysisImportState,
     FlextInfraUtilitiesRopeAnalysisSourceScan,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
 )
 
 
@@ -737,6 +741,9 @@ class FlextInfraUtilitiesCodegenFacades(
         path = directory.parent / f"{directory.name.lstrip('_')}.py"
         owners = cls.family_subfacade_owners(project, directory)
         if len(owners) > 1:
+            resolver_factory = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                project, sources={}
+            )
             evidence: list[str] = []
             for owner_path, owner_name in owners:
                 module = cls.require_semantic_module(
@@ -750,7 +757,13 @@ class FlextInfraUtilitiesCodegenFacades(
                     ("bases", tuple(owner.get_superclasses())),
                     (
                         "members",
-                        tuple(cls._component_member_suppliers(owner, project=project)),
+                        tuple(
+                            cls._component_member_suppliers(
+                                owner,
+                                resolver_factory=resolver_factory,
+                                project=project,
+                            )
+                        ),
                     ),
                     ("calls", tuple(cls._component_callable_suppliers(owner))),
                 ):
@@ -808,6 +821,11 @@ class FlextInfraUtilitiesCodegenFacades(
             Existing compositions, without deriving ownership from class spelling.
 
         """
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                project, sources={}
+            )
+        )
         owners: list[t.Pair[Path, str]] = []
         classes: list[p.Infra.RopeSourceClass] = []
         priorities: list[t.Pair[bool, t.Pair[bool, bool]]] = []
@@ -841,7 +859,11 @@ class FlextInfraUtilitiesCodegenFacades(
                     *owner.get_superclasses(),
                     *(
                         member_suppliers := tuple(
-                            cls._component_member_suppliers(owner, project=project)
+                            cls._component_member_suppliers(
+                                owner,
+                                resolver_factory=resolver_factory,
+                                project=project,
+                            )
                         )
                     ),
                     *(
@@ -1076,6 +1098,7 @@ class FlextInfraUtilitiesCodegenFacades(
         cls,
         owner: p.Infra.RopeSourceClass,
         *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         project: p.Infra.RopeProject,
     ) -> Generator[p.Infra.RopePyObject]:
         """Read declaration-time aliases after superclass evidence is exhausted.
@@ -1096,7 +1119,11 @@ class FlextInfraUtilitiesCodegenFacades(
         for scope in owner.get_scope().get_scopes():
             if cls.py_class(nested := scope.pyobject):
                 yield from nested.get_superclasses()
-                yield from cls._component_member_suppliers(nested, project=project)
+                yield from cls._component_member_suppliers(
+                    nested,
+                    resolver_factory=resolver_factory,
+                    project=project,
+                )
         declaration = owner.get_ast()
         if not isinstance(declaration, ast.ClassDef):
             message = f"Component owner has no class declaration: {owner.get_name()}"
@@ -1113,7 +1140,9 @@ class FlextInfraUtilitiesCodegenFacades(
         for name in sorted(declared):
             member = members[name]
             kind = FlextInfraUtilitiesFacadeMembers.facade_member_kind(
-                member, source_project=project
+                member,
+                resolver_factory=resolver_factory,
+                source_project=project,
             )
             if kind is c.Infra.FacadeMemberKind.CONSTANT or (
                 not composition and kind is c.Infra.FacadeMemberKind.TYPE
@@ -2070,14 +2099,14 @@ class FlextInfraUtilitiesCodegenFacades(
         """
         family_root, directory, family = domain
         moved: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        path, name = cls.family_subfacade_identity(
+            directory, family_root, family=family, project=ownership_project
+        )
+        owner = cls.family_subfacade_source_owner(
+            path, name, directory=directory, project=ownership_project
+        )
         with source_view(root, declared_files=tuple(staged.values())) as binding:
             project = binding[0]
-            path, name = cls.family_subfacade_identity(
-                directory, family_root, family=family, project=ownership_project
-            )
-            owner = cls.family_subfacade_source_owner(
-                path, name, directory=directory, project=ownership_project
-            )
             owner = cls._component_candidate_owner(
                 project,
                 (path, name),

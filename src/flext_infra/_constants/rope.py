@@ -71,7 +71,7 @@ class FlextInfraConstantsRope:
         "Any statement not matched by a more specific category."
 
     # NOTE: runtime engine types and exception-boundary
-    # tuples live in u.Infra (FlextInfraUtilitiesRopeRuntimeTypes), not in the
+    # tuples live in u.Infra (FlextInfraTypesUtilitiesRopeRuntime), not in the
     # constants layer, to keep c.Infra declarative and cycle-free.
 
     ROPE_IMPORTUTILS_MODULE: ClassVar[str] = "rope.refactor.importutils"

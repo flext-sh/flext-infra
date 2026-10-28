@@ -98,20 +98,23 @@ class TestsFlextInfraSourceMemberResolver:
             closing(u.Infra.init_rope_project(tmp_path)) as original,
             closing(u.Infra.snapshot_project(original, {source: content})) as project,
         ):
-            resolver = u.Infra.source_member_resolver(project, sources=sources)
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                project, sources=sources
+            )
             sources.clear()
+            resolver = resolver_factory()
             member = resolver(f"{child.qualified_base}.item")
             tm.that(
                 u.Infra.require_source_object(member.get_object(), "item").get_name(),
                 eq="item",
             )
             tm.that(
-                resolver.class_order((child, base)),
+                resolver_factory().class_order((child, base)),
                 eq=(child.qualified_base, base.qualified_base),
             )
             tm.that(
                 u.Infra.require_class_object(
-                    resolver(child).get_object(), child.qualified_base
+                    resolver_factory()(child).get_object(), child.qualified_base
                 ).get_name(),
                 eq="Child",
             )

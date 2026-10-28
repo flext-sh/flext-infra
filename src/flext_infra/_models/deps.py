@@ -19,8 +19,8 @@ from flext_infra._models import (
     FlextInfraModelsWorkspace,
 )
 from flext_infra._models._config import (
-    FlextInfraConfigModelsArtifact,
-    FlextInfraConfigModelsRepository,
+    FlextInfraModelsConfigArtifact,
+    FlextInfraModelsConfigRepository,
 )
 
 GitSourceUrlPrefixField = Annotated[
@@ -461,7 +461,7 @@ class FlextInfraModelsDeps(
                 The validated project-relative hook path.
 
             """
-            return FlextInfraConfigModelsRepository.validated_hatch_build_hook_path(
+            return FlextInfraModelsConfigRepository.validated_hatch_build_hook_path(
                 value
             )
 
@@ -612,7 +612,7 @@ class FlextInfraModelsDeps(
             m.Field(description="Declared repository topology"),
         ]
         codegen: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
+            FlextInfraModelsConfigArtifact.CodegenConfigSpec,
             m.Field(description="Elected effective target codegen policy"),
         ]
         runtime_dependency_overlay: Annotated[

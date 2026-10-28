@@ -44,7 +44,7 @@ src/flext_infra/
 | `FlextInfraUtilitiesPythonModel` | class | `_utilities/python_model.py`  | `u.Infra` static facts derived from the source engine's existing parse |
 | `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
 | `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | explicit conform composition over the shared projection executor, without Service inheritance |
-| `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
+| `FlextInfraModelsConfig`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
 | `FlextInfraPromoted`            | class | `promoted.py`                  | promoted command framework facade                          |
 
 ## Promoted command framework

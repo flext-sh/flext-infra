@@ -14,8 +14,8 @@ from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitWorktreeDiscovery,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from git import Repo
 
 
-class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+class FlextInfraUtilitiesGitWorktreeMaterialization(
+    FlextInfraUtilitiesGitWorktreeDiscovery,
 ):
     """Own worktree materialization operations."""
 
@@ -424,4 +424,4 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         return cls._git_copy_untracked(source_root, worktree_root, tuple(excluded))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMaterializationMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMaterialization"]
