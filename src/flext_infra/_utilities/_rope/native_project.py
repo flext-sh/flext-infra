@@ -96,7 +96,10 @@ class FlextInfraRopeNativeProject(Project):
         """
         native = cast("p.Infra.RopeProject", super())
         if self.find_module(name, folder) is None:
-            spec = importlib.util.find_spec(name)
+            try:
+                spec = importlib.util.find_spec(name)
+            except ModuleNotFoundError:
+                spec = None
             if spec is not None and isinstance(
                 spec.loader, importlib.machinery.ExtensionFileLoader
             ):

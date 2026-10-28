@@ -46,8 +46,9 @@ class TestsFlextInfraInfraSelection:
         )
         return self
 
+    @staticmethod
     @pytest.fixture
-    def selector(self) -> type[u.Infra]:
+    def selector() -> type[u.Infra]:
         """Provide project selector utilities class.
 
         Returns:

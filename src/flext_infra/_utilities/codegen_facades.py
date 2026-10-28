@@ -811,6 +811,7 @@ class FlextInfraUtilitiesCodegenFacades(
         owners: list[t.Pair[Path, str]] = []
         classes: list[p.Infra.RopeSourceClass] = []
         priorities: list[t.Pair[bool, t.Pair[bool, bool]]] = []
+        composition_suppliers: list[t.VariadicTuple[p.Infra.RopePyObject]] = []
         model = FlextInfraUtilitiesDeclarationPayload.identity_name(
             project, "pydantic.BaseModel"
         ).get_object()
@@ -838,7 +839,11 @@ class FlextInfraUtilitiesCodegenFacades(
                     continue
                 declared_suppliers = (
                     *owner.get_superclasses(),
-                    *cls._component_member_suppliers(owner, project=project),
+                    *(
+                        member_suppliers := tuple(
+                            cls._component_member_suppliers(owner, project=project)
+                        )
+                    ),
                     *(
                         cls._component_callable_suppliers(owner)
                         if path == canonical
@@ -877,6 +882,8 @@ class FlextInfraUtilitiesCodegenFacades(
                         continue
                     owners.append((path, name))
                     classes.append(owner)
+                    # Reuse this invocation's admitted member identities.
+                    composition_suppliers.append((owner, *member_suppliers))
                     priorities.append((
                         path == canonical,
                         (path.parent == directory, path.parent == directory.parent),
@@ -884,14 +891,11 @@ class FlextInfraUtilitiesCodegenFacades(
         composed = tuple(
             frozenset(
                 ancestor
-                for supplier in (
-                    owner,
-                    *cls._component_member_suppliers(owner, project=project),
-                )
+                for supplier in suppliers
                 if cls.py_class(supplier)
                 for ancestor in cls.class_ancestry(supplier)
             )
-            for owner in classes
+            for suppliers in composition_suppliers
         )
         return [
             owner
@@ -2859,15 +2863,36 @@ class FlextInfraUtilitiesCodegenFacades(
         """Preserve lexical collisions and the facade's own type-alias publication.
 
         Header slots use their captured declaration-time bindings, not an imported
-        letter retained by Rope after the module publishes its own facade.
-        Publication and collision checks retain the same captured source cohort.
+        letter retained by Rope after the module publishes its own facade. When
+        the module publishes the letter itself, that publication occupies the
+        name and the upstream import takes the package-qualified alias — a bare
+        import plus the later ``letter = <facade>`` rebind is the mypy
+        ``Cannot assign multiple types`` collision (ADR-028 decision 10 alias
+        election). Publication and collision checks retain the same captured
+        source cohort.
 
         Returns:
             Whether replacing a reference would capture an occupied letter.
 
         """
         source = module.source_code
-        facade, _ = cls._facade_classes(ast.parse(source), binding[0])
+        tree = ast.parse(source)
+        facade, _ = cls._facade_classes(tree, binding[0])
+        published = any(
+            (
+                isinstance(statement, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == letter
+                    for target in statement.targets
+                )
+            )
+            or (
+                isinstance(statement, ast.AnnAssign)
+                and isinstance(statement.target, ast.Name)
+                and statement.target.id == letter
+            )
+            for statement in tree.body
+        )
         headers = {
             (node.lineno, node.col_offset): declaration
             for declaration in ast.walk(facade)
@@ -2890,6 +2915,11 @@ class FlextInfraUtilitiesCodegenFacades(
         occupied = False
         for node in names:
             if (node.lineno, node.col_offset) in headers:
+                # A module-level publication of the letter itself occupies the
+                # name: a bare upstream import plus the later ``letter = <facade>``
+                # rebind is the mypy ``Cannot assign multiple types`` collision,
+                # so the header slot must take the package-qualified alias.
+                occupied |= published
                 candidate = ast.copy_location(ast.Name(id=letter, ctx=ast.Load()), node)
                 enclosing = cls._enclosing_facade_base_binding(
                     module,

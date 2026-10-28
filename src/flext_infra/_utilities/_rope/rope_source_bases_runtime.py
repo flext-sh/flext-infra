@@ -1373,7 +1373,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Captured providers retain their planned bytes; uncaptured providers
             retain their elected native source. Both completed inventories own
             assignments that replace earlier imports. Unchanged imports retain
-            their native imported-name provenance.
+            their native imported-name provenance. An import Rope cannot resolve
+            elects no native provider, so the completed source declaration is
+            authoritative for that name.
 
             Returns:
                 The completed source override, or no override of the native import.
@@ -1398,10 +1400,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return None
                 message = f"Unresolved provider base: {module_name}.{name}"
                 raise ValueError(message)
+            native_target: str | None
+            try:
+                native_target = self._provider_name(
+                    self._provider_module(binding.imported_module)
+                )
+            except FlextInfraUtilitiesRopeRuntime.rope_module_not_found_error_types():
+                # An import Rope cannot resolve elects no native provider; the
+                # completed source declaration is the authority for that name.
+                native_target = None
             if (
                 reference.target in self._definitions
-                or reference.target
-                != self._provider_name(self._provider_module(binding.imported_module))
+                or reference.target != native_target
                 or reference.attributes != (binding.imported_name,)
             ):
                 return m.Infra.SourceClassReference(
@@ -1476,7 +1486,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             Returns:
                 The first star-imported module that binds ``name``, or ``None``
-                when no star re-export of the provider binds it.
+                when no star re-export of the provider binds it. Star targets
+                Rope cannot resolve are skipped.
 
             Raises:
                 TypeError: A source provider has no native parsed module.
@@ -1509,9 +1520,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     "." * node.level + (node.module or ""),
                     package,
                 )
-                provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
-                    self._project.get_module(target)
-                )
+                try:
+                    provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                        self._project.get_module(target)
+                    )
+                except (
+                    FlextInfraUtilitiesRopeRuntime.rope_module_not_found_error_types()
+                ):
+                    # Rope dropped this star import because the module does not
+                    # resolve; that node cannot bind the requested name.
+                    continue
                 if name in provider.get_attributes():
                     return provider
             return None

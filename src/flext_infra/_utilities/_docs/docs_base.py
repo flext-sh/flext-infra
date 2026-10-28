@@ -29,7 +29,15 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def docs_url_scheme(target: str) -> str:
-        """Read a documentation URL scheme, rejecting insecure web links."""
+        """Read a documentation URL scheme, rejecting insecure web links.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If insecure documentation URL is prohibited; use HTTPS.
+
+        """
         normalized = u.norm_str(target, case="lower").lstrip("<")
         scheme = urlsplit(normalized).scheme
         if scheme == c.Infra.DOCS_INSECURE_WEB_SCHEME:
@@ -39,7 +47,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def docs_is_secure_web_url(target: str) -> bool:
-        """Identify HTTPS documentation links."""
+        """Identify HTTPS documentation links.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
         return (
             FlextInfraUtilitiesDocsBase.docs_url_scheme(target)
             == c.Infra.DOCS_SECURE_WEB_SCHEME
@@ -47,7 +60,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def docs_is_python_fence(fence: m.Cli.MarkdownFence) -> bool:
-        """Select Python fences governed by executable documentation checks."""
+        """Select Python fences governed by executable documentation checks.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
         return (
             fence.language.startswith(c.Infra.MARKDOWN_CODE_LANGUAGE)
             and c.Infra.MARKDOWN_CODE_SKIP_MARKER not in fence.info
@@ -55,7 +73,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def docs_is_external(target: str) -> bool:
-        """Identify documentation links with a permitted external scheme."""
+        """Identify documentation links with a permitted external scheme.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
         return (
             FlextInfraUtilitiesDocsBase.docs_url_scheme(target)
             in c.Infra.DOCS_EXTERNAL_SCHEMES
@@ -63,7 +86,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def iter_markdown_files(repository_root: Path) -> t.SequenceOf[Path]:
-        """Collect Markdown files under the configured documentation scope."""
+        """Collect Markdown files under the configured documentation scope.
+
+        Returns:
+            The resulting ``t.SequenceOf[Path]``.
+
+        """
         docs_root = repository_root / c.Infra.DIR_DOCS
         search_root = docs_root if docs_root.is_dir() else repository_root
         return sorted(
@@ -77,7 +105,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def iter_scope_markdown_files(scope: m.Infra.DocScope) -> t.SequenceOf[Path]:
-        """Collect the Markdown files governed by one documentation scope."""
+        """Collect the Markdown files governed by one documentation scope.
+
+        Returns:
+            The resulting ``t.SequenceOf[Path]``.
+
+        """
         return FlextInfraUtilitiesDocsBase.docs_scope_markdown_paths(
             scope, FlextInfraUtilitiesDocsBase.iter_markdown_files(scope.path)
         )
@@ -87,7 +120,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         scope: m.Infra.DocScope,
         candidates: t.SequenceOf[Path],
     ) -> t.SequenceOf[Path]:
-        """Apply scope policy to already captured candidate paths."""
+        """Apply scope policy to already captured candidate paths.
+
+        Returns:
+            The resulting ``t.SequenceOf[Path]``.
+
+        """
         scope_root = scope.path
         docs_root = scope_root / c.Infra.DIR_DOCS
         search_root = docs_root if docs_root.is_dir() else scope_root
@@ -125,7 +163,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def write_markdown(path: Path, lines: t.StrSequence) -> p.Result[bool]:
-        """Write Markdown through the SDK file owner."""
+        """Write Markdown through the SDK file owner.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         u.write_file(
             path, "\n".join(lines).rstrip() + "\n", encoding=c.DEFAULT_ENCODING
@@ -192,7 +235,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         output_dir: Path | str,
         handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-        """Run the selected handler over the elected documentation scopes."""
+        """Run the selected handler over the elected documentation scopes.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+
+        """
         return FlextInfraUtilitiesDocsScopeBuild.build_scopes(
             repository_root=repository_root,
             projects=projects,

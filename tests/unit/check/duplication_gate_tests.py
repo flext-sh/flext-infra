@@ -25,8 +25,9 @@ class TestsFlextInfraDuplicationGate:
     host a unit test never reaches, so it is typed NOT EXECUTED there.
     """
 
+    @staticmethod
     @pytest.fixture
-    def _ci_context(self) -> Generator[None]:
+    def _ci_context() -> Generator[None]:
         ci = config.Infra.codegen.make.ci
         with u.Tests.env_vars_context({ci.variable: ci.value}):
             yield

@@ -11,9 +11,11 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_cli import u
-
-from flext_infra import FlextInfraUtilities, c, m, p, r, t
+from flext_infra import FlextInfraUtilities, c, m, p, r, t, u
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesPyprojectDocument,
+)
 
 
 class FlextInfraWorkspaceEnvironmentProvenanceEditable(
@@ -191,8 +193,10 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
 
         """
         result = r[t.VariadicTuple[t.Pair[str, Path | None]]]
-        package_name = cls.project_package_name(expected_root)
-        payload = cls.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
+        package_name = u.Infra.project_package_name(expected_root)
+        payload = FlextInfraUtilitiesPyprojectDocument.pyproject_payload(
+            expected_root / c.PYPROJECT_FILENAME,
+        )
         wheel: t.JsonMapping = payload
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             child = u.Cli.toml_mapping_child(wheel, key)
@@ -324,7 +328,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
             for name, target in packages
             if (
                 (
-                    package := cls.declared_package_dir(
+                    package := FlextInfraUtilitiesDiscovery.declared_package_dir(
                         name,
                         search_paths=(str(actual_source),),
                     )

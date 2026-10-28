@@ -11,7 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, m, p, r, t, u, workspace as workspace_services
+from flext_infra import c, m, p, r, settings, t, u, workspace as workspace_services
 from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
 
@@ -139,7 +139,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         """
         u.Cli.info(
             f"operation=generate root={request.root} scope={request.scope} "
-            f"surface={request.what} pid={os.getpid()}"
+            # Bind diagnostics to the selected process settings, never an old report.
+            f"surface={request.what} pid={os.getpid()} "
+            f"profile={settings.Infra.profile} "
+            f"profile_output={settings.Infra.profile_output}"
         )
         root = request.root.expanduser().resolve()
         return (

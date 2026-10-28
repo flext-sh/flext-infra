@@ -2062,23 +2062,29 @@ with `all` scope locally and `self` scope in its declared CI context. A local
 workspace invocation covers its root and declared members, while a standalone
 repository has only itself. The request model's default remains
 `SELF` for callers that do not select a scope, including file-only surfaces.
-Generation plans ordinary projections, Mise artifacts, lazy exports and docs as
-one invocation-wide candidate batch (campaign `flext-pipol`, ADR-018
-[single-read, single-batch publication](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#single-read-single-batch-publication-amended-2026-10-28-campaign-flext-pipol)):
-each source is read and parsed exactly once — one native workspace model feeds
-every planning surface and the executor rebases only the written paths between
-surfaces — the complete candidate tree is validated before any publication, and
-publication is a single atomic batch. The first causal failure retains the whole
-batch: no repository keeps a partially published surface, and no dependent stage
-(docs included) re-reads the on-disk output of an earlier stage in place of the
-run's planned sources. Immediately before each write inside the batch, the
-publisher reads that destination's current state; an external edit before the
-write is input rather than a campaign-wide failure. The atomic write still
-protects a race during that individual operation.
-The journal authorizes temporary staging cleanup. It never restores destination
-preimages or deletes generated directories after a later phase fails. Accepted changes
-and unrelated external edits remain intact. Phase diagnostics accumulate into the
-publication report, and the final error verdict retains the original causal exception.
+**Accepted contract, implementation pending (2026-10-28):** ordinary
+projections, Mise artifacts, lazy exports and docs participate in bounded
+dependency-complete transactions under campaign `flext-pipol`; see ADR-018
+[single-read, single-batch publication](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#single-read-single-batch-publication-amended-2026-10-28-campaign-flext-pipol).
+One native project retains unchanged observations and refreshes changed
+resources and dependent facts incrementally in the same engine. Candidate
+validation, publication, index/mode/directory effects and refresh share the
+existing publication owner. ADR-018 defines the barrier before live Make/Rope
+reads, protection of later lazy reads, durable interrupted-state admission
+and narrow CAS rollback of the failed transaction's own effects. This gives
+atomic visibility to cooperating readers, not operating-system atomicity
+across files or an invocation-wide rollback promise.
+
+An external edit invalidates the affected candidate; reading a new preimage
+immediately before writing is not permission to adopt it silently. Preserve
+foreign WIP, completed independent transactions and the original causal failure.
+Failure stops dependent execution; unreached work remains unexecuted. These
+obligations supersede the historical no-preimage-restore wording only for
+authorized owned-effect rollback. Existing journal mechanics below are
+implementation context, not proof of the accepted transaction target.
+Generated output must already satisfy STRICT at its template/renderer;
+post-render repair or formatting is not admission. The owner is
+[ADR-028 Decision 8](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-8).
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
@@ -2106,12 +2112,12 @@ window but is not a crash-recovery ownership receipt.
 
 An exception-only repository outcome is a failed plan even when it has no diagnostic
 message yet. Planning progress and persisted evidence must agree on that failure;
-an `OK` planning row never attests publication. The managed executor settles the
-independent bootstrap, lazy-init and documentation targets through their own input
-and dependency guards before returning the aggregate failure. A logical rejection
-does not replace a later first native exception, and secondary failures do not
-replace an earlier native cause. Incomplete operation receipts retain planning and
-publication issues alongside successful batches and cannot qualify as complete.
+an `OK` planning row never attests publication. The managed executor retains
+the first failure and confirmed effects; it does not continue publishing
+bootstrap, lazy-init or documentation targets after failure. Secondary
+diagnostics never replace the original cause. Incomplete receipts retain
+failed and unreached work alongside completed transactions and cannot
+qualify as complete.
 
 Input dependency evidence remains fail-closed. A module-selected lazy-init invocation
 plans that package and its descendants, not every package in its source/test surface
@@ -2881,16 +2887,14 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
-`make check-pyright` runs the selected project's complete Pyright configuration
-through the native gate capture service and retains its raw report and exit status.
-From a workspace root, `make -f <member>/Makefile check-pyright` selects that
-member's declared configuration and the containing workspace's physical environment.
-It is a diagnosis verb; full `make check` remains the acceptance boundary.
-
-`make mod-types` applies the AST migrations declared by
-`make.type_contract_rules` to the complete selected project. The native AST engine
-verifies rule fixtures, resolves bindings, and repeats safe rewrites to its fixed
-point. Source models and protocols own the resulting contracts: consumers pass
+The retired `check-pyright` and `mod-types` Make subverbs, including their former
+member-Makefile dispatch examples, are historical interfaces. Use the active
+root's selector-free `make check` for declared Pyright validation and native
+reports, and `make mod` for the existing semantic transformation pipeline.
+Missing declared coverage is repaired at those owners, never by reviving a
+subverb or manually selecting a member Makefile. The native engine verifies rule
+fixtures, resolves bindings and repeats safe rewrites to its fixed point.
+Source models and protocols own the resulting contracts: consumers pass
 declared state models directly, and field defaults remain visible to both Pydantic
 and synthesized constructors. Required private attributes use their annotations;
 attributes with actual defaults or factories retain those declarations.
@@ -3591,6 +3595,10 @@ class members supplied by that domain. A facade that publishes input entities
 through aliases retains its authored identity and nested declarations.
 Supplier admission reads native declarations lazily; it does not infer every
 inherited attribute to establish a direct domain publication.
+Within one unchanged candidate, domain-owner election retains the exact member
+suppliers authenticated during admission for its subsequent composition comparison.
+This reuse ends with that election call; it neither skips the initial integrity
+checks nor adds superclass or callable suppliers to the comparison's evidence.
 The method admission predicate reads the class's cached native AST, including
 conditional definitions and excluding methods owned by nested classes. Native
 member bindings are evaluated only when superclass suppliers do not elect it.
@@ -3611,10 +3619,10 @@ annotations, and dropping them turns a precise diagnosis into a bare string.
 The existing captured-source override decides rebinding before the imported
 module is elected; a declared leaf import does not restart at an ancestor
 package and mistake namespace traversal for a provider cycle. Campaign
-`flext-pipol` (2026-10-28) enforces this single-read invariant across every
-phase — lazy planning, model→protocol and docs surfaces reuse the same
-snapshot instead of re-planning or re-opening native projects — and deletes
-engine routes that violate it.
+`flext-pipol` (2026-10-28) owns the accepted, implementation-pending
+single-read contract across lazy planning, model→protocol and docs: reuse
+unchanged observations in the same native engine, refresh changed resources
+incrementally and retire routes that reopen projects for later phases.
 
 Component-call correction follows the same native family composition through
 all ancestor components and nested namespaces. It rewrites a direct component
@@ -3643,6 +3651,10 @@ candidate before runtime acceptance.
 
 ### Single-Project Repository Snapshot and Memoized Facts (ADR-028)
 
+The complete same-engine incremental refresh contract below is accepted
+and pending implementation/runtime proof. Dated partial-implementation
+observations do not attest fulfillment of that contract.
+
 The operator-approved 2026-10-28 STRICT campaign starts with the documentation
 and Bead alignment described in
 [ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md#current-state-and-recovery-order).
@@ -3651,6 +3663,23 @@ and `flext-1engx.15` keep their existing bounded responsibilities. A command tha
 cannot import its implementation has executed no downstream gate. Only the
 causally necessary bootstrap repair belongs to that initial documentation
 delivery; structural application waits for its native acceptance.
+
+In the subsequent discussion about moving the incremental repair before
+documentary publication/validation, the operator replied, "continue para
+executar o plano até o final". The adopted execution boundary advances only
+the causally demonstrated candidate-planning repair needed to publish and
+validate those documents, after the affected owners are aligned. S0 remains
+open through native documentary acceptance. This continuation does not waive
+the specification: post-publication rebase and atomic-publisher receipts remain
+separate S3 obligations and do not explain or prove repair of the present
+planning timeout. Pilot order, complete gates, budgets and the analyzer freeze
+remain unchanged.
+
+The approved rollout qualifies three peripheral pilots, one dbt, one tap and
+one target, before structural foundation rollout. Their identities and proof
+belong to the active plan and Beads, not a fixed project list in this guide.
+The completion and admission owner remains
+[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
 
 Generation and modification run through one workspace organizer. It loops over the
 selected repositories in dependency order without worker pools; each repository
@@ -3793,6 +3822,10 @@ remains unmet until provider invalidation updates the one bound project safely.
 This status is not a performance or convergence receipt.
 
 ### Profiling a root verb
+
+The generation start message includes the resolved profiling flag and destination
+beside its native PID. These process settings are evidence of selection, not evidence
+of a completed capture; the raw capture and readable report must still be verified.
 
 Profiling is opt-in: export `FLEXT_INFRA_PROFILE=1`. The root `gen` and `mod`
 recipes set `FLEXT_INFRA_PROFILE_OUTPUT` themselves, from the typed Make spec

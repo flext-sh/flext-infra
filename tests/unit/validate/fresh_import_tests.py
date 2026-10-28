@@ -24,8 +24,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraFreshImport:
     """Fresh-process import smoke test suite."""
 
+    @staticmethod
     @pytest.fixture
-    def v(self) -> FlextInfraValidateFreshImport:
+    def v() -> FlextInfraValidateFreshImport:
         """Shared validator instance.
 
         Returns:

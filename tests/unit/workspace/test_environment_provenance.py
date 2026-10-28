@@ -123,8 +123,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             ids=tuple(repository.distribution for repository in repositories),
         )
 
+    @staticmethod
     @pytest.fixture
-    def ci_mode(self) -> bool:
+    def ci_mode() -> bool:
         """Read the hosted-runner contract used by the public consumer.
 
         Returns:

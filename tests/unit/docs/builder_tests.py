@@ -22,8 +22,9 @@ from tests import t
 class TestsFlextInfraBuilder:
     """Core build invocation tests."""
 
+    @staticmethod
     @pytest.fixture
-    def builder(self) -> FlextInfraDocBuilder:
+    def builder() -> FlextInfraDocBuilder:
         """Provide the public documentation builder service.
 
         Returns:

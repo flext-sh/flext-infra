@@ -25,8 +25,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraLazyMapFreshness:
     """Wrapper semantics: runs the check-only generator and formats the report."""
 
+    @staticmethod
     @pytest.fixture
-    def v(self) -> FlextInfraValidateLazyMapFreshness:
+    def v() -> FlextInfraValidateLazyMapFreshness:
         """Shared validator instance.
 
         Returns:

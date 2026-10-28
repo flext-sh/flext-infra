@@ -57,7 +57,7 @@ class FlextInfraUtilitiesRopeModulePatch:
 
         A facade letter (ADR-015 R1a, ADR-018 p.1) is a published alias whose
         single module binding names a class the module declares or imports,
-        e.g. ``c = FlextCliConstants`` or ``tm = FlextTestsMatchersUtilities.X``.
+        e.g. ``c = FlextCliConstants`` or ``tm = FlextTestsUtilitiesMatchers.X``.
         Singleton instances (``cli = FlextCli.fetch_global()``), functions
         (``main``), and attributes of instances (``lazy.attribute``) stay in
         the namespace root that declares them and are never inherited.

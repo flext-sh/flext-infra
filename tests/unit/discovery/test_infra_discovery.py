@@ -18,8 +18,9 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraDiscoveryInfraDiscovery:
     """Tests for ``FlextInfraDiscoveryInfraDiscovery``."""
 
+    @staticmethod
     @pytest.fixture
-    def service(self) -> u.Infra:
+    def service() -> u.Infra:
         """Provide ``service``.
 
         Returns:

@@ -333,11 +333,13 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> t.VariadicTuple[p.Infra.RopeClassObject]:
         """Traverse native ancestry without electing a second method order.
 
+        An inference result that is not a native class — typical while a
+        generated lazy projection is stale and rope cannot resolve a base —
+        contributes no native members and is skipped, so generation can heal
+        the projection instead of failing on it.
+
         Returns:
             The resulting ``t.VariadicTuple[p.Infra.RopeClassObject]``.
-
-        Raises:
-            TypeError: An inferred ancestor is not a native class object.
 
         """
         pending = [
@@ -349,40 +351,13 @@ class FlextInfraUtilitiesFacadeComponents:
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
         while pending:
-            owner, index, candidate = pending.pop()
+            _owner, _index, candidate = pending.pop()
             try:
                 base = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
                     candidate, "facade component ancestry"
                 )
-            except TypeError as exc:
-                exc.add_note(
-                    f"ancestry owner={owner.get_name()}; direct_base_index={index}; "
-                    f"inferred_kind={type(candidate).__module__}."
-                    f"{type(candidate).__qualname__}"
-                )
-                if isinstance(owner, p.Infra.RopeSourceClass):
-                    module = owner.get_module()
-                    resource = module.get_resource()
-                    exc.add_note(
-                        "owner_source="
-                        f"{resource.path if resource is not None else None}; "
-                        f"owner_line={owner.get_scope().get_start()}"
-                    )
-                    tree = owner.get_ast()
-                    if isinstance(tree, ast.ClassDef):
-                        for lexical_index, expression in enumerate(tree.bases[:16]):
-                            names = tuple(
-                                node.id if isinstance(node, ast.Name) else node.attr
-                                for node in ast.walk(expression)
-                                if isinstance(node, (ast.Name, ast.Attribute))
-                            )[:24]
-                            exc.add_note(
-                                f"lexical_base_index={lexical_index}; "
-                                f"kind={type(expression).__name__}; "
-                                f"line={expression.lineno}; "
-                                f"column={expression.col_offset}; names={names}"
-                            )
-                raise
+            except TypeError:
+                continue
             if base in seen:
                 continue
             seen.add(base)
