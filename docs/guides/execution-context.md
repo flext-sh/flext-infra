@@ -511,6 +511,13 @@ evidence. Ordinary type holders retain recursive namespace discovery, including
 empty holders and nested type declarations. This boundary does not remove an
 entity or any model/protocol field from its owning projection. Unresolved native
 ancestry still fails classification with its original cause.
+Within one synchronous supplier-discovery invocation and its unchanged native
+project, recursive discovery may reuse a nested class's classification only when
+the current parent-scope binding resolves to that exact native owner. The caller
+supplies no classification for a retained declaration whose name now binds another
+object; that call uses canonical member classification. A supplied classification
+with a different binding fails explicitly. This is the target reuse contract;
+source edits alone prove neither runtime behavior nor profile acceptance.
 
 String-sequence declarations use the elected module's native binding-index query.
 Its nullable result distinguishes absent declarations from explicit empty or
@@ -2207,6 +2214,30 @@ includes.
 
 ### Generation Staging, Transaction Journals, and Modernization
 
+Local source binding remains part of `make setup FLEXT=<workspace>`. The frozen
+UV installation is mandatory and continues to own the complete dependency
+graph. The subsequent source-only pip step runs in the consumer's physical
+Python environment and does not resolve a second graph. Dependency checking and
+validation of each installed PEP 610 editable origin must succeed before the
+existing selection receipt is published. No `--no-config` escape is used.
+Additional installed distributions, such as the dirty Rope checkout, are
+declared through `toolchain.editable_sources` in the existing local codegen
+override layer. They must identify the same project name as their source
+manifest and cannot conflict with the selected FLEXT workspace. Production
+pins and locks remain unchanged; a plain setup restores the locked environment.
+
+For the operator-directed causal repair of 2026-10-29, the original Make/gen/mod
+plan remains active. Rope and the declared FLEXT suppliers are loaded editable
+in the physical consumer environments at `~/ai-hub/.venv` and
+`~/devops-oud-iac/.venv`; those environments are not borrowed from the supplier.
+Installation uses the existing package installer against each explicit Python
+environment, without changing production pins or locks. Reproduce the public
+consumer command immediately after an owner repair. Auxiliary SDK probes do not
+establish acceptance or justify changing Rope to accommodate an incorrect
+consumer. Preserve valid WIP and establish which side violates its contract
+before extending either side. This development installation is distinct from
+the final locked-package, CI and integrated-runtime proofs.
+
 The lint-freeze catalog retains entries outside a modernizer invocation's
 observed project scope. It may replace the complete inventory only when the
 observed project roots equal the declared operation roots, retaining missing
@@ -2228,6 +2259,13 @@ Live document reads retain their original atomic file state by reference.
 Publication includes the unchanged catalog observation in the same existing
 publisher call as the candidate document, so both preimages are verified before
 effects. Pure in-memory rendering has no physical witness and cannot publish.
+Publication reuses the existing ordered multi-owner leases for the operation
+root and every physical project owner in its plans. The catalog and consulted
+configuration inputs remain unchanged observations in that same publication.
+This protects the cooperating writers of the cohort; it does not establish a
+global reader barrier or authorize replacing the frozen catalog.
+Catalog keys use the manifest's declared project identity, not the checkout's
+directory name; an independent clone or linked worktree preserves that identity.
 
 The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
 with `all` scope locally and `self` scope in its declared CI context. A local
@@ -4193,6 +4231,20 @@ the operation or registering signal checkpoints. A planning rejection can occur
 before generation creates any report artifacts; it must still leave the same
 immutable profile and readable report. Directory preparation errors fail before
 the profiled operation, not during finalization after its original failure.
+
+The CLI composition injects the existing `CProfileReport` renderer into the
+stdlib-only clock's finalization. It renders and emits a bounded summary from
+that invocation's immutable capture, using the canonical tooling sort and row
+limit, after native profile publication. The clock only transports the callback
+and capture path; it does not import application models or configuration.
+Report failures remain visible through the same finalization owner without
+replacing the operation's first exception or nonzero status. A report failure
+after an otherwise successful operation is an error. This applies when Python
+finalization runs; it does not change signal actions or promise cleanup after
+an uncatchable process termination.
+For a nonzero `SystemExit`, the existing diagnostic emitter prints a secondary
+report failure because Python does not display that exception's attached notes;
+the original exception object and exit code remain unchanged.
 
 The complete invocation, including profile publication and child cleanup, keeps
 the operator's 60-second budget. Reserve termination time inside that budget;

@@ -26,7 +26,7 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
 
     @classmethod
     @contextmanager
-    def _state_leases(cls, roots: Sequence[Path]) -> Generator[None]:
+    def state_leases(cls, roots: Sequence[Path]) -> Generator[None]:
         locks = {
             FlextInfraUtilitiesGitMutationScope.mutation_lock_path(root).unwrap()
             for root in roots

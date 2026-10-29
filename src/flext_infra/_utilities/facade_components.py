@@ -330,16 +330,22 @@ class FlextInfraUtilitiesFacadeComponents:
 
         Every native entry passes through the strict class guard. An unresolved
         declared base retains its admission failure instead of partial ancestry.
+        A first read through the lazy source index can observe construction
+        transients: the read's own evaluation completes the involved modules
+        only after its stack unwinds, so one settled re-read follows, and a
+        persistent unresolved base keeps its admission failure.
 
         Returns:
             Every native ancestor once, in method resolution order.
 
         """
+        runtime = FlextInfraUtilitiesTypesRopeRuntime
+        ancestors = holder.get_mro()[1:]
+        if not all(runtime.abstract_class(ancestor) for ancestor in ancestors):
+            ancestors = holder.get_mro()[1:]
         return tuple(
-            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-                ancestor, holder.get_name()
-            )
-            for ancestor in holder.get_mro()[1:]
+            runtime.require_class_object(ancestor, holder.get_name())
+            for ancestor in ancestors
         )
 
     @classmethod

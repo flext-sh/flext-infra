@@ -117,7 +117,6 @@ install_lazy_exports(
         "FlextInfraCodegenConformPyprojectPolicy": "._conform.pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": "._conform.scaffold_plan",
         "FlextInfraCodegenConsolidator": ".consolidator",
-        "FlextInfraCodegenConsolidator": ".consolidator",
         "FlextInfraCodegenExecution": ".execution",
         "FlextInfraCodegenFixer": ".fixer",
         "FlextInfraCodegenFixerPasses": "._fixer.passes",

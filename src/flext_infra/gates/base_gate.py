@@ -10,11 +10,11 @@ import shutil
 import sys
 import time
 from collections.abc import Mapping, MutableSequence, Sequence
-from contextlib import ExitStack
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, config, m, u
+from flext_infra._utilities._git import FlextInfraUtilitiesGitStateCheckpoint
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -923,11 +923,7 @@ class FlextInfraGate:
 
         """
         cmd = self._build_fix_command(project_dir, ctx, targets)
-        with ExitStack() as locks:
-            for owner in sorted({owner.resolve() for owner in lock_owners}):
-                locks.enter_context(
-                    u.Cli.file_changes_lock(u.Infra.mutation_lock_path(owner).unwrap()),
-                )
+        with FlextInfraUtilitiesGitStateCheckpoint.state_leases(lock_owners):
             result = self._run(
                 cmd,
                 project_dir,

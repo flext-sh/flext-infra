@@ -365,6 +365,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     ) -> p.Infra.RopePyName | None:
         """Resolve native identifier syntax or a declared identifier route.
 
+        A candidate view whose subscript base chain crosses lazy package
+        letters may fail rope's metaclass linearization; that resolution is
+        unavailable in this view and ``None`` is returned (the caller's
+        claim is skipped; the base project's own pass owns the proof).
+
         Returns:
             The resulting ``p.Infra.RopePyName | None``.
 
@@ -380,9 +385,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 message = f"Rope identifier route is invalid: {expression}"
                 raise ValueError(message)
             attributes = names[1:]
-            result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
-                scope, names[0]
-            )
+            try:
+                result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
+                    scope, names[0]
+                )
+            except tuple(FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()):
+                return None
         else:
             primary = expression
             reversed_attributes: list[str] = []
@@ -392,10 +400,16 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             if not isinstance(primary, ast.Name):
                 return None
             attributes = tuple(reversed(reversed_attributes))
-            result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
-                scope,
-                primary,
-            )
+            try:
+                result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
+                    scope,
+                    primary,
+                )
+            except tuple(FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()):
+                # Candidate-view subscript bases crossing lazy letters are
+                # unprovable here (conflicting-metaclass inference); the
+                # claim is skipped and the base project pass owns it.
+                return None
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "Rope identifier resolution returned an invalid name"
             raise TypeError(msg)

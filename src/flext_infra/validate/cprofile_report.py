@@ -47,6 +47,29 @@ class FlextInfraCProfileReport(s[bool]):
         ),
     ] = None
 
+    @classmethod
+    def report_capture(cls, profile: Path) -> None:
+        """Emit the configured bounded report for one immutable native capture.
+
+        Raises:
+            ValueError: If the capture has no authenticated repository owner.
+
+        """
+        root = u.Infra.nearest_project_root(Path.cwd().resolve(), profile)
+        if root is None:
+            msg = f"cProfile capture owner is unresolved: {profile}"
+            raise ValueError(msg)
+        output = profile.with_suffix(".summary.txt")
+        policy = config.Infra.tooling.tools.pytest
+        cls(
+            repository_root=root,
+            profile=profile,
+            output=output,
+            sort=policy.profile_sort,
+            limit=policy.profile_limit,
+        ).execute().unwrap()
+        sys.stderr.write(output.read_text(encoding="utf-8"))
+
     @m.model_validator(mode="after")
     def _validate_report_paths(self) -> Self:
         """Confine report paths to their repository or authenticated Git owner.

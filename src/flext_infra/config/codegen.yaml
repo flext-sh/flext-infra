@@ -241,6 +241,7 @@ Infra:
       # every python resolution, breaking the 3.13 lock-time listing.
       dependency_cooldown_days: 10
       uv_link_mode: copy
+      editable_sources: {}
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
       # Security floors become [tool.uv] constraint-dependencies in every
       # project, including projects that use the package only transitively.

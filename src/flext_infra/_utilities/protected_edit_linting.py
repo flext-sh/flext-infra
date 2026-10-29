@@ -29,6 +29,7 @@ from flext_infra._utilities import (
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitMutationScope,
     FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitStateCheckpoint,
 )
 
 if TYPE_CHECKING:
@@ -157,34 +158,36 @@ class FlextInfraUtilitiesProtectedEditLinting:
         changes = cls.normalized_codegen_changes(plans)
         if changes.failure:
             return result_type.from_failure(changes)
-        published = u.Cli.publish_file_changes(
-            changes.value,
-            lock_path=lock.value,
-            directory_mode=config.Infra.codegen.modes.directory_generated,
-            nonsecret_source_paths=tuple(
-                plan.path
-                for plan in plans
-                if plan.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-            ),
-        )
-        if published.failure:
-            return published
-        for plan in plans:
-            if plan.index_before is None:
-                continue
-            retired = FlextInfraUtilitiesGitSemanticPaths.git_retire_index_file(
-                m.Infra.GitIndexRetirementRequest(
-                    repo_root=plan.project, entry=plan.index_before
+        owners = tuple(dict.fromkeys((root, *(plan.project for plan in plans))))
+        with FlextInfraUtilitiesGitStateCheckpoint.state_leases(owners):
+            published = u.Cli.publish_file_changes(
+                changes.value,
+                lock_path=lock.value,
+                directory_mode=config.Infra.codegen.modes.directory_generated,
+                nonsecret_source_paths=tuple(
+                    plan.path
+                    for plan in plans
+                    if plan.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                 ),
             )
-            if retired.failure:
-                return result_type.from_failure(retired)
-        pruned = cls._prune_emptied_directories(lock.value, plans, published.value)
-        if pruned.failure:
-            return result_type.from_failure(pruned)
-        if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
-            u.read_project_document_cached.cache_clear()
-        return published
+            if published.failure:
+                return published
+            for plan in plans:
+                if plan.index_before is None:
+                    continue
+                retired = FlextInfraUtilitiesGitSemanticPaths.git_retire_index_file(
+                    m.Infra.GitIndexRetirementRequest(
+                        repo_root=plan.project, entry=plan.index_before
+                    ),
+                )
+                if retired.failure:
+                    return result_type.from_failure(retired)
+            pruned = cls._prune_emptied_directories(lock.value, plans, published.value)
+            if pruned.failure:
+                return result_type.from_failure(pruned)
+            if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
+                u.read_project_document_cached.cache_clear()
+            return published
 
     @staticmethod
     def _prune_emptied_directories(

@@ -53,7 +53,13 @@ class FlextInfraUtilitiesDeclarationPayload(
     def class_ancestry(
         value: p.Infra.RopePyObject,
     ) -> Sequence[p.Infra.RopePyObject]:
-        """Retain complete native C3 order and reject unresolved witnesses.
+        """Retain the native C3 order, including positioned unresolved witnesses.
+
+        Rope dc15 keeps an ``UnresolvedBase`` in its MRO position by policy
+        (TypedDict synthetic bases, staged renames): the witness occupies its
+        slot, contributes no ancestors, and never matches a first-party
+        declaration, so membership queries stay correct without rejecting
+        classes the native rope already accepted.
 
         Returns:
             The SDK ancestry, or the unchanged non-class singleton.
@@ -61,25 +67,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         """
         # SDK ownership keeps classification and generation on one ancestry contract.
         if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
-            ancestry = tuple(value.get_mro())
-            if any(
-                not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(ancestor)
-                for ancestor in ancestry
-            ):
-                # Preserve the SDK failure; local reconstruction cannot prove C3.
-                owner = value.get_module()
-                owner_prefix = f"{owner.get_name()}." if owner is not None else ""
-                msg = (
-                    "native SDK class ancestry is incomplete: "
-                    f"{owner_prefix}{value.get_name()}"
-                )
-                failure = ValueError(msg)
-                failure.add_note(f"native MRO witnesses: {ancestry!r}")
-                failure.add_note(
-                    f"native immediate bases: {value.get_superclasses()!r}"
-                )
-                raise failure
-            return ancestry
+            return tuple(value.get_mro())
         return (value,)
 
     @classmethod
@@ -218,6 +206,10 @@ class FlextInfraUtilitiesDeclarationPayload(
             TypeError: If a source class lacks its native project owner.
 
         """
+        # Builtin leaves (``object``, ``Exception``) are legitimate bases with
+        # no source declaration and no superclasses of their own.
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
+            return ()
         bases = list(
             FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                 value, "declaration ancestry"

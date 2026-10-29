@@ -509,6 +509,16 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = ()
+        editable_sources: Annotated[
+            Mapping[str, Path],
+            m.Field(
+                default_factory=dict,
+                description=(
+                    "Additional installed distributions bound to explicit local "
+                    "sources by make setup FLEXT; cannot conflict with that workspace"
+                ),
+            ),
+        ]
         uv_override_dependencies: Annotated[
             tuple[t.NonEmptyStr | FlextInfraModelsMiseToolchain.UvScopedOverride, ...],
             m.Field(

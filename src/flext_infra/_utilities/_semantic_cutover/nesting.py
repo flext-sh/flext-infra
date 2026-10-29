@@ -14,6 +14,8 @@ from difflib import SequenceMatcher
 from fnmatch import fnmatch
 from pathlib import Path
 
+from rope.base.fscommands import file_data_to_unicode
+
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
@@ -513,8 +515,20 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     ) -> p.Result[Mapping[str, str]]:
         """Map each loose top-level class to the owner Rope's module policy elects.
 
+        Args:
+            convention: The Rope module convention for the source file.
+            source: The raw source code of the module.
+            project: The Rope project instance.
+            pytest_patterns: Patterns for identifying pytest-related modules and
+              functions.
+            codegen: The code generation configuration.
+
         Returns:
             The resulting ``p.Result[Mapping[str, str]]``.
+
+        Raises:
+            ValueError: If the class nesting candidate differs from the native source
+              view.
 
         """
         planned = r[Mapping[str, str]]
@@ -543,6 +557,20 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             )
         )
         if len(classes) <= 1 and not loose and not composition:
+            if (
+                len(classes) == 1
+                and FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                    file_path.parent.name
+                )
+                == c.Infra.FacadeFamily.M
+                and file_data_to_unicode(project.source_text(file_path))[0]
+                != file_data_to_unicode(source)[0]
+            ):
+                message = (
+                    "class nesting candidate differs from the native source view: "
+                    f"{file_path}"
+                )
+                raise ValueError(message)
             return planned.ok(
                 cls._singleton_model_namespace(project, file_path, classes)
             )

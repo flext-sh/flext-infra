@@ -1147,6 +1147,7 @@ class FlextInfraUtilitiesCodegenFacades(
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         project: p.Infra.RopeProject,
+        owner_kind: c.Infra.FacadeMemberKind | None = None,
     ) -> Generator[p.Infra.RopePyObject]:
         """Read declaration-time aliases after superclass evidence is exhausted.
 
@@ -1168,17 +1169,26 @@ class FlextInfraUtilitiesCodegenFacades(
             message = f"Component owner has no parent scope: {owner.get_name()}"
             raise ValueError(message)
         owner_binding = parent_scope.get_defined_names()[owner.get_name()]
-        owner_kind = FlextInfraUtilitiesFacadeMembers.facade_member_kind(
-            owner_binding,
-            resolver_factory=resolver_factory,
-            source_project=project,
-        )
+        if owner_kind is None:
+            owner_kind = FlextInfraUtilitiesFacadeMembers.facade_member_kind(
+                owner_binding,
+                resolver_factory=resolver_factory,
+                source_project=project,
+            )
+        elif owner_binding.get_object() is not owner:
+            message = (
+                "Component owner classification binding mismatch: "
+                f"owner={owner.get_module().get_name()}.{owner.get_name()}; "
+                f"binding={owner_binding.get_definition_location()}; role={owner_kind}"
+            )
+            raise ValueError(message)
         # Entity declarations retain their fields; they do not compose namespaces.
         if owner_kind is not c.Infra.FacadeMemberKind.TYPE:
             return
+        members = owner.get_scope().get_defined_names()
         for scope in owner.get_scope().get_scopes():
             if cls.py_class(nested := scope.pyobject):
-                nested_kind = FlextInfraUtilitiesFacadeMembers._class_kind(
+                nested_kind = FlextInfraUtilitiesFacadeMembers.class_kind(
                     nested,
                     resolver_factory=resolver_factory,
                     source_project=project,
@@ -1190,12 +1200,16 @@ class FlextInfraUtilitiesCodegenFacades(
                     nested,
                     resolver_factory=resolver_factory,
                     project=project,
+                    owner_kind=(
+                        nested_kind
+                        if members[nested.get_name()].get_object() is nested
+                        else None
+                    ),
                 )
         declaration = owner.get_ast()
         if not isinstance(declaration, ast.ClassDef):
             message = f"Component owner has no class declaration: {owner.get_name()}"
             raise TypeError(message)
-        members = owner.get_scope().get_defined_names()
         declared = cls._declared_namespace_members(declaration) - {
             node.name
             for node in declaration.body
@@ -1341,12 +1355,21 @@ class FlextInfraUtilitiesCodegenFacades(
             and cls._component_defines_methods(owner)
             for candidate, name in cls.family_subfacade_owners(project, directory)
         )
+        # Destination identity prefers the locally-defined canonical class:
+        # an authored destination on disk is the rendering base (the staged
+        # view may hold a previous render of this same destination, whose
+        # stub bodies would shadow the real declaration).
+        authored = (
+            path.read_text(encoding=c.DEFAULT_ENCODING)
+            if path.is_file()
+            else sources[path]
+        )
         rendered = (
-            sources[path]
+            authored
             if callable_boundary
             else cls._render_declared_facade(
                 directory.parent,
-                (path, sources[path]),
+                (path, authored),
                 family=family,
                 binding=(project, sources),
                 owners_dir=directory,

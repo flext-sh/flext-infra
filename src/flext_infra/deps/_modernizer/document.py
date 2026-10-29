@@ -119,8 +119,16 @@ class FlextInfraPyprojectModernizerDocument(
     ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Parse one pyproject once into one validated plain payload state.
 
+        Args:
+            path: The path to the pyproject file.
+            source: Optional raw content of the pyproject file.
+
         Returns:
             The resulting ``p.Result[m.Infra.PyprojectDocumentState]``.
+
+        Raises:
+            ValueError: If the project document has no captured content.
+
 
         """
         result_type = r[m.Infra.PyprojectDocumentState]
@@ -212,8 +220,18 @@ class FlextInfraPyprojectModernizerDocument(
     ) -> p.Result[Sequence[str]]:
         """Run every phase over one discovered state; write unless ``dry_run``.
 
+        Args:
+            state: The current document state.
+            canonical_dev: The canonical development dependencies.
+            dry_run: Whether to perform a dry run without writing changes.
+            skip_comments: Whether to skip comments during processing.
+            source_migration: Optional Git source reference migration.
+
         Returns:
             The resulting ``p.Result[Sequence[str]]``.
+
+        Raises:
+            ValueError: If the project publication has no original capture.
 
         """
         if source_migration is not None:
@@ -249,7 +267,7 @@ class FlextInfraPyprojectModernizerDocument(
                     f"{state.pyproject_path}"
                 )
                 raise ValueError(message)
-            catalog = FlextInfraLintConfigFreezeGate.require_projection(
+            observations = FlextInfraLintConfigFreezeGate.require_projection(
                 self.root, state
             )
             published = u.Infra.publish_codegen_plans(
@@ -263,7 +281,7 @@ class FlextInfraPyprojectModernizerDocument(
                         desired_mode=state.before.mode,
                         owner=c.Infra.CLI_GROUP_DEPS,
                     ),
-                    catalog,
+                    *observations,
                 ),
             )
             if published.failure:

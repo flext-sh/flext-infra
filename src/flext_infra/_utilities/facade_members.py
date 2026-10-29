@@ -108,7 +108,7 @@ class FlextInfraUtilitiesFacadeMembers:
         module = origin.get_module()
         module_name = "" if module is None else module.get_name()
         if types.abstract_class(origin):
-            return cls._class_kind(
+            return cls.class_kind(
                 origin,
                 resolver_factory=resolver_factory,
                 source_project=source_project,
@@ -398,7 +398,7 @@ class FlextInfraUtilitiesFacadeMembers:
         return operand is not None and types.abstract_class(operand.get_object())
 
     @staticmethod
-    def _class_kind(
+    def class_kind(
         origin: p.Infra.RopeClassObject,
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
@@ -409,10 +409,23 @@ class FlextInfraUtilitiesFacadeMembers:
         Returns:
             The class's owner kind, preserving direct protocol declarations.
 
-        Raises:
-            ValueError: If the native class ancestry is incomplete.
-
         """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(origin):
+            # A typing form (pydantic's ConfigDict and siblings) is not a
+            # class: it has no C3 ancestry to linearize and publishes as TYPE.
+            return c.Infra.FacadeMemberKind.TYPE
+        direct = FlextInfraUtilitiesDeclarationPayload.direct_bases(origin)
+        if any(
+            runtime.qualified_name(source_project, identity).get_object() in direct
+            for identity in (
+                "typing.TypedDict",
+                "typing_extensions.TypedDict",
+            )
+        ):
+            # TypedDict subclasses are typing forms by declaration; rope
+            # cannot linearize their synthetic MRO and none is needed.
+            return c.Infra.FacadeMemberKind.TYPE
         ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(origin)
         return FlextInfraUtilitiesFacadeMembers._class_kind_classified(
             origin,
