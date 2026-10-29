@@ -959,8 +959,8 @@ class FlextInfraUtilitiesImportLawNormalization(
             Whether the helper has authenticated, acyclic foundation dependencies.
 
         Raises:
-            ValueError: If the native candidate inventory is missing or cyclic.
-            TypeError: If a helper does not expose a native module declaration.
+            ValueError: If the native candidate inventory is missing, cyclic,
+                or a module is absent from the candidate.
 
         """
         if state.source_project is None or state.sources is None:
@@ -974,44 +974,59 @@ class FlextInfraUtilitiesImportLawNormalization(
             module = pending.pop()
             if module in graph:
                 continue
-            if module == state.scope.namespace:
+            edges = cls._layer_zero_module_edges(state, module)
+            if edges is None:
                 return False
-            parsed = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
-                state.source_project.get_module(module)
-            )
-            resource = parsed.get_resource()
-            if (
-                resource is None
-                or Path(resource.real_path).resolve() not in state.sources
-            ):
-                message = f"layer-zero helper is absent from the candidate: {module}"
-                raise ValueError(message)
-            family_base = (
-                cls.import_module_role(module, namespace=state.scope.namespace)
-                == "family"
-            )
-            if family_base and not cls.import_direct_module(
-                state.scope.namespace_dir,
-                Path(resource.real_path),
-                namespace=state.scope.namespace,
-            ):
-                return False
-            tree = state.tree if module == state.scope.module else parsed.get_ast()
-            if not isinstance(tree, ast.Module):
-                message = f"layer-zero helper has no native module tree: {module}"
-                raise TypeError(message)
-            edges = cls._import_law_layer_zero_edges(state, module, tree)
-            if edges is None or (family_base and edges):
-                return False
-            if module in edges:
-                message = f"layer-zero helper has a self dependency: {module}"
-                raise ValueError(message)
             graph[module] = edges
             pending.extend(edges - graph.keys())
         if cls.project_import_cycles(graph):
             message = f"layer-zero helper retains candidate dependency cycles: {target}"
             raise ValueError(message)
         return True
+
+    @classmethod
+    def _layer_zero_module_edges(
+        cls, state: m.Infra.ImportLawPass, module: str
+    ) -> frozenset[str] | None:
+        """Resolve one module's authenticated foundation dependencies.
+
+        Returns:
+            The module's edges, or ``None`` when the module rejects the
+            layer-zero contract.
+
+        Raises:
+            ValueError: If the module is absent or has a self dependency.
+
+        """
+        if module == state.scope.namespace or state.source_project is None:
+            return None
+        parsed = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+            state.source_project.get_module(module)
+        )
+        resource = parsed.get_resource()
+        real_path = getattr(resource, "real_path", None) if resource else None
+        if real_path is None or Path(real_path).resolve() not in state.sources:
+            message = f"layer-zero helper is absent from the candidate: {module}"
+            raise ValueError(message)
+        tree: ast.Module = (
+            state.tree if module == state.scope.module else parsed.get_ast()
+        )
+        family_base = (
+            cls.import_module_role(module, namespace=state.scope.namespace) == "family"
+        )
+        if family_base and not cls.import_direct_module(
+            state.scope.namespace_dir,
+            Path(resource.real_path),
+            namespace=state.scope.namespace,
+        ):
+            return None
+        edges = cls._import_law_layer_zero_edges(state, module, tree)
+        if edges is None or (family_base and edges):
+            return None
+        if module in edges:
+            message = f"layer-zero helper has a self dependency: {module}"
+            raise ValueError(message)
+        return edges
 
     @classmethod
     def _import_law_layer_zero_edges(

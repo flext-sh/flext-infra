@@ -626,7 +626,7 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> Mapping
 def generated_make_template(
     request: pytest.FixtureRequest,
     tmp_path_factory: pytest.TempPathFactory,
-) -> t.Pair[c.Infra.MakeProfile, Path]:
+) -> tuple[c.Infra.MakeProfile, Path]:
     """Render the real Make contract once per profile and worker session.
 
     Returns:
@@ -681,7 +681,7 @@ def resolved_make_templates(
 def provisioned_infra_checkout(
     request: pytest.FixtureRequest,
     session_runtime: p.Tests.SessionRuntime,
-) -> t.Pair[str, Path]:
+) -> tuple[str, Path]:
     """Return one scenario's candidate checkout, set up from committed locks.
 
     Returns:

@@ -37,7 +37,7 @@ rule:
 fix: CosmosChartsConstants.CosmosCharts
 message: >-
   Reach constants through the static CosmosChartsConstants class path; the
-            The resulting ``t.Pair[int, str]``. pyright.
+            The resulting ``tuple[int, str]``. pyright.
 ---
 id: namespace-static-path-constants-import
 language: python

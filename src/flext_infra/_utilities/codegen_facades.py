@@ -1161,7 +1161,6 @@ class FlextInfraUtilitiesCodegenFacades(
 
         Raises:
             ValueError: If a member's binding is ambiguous.
-            TypeError: The native owner does not expose a class declaration.
 
         """
         parent_scope = owner.get_scope().parent
@@ -1206,6 +1205,34 @@ class FlextInfraUtilitiesCodegenFacades(
                         else None
                     ),
                 )
+        yield from cls._declared_member_suppliers(
+            owner,
+            members,
+            resolver_factory=resolver_factory,
+            project=project,
+            owner_binding=owner_binding,
+        )
+
+    @classmethod
+    def _declared_member_suppliers(
+        cls,
+        owner: p.Infra.RopeSourceClass,
+        members: Mapping[str, p.Infra.RopePyName],
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        project: p.Infra.RopeProject,
+        owner_binding: p.Infra.RopePyName,
+    ) -> Generator[p.Infra.RopePyObject]:
+        """Yield objects bound by the class's own declared non-function members.
+
+        Yields:
+            Objects bound by the class's own declared members.
+
+        Raises:
+            TypeError: The owner does not expose a class declaration.
+            ValueError: A member's binding is ambiguous.
+
+        """
         declaration = owner.get_ast()
         if not isinstance(declaration, ast.ClassDef):
             message = f"Component owner has no class declaration: {owner.get_name()}"
@@ -1230,7 +1257,7 @@ class FlextInfraUtilitiesCodegenFacades(
             except ValueError as failure:
                 failure.add_note(
                     f"component-owner={owner.get_module().get_name()}."
-                    f"{owner.get_name()}; role={owner_kind}; "
+                    f"{owner.get_name()}; "
                     f"same_binding={owner_binding.get_object() is owner}; "
                     f"same_project={owner.get_module().pycore.project is project}; "
                     f"owner_id={id(owner)}; "

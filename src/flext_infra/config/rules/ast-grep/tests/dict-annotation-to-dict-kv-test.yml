@@ -2,7 +2,7 @@ id: dict-annotation-to-dict-kv
 valid:
   - |
     from flext_core import t
-    def f(x: t.DictKV[str, int]) -> t.DictKV[str, int]: ...
+    def f(x: dict[str, int]) -> dict[str, int]: ...
   # runtime values are not type nodes
   - |
     from flext_core import t

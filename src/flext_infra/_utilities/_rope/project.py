@@ -612,10 +612,11 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             if not isinstance(external, NoProject):
                 msg = "candidate resource has no authenticated external resolver"
                 raise TypeError(msg)
+            resolver = cast("p.Infra.RopeExternalResourceOwner", external)
             resource = (
-                external.get_folder(str(path))
+                resolver.get_folder(str(path))
                 if folder
-                else external.get_file(str(path))
+                else resolver.get_file(str(path))
             )
         if not isinstance(resource, File | Folder):
             msg = "candidate resolver returned a non-resource"
@@ -630,7 +631,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         """Report candidate membership and content changes through native APIs.
 
         Raises:
-            TypeError: A registered observer lacks native change notifications.
+            TypeError: The overlaid view lacks an authenticated source overlay,
+                or a resolver returned a non-resource.
 
         """
         files = self.fscommands
@@ -655,9 +657,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             key=lambda path: len(path.parts),
         )
         for observer in self.observers:
-            if not isinstance(observer, p.Infra.RopeChangeObserver):
-                msg = "native source observer lacks change notification capabilities"
-                raise TypeError(msg)
             for path in removed_roots:
                 observer.resource_removed(self._source_resource(path, folder=True))
             for path in created:
@@ -698,11 +697,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     msg = "module lookup context is not a native folder"
                     raise TypeError(msg)
                 folder = resource
-            found = Project.find_module(self, name, folder)
-            if found is not None and not isinstance(found, File | Folder):
-                msg = "native module finder returned a non-resource"
-                raise TypeError(msg)
-            memo[name, folder_name] = found
+            memo[name, folder_name] = self.find_module_native(name, folder)
 
     def source_query(
         self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
@@ -928,12 +923,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             ValueError: A source root escapes the project or has no candidate file.
 
         """
-        for folder in folders:
-            relative = Path(folder)
-            folder = relative.as_posix() if relative.parts else ""
-            if folder == ".":
-                # The repository root spelled as ``.`` is canonical ``''``.
-                folder = ""
+        for entry in folders:
+            relative = Path(entry)
+            folder = "" if relative.as_posix() == "." else relative.as_posix()
             candidate = root / relative
             if (
                 folder != (relative.as_posix() if relative.parts else "")

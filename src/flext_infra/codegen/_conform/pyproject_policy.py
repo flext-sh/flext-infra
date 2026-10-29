@@ -93,7 +93,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
     @staticmethod
     def _judge_make_line(
-        target_re: re.Pattern[str],
+        target_re: t.RegexPattern,
         policy: m.Infra.CustomHandlerPolicy,
         line_number: int,
         raw_line: str,

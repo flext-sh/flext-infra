@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -166,11 +165,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
         return Path(value).expanduser()
 
     @staticmethod
-    def docs_parse_github_doc_url(target: str) -> re.Match[str] | None:
+    def docs_parse_github_doc_url(target: str) -> t.RegexMatch | None:
         """Parse a github.com blob/tree documentation URL.
 
         Returns:
-            The resulting ``re.Match[str] | None``.
+            The resulting ``t.RegexMatch | None``.
 
         """
         return c.Infra.DOCS_GITHUB_BLOB_TREE_RE.match(target.strip())

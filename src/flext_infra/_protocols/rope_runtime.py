@@ -47,6 +47,16 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
 
     @runtime_checkable
+    class RopeExternalResourceOwner(RopeResourceOwner, Protocol):
+        """External resolver electing native files and folders by absolute path."""
+
+        def get_file(self, path: str, /) -> FlextInfraProtocolsRopeRuntime.RopeFile: ...
+
+        def get_folder(
+            self, path: str, /
+        ) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+
+    @runtime_checkable
     class RopeChangeObserver(Protocol):
         """Native resource notifications used by source candidate transitions."""
 

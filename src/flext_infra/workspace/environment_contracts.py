@@ -21,18 +21,18 @@ from flext_infra import c, m, u
 class FlextInfraWorkspaceEnvironmentContracts:
     """Static contract lint for one managed direnv environment file."""
 
-    _UNGUARDED_DIRENV_DIR: Final[re.Pattern[str]] = re.compile(
+    _UNGUARDED_DIRENV_DIR: Final[t.RegexPattern] = re.compile(
         r"\$\{?DIRENV_DIR(?![\s]*[:\-])",
     )
-    _QUOTED_ENV_TARGET: Final[re.Pattern[str]] = re.compile(
+    _QUOTED_ENV_TARGET: Final[t.RegexPattern] = re.compile(
         r'^(?:source_env|watch_file)\s+"([^"]+)"\s*$',
     )
-    _HOME_PREFIX: Final[re.Pattern[str]] = re.compile(r"^\$\{?HOME\}?(.*)$")
+    _HOME_PREFIX: Final[t.RegexPattern] = re.compile(r"^\$\{?HOME\}?(.*)$")
 
-    _MANAGED_SECTION_START: Final[re.Pattern[str]] = re.compile(
+    _MANAGED_SECTION_START: Final[t.RegexPattern] = re.compile(
         r"^# === SECTION: .* \(managed\) ===$",
     )
-    _MANAGED_SECTION_END: Final[re.Pattern[str]] = re.compile(r"^# End SECTION: .*$")
+    _MANAGED_SECTION_END: Final[t.RegexPattern] = re.compile(r"^# End SECTION: .*$")
     _ENVRC_LOCAL_GENERATED_MARKERS: Final[Sequence[str]] = (
         *c.Infra.WORKSPACE_ENV_GENERATED_MARKERS,
         *c.Infra.TEMPLATE_GENERATED_MARKERS,

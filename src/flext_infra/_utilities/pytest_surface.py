@@ -21,7 +21,11 @@ class FlextInfraUtilitiesPytest:
         approx = staticmethod(pytest.approx)
         exit = staticmethod(pytest.exit)
         fixture = staticmethod(pytest.fixture)
-        hookimpl = staticmethod(pytest.hookimpl)
+        # ``pytest.hookimpl`` is a pluggy ``HookimplMarker`` instance, not a
+        # function: it is not a descriptor, so wrapping it in ``staticmethod``
+        # adds nothing at runtime and erases its overloaded ``__call__``
+        # contract for static type checkers. Keep the bare instance.
+        hookimpl = pytest.hookimpl
         importorskip = staticmethod(pytest.importorskip)
         main = staticmethod(pytest.main)
         monkeypatch_context = staticmethod(pytest.MonkeyPatch.context)

@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, r, t, tm, u
+from tests import c, m, r, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -22,7 +22,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
     @staticmethod
     def test_help_parses_before_runtime_provisioning(
-        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:
         """Public help parses bootstrap recipes without creating an environment."""
         _profile, root = generated_make_template
@@ -38,7 +38,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
     @staticmethod
     def test_setup_installs_dependencies_before_importing_infra(
-        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:
         """Native config admission precedes sync; Python validation follows it."""
         _profile, project_root = generated_make_template
@@ -57,7 +57,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
     @staticmethod
     def test_environment_prerequisites_resolve_without_running_recipes(
-        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:
         """GNU Make resolves the complete environment guard dependency graph."""
         _profile, project_root = generated_make_template
@@ -283,7 +283,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(tuple((foreign / "bin").iterdir()), eq=())
 
     @staticmethod
-    def _assert_cold_setup_receipts(parent: Path) -> t.Pair[Path, Path]:
+    def _assert_cold_setup_receipts(parent: Path) -> tuple[Path, Path]:
         """Require every cold-setup receipt to succeed and the hook to run.
 
         Returns:
@@ -313,7 +313,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @staticmethod
     def _assert_candidate_receipt_prefixes(
         parent: Path,
-        observed: Sequence[t.Pair[Path, Path]],
+        observed: Sequence[tuple[Path, Path]],
         source: tuple[str, str, str],
     ) -> None:
         """Require each receipt to record the locked source and its environment."""
@@ -417,7 +417,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.slow
     def test_native_shared_workspace_guard_stops_before_uv_lock(
         tmp_path: Path,
-        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:
         """A remaining native shared-lock declaration still fails before UV writes."""
         _profile, template = generated_make_template

@@ -487,7 +487,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
         cls,
         file_path: Path,
         source: str,
-        statement_lines: Sequence[t.IntPair],
+        statement_lines: Sequence[tuple[int, int]],
     ) -> str:
         """Plan the same statement hoist without changing its physical source.
 
@@ -516,7 +516,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
     @staticmethod
     def statements_at_module_end(
         source: str,
-        statement_lines: Sequence[t.IntPair],
+        statement_lines: Sequence[tuple[int, int]],
         *,
         filename: str,
     ) -> str:

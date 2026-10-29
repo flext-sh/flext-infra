@@ -1929,9 +1929,35 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 required_line=None,
                 allow_conditional=False,
             )
-            return FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+            bindings = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
                 request, self._definitions, provider=None
-            ).get(name)
+            )
+            found = bindings.get(name)
+            if found is not None or captured is None:
+                return found
+            # The candidate source may not parse its lazy map (stale overlay);
+            # the on-disk initializer is the authoritative lazy SSOT.
+            resource = self._project.find_module(module)
+            if resource is not None:
+                on_disk = Path(resource.real_path)
+                if resource.is_folder():
+                    on_disk /= c.Infra.INIT_PY
+                if (
+                    self._project.source_query(on_disk, "isfile")
+                    and on_disk != source_path
+                ):
+                    request = m.Infra.SourceBindingInventoryRequest(
+                        project=self._project,
+                        module=module,
+                        path=on_disk,
+                        source=self._project.source_text(on_disk),
+                        required_line=None,
+                        allow_conditional=False,
+                    )
+                    return FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+                        request, self._definitions, provider=None
+                    ).get(name)
+            return None
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.

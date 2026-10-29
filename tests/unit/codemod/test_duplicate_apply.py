@@ -520,8 +520,8 @@ class TestsFlextInfraCodemodDuplicateApply:
         owner: Path,
         clone: Path,
         *,
-        owner_span: t.IntPair,
-        clone_span: t.IntPair,
+        owner_span: tuple[int, int],
+        clone_span: tuple[int, int],
     ) -> t.JsonDict:
         """Build one typed-valid jscpd report over two clone sides.
 

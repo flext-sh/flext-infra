@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
 from flext_infra._models.deps import (
@@ -209,6 +209,37 @@ class FlextInfraPyprojectModernizerDocument(
             changes.append("removed empty poetry group container")
         return changes
 
+    _last_migration_render: ClassVar[p.Result[str] | None] = None
+
+    def _apply_source_migration(
+        self,
+        state: m.Infra.PyprojectDocumentState,
+        source_migration: m.Infra.GitSourceReferenceMigration,
+    ) -> p.Result[Sequence[str]] | None:
+        """Rewrite Git source references; produce the migration render.
+
+        Returns:
+            The early result when migration yields no change, or ``None``
+            when the caller should proceed with the migration render.
+
+        """
+        migrated = u.Infra.rewrite_git_source_references(
+            state.payload, source_migration
+        )
+        if migrated.failure:
+            return r[Sequence[str]].from_failure(migrated)
+        if not migrated.value:
+            state.rendered = state.original_rendered
+            return r[Sequence[str]].ok(())
+        self._last_migration_render = self._render_document_state(
+            state,
+            migrated.value,
+            skip_comments=True,
+            format_source=False,
+            preserve_layout=True,
+        )
+        return None
+
     def _process_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
@@ -235,21 +266,10 @@ class FlextInfraPyprojectModernizerDocument(
 
         """
         if source_migration is not None:
-            migrated = u.Infra.rewrite_git_source_references(
-                state.payload, source_migration
-            )
-            if migrated.failure:
-                return r[Sequence[str]].from_failure(migrated)
-            if not migrated.value:
-                state.rendered = state.original_rendered
-                return r[Sequence[str]].ok(())
-            rendered = self._render_document_state(
-                state,
-                migrated.value,
-                skip_comments=True,
-                format_source=False,
-                preserve_layout=True,
-            )
+            early = self._apply_source_migration(state, source_migration)
+            if early is not None:
+                return early
+            rendered = self._last_migration_render
         else:
             rendered = self._render_declared_state(
                 state,

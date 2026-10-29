@@ -28,7 +28,7 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
     fails naming the file, the parser cause, and every duplicated section.
     """
 
-    _TABLE_HEADER: ClassVar[re.Pattern[str]] = re.compile(
+    _TABLE_HEADER: ClassVar[t.RegexPattern] = re.compile(
         r"(?m)^[ \t]*(?:\[([^\][]+)\]|\[\[([^\][]+)\]\])[ \t]*(?:#.*)?$",
     )
 

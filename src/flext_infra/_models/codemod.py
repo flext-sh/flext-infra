@@ -157,7 +157,7 @@ class FlextInfraModelsCodemod:
     class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic):
         """A validated owned-path finding in the native scanner wire format."""
 
-        origin: Literal[c.Infra.ModFindingOrigin.OWNED_PATH] = m.Field(
+        origin: c.Infra.ModFindingOrigin = m.Field(
             default=c.Infra.ModFindingOrigin.OWNED_PATH,
             description="Native owned-path rule provenance",
         )

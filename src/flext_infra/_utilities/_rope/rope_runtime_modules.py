@@ -1080,21 +1080,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         return pymodule
 
     @classmethod
-    def import_organizer(
-        cls,
-        rope_project: t.Infra.RopeProject,
-    ) -> p.Infra.RopeImportOrganizer:
-        organizer_factory = cls.runtime_callable(
-            c.Infra.ROPE_IMPORTUTILS_MODULE,
-            "ImportOrganizer",
-        )
-        organizer = organizer_factory(rope_project)
-        if not isinstance(organizer, p.Infra.RopeImportOrganizer):
-            msg = "rope ImportOrganizer does not satisfy p.Infra.RopeImportOrganizer"
-            raise TypeError(msg)
-        return organizer
-
-    @classmethod
     def runtime_find_occurrences(
         cls,
         rope_project: t.Infra.RopeProject,

@@ -68,8 +68,8 @@ class FlextInfraLintConfigFreezeGate(FlextInfraGate):
         expected = {
             target.root.resolve() for target in declared if target.managed is not False
         }
-        digests: dict[str, str] = (
-            {} if not invalid_paths and observed == expected else previous
+        digests: dict[str, t.JsonValue] = (
+            dict(previous) if invalid_paths or observed != expected else {}
         )
         for state in states:
             key = cls._catalog_key(state.pyproject_path.parent, state.payload)

@@ -337,9 +337,16 @@ class FlextInfraUtilitiesFacadeComponents:
         """
         runtime = FlextInfraUtilitiesTypesRopeRuntime
         ancestors = holder.get_mro()[1:]
+        if not all(
+            runtime.abstract_class(ancestor) or runtime.unresolved_witness(ancestor)
+            for ancestor in ancestors
+        ):
+            holder.invalidate_bases()
+            ancestors = holder.get_mro()[1:]
         return tuple(
             runtime.require_class_object(ancestor, holder.get_name())
             for ancestor in ancestors
+            if not runtime.unresolved_witness(ancestor)
         )
 
     @classmethod

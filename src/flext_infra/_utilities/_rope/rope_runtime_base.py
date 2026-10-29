@@ -10,7 +10,7 @@ from collections.abc import Callable
 from importlib import import_module
 from typing import TypeIs, get_protocol_members
 
-from flext_infra import c, p
+from flext_infra import c, p, t
 
 
 class FlextInfraUtilitiesRopeRuntimeBase:
@@ -171,6 +171,21 @@ class FlextInfraUtilitiesRopeRuntimeBase:
             cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
             AttributeError,
         )
+
+    @classmethod
+    def import_organizer(
+        cls,
+        rope_project: t.Infra.RopeProject,
+    ) -> p.Infra.RopeImportOrganizer:
+        organizer_factory = cls.runtime_callable(
+            c.Infra.ROPE_IMPORTUTILS_MODULE,
+            "ImportOrganizer",
+        )
+        organizer = organizer_factory(rope_project)
+        if not isinstance(organizer, p.Infra.RopeImportOrganizer):
+            msg = "rope ImportOrganizer does not satisfy p.Infra.RopeImportOrganizer"
+            raise TypeError(msg)
+        return organizer
 
     @classmethod
     def rope_hierarchy_errors(cls) -> tuple[type[BaseException], ...]:

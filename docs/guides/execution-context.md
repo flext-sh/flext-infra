@@ -1209,10 +1209,12 @@ reconcile installed metadata through `make setup` before running its consumer te
 ### Incremental Testmon and Primary Check Admission (ADR-029)
 
 `make tests` uses the persistent Testmon owner's native incremental selection over
-the complete applicable population ([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)). The 2026-10-26 operator order supersedes the
-forced complete-run behavior: unchanged tests are not rerun merely because the
-verb was invoked again. Selection and execution share one persistent database and
-aggregate deadline, with no second execution pass. The common catalog has no manual
+the complete applicable population
+([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)).
+The 2026-10-26 operator order supersedes the forced complete-run behavior:
+unchanged tests are not rerun merely because the verb was invoked again. Selection
+and execution share one persistent database and aggregate deadline, with no second
+execution pass. The common catalog has no manual
 file selector. The explicitly requested `make tests-full` executes the complete
 applicable population once without Testmon or an incremental pre-run, preserving
 the persistent database untouched. It is a distinct operation, not an alias for

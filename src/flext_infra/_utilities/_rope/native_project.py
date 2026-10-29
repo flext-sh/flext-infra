@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Self, cast, overload, override
 
 from rope.base.builtins import BuiltinModule
-from rope.base.project import Project
+from rope.base.project import NoProject, Project
 from rope.base.resources import File, Folder, Resource
 
 from flext_infra import c, p, t
@@ -36,6 +36,8 @@ class FlextInfraRopeNativeProject(Project):
     """
 
     fscommands: p.Infra.RopeProjectFiles
+    external_project: NoProject | None
+    observers: list[p.Infra.RopeChangeObserver]
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
     _frozen_modules: dict[tuple[str, str | None], File | Folder | None] | None = None
     _snapshot_python_path_folders: list[File | Folder] | None = None
@@ -137,9 +139,6 @@ class FlextInfraRopeNativeProject(Project):
         Returns:
             The native module resource, or no matching module.
 
-        Raises:
-            TypeError: The elected resource is not a native file or folder.
-
         """
         # The folder layout is fixed for a read-only pass, so each lookup's
         # election is fixed too: answer it once instead of rescanning folders.
@@ -147,13 +146,33 @@ class FlextInfraRopeNativeProject(Project):
         key = (modname, None if folder is None else folder.path)
         if memo is not None and key in memo:
             return memo[key]
+        found = self.find_module_native(modname, folder)
+        if memo is not None:
+            memo[key] = found
+        return found
+
+    def find_module_native(
+        self,
+        modname: str,
+        folder: p.Infra.RopeRoot | Folder | None = None,
+    ) -> File | Folder | None:
+        """Elect through Rope's own finder without consulting the freeze memo.
+
+        Refresh paths reuse this entry after membership changes invalidated
+        memoized elections, so a stale memo must never answer them.
+
+        Returns:
+            The native module resource, or no matching module.
+
+        Raises:
+            TypeError: The elected resource is not a native file or folder.
+
+        """
         native = cast("p.Infra.RopeProject", super())
         found = native.find_module(modname, self._native_folder(folder))
         if found is not None and not isinstance(found, File | Folder):
             message = "Rope module finder did not elect a native resource"
             raise TypeError(message)
-        if memo is not None:
-            memo[key] = found
         return found
 
     @override
@@ -198,6 +217,46 @@ class FlextInfraRopeNativeProject(Project):
         found = native.get_resource(resource_name)
         if not isinstance(found, File | Folder):
             message = "Rope resource lookup did not elect a native resource"
+            raise TypeError(message)
+        return found
+
+    @override
+    def get_file(self, path: str) -> File:
+        """Elect the native file addressed by a project-relative path.
+
+        The file may not exist on disk; the overlay decides its visibility.
+
+        Returns:
+            The native file resource.
+
+        Raises:
+            TypeError: The SDK elected a resource outside its native classes.
+
+        """
+        native = cast("p.Infra.RopeProject", super())
+        found = native.get_file(path)
+        if not isinstance(found, File):
+            message = "Rope file lookup did not elect a native file"
+            raise TypeError(message)
+        return found
+
+    @override
+    def get_folder(self, path: str) -> Folder:
+        """Elect the native folder addressed by a project-relative path.
+
+        The folder may not exist on disk; the overlay decides its visibility.
+
+        Returns:
+            The native folder resource.
+
+        Raises:
+            TypeError: The SDK elected a resource outside its native classes.
+
+        """
+        native = cast("p.Infra.RopeProject", super())
+        found = native.get_folder(path)
+        if not isinstance(found, Folder):
+            message = "Rope folder lookup did not elect a native folder"
             raise TypeError(message)
         return found
 

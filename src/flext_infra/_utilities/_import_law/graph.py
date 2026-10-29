@@ -76,17 +76,16 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             folder.real_path for folder in project.get_python_path_folders()
         )
         previous = snapshot.bootstrap_dependencies.get(root)
-        if (
+        same_inputs = (
             previous is not None
             and previous.namespace == namespace
             and previous.source_folders == source_folders
             and previous.python_path_folders == python_paths
             and previous.source_digests == source_digests
-            and len(previous.modules) == len(modules)
-            and all(
-                old is current
-                for old, current in zip(previous.modules, modules, strict=True)
-            )
+        )
+        if same_inputs and all(
+            old is current
+            for old, current in zip(previous.modules, modules, strict=True)
         ):
             return previous.dependencies
         graph, _names = cls.snapshot_import_graph(project, resources=resources)

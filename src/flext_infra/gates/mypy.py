@@ -54,7 +54,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         return self._resource_limits[project_dir]
 
     @staticmethod
-    def _config_exclude(config_path: Path) -> re.Pattern[str] | None:
+    def _config_exclude(config_path: Path) -> t.RegexPattern | None:
         """Return the compiled [tool.mypy].exclude regex, if configured.
 
         Returns:

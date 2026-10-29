@@ -115,9 +115,10 @@ and composes member locks per [ADR-030](../../../docs/architecture/adr/030-membe
 lock is their composition, and only `make upg` writes locks behind its guard). Root CI
 checks out those declared submodules and installs the composed workspace lock noneditable;
 member CI installs the member's own committed lock; neither selects a remote-only resolver.
-Independent checkouts retain their own native project declarations. Preserve requirement bounds,
-extras, groups, markers, portable dependency metadata and authored native source
-policy; do not aggregate a second dependency graph or discard native tables during
+Independent checkouts retain their own native project declarations. Preserve
+requirement bounds, extras, groups, markers, portable dependency metadata and
+authored native source policy; do not aggregate a second dependency graph or
+discard native tables during
 managed pyproject publication. See uv's official
 [dependency sources](https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources)
 and [workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/) contracts.

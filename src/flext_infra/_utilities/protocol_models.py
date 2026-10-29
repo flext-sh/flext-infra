@@ -28,6 +28,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -394,7 +395,25 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
             }
             native_ancestors = source.get_mro()
+            if not all(
+                FlextInfraUtilitiesTypesRopeRuntime.abstract_class(native_ancestor)
+                or FlextInfraUtilitiesTypesRopeRuntime.unresolved_witness(
+                    native_ancestor
+                )
+                for native_ancestor in native_ancestors
+            ):
+                # Uma primeira leitura pelo índice fonte lazy pode observar
+                # transientes de construção: a própria avaliação completa os
+                # módulos envolvidos só depois de sua pilha desenrolar, então
+                # uma re-leitura settled segue; uma testemunha não resolvida
+                # persistente ocupa seu slot por política dc15 e é pulada.
+                source.invalidate_bases()
+                native_ancestors = source.get_mro()
             for native_ancestor in reversed(native_ancestors):
+                if FlextInfraUtilitiesTypesRopeRuntime.unresolved_witness(
+                    native_ancestor
+                ):
+                    continue
                 ancestor = FlextInfraUtilitiesRopeRuntime.require_class_object(
                     native_ancestor,
                     f"model protocol ancestor of {source.get_name()}",
