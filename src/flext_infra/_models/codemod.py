@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
@@ -274,11 +273,11 @@ class FlextInfraModelsCodemod:
             ),
         ]
         imports: Mapping[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(Mapping[str, str])),
+            default_factory=u.empty(t.TypeForm(Mapping[str, str])),
             description="Destination bindings and their native import declarations",
         )
         bindings: Mapping[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(Mapping[str, str])),
+            default_factory=u.empty(t.TypeForm(Mapping[str, str])),
             description="Destination expressions and their required Rope identities",
         )
         model_bases: t.DocumentInput[tuple[str, ...]] = m.Field(

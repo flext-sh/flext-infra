@@ -426,7 +426,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                     config.Infra.tooling,
                     "coverage.run",
                     "omit",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 )
             ),
         )

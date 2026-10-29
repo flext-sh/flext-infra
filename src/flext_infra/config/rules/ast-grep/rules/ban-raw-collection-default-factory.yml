@@ -3,7 +3,7 @@
 # `default_factory=list|dict|set`: the factory hands every instance a mutable
 # container the annotation promises nobody mutates. Use the canonical empty
 # value the field contract validates:
-# `m.Field(default_factory=u.empty(TypeForm(<field annotation>)))`.
+# `m.Field(default_factory=u.empty(t.TypeForm(<field annotation>)))`.
 id: ban-raw-collection-default-factory
 language: python
 severity: error
@@ -39,7 +39,7 @@ rule:
             regex: "^(?:(?:typing\\.)?Annotated\\[\\s*)?(?:list|dict|set|(?:[A-Za-z_][A-Za-z0-9_]*\\.)*Mutable[A-Za-z]*)\\b"
 message: >-
   A read-only model field defaults through raw `$KIND`: use
-  `m.Field(default_factory=u.empty(TypeForm(<field annotation>)))`.
+  `m.Field(default_factory=u.empty(t.TypeForm(<field annotation>)))`.
   Detection only: the empty value is typed by the field annotation and needs the u and TypeForm bindings.
 metadata:
   enforce: [ENFORCE-114]

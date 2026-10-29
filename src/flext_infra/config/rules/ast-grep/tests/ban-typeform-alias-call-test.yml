@@ -3,7 +3,7 @@ valid:
   - |
     def read(target: t.TypeForm[TValue]) -> TValue: ...
   - |
-    adapter = u.type_adapter(TypeForm(t.JsonDict))
+    adapter = u.type_adapter(t.TypeForm(t.JsonDict))
   - |
     factory = u.empty(contract_factory=lambda: TypeForm(Sequence[Item]))
 invalid:

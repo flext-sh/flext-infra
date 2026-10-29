@@ -10,7 +10,6 @@ from collections.abc import MutableSequence, MutableSet, Sequence
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
-from typing_extensions import TypeForm
 
 from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
@@ -28,7 +27,7 @@ class FlextInfraModelsCodegenFix:
             m.Field(description="Fixed violations"),
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(
+                t.TypeForm(
                     MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation]
                 )
             )
@@ -40,7 +39,7 @@ class FlextInfraModelsCodegenFix:
             ),
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(
+                t.TypeForm(
                     MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation]
                 )
             )

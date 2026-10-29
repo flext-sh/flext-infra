@@ -4367,9 +4367,20 @@ from a FLEXT AST census: repeated imports, shadowing and nested scopes remain
 the native resolver's responsibility. Removing that shortcut adds no alternate
 index or cache and does not establish a performance improvement; the full
 generator and its invocation-owned profile remain the validation boundary.
-Family-composition checks consume the same snapshot's native trees and shared
-public-export reader. The source-text class-info reader delegates to its
-parsed-module reader; composition does not reread and reparse each family member.
+Family-composition checks retain the explicit-export contract and the facade's
+declared namespace, but derive membership from the governed snapshot inventory
+and compare native declaration identities through the same `snapshot.engine`.
+The facade must compose every class exported by its family modules; homonymous
+classes in different modules do not establish that relationship. Native scope,
+binding and ancestry queries own the proof. A missing or ambiguous required
+identity fails explicitly; no AST interpretation, physical `rglob` census,
+name-keyed ancestry reconstruction or fallback authorizes a composition result.
+This is the active Rope-only cutover contract under ADR-028 Decision 17. At the
+2026-10-29 source inspection, `composes_family_package` still used the former
+tree/class-info and name-traversal path. That implementation is migration input,
+not a permitted alternate engine, and this documentation update proves no runtime
+recovery or completed cutover. Qualification must rerun the public Make boundary
+with preserved exports, aliases, nested namespace ownership and unrelated homonyms.
 Authored catalog parses and provider mappings are memoized by their exact current
 contents in process memory. The custom persistent parsed-catalog store and its
 configuration are retired; native tool caches retain their existing contracts.

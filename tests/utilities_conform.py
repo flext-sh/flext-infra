@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from typing_extensions import TypeForm
-
 from flext_infra import check, codegen, config, u
-from tests import TestsFlextInfraUtilitiesTomlMixin, c, m
+from tests import TestsFlextInfraUtilitiesTomlMixin, c, m, t
 
 
 class TestsFlextInfraUtilitiesConform:
@@ -64,7 +62,7 @@ class TestsFlextInfraUtilitiesConform:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 ),
             }),
         )

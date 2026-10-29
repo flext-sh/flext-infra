@@ -1,7 +1,7 @@
 id: pydantic-adapter-typeform
 snapshots:
   adapter = TypeAdapter(FlextTypesPydantic.StrictInt):
-    fixed: adapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt))
+    fixed: adapter = TypeAdapter(t.TypeForm(FlextTypesPydantic.StrictInt))
     labels:
     - source: FlextTypesPydantic.StrictInt
       style: primary
@@ -24,7 +24,7 @@ snapshots:
       start: 21
       end: 51
   "adapter = TypeAdapter(FlextTypingBase.Scalar, config=cfg)":
-    fixed: adapter = TypeAdapter(TypeForm(FlextTypingBase.Scalar), config=cfg)
+    fixed: adapter = TypeAdapter(t.TypeForm(FlextTypingBase.Scalar), config=cfg)
     labels:
     - source: FlextTypingBase.Scalar
       style: primary
@@ -47,7 +47,7 @@ snapshots:
       start: 21
       end: 57
   "adapter = m.type_adapter(t.Sequence[str])":
-    fixed: adapter = m.type_adapter(TypeForm(t.Sequence[str]))
+    fixed: adapter = m.type_adapter(t.TypeForm(t.Sequence[str]))
     labels:
     - source: t.Sequence[str]
       style: primary
@@ -74,7 +74,7 @@ snapshots:
       start: 24
       end: 41
   adapter = u.type_adapter(t.JsonMapping):
-    fixed: adapter = u.type_adapter(TypeForm(t.JsonMapping))
+    fixed: adapter = u.type_adapter(t.TypeForm(t.JsonMapping))
     labels:
     - source: t.JsonMapping
       style: primary

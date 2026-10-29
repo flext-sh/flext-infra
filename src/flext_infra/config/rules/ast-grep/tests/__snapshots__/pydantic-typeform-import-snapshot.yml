@@ -1,12 +1,12 @@
 id: pydantic-typeform-import
 snapshots:
-  "from __future__ import annotations\n\nadapter = u.type_adapter(TypeForm(t.JsonMapping))\n":
+  "from __future__ import annotations\n\nadapter = u.type_adapter(t.TypeForm(t.JsonMapping))\n":
     fixed: |
       from __future__ import annotations
       
       from typing_extensions import TypeForm
       
-      adapter = u.type_adapter(TypeForm(t.JsonMapping))
+      adapter = u.type_adapter(t.TypeForm(t.JsonMapping))
     labels:
     - source: from __future__ import annotations
       style: primary
@@ -19,11 +19,11 @@ snapshots:
     - source: |
         from __future__ import annotations
         
-        adapter = u.type_adapter(TypeForm(t.JsonMapping))
+        adapter = u.type_adapter(t.TypeForm(t.JsonMapping))
       style: secondary
       start: 0
       end: 86
-  "from __future__ import annotations\n\nfrom typing_extensions import override\n\nadapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt))\n":
+  "from __future__ import annotations\n\nfrom typing_extensions import override\n\nadapter = TypeAdapter(t.TypeForm(FlextTypesPydantic.StrictInt))\n":
     fixed: |
       from __future__ import annotations
       
@@ -31,7 +31,7 @@ snapshots:
       
       from typing_extensions import override
       
-      adapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt))
+      adapter = TypeAdapter(t.TypeForm(FlextTypesPydantic.StrictInt))
     labels:
     - source: from __future__ import annotations
       style: primary
@@ -46,7 +46,7 @@ snapshots:
         
         from typing_extensions import override
         
-        adapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt))
+        adapter = TypeAdapter(t.TypeForm(FlextTypesPydantic.StrictInt))
       style: secondary
       start: 0
       end: 138

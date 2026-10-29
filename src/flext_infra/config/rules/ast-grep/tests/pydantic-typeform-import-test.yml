@@ -7,7 +7,7 @@ valid:
 
     from typing_extensions import TypeForm
 
-    adapter = u.type_adapter(TypeForm(t.JsonMapping))
+    adapter = u.type_adapter(t.TypeForm(t.JsonMapping))
   - |
     from __future__ import annotations
 
@@ -17,10 +17,10 @@ invalid:
   - |
     from __future__ import annotations
 
-    adapter = u.type_adapter(TypeForm(t.JsonMapping))
+    adapter = u.type_adapter(t.TypeForm(t.JsonMapping))
   - |
     from __future__ import annotations
 
     from typing_extensions import override
 
-    adapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt))
+    adapter = TypeAdapter(t.TypeForm(FlextTypesPydantic.StrictInt))

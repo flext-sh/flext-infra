@@ -13,7 +13,6 @@ from typing import ClassVar
 
 from flext_cli import u
 from flext_core import build_lazy_import_map
-from typing_extensions import TypeForm
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -407,11 +406,11 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             )
             if name == "module_groups":
                 modules = u.type_adapter(
-                    TypeForm(Mapping[str, Sequence[str]])
+                    t.TypeForm(Mapping[str, Sequence[str]])
                 ).validate_python(literal, strict=True)
             else:
                 aliases = u.type_adapter(
-                    TypeForm(Mapping[str, Sequence[tuple[str, str]]])
+                    t.TypeForm(Mapping[str, Sequence[tuple[str, str]]])
                 ).validate_python(literal, strict=True)
         sort = arguments.get("sort_keys", ast.Constant(value=True))
         match sort:

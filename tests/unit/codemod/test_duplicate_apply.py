@@ -19,7 +19,7 @@ from flext_infra.codemod import (
     FlextInfraCodemodLoopPhaseDuplicateApply,
     FlextInfraModGateEngine,
 )
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t

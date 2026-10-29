@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraWorkspaceEnvironmentContracts:

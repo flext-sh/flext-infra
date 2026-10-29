@@ -13,7 +13,6 @@ from typing import Annotated, ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
-from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -1054,7 +1053,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                         config.Infra.tooling,
                         c.Infra.DEPTRY,
                         "optional_dependencies_dev_groups",
-                        TypeForm(Sequence[str]),
+                        t.TypeForm(Sequence[str]),
                     )
                 )
                 if optional is not None and group in optional

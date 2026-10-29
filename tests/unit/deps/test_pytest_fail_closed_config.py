@@ -102,7 +102,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                     tooling,
                     "pytest.ini_options",
                     "filterwarnings",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 )
             ),
         )
@@ -113,7 +113,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                     tooling,
                     "pytest.ini_options",
                     "testpaths",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 )
             ),
         )

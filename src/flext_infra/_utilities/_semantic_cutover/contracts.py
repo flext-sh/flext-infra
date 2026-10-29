@@ -20,7 +20,6 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import cli, u
-from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -2705,7 +2704,7 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         )
         unknown = u.type_adapter(
-            TypeForm(t.Port[t.Infra.RopeNativeObject])
+            t.TypeForm(t.Port[t.Infra.RopeNativeObject])
         ).validate_python(
             FlextInfraUtilitiesTypesRopeRuntime.runtime_callable(
                 c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"

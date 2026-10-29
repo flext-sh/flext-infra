@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
@@ -31,9 +31,6 @@ from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackage,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope._analysis.asthelpers import (
-    FlextInfraUtilitiesRopeAnalysisAstHelpers,
-)
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -104,79 +101,82 @@ class FlextInfraUtilitiesCodemodProject(
         The family package of ``<pkg>/<stem>.py`` is ``<pkg>/_<stem>/``. Every
         class a module of that package declares in its ``__all__`` must be
         reachable through the bases of the facade's ``namespace`` class,
-        following the bases each package class declares. A facade without a
-        family package composes nothing and holds.
+        following the native MRO by object identity. Only classes declared at
+        module scope participate; imported aliases and nested descendants do not
+        become declarations of that module. A missing family package holds.
 
         Returns:
             Whether ``namespace`` in a facade module composes its family.
 
+        Raises:
+            ValueError: The facade has no unique matching nested namespace or
+                does not belong to a governed member.
+
         """
         package = facade_file.parent / f"_{facade_file.stem}"
-        if not package.is_dir():
+        project = snapshot.engine
+        if not project.get_folder(
+            package.relative_to(snapshot.workspace_root).as_posix()
+        ).exists():
             return True
-        bases_by_class: MutableMapping[str, Sequence[str]] = {}
-        exported: set[str] = set()
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
-        for module in sorted(package.rglob(f"*{c.Infra.EXT_PYTHON}")):
-            if module.name == c.Infra.INIT_PY:
-                continue
-            declared = frozenset(snapshots.workspace_public_exports(snapshot, module))
-            for (
-                info
-            ) in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_module(
-                snapshots.workspace_module_tree(snapshot, module),
-            ):
-                bases_by_class[info.name] = tuple(info.bases)
-                if info.name in declared:
-                    exported.add(info.name)
-        pending = list(
-            cls._nested_class_bases(
-                snapshots.workspace_module_tree(snapshot, facade_file),
-                namespace,
-                facade_file,
-            )
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntime.file_resource_at(project, facade_file),
         )
-        reached: set[str] = set()
-        while pending:
-            name = pending.pop()
-            if name in reached:
+        namespaces = tuple(
+            nested.pyobject
+            for top in cls.declared_class_scopes(module.get_scope())
+            for nested in cls.declared_class_scopes(top)
+            if nested.pyobject.get_name() == namespace
+        )
+        if len(namespaces) != 1:
+            msg = f"class {namespace} has no unique nested declaration in {facade_file}"
+            raise ValueError(msg)
+        types = FlextInfraUtilitiesTypesRopeRuntime
+        owner = types.require_class_object(namespaces[0], str(facade_file))
+        reached = {
+            id(types.require_class_object(ancestor, f"ancestry of {namespace}"))
+            for ancestor in owner.get_mro()[1:]
+        }
+        member = snapshots.workspace_source(snapshot, facade_file).member
+        for path in snapshots.workspace_python_files(snapshot, member):
+            if (
+                not path.is_relative_to(package)
+                or path.name == c.Infra.INIT_PY
+                or path.suffix != c.Infra.EXT_PYTHON
+            ):
                 continue
-            reached.add(name)
-            pending.extend(bases_by_class.get(name, ()))
-        return exported <= reached
+            declared = frozenset(snapshots.workspace_public_exports(snapshot, path))
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project, FlextInfraUtilitiesRopeRuntime.file_resource_at(project, path)
+            )
+            if any(
+                id(scope.pyobject) not in reached
+                for scope in cls.declared_class_scopes(module.get_scope())
+                if scope.pyobject.get_name() in declared
+            ):
+                return False
+        return True
 
     @staticmethod
-    def _nested_class_bases(
-        tree: t.Infra.AstModule,
-        namespace: str,
-        facade_file: Path,
-    ) -> Sequence[str]:
-        """Return the base names of class ``namespace`` nested in the facade.
+    def declared_class_scopes(
+        scope: p.Infra.RopeScope,
+    ) -> tuple[p.Infra.RopeScope, ...]:
+        """Select direct class declarations retaining their final native binding.
 
         Returns:
-            The base names of class ``namespace`` nested in the facade.
-
-        Raises:
-            ValueError: If class.
+            Class scopes owned and still published under their declaring name.
 
         """
-        for node in FlextInfraUtilitiesRopeAnalysisAstHelpers.walk_ast_nodes(tree):
-            if (
-                FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) == "ClassDef"
-                and getattr(node, "name", "") == namespace
-            ):
-                return tuple(
-                    name
-                    for base in getattr(node, "bases", ()) or ()
-                    if (
-                        name
-                        := FlextInfraUtilitiesRopeAnalysisAstHelpers.class_base_name(
-                            base,
-                        )
-                    )
-                )
-        msg = f"class {namespace} is not declared in {facade_file}"
-        raise ValueError(msg)
+        bindings = scope.get_defined_names()
+        return tuple(
+            child
+            for child in scope.get_scopes()
+            if child.get_kind() == c.Infra.RopeScopeKind.CLASS
+            and (binding := bindings.get(child.pyobject.get_name())) is not None
+            and binding.get_object() is child.pyobject
+        )
 
     @staticmethod
     def codemod_source_path(root: Path, file_path: Path) -> Path:

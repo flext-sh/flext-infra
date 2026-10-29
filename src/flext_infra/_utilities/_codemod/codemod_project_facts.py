@@ -495,17 +495,18 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         if not facade:
             return ()
-        tree = FlextInfraUtilitiesWorkspaceSnapshot.workspace_module_tree(
-            snapshot, path
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            snapshot.engine,
+            FlextInfraUtilitiesRopeRuntime.file_resource_at(snapshot.engine, path),
         )
         return tuple(
-            nested.name
-            for top in tree.body
-            if isinstance(top, ast.ClassDef)
-            for nested in top.body
-            if isinstance(nested, ast.ClassDef)
-            and not FlextInfraUtilitiesCodemodProject.composes_family_package(
-                snapshot, path, nested.name
+            nested.pyobject.get_name()
+            for top in FlextInfraUtilitiesCodemodProject.declared_class_scopes(
+                module.get_scope()
+            )
+            for nested in FlextInfraUtilitiesCodemodProject.declared_class_scopes(top)
+            if not FlextInfraUtilitiesCodemodProject.composes_family_package(
+                snapshot, path, nested.pyobject.get_name()
             )
         )
 
