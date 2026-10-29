@@ -277,6 +277,9 @@ class FlextInfraModelsDocsCollection:
         files: t.NonNegativeInt = m.Field(
             description="Number of discovered source files",
         )
+        source_revisions: tuple[tuple[Path, t.NonEmptyStr], ...] = m.Field(
+            description="Source-relative plans and revision digests observed in this run",
+        )
         status: Literal["collected", "private-inventory", "empty"] = m.Field(
             description="Observed collection coverage, not reconciliation status",
         )
@@ -284,6 +287,29 @@ class FlextInfraModelsDocsCollection:
             default=(),
             description="Private source references without transcript contents",
         )
+
+        @m.model_validator(mode="before")
+        @classmethod
+        def _ownership_before_image(
+            cls,
+            value: t.JsonPayload,
+            info: p.ValidationInfo,
+        ) -> t.JsonPayload:
+            """Admit counts-only coverage solely as unqualified local before-state.
+
+            Returns:
+                The payload for complete native validation before source recollection.
+
+            """
+            context = info.context
+            if (
+                isinstance(context, Mapping)
+                and context.get("manifest_before_image") is True
+                and isinstance(value, dict)
+                and "source_revisions" not in value
+            ):
+                return {**value, "source_revisions": []}
+            return value
 
     class PlanCollectionBundle(m.ArbitraryTypesModel):
         """Read-only planning result consumed by the existing publisher."""

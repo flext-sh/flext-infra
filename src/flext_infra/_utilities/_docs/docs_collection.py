@@ -41,11 +41,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             self.desired: MutableMapping[Path, bytes] = {}
             self.history = list(manifest.revisions)
             self.observed = {
-                (item.identity, item.digest) for item in manifest.revisions
+                (item.identity, item.digest): item for item in manifest.revisions
             }
-            self.revisions_by_identity = {
-                item.identity: item for item in manifest.revisions
-            }
+            self.current_revisions: dict[
+                tuple[str, Path], m.Infra.PlanCollectionRevision
+            ] = {}
             self.coverage: list[m.Infra.PlanCollectionCoverage] = []
             self.invalid_owned: MutableMapping[Path, str] = {}
 
@@ -112,12 +112,25 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             )
 
         def record_revision(self, revision: m.Infra.PlanCollectionRevision) -> None:
-            """Append one new revision identity to the history."""
+            """Select the observed current revision without rewriting its history.
+
+            Raises:
+                ValueError: If immutable recorded provenance differs.
+
+            """
             key = (revision.identity, revision.digest)
-            if key not in self.observed:
+            recorded = self.observed.get(key)
+            if recorded is None:
                 self.history.append(revision)
-                self.observed.add(key)
-                self.revisions_by_identity[revision.identity] = revision
+                self.observed[key] = revision
+                recorded = revision
+            elif recorded != revision:
+                msg = (
+                    "immutable collection revision provenance changed: "
+                    f"{revision.identity}"
+                )
+                raise ValueError(msg)
+            self.current_revisions[(recorded.source_id, recorded.source_path)] = recorded
 
         def record_private(
             self,
@@ -132,6 +145,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                     adapter=source.adapter,
                     files=len(paths),
                     status="private-inventory" if paths else "empty",
+                    source_revisions=(),
                     private_paths=paths,
                 ),
             )
@@ -152,8 +166,26 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             self,
             source: m.Infra.PlanCollectionSource,
             paths: tuple[Path, ...],
+            *,
+            source_root: Path,
         ) -> None:
-            """Record a published source's coverage."""
+            """Record exact current source references, independently of history.
+
+            Raises:
+                ValueError: If an enumerated plan has no unique current revision.
+
+            """
+            locators = tuple(path.relative_to(source_root) for path in paths)
+            references: list[tuple[Path, str]] = []
+            for locator in locators:
+                recorded = self.current_revisions.get((source.id, locator))
+                if recorded is None:
+                    msg = (
+                        "enumerated plan has no current revision: "
+                        f"{source.id}:{locator}"
+                    )
+                    raise ValueError(msg)
+                references.append((locator, recorded.digest))
             self.coverage.append(
                 m.Infra.PlanCollectionCoverage(
                     source_id=source.id,
@@ -161,23 +193,23 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                     adapter=source.adapter,
                     files=len(paths),
                     status="collected" if paths else "empty",
+                    source_revisions=tuple(references),
                 ),
             )
 
         def sorted_revisions(self) -> list[m.Infra.PlanCollectionRevision]:
-            """Return the history sorted by source time, then identity.
+            """Return current observed revisions sorted by source time and identity.
 
             Returns:
                 The resulting ``list[m.Infra.PlanCollectionRevision]``.
 
             """
+            current = {
+                item.identity: item for item in self.current_revisions.values()
+            }
             return sorted(
-                self.revisions_by_identity.values(),
-                key=lambda item: (
-                    item.source_updated_at_utc is not None,
-                    item.source_updated_at_utc or "",
-                    item.identity,
-                ),
+                current.values(),
+                key=FlextInfraUtilitiesDocsCollectionSources.collection_revision_order,
             )
 
         def verify_immutable_owned(self) -> None:
@@ -390,7 +422,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 state,
                 excluded_outputs,
             )
-            state.record_public(source, paths)
+            state.record_public(source, paths, source_root=source_root)
 
     @staticmethod
     def _collection_index_text(
@@ -416,7 +448,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 if revision.source_updated_at_utc is None
                 else ""
             )
-            for revision in revisions
+            for revision in sorted(
+                revisions,
+                key=FlextInfraUtilitiesDocsCollectionSources.collection_revision_order,
+            )
         )
         index, _changed = FlextInfraUtilitiesDocsContract.docs_contract_update_toc(
             "\n".join(lines) + "\n",
@@ -543,6 +578,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls._validate_revision_locators(manifest)
         cls._verify_collection_artifacts(canonical, manifest, states)
         cls._verify_collection_revisions(canonical, manifest, states)
+        cls._verify_collection_index(canonical, manifest, states)
         u.Cli.atomic_verify_binary_file_states(
             tuple(states.values()),
         ).unwrap()
@@ -568,7 +604,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             raise ValueError(msg)
         sources = {source.id: source for source in configuration.sources}
         coverage = {item.source_id: item for item in manifest.coverage}
-        if len(coverage) != len(manifest.coverage) or set(coverage) != set(sources):
+        if len(coverage) != len(manifest.coverage) or tuple(coverage) != tuple(sources):
             msg = "published collection source coverage is incomplete or duplicated"
             raise ValueError(msg)
         for identity, source in sources.items():
@@ -588,6 +624,74 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 msg = (
                     "published collection source coverage is inconsistent: "
                     f"{identity}"
+                )
+                raise ValueError(msg)
+            cls._verify_collected_revisions(source, item, manifest)
+
+    @classmethod
+    def _verify_collection_index(
+        cls,
+        canonical: Path,
+        manifest: m.Infra.PlanCollectionManifest,
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
+    ) -> None:
+        """Render the index from current references in authenticated source order.
+
+        Raises:
+            ValueError: If the published index selects different current evidence.
+
+        """
+        by_revision = {
+            (item.source_id, item.source_path, item.digest): item
+            for item in manifest.revisions
+        }
+        current: dict[str, m.Infra.PlanCollectionRevision] = {}
+        for coverage in manifest.coverage:
+            for locator, digest in coverage.source_revisions:
+                revision = by_revision[(coverage.source_id, locator, digest)]
+                current[revision.identity] = revision
+        if states[canonical / "collection-index.md"].content != (
+            cls._collection_index_text(tuple(current.values())).encode()
+        ):
+            msg = "published collection index differs from current source references"
+            raise ValueError(msg)
+
+    @classmethod
+    def _verify_collected_revisions(
+        cls,
+        source: m.Infra.PlanCollectionSource,
+        coverage: m.Infra.PlanCollectionCoverage,
+        manifest: m.Infra.PlanCollectionManifest,
+    ) -> None:
+        """Bind enumerated locator/digest pairs to immutable revision evidence.
+
+        Raises:
+            ValueError: If current coverage lacks unique confined revision evidence.
+
+        """
+        locators = tuple(path for path, _digest in coverage.source_revisions)
+        if coverage.files != len(locators) or len(set(locators)) != len(locators):
+            msg = f"collection coverage locators/count differ: {source.id}"
+            raise ValueError(msg)
+        by_locator = {
+            (revision.source_id, revision.source_path, revision.digest): revision
+            for revision in manifest.revisions
+        }
+        if len(by_locator) != len(manifest.revisions):
+            msg = "collection revisions have ambiguous source locator/digest pairs"
+            raise ValueError(msg)
+        for locator, digest in coverage.source_revisions:
+            cls._validated_owned_path(locator)
+            if not any(
+                locator.full_match(pattern) for pattern in source.plan_globs
+            ) or any(
+                locator.full_match(pattern) for pattern in source.exclude_globs
+            ):
+                msg = f"collection coverage locator escapes source selectors: {locator}"
+                raise ValueError(msg)
+            if (source.id, locator, digest) not in by_locator:
+                msg = (
+                    f"collection coverage has no observed revision: {source.id}:{locator}"
                 )
                 raise ValueError(msg)
 

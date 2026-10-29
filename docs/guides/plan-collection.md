@@ -98,6 +98,15 @@ stores a digest of the typed associations and their collection coverage, not pri
 provider roots or execution status. Semantic reconciliation and Beads closure remain
 separate operations.
 
+Coverage records each source-relative plan locator and the content revision digest
+actually observed in that run. Its count, uniqueness and selector confinement must
+agree with those references, and each locator/digest must resolve to one authenticated
+revision and its incoming content. Historical revisions of removed plans remain
+evidence; their presence or order alone never establishes current coverage. An empty
+source carries an explicit empty reference sequence and zero count. Reobserving A
+after B selects A as current without changing A's original provenance timestamp,
+reordering history or duplicating its immutable evidence.
+
 The local collection owner may admit a typed legacy manifest only as the original
 ownership before-image. All configured sources must still be collected and every
 publication must emit the current association and coverage proof. Malformed or partly

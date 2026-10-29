@@ -32,6 +32,22 @@ class FlextInfraUtilitiesDocsCollectionSources:
         return sha256(configuration.model_dump_json().encode()).hexdigest()
 
     @staticmethod
+    def collection_revision_order(
+        revision: m.Infra.PlanCollectionRevision,
+    ) -> tuple[bool, str, str]:
+        """Order current source references without inventing update timestamps.
+
+        Returns:
+            The existing substantive timestamp and deterministic identity order.
+
+        """
+        return (
+            revision.source_updated_at_utc is not None,
+            revision.source_updated_at_utc or "",
+            revision.identity,
+        )
+
+    @staticmethod
     def collection_revision_digest(
         artifacts: tuple[tuple[Path, m.Cli.AtomicFileState], ...],
     ) -> str:
