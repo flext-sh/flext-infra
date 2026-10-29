@@ -97,3 +97,9 @@ configuration and source observations to the existing publication guards. The ma
 stores a digest of the typed associations and their collection coverage, not private
 provider roots or execution status. Semantic reconciliation and Beads closure remain
 separate operations.
+
+The local collection owner may admit a typed legacy manifest only as the original
+ownership before-image. All configured sources must still be collected and every
+publication must emit the current association and coverage proof. Malformed or partly
+upgraded manifests are rejected. Verification never admits this before-image;
+migration neither patches evidence by hand nor exposes a second successful format.

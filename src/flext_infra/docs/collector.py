@@ -98,10 +98,12 @@ class FlextInfraDocCollector:
         parsed = u.Cli.yaml_parse(captured.value.content.decode("utf-8"))
         if parsed.failure:
             return result_type.from_failure(parsed)
-        return u.validate_value(
-            m.Infra.PlanCollectionConfig,
-            parsed.value,
-            strict=False,
+        return result_type.ok(
+            u.Cli.config_decode(
+                parsed.value,
+                m.Infra.PlanCollectionConfig,
+                source_path=configuration_path,
+            ),
         )
 
     @staticmethod

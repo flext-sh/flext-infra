@@ -174,7 +174,11 @@ configuration root with locked mode retained. It must not turn the resolved acti
 version into `--tool <selector>@<version>`: that is a new command-line request,
 not the original configured request and its lock binding. In particular, a tool
 declared `latest` and already installed from its lock must remain discoverable
-before upgrade advances that lock. Make, its shared runtime reader, setup and
+before upgrade advances that lock. Direnv's `mise env --shell bash` invocation
+must retain `MISE_LOCKED=1`, just as discovery does, and consume that same locked
+selection without requesting newer tools. The setting stays local to the activation
+command so explicit upgrade operations retain their declared resolution behavior.
+Make, its shared runtime reader, setup and
 direnv consume the same configured native selection without a host-PATH fallback,
 custom lock parser or second resolver. Setup always bootstraps and never fails on
 lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committed

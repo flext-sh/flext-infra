@@ -91,7 +91,7 @@ mise_environment="$(
   if [[ "${OS:-}" == Windows_NT ]]; then
     mise_binary="$(cygpath --unix "${mise_binary}")" || exit $?
   fi
-  "${mise_binary}" -C "${RUNTIME_ROOT}" env --shell bash
+  MISE_LOCKED=1 "${mise_binary}" -C "${RUNTIME_ROOT}" env --shell bash
 )" || return $?
 eval "${mise_environment}"
 unset mise_environment

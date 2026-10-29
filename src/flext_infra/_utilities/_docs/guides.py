@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
+from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ from flext_cli import u
 
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
@@ -31,17 +33,72 @@ class FlextInfraUtilitiesDocsGuides:
     """Project guide projections derived from root ``docs/guides`` sources."""
 
     @staticmethod
+    def _make_contract_content(source: str, rendered: str, path: Path) -> str:
+        """Project uniquely owned, non-overlapping sections using native headings.
+
+        Returns:
+            The guide with its catalog sections replaced and other bytes preserved.
+
+        Raises:
+            ValueError: A section is missing, ambiguous, or overlaps another section.
+
+        """
+        declared = u.Cli.markdown_headings(rendered)
+        if not declared:
+            msg = "Make contract template must declare its section headings"
+            raise ValueError(msg)
+        headings = u.Cli.markdown_headings(source)
+        lines = source.splitlines(keepends=True)
+        rendered_lines = rendered.splitlines(keepends=True)
+        replacements: list[tuple[int, int, str]] = []
+        for heading in declared:
+            matches = tuple(
+                item
+                for item in headings
+                if item.level == heading.level and item.text == heading.text
+            )
+            if len(matches) != 1:
+                msg = (
+                    f"Make contract section is absent or ambiguous: {path}: "
+                    f"{heading.text}"
+                )
+                raise ValueError(msg)
+            selected = matches[0]
+            end = next(
+                (
+                    item.line - 1
+                    for item in headings
+                    if item.line > selected.line and item.level <= selected.level
+                ),
+                len(lines),
+            )
+            rendered_end = next(
+                (
+                    item.line - 1
+                    for item in declared
+                    if item.line > heading.line and item.level <= heading.level
+                ),
+                len(rendered_lines),
+            )
+            section = "".join(rendered_lines[heading.line - 1 : rendered_end])
+            replacements.append((selected.line - 1, end, section.rstrip() + "\n\n"))
+        ordered = sorted(replacements)
+        if any(left[1] > right[0] for left, right in pairwise(ordered)):
+            msg = f"Make contract sections overlap: {path}"
+            raise ValueError(msg)
+        for start, end, section in reversed(ordered):
+            lines[start:end] = (section,)
+        return "".join(lines)
+
+    @staticmethod
     def docs_make_contract_plans(
         repository_root: Path,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Plan the declared catalog section against its original guide observation.
+        """Plan the declared catalog section against its original guide.
 
         Returns:
             The mixed-file effect, empty when undeclared, or the original failure.
-
-        Raises:
-            ValueError: The declared section or template heading is not unique.
 
         """
         result = r[tuple[m.Infra.CodegenFilePlan, ...]]
@@ -58,7 +115,10 @@ class FlextInfraUtilitiesDocsGuides:
         if make.docs.contract_guide is None:
             return result.ok(())
         path = repository_root / make.docs.contract_guide
-        previous = next((plan for plan in declared_files if plan.path == path), None)
+        declared = FlextInfraUtilitiesCodegenFilePlan.codegen_compose_file_plans(
+            declared_files
+        )
+        previous = next((plan for plan in declared if plan.path == path), None)
         captured = (
             r[m.Cli.AtomicFileState].ok(previous.before)
             if previous is not None
@@ -66,60 +126,45 @@ class FlextInfraUtilitiesDocsGuides:
         )
         if captured.failure:
             return result.from_failure(captured)
-        content = previous.desired_content if previous is not None else captured.value.content
+        content = (
+            previous.desired_content
+            if previous is not None
+            else captured.value.content
+        )
         if content is None:
             return result.fail(f"declared Make contract guide is absent: {path}")
-        rendered = FlextInfraUtilitiesDocsRender.docs_make_contract(make)
-        if rendered.failure:
-            return result.from_failure(rendered)
-        section = rendered.value.rendered
-        declared_headings = u.Cli.markdown_headings(section)
-        if len(declared_headings) != 1:
-            msg = "Make contract template must declare exactly one section heading"
-            raise ValueError(msg)
-        heading = declared_headings[0]
         source = content.decode(c.DEFAULT_ENCODING)
-        headings = u.Cli.markdown_headings(source)
-        matches = tuple(
-            item
-            for item in headings
-            if item.level == heading.level and item.text == heading.text
-        )
-        if len(matches) != 1:
-            msg = f"Make contract section is absent or ambiguous: {path}: {heading.text}"
-            raise ValueError(msg)
-        selected = matches[0]
-        lines = source.splitlines(keepends=True)
-        end = next(
-            (
-                item.line - 1
-                for item in headings
-                if item.line > selected.line and item.level <= selected.level
-            ),
-            len(lines),
-        )
-        updated = (
-            "".join(lines[: selected.line - 1])
-            + section.rstrip()
-            + "\n\n"
-            + "".join(lines[end:])
-        )
-        return result.ok((
-            m.Infra.CodegenFilePlan(
-                project=repository_root,
-                path=path,
-                before=captured.value,
-                desired_content=updated.encode(c.DEFAULT_ENCODING),
-                desired_mode=(previous.desired_mode if previous is not None else captured.value.mode),
-                owner="docs",
-                policy="merge",
-                inputs=(
-                    *loaded.value.sources,
-                    *rendered.value.source_states,
-                    *(previous.inputs if previous is not None else ()),
+        return FlextInfraUtilitiesDocsRender.docs_make_contract(make).map(
+            lambda rendered: (
+                m.Infra.CodegenFilePlan(
+                    project=repository_root,
+                    path=path,
+                    before=captured.value,
+                    desired_content=FlextInfraUtilitiesDocsGuides._make_contract_content(
+                        source, rendered.rendered, path
+                    ).encode(c.DEFAULT_ENCODING),
+                    desired_mode=(
+                        previous.desired_mode
+                        if previous is not None
+                        else captured.value.mode
+                    ),
+                    owner="docs",
+                    policy="merge",
+                    tracking=previous.tracking if previous is not None else "versioned",
+                    index_before=(
+                        previous.index_before if previous is not None else None
+                    ),
+                    tracking_dependencies=(
+                        previous.tracking_dependencies if previous is not None else ()
+                    ),
+                    inputs=(
+                        *loaded.value.sources,
+                        *rendered.source_states,
+                        *(previous.inputs if previous is not None else ()),
+                    ),
                 ),
-            ),
-        ))
+            )
+        )
 
     @staticmethod
     def docs_project_guide_content(

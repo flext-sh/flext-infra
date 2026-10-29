@@ -79,7 +79,11 @@ class FlextInfraModelsDocsGeneration:
         """Documentation scope targeting a project or workspace root."""
 
         declared_files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = (
-            m.Field(default=(), exclude=True, description="Captured presentation candidates")
+            m.Field(
+                default=(),
+                exclude=True,
+                description="Captured presentation candidates",
+            ),
         )
         name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
         path: Annotated[Path, m.Field(description="Absolute lexical scope root")]

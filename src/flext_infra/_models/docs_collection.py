@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Literal, Self
 
 from flext_cli import m
 
 from flext_infra import t
 from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraModelsDocsCollection:
@@ -203,11 +207,15 @@ class FlextInfraModelsDocsCollection:
         """Generated artifact ownership and provenance, never execution state."""
 
         configuration_sha256: t.NonEmptyStr | None = m.Field(
-            description="Typed source association digest; None only before first collection",
+            description=(
+                "Typed source association digest; None only before first collection"
+            ),
         )
         coverage: tuple[
             FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...
-        ] = m.Field(description="Complete source coverage from the published collection")
+        ] = m.Field(
+            description="Complete source coverage from the published collection",
+        )
 
         revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
             m.Field(
@@ -221,6 +229,42 @@ class FlextInfraModelsDocsCollection:
             default=(),
             description="Digest-attested generated artifact ownership",
         )
+
+        @m.model_validator(mode="before")
+        @classmethod
+        def _ownership_before_image(
+            cls,
+            value: t.JsonPayload,
+            info: p.ValidationInfo,
+        ) -> t.JsonPayload:
+            """Admit typed legacy ownership only for local collection's before-image.
+
+            Returns:
+                The payload for complete native validation, not qualified evidence.
+
+            Raises:
+                ValueError: If published current-format proof is explicitly null.
+
+            """
+            context = info.context
+            if (
+                isinstance(context, Mapping)
+                and context.get("manifest_before_image") is True
+                and isinstance(value, dict)
+            ):
+                if "configuration_sha256" not in value and "coverage" not in value:
+                    return {
+                        **value,
+                        "configuration_sha256": None,
+                        "coverage": [],
+                    }
+                if (
+                    "configuration_sha256" in value
+                    and value["configuration_sha256"] is None
+                ):
+                    msg = "published collection manifest has null association proof"
+                    raise ValueError(msg)
+            return value
 
     class PlanCollectionCoverage(m.ContractModel):
         """Observed source coverage, explicitly distinct from reconciliation."""

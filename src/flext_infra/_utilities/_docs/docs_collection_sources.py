@@ -76,6 +76,19 @@ class FlextInfraUtilitiesDocsCollectionSources:
             raise ValueError(msg)
         return selected if selected.is_absolute() else root / selected
 
+    @staticmethod
+    def collection_validate_patterns(source: m.Infra.PlanCollectionSource) -> None:
+        """Validate declared source selectors without accessing a provider.
+
+        Raises:
+            ValueError: If a selector escapes its source association.
+
+        """
+        for pattern in (*source.plan_globs, *source.exclude_globs):
+            if Path(pattern).is_absolute() or ".." in Path(pattern).parts:
+                msg = f"unsafe collection pattern: {pattern}"
+                raise ValueError(msg)
+
     @classmethod
     def collection_source_files(
         cls,
@@ -98,10 +111,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         chain = u.Cli.atomic_plan_directory_chain(selected).unwrap()
         if chain.directories:
             raise FileNotFoundError(selected)
-        for pattern in (*source.plan_globs, *source.exclude_globs):
-            if Path(pattern).is_absolute() or ".." in Path(pattern).parts:
-                msg = f"unsafe collection pattern: {pattern}"
-                raise ValueError(msg)
+        cls.collection_validate_patterns(source)
         inventory = u.Cli.atomic_inventory_physical_tree(selected).unwrap()
         for entry in inventory.entries:
             if entry.kind == "symlink" and any(
@@ -275,10 +285,9 @@ class FlextInfraUtilitiesDocsCollectionSources:
             return m.Infra.PlanCollectionManifest(
                 configuration_sha256=None, coverage=(),
             ), ()
-        manifest = m.Infra.PlanCollectionManifest.model_validate_json(before.content)
-        if manifest.configuration_sha256 is None:
-            msg = f"published collection manifest has no association proof: {manifest_path}"
-            raise ValueError(msg)
+        manifest = m.Infra.PlanCollectionManifest.model_validate_json(
+            before.content, context={"manifest_before_image": True},
+        )
         excluded: list[Path] = [manifest_path]
         cls._validate_revision_locators(manifest)
         plans = {canonical / revision.canonical_path for revision in manifest.revisions}

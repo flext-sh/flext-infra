@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, m
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsCollectionSources,
@@ -491,6 +493,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             projection,
             states,
         )
+        if manifest.revisions:
+            cls._verify_collection_revisions(canonical, manifest, states)
         state = cls._CollectionState(canonical, projection, manifest, configuration)
         state.states = states
         if not configuration.enabled:
@@ -535,11 +539,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         if before.content is None:
             raise FileNotFoundError(before.path)
         manifest = m.Infra.PlanCollectionManifest.model_validate_json(before.content)
-        cls._verify_collection_associations(configuration, manifest)
+        cls._verify_collection_associations(repository_root, configuration, manifest)
         cls._validate_revision_locators(manifest)
         cls._verify_collection_artifacts(canonical, manifest, states)
         cls._verify_collection_revisions(canonical, manifest, states)
-        FlextInfraUtilitiesDocsContract.atomic_verify_binary_file_states(
+        u.Cli.atomic_verify_binary_file_states(
             tuple(states.values()),
         ).unwrap()
         return True
@@ -547,6 +551,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     @classmethod
     def _verify_collection_associations(
         cls,
+        repository_root: Path,
         configuration: m.Infra.PlanCollectionConfig,
         manifest: m.Infra.PlanCollectionManifest,
     ) -> None:
@@ -556,7 +561,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             ValueError: If associations, coverage or publication authorization differ.
 
         """
-        if manifest.configuration_sha256 != cls.collection_configuration_digest(configuration):
+        if manifest.configuration_sha256 != cls.collection_configuration_digest(
+            configuration,
+        ):
             msg = "collection configuration differs from published association proof"
             raise ValueError(msg)
         sources = {source.id: source for source in configuration.sources}
@@ -565,6 +572,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             msg = "published collection source coverage is incomplete or duplicated"
             raise ValueError(msg)
         for identity, source in sources.items():
+            cls.collection_source_root(repository_root, source)
+            cls.collection_validate_patterns(source)
             item = coverage[identity]
             if (
                 source.adapter != "files"
@@ -576,7 +585,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 msg = f"source has no complete publishable collection proof: {identity}"
                 raise ValueError(msg)
             if item.status != ("collected" if item.files else "empty"):
-                msg = f"published collection source coverage is inconsistent: {identity}"
+                msg = (
+                    "published collection source coverage is inconsistent: "
+                    f"{identity}"
+                )
                 raise ValueError(msg)
 
     @classmethod
@@ -589,7 +601,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         """Verify every manifest-owned canonical file through its original snapshot.
 
         Raises:
-            ValueError: If the index or owned artifact inventory is incomplete or changed.
+            ValueError: If the index or owned artifact inventory is incomplete
+                or changed.
 
         """
         paths = tuple(
@@ -600,12 +613,17 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             msg = "published collection artifact inventory is incomplete or duplicated"
             raise ValueError(msg)
         for artifact in manifest.artifacts:
-            observed = cls.collection_capture(canonical / artifact.relative_path, states)
+            observed = cls.collection_capture(
+                canonical / artifact.relative_path, states
+            )
             if (
                 not cls._artifact_matches(observed, artifact)
                 or observed.mode != c.Infra.DOCS_ARTIFACT_MODE
             ):
-                msg = f"published collection artifact is missing or changed: {observed.path}"
+                msg = (
+                    "published collection artifact is missing or changed: "
+                    f"{observed.path}"
+                )
                 raise ValueError(msg)
 
     @classmethod
@@ -637,17 +655,36 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 incoming / "plan.md",
                 *(incoming / "attachments" / name for name in revision.attachments),
             )
-            required = (canonical / revision.canonical_path, incoming / "provenance.json", *paths)
-            if any(path not in states or states[path].content is None for path in required):
-                msg = f"published collection revision has no complete owned evidence: {revision.identity}"
+            required = (
+                canonical / revision.canonical_path,
+                incoming / "provenance.json",
+                *paths,
+            )
+            if any(
+                path not in states or states[path].content is None for path in required
+            ):
+                msg = (
+                    "published collection revision has no complete owned evidence: "
+                    f"{revision.identity}"
+                )
+                raise ValueError(msg)
+            provenance_content = states[incoming / "provenance.json"].content
+            if provenance_content is None:
+                msg = f"collection revision provenance is absent: {incoming}"
                 raise ValueError(msg)
             provenance = m.Infra.PlanCollectionRevision.model_validate_json(
-                states[incoming / "provenance.json"].content,
+                provenance_content,
             )
             if provenance != revision or cls.collection_revision_digest(
-                tuple((name, states[path]) for name, path in zip(names, paths, strict=True)),
+                tuple(
+                    (name, states[path])
+                    for name, path in zip(names, paths, strict=True)
+                ),
             ) != revision.digest:
-                msg = f"published collection revision provenance or digest differs: {revision.identity}"
+                msg = (
+                    "published collection revision provenance or digest differs: "
+                    f"{revision.identity}"
+                )
                 raise ValueError(msg)
 
     @classmethod
@@ -682,7 +719,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             ).hexdigest()
         )
         digest = cls.collection_revision_digest(
-            tuple((artifact.path.relative_to(path.parent), artifact) for artifact in artifacts),
+            tuple(
+                (artifact.path.relative_to(path.parent), artifact)
+                for artifact in artifacts
+            ),
         )
         plan = artifacts[0].content
         if plan is None:

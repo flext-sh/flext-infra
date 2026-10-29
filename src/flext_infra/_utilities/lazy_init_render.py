@@ -143,7 +143,9 @@ class FlextInfraUtilitiesLazyInitRender:
             known = (
                 language,
                 FlextInfraUtilitiesLintRecipes.copyright_notice(
-                    project_root, source_project=view
+                    project_root,
+                    source_project=view,
+                    declaration_inputs=declaration,
                 ),
             )
             model.project_notices[project_root] = known

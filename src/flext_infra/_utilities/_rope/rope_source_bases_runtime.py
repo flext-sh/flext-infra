@@ -2086,27 +2086,27 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return found
             # The candidate source may not parse its lazy map (stale overlay);
             # the on-disk initializer is the authoritative lazy SSOT.
-            resource = self._project.find_module(module)
-            if resource is not None:
-                on_disk = Path(resource.real_path)
-                if resource.is_folder():
-                    on_disk /= c.Infra.INIT_PY
-                if (
-                    self._project.source_query(on_disk, "isfile")
-                    and on_disk != source_path
-                ):
-                    request = m.Infra.SourceBindingInventoryRequest(
-                        project=self._project,
-                        module=module,
-                        path=on_disk,
-                        source=self._project.source_text(on_disk),
-                        required_line=None,
-                        allow_conditional=False,
-                    )
-                    return FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
-                        request, self._definitions, provider=None
-                    ).get(name)
-            return None
+            # The candidate text shares the disk path even when it is a
+            # proposed overlay swap; the authoritative lazy SSOT is the raw
+            # filesystem bytes, read without the overlay.
+            on_disk = source_path
+            try:
+                raw = on_disk.read_text()
+            except OSError:
+                return None
+            if raw == (self._sources.get(module, (None, ""))[1] or ""):
+                return None
+            request = m.Infra.SourceBindingInventoryRequest(
+                project=self._project,
+                module=module,
+                path=on_disk,
+                source=raw,
+                required_line=None,
+                allow_conditional=False,
+            )
+            return FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+                request, self._definitions, provider=None
+            ).get(name)
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.

@@ -261,9 +261,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
                         or any(directory.iterdir())
                     ):
                         break
-                    removed = u.Cli.atomic_read_empty_directory_state(
+                    directory_state = u.Cli.atomic_read_empty_directory_state(
                         directory, required=True
-                    ).flat_map(u.Cli.atomic_delete_empty_directory_guarded)
+                    )
+                    if directory_state.failure:
+                        return directory_state
+                    removed = u.Cli.atomic_delete_empty_directory_guarded(
+                        directory_state.value
+                    )
                     if removed.failure:
                         return removed
         return r[bool].ok(value=True)
