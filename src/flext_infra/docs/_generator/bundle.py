@@ -210,12 +210,10 @@ class FlextInfraDocsGeneratorBundle:
         metadata = cls._presentation_metadata(scopes.value[0], declared_files)
         if metadata.failure:
             return result_type.from_failure(metadata)
-        contract = u.Infra.docs_make_contract_plan(repository_root, declared_files)
+        contract = u.Infra.docs_make_contract_plans(repository_root, declared_files)
         if contract.failure:
             return result_type.from_failure(contract)
-        contract_plan = contract.value
-        contract_files = () if contract_plan is None else (contract_plan,)
-        presentation_files = (*metadata.value, *contract_files)
+        contract_files = contract.value
         published_metadata = (
             *metadata.value,
             *(
@@ -230,7 +228,7 @@ class FlextInfraDocsGeneratorBundle:
         rendered = cls._rendered_scopes(
             repository_root,
             scopes.value,
-            (governance.value, published_metadata, presentation_files),
+            (governance.value, published_metadata, contract_files),
         )
         if rendered.failure:
             return result_type.from_failure(rendered)

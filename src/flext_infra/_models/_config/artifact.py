@@ -1263,6 +1263,29 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                 raise ValueError(msg)
             return self
 
+    class ArtifactRenderRoute(m.StrictModel):
+        """One artifact render dispatch: entry, destination and its context."""
+
+        entry: Annotated[
+            FlextInfraModelsConfigTemplates.TemplateEntrySpec,
+            m.Field(frozen=True, description="Catalog entry being rendered"),
+        ]
+        destination: Annotated[
+            str, m.Field(description="Repository-relative destination path")
+        ]
+        failure_prefix: Annotated[
+            str,
+            m.Field(description="Stage banner prepended to render failures"),
+        ]
+        project_context: Annotated[
+            FlextInfraModelsConfigContexts.ProjectRenderContext | None,
+            m.Field(description="Project-scoped render context, when declared"),
+        ]
+        planned_manifests: Annotated[
+            tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...],
+            m.Field(description="Planned manifests the bootstrap closure reads"),
+        ] = ()
+
     class CodegenRenderInputs(m.StrictModel):
         """One repository planner's managed state over frozen policy references."""
 

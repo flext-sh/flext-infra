@@ -31,20 +31,20 @@ class FlextInfraUtilitiesDocsGuides:
     """Project guide projections derived from root ``docs/guides`` sources."""
 
     @staticmethod
-    def docs_make_contract_plan(
+    def docs_make_contract_plans(
         repository_root: Path,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> p.Result[m.Infra.CodegenFilePlan | None]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan the declared catalog section against its original guide observation.
 
         Returns:
-            The mixed-file effect, no effect when undeclared, or the original failure.
+            The mixed-file effect, empty when undeclared, or the original failure.
 
         Raises:
             ValueError: The declared section or template heading is not unique.
 
         """
-        result = r[m.Infra.CodegenFilePlan | None]
+        result = r[tuple[m.Infra.CodegenFilePlan, ...]]
         owner = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(repository_root)
         if owner.failure:
             return result.from_failure(owner)
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsGuides:
             return result.from_failure(loaded)
         make = loaded.value.spec.make
         if make.docs.contract_guide is None:
-            return result.ok(None)
+            return result.ok(())
         path = repository_root / make.docs.contract_guide
         previous = next((plan for plan in declared_files if plan.path == path), None)
         captured = (
@@ -104,7 +104,7 @@ class FlextInfraUtilitiesDocsGuides:
             + "\n\n"
             + "".join(lines[end:])
         )
-        return result.ok(
+        return result.ok((
             m.Infra.CodegenFilePlan(
                 project=repository_root,
                 path=path,
@@ -118,8 +118,8 @@ class FlextInfraUtilitiesDocsGuides:
                     *rendered.value.source_states,
                     *(previous.inputs if previous is not None else ()),
                 ),
-            )
-        )
+            ),
+        ))
 
     @staticmethod
     def docs_project_guide_content(
@@ -193,11 +193,10 @@ class FlextInfraUtilitiesDocsGuides:
             for root in (source_root, destination_root)
         )
         for plan in declared_files:
-            if plan.path.parent == source_root:
-                if plan.desired_content is None:
-                    sources.pop(plan.path, None)
-                else:
-                    sources[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
+            if plan.desired_content is None:
+                sources.pop(plan.path, None)
+            else:
+                sources[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
         return sources, destinations
 
     @staticmethod

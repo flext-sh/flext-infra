@@ -1606,11 +1606,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if entry.source is None
             else self._rendered_artifact_source(
                 render_inputs,
-                entry=entry,
-                destination=entry.destination,
-                failure_prefix="",
-                project_context=None,
-                planned_manifests=planned_manifests,
+                m.Infra.ArtifactRenderRoute(
+                    entry=entry,
+                    destination=entry.destination,
+                    failure_prefix="",
+                    project_context=None,
+                    planned_manifests=planned_manifests,
+                ),
             )
         )
         if rendered.failure:

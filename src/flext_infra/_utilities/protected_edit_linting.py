@@ -168,9 +168,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
             if published.failure:
                 return published
-            retired = cls._retire_published_index_entries(plans, result_type)
+            retired = cls._retire_published_index_entries(plans)
             if retired.failure:
-                return retired
+                return result_type.from_failure(retired)
             pruned = cls._prune_emptied_directories(lock.value, plans, published.value)
             if pruned.failure:
                 return result_type.from_failure(pruned)
@@ -212,12 +212,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _retire_published_index_entries(
         cls,
         plans: Sequence[m.Infra.CodegenFilePlan],
-        result_type: type[p.Result[tuple[Path, ...]]],
-    ) -> p.Result[None]:
+    ) -> p.Result[bool]:
         """Retire runtime-local index entries replaced by published plans.
 
         Returns:
-            Ok when every replaced entry retired, or the first failure.
+            True when every replaced entry retired, or the first failure.
 
         """
         for plan in plans:
@@ -229,8 +228,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 ),
             )
             if retired.failure:
-                return result_type.from_failure(retired)
-        return r[None].ok(None)
+                return r[bool].from_failure(retired)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _prune_emptied_directories(

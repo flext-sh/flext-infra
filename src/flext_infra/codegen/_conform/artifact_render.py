@@ -514,18 +514,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def _rendered_artifact_source(
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
-        *,
-        entry: m.Infra.TemplateEntrySpec,
-        destination: str,
-        failure_prefix: str,
-        project_context: m.Infra.ProjectRenderContext | None,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        route: m.Infra.ArtifactRenderRoute,
     ) -> p.Result[str]:
-        """Resolve one artifact render context and render its template source.
+        """Resolve one artifact render route and render its template source.
 
-        ``failure_prefix`` carries the only difference between the scaffold and
-        existing-repository planners: the stage banner the scaffold planner
-        prepends to a render failure.
+        ``route.failure_prefix`` carries the only difference between the
+        scaffold and existing-repository planners: the stage banner the
+        scaffold planner prepends to a render failure.
 
         Returns:
             The rendered content.
@@ -534,6 +529,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ValueError: If the catalog entry has no renderable source.
 
         """
+        entry = route.entry
+        destination = route.destination
         if entry.source is None:
             msg = f"render entry has no source: {destination}"
             raise ValueError(msg)
@@ -547,7 +544,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return self._bootstrap_rendered_source(
                 render_inputs,
                 entry,
-                planned_manifests=planned_manifests,
+                planned_manifests=route.planned_manifests,
             )
         artifact_context: p.Result[p.Model] = (
             self._release_policy_render_inputs(render_inputs.target.root)
@@ -555,7 +552,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             else self._artifact_render_context(
                 render_inputs,
                 destination=destination,
-                project_context=project_context,
+                project_context=route.project_context,
             )
         )
         if artifact_context.failure:
@@ -576,7 +573,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             rendered.value,
             template_relpath=entry.source,
             destination=destination,
-            failure_prefix=failure_prefix,
+            failure_prefix=route.failure_prefix,
             template_source=template.value,
         )
 
