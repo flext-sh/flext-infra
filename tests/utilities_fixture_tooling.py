@@ -125,7 +125,10 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             *,
             target_file: Path | None = None,
         ) -> int:
-            """Exercise the real profiling entry with the Make-owned inputs.
+            """Exercise the incremental profiling entry with Make-owned inputs.
+
+            The public profile operation requires the fixture's incremental
+            database; it does not represent a FULL run or synthesize a cache.
 
             Returns:
                 The native profiling entry's successful return code.
@@ -134,6 +137,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 RuntimeError: If the profiling entry fails.
 
             """
+            database = tm.not_none(runner.testmon_db)
             output.parent.mkdir(parents=True, exist_ok=True)
             policy = config.Infra.tooling.tools.pytest
             cache = config.Infra.codegen.make.testmon_cache
@@ -163,7 +167,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                                 ),
                                 c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
                                 cache.database_environment_variable: str(
-                                    runner.testmon_db,
+                                    database,
                                 ),
                             },
                         ),

@@ -10,6 +10,7 @@ import ast
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from keyword import iskeyword
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import c, p, t
 from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
@@ -28,6 +29,31 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 ):
     """Resolve lexical identities and construct Rope module/import objects."""
+
+    @staticmethod
+    def native_object_identity(value: p.Infra.RopePyObject) -> str:
+        """Retain a native object's declaring module and complete scope path.
+
+        Returns:
+            The module and qualified path separated by ``::``, or an empty
+            identity when the native object has no supported declaration.
+
+        """
+        if FlextInfraUtilitiesTypesRopeRuntime.py_class(
+            value
+        ) or FlextInfraUtilitiesTypesRopeRuntime.py_function(value):
+            module = value.get_module()
+            scope = value.get_scope()
+            names: list[str] = []
+            while scope.parent is not None:
+                names.append(scope.pyobject.get_name())
+                scope = scope.parent
+            return f"{module.get_name()}::{'.'.join(reversed(names))}"
+        if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value) and isinstance(
+            value, p.Infra.RopeBuiltinClass
+        ):
+            return f"{value.builtin.__module__}::{value.builtin.__qualname__}"
+        return ""
 
     @classmethod
     def annotation_alias_definition(
@@ -364,6 +390,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     ) -> p.Infra.RopePyName | None:
         """Resolve native identifier syntax or a declared identifier route.
 
+        A candidate view whose subscript base chain crosses lazy package
+        letters may fail rope's metaclass linearization; that resolution is
+        unavailable in this view and ``None`` is returned (the caller's
+        claim is skipped; the base project's own pass owns the proof).
+
         Returns:
             The resulting ``p.Infra.RopePyName | None``.
 
@@ -379,9 +410,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 message = f"Rope identifier route is invalid: {expression}"
                 raise ValueError(message)
             attributes = names[1:]
-            result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
-                scope, names[0]
-            )
+            try:
+                result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
+                    scope, names[0]
+                )
+            except tuple(FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()):
+                return None
         else:
             primary = expression
             reversed_attributes: list[str] = []
@@ -391,10 +425,16 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             if not isinstance(primary, ast.Name):
                 return None
             attributes = tuple(reversed(reversed_attributes))
-            result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
-                scope,
-                primary,
-            )
+            try:
+                result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
+                    scope,
+                    primary,
+                )
+            except tuple(FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()):
+                # Candidate-view subscript bases crossing lazy letters are
+                # unprovable here (conflicting-metaclass inference); the
+                # claim is skipped and the base project pass owns it.
+                return None
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "Rope identifier resolution returned an invalid name"
             raise TypeError(msg)
@@ -466,6 +506,57 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 )
         return binding
 
+    @staticmethod
+    def _class_alias_primary(
+        declaration: ast.Assign | ast.AnnAssign,
+    ) -> ast.expr | None:
+        """Return the root name behind one alias declaration value.
+
+        Returns:
+            The referenced name expression, or None when the declaration
+            value is not a bare name reference.
+
+        """
+        if isinstance(declaration, ast.Assign):
+            primary: ast.expr | None = declaration.value
+        elif isinstance(declaration, ast.AnnAssign):
+            primary = declaration.value
+        else:
+            return None
+        if primary is None or not isinstance(primary, c.Infra.AST_NAME_REFERENCE_TYPES):
+            return None
+        while isinstance(primary, ast.Attribute):
+            primary = primary.value
+        return primary
+
+    @staticmethod
+    def _class_alias_declaration(
+        holder: p.Infra.RopeParsedModule,
+        tree_index: dict[int, ast.AST | None],
+        rhs_offset: int,
+    ) -> ast.AST | None:
+        """Return the unique statement at the alias RHS offset, if any.
+
+        Returns:
+            The unique assignment declaration, or None when the offset has
+            no statement under the class alias policy.
+
+        Raises:
+            ValueError: The offset is shared by more than one statement.
+
+        """
+        declaration = tree_index.get(rhs_offset)
+        if declaration is not None:
+            return declaration
+        if rhs_offset in tree_index:
+            msg = (
+                "native class alias RHS has no unique statement: "
+                f"{holder.get_name()}:{rhs_offset}"
+            )
+            raise ValueError(msg)
+        # Native loop/context/pattern bindings are outside class alias policy.
+        return None
+
     @classmethod
     def _class_alias_statement(
         cls,
@@ -497,30 +588,22 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         # identity; rope rebuilds the tree on change, so a rebuilt module
         # naturally becomes a new index and never serves stale offsets.
         tree_index = cls._tree_assignment_index(tree, source)
-        declaration = tree_index.get(rhs_offset)
-        if declaration is None:
-            if rhs_offset in tree_index:
-                msg = (
-                    "native class alias RHS has no unique statement: "
-                    f"{holder.get_name()}:{rhs_offset}"
-                )
-                raise ValueError(msg)
-            # Native loop/context/pattern bindings are outside class alias policy.
-            return None
-        if not isinstance(declaration.value, c.Infra.AST_NAME_REFERENCE_TYPES):
+        declaration = cls._class_alias_declaration(holder, tree_index, rhs_offset)
+        if (
+            declaration is None
+            or not isinstance(declaration, ast.Assign | ast.AnnAssign)
+            or (primary := cls._class_alias_primary(declaration)) is None
+        ):
             return None
         offset = cls.source_offset(source, declaration)
         scope = cls.scope_at(holder, offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
             return None
-        primary = declaration.value
-        while isinstance(primary, ast.Attribute):
-            primary = primary.value
         return holder, declaration, scope, offset, primary
 
     # Pass-scoped memo (single-invocation lifecycle): tree identity keys
     # keep entries fresh; the process boundary is the cache boundary.
-    _TREE_ASSIGNMENT_INDEXES: t.ClassVar[
+    _TREE_ASSIGNMENT_INDEXES: ClassVar[
         dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None
     ] = None
 
@@ -541,7 +624,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             or None where the offset is ambiguous.
 
         """
-        indexes = cls._TREE_ASSIGNMENT_INDEXES
+        indexes: dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None = (
+            cls._TREE_ASSIGNMENT_INDEXES
+        )
         if indexes is None:
             indexes = {}
             cls._TREE_ASSIGNMENT_INDEXES = indexes
@@ -993,21 +1078,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             msg = "rope get_string_module returned non-PyModule"
             raise TypeError(msg)
         return pymodule
-
-    @classmethod
-    def import_organizer(
-        cls,
-        rope_project: t.Infra.RopeProject,
-    ) -> p.Infra.RopeImportOrganizer:
-        organizer_factory = cls.runtime_callable(
-            c.Infra.ROPE_IMPORTUTILS_MODULE,
-            "ImportOrganizer",
-        )
-        organizer = organizer_factory(rope_project)
-        if not isinstance(organizer, p.Infra.RopeImportOrganizer):
-            msg = "rope ImportOrganizer does not satisfy p.Infra.RopeImportOrganizer"
-            raise TypeError(msg)
-        return organizer
 
     @classmethod
     def runtime_find_occurrences(

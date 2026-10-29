@@ -19,9 +19,6 @@ from rope.base import ast
 
 from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_base import (
-    FlextInfraUtilitiesRopeRuntimeBase,
-)
 
 
 class FlextInfraUtilitiesRopeSourceBindingCollector:
@@ -997,16 +994,16 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     ) -> m.Infra.SourceClassReference:
         """Resolve one class base, including a ``type(<class>)`` metaclass base.
 
-        ``class Meta(type(Protocol))`` derives from the metaclass of an
-        external class. The metaclass is a fact of that external runtime, so
-        it is read from the external module itself; a governed class's
-        metaclass cannot be proven lexically and stays fail-loud.
+        Native evaluation uses the captured expression's source-binding context;
+        the selected metaclass retains its native declaration identity without
+        importing the target module or executing its class construction.
 
         Returns:
             The base reference, the metaclass identity for a metaclass base.
 
         Raises:
-            TypeError: If a metaclass base names a governed class.
+            TypeError: If native inference does not supply a class binding.
+            ValueError: If the native metaclass has no declaring identity.
 
         """
         if not (
@@ -1018,29 +1015,35 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             and not expression.keywords
         ):
             return cls._reference(expression, bindings, spec)
-        owner = cls._reference(expression.args[0], bindings, spec)
-        # A target of the scanned distribution (module or local class
-        # identity) is governed; its metaclass is never read from runtime.
-        root = spec.module.partition(".")[0]
-        governed = owner.target == root or owner.target.startswith((
-            f"{root}.",
-            f"{root}:",
-        ))
-        if governed or len(owner.attributes) != 1:
+        offset = FlextInfraUtilitiesRopeRuntime.source_offset(
+            spec.provider.source_code, expression
+        )
+        context = spec.provider.get_source_binding_index().context_at(offset)
+        inferred = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            "rope.base.evaluate", "eval_node"
+        )(context.environment, expression)
+        if not isinstance(inferred, p.Infra.RopePyName):
             message = (
-                f"Unsupported metaclass base in {spec.module}: "
+                f"Native metaclass inference has no class binding in {spec.module}: "
                 f"{ast.unparse(expression)}"
             )
             raise TypeError(message)
-        metaclass = type(
-            FlextInfraUtilitiesRopeRuntimeBase.runtime_type(
-                owner.target, owner.attributes[0]
-            )
+        metaclass = FlextInfraUtilitiesRopeRuntime.require_class_object(
+            inferred.get_object(), f"{spec.module}:{ast.unparse(expression)}"
         )
+        identity = FlextInfraUtilitiesRopeRuntime.native_object_identity(metaclass)
+        module, separator, qualified_name = identity.partition("::")
+        attributes = tuple(qualified_name.split("."))
+        if not module or not separator or not all(attributes):
+            message = (
+                f"Native metaclass has no declaring identity in {spec.module}: "
+                f"{ast.unparse(expression)}"
+            )
+            raise ValueError(message)
         return m.Infra.SourceClassReference(
-            target=metaclass.__module__,
-            attributes=tuple(metaclass.__qualname__.split(".")),
-            qualified_base=f"{metaclass.__module__}.{metaclass.__qualname__}",
+            target=module,
+            attributes=attributes,
+            qualified_base=f"{module}.{qualified_name}",
         )
 
     @staticmethod

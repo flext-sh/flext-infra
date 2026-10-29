@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from flext_tests import FlextTestsTypes
@@ -25,10 +25,10 @@ class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
 
         type SourceCandidate = Callable[
             [
-                FlextInfraTypes.Mapping[Path, str],
-                FlextInfraTypes.VariadicTuple[Path],
+                Mapping[Path, str],
+                Sequence[Path],
             ],
-            FlextInfraTypes.Mapping[Path, str],
+            Mapping[Path, str],
         ]
 
 

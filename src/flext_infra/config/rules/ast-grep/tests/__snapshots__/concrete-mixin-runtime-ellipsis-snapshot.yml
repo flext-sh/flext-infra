@@ -326,35 +326,6 @@ snapshots:
       style: secondary
       start: 139
       end: 157
-    - source: typing
-      style: secondary
-      start: 5
-      end: 11
-    - source: TYPE_CHECKING
-      style: secondary
-      start: 19
-      end: 32
-    - source: types_only
-      style: secondary
-      start: 36
-      end: 46
-    - source: TYPE_CHECKING as types_only
-      style: secondary
-      start: 19
-      end: 46
-    - source: from typing import TYPE_CHECKING as types_only
-      style: secondary
-      start: 0
-      end: 46
-    - source: |
-        from typing import TYPE_CHECKING as types_only
-        class Runtime:
-            if types_only:
-                def process(self, state, *, dry_run):
-                    del state, dry_run
-      style: secondary
-      start: 0
-      end: 158
     - source: types_only
       style: secondary
       start: 69

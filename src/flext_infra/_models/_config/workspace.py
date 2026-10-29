@@ -756,6 +756,13 @@ class FlextInfraModelsConfigWorkspace:
     class WorkspaceSpec(CandidateDependenciesSpec):
         """Local identity plus topology read from this repository's Git inputs."""
 
+        inputs: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True,
+                description="Original topology and declaration observations",
+            ),
+        ] = ()
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         docs_audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,

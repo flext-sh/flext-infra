@@ -149,12 +149,12 @@ class FlextInfraModelsWorkspace:
             description="Physical source relocation pairs for this observation",
         )
         origins: MutableMapping[str, Path] = m.Field(
-            default_factory=u.empty(TypeForm(MutableMapping[str, Path])),
+            default_factory=u.empty(t.TypeForm(MutableMapping[str, Path])),
             description="Native module source elections observed during this capture",
         )
         module_anchors: MutableMapping[str, t.Port[t.Infra.NativeOperand]] = m.Field(
             default_factory=u.empty(
-                TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
+                t.TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
             ),
             description=(
                 "Strong native identities of elected module anchors; "
@@ -163,7 +163,7 @@ class FlextInfraModelsWorkspace:
         )
         sources: t.Infra.MutableSetOf[tuple[str, str, str]] = m.Field(
             default_factory=u.empty(
-                TypeForm(t.Infra.MutableSetOf[tuple[str, str, str]])
+                t.TypeForm(t.Infra.MutableSetOf[tuple[str, str, str]])
             ),
             description="Observed suppliers and physical declaration sources",
         )
@@ -192,14 +192,18 @@ class FlextInfraModelsWorkspace:
             int, tuple[str, str, t.Port[p.AttributeProbe] | None]
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(MutableMapping[int, tuple[str, str, p.AttributeProbe | None]])
+                t.TypeForm(
+                    MutableMapping[int, tuple[str, str, p.AttributeProbe | None]]
+                )
             ),
             description="Strongly retained generated function source receivers",
         )
         references: MutableSequence[tuple[str, t.Port[t.Infra.NativeOperand]]] = (
             m.Field(
                 default_factory=u.empty(
-                    TypeForm(MutableSequence[tuple[str, t.Port[t.Infra.NativeOperand]]])
+                    t.TypeForm(
+                        MutableSequence[tuple[str, t.Port[t.Infra.NativeOperand]]]
+                    )
                 ),
                 description=(
                     "Native operand registrations awaiting graph traversal; "
@@ -217,7 +221,7 @@ class FlextInfraModelsWorkspace:
             ]
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(
+                t.TypeForm(
                     MutableSequence[
                         tuple[
                             str,
@@ -235,7 +239,7 @@ class FlextInfraModelsWorkspace:
             ),
         )
         expanded_classes: t.Infra.MutableSetOf[int] = m.Field(
-            default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[int])),
+            default_factory=u.empty(t.TypeForm(t.Infra.MutableSetOf[int])),
             description="Strongly retained classes whose executable "
             "children were queued",
         )
@@ -246,7 +250,7 @@ class FlextInfraModelsWorkspace:
         )
         compiled: MutableMapping[Path, t.Infra.NativeClassDeclarations] = m.Field(
             default_factory=u.empty(
-                TypeForm(MutableMapping[Path, t.Infra.NativeClassDeclarations])
+                t.TypeForm(MutableMapping[Path, t.Infra.NativeClassDeclarations])
             ),
             description="Immutable class compiler facts within this observation",
         )
@@ -277,7 +281,7 @@ class FlextInfraModelsWorkspace:
         visited: MutableMapping[int, tuple[t.Port[t.Infra.NativeOperand], str]] = (
             m.Field(
                 default_factory=u.empty(
-                    TypeForm(
+                    t.TypeForm(
                         MutableMapping[int, tuple[t.Port[t.Infra.NativeOperand], str]]
                     )
                 ),
@@ -288,11 +292,11 @@ class FlextInfraModelsWorkspace:
             )
         )
         edges: MutableMapping[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(MutableMapping[str, str])),
+            default_factory=u.empty(t.TypeForm(MutableMapping[str, str])),
             description="Already observed edge-to-native-node identities",
         )
         absent_edges: t.Infra.MutableSetOf[str] = m.Field(
-            default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[str])),
+            default_factory=u.empty(t.TypeForm(t.Infra.MutableSetOf[str])),
             description="Actual lexical bindings observed as absent",
         )
 
@@ -321,7 +325,7 @@ class FlextInfraModelsWorkspace:
         )
         nonlocals: MutableMapping[str, t.Port[t.Infra.NativeOperand]] = m.Field(
             default_factory=u.empty(
-                TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
+                t.TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
             ),
             description=(
                 "Actual closure cell values in native free-variable order: live "
@@ -330,7 +334,7 @@ class FlextInfraModelsWorkspace:
         )
         global_bindings: MutableMapping[str, t.Port[t.Infra.NativeOperand]] = m.Field(
             default_factory=u.empty(
-                TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
+                t.TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
             ),
             description=(
                 "Actual globals selected by native LOAD_GLOBAL instructions: "

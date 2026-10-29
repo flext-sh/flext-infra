@@ -1,5 +1,9 @@
 """Runtime import graphs from the canonical captured source engine.
 
+Bootstrap membership is a source-epoch fact. Its snapshot memo retains native
+module identities and resolver roots; changed source views replace that fact.
+No host import finder or package execution participates in classification.
+
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -11,18 +15,92 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, p, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra import c, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
 
 
 class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
     """Read and validate the runtime graph, including requested lazy providers."""
+
+    @classmethod
+    def snapshot_bootstrap_dependencies(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        root: Path,
+        namespace: str,
+    ) -> frozenset[str]:
+        """Derive bootstrap membership once per member's native source epoch.
+
+        Native resource notifications replace changed parsed modules. Resolver
+        roots and a fresh member inventory also participate, so restoring or
+        changing a candidate view cannot reuse a different epoch's closure.
+
+        Returns:
+            The runtime dependencies reached from the publishing namespace.
+
+        """
+        root = root.resolve()
+        project = snapshot.engine
+        paths = FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+            snapshot, root, project=project
+        )
+        resources = tuple(
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
+            for path in paths
+            if path.suffix == c.Infra.EXT_PYTHON
+        )
+        modules = tuple(
+            FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+            for resource in resources
+        )
+        source_digests = tuple(
+            u.Cli.sha256_bytes(project.source_bytes(Path(resource.real_path)))
+            for resource in resources
+        )
+        source_folders = tuple(
+            folder.real_path for folder in project.get_source_folders()
+        )
+        python_paths = tuple(
+            folder.real_path for folder in project.get_python_path_folders()
+        )
+        previous = snapshot.bootstrap_dependencies.get(root)
+        same_inputs = (
+            previous is not None
+            and previous.namespace == namespace
+            and previous.source_folders == source_folders
+            and previous.python_path_folders == python_paths
+            and previous.source_digests == source_digests
+        )
+        if same_inputs and all(
+            old is current
+            for old, current in zip(previous.modules, modules, strict=True)
+        ):
+            return previous.dependencies
+        graph, _names = cls.snapshot_import_graph(project, resources=resources)
+        dependencies = u.Cli.dag_closure(graph, frozenset({namespace})).unwrap() - {
+            namespace
+        }
+        snapshot.bootstrap_dependencies[root] = m.Infra.WorkspaceBootstrapDependencies(
+            namespace=namespace,
+            modules=modules,
+            source_folders=source_folders,
+            python_path_folders=python_paths,
+            source_digests=source_digests,
+            dependencies=dependencies,
+        )
+        return dependencies
 
     @classmethod
     def snapshot_import_graph(

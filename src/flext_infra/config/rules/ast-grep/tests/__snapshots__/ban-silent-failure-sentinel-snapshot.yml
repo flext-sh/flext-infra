@@ -261,14 +261,6 @@ snapshots:
       style: primary
       start: 15
       end: 62
-    - source: Exception
-      style: secondary
-      start: 35
-      end: 44
-    - source: (ValueError, Exception)
-      style: secondary
-      start: 22
-      end: 45
   "try:\n    run()\nexcept Exception as exc:\n    log(exc)\n":
     labels:
     - source: |-
@@ -277,14 +269,6 @@ snapshots:
       style: primary
       start: 15
       end: 52
-    - source: Exception
-      style: secondary
-      start: 22
-      end: 31
-    - source: Exception as exc
-      style: secondary
-      start: 22
-      end: 38
   "try:\n    run()\nexcept:\n    cleanup()\n":
     labels:
     - source: |-

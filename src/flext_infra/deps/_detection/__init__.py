@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._detection.runners import FlextInfraDepsDetectionRunners
+    from flext_infra.deps._detection.runners import FlextInfraDepsDetectionRunners
 
 
 __all__: tuple[str, ...] = ("FlextInfraDepsDetectionRunners",)

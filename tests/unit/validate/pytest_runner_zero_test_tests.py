@@ -15,11 +15,10 @@ from pathlib import Path
 from threading import Barrier, Event, Thread
 
 import pytest
-from typing_extensions import TypeForm
 
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import c, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
@@ -87,7 +86,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                                         config.Infra.tooling,
                                         "pytest.ini_options",
                                         "python_files",
-                                        TypeForm(Sequence[str]),
+                                        t.TypeForm(Sequence[str]),
                                     ),
                                 ),
                                 "markers": list(pytest_settings.standard_markers),
@@ -188,7 +187,8 @@ class TestsFlextInfraPytestRunnerZeroTest:
             elapsed_seconds=config.Infra.tooling.tools.pytest.run_timeout_seconds,
         )
 
-        lock = runner.testmon_db.with_name(f"{runner.testmon_db.name}.lock")
+        database = tm.not_none(runner.testmon_db)
+        lock = database.with_name(f"{database.name}.lock")
         with (
             self._held_elsewhere(lock),
             pytest.raises(TimeoutError, match=re.escape(str(lock))),
@@ -208,7 +208,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             tuple(path.name for path in receipts[0].parent.iterdir()),
             eq=("run-context.json",),
         )
-        tm.fail(runner.testmon_db.exists())
+        tm.fail(database.exists())
 
     def test_held_latest_pointer_lease_preserves_context_and_deadline(
         self,
@@ -250,7 +250,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                 (after.st_dev, after.st_ino),
                 eq=(before.st_dev, before.st_ino),
             )
-        tm.fail(runner.testmon_db.exists())
+        tm.fail(tm.not_none(runner.testmon_db).exists())
 
     def test_concurrent_context_publication_precedes_shared_cache_timeout(
         self,
@@ -271,9 +271,8 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         reports = project / runners[0].reports
         latest = reports / "latest.txt"
-        cache_lock = runners[0].testmon_db.with_name(
-            f"{runners[0].testmon_db.name}.lock",
-        )
+        database = tm.not_none(runners[0].testmon_db)
+        cache_lock = database.with_name(f"{database.name}.lock")
         pointer_lock = latest.with_name(f"{latest.name}.lock")
         with u.Cli.file_changes_lock(pointer_lock):
             pointer_before = pointer_lock.stat()
@@ -313,7 +312,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                 (after.st_dev, after.st_ino),
                 eq=(before.st_dev, before.st_ino),
             )
-        tm.fail(runners[0].testmon_db.exists())
+        tm.fail(database.exists())
 
     @pytest.mark.slow
     def test_empty_slow_scope_remains_red_with_accounting(
@@ -405,8 +404,8 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._read(report_dir / "run-context.json"),
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.that(context.testmon_lease_acquired, eq=True)
+        tm.that(context.testmon_db, none=True)
+        tm.that(context.testmon_lease_acquired, none=True)
         tm.that(
             context.deadline_monotonic,
             eq=runner.started_at_monotonic
@@ -485,6 +484,8 @@ class TestsFlextInfraPytestRunnerZeroTest:
             context_path.read_bytes(),
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+        tm.that(context.testmon_db, none=True)
+        tm.that(context.testmon_lease_acquired, none=True)
         tm.that(
             context.deadline_monotonic,
             eq=runner.started_at_monotonic

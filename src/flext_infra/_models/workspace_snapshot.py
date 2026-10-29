@@ -45,6 +45,27 @@ class FlextInfraModelsWorkspaceSnapshot:
             m.Field(description="Exact decoded file text"),
         ]
 
+    class WorkspaceBootstrapDependencies(m.ContractModel):
+        """Bootstrap closure bound to native modules and their resolver roots."""
+
+        namespace: Annotated[str, m.Field(description="Publishing namespace")]
+        modules: Annotated[
+            t.Port[tuple[t.Infra.RopeNativeParsedModule, ...]],
+            m.Field(exclude=True, description="Native modules of the source epoch"),
+        ]
+        source_folders: Annotated[
+            tuple[str, ...], m.Field(description="Native source folder election")
+        ]
+        python_path_folders: Annotated[
+            tuple[str, ...], m.Field(description="Native Python path election")
+        ]
+        source_digests: Annotated[
+            tuple[str, ...], m.Field(description="Digests of the elected source bytes")
+        ]
+        dependencies: Annotated[
+            frozenset[str], m.Field(description="Runtime bootstrap dependencies")
+        ]
+
     class WorkspaceSnapshot(m.ContractModel):
         """The one Rope model of a workspace run and the facts derived from it.
 
@@ -109,6 +130,17 @@ class FlextInfraModelsWorkspaceSnapshot:
             m.Field(
                 exclude=True,
                 description="Runtime and typing-only imported modules per source",
+            ),
+        ]
+        bootstrap_dependencies: Annotated[
+            t.Port[
+                dict[
+                    Path,
+                    p.Infra.WorkspaceBootstrapDependencies,
+                ]
+            ],
+            m.Field(
+                exclude=True, description="Bootstrap facts per native source epoch"
             ),
         ]
         absolute_import_roots: Annotated[

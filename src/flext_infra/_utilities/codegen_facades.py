@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import re
 import sys
 import time
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
@@ -70,11 +69,11 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesInventory,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
     FlextInfraUtilitiesRopeAnalysisImportState,
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -761,7 +760,6 @@ class FlextInfraUtilitiesCodegenFacades(
 
         Raises:
             ValueError: The domain has no canonical family or project identity.
-            TypeError: If Native domain owner is not a class.
 
         """
         declared = cls.facade_families()[family]
@@ -775,117 +773,28 @@ class FlextInfraUtilitiesCodegenFacades(
             message = f"Subfacade has a noncanonical domain path: {directory}"
             raise ValueError(message)
         path = directory.parent / f"{directory.name.lstrip('_')}.py"
-        if not path.exists():
-            # The canonical singular does not exist: elect the existing
-            # sibling facade that already composes this family. Synthesizing
-            # a new name would fork the family publication and leave the real
-            # facade importing the dissolved part modules.
-            family_import = re.compile(
-                rf"from [\w.]*{re.escape(directory.name)} import\b"
-            )
-            for sibling in sorted(directory.parent.glob("*.py")):
-                if sibling.name == "__init__.py":
-                    continue
-                try:
-                    if family_import.search(sibling.read_text(encoding="utf-8")):
-                        path = sibling
-                        break
-                except OSError:
-                    continue
         owners = cls.family_subfacade_owners(project, directory)
         if len(owners) > 1:
-            factory = FlextInfraUtilitiesRopeSourceBasesRuntime
-            resolver_factory = factory.source_member_resolver_factory(
-                project,
-                sources={},
-            )
-            evidence: list[str] = []
-            for owner_path, owner_name in owners:
-                module = cls.require_semantic_module(
-                    project.get_pymodule(cls.file_resource_at(project, owner_path))
-                )
-                owner = module.get_attributes()[owner_name].get_object()
-                if not cls.py_class(owner):
-                    message = f"Native domain owner is not a class: {owner_name}"
-                    raise TypeError(message)
-                for relation, suppliers in (
-                    ("bases", tuple(owner.get_superclasses())),
-                    (
-                        "members",
-                        tuple(
-                            cls._component_member_suppliers(
-                                owner,
-                                resolver_factory=resolver_factory,
-                                project=project,
-                            )
-                        ),
-                    ),
-                    ("calls", tuple(cls._component_callable_suppliers(owner))),
-                ):
-                    identities = tuple(
-                        f"{supplier.get_module().get_resource()}:{supplier.get_name()}"
-                        for supplier in suppliers
-                        if cls.py_class(supplier)
-                    )
-                    evidence.append(
-                        f"{owner_path}:{owner_name} {relation}"
-                        f"[{len(identities)}]={identities[:8]}"
-                    )
+            evidence = cls._family_subfacade_owner_evidence(owners, project=project)
             message = (
                 f"Competing native domain facade owners: {directory}: {owners}; "
                 f"native composition evidence: {evidence}"
             )
             raise ValueError(message)
         if owners:
-            # The elected destination owns its own composed class; an owner
-            # entry naming a class declared in a dissolved part module is the
-            # move's SOURCE, not the destination identity.
-            local = tuple(
-                entry for entry in owners if entry[0] == path
-            ) or tuple(
-                entry
-                for entry in owners
-                if (cls.file_resource_at(project, entry[0]) and entry[0].exists())
-                and entry[1]
-                in cls.public_export_names_source(
-                    cls.require_source_module(
-                        cls.require_semantic_module(
-                            project.get_pymodule(
-                                cls.file_resource_at(project, entry[0])
-                            )
-                        )
-                    )
-                )
-            )
-            if local:
-                owners = local
-            else:
-                # The elected facade composes the family under its own
-                # canonical class; the part class is the move's source, not
-                # the destination identity.
-                canonical = (
-                    f"{cls.project_prefix(path, source_project=project)}"
-                    f"{declared.suffix}"
-                    f"{u.derive_class_stem('-'.join(name.lstrip('_').replace('_', '-') for name in domains))}"
-                )
-                if canonical in cls.public_export_names_source(
-                    cls.require_source_module(
-                        cls.require_semantic_module(
-                            project.get_pymodule(cls.file_resource_at(project, path))
-                        )
-                    )
-                ):
-                    return path, canonical
-            if (
-                owners[0][0] == family_root / c.Infra.IMPORT_LAW_FAMILY_BASE_FILE
-                and owners[0][0] != path
+            owner_path, owner_name = owners[0]
+            if owner_path == family_root / c.Infra.IMPORT_LAW_FAMILY_BASE_FILE and (
+                owner_path != path
             ):
                 message = (
                     "Root family base cannot be relocated as a domain facade: "
                     f"{directory}"
                 )
                 raise ValueError(message)
-            return path, owners[0][1]
+            return (
+                owner_path if owner_path.parent == directory.parent else path,
+                owner_name,
+            )
         prefix = cls.project_prefix(path, source_project=project)
         if not prefix:
             message = f"Subfacade has no project class identity: {path}"
@@ -894,6 +803,56 @@ class FlextInfraUtilitiesCodegenFacades(
             "-".join(name.lstrip("_").replace("_", "-") for name in domains)
         )
         return path, f"{prefix}{declared.suffix}{domain}"
+
+    @classmethod
+    def _family_subfacade_owner_evidence(
+        cls,
+        owners: Sequence[tuple[Path, str]],
+        *,
+        project: p.Infra.RopeProject,
+    ) -> list[str]:
+        """Describe the native composition of competing domain publications.
+
+        Returns:
+            Bounded owner identities and their original supplier counts.
+
+        Raises:
+            TypeError: A native domain owner no longer binds a source class.
+
+        """
+        factory = FlextInfraUtilitiesRopeSourceBasesRuntime
+        resolver_factory = factory.source_member_resolver_factory(project, sources={})
+        evidence: list[str] = []
+        for owner_path, owner_name in owners:
+            module = cls.require_semantic_module(
+                project.get_pymodule(cls.file_resource_at(project, owner_path))
+            )
+            owner = module.get_attributes()[owner_name].get_object()
+            if not cls.py_class(owner):
+                message = f"Native domain owner is not a class: {owner_name}"
+                raise TypeError(message)
+            for relation, suppliers in (
+                ("bases", tuple(owner.get_superclasses())),
+                (
+                    "members",
+                    tuple(
+                        cls._component_member_suppliers(
+                            owner, resolver_factory=resolver_factory, project=project
+                        )
+                    ),
+                ),
+                ("calls", tuple(cls._component_callable_suppliers(owner))),
+            ):
+                identities = tuple(
+                    f"{supplier.get_module().get_resource()}:{supplier.get_name()}"
+                    for supplier in suppliers
+                    if cls.py_class(supplier)
+                )
+                evidence.append(
+                    f"{owner_path}:{owner_name} {relation}"
+                    f"[{len(identities)}]={identities[:8]}"
+                )
+        return evidence
 
     @classmethod
     def family_subfacade_owners(
@@ -1188,6 +1147,7 @@ class FlextInfraUtilitiesCodegenFacades(
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         project: p.Infra.RopeProject,
+        owner_kind: c.Infra.FacadeMemberKind | None = None,
     ) -> Generator[p.Infra.RopePyObject]:
         """Read declaration-time aliases after superclass evidence is exhausted.
 
@@ -1201,22 +1161,82 @@ class FlextInfraUtilitiesCodegenFacades(
 
         Raises:
             ValueError: If a member's binding is ambiguous.
-            TypeError: The native owner does not expose a class declaration.
 
         """
+        parent_scope = owner.get_scope().parent
+        if parent_scope is None:
+            message = f"Component owner has no parent scope: {owner.get_name()}"
+            raise ValueError(message)
+        owner_binding = parent_scope.get_defined_names()[owner.get_name()]
+        if owner_kind is None:
+            owner_kind = FlextInfraUtilitiesFacadeMembers.facade_member_kind(
+                owner_binding,
+                resolver_factory=resolver_factory,
+                source_project=project,
+            )
+        elif owner_binding.get_object() is not owner:
+            message = (
+                "Component owner classification binding mismatch: "
+                f"owner={owner.get_module().get_name()}.{owner.get_name()}; "
+                f"binding={owner_binding.get_definition_location()}; role={owner_kind}"
+            )
+            raise ValueError(message)
+        # Entity declarations retain their fields; they do not compose namespaces.
+        if owner_kind is not c.Infra.FacadeMemberKind.TYPE:
+            return
+        members = owner.get_scope().get_defined_names()
         for scope in owner.get_scope().get_scopes():
             if cls.py_class(nested := scope.pyobject):
+                nested_kind = FlextInfraUtilitiesFacadeMembers.class_kind(
+                    nested,
+                    resolver_factory=resolver_factory,
+                    source_project=project,
+                )
+                if nested_kind is not c.Infra.FacadeMemberKind.TYPE:
+                    continue
                 yield from nested.get_superclasses()
                 yield from cls._component_member_suppliers(
                     nested,
                     resolver_factory=resolver_factory,
                     project=project,
+                    owner_kind=(
+                        nested_kind
+                        if members[nested.get_name()].get_object() is nested
+                        else None
+                    ),
                 )
+        yield from cls._declared_member_suppliers(
+            owner,
+            members,
+            resolver_factory=resolver_factory,
+            project=project,
+            owner_binding=owner_binding,
+        )
+
+    @classmethod
+    def _declared_member_suppliers(
+        cls,
+        owner: p.Infra.RopeSourceClass,
+        members: Mapping[str, p.Infra.RopePyName],
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        project: p.Infra.RopeProject,
+        owner_binding: p.Infra.RopePyName,
+    ) -> Generator[p.Infra.RopePyObject]:
+        """Yield objects bound by the class's own declared non-function members.
+
+        Yields:
+            Objects bound by the class's own declared members.
+
+        Raises:
+            TypeError: The owner does not expose a class declaration.
+            ValueError: A member's binding is ambiguous.
+
+        """
         declaration = owner.get_ast()
         if not isinstance(declaration, ast.ClassDef):
             message = f"Component owner has no class declaration: {owner.get_name()}"
             raise TypeError(message)
-        members = owner.get_scope().get_defined_names()
         declared = cls._declared_namespace_members(declaration) - {
             node.name
             for node in declaration.body
@@ -1225,13 +1245,25 @@ class FlextInfraUtilitiesCodegenFacades(
         composition = FlextInfraUtilitiesFacadeComponents.facade_composes_class(
             owner, source_project=project
         )
+        owner_ancestry = owner.get_mro()
         for name in sorted(declared):
             member = members[name]
-            kind = FlextInfraUtilitiesFacadeMembers.facade_member_kind(
-                member,
-                resolver_factory=resolver_factory,
-                source_project=project,
-            )
+            try:
+                kind = FlextInfraUtilitiesFacadeMembers.facade_member_kind(
+                    member,
+                    resolver_factory=resolver_factory,
+                    source_project=project,
+                )
+            except ValueError as failure:
+                failure.add_note(
+                    f"component-owner={owner.get_module().get_name()}."
+                    f"{owner.get_name()}; "
+                    f"same_binding={owner_binding.get_object() is owner}; "
+                    f"same_project={owner.get_module().pycore.project is project}; "
+                    f"owner_id={id(owner)}; "
+                    f"ancestry_ids={tuple(id(item) for item in owner_ancestry)}"
+                )
+                raise
             if kind is c.Infra.FacadeMemberKind.CONSTANT or (
                 not composition and kind is c.Infra.FacadeMemberKind.TYPE
             ):
@@ -1350,12 +1382,21 @@ class FlextInfraUtilitiesCodegenFacades(
             and cls._component_defines_methods(owner)
             for candidate, name in cls.family_subfacade_owners(project, directory)
         )
+        # Destination identity prefers the locally-defined canonical class:
+        # an authored destination on disk is the rendering base (the staged
+        # view may hold a previous render of this same destination, whose
+        # stub bodies would shadow the real declaration).
+        authored = (
+            path.read_text(encoding=c.DEFAULT_ENCODING)
+            if path.is_file()
+            else sources[path]
+        )
         rendered = (
-            sources[path]
+            authored
             if callable_boundary
             else cls._render_declared_facade(
                 directory.parent,
-                (path, sources[path]),
+                (path, authored),
                 family=family,
                 binding=(project, sources),
                 owners_dir=directory,
@@ -2933,21 +2974,12 @@ class FlextInfraUtilitiesCodegenFacades(
                 candidate.get_pymodule(cls.file_resource_at(candidate, path))
             )
             imports = cls.module_imports_for_pymodule(candidate, module)
-            try:
-                used = {
-                    (info.module_name, name, alias)
-                    for info in imports.get_used_imports(module)
-                    if cls.from_import_info(info)
-                    for name, alias in info.names_and_aliases
-                }
-            except (*FlextInfraUtilitiesRopeRuntime.rope_hierarchy_errors(),):
-                # The candidate overlay cannot prove non-usage when a base
-                # chain resolves through lazy cross-package letters (its MRO
-                # is not computable in this view). Retirement requires that
-                # proof, so the imports are retained — never removed on an
-                # unprovable candidate (rope-class-move owns the on-disk
-                # recomputation after the move publishes).
-                return source
+            used = {
+                (info.module_name, name, alias)
+                for info in imports.get_used_imports(module)
+                if cls.from_import_info(info)
+                for name, alias in info.names_and_aliases
+            }
             removable: set[tuple[str, str, str | None]] = set()
             for original in sorted(
                 retired - used, key=lambda item: (item[0], item[1], item[2] or "")
@@ -3187,7 +3219,7 @@ class FlextInfraUtilitiesCodegenFacades(
         project: p.Infra.RopeProject,
         package: p.Infra.RopeResource,
         publisher: str,
-    ) -> frozenset[str]:
+    ) -> Sequence[str]:
         """Read one publishing package's public export inventory.
 
         Returns:
@@ -3195,7 +3227,11 @@ class FlextInfraUtilitiesCodegenFacades(
 
         """
         initializer = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-            package.get_child(c.Infra.INIT_PY) if package.is_folder() else package,
+            (
+                package.get_child(c.Infra.INIT_PY)
+                if FlextInfraUtilitiesTypesRopeRuntime.folder_resource(package)
+                else package
+            ),
             publisher,
         )
         package_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
@@ -4169,7 +4205,7 @@ class FlextInfraUtilitiesCodegenFacades(
         project: p.Infra.RopeProject,
         module: p.Infra.RopeSourceModule,
         finder: p.Infra.RopeWorder,
-        index: object,
+        index: p.Infra.RopeSourceBindingIndex,
     ) -> bool:
         """Prove the module imports ``TypeAlias`` from typing, unaliased.
 
@@ -4206,7 +4242,7 @@ class FlextInfraUtilitiesCodegenFacades(
     def _facade_class_depths(
         module: p.Infra.RopeSourceModule,
         finder: p.Infra.RopeWorder,
-        index: object,
+        index: p.Infra.RopeSourceBindingIndex,
         owner_name: str,
     ) -> dict[int, int]:
         """Map each declared class scope to its native fragment depth.
@@ -4242,8 +4278,12 @@ class FlextInfraUtilitiesCodegenFacades(
     @classmethod
     def _facade_publication_hit(
         cls,
-        match: object,
-        view: tuple[p.Infra.RopeSourceModule, p.Infra.RopeWorder, object],
+        match: p.Infra.RopeContractMatch,
+        view: tuple[
+            p.Infra.RopeSourceModule,
+            p.Infra.RopeWorder,
+            p.Infra.RopeSourceBindingIndex,
+        ],
         depths: Mapping[int, int],
         wanted: frozenset[int],
     ) -> tuple[int, int] | None:
@@ -6149,6 +6189,13 @@ class FlextInfraUtilitiesCodegenFacades(
                     continue
                 if alias.name not in owners or module == prefix:
                     continue
+                if target is None:
+                    # The authored spelling already binds from a deeper
+                    # publishing package this family's sources do not
+                    # inventory; keep it. Relocating to the namespace prefix
+                    # would assume a parent publication the initializer plan
+                    # no longer carries for child-package owners.
+                    continue
                 source = cls._relocated_import_source(
                     source, package_name, (module, alias.name), prefix
                 )
@@ -6466,22 +6513,6 @@ class FlextInfraUtilitiesCodegenFacades(
             if not references:
                 continue
             module_paths: MutableMapping[p.Infra.RopeImportedModule, Path] = {}
-            # A letter whose single binding is one module-level import resolves
-            # every load to that import, so the module scope answers once for
-            # the whole module; any other binding keeps Rope's per-position
-            # lexical lookup.
-            if FlextInfraUtilitiesRopeAnalysisSourceScan.single_module_import_binding(
-                tree, family
-            ):
-                if cls._facade_receiver_binding(
-                    project,
-                    pymodule.get_scope().get_names().get(family),
-                    references[0][0],
-                    owned=(pkg_dir, pkg_dir / c.Infra.INIT_PY, facade_path),
-                    resolved=module_paths,
-                ):
-                    methods.update(attribute for _, attribute in references)
-                continue
             methods.update(
                 attribute
                 for receiver, attribute in references

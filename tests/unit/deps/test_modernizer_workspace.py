@@ -11,11 +11,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from tomlkit.exceptions import ParseError
-from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -206,7 +205,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 config.Infra.tooling,
                 "tomlsort",
                 "sort_first",
-                TypeForm(Sequence[str]),
+                t.TypeForm(Sequence[str]),
             )
             if sort_first is None
             else sort_first

@@ -58,6 +58,10 @@ class FlextInfraModelsConfigMakeDocs:
     class MakeDocsSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
+        contract_guide: Annotated[
+            Path | None,
+            m.Field(description="Canonical guide with the generated Make contract section"),
+        ] = None
         actions: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -107,6 +111,13 @@ class FlextInfraModelsConfigMakeDocs:
                     the docs lifecycle.
 
             """
+            if self.contract_guide is not None and (
+                self.contract_guide.is_absolute()
+                or not self.contract_guide.parts
+                or ".." in self.contract_guide.parts
+            ):
+                msg = "Make contract guide must be a repository-relative file"
+                raise ValueError(msg)
             if len(set(self.actions)) != len(self.actions):
                 msg = "docs actions must be unique"
                 raise ValueError(msg)

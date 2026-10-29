@@ -175,7 +175,7 @@ class TestsFlextInfraPytestProfileSuite:
             cached_runner_project,
             profile_collection=profile_collection,
         )
-        testmon_db = runner.testmon_db
+        testmon_db = tm.not_none(runner.testmon_db)
 
         parent_profile = (
             cached_runner_project / ".reports" / "profiles" / "pytest.pstats"

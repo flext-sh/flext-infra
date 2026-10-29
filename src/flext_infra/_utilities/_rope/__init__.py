@@ -54,9 +54,6 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesRopeNestedClassMove,
     )
     from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-    from flext_infra._utilities._rope.rope_runtime_base import (
-        FlextInfraUtilitiesRopeRuntimeBase,
-    )
     from flext_infra._utilities._rope.rope_runtime_matching import (
         FlextInfraUtilitiesRopeRuntimeMatching,
     )
@@ -76,8 +73,8 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope.rope_source_bases_runtime import (
         FlextInfraUtilitiesRopeSourceBasesRuntime,
     )
-    from flext_infra._utilities._rope.rope_structure import (
-        FlextInfraUtilitiesRopeStructure,
+    from flext_infra._utilities._rope.runtime_base import (
+        FlextInfraUtilitiesRopeRuntimeBase,
     )
     from flext_infra._utilities._rope.source_bases_aliases import (
         FlextInfraUtilitiesRopeSourceBasesAliases,
@@ -88,6 +85,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope.source_bases_inventory_collector import (
         FlextInfraUtilitiesRopeSourceBindingCollector,
     )
+    from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 
 
 __all__: tuple[str, ...] = (
@@ -147,7 +145,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeMovePublication": ".move_publication",
         "FlextInfraUtilitiesRopeNestedClassMove": ".rope_nested_class_move",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",
-        "FlextInfraUtilitiesRopeRuntimeBase": ".rope_runtime_base",
+        "FlextInfraUtilitiesRopeRuntimeBase": ".runtime_base",
         "FlextInfraUtilitiesRopeRuntimeMatching": ".rope_runtime_matching",
         "FlextInfraUtilitiesRopeRuntimeModuleQueries": ".rope_runtime_module_queries",
         "FlextInfraUtilitiesRopeRuntimeModules": ".rope_runtime_modules",
@@ -160,7 +158,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeSourceBindingCollector": (
             ".source_bases_inventory_collector"
         ),
-        "FlextInfraUtilitiesRopeStructure": ".rope_structure",
+        "FlextInfraUtilitiesRopeStructure": ".structure",
     }),
     public_exports=__all__,
 )

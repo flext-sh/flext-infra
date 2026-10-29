@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._fixer.passes import FlextInfraCodegenFixerPasses
-    from flext_infra._fixer.results import FlextInfraCodegenFixerResults
-    from flext_infra._fixer.workspace import FlextInfraCodegenFixerWorkspace
+    from flext_infra.codegen._fixer.passes import FlextInfraCodegenFixerPasses
+    from flext_infra.codegen._fixer.results import FlextInfraCodegenFixerResults
+    from flext_infra.codegen._fixer.workspace import FlextInfraCodegenFixerWorkspace
 
 
 __all__: tuple[str, ...] = (

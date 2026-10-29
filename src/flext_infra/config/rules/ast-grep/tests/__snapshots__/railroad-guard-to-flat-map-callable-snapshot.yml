@@ -14,14 +14,6 @@ snapshots:
       style: primary
       start: 36
       end: 164
-    - source: p.Result[str]
-      style: secondary
-      start: 17
-      end: 30
-    - source: p.Result[str]
-      style: secondary
-      start: 17
-      end: 30
     - source: |-
         def run(self) -> p.Result[str]:
             result = self._load()
@@ -45,18 +37,6 @@ snapshots:
       style: primary
       start: 36
       end: 137
-    - source: r
-      style: secondary
-      start: 24
-      end: 25
-    - source: r[int]
-      style: secondary
-      start: 24
-      end: 30
-    - source: r[int]
-      style: secondary
-      start: 24
-      end: 30
     - source: |-
         def run_direct(self) -> r[int]:
             result = self._load()

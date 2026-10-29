@@ -118,9 +118,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.private_imports import (
         FlextInfraUtilitiesSemanticCutoverPrivateImports,
     )
-    from flext_infra._utilities._semantic_cutover.self_facade import (
-        FlextInfraUtilitiesSemanticCutoverSelfFacade,
-    )
     from flext_infra._utilities._semantic_cutover.test_helpers import (
         FlextInfraUtilitiesSemanticTestHelpers,
     )
@@ -153,7 +150,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverOwnMro",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
-    "FlextInfraUtilitiesSemanticCutoverSelfFacade",
     "FlextInfraUtilitiesSemanticDeclarationRelocation",
     "FlextInfraUtilitiesSemanticDeclarationRetirement",
     "FlextInfraUtilitiesSemanticDelegations",
@@ -200,7 +196,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticCutoverOwnMro": ".own_mro",
         "FlextInfraUtilitiesSemanticCutoverPrivateImportCst": ".private_import_cst",
         "FlextInfraUtilitiesSemanticCutoverPrivateImports": ".private_imports",
-        "FlextInfraUtilitiesSemanticCutoverSelfFacade": ".self_facade",
         "FlextInfraUtilitiesSemanticDeclarationRelocation": ".declaration_relocation",
         "FlextInfraUtilitiesSemanticDeclarationRetirement": ".declaration_retirement",
         "FlextInfraUtilitiesSemanticDelegations": ".delegations",

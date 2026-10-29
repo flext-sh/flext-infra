@@ -11,7 +11,7 @@ from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
-from flext_infra.release import FlextInfraReleaseRelease
+from flext_infra.release.release import FlextInfraReleaseRelease
 
 
 class FlextInfraReleaseOrchestrator(

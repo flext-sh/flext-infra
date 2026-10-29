@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import (
     Iterable,
     Mapping,
@@ -319,11 +320,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             """
             if node.value is None:
                 return
-            targets = (
-                node.targets
-                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Assign)
-                else [node.target]
-            )
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             for target in targets:
                 if isinstance(target, FlextInfraUtilitiesRopeAnalysis.Tree.Name):
                     identity = f"{self.scope}.{target.id}"
@@ -771,11 +768,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         ``resolvers`` carries ``(bindings, class_bases, qualified)``.
         """
         bindings, class_bases, qualified = resolvers
-        targets = (
-            child.targets
-            if isinstance(child, FlextInfraUtilitiesRopeAnalysis.Tree.Assign)
-            else [child.target]
-        )
+        targets = child.targets if isinstance(child, ast.Assign) else [child.target]
         for target in targets:
             if (
                 isinstance(target, FlextInfraUtilitiesRopeAnalysis.Tree.Name)

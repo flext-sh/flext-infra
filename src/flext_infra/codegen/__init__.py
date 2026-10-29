@@ -35,9 +35,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen._conform.scaffold_plan import (
         FlextInfraCodegenConformScaffoldPlan,
     )
-    from flext_infra.codegen._consolidator.steps import (
-        FlextInfraCodegenConsolidatorSteps,
-    )
     from flext_infra.codegen._fixer.passes import FlextInfraCodegenFixerPasses
     from flext_infra.codegen._fixer.results import FlextInfraCodegenFixerResults
     from flext_infra.codegen._fixer.workspace import FlextInfraCodegenFixerWorkspace
@@ -81,7 +78,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
-    "FlextInfraCodegenConsolidatorSteps",
     "FlextInfraCodegenExecution",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenFixerPasses",
@@ -121,7 +117,6 @@ install_lazy_exports(
         "FlextInfraCodegenConformPyprojectPolicy": "._conform.pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": "._conform.scaffold_plan",
         "FlextInfraCodegenConsolidator": ".consolidator",
-        "FlextInfraCodegenConsolidatorSteps": "._consolidator.steps",
         "FlextInfraCodegenExecution": ".execution",
         "FlextInfraCodegenFixer": ".fixer",
         "FlextInfraCodegenFixerPasses": "._fixer.passes",

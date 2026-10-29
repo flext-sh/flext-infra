@@ -422,6 +422,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Snapshot one target and bind it to exact desired bytes and ownership.
 
+        The plan carries no pre-captured observations; callers authenticate
+        the captured inputs through the pipeline's own verification pass.
+
         Returns:
             The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
 

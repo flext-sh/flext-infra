@@ -11,14 +11,14 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceLockCompleteness,
 )
 
 
-class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
+class FlextInfraLockIntegrityVerifier(s[bool]):
     """Verify the committed generated TOML locks of one repository root.
 
     Generated locks (``mise.lock``, ``uv.lock``) are projections that must
@@ -28,7 +28,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
     fails naming the file, the parser cause, and every duplicated section.
     """
 
-    _TABLE_HEADER: ClassVar[re.Pattern[str]] = re.compile(
+    _TABLE_HEADER: ClassVar[t.RegexPattern] = re.compile(
         r"(?m)^[ \t]*(?:\[([^\][]+)\]|\[\[([^\][]+)\]\])[ \t]*(?:#.*)?$",
     )
 
@@ -80,7 +80,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
             lambda _: FlextInfraWorkspaceLockCompleteness.verify_lock(root)
         )
         return (
-            locked
+            locked.map(lambda _verified: True)
             if packages
             else locked.flat_map(lambda _: cls._upgrade_mise_lock(runner, root))
         )

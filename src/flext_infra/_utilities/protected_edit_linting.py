@@ -29,6 +29,7 @@ from flext_infra._utilities import (
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitMutationScope,
     FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitStateCheckpoint,
 )
 
 if TYPE_CHECKING:
@@ -157,9 +158,48 @@ class FlextInfraUtilitiesProtectedEditLinting:
         changes = cls.normalized_codegen_changes(plans)
         if changes.failure:
             return result_type.from_failure(changes)
-        published = u.Cli.publish_file_changes(
-            changes.value,
-            lock_path=lock.value,
+        owners = tuple(dict.fromkeys((root, *(plan.project for plan in plans))))
+        with (
+            FlextInfraUtilitiesGitStateCheckpoint.state_leases(owners),
+            u.Cli.file_changes_lock(lock.value),
+        ):
+            published = cls._publish_verified_plans(
+                plans, changes.value, lock.value, result_type
+            )
+            if published.failure:
+                return published
+            retired = cls._retire_published_index_entries(plans)
+            if retired.failure:
+                return result_type.from_failure(retired)
+            pruned = cls._prune_emptied_directories(lock.value, plans, published.value)
+            if pruned.failure:
+                return result_type.from_failure(pruned)
+            if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
+                u.read_project_document_cached.cache_clear()
+            return published
+
+    @classmethod
+    def _publish_verified_plans(
+        cls,
+        plans: Sequence[m.Infra.CodegenFilePlan],
+        changes: Sequence[m.Infra.FileChange],
+        lock_path: Path,
+        result_type: type[p.Result[tuple[Path, ...]]],
+    ) -> p.Result[tuple[Path, ...]]:
+        """Verify the captured inputs and publish one normalized change batch.
+
+        Returns:
+            The published paths, or the verification/publication failure.
+
+        """
+        verified = u.Cli.atomic_verify_binary_file_states(
+            tuple(state for plan in plans for state in plan.inputs),
+        )
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return u.Cli.publish_file_changes(
+            changes,
+            lock_path=lock_path,
             directory_mode=config.Infra.codegen.modes.directory_generated,
             nonsecret_source_paths=tuple(
                 plan.path
@@ -167,8 +207,18 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 if plan.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
             ),
         )
-        if published.failure:
-            return published
+
+    @classmethod
+    def _retire_published_index_entries(
+        cls,
+        plans: Sequence[m.Infra.CodegenFilePlan],
+    ) -> p.Result[bool]:
+        """Retire runtime-local index entries replaced by published plans.
+
+        Returns:
+            True when every replaced entry retired, or the first failure.
+
+        """
         for plan in plans:
             if plan.index_before is None:
                 continue
@@ -178,13 +228,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 ),
             )
             if retired.failure:
-                return result_type.from_failure(retired)
-        pruned = cls._prune_emptied_directories(lock.value, plans, published.value)
-        if pruned.failure:
-            return result_type.from_failure(pruned)
-        if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
-            u.read_project_document_cached.cache_clear()
-        return published
+                return r[bool].from_failure(retired)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _prune_emptied_directories(

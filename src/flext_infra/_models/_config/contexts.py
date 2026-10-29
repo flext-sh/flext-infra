@@ -67,9 +67,29 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="OPTIONS or HELP values that display a verb contract"),
         ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
 
+    class BootstrapRequirementsRenderSpec(
+        FlextInfraModelsConfigContract.ConfigContract
+    ):
+        """Native editable requirements derived from the executor's local closure."""
+
+        requirements: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1, description="Quoted source paths in dependency order"
+            ),
+        ]
+        inputs: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(exclude=True, description="Original declarations consumed here"),
+        ]
+
     class MakefileRenderSpec(MakeCommandContext):
         """Typed render input for an existing repository Makefile."""
 
+        bootstrap_requirements: Annotated[
+            Path,
+            m.Field(description="Catalog-owned executor requirements under FLEXT"),
+        ]
         bootstrap_report_shell_literal: Annotated[
             t.NonEmptyStr,
             m.Field(

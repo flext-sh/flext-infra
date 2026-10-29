@@ -219,7 +219,7 @@ class TestsFlextInfraTypeGates:
     @pytest.mark.parametrize(
         ("module", "service"),
         [
-            ("flext_infra", "FlextInfraServiceBase"),
+            ("flext_infra", "s"),
             ("flext_infra", "FlextInfraProjectSelectionServiceBase"),
             ("flext_infra.codegen", "FlextInfraCodegenExecution"),
         ],

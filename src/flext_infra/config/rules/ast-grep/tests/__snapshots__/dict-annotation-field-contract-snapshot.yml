@@ -6,51 +6,15 @@ snapshots:
       style: primary
       start: 35
       end: 49
-    - source: "REGISTRY: dict[str, int] = {}"
-      style: secondary
-      start: 25
-      end: 54
-    - source: dict[str, int]
-      style: secondary
-      start: 35
-      end: 49
-    - source: dict
-      style: secondary
-      start: 35
-      end: 39
   "from flext_core import t\nclass Payload:\n    values: dict[str, int]\n":
     labels:
     - source: dict[str, int]
       style: primary
       start: 52
       end: 66
-    - source: "values: dict[str, int]"
-      style: secondary
-      start: 44
-      end: 66
-    - source: dict[str, int]
-      style: secondary
-      start: 52
-      end: 66
-    - source: dict
-      style: secondary
-      start: 52
-      end: 56
   "from flext_core import t\ntype Table = dict[str, int]\n":
     labels:
     - source: dict[str, int]
       style: primary
       start: 38
       end: 52
-    - source: type Table = dict[str, int]
-      style: secondary
-      start: 25
-      end: 52
-    - source: dict[str, int]
-      style: secondary
-      start: 38
-      end: 52
-    - source: dict
-      style: secondary
-      start: 38
-      end: 42

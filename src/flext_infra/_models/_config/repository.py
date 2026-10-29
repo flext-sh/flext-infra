@@ -291,6 +291,12 @@ class FlextInfraModelsConfigRepository:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
+        inputs: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True, description="Original identity and policy observations"
+            ),
+        ] = ()
         name: Annotated[t.NonEmptyStr, m.Field(description="Catalog key")]
         distribution: Annotated[
             t.NonEmptyStr,

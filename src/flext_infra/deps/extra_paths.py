@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib.metadata
+import json
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
@@ -117,6 +119,30 @@ class FlextInfraExtraPathsManager(
         return paths
 
     @staticmethod
+    @staticmethod
+    def editable_source_root(distribution_name: str) -> str | None:
+        """Return the source root of an editable source-checkout distribution.
+
+        Editable installs of external SDK forks (managed rope) carry their
+        package outside ``site-packages``; static checkers resolve them only
+        through an explicit root. Wheel/registry installs return ``None``
+        (they resolve natively).
+
+        Returns:
+            The directory containing the distribution's package, or ``None``.
+
+        """
+        distribution = importlib.metadata.distribution(distribution_name)
+        direct_url = distribution.read_text("direct_url.json")
+        if direct_url is None:
+            return None
+        url = json.loads(direct_url).get("url", "")
+        if not url.startswith("file://"):
+            return None
+        source_root = Path(url.removeprefix("file://"))
+        return str(source_root) if source_root.is_dir() else None
+
+    @staticmethod
     def pyright_extra_paths() -> Sequence[str]:
         """Compute pyright extra paths for a project.
 
@@ -209,9 +235,18 @@ class FlextInfraExtraPathsManager(
             shared_search_paths=rules.project_shared_search_paths,
             include_generated_roots=False,
         )
-        if (project_dir / source_root).is_dir():
-            return (source_root, *sorted(paths))
-        return tuple(sorted(paths))
+        ordered = (
+            (source_root, *sorted(paths))
+            if (project_dir / source_root).is_dir()
+            else tuple(sorted(paths))
+        )
+        # The managed rope fork is installed editable (source checkout, no
+        # in-tree package): mypy resolves it only through an explicit search
+        # root derived from the installed distribution's real location.
+        rope_root = self.editable_source_root("rope")
+        if rope_root is not None:
+            return (*ordered, rope_root)
+        return ordered
 
     def _included_pyrefly_env_dirs(self, *, project_dir: Path) -> Sequence[str]:
         """Return the declared env dirs whose Python sources pyrefly analyzes.

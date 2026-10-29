@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._layout.apply import FlextInfraCodegenLayoutApply
-    from flext_infra._layout.files import FlextInfraCodegenLayoutFiles
-    from flext_infra._layout.gitignore import FlextInfraCodegenLayoutGitignore
-    from flext_infra._layout.plan import FlextInfraCodegenLayoutPlan
+    from flext_infra.codegen._layout.apply import FlextInfraCodegenLayoutApply
+    from flext_infra.codegen._layout.files import FlextInfraCodegenLayoutFiles
+    from flext_infra.codegen._layout.gitignore import FlextInfraCodegenLayoutGitignore
+    from flext_infra.codegen._layout.plan import FlextInfraCodegenLayoutPlan
 
 
 __all__: tuple[str, ...] = (

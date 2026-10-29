@@ -20,6 +20,43 @@ class FlextInfraUtilitiesDocsCollectionSources:
     """Read explicitly associated sources without exporting private sessions."""
 
     @staticmethod
+    def collection_configuration_digest(
+        configuration: m.Infra.PlanCollectionConfig,
+    ) -> str:
+        """Identify the typed associations without publishing provider roots.
+
+        Returns:
+            The complete typed configuration's digest.
+
+        """
+        return sha256(configuration.model_dump_json().encode()).hexdigest()
+
+    @staticmethod
+    def collection_revision_digest(
+        artifacts: tuple[tuple[Path, m.Cli.AtomicFileState], ...],
+    ) -> str:
+        """Hash named plan and attachment bytes identically on collection and CI.
+
+        Returns:
+            The immutable incoming revision digest.
+
+        Raises:
+            ValueError: If an influential artifact is absent.
+
+        """
+        digest = sha256()
+        for name, artifact in artifacts:
+            if artifact.content is None:
+                msg = f"absent collected artifact: {artifact.path}"
+                raise ValueError(msg)
+            encoded = name.as_posix().encode()
+            digest.update(len(encoded).to_bytes(8, "big"))
+            digest.update(encoded)
+            digest.update(len(artifact.content).to_bytes(8, "big"))
+            digest.update(artifact.content)
+        return digest.hexdigest()
+
+    @staticmethod
     def collection_source_root(
         root: Path,
         source: m.Infra.PlanCollectionSource,
@@ -235,8 +272,13 @@ class FlextInfraUtilitiesDocsCollectionSources:
         manifest_path = canonical / "collection-manifest.json"
         before = cls.collection_capture(manifest_path, states)
         if before.content is None:
-            return m.Infra.PlanCollectionManifest(), ()
+            return m.Infra.PlanCollectionManifest(
+                configuration_sha256=None, coverage=(),
+            ), ()
         manifest = m.Infra.PlanCollectionManifest.model_validate_json(before.content)
+        if manifest.configuration_sha256 is None:
+            msg = f"published collection manifest has no association proof: {manifest_path}"
+            raise ValueError(msg)
         excluded: list[Path] = [manifest_path]
         cls._validate_revision_locators(manifest)
         plans = {canonical / revision.canonical_path for revision in manifest.revisions}
@@ -270,7 +312,11 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
         """
         for revision in manifest.revisions:
-            for locator in (revision.canonical_path, revision.source_path):
+            for locator in (
+                revision.canonical_path,
+                revision.source_path,
+                *(Path(name) for name in revision.attachments),
+            ):
                 if locator.is_absolute() or not locator.parts or ".." in locator.parts:
                     msg = f"collection receipt has unsafe relative locator: {locator}"
                     raise ValueError(msg)

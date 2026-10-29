@@ -15,9 +15,7 @@ from pathlib import Path
 from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_base import (
-    FlextInfraUtilitiesRopeRuntimeBase,
-)
+from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
@@ -487,7 +485,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
         cls,
         file_path: Path,
         source: str,
-        statement_lines: Sequence[t.IntPair],
+        statement_lines: Sequence[tuple[int, int]],
     ) -> str:
         """Plan the same statement hoist without changing its physical source.
 
@@ -516,7 +514,7 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
     @staticmethod
     def statements_at_module_end(
         source: str,
-        statement_lines: Sequence[t.IntPair],
+        statement_lines: Sequence[tuple[int, int]],
         *,
         filename: str,
     ) -> str:

@@ -11,7 +11,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         return self._resource_limits[project_dir]
 
     @staticmethod
-    def _config_exclude(config_path: Path) -> re.Pattern[str] | None:
+    def _config_exclude(config_path: Path) -> t.RegexPattern | None:
         """Return the compiled [tool.mypy].exclude regex, if configured.
 
         Returns:

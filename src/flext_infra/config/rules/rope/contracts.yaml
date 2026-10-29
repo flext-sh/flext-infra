@@ -87,15 +87,15 @@ rules:
   - id: pydantic-adapter-construction
     phase: contract-normalization
     pattern: '${adapter}(${contract})'
-    goal: 'u.type_adapter(TypeForm(${contract}))'
+    goal: 'u.type_adapter(t.TypeForm(${contract}))'
     arguments:
       adapter: name=pydantic.TypeAdapter
     imports:
       u: from flext_core import u
-      TypeForm: from typing_extensions import TypeForm
+      t.TypeForm: from typing_extensions import TypeForm
     bindings:
       u.type_adapter: pydantic.TypeAdapter
-      TypeForm: typing_extensions.TypeForm
+      t.TypeForm: typing_extensions.TypeForm
   - id: pydantic-required-field-metadata
     phase: contract-normalization
     reorders_annotation: true
@@ -192,10 +192,10 @@ rules:
     goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${annotated}[${contract}, ${metadata}])))'
     imports: &empty_imports
       u: from flext_core import u
-      TypeForm: from typing_extensions import TypeForm
+      t.TypeForm: from typing_extensions import TypeForm
     bindings: &empty_bindings
       u.empty: flext_core._utilities.pydantic.FlextUtilitiesPydantic.empty
-      TypeForm: typing_extensions.TypeForm
+      t.TypeForm: typing_extensions.TypeForm
     arguments:
       annotated: name=typing.Annotated
       collection: &empty_collections

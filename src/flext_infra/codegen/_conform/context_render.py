@@ -515,7 +515,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository: m.Infra.RepositoryRef,
         codegen: m.Infra.CodegenConfigSpec,
         project: m.Infra.ProjectSpec,
-    ) -> p.Result[tuple[tuple[t.NonEmptyStr], Sequence[str]]]:
+    ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Resolve declared and composed development dependencies of one render.
 
         Args:
@@ -529,7 +529,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             dependencies, or the first composition or validation failure.
 
         """
-        result_type = r[tuple[tuple[t.NonEmptyStr], Sequence[str]]]
+        result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
         declared = self._declared_dependency_facts(repository_root, project)
         if declared.failure:
             return result_type.from_failure(declared)

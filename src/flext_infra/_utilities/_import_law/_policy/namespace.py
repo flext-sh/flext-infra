@@ -7,11 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import warnings
 from collections.abc import Mapping, MutableMapping
 from functools import cache
 from importlib.metadata import entry_points
-from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal
@@ -259,70 +257,13 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             for entry in entry_points(group=c.Infra.IMPORT_LAW_PYTEST_PLUGIN_GROUP)
         )
 
-    @staticmethod
-    @warnings.deprecated(
-        "compat: FlextInfraUtilitiesImportLawPolicyNamespace.bootstrap_modules "
-        "-> p.Infra.WorkspaceSnapshot; fix: rewire via make mod; derive "
-        "bootstrap modules from the repository's single rope index instead "
-        "of find_spec plus ast.walk (engine-map S3/D1).",
-    )
-    @cache
-    def bootstrap_modules(package: str) -> frozenset[str]:
-        """Own modules the generated package root runs before its facades exist.
-
-        The root ``__init__.py`` the lazy-init generator emits imports, outside
-        ``TYPE_CHECKING``, only the lazy loader and the version metadata; those
-        modules and their own runtime imports execute before any facade family
-        is importable, so they are layer zero. Sources are parsed, never
-        imported.
-
-        Returns:
-            The dotted bootstrap module names of ``package``.
-
-        """
-        spec = find_spec(package)
-        if spec is None or spec.origin is None:
-            return frozenset()
-        source = Path(spec.origin)
-        if not source.is_file():
-            return frozenset()
-        root = source.parent
-        found: set[str] = set()
-        pending = [source]
-        while pending:
-            tree = ast.parse(pending.pop().read_text(encoding=c.Infra.ENCODING_DEFAULT))
-            statements = list(tree.body)
-            while statements:
-                node = statements.pop()
-                if isinstance(node, ast.If):
-                    guarded = (
-                        isinstance(node.test, ast.Name)
-                        and node.test.id == c.Infra.TYPING_GUARD_NAME
-                    )
-                    statements.extend(node.orelse if guarded else node.body)
-                    continue
-                names = (
-                    [node.module or ""]
-                    if isinstance(node, ast.ImportFrom) and node.level == 0
-                    else [alias.name for alias in node.names]
-                    if isinstance(node, ast.Import)
-                    else []
-                )
-                for name in names:
-                    head, _, rest = name.partition(".")
-                    if head != package or not rest or name in found:
-                        continue
-                    source = root.joinpath(*rest.split(".")).with_suffix(
-                        c.Infra.EXT_PYTHON
-                    )
-                    if source.is_file():
-                        found.add(name)
-                        pending.append(source)
-        return frozenset(found)
-
     @classmethod
     def import_module_role(
-        cls, module: str, *, namespace: str | None = None
+        cls,
+        module: str,
+        *,
+        namespace: str | None = None,
+        bootstrap: bool = False,
     ) -> Literal["layer0", "family", "consumer"]:
         """Classify a module from the canonical singleton and family vocabulary.
 
@@ -331,16 +272,14 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         imports; it cannot consume the facade it produces. Singleton names
         identify namespace roots only; nested declarations require native ancestry.
         Modules registered as pytest11 plugins are layer zero for pytest.
+        Bootstrap membership is supplied explicitly from the captured native
+        graph; this lexical classifier never resolves an installed package.
 
         Returns:
             The resulting ``Literal['layer0', 'family', 'consumer']``.
 
         """
-        if module in cls.pytest_plugin_modules():
-            return "layer0"
-        if (namespace is None or "." not in namespace) and (
-            module in cls.bootstrap_modules(module.partition(".")[0])
-        ):
+        if bootstrap or module in cls.pytest_plugin_modules():
             return "layer0"
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
         for index, part in enumerate(

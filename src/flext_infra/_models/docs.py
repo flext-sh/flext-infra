@@ -254,6 +254,10 @@ class FlextInfraModelsDocs(
     class DocsCollectRequest(m.ContractModel):
         """Fixed-effect collection command with repository-owned configuration."""
 
+        check: bool = m.Field(
+            default=False,
+            description="Verify canonical published evidence without provider access",
+        )
         repository_root: Annotated[
             Path,
             m.Field(description="Repository owning the plans"),

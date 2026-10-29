@@ -21,7 +21,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
-from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesDeclarationPayload(
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesTypesRopeRuntime,
 ):
-    """Identify inherited declarations without parsing or spelling heuristics."""
+    """Resolve declaration roles, specialization facts and native identities."""
 
     @staticmethod
     def identity_name(
@@ -53,7 +53,13 @@ class FlextInfraUtilitiesDeclarationPayload(
     def class_ancestry(
         value: p.Infra.RopePyObject,
     ) -> Sequence[p.Infra.RopePyObject]:
-        """Retain native C3 order, unresolved witnesses and hierarchy failures.
+        """Retain the native C3 order, including positioned unresolved witnesses.
+
+        Rope dc15 keeps an ``UnresolvedBase`` in its MRO position by policy
+        (TypedDict synthetic bases, staged renames): the witness occupies its
+        slot, contributes no ancestors, and never matches a first-party
+        declaration, so membership queries stay correct without rejecting
+        classes the native rope already accepted.
 
         Returns:
             The SDK ancestry, or the unchanged non-class singleton.
@@ -61,16 +67,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         """
         # SDK ownership keeps classification and generation on one ancestry contract.
         if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
-            try:
-                return value.get_mro()
-            except tuple(
-                FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()
-            ):
-                # A candidate-overlay base chain through lazy cross-package
-                # letters may not linearize in this view; the class itself
-                # remains the ancestry witness (the base project's own pass
-                # owns the true on-disk linearization).
-                return (value,)
+            return tuple(value.get_mro())
         return (value,)
 
     @classmethod
@@ -209,11 +206,11 @@ class FlextInfraUtilitiesDeclarationPayload(
             TypeError: If a source class lacks its native project owner.
 
         """
-        bases = list(
-            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-                value, "declaration ancestry"
-            ).get_superclasses()
-        )
+        # Builtin leaves (``object``, ``Exception``) are legitimate bases with
+        # no source declaration and no superclasses of their own.
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
+            return ()
+        bases = list(value.get_superclasses())
         if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             return bases
         scope, module = value.get_scope(), value.get_module()

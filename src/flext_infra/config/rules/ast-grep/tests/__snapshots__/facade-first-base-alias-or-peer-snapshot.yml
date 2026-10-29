@@ -12,33 +12,6 @@ snapshots:
       style: secondary
       start: 6
       end: 24
-    - source: __all__
-      style: secondary
-      start: 51
-      end: 58
-    - source: FlextMeltanoModels
-      style: secondary
-      start: 63
-      end: 81
-    - source: FlextMeltanoModels
-      style: secondary
-      start: 63
-      end: 81
-    - source: __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 51
-      end: 83
-    - source: __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 51
-      end: 83
-    - source: |
-        class FlextMeltanoModels(FlextCliModels):
-            pass
-        __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 0
-      end: 84
     - source: FlextCliModels
       style: secondary
       start: 25
@@ -59,33 +32,6 @@ snapshots:
       style: secondary
       start: 6
       end: 24
-    - source: __all__
-      style: secondary
-      start: 48
-      end: 55
-    - source: FlextMeltanoModels
-      style: secondary
-      start: 60
-      end: 78
-    - source: FlextMeltanoModels
-      style: secondary
-      start: 60
-      end: 78
-    - source: __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 48
-      end: 80
-    - source: __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 48
-      end: 80
-    - source: |
-        class FlextMeltanoModels(FlextResult):
-            pass
-        __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 0
-      end: 81
     - source: FlextResult
       style: secondary
       start: 25

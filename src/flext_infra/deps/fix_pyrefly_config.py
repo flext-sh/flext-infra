@@ -10,13 +10,13 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.deps import FlextInfraDepsPyrefly
 
 
 class FlextInfraConfigFixer(
     FlextInfraDepsPyrefly,
-    FlextInfraServiceBase[bool],
+    s[bool],
 ):
     """Fix pyrefly configuration across workspace projects."""
 

@@ -718,17 +718,20 @@ class TestsFlextInfraPytestRunner:
     @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("ci_context", [False, True])
-    def test_full_executes_every_marker_once_with_the_persistent_database(
+    def test_full_executes_every_marker_once_without_touching_testmon(
         cached_runner_project: Path,
         *,
         ci_context: bool,
     ) -> None:
-        """One bounded full execution runs every marker on the persistent database."""
+        """A bounded full execution ignores even an invalid pre-existing cache."""
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
-            sorted({*policy.external_gate_markers, *policy.ci_excluded_markers}),
+            sorted({
+                policy.slow_marker,
+                *policy.external_gate_markers,
+                *policy.ci_excluded_markers,
+            }),
         )
-        tm.that(markers, has=policy.slow_marker)
         marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
         (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
             "[tool.pytest.ini_options]\n"
@@ -739,6 +742,9 @@ class TestsFlextInfraPytestRunner:
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
+        database = tm.not_none(runner.testmon_db)
+        database.write_bytes(b"invalid cache must remain outside the full operation")
+        database_before = database.read_bytes()
         source = "import pytest\nfrom runner_sample import answer\n\n"
         for index, marker in enumerate(markers):
             source += (
@@ -761,11 +767,12 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
-        context = parsed[-1]
-        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+        tm.that({context.testmon_db for context in parsed}, eq={None})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.that(database.read_bytes(), eq=database_before)
+        tm.that(parsed[-1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(
-            context.deadline_monotonic,
+            parsed[-1].deadline_monotonic,
             eq=pytest.approx(runner.started_at_monotonic + policy.run_timeout_seconds),
         )
         report_dir = contexts[-1].parent
@@ -776,12 +783,17 @@ class TestsFlextInfraPytestRunner:
         tm.that(accounting.reported_count, eq=1 + len(markers))
         tm.that(accounting.inventory_count, eq=1 + len(markers))
         tm.that(accounting.deselected_count, eq=0)
-        full_summary = (report_dir / "summary.txt").read_text().splitlines()
-        tm.that(full_summary, has=["outcome=executed", "exit=0"])
-        tm.ok("not_executed_external_gates=" in full_summary)
-        tm.ok("not_executed_ci_markers=" in full_summary)
+        tm.that(
+            (report_dir / "summary.txt").read_text().splitlines(),
+            has=[
+                "outcome=executed",
+                "exit=0",
+                "not_executed_external_gates=",
+                "not_executed_ci_markers=",
+            ],
+        )
         recorded = (report_dir / "command.txt").read_text()
-        tm.that(recorded, has="--testmon-noselect")
+        tm.fail("--testmon" in recorded)
         tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
         tm.that(
             recorded, has=f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}"
@@ -796,13 +808,12 @@ class TestsFlextInfraPytestRunner:
     def test_file_runs_after_warm_cache_and_ignores_node_like_diagnostics(
         cached_runner_project: Path,
     ) -> None:
-        """Cold, warm, and complete file collection use final items and one DB."""
+        """Complete file collection preserves a cache warmed by native selection."""
         (cached_runner_project / "conftest.py").write_text(
             "import sys\n\n"
             "def pytest_collection_finish(session):\n"
-            "    if session.config.getoption('collectonly'):\n"
-            "        print('diagnostic::not-a-node')\n"
-            "        sys.stderr.write('stderr::not-a-node\\n')\n",
+            "    print('diagnostic::not-a-node')\n"
+            "    sys.stderr.write('stderr::not-a-node\\n')\n",
             encoding="utf-8",
         )
         declared = (
@@ -812,14 +823,17 @@ class TestsFlextInfraPytestRunner:
         baseline = u.Tests.PytestRunner.runner_for(
             cached_runner_project, target_file=declared
         )
-        tm.that(tm.ok(baseline.execute_full()), eq=0)
+        tm.that(tm.ok(baseline.execute()), eq=0)
+        database = tm.not_none(baseline.testmon_db)
+        tm.ok(database.is_file())
+        database_before = database.read_bytes()
         reports_root = cached_runner_project / baseline.reports
         existing = set(reports_root.glob("*/run-context.json"))
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, target_file=declared
         )
 
-        tm.that(tm.ok(runner.execute_full()), eq=0)
+        tm.that(tm.ok(runner.execute_file()), eq=0)
 
         contexts = sorted(set(reports_root.glob("*/run-context.json")) - existing)
         tm.that(len(contexts), eq=1)
@@ -831,13 +845,14 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
-        tm.ok(runner.testmon_db.is_absolute())
+        tm.that({context.testmon_db for context in parsed}, eq={None})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.ok(database.is_absolute())
         tm.that(
-            runner.testmon_db.is_relative_to(cached_runner_project.resolve()),
+            database.is_relative_to(cached_runner_project.resolve()),
             eq=False,
         )
-        tm.ok(runner.testmon_db.is_file())
+        tm.that(database.read_bytes(), eq=database_before)
         tm.that(
             (
                 cached_runner_project
@@ -860,12 +875,9 @@ class TestsFlextInfraPytestRunner:
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (file_report / "run-accounting.json").read_text(),
         )
-        tm.ok(accounting.cache_restored)
+        tm.fail(accounting.cache_restored)
         for receipt in ("cache-before.json", "cache-after.json"):
-            state = m.Infra.TestmonCacheState.model_validate_json(
-                (file_report / receipt).read_text(),
-            )
-            tm.ok(state.restored_accepted)
+            tm.fail((file_report / receipt).exists())
         manifest = m.Infra.PytestCollectionManifest.model_validate_json(
             (file_report / "testmon-inventory.json").read_text(),
         )
@@ -874,7 +886,7 @@ class TestsFlextInfraPytestRunner:
             eq=False,
         )
         tm.that(
-            (file_report / "testmon-inventory.log").read_text(),
+            (file_report / "pytest.log").read_text(),
             has=["diagnostic::not-a-node", "stderr::not-a-node"],
         )
 
@@ -923,7 +935,8 @@ class TestsFlextInfraPytestRunner:
                 + config.Infra.tooling.tools.pytest.run_timeout_seconds,
             },
         )
-        tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
+        tm.that({context.testmon_db for context in parsed}, eq={None})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
 
     @staticmethod
     @pytest.mark.slow
@@ -1027,7 +1040,7 @@ class TestsFlextInfraPytestRunner:
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, target_file=declared
         )
-        runner.testmon_db.write_bytes(b"not a SQLite database")
+        tm.not_none(runner.testmon_db).write_bytes(b"not a SQLite database")
 
         with pytest.raises(sqlite3.DatabaseError):
             runner.execute()

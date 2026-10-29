@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import runpy
 from contextlib import redirect_stderr
 from io import StringIO
@@ -56,7 +55,7 @@ class TestsFlextInfraRopeContractCatalog:
         """Empty literal exports stay explicit, so unrelated statements stay intact."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "exports.py"
-        path.write_text("__all__ = ['u']\n", encoding="utf-8")
+        path.write_text("kept = 'kept'\n__all__ = ['u']\n", encoding="utf-8")
         with u.Infra.facade_source_project(root) as (project, _sources):
             module = u.Infra.require_source_module(
                 project.get_pymodule(
@@ -64,12 +63,10 @@ class TestsFlextInfraRopeContractCatalog:
                 )
             )
             updated = u.Infra.remove_runtime_alias_export(module, alias="u")
-        declarations = u.Infra.runtime_alias_bindings(updated, alias="__all__")
-        tm.that(len(declarations), eq=1)
-        value = declarations[0].value
-        if not isinstance(value, ast.List):
-            pytest.fail("export retirement must emit a literal list")
-        tm.that(value.elts, empty=True)
+        path.write_text(updated, encoding="utf-8")
+        namespace = runpy.run_path(str(path))
+        tm.that(namespace["__all__"], empty=True)
+        tm.that(namespace["kept"], eq="kept")
 
     @staticmethod
     def test_catalog_phases_roundtrip_and_reject_unknown_values(
@@ -88,7 +85,9 @@ class TestsFlextInfraRopeContractCatalog:
             tm.that(type(rule.phase), eq=c.Infra.SemanticCutoverPhase)
             tm.that(type(rule.operation), eq=c.Infra.RopeContractOperation)
             tm.ok(
-                all(isinstance(kind, c.Infra.RopeScopeKind) for kind in rule.scope_kinds)
+                all(
+                    isinstance(kind, c.Infra.RopeScopeKind) for kind in rule.scope_kinds
+                )
             )
             payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
             with pytest.raises(ValueError, match="phase"):
@@ -133,8 +132,10 @@ class TestsFlextInfraRopeContractCatalog:
             "      helper: name=consumer.helpers.Helpers.render\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        composed = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
+        loaded = u.Infra.declared_contract_rules(tmp_path)
+        composed = tuple(rule.id for rule in loaded)
         tm.that(composed, eq=(*packaged, "consumer-own-helper"))
+        tm.that(loaded[-1].owner_root, eq=tmp_path.resolve())
 
     @staticmethod
     def test_workspace_loads_only_declared_member_overlays(tmp_path: Path) -> None:

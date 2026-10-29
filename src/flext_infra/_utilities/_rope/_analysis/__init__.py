@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope._analysis.importstate import (
         FlextInfraUtilitiesRopeAnalysisImportState,
     )
-    from flext_infra._utilities._rope._analysis.rope_analysis_introspection import (
+    from flext_infra._utilities._rope._analysis.introspection import (
         FlextInfraUtilitiesRopeAnalysisIntrospection,
     )
     from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
@@ -54,7 +54,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeAnalysisBase": ".base",
         "FlextInfraUtilitiesRopeAnalysisExports": ".exports",
         "FlextInfraUtilitiesRopeAnalysisImportState": ".importstate",
-        "FlextInfraUtilitiesRopeAnalysisIntrospection": ".rope_analysis_introspection",
+        "FlextInfraUtilitiesRopeAnalysisIntrospection": ".introspection",
         "FlextInfraUtilitiesRopeAnalysisSourceScan": ".sourcescan",
         "FlextInfraUtilitiesRopeAnalysisWorkspace": ".rope_analysis_workspace",
     }),

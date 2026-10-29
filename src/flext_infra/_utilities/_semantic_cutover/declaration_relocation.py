@@ -29,10 +29,10 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
-from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -271,6 +271,14 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         root = Path(project.root.real_path)
         proposed = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
+        graph, _modules = layers.snapshot_import_graph(
+            project,
+            resources=tuple(
+                runtime.file_resource_at(project, path)
+                for path in sources
+                if path.suffix == c.Infra.EXT_PYTHON
+            ),
+        )
         for path, source in sources.items():
             if source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
@@ -278,7 +286,19 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if located is None:
                 continue
             namespace, module = located
-            if layers.import_module_role(module) != "layer0":
+            package = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                namespace, project_root=root, source_project=project
+            )
+            if (
+                layers.import_module_role(
+                    module,
+                    namespace=package,
+                    bootstrap=layers.import_bootstrap_dependency(
+                        package, module, graph
+                    ),
+                )
+                != "layer0"
+            ):
                 continue
             exports = cls._collect_settings_exports(
                 (

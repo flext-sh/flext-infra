@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._pytest.diag_xml import FlextInfraValidatePytestDiagXml
+    from flext_infra.validate._pytest.diag_xml import FlextInfraValidatePytestDiagXml
 
 
 __all__: tuple[str, ...] = ("FlextInfraValidatePytestDiagXml",)

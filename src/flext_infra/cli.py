@@ -11,6 +11,7 @@ from collections.abc import Sequence
 
 from flext_infra import FlextInfraPytestClock, c, settings
 from flext_infra.services import FlextInfraCliDispatchService
+from flext_infra.validate import FlextInfraCProfileReport
 
 
 class FlextInfraCli(FlextInfraCliDispatchService):
@@ -46,7 +47,9 @@ class FlextInfraCli(FlextInfraCliDispatchService):
             msg = "FLEXT_INFRA_PROFILE requires FLEXT_INFRA_PROFILE_OUTPUT"
             raise ValueError(msg)
         return FlextInfraPytestClock.profile_command(
-            lambda: FlextInfraCli().main(cli_args), output
+            lambda: FlextInfraCli().main(cli_args),
+            output,
+            after_profile=FlextInfraCProfileReport.report_capture,
         )
 
 

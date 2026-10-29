@@ -10,7 +10,7 @@ from collections.abc import Callable
 from importlib import import_module
 from typing import TypeIs, get_protocol_members
 
-from flext_infra import c, p
+from flext_infra import c, p, t
 
 
 class FlextInfraUtilitiesRopeRuntimeBase:
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
     @classmethod
     def semantic_capture_region(
         cls,
-        module: p.Infra.RopeSourceModule,
+        module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
         name: str,
     ) -> tuple[int, int]:
@@ -78,7 +78,9 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         if not isinstance(
             value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass")
         ) or not isinstance(value, p.Infra.RopeClassObject):
-            msg = f"expected a native Rope class: {label}"
+            msg = (
+                f"expected a native Rope class: {label} (found {type(value).__name__})"
+            )
             raise TypeError(msg)
         return value
 
@@ -138,7 +140,85 @@ class FlextInfraUtilitiesRopeRuntimeBase:
             The generic Rope exception boundary.
 
         """
-        return (cls._exception_type("rope.base.exceptions", "RopeError"),)
+        return (cls.exception_type("rope.base.exceptions", "RopeError"),)
+
+    @classmethod
+    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return exceptions that signal unparseable Python source.
+
+        Returns:
+            Exceptions that signal unparseable Python source.
+
+        """
+        return (
+            SyntaxError,
+            cls.exception_type("rope.base.exceptions", "ModuleSyntaxError"),
+        )
+
+    @classmethod
+    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return recoverable exceptions raised by Rope operations.
+
+        Returns:
+            Recoverable exceptions raised by Rope operations.
+
+        """
+        return (
+            cls.exception_type("rope.base.exceptions", "RefactoringError"),
+            cls.exception_type("rope.base.exceptions", "ResourceNotFoundError"),
+            # Module probing (longest-prefix module/class split) treats a
+            # missing module as "keep splitting", never as a hard failure.
+            cls.exception_type("rope.base.exceptions", "ModuleNotFoundError"),
+            AttributeError,
+        )
+
+    @classmethod
+    def import_organizer(
+        cls,
+        rope_project: t.Infra.RopeProject,
+    ) -> p.Infra.RopeImportOrganizer:
+        organizer_factory = cls.runtime_callable(
+            c.Infra.ROPE_IMPORTUTILS_MODULE,
+            "ImportOrganizer",
+        )
+        organizer = organizer_factory(rope_project)
+        if not isinstance(organizer, p.Infra.RopeImportOrganizer):
+            msg = "rope ImportOrganizer does not satisfy p.Infra.RopeImportOrganizer"
+            raise TypeError(msg)
+        return organizer
+
+    @classmethod
+    def rope_hierarchy_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for hierarchies that fail to linearize.
+
+        A candidate overlay may hold base chains whose MRO is not computable
+        in that view (lazy cross-package letters); optimization owners treat
+        these as "proof unavailable" and retain the prior state.
+
+        Returns:
+            The hierarchy-failure exception types.
+
+        """
+        return (
+            cls.exception_type("rope.base.exceptions", "InconsistentHierarchyError"),
+        )
+
+    @classmethod
+    def rope_unresolved_error_types(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for statically unresolved modules or attributes.
+
+        Returns:
+            Rope exceptions raised when a native lookup resolves nothing.
+
+        """
+        return tuple(
+            cls.exception_type("rope.base.exceptions", name)
+            for name in (
+                "ModuleNotFoundError",
+                "BadIdentifierError",
+                "AttributeNotFoundError",
+            )
+        )
 
     @classmethod
     def runtime_type(cls, module_name: str, attribute: str) -> type[p.AttributeProbe]:
@@ -167,7 +247,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         return candidate
 
     @classmethod
-    def _exception_type(cls, module_name: str, attribute: str) -> type[BaseException]:
+    def exception_type(cls, module_name: str, attribute: str) -> type[BaseException]:
         candidate = cls.runtime_type(module_name, attribute)
         if not issubclass(candidate, BaseException):
             msg = f"rope attribute is not an exception type: {module_name}.{attribute}"

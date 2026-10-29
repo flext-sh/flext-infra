@@ -672,6 +672,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         root = project.resolve()
         law = FlextInfraUtilitiesImportLaw
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
+        bootstrap = law.snapshot_bootstrap_dependencies(snapshot, root, package)
         return tuple(
             sorted(
                 path.relative_to(root).as_posix()
@@ -681,7 +682,12 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 if (located := law.snapshot_import_namespace(snapshot, root, path))
                 is not None
                 and located[1].split(".")[0] == package
-                and law.import_module_role(located[1], namespace=package) in roles
+                and law.import_module_role(
+                    located[1],
+                    namespace=package,
+                    bootstrap=located[1] in bootstrap,
+                )
+                in roles
             )
         )
 

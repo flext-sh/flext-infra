@@ -82,7 +82,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         names: t.Infra.StrSet,
     ) -> tuple[
         MutableSequence[str],
-        MutableSequence[t.IntPair],
+        MutableSequence[tuple[int, int]],
         MutableSequence[str],
     ]:
         """Collect the block texts, line ranges, and names that exist.
@@ -92,7 +92,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         """
         blocks: MutableSequence[str] = []
-        ranges: MutableSequence[t.IntPair] = []
+        ranges: MutableSequence[tuple[int, int]] = []
         moved: MutableSequence[str] = []
         for name in sorted(names):
             found = FlextInfraUtilitiesRefactorNamespaceCommon.find_top_level_block(
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @staticmethod
     def _lines_without_ranges(
         lines: Sequence[str],
-        ranges: Sequence[t.IntPair],
+        ranges: Sequence[tuple[int, int]],
     ) -> list[str]:
         """Delete every collected line range from the source lines.
 
@@ -431,7 +431,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """
         module = ast.parse("\n".join(lines))
         moved_lines: list[str] = []
-        ranges: list[t.IntPair] = []
+        ranges: list[tuple[int, int]] = []
         for node in module.body:
             first_line = lines[node.lineno - 1]
             moved = (

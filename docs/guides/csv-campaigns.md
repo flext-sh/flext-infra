@@ -13,11 +13,12 @@
 
 ## Declarative Text Rules and Candidate Bootstrap
 
-For a recovery that only needs declarative Sed text rules, run the declarative text recovery
-operation at the affected repository root (`flext-infra refactor mod-text`). This public CLI route validates exact rule receipts,
-checks Python syntax before publication, applies the authenticated text batch,
-and verifies that no findings remain. It does not enter the Rope or ast-grep
-phases of `make mod`. Repair a malformed rule in its authored YAML catalogue,
+For a recovery that only needs declarative Sed text rules, run the declarative text
+recovery operation at the affected repository root (`flext-infra refactor mod-text`).
+This public CLI route validates exact rule receipts, checks Python syntax before
+publication, applies the authenticated text batch, and verifies that no findings
+remain. It does not enter the Rope or ast-grep phases of `make mod`. Repair a
+malformed rule in its authored YAML catalogue,
 then replay through this verb; do not edit a generated projection.
 Python files in governed source trees are scanned by default. A rule may also
 declare a relative `include` glob ending in a file suffix to elect authored
@@ -28,10 +29,11 @@ mapping, null, non-string, and blank entries fail before any publication; no
 scope is expanded into characters or coerced into a glob. Omitted scopes retain
 the typed rule defaults, and empty lists remain valid unrestricted selectors.
 When a candidate's Python package cannot import, the healthy Infra provider
-can run candidate text recovery (`flext-infra refactor mod-text-candidate`) after its repository declaration supplies exactly
-one `candidate_bootstrap_targets` entry. Declare targets under
-`Infra.codegen.repository.candidate_bootstrap_targets` in `config/codegen.yaml`,
-with each `path` relative to the healthy provider and a canonical `what` surface.
+can run candidate text recovery (`flext-infra refactor mod-text-candidate`) after
+its repository declaration supplies exactly one `candidate_bootstrap_targets` entry.
+Declare targets under `Infra.codegen.repository.candidate_bootstrap_targets` in
+`config/codegen.yaml`, with each `path` relative to the healthy provider and a
+canonical `what` surface.
 The same target declaration supports `make bootstrap-candidate` to project the
 declared recovery surface without importing the candidate package. A candidate
 worktree may appear only once per invocation. Recover a conflicted pyproject with

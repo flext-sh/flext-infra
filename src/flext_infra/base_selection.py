@@ -11,13 +11,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from flext_infra import FlextInfraBaseProjects, FlextInfraServiceBase, m, t
+from flext_infra import FlextInfraBaseProjects, m, s, t
 
 
 class FlextInfraProjectSelectionServiceBase[
     TDomainResult: t.JsonValue | t.BaseModelType | Path | datetime,
 ](
-    FlextInfraServiceBase[TDomainResult],
+    s[TDomainResult],
     FlextInfraBaseProjects,
 ):
     """Shared service foundation for commands that target workspace projects.

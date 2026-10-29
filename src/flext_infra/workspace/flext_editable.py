@@ -18,7 +18,11 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
+from flext_infra.workspace import (
+    FlextInfraBindingService,
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironment,
+)
 
 
 class FlextInfraWorkspaceFlextEditable:
@@ -71,6 +75,107 @@ class FlextInfraWorkspaceFlextEditable:
         ).flat_map(lambda selection: cls._install(runtime_root, selection))
 
     @classmethod
+    def _resolve_provided_distributions(
+        cls,
+        runtime_root: Path,
+        flext_root: Path,
+    ) -> p.Result[tuple[dict[str, Path], tuple[str, ...]]]:
+        """Resolve the FLEXT distributions installed in one consumer environment.
+
+        Returns:
+            The provided distribution sources and the metadata paths.
+
+        """
+        spec = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
+        if spec.failure:
+            return r[tuple[dict[str, Path], tuple[str, ...]]].from_failure(spec)
+        observed = FlextInfraBindingService.consumer_package_environment(
+            consumer_root=runtime_root,
+            python=u.Infra.runtime_python(runtime_root, runtime_root=runtime_root),
+            packages=(),
+        )
+        if observed.failure:
+            return r[tuple[dict[str, Path], tuple[str, ...]]].from_failure(observed)
+        metadata_paths = tuple(str(path) for path in observed.value.metadata_paths)
+        provided = (
+            (spec.value.repository, flext_root),
+            *(
+                (repository, flext_root / repository.path)
+                for repository in spec.value.subprojects
+            ),
+        )
+        distributions = {
+            repository.distribution: source.resolve()
+            for repository, source in provided
+            if repository.package
+            and u.installed_distributions(
+                name=repository.distribution,
+                path=metadata_paths,
+            )
+        }
+        return r[tuple[dict[str, Path], tuple[str, ...]]].ok(
+            (distributions, metadata_paths),
+        )
+
+    @classmethod
+    def _execute_pip_install(
+        cls,
+        runtime_root: Path,
+        selection: m.Infra.FlextEditableSelection,
+        *,
+        python: str,
+        uv: Path,
+    ) -> p.Result[bool]:
+        """Bind selected source directories editable and verify the result.
+
+        The preceding frozen UV install owns the entire dependency graph; this
+        pip operation only binds source directories, then checks the graph and
+        verifies the installed origins match the selection.
+
+        Returns:
+            Whether the installation and verification succeeded.
+
+        """
+        pending = cls._pending_sources(runtime_root, selection)
+        if pending.failure:
+            return r[bool].from_failure(pending)
+        if pending.value:
+            installed = u.Cli.run_live(
+                (
+                    python,
+                    "-m",
+                    "pip",
+                    "install",
+                    "--no-deps",
+                    *(
+                        argument
+                        for source in pending.value.values()
+                        for argument in ("--editable", str(source))
+                    ),
+                ),
+                cwd=runtime_root,
+                timeout=c.Infra.TIMEOUT_LONG,
+            )
+            if installed.failure:
+                return r[bool].from_failure(installed)
+        checked = u.Cli.run_live(
+            (str(uv), "pip", "check", "--python", python),
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
+        if checked.failure:
+            return r[bool].from_failure(checked)
+        verified = cls._pending_sources(runtime_root, selection)
+        if verified.failure:
+            return r[bool].from_failure(verified)
+        if verified.value:
+            return r[bool].fail(
+                "installed editable origins differ from selection: "
+                + ", ".join(verified.value)
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
     def _install(
         cls,
         runtime_root: Path,
@@ -86,37 +191,16 @@ class FlextInfraWorkspaceFlextEditable:
         if uv.failure:
             return r[int].from_failure(uv)
         python = str(u.Infra.runtime_python(runtime_root, runtime_root=runtime_root))
-        # --no-config keeps the consumer's own override-dependencies (its
-        # pinned Git sources) from replacing the editable requirements.
-        # Frozen installation already owns dependencies; source binding must
-        # preserve that installed graph rather than resolve it a second time.
-        installed = u.Cli.run_live(
-            (
-                str(uv.value),
-                "pip",
-                "install",
-                "--no-config",
-                "--no-deps",
-                "--python",
-                python,
-                *(
-                    argument
-                    for source in selection.distributions.values()
-                    for argument in ("--editable", str(source))
-                ),
-            ),
-            cwd=runtime_root,
-            timeout=c.Infra.TIMEOUT_LONG,
+        pending = cls._pending_sources(runtime_root, selection)
+        if pending.failure:
+            return r[int].from_failure(pending)
+        executed = cls._execute_pip_install(
+            runtime_root, selection, python=python, uv=uv.value
         )
-        if installed.failure:
-            return r[int].from_failure(installed)
-        checked = u.Cli.run_live(
-            (str(uv.value), "pip", "check", "--python", python),
-            cwd=runtime_root,
-            timeout=c.Infra.TIMEOUT_LONG,
-        )
-        if checked.failure:
-            return r[int].from_failure(checked)
+        if executed.failure:
+            return r[int].from_failure(executed)
+        for name, source in selection.distributions.items():
+            u.Cli.info(f"setup editable distribution={name} source={source}")
         receipt = cls.receipt_path(runtime_root)
         u.Cli.ensure_dir(receipt.parent).unwrap()
         return u.Cli.atomic_write_text_file(
@@ -124,8 +208,9 @@ class FlextInfraWorkspaceFlextEditable:
             selection.model_dump_json(indent=2),
         ).map(lambda _written: len(selection.distributions))
 
-    @staticmethod
+    @classmethod
     def _elect(
+        cls,
         runtime_root: Path,
         flext_root: Path,
     ) -> p.Result[m.Infra.FlextEditableSelection]:
@@ -140,30 +225,19 @@ class FlextInfraWorkspaceFlextEditable:
             return result_type.fail(
                 f"FLEXT={flext_root} is not a FLEXT workspace: no .gitmodules",
             )
-        spec = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
-        if spec.failure:
-            return result_type.from_failure(spec)
-        observed = FlextInfraBindingService.consumer_package_environment(
-            consumer_root=runtime_root,
-            python=u.Infra.runtime_python(runtime_root, runtime_root=runtime_root),
-            packages=(),
-        )
-        if observed.failure:
-            return result_type.from_failure(observed)
-        metadata_paths = tuple(str(path) for path in observed.value.metadata_paths)
-        provided = (
-            spec.value.repository.model_copy(update={"path": Path()}),
-            *spec.value.subprojects,
-        )
-        distributions = {
-            repository.distribution: (flext_root / repository.path).resolve()
-            for repository in provided
-            if repository.package
-            and u.installed_distributions(
-                name=repository.distribution,
-                path=metadata_paths,
-            )
-        }
+        provided = cls._resolve_provided_distributions(runtime_root, flext_root)
+        if provided.failure:
+            return result_type.from_failure(provided)
+        distributions, metadata_paths = provided.value
+        configured = cls._configured_sources(runtime_root, metadata_paths)
+        if configured.failure:
+            return result_type.from_failure(configured)
+        for name, source in configured.value.items():
+            if name in distributions and distributions[name] != source:
+                return result_type.fail(
+                    f"competing editable source declarations: {name}"
+                )
+            distributions[name] = source
         if not distributions:
             return result_type.fail(
                 f"FLEXT={flext_root} provides no distribution installed in "
@@ -175,6 +249,84 @@ class FlextInfraWorkspaceFlextEditable:
                 distributions=distributions,
             ),
         )
+
+    @staticmethod
+    def _configured_sources(
+        runtime_root: Path, metadata_paths: tuple[str, ...]
+    ) -> p.Result[Mapping[str, Path]]:
+        """Elect explicitly configured sources from the installed dependency graph.
+
+        Returns:
+            Validated project names and their physical source directories.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(runtime_root)
+        if inputs.failure:
+            return r.from_failure(inputs)
+        selected: dict[str, Path] = {}
+        for name, declared in inputs.value.spec.toolchain.editable_sources.items():
+            source = declared.expanduser()
+            source = (
+                source if source.is_absolute() else runtime_root / source
+            ).resolve(strict=True)
+            manifest = source / c.PYPROJECT_FILENAME
+            actual = u.Infra.project_name_from_payload(
+                manifest, u.Infra.pyproject_payload(manifest)
+            )
+            if actual != name:
+                return r.fail(f"editable source identity differs: {name} != {actual}")
+            if not u.installed_distributions(name=name, path=metadata_paths):
+                return r.fail(f"editable source is not in the installed graph: {name}")
+            selected[name] = source
+        return r.ok(selected)
+
+    @staticmethod
+    def _pending_sources(
+        runtime_root: Path, selection: m.Infra.FlextEditableSelection
+    ) -> p.Result[Mapping[str, Path]]:
+        """Observe which selected origins still require source binding.
+
+        Returns:
+            Pending bindings, or an original physical provenance failure.
+
+        """
+        observed = FlextInfraBindingService.consumer_package_environment(
+            consumer_root=runtime_root,
+            python=u.Infra.runtime_python(runtime_root, runtime_root=runtime_root),
+            packages=(),
+        )
+        if observed.failure:
+            return r.from_failure(observed)
+        metadata_paths = tuple(str(path) for path in observed.value.metadata_paths)
+        provenance = FlextInfraWorkspaceEnvironment
+        pending: dict[str, Path] = {}
+        for name, source in selection.distributions.items():
+            matches = u.installed_distributions(name=name, path=metadata_paths)
+            if (
+                len(matches) == 1
+                and Path(str(matches[0].locate_file("")))
+                .resolve()
+                .is_relative_to(observed.value.prefix.resolve())
+                and matches[0].read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE) is None
+            ):
+                pending[name] = source
+                continue
+            installed = provenance.distribution_installation(
+                name,
+                metadata_paths=metadata_paths,
+                environment_root=observed.value.prefix,
+            )
+            if installed.failure:
+                return r.from_failure(installed)
+            _distribution, _raw, receipt = installed.value
+            if (
+                receipt.dir_info is None
+                or not receipt.dir_info.editable
+                or receipt.vcs_info is not None
+                or receipt.url != source.as_uri()
+            ):
+                pending[name] = source
+        return r.ok(pending)
 
     @classmethod
     def admitted_sources(cls, runtime_root: Path) -> p.Result[Mapping[str, Path]]:

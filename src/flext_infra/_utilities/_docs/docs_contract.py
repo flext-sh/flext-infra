@@ -299,6 +299,7 @@ class FlextInfraUtilitiesDocsContract:
         content: bytes | None,
         *,
         desired_mode: int | None,
+        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Plan one exact docs artifact without publishing it.
 
@@ -332,6 +333,7 @@ class FlextInfraUtilitiesDocsContract:
                 desired_mode=desired_mode,
                 owner="docs",
                 policy="full",
+                inputs=inputs,
             ),
         )
 

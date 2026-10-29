@@ -21,7 +21,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
-from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
@@ -301,16 +301,16 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     def quoted_type_regions(
         cls,
         source: str,
-        _project: p.Infra.RopeProject,
+        project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
     ) -> tuple[tuple[int, int, str, p.Infra.RopeScope], ...]:
         """Return only string constants occupying native annotation type positions."""
-        del _project
         protected: frozenset[tuple[int, int]] | None = None
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
+        bindings = module.get_source_binding_index()
         starts = [start for start, _stop, _metadata in literals]
         selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
-        for begin, end, line in cls.annotation_regions(source, module):
+        for begin, end, _line in cls.annotation_regions(source, module):
             # Literals are ordered and disjoint: scan only those starting inside.
             for start, stop, _metadata in literals[
                 bisect_left(starts, begin) : bisect_left(starts, end)
@@ -318,7 +318,9 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 if not start < stop <= end or source[start] == "#":
                     continue
                 if protected is None:
-                    protected = cls.type_payload_ranges(source, module)
+                    protected = cls.expression_payload_ranges(
+                        source, project, module.get_scope(), module=module
+                    )
                 if any(first <= start and stop <= last for first, last in protected):
                     continue
                 literal = cls.string_constant(source[start:stop])
@@ -327,9 +329,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                         start,
                         stop,
                         literal,
-                        FlextInfraUtilitiesRopeRuntimeModules.scope_at(
-                            module, begin, declaration_line=line
-                        ),
+                        bindings.context_at(start).environment,
                     ))
         return tuple({(item[0], item[1]): item for item in selected}.values())
 
@@ -455,64 +455,6 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             yield from ((expression, scope, line) for expression in selected)
 
     @classmethod
-    def type_payload_ranges(
-        cls,
-        source: str,
-        module: p.Infra.RopePyModule,
-    ) -> frozenset[tuple[int, int]]:
-        """Protect Literal values and Annotated metadata in every alias form.
-
-        The ranges come from the rope-parsed module tree in one walk: every
-        subscript whose head is ``Literal`` protects its whole payload, and
-        every ``Annotated`` protects its metadata arguments (all but the
-        first). Rope owns the parse, so multiline and nested forms carry
-        their exact native positions; no capture machinery is involved.
-
-        Returns:
-            The resulting ``frozenset[tuple[int, int]]``.
-
-        """
-        line_starts = [0]
-        for line in source.splitlines(keepends=True):
-            line_starts.append(line_starts[-1] + len(line))
-
-        def offset(line: int, column: int) -> int:
-            return line_starts[line - 1] + column
-
-        def span(node: object) -> tuple[int, int]:
-            return (
-                offset(getattr(node, "lineno", 1), getattr(node, "col_offset", 0)),
-                offset(
-                    getattr(node, "end_lineno", 1),
-                    getattr(node, "end_col_offset", 0),
-                ),
-            )
-
-        protected: set[tuple[int, int]] = set()
-        pending: list[object] = [module.get_ast()]
-        while pending:
-            node = pending.pop()
-            for field in getattr(node, "_fields", ()):
-                child = getattr(node, field, None)
-                if isinstance(child, (list, tuple)):
-                    pending.extend(item for item in child if hasattr(item, "_fields"))
-                elif hasattr(child, "_fields"):
-                    pending.append(child)
-            value = getattr(node, "value", None)
-            head = getattr(value, "id", None) or getattr(value, "attr", None)
-            if head not in {"Literal", "Annotated"}:
-                continue
-            elements = getattr(getattr(node, "slice", None), "elts", None)
-            if elements is None:
-                protected.add(span(node.slice))
-                continue
-            if head == "Literal":
-                protected.update(span(item) for item in elements)
-            else:
-                protected.update(span(item) for item in elements[1:])
-        return frozenset(protected)
-
-    @classmethod
     def expression_segments(
         cls,
         source: str,
@@ -587,16 +529,26 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         project: p.Infra.RopeProject,
         scope: p.Infra.RopeScope,
+        *,
+        module: p.Infra.RopePyModule | None = None,
     ) -> frozenset[tuple[int, int]]:
-        """Protect typing payloads inside a quoted expression in its original scope.
+        """Protect payloads by native binding and word regions in their own scope.
 
         A foreign runtime Worder product fails the protection scan.
+        Quoted expressions retain their supplied lexical scope; a physical
+        module elects each primary's scope at its authenticated source offset.
 
         Returns:
             The protected ``frozenset[tuple[int, int]]`` payload regions.
 
+        Raises:
+            ValueError: The module does not contain the supplied source.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if module is not None and module.source_code != source:
+            message = "typing payload source differs from its native module"
+            raise ValueError(message)
         words = cls._require_worder(
             source,
             "quoted types require native Rope delimiters",
@@ -604,6 +556,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         typing = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
             project.get_module("typing")
         )
+        bindings = module.get_source_binding_index() if module is not None else None
         protected: set[tuple[int, int]] = set()
         for begin, end in cls.reference_regions(source):
             cursor = end
@@ -611,7 +564,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 cursor += 1
             if source[cursor : cursor + 1] != "[":
                 continue
-            binding = runtime.expression_name(scope, source[begin:end])
+            lexical = (
+                bindings.context_at(begin).environment
+                if bindings is not None
+                else scope
+            )
+            binding = runtime.expression_name(lexical, source[begin:end])
             literal = runtime.same_name(typing.get_attribute("Literal"), binding)
             annotated = runtime.same_name(typing.get_attribute("Annotated"), binding)
             if not literal and not annotated:

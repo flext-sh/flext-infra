@@ -591,7 +591,7 @@ class FlextInfraNamespaceRelocationCascade:
             c.Infra.CodemodRelocation,
             MutableMapping[Path, set[str]],
         ],
-        MutableMapping[Path, list[t.IntPair]],
+        MutableMapping[Path, list[tuple[int, int]]],
         MutableMapping[Path, MutableMapping[tuple[str, str], set[str]]],
         list[tuple[Path, str, str, int]],
     ]:
@@ -605,7 +605,7 @@ class FlextInfraNamespaceRelocationCascade:
             c.Infra.CodemodRelocation,
             MutableMapping[Path, set[str]],
         ] = defaultdict(lambda: defaultdict(set))
-        spans: MutableMapping[Path, list[t.IntPair]] = defaultdict(list)
+        spans: MutableMapping[Path, list[tuple[int, int]]] = defaultdict(list)
         imports: MutableMapping[Path, MutableMapping[tuple[str, str], set[str]]] = (
             defaultdict(lambda: defaultdict(set))
         )
@@ -665,11 +665,11 @@ class FlextInfraNamespaceRelocationCascade:
         return names, spans, imports, classes
 
     @staticmethod
-    def _finding_lines(finding: m.Infra.ModScanFinding) -> t.IntPair:
+    def _finding_lines(finding: m.Infra.ModScanFinding) -> tuple[int, int]:
         """Return the 1-based inclusive line span of one finding.
 
         Returns:
-            The resulting ``t.IntPair``.
+            The resulting ``tuple[int, int]``.
 
         Raises:
             TypeError: If ast-grep finding without a line range; or if ast-grep finding

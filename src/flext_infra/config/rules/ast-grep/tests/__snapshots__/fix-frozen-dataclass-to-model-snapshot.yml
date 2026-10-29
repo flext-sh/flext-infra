@@ -16,30 +16,6 @@ snapshots:
       style: primary
       start: 26
       end: 102
-    - source: dataclass
-      style: secondary
-      start: 27
-      end: 36
-    - source: frozen
-      style: secondary
-      start: 37
-      end: 43
-    - source: "True"
-      style: secondary
-      start: 44
-      end: 48
-    - source: frozen=True
-      style: secondary
-      start: 37
-      end: 48
-    - source: (frozen=True)
-      style: secondary
-      start: 36
-      end: 49
-    - source: dataclass(frozen=True)
-      style: secondary
-      start: 27
-      end: 49
     - source: "@dataclass(frozen=True)"
       style: secondary
       start: 26
@@ -91,30 +67,6 @@ snapshots:
       style: primary
       start: 30
       end: 107
-    - source: dataclass
-      style: secondary
-      start: 31
-      end: 40
-    - source: frozen
-      style: secondary
-      start: 41
-      end: 47
-    - source: "True"
-      style: secondary
-      start: 48
-      end: 52
-    - source: frozen=True
-      style: secondary
-      start: 41
-      end: 52
-    - source: (frozen=True, slots=True)
-      style: secondary
-      start: 40
-      end: 65
-    - source: dataclass(frozen=True, slots=True)
-      style: secondary
-      start: 31
-      end: 65
     - source: "@dataclass(frozen=True, slots=True)"
       style: secondary
       start: 30

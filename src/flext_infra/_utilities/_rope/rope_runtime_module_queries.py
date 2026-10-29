@@ -11,13 +11,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
-from typing_extensions import TypeForm
 
 from flext_infra import config, m, p, t
-from flext_infra._utilities._rope.rope_runtime_base import (
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeBase,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
 
@@ -218,9 +215,9 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             The native core retained by the project.
 
         """
-        return u.type_adapter(TypeForm(t.Port[t.Infra.RopeNativeCore])).validate_python(
-            project.get_pycore(), strict=True
-        )
+        return u.type_adapter(
+            t.TypeForm(t.Port[t.Infra.RopeNativeCore])
+        ).validate_python(project.get_pycore(), strict=True)
 
     @classmethod
     def extension_module_names(cls, project: p.Infra.RopeProject) -> t.StrTuple:

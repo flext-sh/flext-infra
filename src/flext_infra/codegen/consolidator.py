@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, override
 
 from flext_infra import c, m, p, r, s, t, u
 from flext_infra.workspace import FlextInfraRopeWorkspace
@@ -24,6 +24,7 @@ class FlextInfraCodegenConsolidator(s[str]):
     project_name: str | None = None
     """Single project to consolidate; ``None`` selects every discovered project."""
 
+    @override
     def execute(self) -> p.Result[str]:
         """Execute constants consolidation with normalized command context.
 
@@ -36,7 +37,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         )
         found = applied = failed = 0
         file_results: MutableSequence[Mapping[str, object]] = []
-        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(self.repository_root) as rope:
             projects_result = self._selected_projects(rope)
             if projects_result.failure:
                 return r[str].fail(projects_result.error or "project discovery failed")
@@ -52,6 +53,7 @@ class FlextInfraCodegenConsolidator(s[str]):
                     path
                     for path in u.Infra.iter_directory_python_files(
                         project_layout.package_dir,
+                        repository_root=self.repository_root,
                     )
                     if "_constants" not in path.parts
                 ):
@@ -91,7 +93,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         rope_project: p.Infra.RopeProject,
         python_file: Path,
         value_map: Mapping[str, str],
-        project_layout: object,
+        project_layout: m.Infra.RopeProjectLayout,
     ) -> m.Infra.ConsolidationOutcome:
         """Scan and consolidate one Python file against the constants map.
 
@@ -100,7 +102,7 @@ class FlextInfraCodegenConsolidator(s[str]):
 
         """
         scanned = self._scan_file(rope_project, python_file, value_map)
-        rel_path = python_file.relative_to(self.workspace_root)
+        rel_path = python_file.relative_to(self.repository_root)
         if scanned is None:
             return m.Infra.ConsolidationOutcome(
                 found=0, lines=(), record=None, applied=0
@@ -119,7 +121,7 @@ class FlextInfraCodegenConsolidator(s[str]):
             rope_project,
             scanned,
             python_file,
-            self.workspace_root,
+            self.repository_root,
             project_layout.package_name,
         )
         return m.Infra.ConsolidationOutcome(
@@ -144,7 +146,7 @@ class FlextInfraCodegenConsolidator(s[str]):
 
         """
         _ = rope_workspace
-        discovered = u.Infra.projects(self.workspace_root)
+        discovered = u.Infra.projects(self.repository_root)
         if discovered.failure:
             return r[Sequence[p.Infra.ProjectInfo]].fail(
                 discovered.error or "project discovery failed",

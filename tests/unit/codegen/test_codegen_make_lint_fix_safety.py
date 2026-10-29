@@ -14,12 +14,11 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
-from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraRuffLintGate
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -77,7 +76,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 config.Infra.tooling,
                 "ruff.lint",
                 "unfixable",
-                TypeForm(Sequence[str]),
+                t.TypeForm(Sequence[str]),
             ),
         )
         tm.that(
@@ -94,7 +93,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 config.Infra.tooling,
                 "ruff.lint",
                 "extend-safe-fixes",
-                TypeForm(Sequence[str]),
+                t.TypeForm(Sequence[str]),
             ),
         )
         tm.that(
@@ -106,7 +105,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 ),
             }),
         )
@@ -125,7 +124,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 config.Infra.tooling,
                 "ruff.lint.pylint",
                 "allow-dunder-method-names",
-                TypeForm(Sequence[str]),
+                t.TypeForm(Sequence[str]),
             ),
         )
 

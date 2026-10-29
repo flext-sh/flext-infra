@@ -142,7 +142,7 @@ class FlextInfraCodegenLazyInit(
 
             def family_files(
                 files: Sequence[m.Infra.CodegenFilePlan],
-            ) -> Sequence[m.Infra.CodegenFilePlan]:
+            ) -> tuple[m.Infra.CodegenFilePlan, ...]:
                 return tuple(
                     file
                     for file in files

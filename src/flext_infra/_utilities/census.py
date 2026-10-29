@@ -72,11 +72,11 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         source_cache: MutableMapping[Path, str] | None = None,
-    ) -> Mapping[Path, tuple[t.IntPair, ...]] | None:
+    ) -> Mapping[Path, tuple[tuple[int, int], ...]] | None:
         """Plan safe line-range removals for simple top-level removal candidates.
 
         Returns:
-            The resulting ``Mapping[Path, tuple[t.IntPair, ...]] | None``.
+            The resulting ``Mapping[Path, tuple[tuple[int, int], ...]] | None``.
 
         """
         if candidate.scope_path != candidate.object_name:
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
         if definition_range is None:
             return None
-        ranges_by_file: MutableMapping[Path, list[t.IntPair]] = defaultdict(list)
+        ranges_by_file: MutableMapping[Path, list[tuple[int, int]]] = defaultdict(list)
         ranges_by_file[definition_path].append(definition_range)
         sites_by_path: MutableMapping[Path, list[m.Infra.ReferenceSite]] = defaultdict(
             list,
@@ -134,14 +134,14 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.RemovalCandidate,
         *,
         sites: tuple[m.Infra.ReferenceSite, ...],
-    ) -> tuple[t.IntPair, ...] | None:
+    ) -> tuple[tuple[int, int], ...] | None:
         """Plan removable top-level ranges for one support file.
 
         Returns:
-            The resulting ``tuple[t.IntPair, ...] | None``.
+            The resulting ``tuple[tuple[int, int], ...] | None``.
 
         """
-        planned_ranges: list[t.IntPair] = []
+        planned_ranges: list[tuple[int, int]] = []
         for site in sites:
             site_range = FlextInfraUtilitiesRefactorCensus._reference_line_range(
                 source,
@@ -368,7 +368,7 @@ class FlextInfraUtilitiesRefactorCensus:
         file_path: Path,
         *,
         target_name: str,
-        removed_ranges: Sequence[t.IntPair],
+        removed_ranges: Sequence[tuple[int, int]],
     ) -> Sequence[str]:
         """Return simple alias names removed together with ``target_name``.
 
@@ -433,7 +433,9 @@ class FlextInfraUtilitiesRefactorCensus:
         return line if origin.path == resource.path else None
 
     @staticmethod
-    def _line_in_ranges(line: int, *, removed_ranges: Sequence[t.IntPair]) -> bool:
+    def _line_in_ranges(
+        line: int, *, removed_ranges: Sequence[tuple[int, int]]
+    ) -> bool:
         """Return whether ``line`` falls inside any removed range.
 
         Returns:
@@ -882,7 +884,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
 
     @staticmethod
-    def apply_line_ranges(source: str, ranges: Sequence[t.IntPair]) -> str:
+    def apply_line_ranges(source: str, ranges: Sequence[tuple[int, int]]) -> str:
         """Remove one or more 1-based inclusive line ranges from Python source.
 
         Returns:
@@ -949,18 +951,18 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def merge_line_ranges(
-        ranges: Sequence[t.IntPair],
-    ) -> tuple[t.IntPair, ...]:
+        ranges: Sequence[tuple[int, int]],
+    ) -> tuple[tuple[int, int], ...]:
         """Merge overlapping or adjacent 1-based inclusive line ranges.
 
         Returns:
-            The resulting ``tuple[t.IntPair, ...],``.
+            The resulting ``tuple[tuple[int, int], ...],``.
 
         """
         if not ranges:
             return ()
         ordered_ranges = sorted(ranges)
-        merged: list[t.IntPair] = [ordered_ranges[0]]
+        merged: list[tuple[int, int]] = [ordered_ranges[0]]
         for start, end in ordered_ranges[1:]:
             previous_start, previous_end = merged[-1]
             if start <= previous_end + 1:
@@ -988,11 +990,11 @@ class FlextInfraUtilitiesRefactorCensus:
     def _definition_line_range(
         source: str,
         candidate: m.Infra.RemovalCandidate,
-    ) -> t.IntPair | None:
+    ) -> tuple[int, int] | None:
         """Definition line range.
 
         Returns:
-            The resulting ``t.IntPair | None``.
+            The resulting ``tuple[int, int] | None``.
 
         """
         return FlextInfraUtilitiesRopeHelpers.top_level_definition_span(
@@ -1005,11 +1007,11 @@ class FlextInfraUtilitiesRefactorCensus:
     def _reference_line_range(
         source: str,
         site: m.Infra.ReferenceSite,
-    ) -> t.IntPair | None:
+    ) -> tuple[int, int] | None:
         """Compute the line range for a reference site.
 
         Returns:
-            The resulting ``t.IntPair | None``.
+            The resulting ``tuple[int, int] | None``.
 
         """
         return FlextInfraUtilitiesRefactorCensus._reference_line_range_for_line(
@@ -1018,14 +1020,16 @@ class FlextInfraUtilitiesRefactorCensus:
         )
 
     @staticmethod
-    def _reference_line_range_for_line(source: str, line: int) -> t.IntPair | None:
+    def _reference_line_range_for_line(
+        source: str, line: int
+    ) -> tuple[int, int] | None:
         """Top-level removable statement range containing ``line``.
 
         A class statement is never removed as a reference site; ``None`` also
         answers a line outside every top-level statement.
 
         Returns:
-            The resulting ``t.IntPair | None``.
+            The resulting ``tuple[int, int] | None``.
 
         """
         for statement in ast.parse(source).body:

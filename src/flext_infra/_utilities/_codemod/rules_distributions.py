@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-import warnings
+import sysconfig
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache
 from importlib.metadata import Distribution
@@ -73,26 +73,37 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
         ))
 
     @staticmethod
-    @warnings.deprecated(
-        "compat: FlextInfraUtilitiesCodemodRules.codemod_distributions -> "
-        "p.Infra.WorkspaceSnapshot; fix: rewire via make mod; read codemod "
-        "rule providers from the repository workspace snapshot instead of "
-        "indexing sys.path distributions (engine-map S3/D4).",
-    )
-    def codemod_distributions() -> Mapping[str, Distribution]:
-        """Index the installed distributions visible on the current import path.
+    @lru_cache(maxsize=1)
+    def codemod_environment_distributions() -> Mapping[str, Distribution]:
+        """Index the distributions of the owning physical runtime environment.
 
-        Installed metadata is a fact of the interpreter environment for the
-        import path in force, so one path is indexed once per process and every
-        rule plan of the invocation reuses it; a changed ``sys.path`` is a new
-        key.
+        The environment the invocation runs in — the workspace's provisioned
+        physical runtime — is the declared distribution authority: its metadata
+        directories are indexed explicitly by path, once per process, and the
+        interpreter's import search path is never enumerated. Every rule plan
+        of the invocation reuses the one index.
 
         Returns:
             Canonical distribution name to its installed distribution.
 
         """
         return FlextInfraUtilitiesCodemodRulesDistributions._indexed_distributions(
-            FlextInfraUtilitiesCodemodRulesDistributions._import_paths(),
+            FlextInfraUtilitiesCodemodRulesDistributions._environment_metadata_paths(),
+        )
+
+    @staticmethod
+    def _environment_metadata_paths() -> tuple[str, ...]:
+        """Return the physical metadata directories of the owning environment.
+
+        Returns:
+            The de-duplicated resolved install directories, in order.
+
+        """
+        return tuple(
+            dict.fromkeys(
+                str(Path(sysconfig.get_path(key)).resolve())
+                for key in ("purelib", "platlib")
+            )
         )
 
     @staticmethod

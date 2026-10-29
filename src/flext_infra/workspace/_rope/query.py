@@ -20,7 +20,6 @@ from flext_infra import c, m, p, s, t, u
 class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
     """Own the native Rope project, structural index, and read-only query caches."""
 
-    _IDENTIFIER_PATTERN: ClassVar[t.RegexPattern] = c.Infra.IDENTIFIER_PATTERN
     _rope_repository_root: Path = m.PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = m.PrivateAttr(
         default_factory=lambda: None,
@@ -287,7 +286,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             surface = self._reference_surface_for(py_file)
             lines_by_name: MutableMapping[str, list[int]] = {}
             for lineno, source_line in enumerate(source_text.splitlines(), start=1):
-                for match in self._IDENTIFIER_PATTERN.finditer(source_line):
+                for match in c.Infra.IDENTIFIER_PATTERN.finditer(source_line):
                     name = match.group(0)
                     lines_by_name.setdefault(name, []).append(lineno)
             for name, line_numbers in lines_by_name.items():

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._workspace.check_reports import (
+    from flext_infra.check._workspace.check_reports import (
         FlextInfraCheckWorkspaceCheckReports,
     )
 

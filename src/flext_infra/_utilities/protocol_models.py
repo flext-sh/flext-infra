@@ -1,5 +1,9 @@
 """Project consumed model data contracts from authenticated native sources.
 
+The current renderer still interprets legacy Tree nodes and selects consumed
+models. Both are open gaps against ADR-018's all-module native projection target;
+this implementation does not establish the completed protocol migration.
+
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -24,6 +28,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -32,7 +37,7 @@ from flext_infra._utilities._semantic_cutover import (
 
 
 class FlextInfraUtilitiesModelsProtocol:
-    """Restore the source projection removed in 7a76fa5a9c, without its CLI."""
+    """Own the existing projector while its native semantic cutover is completed."""
 
     @classmethod
     def protocol_model_sources(
@@ -49,7 +54,7 @@ class FlextInfraUtilitiesModelsProtocol:
     class _ModelProtocolProjection(
         FlextInfraUtilitiesSemanticCutover,
     ):
-        """Bind the retired native inventory and renderer to one source candidate."""
+        """Bind the legacy consumed-model renderer to one source candidate."""
 
         def __init__(self, workspace: p.Infra.RopeWorkspaceDsl) -> None:
             self.workspace = workspace
@@ -286,7 +291,15 @@ class FlextInfraUtilitiesModelsProtocol:
                         continue
                     child = member.get_object()
                     route = f"{prefix}{name}"
-                    if model_base in self.class_ancestry(child):
+                    try:
+                        ancestry = self.class_ancestry(child)
+                    except ValueError:
+                        # The candidate view may not linearize a base chain
+                        # that bottoms out outside the indexed packages; the
+                        # model is skipped here and the base project's own
+                        # pass owns its true ancestry.
+                        continue
+                    if model_base in ancestry:
                         previous = self.models.setdefault(route, member)
                         if not self.same_name(previous, member):
                             message = f"competing model identities for p.{route}"
@@ -381,9 +394,29 @@ class FlextInfraUtilitiesModelsProtocol:
                     | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVarTuple,
                 )
             }
-            for native_ancestor in reversed(source.get_mro()):
+            native_ancestors = source.get_mro()
+            if not all(
+                FlextInfraUtilitiesTypesRopeRuntime.abstract_class(native_ancestor)
+                or FlextInfraUtilitiesTypesRopeRuntime.unresolved_witness(
+                    native_ancestor
+                )
+                for native_ancestor in native_ancestors
+            ):
+                # Uma primeira leitura pelo índice fonte lazy pode observar
+                # transientes de construção: a própria avaliação completa os
+                # módulos envolvidos só depois de sua pilha desenrolar, então
+                # uma re-leitura settled segue; uma testemunha não resolvida
+                # persistente ocupa seu slot por política dc15 e é pulada.
+                source.invalidate_bases()
+                native_ancestors = source.get_mro()
+            for native_ancestor in reversed(native_ancestors):
+                if FlextInfraUtilitiesTypesRopeRuntime.unresolved_witness(
+                    native_ancestor
+                ):
+                    continue
                 ancestor = FlextInfraUtilitiesRopeRuntime.require_class_object(
-                    native_ancestor, "model protocol ancestor"
+                    native_ancestor,
+                    f"model protocol ancestor of {source.get_name()}",
                 )
                 if not self.py_class(ancestor):
                     continue
@@ -582,15 +615,48 @@ class FlextInfraUtilitiesModelsProtocol:
                     message = "Annotated has no native payload"
                     raise ValueError(message)
                 return self._annotation(node.slice.elts[0], scope, visiting)
+            if self._denotes(node.value, scope, "typing", "Literal"):
+                return FlextInfraUtilitiesRopeAnalysis.Tree.Subscript(
+                    value=self._annotation(node.value, scope, visiting),
+                    slice=self._literal_slice(node.slice, scope, visiting),
+                    ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
+                )
             return FlextInfraUtilitiesRopeAnalysis.Tree.Subscript(
                 value=self._annotation(node.value, scope, visiting),
-                slice=(
-                    node.slice
-                    if self._denotes(node.value, scope, "typing", "Literal")
-                    else self._annotation(node.slice, scope, visiting)
-                ),
+                slice=self._annotation(node.slice, scope, visiting),
                 ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load(),
             )
+
+        def _literal_slice(
+            self,
+            node: t.Infra.AstExpression,
+            scope: p.Infra.RopeScope,
+            visiting: t.StrTuple,
+        ) -> t.Infra.AstExpression:
+            """Bind literal members to their declaring imports, constants intact.
+
+            Returns:
+                A literal slice whose symbolic members are provider-bound.
+
+            """
+            if isinstance(
+                node,
+                FlextInfraUtilitiesRopeAnalysis.Tree.Tuple
+                | FlextInfraUtilitiesRopeAnalysis.Tree.List,
+            ):
+                values = [
+                    self._literal_slice(item, scope, visiting) for item in node.elts
+                ]
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Tuple):
+                    return FlextInfraUtilitiesRopeAnalysis.Tree.Tuple(
+                        elts=values, ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load()
+                    )
+                return FlextInfraUtilitiesRopeAnalysis.Tree.List(
+                    elts=values, ctx=FlextInfraUtilitiesRopeAnalysis.Tree.Load()
+                )
+            if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Constant):
+                return node
+            return self._annotation(node, scope, visiting)
 
         def _annotation_container(
             self,

@@ -277,7 +277,7 @@ class FlextInfraModTextGateEngine:
     def _validated_pattern_fields(
         entry: Mapping[str, t.JsonValue],
         source: Path,
-    ) -> p.Result[tuple[str, tuple[str, ...], re.Pattern[str]]]:
+    ) -> p.Result[tuple[str, tuple[str, ...], t.RegexPattern]]:
         """Validate the find regex and its declared flag names.
 
         Returns:
@@ -293,21 +293,21 @@ class FlextInfraModTextGateEngine:
         )
         unknown_flags = set(flag_names).difference(c.Infra.CODEMOD_TEXT_FLAG_NAMES)
         if unknown_flags:
-            return r[tuple[str, tuple[str], re.Pattern[str], ...]].fail(
+            return r[tuple[str, tuple[str, ...], t.RegexPattern]].fail(
                 f"unknown regex flag names {sorted(unknown_flags)} in {source}",
             )
         find = entry.get(c.Infra.CODEMOD_TEXT_KEY_FIND)
         if not isinstance(find, str) or not find:
-            return r[tuple[str, tuple[str], re.Pattern[str], ...]].fail(
+            return r[tuple[str, tuple[str, ...], t.RegexPattern]].fail(
                 f"text rule requires a non-empty find regex in {source}",
             )
         try:
             compiled = re.compile(find)
         except re.error as error:
-            return r[tuple[str, tuple[str], re.Pattern[str], ...]].fail(
+            return r[tuple[str, tuple[str, ...], t.RegexPattern]].fail(
                 f"invalid find regex in {source}: {error}",
             )
-        return r[tuple[str, tuple[str], re.Pattern[str], ...]].ok(
+        return r[tuple[str, tuple[str, ...], t.RegexPattern]].ok(
             (find, flag_names, compiled),
         )
 
@@ -315,7 +315,7 @@ class FlextInfraModTextGateEngine:
     def _validated_captures(
         entry: Mapping[str, t.JsonValue],
         source: Path,
-        compiled: re.Pattern[str],
+        compiled: t.RegexPattern,
     ) -> p.Result[Mapping[str, str]]:
         """Validate the capture_equals map against the compiled pattern groups.
 
@@ -342,7 +342,7 @@ class FlextInfraModTextGateEngine:
     def _validated_selector_fields(
         entry: Mapping[str, t.JsonValue],
         source: Path,
-        compiled: re.Pattern[str],
+        compiled: t.RegexPattern,
     ) -> p.Result[tuple[tuple[str, ...], Mapping[str, str], int | None]]:
         """Validate distributions, the capture map, and the expected receipt.
 
@@ -370,16 +370,16 @@ class FlextInfraModTextGateEngine:
         )
         if captures.failure:
             return r[
-                tuple[tuple[str], Mapping[str, str], int | None, ...]
+                tuple[tuple[str, ...], Mapping[str, str], int | None]
             ].from_failure(captures)
         expected = entry.get(c.Infra.CODEMOD_TEXT_KEY_EXPECTED)
         if expected is not None and (
             not isinstance(expected, int) or isinstance(expected, bool) or expected < 0
         ):
-            return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].fail(
+            return r[tuple[tuple[str, ...], Mapping[str, str], int | None]].fail(
                 f"text rule expected receipt must be non-negative in {source}",
             )
-        return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].ok((
+        return r[tuple[tuple[str, ...], Mapping[str, str], int | None]].ok((
             distributions,
             captures.value,
             expected,
@@ -395,7 +395,7 @@ class FlextInfraModTextGateEngine:
             The resulting failure for one invalid distributions declaration.
 
         """
-        return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].fail(
+        return r[tuple[tuple[str, ...], Mapping[str, str], int | None]].fail(
             f"text rule distributions must be unique non-empty names in {source}",
         )
 
@@ -940,7 +940,7 @@ class FlextInfraModTextGateEngine:
         target: str,
         line_starts: Sequence[int],
         found: list[m.Infra.ModTextFinding],
-        match: re.Match[str],
+        match: t.RegexMatch,
     ) -> str:
         """Record and expand one match, binding every loop value explicitly.
 
@@ -987,11 +987,11 @@ class FlextInfraModTextGateEngine:
         )
 
     @staticmethod
-    def _compiled(rule: m.Infra.ModTextRule) -> re.Pattern[str]:
+    def _compiled(rule: m.Infra.ModTextRule) -> t.RegexPattern:
         """Compile one rule pattern with its declared SSOT flag names.
 
         Returns:
-            The resulting ``re.Pattern[str]``.
+            The resulting ``t.RegexPattern``.
 
         """
         flags = 0

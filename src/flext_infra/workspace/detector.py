@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, settings, u
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra.base import s
 from flext_infra.workspace import FlextInfraWorkspaceGovernance
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class FlextInfraWorkspaceDetector(
     FlextInfraWorkspaceGovernance,
-    FlextInfraServiceBase[c.Infra.MakeProfile],
+    s[c.Infra.MakeProfile],
 ):
     """Classify a repository only from files and Git facts inside that checkout."""
 
@@ -257,6 +257,7 @@ class FlextInfraWorkspaceDetector(
         declaration: m.Infra.RepositoryDeltaSpec,
         *,
         observed: m.Infra.RepositoryRef,
+        sources: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]]:
         """Load a selected repository manifest and reconcile it with Git truth.
 
@@ -278,6 +279,7 @@ class FlextInfraWorkspaceDetector(
                 round_trip=True,
             ),
         )
+        values["inputs"] = (*observed.inputs, *sources)
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
@@ -339,17 +341,16 @@ class FlextInfraWorkspaceDetector(
 
         """
         metadata_path = repository_root / c.PYPROJECT_FILENAME
-        if native_metadata is not None:
-            project_name = native_metadata.metadata.project.name
-            package = u.Infra.project_package_participation(native_metadata.packaging)
-        elif metadata_path.exists() or metadata_path.is_symlink():
+        if native_metadata is None and (
+            metadata_path.exists() or metadata_path.is_symlink()
+        ):
             metadata = u.Infra.read_project_metadata_state(repository_root)
             if metadata.failure:
                 return r[m.Infra.RepositoryRef].from_failure(metadata)
-            project_name = metadata.value.metadata.project.name
-            package = u.Infra.project_package_participation(
-                metadata.value.packaging,
-            )
+            native_metadata = metadata.value
+        if native_metadata is not None:
+            project_name = native_metadata.metadata.project.name
+            package = u.Infra.project_package_participation(native_metadata.packaging)
         else:
             scaffold = cls._declared_scaffold_project(repository_root)
             if scaffold.failure:
@@ -389,6 +390,7 @@ class FlextInfraWorkspaceDetector(
         # exports remain independently accountable to their actual check owner.
         return r[m.Infra.RepositoryRef].ok(
             m.Infra.RepositoryRef(
+                inputs=() if native_metadata is None else (native_metadata.source,),
                 name=repository_name,
                 distribution=project_name,
                 url=effective_url,
@@ -821,6 +823,7 @@ class FlextInfraWorkspaceDetector(
         configured = cls._configured_repository_ref(
             declaration,
             observed=repository,
+            sources=inputs.value.sources,
         )
         if configured.failure:
             return result_type.from_failure(configured)
@@ -873,12 +876,37 @@ class FlextInfraWorkspaceDetector(
         authenticated = cls._authenticated_identity(resolved_root)
         if authenticated.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(authenticated)
-        identity = authenticated.value
         resolved_inputs = cls._resolved_codegen_inputs(resolved_root, inputs)
         if resolved_inputs.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(resolved_inputs)
-        inputs_value = resolved_inputs.value
+        return cls._assembled_workspace_spec(
+            resolved_root,
+            authenticated.value,
+            resolved_inputs.value,
+            allow_unprovisioned_members=allow_unprovisioned_members,
+        )
+
+    @classmethod
+    def _assembled_workspace_spec(
+        cls,
+        resolved_root: Path,
+        identity: str,
+        inputs_value: m.Infra.CodegenInputs,
+        *,
+        allow_unprovisioned_members: bool,
+    ) -> p.Result[m.Infra.WorkspaceSpec]:
+        """Validate read-only topology and assemble one workspace spec.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
+
+        """
         declaration = inputs_value.spec.repository or m.Infra.RepositoryDeltaSpec()
+        topology = u.Cli.atomic_read_binary_file_state(
+            resolved_root / c.Infra.GITMODULES, required=False
+        )
+        if topology.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(topology)
         workspace = cls._resolved_workspace_topology(
             resolved_root,
             identity,
@@ -895,6 +923,15 @@ class FlextInfraWorkspaceDetector(
         if external_consumers.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
         (workspace_beads, resolved_refs, name) = workspace.value
+        observations = (
+            topology.value,
+            *inputs_value.sources,
+            *resolved_refs[0][0].inputs,
+            *(state for member in resolved_refs[1][0] for state in member.inputs),
+        )
+        verified = u.Cli.atomic_verify_binary_file_states(observations)
+        if verified.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(verified)
         bootstrap_source: m.Infra.CodegenBootstrapSource | None = None
         if not (resolved_root / c.PYPROJECT_FILENAME).exists():
             bootstrap = cls._bootstrap_source(resolved_root, declaration)
@@ -903,6 +940,7 @@ class FlextInfraWorkspaceDetector(
             bootstrap_source = bootstrap.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
+                inputs=observations,
                 name=name,
                 flext_source=bootstrap_source,
                 beads=workspace_beads,
@@ -1204,6 +1242,7 @@ class FlextInfraWorkspaceDetector(
         declared_repository = cls._configured_repository_ref(
             declaration,
             observed=observed_repository,
+            sources=inputs.sources,
         )
         if declared_repository.failure:
             return result_type.from_failure(declared_repository)

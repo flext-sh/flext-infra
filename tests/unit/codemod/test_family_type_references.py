@@ -6,14 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,6 +31,18 @@ class TestsFlextInfraFamilyTypeReferences:
                 "from typing import Annotated, Literal\n"
                 "value: Literal['payload']\n"
                 "other: Annotated[int, 'metadata']\n"
+            ),
+            (
+                "from typing import Annotated\n"
+                "def consume(value: Annotated[str, 'Domain.Item']):\n"
+                "    Annotated = list\n"
+            ),
+            (
+                "from typing import Annotated as Meta, Literal as Choice\n"
+                "def consume[T](value: Meta[T, 'Domain.Item'])"
+                " -> Choice['Domain.Item']:\n"
+                "    Meta = list\n"
+                "    Choice = list\n"
             ),
         ],
     )
@@ -91,15 +102,66 @@ class TestsFlextInfraFamilyTypeReferences:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
+    def _models_family(package: Path) -> tuple[str, Path]:
+        """Create the declared models family directory with its package init.
+
+        Returns:
+            The family directory name and its path.
+
+        """
+        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
+        family = package / directory
+        family.mkdir()
+        (family / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        return directory, family
+
+    @staticmethod
+    def _consumer_references(package_name: str, directory: str, owner: str) -> str:
+        """Return the consumer source exercising quoted type references.
+
+        Returns:
+            The consumer module source.
+
+        """
+        return (
+            "from __future__ import annotations\n"
+            "from typing import Annotated as Meta, Literal as Choice\n"
+            f"from {package_name}.{directory}.payload import {owner} as Part\n"
+            f"from {package_name}.entities import Container, Other\n\n"
+            "class Public(Part):\n    pass\n\n"
+            'class Specialized(Container["Part.Domain.Item"]):\n    pass\n\n'
+            'class Generic[T: "Part.Domain.Item" = "Part.Domain.Item"]:\n'
+            "    pass\n\n"
+            "LABEL = 'é'; item: \"Public.Domain.Item\"\n"
+            'items: list["Part.Domain.Item"]\n'
+            'meta: Meta["Part.Domain.Item", "Part.Domain.Item"]\n'
+            'choice: Choice["Part.Domain.Item"]\n'
+            'unrelated: "Other.Domain.Item"\n'
+            'type Items = list["Part.Domain.Item"]\n'
+            'TEXT = "Part.Domain.Item"\n\n'
+            "__all__ = ['Public']\n\n"
+            'def convert(value: "Part.Domain.Item" = "Part.Domain.Item")'
+            ' -> "Part.Domain.Item":\n'
+            "    Part = Other\n"
+            '    local: "Part.Domain.Item"\n'
+            "    return Part.Domain.Item()\n"
+            '\ndef header[T](value: Meta["Part.Domain.Item", "Part.Domain.Item"])'
+            ' -> Choice["Part.Domain.Item"]:\n'
+            "    Meta = list\n"
+            "    Choice = list\n"
+            "    return value\n"
+            '\ndef inverse(value: Container["Part.Domain.Item"]):\n'
+            "    from typing import Annotated as Container\n"
+            "    return value\n"
+        )
+
+    @staticmethod
     def test_quoted_types_follow_symbols_without_rewriting_literal_homonyms(
         tmp_path: Path,
     ) -> None:
         """Test quoted types follow symbols without rewriting literal homonyms."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
-        family = package / directory
-        family.mkdir()
-        (family / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        directory, family = TestsFlextInfraFamilyTypeReferences._models_family(package)
         (package / "entities.py").write_text(
             "class Container[T]:\n    pass\n\n"
             "class Other:\n    class Domain:\n        class Item:\n            pass\n",
@@ -118,28 +180,8 @@ class TestsFlextInfraFamilyTypeReferences:
         )
         path.write_text(source, encoding="utf-8")
         consumer = package / "consumer.py"
-        references = (
-            "from __future__ import annotations\n"
-            "from typing import Annotated as Meta, Literal as Choice\n"
-            f"from {package.name}.{directory}.payload import {owner} as Part\n"
-            f"from {package.name}.entities import Container, Other\n\n"
-            "class Public(Part):\n    pass\n\n"
-            'class Specialized(Container["Part.Domain.Item"]):\n    pass\n\n'
-            'class Generic[T: "Part.Domain.Item" = "Part.Domain.Item"]:\n'
-            "    pass\n\n"
-            "LABEL = 'é'; item: \"Public.Domain.Item\"\n"
-            'items: list["Part.Domain.Item"]\n'
-            'meta: Meta["Part.Domain.Item", "Part.Domain.Item"]\n'
-            'choice: Choice["Part.Domain.Item"]\n'
-            'unrelated: "Other.Domain.Item"\n'
-            'type Items = list["Part.Domain.Item"]\n'
-            'TEXT = "Part.Domain.Item"\n\n'
-            "__all__ = ['Public']\n\n"
-            'def convert(value: "Part.Domain.Item" = "Part.Domain.Item")'
-            ' -> "Part.Domain.Item":\n'
-            "    Part = Other\n"
-            '    local: "Part.Domain.Item"\n'
-            "    return Part.Domain.Item()\n"
+        references = TestsFlextInfraFamilyTypeReferences._consumer_references(
+            package.name, directory, owner
         )
         consumer.write_text(references, encoding="utf-8")
         sources = {path: source, consumer: references}
@@ -160,11 +202,8 @@ class TestsFlextInfraFamilyTypeReferences:
                 '    local: "Part.Domain.Item"',
             ):
                 tm.that(proposed[consumer], has=preserved)
-            tm.that(
-                TestsFlextInfraFamilyTypeReferences._string_assignments(
-                    proposed[consumer]
-                ),
-                eq=TestsFlextInfraFamilyTypeReferences._string_assignments(references),
+            TestsFlextInfraFamilyTypeReferences._assert_string_payloads_preserved(
+                root, rope.rope_project, consumer, proposed
             )
             for rewritten in (
                 "Container['Part.DomainItem']",
@@ -177,6 +216,11 @@ class TestsFlextInfraFamilyTypeReferences:
                     "def convert(value: 'Part.DomainItem' = \"Part.Domain.Item\")"
                     " -> 'Part.DomainItem':"
                 ),
+                (
+                    "def header[T](value: Meta['Part.DomainItem',"
+                    ' "Part.Domain.Item"]) -> Choice["Part.Domain.Item"]:'
+                ),
+                "def inverse(value: Container['Part.DomainItem']):",
             ):
                 tm.that(proposed[consumer], has=rewritten)
             remaining = tm.ok(
@@ -191,24 +235,66 @@ class TestsFlextInfraFamilyTypeReferences:
         tm.that(consumer.read_text(encoding="utf-8"), eq=references)
 
     @staticmethod
-    def _string_assignments(source: str) -> Mapping[str, str]:
-        """Read string payloads independently of assignment annotations or layout.
+    def _assert_string_payloads_preserved(
+        root: Path,
+        project: p.Infra.RopeProject,
+        consumer: Path,
+        proposed: Mapping[Path, str],
+    ) -> None:
+        """Compare payload bindings semantically in the original and candidate."""
+        original = u.Infra.resolve_pymodule(
+            project, project.get_file(consumer.relative_to(root).as_posix())
+        )
+        payloads = TestsFlextInfraFamilyTypeReferences._string_assignments(original)
+        tm.that(set(payloads), eq={"LABEL", "TEXT"})
+        with u.Infra.facade_source_project(
+            root, planned_sources=proposed, source_project=project
+        ) as (candidate, _captured):
+            module = u.Infra.resolve_pymodule(
+                candidate,
+                candidate.get_file(consumer.relative_to(root).as_posix()),
+            )
+            tm.that(
+                set(TestsFlextInfraFamilyTypeReferences._string_assignments(module)),
+                eq=set(payloads),
+            )
+            finder = u.Infra.semantic_finder(module)
+            for name, literal in payloads.items():
+                tm.that(
+                    sum(
+                        module.source_code[first:last] == name
+                        for pattern in (
+                            f"${{target}} = {literal}",
+                            f"${{target}}: ${{annotation}} = {literal}",
+                        )
+                        for match in finder.get_matches(pattern)
+                        for first, last in (match.get_capture_region("target"),)
+                    ),
+                    eq=1,
+                )
+
+    @staticmethod
+    def _string_assignments(module: p.Infra.RopePyModule) -> Mapping[str, str]:
+        """Capture string assignment expressions through the native matcher.
 
         Args:
-            source: The Python source code to analyze.
+            module: The native module owning the immutable source view.
 
         Returns:
-            A mapping from variable names to their string values.
+            Names and expressions for semantic matching in another source view.
 
         """
+        source = module.source_code
+        finder = u.Infra.semantic_finder(module)
         return {
-            target.id: node.value.value
-            for node in ast.walk(ast.parse(source))
-            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-            for target in (
-                node.targets if isinstance(node, ast.Assign) else (node.target,)
+            source[first:last]: source[value_first:value_last]
+            for pattern in (
+                "${target} = ${payload}",
+                "${target}: ${annotation} = ${payload}",
             )
-            if isinstance(target, ast.Name)
+            for match in finder.get_matches(
+                pattern, {"payload": "type=__builtins__.str"}
+            )
+            for first, last in (match.get_capture_region("target"),)
+            for value_first, value_last in (match.get_capture_region("payload"),)
         }

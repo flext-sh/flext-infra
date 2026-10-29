@@ -8,22 +8,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flext_infra import FlextInfraConfig, c, config, m
+from flext_infra import FlextInfraConfig, c, config, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRepository,
 )
 from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
-
-# Concrete-owner imports: this module resolves during the root's lazy ``u``
-# export, when the root namespace is still initializing — a root from-import
-# would re-enter the partial namespace and fail.
 
 _GITHUB_REPO_PATH_SEGMENTS = 2
 """A GitHub repository path is exactly ``<organization>/<repository>``."""
@@ -166,11 +161,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
         return Path(value).expanduser()
 
     @staticmethod
-    def docs_parse_github_doc_url(target: str) -> re.Match[str] | None:
+    def docs_parse_github_doc_url(target: str) -> t.RegexMatch | None:
         """Parse a github.com blob/tree documentation URL.
 
         Returns:
-            The resulting ``re.Match[str] | None``.
+            The resulting ``t.RegexMatch | None``.
 
         """
         return c.Infra.DOCS_GITHUB_BLOB_TREE_RE.match(target.strip())

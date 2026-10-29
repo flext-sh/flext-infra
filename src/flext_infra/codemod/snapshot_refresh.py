@@ -11,11 +11,11 @@ from typing import override
 
 from flext_cli import cli
 
-from flext_infra import FlextInfraServiceBase, p, r, t, u
+from flext_infra import p, r, s, t, u
 from flext_infra.codemod import FlextInfraModGateEngine
 
 
-class FlextInfraCodemodSnapshotRefresh(FlextInfraServiceBase[t.Cli.ResultValue]):
+class FlextInfraCodemodSnapshotRefresh(s[t.Cli.ResultValue]):
     """Regenerate governed rule-test snapshots so each change is a reviewed commit.
 
     ``make mod`` only verifies committed snapshots, so a rule whose output

@@ -10,9 +10,7 @@ from pathlib import Path
 from typing import TypeGuard, TypeIs
 
 from flext_infra import c, p, t
-from flext_infra._utilities._rope.rope_runtime_base import (
-    FlextInfraUtilitiesRopeRuntimeBase,
-)
+from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
@@ -45,6 +43,19 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
             msg = f"expected a Rope file resource: {label}"
             raise TypeError(msg)
         return value
+
+    @classmethod
+    def folder_resource(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopeRoot]:
+        """Return whether ``value`` is a Rope folder resource.
+
+        Returns:
+            Whether the resource is a native Rope folder (child lookup root).
+
+        """
+        return isinstance(
+            value,
+            cls.runtime_type("rope.base.resources", "Folder"),
+        )
 
     @classmethod
     def pymodule(cls, value: p.AttributeProbe) -> TypeIs[t.Infra.RopeParsedModule]:
@@ -158,6 +169,25 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
+    def unresolved_witness(cls, value: p.AttributeProbe) -> bool:
+        """Return whether ``value`` is an unresolved base witness.
+
+        Rope dc15 keeps an ``UnresolvedBase`` in its MRO position by policy
+        (TypedDict synthetic bases, staged renames): the witness occupies
+        its slot, contributes no ancestors and never matches a first-party
+        declaration. Classification consumers skip witnesses instead of
+        rejecting the class that carries them.
+
+        Returns:
+            Whether ``value`` is an unresolved base witness.
+
+        """
+        return isinstance(
+            value,
+            cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "UnresolvedBase"),
+        )
+
+    @classmethod
     def instance_object(
         cls,
         value: p.AttributeProbe,
@@ -255,69 +285,6 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         return isinstance(
             value,
             cls.runtime_type("rope.base.pynamesdef", "ParameterName"),
-        )
-
-    @classmethod
-    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
-        """Return exceptions that signal unparseable Python source.
-
-        Returns:
-            Exceptions that signal unparseable Python source.
-
-        """
-        return (
-            SyntaxError,
-            cls._exception_type("rope.base.exceptions", "ModuleSyntaxError"),
-        )
-
-    @classmethod
-    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
-        """Return recoverable exceptions raised by Rope operations.
-
-        Returns:
-            Recoverable exceptions raised by Rope operations.
-
-        """
-        return (
-            cls._exception_type("rope.base.exceptions", "RefactoringError"),
-            cls._exception_type("rope.base.exceptions", "ResourceNotFoundError"),
-            # Module probing (longest-prefix module/class split) treats a
-            # missing module as "keep splitting", never as a hard failure.
-            cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
-            AttributeError,
-        )
-
-    @classmethod
-    def rope_unresolved_error_types(cls) -> tuple[type[BaseException], ...]:
-        """Return Rope exceptions for statically unresolved modules or attributes.
-
-        Returns:
-            Rope exceptions raised when a native lookup resolves nothing.
-
-        """
-        return tuple(
-            cls._exception_type("rope.base.exceptions", name)
-            for name in (
-                "ModuleNotFoundError",
-                "BadIdentifierError",
-                "AttributeNotFoundError",
-            )
-        )
-
-    @classmethod
-    def rope_hierarchy_errors(cls) -> tuple[type[BaseException], ...]:
-        """Return Rope exceptions for hierarchies that fail to linearize.
-
-        A candidate overlay may hold base chains whose MRO is not computable
-        in that view (lazy cross-package letters); optimization owners treat
-        these as "proof unavailable" and retain the prior state.
-
-        Returns:
-            The hierarchy-failure exception types.
-
-        """
-        return (
-            cls._exception_type("rope.base.exceptions", "InconsistentHierarchyError"),
         )
 
 

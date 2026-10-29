@@ -158,7 +158,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             TypeError: If the declaration is not a literal positive integer.
 
         """
-        distribution = u.Infra.codemod_distributions()["pytest-testmon"]
+        distribution = u.Infra.codemod_environment_distributions()["pytest-testmon"]
         installed_files = tm.not_none(distribution.files)
         (batch_owner,) = (
             entry

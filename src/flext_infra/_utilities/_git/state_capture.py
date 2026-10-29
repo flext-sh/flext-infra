@@ -29,7 +29,7 @@ class FlextInfraUtilitiesGitStateCapture(
         if destination_root.resolve() == snapshot.repo_root:
             msg = "capture destination must differ from its original source"
             raise ValueError(msg)
-        with cls._state_leases((snapshot.repo_root, destination_root)):
+        with cls.state_leases((snapshot.repo_root, destination_root)):
             cls._state_validate_checkpoint(checkpoint)
             baseline = cls._state_preflight_transition(
                 snapshot,
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesGitStateCapture(
         if destination_root.resolve() == snapshot.repo_root:
             msg = "cleanup requires an independently saved destination"
             raise ValueError(msg)
-        with cls._state_leases((snapshot.repo_root, destination_root)):
+        with cls.state_leases((snapshot.repo_root, destination_root)):
             cls._state_verify_publication(checkpoint, publication)
             cls._state_verify_saved(checkpoint, destination_root, saved_commit)
             baseline = cls._state_preflight_transition(

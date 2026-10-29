@@ -24,6 +24,9 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesTypesRopeRuntime,
+)
 from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
@@ -1011,12 +1014,15 @@ class FlextInfraUtilitiesRopeImports:
             if source_resource is not None
             else ()
         )
-        pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
-        protected = FlextInfraUtilitiesSemanticFamilyTypeReferences.type_payload_ranges(
-            "".join(lines),
-            pymodule,
+        pymodule = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+            FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         )
         source = "".join(lines)
+        protected = (
+            FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_payload_ranges(
+                source, rope_project, pymodule.get_scope(), module=pymodule
+            )
+        )
         for (
             begin,
             end,

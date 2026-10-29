@@ -208,7 +208,7 @@ class TestsFlextInfraSelfFacadeCutover:
                 "from typing_extensions import TypeForm\n"
                 "class Consumer(m.ContractModel):\n"
                 "    values: MutableSequence[str] = m.Field("
-                "default_factory=u.empty(TypeForm(MutableSequence[str])), "
+                "default_factory=u.empty(t.TypeForm(MutableSequence[str])), "
                 "description='Consumer values')\n"
             ),
         }

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p
@@ -127,12 +127,13 @@ class FlextInfraUtilitiesSemanticTestHelpers(
 
         """
         root = Path(project.root.real_path)
-        resource = project.get_resource(path.relative_to(root).as_posix())
         resources = tuple(
             project.get_resource(item.relative_to(root).as_posix())
             for item in sorted(editable)
         )
-        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(project, resource)
+        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            project, project.get_file(path.relative_to(root).as_posix())
+        )
         fixture = cls._fixture_move(project, path, module, sources)
         if fixture is not None:
             return fixture
@@ -146,7 +147,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         project: p.Infra.RopeProject,
         path: Path,
         sources: Mapping[Path, str],
-        resources: tuple[object, ...],
+        resources: Sequence[p.Infra.RopeResource],
         owner_context: tuple[
             p.Infra.RopeWorkspaceDsl, Mapping[Path, str], p.Infra.RopePyModule
         ],

@@ -10,7 +10,7 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r
+from flext_infra import c, config, m, p, r, t
 from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform.file_plans import FlextInfraCodegenConformFilePlans
 
@@ -93,7 +93,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
     @staticmethod
     def _judge_make_line(
-        target_re: re.Pattern[str],
+        target_re: t.RegexPattern,
         policy: m.Infra.CustomHandlerPolicy,
         line_number: int,
         raw_line: str,

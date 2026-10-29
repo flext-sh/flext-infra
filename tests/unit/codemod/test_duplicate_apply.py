@@ -19,7 +19,7 @@ from flext_infra.codemod import (
     FlextInfraCodemodLoopPhaseDuplicateApply,
     FlextInfraModGateEngine,
 )
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -520,8 +520,8 @@ class TestsFlextInfraCodemodDuplicateApply:
         owner: Path,
         clone: Path,
         *,
-        owner_span: t.IntPair,
-        clone_span: t.IntPair,
+        owner_span: tuple[int, int],
+        clone_span: tuple[int, int],
     ) -> t.JsonDict:
         """Build one typed-valid jscpd report over two clone sides.
 

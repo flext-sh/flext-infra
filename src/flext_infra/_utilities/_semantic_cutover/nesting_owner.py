@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 from flext_cli import u
+from rope.base.fscommands import file_data_to_unicode
 
 from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
@@ -820,7 +821,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
         Raises:
             TypeError: If Singleton model owner requires a native source module.
-            ValueError: A pure model namespace still has actual entity consumers.
+            ValueError: A pure model namespace still has entity consumers or its
+                native ancestry or source identity cannot be established.
 
         """
         if (
@@ -832,17 +834,29 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         ):
             return {}
         name = next(iter(classes))
+        resource = project.get_resource(
+            file_path.relative_to(Path(project.root.real_path)).as_posix()
+        )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            project.get_resource(
-                file_path.relative_to(Path(project.root.real_path)).as_posix()
-            ),
+            resource,
         )
         if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             message = (
                 f"Singleton model owner requires a native source module: {file_path}"
             )
             raise TypeError(message)
+        if (
+            module.pycore.project is not project
+            or module.get_resource() != resource
+            or module.source_code
+            != file_data_to_unicode(project.source_text(file_path))[0]
+        ):
+            message = (
+                "singleton model module differs from the native source view: "
+                f"{file_path}"
+            )
+            raise ValueError(message)
         if (
             name
             not in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(

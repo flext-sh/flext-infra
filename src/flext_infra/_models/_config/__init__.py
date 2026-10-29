@@ -13,28 +13,30 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._config.artifact import FlextInfraModelsConfigArtifact
-    from flext_infra._config.base import FlextInfraModelsConfig
-    from flext_infra._config.beads import FlextInfraModelsConfigBeads
-    from flext_infra._config.contexts import FlextInfraModelsConfigContexts
-    from flext_infra._config.contract import FlextInfraModelsConfigContract
-    from flext_infra._config.external_cache import FlextInfraExternalCacheDirectorySpec
-    from flext_infra._config.make import FlextInfraModelsConfigMake
-    from flext_infra._config.make_clean import FlextInfraModelsConfigMakeClean
-    from flext_infra._config.make_docs import FlextInfraModelsConfigMakeDocs
-    from flext_infra._config.provider import FlextInfraModelsConfigProvider
-    from flext_infra._config.refactor_campaigns import (
+    from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
+    from flext_infra._models._config.base import FlextInfraModelsConfig
+    from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
+    from flext_infra._models._config.contexts import FlextInfraModelsConfigContexts
+    from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+    from flext_infra._models._config.external_cache import (
+        FlextInfraExternalCacheDirectorySpec,
+    )
+    from flext_infra._models._config.make import FlextInfraModelsConfigMake
+    from flext_infra._models._config.make_clean import FlextInfraModelsConfigMakeClean
+    from flext_infra._models._config.make_docs import FlextInfraModelsConfigMakeDocs
+    from flext_infra._models._config.provider import FlextInfraModelsConfigProvider
+    from flext_infra._models._config.refactor_campaigns import (
         FlextInfraModelsConfigRefactorCampaigns,
     )
-    from flext_infra._config.release import FlextInfraModelsConfigRelease
-    from flext_infra._config.render import FlextInfraModelsConfigRender
-    from flext_infra._config.repository import FlextInfraModelsConfigRepository
-    from flext_infra._config.root import FlextInfraModelsConfigRoot
-    from flext_infra._config.scaffold import FlextInfraModelsConfigScaffold
-    from flext_infra._config.sonarcloud import FlextInfraModelsConfigSonarcloud
-    from flext_infra._config.static import FlextInfraModelsConfigStatic
-    from flext_infra._config.templates import FlextInfraModelsConfigTemplates
-    from flext_infra._config.workspace import FlextInfraModelsConfigWorkspace
+    from flext_infra._models._config.release import FlextInfraModelsConfigRelease
+    from flext_infra._models._config.render import FlextInfraModelsConfigRender
+    from flext_infra._models._config.repository import FlextInfraModelsConfigRepository
+    from flext_infra._models._config.root import FlextInfraModelsConfigRoot
+    from flext_infra._models._config.scaffold import FlextInfraModelsConfigScaffold
+    from flext_infra._models._config.sonarcloud import FlextInfraModelsConfigSonarcloud
+    from flext_infra._models._config.static import FlextInfraModelsConfigStatic
+    from flext_infra._models._config.templates import FlextInfraModelsConfigTemplates
+    from flext_infra._models._config.workspace import FlextInfraModelsConfigWorkspace
 
 
 __all__: tuple[str, ...] = (

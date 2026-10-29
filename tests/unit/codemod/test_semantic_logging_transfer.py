@@ -332,7 +332,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
         legacy: Path,
         original: bytes,
     ) -> None:
-        """Replace a planned source inode without changing its bytes."""
+        """Replace an authenticated source inode without changing its bytes."""
         with (
             u.Infra.facade_source_project(root) as (project, _sources),
             FlextInfraRopeWorkspace.open_workspace(
@@ -343,7 +343,9 @@ class TestsFlextInfraSemanticLoggingTransfer:
                 root, report, source_project=project
             )
             tm.ok(
-                FlextInfraCodemodSemanticApply.plan(root, report, workspace, inventory)
+                FlextInfraCodemodSemanticApply.plan_semantic_edits(
+                    root, report, workspace, inventory
+                )
             )
             replacement = legacy.with_suffix(".replacement")
             replacement.write_bytes(original)
@@ -355,7 +357,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
         package: Path,
         report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
     ) -> None:
-        """Publish the cutover and prove idempotence and consumer behavior."""
+        """Share native source facts, then prove publication and consumer behavior."""
         legacy = package / "services" / "logging_integration.py"
         provider = package / "_utilities" / "domains.py"
         api = package / c.Infra.API_PY
@@ -366,7 +368,9 @@ class TestsFlextInfraSemanticLoggingTransfer:
         legacy_name = f"{owner}Logging"
         tm.ok(u.Tests.provision_python_project_environment(root))
         with infra.rope_workspace(root) as workspace:
-            inventory = FlextInfraCodemodSemanticApply.source_inventory(root, report)
+            inventory = FlextInfraCodemodSemanticApply.source_inventory(
+                root, report, source_project=workspace.rope_project
+            )
             transferred = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
@@ -377,7 +381,9 @@ class TestsFlextInfraSemanticLoggingTransfer:
             carrier = next(edit for edit in transferred if edit.file_path == provider)
             tm.that(carrier.original_source, eq=carrier.updated_source)
             composed = tm.ok(
-                FlextInfraCodemodSemanticApply.plan(root, report, workspace, inventory)
+                FlextInfraCodemodSemanticApply.plan_semantic_edits(
+                    root, report, workspace, inventory
+                )
             )
             tm.ok(provider in {edit.file_path for edit in composed})
             tm.that(

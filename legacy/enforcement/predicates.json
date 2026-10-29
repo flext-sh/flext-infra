@@ -329,7 +329,7 @@
     "no_mutable_default": {
       "category": "field",
       "problem": "mutable default {kind}() is FORBIDDEN",
-      "fix": "Use u.Field(default_factory=u.empty(TypeForm(<field annotation>))): the canonical empty value pydantic validates for the field contract, fresh per instance.",
+      "fix": "Use u.Field(default_factory=u.empty(t.TypeForm(<field annotation>))): the canonical empty value pydantic validates for the field contract, fresh per instance.",
       "predicate": "field_shape",
       "params": {
         "kind": "field_shape",
@@ -363,7 +363,7 @@
     "no_raw_collections_field_default": {
       "category": "field",
       "problem": "Field(default_factory={kind}) conflicts with a read-only field contract",
-      "fix": "Use u.Field(default_factory=u.empty(TypeForm(<field annotation>))): the canonical empty value pydantic validates for the field contract; read-only immutability is the static contract of the annotation.",
+      "fix": "Use u.Field(default_factory=u.empty(t.TypeForm(<field annotation>))): the canonical empty value pydantic validates for the field contract; read-only immutability is the static contract of the annotation.",
       "predicate": "field_shape",
       "params": {
         "kind": "field_shape",

@@ -1,4 +1,4 @@
-"""Unit tests for the mod loop's callback repair phases.
+"""Public mod-loop callbacks share their owning Rope workspace session.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT.
@@ -127,7 +127,7 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
         ).map(automated)
     with infra.rope_workspace(project) as rope:
         preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-        return FlextInfraCodemodLoopPhaseAccessorRename().apply(
+        return FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project).apply(
             project, preflight, rope
         )
 
@@ -211,7 +211,7 @@ class TestsFlextInfraCodemodLoopPhases:
         )
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraCodemodLoopPhaseAccessorRename()
+            phase = FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project)
 
             changed = phase.apply(project, preflight, rope)
 
@@ -329,7 +329,7 @@ class TestsFlextInfraCodemodLoopPhases:
     def test_batch_loop_runs_callback_phases_to_the_fixed_point(
         tmp_path: Path,
     ) -> None:
-        """One ``refactor mod`` loop converges with both callback phases wired."""
+        """One shared native session converges with both callbacks wired."""
         _workspace, project, service_file, legacy_file, foreign_file = _phase_fixture(
             tmp_path,
         )
@@ -348,7 +348,7 @@ class TestsFlextInfraCodemodLoopPhases:
                 rename_inputs=(),
                 phase_callbacks=(
                     FlextInfraCodemodLoopPhaseNamespaceRelocation(),
-                    FlextInfraCodemodLoopPhaseAccessorRename(),
+                    FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),
                 ),
             ).execute()
 

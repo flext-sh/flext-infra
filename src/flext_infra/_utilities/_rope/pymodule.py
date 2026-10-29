@@ -22,7 +22,7 @@ class FlextInfraUtilitiesRopeCorePyModule:
     stay reachable as ``FlextInfraUtilitiesRopeCore.<method>`` for all callers.
     """
 
-    _IDENTIFIER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
+    _IDENTIFIER_PATTERN: ClassVar[t.RegexPattern] = re.compile(r"\b[A-Za-z_]\w*\b")
 
     @staticmethod
     def find_identifier_offset_in_lines(

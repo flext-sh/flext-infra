@@ -753,13 +753,26 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         )
 
     @staticmethod
-    def test_planned_barrel_cannot_borrow_a_removed_live_export(tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        "initializer",
+        [
+            "from .base import Base\n",
+            (
+                "from types import MappingProxyType\n"
+                "from flext_core.lazy import install_lazy_exports\n"
+                "install_lazy_exports(__name__, globals(), "
+                'MappingProxyType({"Base": ".base"}), public_exports=("Base",))\n'
+            ),
+        ],
+        ids=["direct", "lazy"],
+    )
+    def test_planned_barrel_cannot_borrow_a_removed_live_export(
+        tmp_path: Path, initializer: str
+    ) -> None:
         """A stale export plan fails even when the live barrel is valid."""
         package = tmp_path / "src" / "removed_export"
         package.mkdir(parents=True)
-        (package / "__init__.py").write_text(
-            "from .base import Base\n", encoding=c.DEFAULT_ENCODING
-        )
+        (package / "__init__.py").write_text(initializer, encoding=c.DEFAULT_ENCODING)
         (package / "base.py").write_text(
             "class Base: pass\n", encoding=c.DEFAULT_ENCODING
         )

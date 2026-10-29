@@ -29,7 +29,6 @@ from types import MappingProxyType
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
-from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -211,27 +210,26 @@ class FlextInfraUtilitiesCodemodNative:
         ).unwrap()
         if not project[1]:
             return frozenset()
-        return cls._runtime_modules_of(tuple(project[1]), tuple(sys.path))
+        return cls._runtime_modules_of(tuple(project[1]))
 
     @staticmethod
     @cache
-    def _runtime_modules_of(
-        requirements: tuple[str, ...], import_path: tuple[str, ...]
-    ) -> frozenset[str]:
+    def _runtime_modules_of(requirements: tuple[str, ...]) -> frozenset[str]:
         """Resolve the import packages of one requirement set, once per process.
 
-        Installed metadata is fixed for the life of the process on one import
-        path, so every plan, gate and render of the invocation shares the one
-        closure its direct requirements select.
+        Installed metadata is a fact of the one owning runtime environment for
+        the life of the process, so every plan, gate and render of the
+        invocation shares the one closure its direct requirements select.
 
         Returns:
             The import packages whose distributions the closure contains.
 
         """
-        del import_path
         progress = FlextInfraUtilitiesImportLaw.codemod_progress
         progress(f"runtime distributions start requirements={len(requirements)}")
-        distributions = FlextInfraUtilitiesCodemodRules.codemod_distributions()
+        distributions = (
+            FlextInfraUtilitiesCodemodRules.codemod_environment_distributions()
+        )
         progress(f"runtime distributions finish distributions={len(distributions)}")
         progress("runtime dependency closure start")
         closure = FlextInfraUtilitiesCodemodRules.codemod_runtime_closure(
@@ -382,7 +380,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         scopes: dict[str, t.StrTuple] = {}
-        adapter = u.type_adapter(TypeForm(Mapping[str, t.StrTuple]))
+        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.StrTuple]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):
@@ -688,7 +686,7 @@ class FlextInfraUtilitiesCodemodNative:
         if not callable(renderer):
             msg = f"ast-grep rule renderer is not declared: {entry.name}"
             raise TypeError(msg)
-        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
         if entry.facts is None:
             return adapter.validate_python(renderer(snapshot, project), strict=True)
         if entry.facts not in facts:
@@ -725,7 +723,7 @@ class FlextInfraUtilitiesCodemodNative:
             msg = f"ast-grep shape producer is not declared: {entry.shapes_from}"
             raise TypeError(msg)
         return frozenset(
-            u.type_adapter(TypeForm(Sequence[str])).validate_python(
+            u.type_adapter(t.TypeForm(Sequence[str])).validate_python(
                 producer(), strict=True
             )
         )
@@ -792,7 +790,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):

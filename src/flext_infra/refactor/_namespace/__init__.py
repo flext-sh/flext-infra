@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._namespace.enforcer_project import (
+    from flext_infra.refactor._namespace.enforcer_project import (
         FlextInfraRefactorNamespaceEnforcerProject,
     )
 

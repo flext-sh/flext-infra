@@ -305,7 +305,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
 
     @staticmethod
     def _helper_declaration_scope(
-        module: p.Infra.RopePyModule, name: str
+        module: p.Infra.RopeParsedModule, name: str
     ) -> p.Infra.RopeScope:
         """Require exactly one original declaration identity in the native scope.
 

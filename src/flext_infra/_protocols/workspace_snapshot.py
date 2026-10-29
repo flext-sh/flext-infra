@@ -54,6 +54,28 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
     @runtime_checkable
+    class WorkspaceBootstrapDependencies(Protocol):
+        """Bootstrap closure and the native source epoch that established it."""
+
+        @property
+        def namespace(self) -> str: ...
+
+        @property
+        def modules(self) -> tuple[t.Infra.RopeNativeParsedModule, ...]: ...
+
+        @property
+        def source_folders(self) -> tuple[str, ...]: ...
+
+        @property
+        def python_path_folders(self) -> tuple[str, ...]: ...
+
+        @property
+        def source_digests(self) -> tuple[str, ...]: ...
+
+        @property
+        def dependencies(self) -> frozenset[str]: ...
+
+    @runtime_checkable
     class WorkspaceSnapshot(Protocol):
         """Read surface of the one Rope model a workspace run shares.
 
@@ -115,6 +137,15 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             self,
         ) -> MutableMapping[Path, tuple[frozenset[str], frozenset[str]]]:
             """Runtime and typing-only imported modules per queried source."""
+            ...
+
+        @property
+        def bootstrap_dependencies(
+            self,
+        ) -> MutableMapping[
+            Path, FlextInfraProtocolsWorkspaceSnapshot.WorkspaceBootstrapDependencies
+        ]:
+            """Bootstrap closure bound to native modules and resolver roots."""
             ...
 
         @property

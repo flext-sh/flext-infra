@@ -20,6 +20,7 @@ import traceback
 from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from functools import partial
 from pathlib import Path
 from threading import get_ident
 from types import BuiltinMethodType, FrameType, MethodType, TracebackType
@@ -214,9 +215,16 @@ class FlextInfraPytestClock:
                 FlextInfraPytestClock._print_diagnostic(failure, primary, chain=False)
 
     @staticmethod
-    def profile_command(command: Callable[[], int], output: Path) -> int:
+    def profile_command(
+        command: Callable[[], int],
+        output: Path,
+        *,
+        after_profile: Callable[[Path], None] | None = None,
+    ) -> int:
         """Return the native command status without replacing its first failure."""
-        return FlextInfraPytestClock.profile_operation(command, output, is_failure=bool)
+        return FlextInfraPytestClock.profile_operation(
+            command, output, is_failure=bool, after_profile=after_profile
+        )
 
     @staticmethod
     def profile_operation[T](
@@ -224,6 +232,7 @@ class FlextInfraPytestClock:
         output: Path,
         *,
         is_failure: Callable[[T], bool],
+        after_profile: Callable[[Path], None] | None = None,
     ) -> T:
         """Return the original operation value with immutable native evidence."""
         current = FlextInfraPytestClock._operation_profile.get()
@@ -262,6 +271,11 @@ class FlextInfraPytestClock:
                         output,
                         immutable_output=immutable_output,
                         previous_output=previous_output,
+                    ),
+                    *(
+                        (partial(after_profile, immutable_output),)
+                        if after_profile is not None
+                        else ()
                     ),
                 ),
                 completed=completed,
@@ -308,6 +322,10 @@ class FlextInfraPytestClock:
                     "profile finalization failed:\n"
                     + "".join(traceback.format_exception(failure, chain=False))
                 )
+                if isinstance(primary, SystemExit):
+                    FlextInfraPytestClock._print_diagnostic(
+                        failure, primary, chain=False
+                    )
             elif failed:
                 FlextInfraPytestClock._print_diagnostic(failure, failure, chain=True)
             else:

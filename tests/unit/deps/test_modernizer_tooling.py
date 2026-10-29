@@ -13,7 +13,6 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraConfig, check, config, deps
 from tests import c, m, t, tm, u
@@ -565,7 +564,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "pyrefly",
                     "project-excludes",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 )
             ),
             eq=True,
@@ -676,7 +675,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 ),
             }),
         )

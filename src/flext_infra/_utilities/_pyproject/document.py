@@ -13,7 +13,6 @@ from typing import Annotated, ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
-from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -158,14 +157,25 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
         """
         result_type = r[m.Infra.ProjectMetadataState]
-        live = (
-            FlextInfraUtilitiesPyprojectDocument.live_pyproject_text(
-                project_root / c.PYPROJECT_FILENAME
-            )
+        path = project_root / c.PYPROJECT_FILENAME
+        captured = (
+            u.Cli.atomic_read_binary_file_state(path, required=True)
             if source_project is None
-            else FlextInfraUtilitiesPyprojectDocument.recover_live_pyproject_text(
-                source_project.source_text(project_root / c.PYPROJECT_FILENAME),
+            else r[m.Cli.AtomicFileState].ok(
+                source_project.source_state(path, required=False)
             )
+        )
+        if captured.failure:
+            return result_type.from_failure(captured)
+        if source_project is None:
+            content = captured.value.content
+            if content is None:
+                return result_type.fail(f"pyproject is absent: {path}")
+            raw = content.decode(c.DEFAULT_ENCODING)
+        else:
+            raw = source_project.source_text(path)
+        live = FlextInfraUtilitiesPyprojectDocument.recover_live_pyproject_text(
+            raw,
         )
         if live.failure:
             return result_type.from_failure(live)
@@ -188,7 +198,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 exception=exc,
             )
         return result_type.ok(
-            m.Infra.ProjectMetadataState(metadata=metadata, packaging=packaging),
+            m.Infra.ProjectMetadataState(
+                source=captured.value, metadata=metadata, packaging=packaging
+            ),
         )
 
     @staticmethod
@@ -1054,7 +1066,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                         config.Infra.tooling,
                         c.Infra.DEPTRY,
                         "optional_dependencies_dev_groups",
-                        TypeForm(Sequence[str]),
+                        t.TypeForm(Sequence[str]),
                     )
                 )
                 if optional is not None and group in optional

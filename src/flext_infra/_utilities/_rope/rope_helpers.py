@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Sequence
 
-from flext_infra import c, t
+from flext_infra import c
 from flext_infra._utilities._rope.method_order import FlextInfraUtilitiesRopeMethodOrder
 
 
@@ -17,7 +17,7 @@ class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrder):
     """AST definition spans and method-order helpers."""
 
     @staticmethod
-    def statement_line_span(statement: ast.stmt) -> t.IntPair:
+    def statement_line_span(statement: ast.stmt) -> tuple[int, int]:
         """Return the 1-based inclusive line span of one statement, decorators included.
 
         Returns:
@@ -38,7 +38,7 @@ class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrder):
         name: str,
         *,
         kind: str,
-    ) -> t.IntPair | None:
+    ) -> tuple[int, int] | None:
         """Return the line span of the top-level ``kind`` definition named ``name``.
 
         Returns:

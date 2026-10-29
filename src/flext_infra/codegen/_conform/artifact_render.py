@@ -492,20 +492,35 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ),
         )
 
+    def _candidate_manifests(
+        self,
+        planned: Sequence[m.Infra.CodegenFilePlan],
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Compose provider and current-phase manifests with original witnesses.
+
+        Returns:
+            The deduplicated pyproject manifests in render order.
+
+        """
+        return u.Infra.codegen_compose_file_plans(
+            tuple(
+                plan
+                for plan in (*(self.state.provider_plans or ()), *planned)
+                if plan.path.name == c.PYPROJECT_FILENAME
+            ),
+            ordered=True,
+        )
+
     def _rendered_artifact_source(
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
-        *,
-        entry: m.Infra.TemplateEntrySpec,
-        destination: str,
-        failure_prefix: str,
-        project_context: m.Infra.ProjectRenderContext | None,
+        route: m.Infra.ArtifactRenderRoute,
     ) -> p.Result[str]:
-        """Resolve one artifact render context and render its template source.
+        """Resolve one artifact render route and render its template source.
 
-        ``failure_prefix`` carries the only difference between the scaffold and
-        existing-repository planners: the stage banner the scaffold planner
-        prepends to a render failure.
+        ``route.failure_prefix`` carries the only difference between the
+        scaffold and existing-repository planners: the stage banner the
+        scaffold planner prepends to a render failure.
 
         Returns:
             The rendered content.
@@ -514,6 +529,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ValueError: If the catalog entry has no renderable source.
 
         """
+        entry = route.entry
+        destination = route.destination
         if entry.source is None:
             msg = f"render entry has no source: {destination}"
             raise ValueError(msg)
@@ -523,13 +540,19 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 entry,
                 m.Infra.StaticTextRenderSpec(),
             )
+        if entry.bootstrap_distribution is not None:
+            return self._bootstrap_rendered_source(
+                render_inputs,
+                entry,
+                planned_manifests=route.planned_manifests,
+            )
         artifact_context: p.Result[p.Model] = (
             self._release_policy_render_inputs(render_inputs.target.root)
             if destination == f"config/{c.Infra.INFRA_CONFIG_FILENAME}"
             else self._artifact_render_context(
                 render_inputs,
                 destination=destination,
-                project_context=project_context,
+                project_context=route.project_context,
             )
         )
         if artifact_context.failure:
@@ -550,8 +573,33 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             rendered.value,
             template_relpath=entry.source,
             destination=destination,
-            failure_prefix=failure_prefix,
+            failure_prefix=route.failure_prefix,
             template_source=template.value,
+        )
+
+    def _bootstrap_rendered_source(
+        self,
+        render_inputs: m.Infra.CodegenRenderInputs,
+        entry: m.Infra.TemplateEntrySpec,
+        *,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan],
+    ) -> p.Result[str]:
+        """Render an executor-bootstrap artifact from its declared closure.
+
+        Returns:
+            The rendered content.
+
+        """
+        bootstrap = u.Infra.workspace_bootstrap_requirements(
+            render_inputs.target.root,
+            render_inputs.workspace,
+            entry.bootstrap_distribution,
+            planned_manifests=planned_manifests,
+        )
+        if bootstrap.failure:
+            return r[str].from_failure(bootstrap)
+        return self.render_artifact_source(
+            render_inputs.codegen, entry, bootstrap.value
         )
 
     @staticmethod
@@ -1049,6 +1097,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
+                bootstrap_requirements=Path(
+                    codegen.templates.bootstrap_entry.destination
+                ),
                 bootstrap_report_shell_literal=(
                     u.Infra.bootstrap_operation_report_shell_literal()
                 ),

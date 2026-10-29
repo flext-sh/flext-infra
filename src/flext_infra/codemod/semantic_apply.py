@@ -1396,7 +1396,7 @@ class FlextInfraCodemodSemanticApply(
                 return result_type.from_failure(planned)
             cls.apply_plan(working, planned.value, changed)
         if changed:
-            verified = cls._verify_census_phases(working, rope_workspace, phases)
+            verified = cls._verify_phase_sequences(working, rope_workspace, phases)
             if verified.failure:
                 return result_type.from_failure(verified)
         u.Infra.preflight_semantic_import_graph(rope_workspace, sources, working)
@@ -1545,7 +1545,7 @@ class FlextInfraCodemodSemanticApply(
             original = cls.source_inventory(
                 root, preflight, source_project=source_project
             )
-            planned = cls.plan(root, preflight, captured, original)
+            planned = cls.plan_semantic_edits(root, preflight, captured, original)
             if planned.failure:
                 return r[bool].from_failure(planned)
         return cls._publish(
@@ -1564,7 +1564,7 @@ class FlextInfraCodemodSemanticApply(
         )
 
     @classmethod
-    def plan[FindingT: m.Infra.ModOccurrence](
+    def plan_semantic_edits[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
         preflight: m.Infra.ModOccurrenceReport[FindingT],

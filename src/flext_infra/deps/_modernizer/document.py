@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
 from flext_infra._models.deps import (
@@ -25,6 +25,7 @@ from flext_infra.deps.phases import (
     FlextInfraInjectCommentsPhase,
     FlextInfraToolTablesPhase,
 )
+from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
 from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
@@ -118,16 +119,29 @@ class FlextInfraPyprojectModernizerDocument(
     ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Parse one pyproject once into one validated plain payload state.
 
+        Args:
+            path: The path to the pyproject file.
+            source: Optional raw content of the pyproject file.
+
         Returns:
             The resulting ``p.Result[m.Infra.PyprojectDocumentState]``.
 
+        Raises:
+            ValueError: If the project document has no captured content.
+
+
         """
         result_type = r[m.Infra.PyprojectDocumentState]
+        before: m.Cli.AtomicFileState | None = None
         if source is None:
-            read = u.Cli.files_read_text(path)
+            read = u.Cli.atomic_read_binary_file_state(path, required=True)
             if read.failure:
                 return result_type.from_failure(read)
-            source = read.value
+            before = read.value
+            if before.content is None:
+                message = f"required project document has no captured content: {path}"
+                raise ValueError(message)
+            source = before.content.decode(c.DEFAULT_ENCODING)
         recovered = u.Infra.recover_live_pyproject_text(source)
         if recovered.failure:
             return result_type.from_failure(recovered)
@@ -144,6 +158,7 @@ class FlextInfraPyprojectModernizerDocument(
         return result_type.ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,
+                before=before,
                 original_rendered=source,
                 payload=validated.value,
                 document=document,
@@ -194,6 +209,37 @@ class FlextInfraPyprojectModernizerDocument(
             changes.append("removed empty poetry group container")
         return changes
 
+    _last_migration_render: ClassVar[p.Result[str] | None] = None
+
+    def _apply_source_migration(
+        self,
+        state: m.Infra.PyprojectDocumentState,
+        source_migration: m.Infra.GitSourceReferenceMigration,
+    ) -> p.Result[Sequence[str]] | None:
+        """Rewrite Git source references; produce the migration render.
+
+        Returns:
+            The early result when migration yields no change, or ``None``
+            when the caller should proceed with the migration render.
+
+        """
+        migrated = u.Infra.rewrite_git_source_references(
+            state.payload, source_migration
+        )
+        if migrated.failure:
+            return r[Sequence[str]].from_failure(migrated)
+        if not migrated.value:
+            state.rendered = state.original_rendered
+            return r[Sequence[str]].ok(())
+        self._last_migration_render = self._render_document_state(
+            state,
+            migrated.value,
+            skip_comments=True,
+            format_source=False,
+            preserve_layout=True,
+        )
+        return None
+
     def _process_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
@@ -205,26 +251,25 @@ class FlextInfraPyprojectModernizerDocument(
     ) -> p.Result[Sequence[str]]:
         """Run every phase over one discovered state; write unless ``dry_run``.
 
+        Args:
+            state: The current document state.
+            canonical_dev: The canonical development dependencies.
+            dry_run: Whether to perform a dry run without writing changes.
+            skip_comments: Whether to skip comments during processing.
+            source_migration: Optional Git source reference migration.
+
         Returns:
             The resulting ``p.Result[Sequence[str]]``.
 
+        Raises:
+            ValueError: If the project publication has no original capture.
+
         """
         if source_migration is not None:
-            migrated = u.Infra.rewrite_git_source_references(
-                state.payload, source_migration
-            )
-            if migrated.failure:
-                return r[Sequence[str]].from_failure(migrated)
-            if not migrated.value:
-                state.rendered = state.original_rendered
-                return r[Sequence[str]].ok(())
-            rendered = self._render_document_state(
-                state,
-                migrated.value,
-                skip_comments=True,
-                format_source=False,
-                preserve_layout=True,
-            )
+            early = self._apply_source_migration(state, source_migration)
+            if early is not None:
+                return early
+            rendered = self._last_migration_render
         else:
             rendered = self._render_declared_state(
                 state,
@@ -236,9 +281,31 @@ class FlextInfraPyprojectModernizerDocument(
         if state.rendered == state.original_rendered:
             return r[Sequence[str]].ok(())
         if not dry_run:
-            u.write_file(
-                state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
+            if state.before is None:
+                message = (
+                    "project publication has no original capture: "
+                    f"{state.pyproject_path}"
+                )
+                raise ValueError(message)
+            observations = FlextInfraLintConfigFreezeGate.require_projection(
+                self.root, state
             )
+            published = u.Infra.publish_codegen_plans(
+                self.root,
+                (
+                    m.Infra.CodegenFilePlan(
+                        project=state.pyproject_path.parent,
+                        path=state.pyproject_path,
+                        before=state.before,
+                        desired_content=state.rendered.encode(c.DEFAULT_ENCODING),
+                        desired_mode=state.before.mode,
+                        owner=c.Infra.CLI_GROUP_DEPS,
+                    ),
+                    *observations,
+                ),
+            )
+            if published.failure:
+                return r.from_failure(published)
         if not rendered.value:
             return r[Sequence[str]].ok(("canonical pyproject rendering changed bytes",))
         return rendered

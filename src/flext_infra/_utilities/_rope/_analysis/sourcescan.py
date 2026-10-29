@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-from collections.abc import Generator, MutableMapping, Sequence
+from collections.abc import MutableMapping, Sequence
 from functools import cache
 from typing import ClassVar
 
@@ -25,14 +25,13 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 
 
 class FlextInfraUtilitiesRopeAnalysisSourceScan:
-    """Source-level rope parsing, literal scanning, and reference extraction.
+    """Read source facts during the native semantic-query migration.
 
-    Every ``*_source`` reader parses the module through rope's parse and reads
-    the node it needs; source that does not parse raises its ``SyntaxError``.
-    The nested ``Tree`` capability carries the rope-owned syntax-tree
-    vocabulary (node classes, expression parse, unparse, dump) that
-    ``u``-family consumers outside the ``_rope`` family consume in place of
-    any interpreter import of their own.
+    Migrated readers consume the SDK's indexed facts. Remaining syntax-tree
+    readers and ``Tree`` still expose AST interpretation in FLEXT, even when
+    Rope supplies the nodes. They do not satisfy the native DSL contract and
+    must migrate with their consumers. Invalid source retains its native
+    ``SyntaxError``.
     """
 
     _INSTALL_LAZY_IMPORTS_ARG_INDEX: ClassVar[int] = 2
@@ -93,8 +92,8 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         YieldFrom: ClassVar[type[ast.YieldFrom]] = ast.YieldFrom
 
         @staticmethod
-        def parse_expression_source(source: str) -> t.Infra.RopeAstNode:
-            """Parse one expression source through rope's parse surface.
+        def parse_expression_source(source: str) -> t.Infra.AstExpression:
+            """Parse one expression in the remaining legacy syntax-tree path.
 
             Returns:
                 The parsed expression node.
@@ -103,53 +102,85 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             return ast.parse(source, mode="eval").body
 
         @staticmethod
-        def unparse(node: p.AttributeProbe) -> str:
+        def unparse(node: t.Infra.RopeAstNode) -> str:
             """Unparse one rope-owned tree node through rope's surface.
 
             Returns:
                 The source text of the node.
 
+            Raises:
+                TypeError: The node is not a native AST node.
+
             """
+            if not isinstance(node, ast.AST):
+                msg = "unparse requires a native AST node"
+                raise TypeError(msg)
             return ast.unparse(node)
 
         @staticmethod
-        def dump(node: p.AttributeProbe) -> str:
+        def dump(node: t.Infra.RopeAstNode) -> str:
             """Return the canonical structural digest of one rope-owned node.
 
             Returns:
                 The canonical structural digest of one rope-owned node.
 
+            Raises:
+                TypeError: The node is not a native AST node.
+
             """
+            if not isinstance(node, ast.AST):
+                msg = "dump requires a native AST node"
+                raise TypeError(msg)
             return ast.dump(node)
 
         @staticmethod
-        def fix_missing_locations(module: p.AttributeProbe) -> t.Infra.AstModule:
+        def fix_missing_locations(module: t.Infra.AstNode) -> t.Infra.AstNode:
             """Fill the location fields of one freshly built rope tree.
 
             Returns:
                 The module with every missing location filled.
 
+            Raises:
+                TypeError: The node is not a native AST declaration.
+
             """
+            if not isinstance(module, ast.AST):
+                msg = "location fixing requires a native AST node"
+                raise TypeError(msg)
             return ast.fix_missing_locations(module)
 
         @staticmethod
-        def docstring(node: p.AttributeProbe) -> str | None:
+        def docstring(node: t.Infra.RopeAstNode) -> str | None:
             """Return the docstring of one definition node, rope's reader.
 
             Returns:
                 The docstring of one definition node, rope's reader.
 
+            Raises:
+                TypeError: The node is not a native definition node.
+
             """
+            if not isinstance(
+                node, (ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef, ast.Module)
+            ):
+                msg = "docstring requires a native definition node"
+                raise TypeError(msg)
             return ast.get_docstring(node)
 
         @staticmethod
-        def child_nodes(node: p.AttributeProbe) -> Sequence[t.Infra.RopeAstNode]:
+        def child_nodes(node: t.Infra.RopeAstNode) -> Sequence[t.Infra.RopeAstNode]:
             """Return the direct children of one rope-owned tree node.
 
             Returns:
                 The direct children of one rope-owned tree node.
 
+            Raises:
+                TypeError: The node is not a native AST node.
+
             """
+            if not isinstance(node, ast.AST):
+                msg = "child iteration requires a native AST node"
+                raise TypeError(msg)
             return tuple(ast.iter_child_nodes(node))
 
         @staticmethod
@@ -200,112 +231,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                     if isinstance(child, ast.stmt | ast.excepthandler | ast.match_case):
                         pending.append(child)
         return tuple(found)
-
-    @classmethod
-    def single_module_import_binding(cls, tree: ast.Module, name: str) -> bool:
-        """Report whether one module-level import is the name's only binding.
-
-        Python then resolves every load of the name to that import, in any
-        nested scope.
-
-        Returns:
-            True when exactly one import outside every function and class binds
-            the name and no star import, assignment, parameter, definition,
-            pattern capture, exception alias or scope declaration binds it.
-
-        """
-        module_level = sum(
-            cls._import_binding_count(statement, name)
-            for statement in cls._module_level_statements(tree.body)
-        )
-        bindings = 0
-        for node in ast.walk(tree):
-            match node:
-                case ast.ImportFrom(names=names) if any(
-                    alias.name == "*" for alias in names
-                ):
-                    return False
-                case ast.Global(names=names) | ast.Nonlocal(names=names) if (
-                    name in names
-                ):
-                    return False
-                case ast.Import() | ast.ImportFrom():
-                    bindings += cls._import_binding_count(node, name)
-                case (
-                    ast.Name(id=bound, ctx=ast.Store() | ast.Del())
-                    | ast.arg(arg=bound)
-                    | ast.FunctionDef(name=bound)
-                    | ast.AsyncFunctionDef(name=bound)
-                    | ast.ClassDef(name=bound)
-                    | ast.MatchAs(name=bound)
-                    | ast.MatchStar(name=bound)
-                    | ast.MatchMapping(rest=bound)
-                    | ast.ExceptHandler(name=bound)
-                    | ast.TypeVar(name=bound)
-                    | ast.ParamSpec(name=bound)
-                    | ast.TypeVarTuple(name=bound)
-                ) if bound == name:
-                    bindings += 1
-                case _:
-                    pass
-        return module_level == 1 and bindings == 1
-
-    @staticmethod
-    def _import_binding_count(statement: ast.stmt, name: str) -> int:
-        """Count the aliases one import statement binds to ``name``.
-
-        Returns:
-            The number of aliases binding the name, zero for other statements.
-
-        """
-        if not isinstance(statement, ast.Import | ast.ImportFrom):
-            return 0
-        return sum(
-            1
-            for alias in statement.names
-            if (alias.asname or alias.name.partition(".")[0]) == name
-        )
-
-    @classmethod
-    def _module_level_statements(cls, body: Sequence[ast.stmt]) -> Generator[ast.stmt]:
-        """Yield statements executed in the module scope, including guarded blocks.
-
-        Yields:
-            Each statement outside every function and class body.
-
-        """
-        for statement in body:
-            yield statement
-            match statement:
-                case (
-                    ast.If(body=inner, orelse=other)
-                    | ast.While(body=inner, orelse=other)
-                    | ast.For(body=inner, orelse=other)
-                    | ast.AsyncFor(body=inner, orelse=other)
-                ):
-                    yield from cls._module_level_statements((*inner, *other))
-                case ast.With(body=inner) | ast.AsyncWith(body=inner):
-                    yield from cls._module_level_statements(inner)
-                case (
-                    ast.Try(
-                        body=inner, handlers=handlers, orelse=other, finalbody=final
-                    )
-                    | ast.TryStar(
-                        body=inner, handlers=handlers, orelse=other, finalbody=final
-                    )
-                ):
-                    yield from cls._module_level_statements((
-                        *inner,
-                        *(item for handler in handlers for item in handler.body),
-                        *other,
-                        *final,
-                    ))
-                case ast.Match(cases=cases):
-                    yield from cls._module_level_statements(
-                        tuple(item for case in cases for item in case.body)
-                    )
-                case _:
-                    pass
 
     @staticmethod
     def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> Sequence[str]:

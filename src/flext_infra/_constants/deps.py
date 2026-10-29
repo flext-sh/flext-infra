@@ -65,7 +65,7 @@ class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
     """Entry-point group naming the executables an installed distribution ships."""
     PYTEST_PLUGIN_ENTRY_POINT_GROUP: ClassVar[str] = "pytest11"
     """Entry-point group through which pytest autoloads an installed plugin."""
-    DEPTRY_SCAN_COVERAGE_RE: ClassVar[re.Pattern[str]] = re.compile(
+    DEPTRY_SCAN_COVERAGE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^Scanning (?P<count>[0-9]+) files?\.\.\.$",
     )
     """Native deptry import extraction's executed file count."""

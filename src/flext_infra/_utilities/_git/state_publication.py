@@ -183,7 +183,7 @@ class FlextInfraUtilitiesGitStatePublication(
         """
         root = checkpoint.snapshot.repo_root
         try:
-            with cls._state_leases((root,)):
+            with cls.state_leases((root,)):
                 reference = cls._state_checkpoint_branch_ref(
                     checkpoint,
                     publication,
@@ -251,7 +251,7 @@ class FlextInfraUtilitiesGitStatePublication(
         """
         root = checkpoint.snapshot.repo_root
         try:
-            with cls._state_leases((root,)):
+            with cls.state_leases((root,)):
                 cls._state_push_checkpoint_branch(checkpoint, publication, branch)
         except (GitCommandError, OSError, ValueError) as exc:
             return r[bool].fail(str(exc), exception=exc)
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesGitStatePublication(
         """
         root = checkpoint.snapshot.repo_root
         try:
-            with cls._state_leases((root,)):
+            with cls.state_leases((root,)):
                 cls._state_delete_checkpoint_branch(
                     checkpoint,
                     publication,

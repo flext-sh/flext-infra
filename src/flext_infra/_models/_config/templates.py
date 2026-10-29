@@ -284,6 +284,29 @@ class FlextInfraModelsConfigTemplates:
             bool,
             m.Field(description="Whether the projection requires Beads participation"),
         ] = False
+        bootstrap_distribution: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Executor whose local dependency closure this artifact binds"
+                )
+            ),
+        ] = None
+
+        @m.field_validator("bootstrap_distribution")
+        @classmethod
+        def validate_bootstrap_distribution(cls, value: str | None) -> str | None:
+            """Validate the declared executor's canonical distribution identity.
+
+            Returns:
+                The canonical distribution identity, or None when undeclared.
+
+            """
+            return (
+                None
+                if value is None
+                else t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(value)
+            )
 
         @m.field_validator("source_package")
         @classmethod
@@ -334,6 +357,14 @@ class FlextInfraModelsConfigTemplates:
             full_ownership = (
                 self.ownership is not None and self.ownership.policy == "full"
             )
+            if self.bootstrap_distribution is not None and (
+                self.source_kind != "template"
+                or self.source is None
+                or not full_ownership
+                or self.profiles != (c.Infra.MakeProfile.WORKSPACE,)
+            ):
+                msg = "bootstrap requires a full-owned workspace template"
+                raise ValueError(msg)
             if self.source_kind == "resource" and (
                 self.source is None
                 or self.source_package is None
@@ -427,6 +458,27 @@ class FlextInfraModelsConfigTemplates:
                 destination: declaration.requires_artifacts
                 for destination, declaration in self.catalog.items()
             }
+
+        @property
+        def bootstrap_entry(self) -> FlextInfraModelsConfigTemplates.TemplateEntrySpec:
+            """Require the single declared executor bootstrap artifact.
+
+            Returns:
+                The single bootstrap artifact entry.
+
+            Raises:
+                ValueError: If zero or multiple bootstrap artifacts are declared.
+
+            """
+            entries = tuple(
+                entry
+                for entry in self.entries
+                if entry.bootstrap_distribution is not None
+            )
+            if len(entries) != 1:
+                msg = "setup requires exactly one bootstrap artifact declaration"
+                raise ValueError(msg)
+            return entries[0]
 
         @m.model_validator(mode="after")
         def validate_unique_destinations(self) -> Self:

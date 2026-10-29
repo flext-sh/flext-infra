@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraServiceBase
+from flext_infra import s
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, t, tm, u
 
@@ -37,8 +37,8 @@ class TestsFlextInfraServiceBaseAlias:
         service = project / "service.py"
         permitted = (
             "from flext_cli import s\n"
-            "from flext_infra import FlextInfraServiceBase\n"
-            "class FlextDemoService(FlextInfraServiceBase[str]):\n"
+            "from flext_infra import s\n"
+            "class FlextDemoService(s[str]):\n"
             "    pass\n"
             "class FlextDemoCliService(s[str]):\n"
             "    pass\n"
@@ -91,7 +91,7 @@ class TestsFlextInfraServiceBaseAlias:
         expected: str | None,
     ) -> None:
         """Services and public helpers consume the same selector normalization."""
-        service = FlextInfraServiceBase[t.JsonPayload].model_validate(
+        service = s[t.JsonPayload].model_validate(
             {"project_filter": value},
         )
         tm.that(service.project_filter, eq=expected)
@@ -115,12 +115,12 @@ class TestsFlextInfraServiceBaseAlias:
             (tmp_path, tmp_path.resolve()),
             (tmp_path / "not-created", (tmp_path / "not-created").resolve()),
         ):
-            service = FlextInfraServiceBase[t.JsonPayload].model_validate(
+            service = s[t.JsonPayload].model_validate(
                 {"repository_root": str(supplied)},
             )
             tm.that(service.root, eq=expected)
             tm.that(u.Infra.resolve_repository_root_or_cwd(supplied), eq=expected)
-        service = FlextInfraServiceBase[t.JsonPayload]()
+        service = s[t.JsonPayload]()
         tm.that(service.root, eq=Path.cwd().resolve())
         tm.that(u.Infra.resolve_repository_root_or_cwd(), eq=service.root)
 
@@ -131,7 +131,7 @@ class TestsFlextInfraServiceBaseAlias:
     )
     def test_command_optional_paths(value: t.Cli.TextPath | None) -> None:
         """Report paths resolve, whereas output directories preserve relative scope."""
-        service = FlextInfraServiceBase[t.JsonPayload].model_validate(
+        service = s[t.JsonPayload].model_validate(
             {"report_path": value, "output_dir": value},
         )
         expected_report = None if value is None else Path(value).resolve()
@@ -147,7 +147,7 @@ class TestsFlextInfraServiceBaseAlias:
         """Absolute output directories use native path resolution."""
         supplied = tmp_path / "unused" / ".." / "reports"
         for value in (supplied, f" {supplied} "):
-            service = FlextInfraServiceBase[t.JsonPayload].model_validate(
+            service = s[t.JsonPayload].model_validate(
                 {"output_dir": value},
             )
             tm.that(service.output_dir, eq=supplied.resolve())
@@ -163,10 +163,10 @@ class TestsFlextInfraServiceBaseAlias:
         dry_run: bool,
     ) -> None:
         """Mutable schema fields retain kernel behavior without shared request state."""
-        first = FlextInfraServiceBase[t.JsonPayload].model_validate(
+        first = s[t.JsonPayload].model_validate(
             {"apply": apply, "check": check, "dry_run": dry_run},
         )
-        second = FlextInfraServiceBase[t.JsonPayload].model_validate(
+        second = s[t.JsonPayload].model_validate(
             {"apply_changes": apply, "check_only": check, "dry_run": dry_run},
         )
         expected = dry_run or check or not apply
@@ -182,7 +182,7 @@ class TestsFlextInfraServiceBaseAlias:
     @staticmethod
     def test_command_aliases_payload_and_serialization(tmp_path: t.Infra.Path) -> None:
         """The MRO preserves aliases, computed values and the public payload shape."""
-        service = FlextInfraServiceBase[t.JsonPayload].model_validate(
+        service = s[t.JsonPayload].model_validate(
             {
                 "repository_root": tmp_path,
                 "apply": True,
@@ -228,7 +228,7 @@ class TestsFlextInfraServiceBaseAlias:
     @staticmethod
     def test_command_default_payload_omits_optional_fields() -> None:
         """Default construction retains the original compact command payload."""
-        service = FlextInfraServiceBase[t.JsonPayload]()
+        service = s[t.JsonPayload]()
         context = m.Infra.CommandContext()
         tm.that(
             service.command_payload(),

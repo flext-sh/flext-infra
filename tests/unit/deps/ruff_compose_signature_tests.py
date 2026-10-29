@@ -193,7 +193,7 @@ class TestsFlextInfraRuffProjectPolicy:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(Sequence[str]),
+                    t.TypeForm(Sequence[str]),
                 ),
             }),
         )

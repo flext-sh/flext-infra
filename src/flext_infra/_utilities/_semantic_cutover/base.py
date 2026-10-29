@@ -271,7 +271,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             ),
             c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT: lambda: (
                 cls._plan_private_imports(
-                    root, sources, selected, project=rope_workspace.project
+                    root, sources, selected, project=rope_workspace.rope_project
                 )
             ),
             c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(

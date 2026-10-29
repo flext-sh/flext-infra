@@ -40,6 +40,7 @@ class FlextInfraTypesBase:
     type PythonMemberKind = Literal["alias", "attribute", "class", "function"]
     "How a module binds one top-level name: imported, assigned, or defined."
     type AstModule = _ast.Module
+    type AstNode = _ast.AST
     "The one stdlib syntax tree of one exact module source in a generation run."
     type AstStatement = _ast.stmt
     "One statement node of a rope-parsed module tree."

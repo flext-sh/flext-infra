@@ -22,11 +22,11 @@ from uuid import uuid4
 
 from flext_cli import cli
 
-from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 
 
-class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
+class FlextInfraCodemodAstScan(s[t.Cli.ResultValue]):
     """Run the ast-grep cascade and the sed-by-list cascade of the rules tree."""
 
     rules: str | None = m.Field(
