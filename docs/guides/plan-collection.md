@@ -73,3 +73,27 @@ mode, while retaining exact snapshots for unrelated inputs. Manifest, receipt an
 canonical text reads, including absence, are bound on first read so a concurrent edit
 cannot be adopted as a newer precondition for stale output. Collection reports are not
 evidence that semantic reconciliation is complete.
+
+## Verification without provider homes
+
+The existing collection command's `--check` mode verifies an enabled collection's
+published canonical manifest and artifacts without visiting source providers or the
+optional home projection. It performs no publication, directory creation, pruning or
+retirement. Disabled collection is an explicit verification error; ordinary disabled
+generation retains its existing removal-only contract.
+
+A successful check requires the current typed source associations and complete source
+coverage recorded by a real collection. A legacy manifest without that evidence,
+private inventory, configuration drift, unsafe locators, absent artifacts or changed
+content/provenance fails. A changed manifest schema requires producer regeneration
+before CI; verification never upgrades or repairs evidence. A cold CI checkout verifies
+committed evidence without claiming that it collected a provider it cannot access.
+Local collection still requires every configured source and never silently skips an
+unavailable provider.
+
+Verification binds the original configuration, manifest and published artifact reads
+and rechecks those observations before success. Collection binds the original
+configuration and source observations to the existing publication guards. The manifest
+stores a digest of the typed associations and their collection coverage, not private
+provider roots or execution status. Semantic reconciliation and Beads closure remain
+separate operations.

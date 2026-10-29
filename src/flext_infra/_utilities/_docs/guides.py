@@ -45,6 +45,10 @@ class FlextInfraUtilitiesDocsGuides:
 
         """
         result = r[m.Infra.CodegenFilePlan | None]
+        owner = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(repository_root)
+        if owner.failure:
+            return result.from_failure(owner)
+        repository_root = owner.value
         loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
             repository_root
         )

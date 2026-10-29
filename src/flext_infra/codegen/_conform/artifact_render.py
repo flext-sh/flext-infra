@@ -544,16 +544,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 m.Infra.StaticTextRenderSpec(),
             )
         if entry.bootstrap_distribution is not None:
-            bootstrap = u.Infra.workspace_bootstrap_requirements(
-                render_inputs.target.root,
-                render_inputs.workspace,
-                entry.bootstrap_distribution,
+            return self._bootstrap_rendered_source(
+                render_inputs,
+                entry,
                 planned_manifests=planned_manifests,
-            )
-            if bootstrap.failure:
-                return r[str].from_failure(bootstrap)
-            return self.render_artifact_source(
-                render_inputs.codegen, entry, bootstrap.value
             )
         artifact_context: p.Result[p.Model] = (
             self._release_policy_render_inputs(render_inputs.target.root)
@@ -584,6 +578,31 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             destination=destination,
             failure_prefix=failure_prefix,
             template_source=template.value,
+        )
+
+    def _bootstrap_rendered_source(
+        self,
+        render_inputs: m.Infra.CodegenRenderInputs,
+        entry: m.Infra.TemplateEntrySpec,
+        *,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan],
+    ) -> p.Result[str]:
+        """Render an executor-bootstrap artifact from its declared closure.
+
+        Returns:
+            The rendered content.
+
+        """
+        bootstrap = u.Infra.workspace_bootstrap_requirements(
+            render_inputs.target.root,
+            render_inputs.workspace,
+            entry.bootstrap_distribution,
+            planned_manifests=planned_manifests,
+        )
+        if bootstrap.failure:
+            return r[str].from_failure(bootstrap)
+        return self.render_artifact_source(
+            render_inputs.codegen, entry, bootstrap.value
         )
 
     @staticmethod

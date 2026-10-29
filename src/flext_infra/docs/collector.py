@@ -11,6 +11,9 @@ from typing import TYPE_CHECKING
 from flext_infra import m, r, u
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
     from flext_infra import p
 
 
@@ -25,11 +28,20 @@ class FlextInfraDocCollector:
             The resulting ``p.Result[bool]``.
 
         """
-        configuration = cls._configuration(request)
+        inputs: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        configuration = cls._configuration(request, inputs=inputs)
         if configuration.failure:
             return r[bool].from_failure(configuration)
         root = request.repository_root
-        bundle = u.Infra.docs_collect_plan_files(root, configuration.value)
+        if request.check:
+            return r[bool].ok(
+                u.Infra.docs_verify_plan_collection(
+                    root, configuration.value, inputs=tuple(inputs.values()),
+                ),
+            )
+        bundle = u.Infra.docs_collect_plan_files(
+            root, configuration.value, inputs=tuple(inputs.values()),
+        )
         incomplete = tuple(
             item for item in bundle.coverage if item.adapter == "private-inventory"
         )
@@ -53,6 +65,8 @@ class FlextInfraDocCollector:
     @staticmethod
     def _configuration(
         request: m.Infra.DocsCollectRequest,
+        *,
+        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.PlanCollectionConfig]:
         """Require a physical root and parse the collection configuration.
 
@@ -76,6 +90,7 @@ class FlextInfraDocCollector:
         )
         if captured.failure:
             return result_type.from_failure(captured)
+        inputs[configuration_path] = captured.value
         if captured.value.content is None:
             return result_type.fail(
                 f"plan collection configuration is absent: {configuration_path}",

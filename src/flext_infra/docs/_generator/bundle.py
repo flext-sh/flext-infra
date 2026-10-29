@@ -213,12 +213,16 @@ class FlextInfraDocsGeneratorBundle:
         contract = u.Infra.docs_make_contract_plan(repository_root, declared_files)
         if contract.failure:
             return result_type.from_failure(contract)
-        contract_files = () if contract.value is None else (contract.value,)
+        contract_plan = contract.value
+        contract_files = () if contract_plan is None else (contract_plan,)
         presentation_files = (*metadata.value, *contract_files)
         published_metadata = (
-            presentation_files
-            if any(scope.name == c.Infra.RK_ROOT for scope in scopes.value[0])
-            else metadata.value
+            *metadata.value,
+            *(
+                plan
+                for plan in contract_files
+                if any(scope.path == plan.project for scope in scopes.value[0])
+            ),
         )
         governance = cls._governance_source(repository_root)
         if governance.failure:
