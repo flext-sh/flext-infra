@@ -27,6 +27,7 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodNative
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -217,9 +218,9 @@ class FlextInfraUtilitiesFacadeMembers:
             )
         return None
 
-    @staticmethod
+    @classmethod
     def _annotation_kind(
-        value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+        cls, value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
     ) -> c.Infra.FacadeMemberKind | None:
         """Identify explicit annotation declarations before resolving their value.
 
@@ -271,13 +272,11 @@ class FlextInfraUtilitiesFacadeMembers:
             alias = runtime.annotation_alias_definition(origin)
         if declared_alias:
             return c.Infra.FacadeMemberKind.TYPE
-        return FlextInfraUtilitiesFacadeMembers._annotation_assignment_kind(
-            value, source_project=source_project
-        )
+        return cls._annotation_assignment_kind(value, source_project=source_project)
 
-    @staticmethod
+    @classmethod
     def _annotation_assignment_kind(
-        value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
+        cls, value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
     ) -> c.Infra.FacadeMemberKind | None:
         """Classify an assignment from its native annotation or value provenance.
 
@@ -298,19 +297,13 @@ class FlextInfraUtilitiesFacadeMembers:
                 origin,
             ):
                 return c.Infra.FacadeMemberKind.TYPE
-            if FlextInfraUtilitiesFacadeMembers._annotated_class_value(
-                value, source_project=source_project
-            ):
+            if cls._annotated_class_value(value, source_project=source_project):
                 return c.Infra.FacadeMemberKind.TYPE
         if (
-            FlextInfraUtilitiesFacadeMembers._typing_assigned_value(
-                value, source_project=source_project
-            )
+            cls._typing_assigned_value(value, source_project=source_project)
             # A prova Annotated estrita (operando classe + metadata) vale
             # também quando a resolução por anotação não se aplica.
-            or FlextInfraUtilitiesFacadeMembers._annotated_class_value(
-                value, source_project=source_project
-            )
+            or cls._annotated_class_value(value, source_project=source_project)
         ):
             return c.Infra.FacadeMemberKind.TYPE
         return None
@@ -817,9 +810,20 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         del cls, source_project
+        try:
+            attributes = facade.get_attributes()
+        except tuple(FlextInfraUtilitiesRopeRuntime.rope_hierarchy_errors()) + tuple(
+            FlextInfraUtilitiesRopeRuntime.rope_runtime_errors()
+        ):
+            # A candidate facade whose base chain crosses lazy package
+            # letters may have an MRO that is not computable in this view;
+            # its inherited members are then unknown, and the composition
+            # treats the facade as contributing none (the base project's
+            # own pass owns the on-disk resolution).
+            return {}
         return {
             name: facade.get_attribute(name)
-            for name in facade.get_attributes()
+            for name in attributes
             if not name.startswith("_")
         }
 

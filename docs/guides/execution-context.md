@@ -2526,6 +2526,13 @@ native resource it returns without maintaining another election algorithm.
 Absolute and relative lookups share one native-folder validation boundary.
 Absent relative context remains `None`: resource lookup reports absence and
 module lookup raises Rope's native missing-module exception.
+An unavailable provider is never replaced by the first sibling declaring the
+same class name, whether that sibling is found in candidate strings or on disk.
+Class moves must publish their native consumer rewires in the same candidate
+before dependent base projections run. The external-reference owner reads the
+module elected by the injected project and retains its resource identity; a
+missing provider or failed binding escapes unchanged. Captured file contents and
+lazy-export aliases are not evidence of an old-to-new declaration relationship.
 Restructuring overrides use the SDK's native input types. The existing module
 admission exposes semantic capabilities to filters, and identity alternatives
 share one injected default matcher.

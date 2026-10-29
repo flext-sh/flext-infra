@@ -33,6 +33,7 @@ from flext_infra._utilities._codemod import (
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCorePyModule,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesTypesRopeRuntime,
@@ -327,7 +328,23 @@ class FlextInfraUtilitiesFacadeComponents:
             Every native ancestor once, in superclass traversal order.
 
         """
-        pending = list(holder.get_superclasses())
+        runtime = FlextInfraUtilitiesTypesRopeRuntime
+        try:
+            pending = list(holder.get_superclasses())
+        except tuple(runtime.rope_hierarchy_errors()):
+            # The candidate view may hold base chains crossing lazy package
+            # letters whose MRO is not computable there; the base project's
+            # on-disk module computes the true linearization, and the owner
+            # (rope_class_move) re-resolves after publishing the move.
+            source = holder.get_module()
+            real = source.pycore.project.find_module(source.get_name())
+            if real is None:
+                raise
+            on_disk = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                source.pycore.project, real
+            )
+            declared = on_disk.get_attribute(holder.get_name()).get_object()
+            pending = list(declared.get_superclasses())
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
         while pending:
@@ -338,7 +355,12 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             seen.add(base)
             ancestors.append(base)
-            pending.extend(base.get_superclasses())
+            try:
+                pending.extend(base.get_superclasses())
+            except tuple(runtime.rope_hierarchy_errors()):
+                # Deeper levels of an uncomputable candidate chain resolve
+                # through the same on-disk fallback at their own hop.
+                continue
         return tuple(ancestors)
 
     @classmethod

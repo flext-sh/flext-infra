@@ -53,7 +53,9 @@ class TestsFlextInfraRopeContractBindings:
                 "'Payload | OtherPayload'",
             ),
             (
-                "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from pydantic import Field as Tag\nelse:\n    from pydantic import Field as Tag",
+                "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n"
+                "    from pydantic import Field as Tag\nelse:\n"
+                "    from pydantic import Field as Tag",
                 "Tag(discriminator='kind')",
                 "Payload | OtherPayload",
             ),
@@ -72,11 +74,14 @@ class TestsFlextInfraRopeContractBindings:
             "from typing import Annotated, Literal\n"
             "from pydantic import BaseModel\n"
             f"{imports}\n"
-            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
+            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n"
+            "    FAILED = 'failed'\n"
             "class Payload(BaseModel):\n    kind: Literal[State.READY, State.FAILED]\n"
             "class OtherPayload(BaseModel):\n    kind: Literal['other']\n"
-            f"class Envelope(BaseModel):\n    payload: Annotated[{variant}, {metadata}]\n"
-            "evidence = Envelope.model_validate({'payload': {'kind': 'ready'}}).model_dump_json()\n"
+            "class Envelope(BaseModel):\n"
+            f"    payload: Annotated[{variant}, {metadata}]\n"
+            "evidence = Envelope.model_validate({'payload': "
+            "{'kind': 'ready'}}).model_dump_json()\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
@@ -101,18 +106,25 @@ class TestsFlextInfraRopeContractBindings:
         package = path.parent.name
         sources = {
             models: (
-                "from enum import StrEnum, unique\nfrom typing import Literal\nfrom pydantic import BaseModel\n"
-                "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
-                "class Payload(BaseModel):\n    kind: Literal[State.READY, State.FAILED]\n"
+                "from enum import StrEnum, unique\nfrom typing import Literal\n"
+                "from pydantic import BaseModel\n"
+                "@unique\nclass State(StrEnum):\n    READY = 'ready'\n"
+                "    FAILED = 'failed'\n"
+                "class Payload(BaseModel):\n"
+                "    kind: Literal[State.READY, State.FAILED]\n"
                 "class OtherPayload(BaseModel):\n    kind: Literal['other']\n"
                 "type Variants = Payload | OtherPayload\n"
             ),
-            metadata: "import pydantic as pd\nDiscriminatorMetadata = pd.Field(discriminator='kind')\n",
+            metadata: (
+                "import pydantic as pd\n"
+                "DiscriminatorMetadata = pd.Field(discriminator='kind')\n"
+            ),
             path: (
                 "from typing import Annotated\nfrom pydantic import BaseModel\n"
                 f"from {package}.variant_models import Variants\n"
                 f"from {package}.discriminator_metadata import DiscriminatorMetadata\n"
-                "class Envelope(BaseModel):\n    payload: Annotated[Variants, DiscriminatorMetadata]\n"
+                "class Envelope(BaseModel):\n"
+                "    payload: Annotated[Variants, DiscriminatorMetadata]\n"
             ),
         }
         for target, source in sources.items():
@@ -120,7 +132,11 @@ class TestsFlextInfraRopeContractBindings:
         command = (
             sys.executable,
             "-c",
-            f"from {package}.consumer import Envelope\nprint(Envelope.model_validate({{'payload': {{'kind': 'ready'}}}}).model_dump_json())\n",
+            (
+                f"from {package}.consumer import Envelope\n"
+                "print(Envelope.model_validate({'payload': "
+                "{'kind': 'ready'}}).model_dump_json())\n"
+            ),
         )
         options = m.Cli.ProcessOptions(env={"PYTHONPATH": str(path.parent.parent)})
         before = tm.ok(
@@ -161,11 +177,14 @@ class TestsFlextInfraRopeContractBindings:
         source = (
             "from enum import StrEnum, unique\nfrom typing import Literal\n"
             "from pydantic import BaseModel, ConfigDict, Field\n"
-            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
+            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n"
+            "    FAILED = 'failed'\n"
             "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=False, validate_default=True)\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=False, "
+            "validate_default=True)\n"
             f"    kind: Literal[State.READY, State.FAILED] = {default}\n"
-            "evidence = (Payload().model_dump_json(), Payload.model_fields['kind'].description, "
+            "evidence = (Payload().model_dump_json(), "
+            "Payload.model_fields['kind'].description, "
             "Payload.model_json_schema()['properties']['kind']['default'])\n"
             "preserved_member = Payload().kind is State.READY\n"
             "preserved_dump_member = Payload().model_dump()['kind'] is State.READY\n"
@@ -230,10 +249,8 @@ class TestsFlextInfraRopeContractBindings:
         [
             "Choice[StateAlias.READY, StateAlias.FAILED]",
             (
-                (
-                    "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], ",
-                    "Field(description='Retained')]",
-                ),
+                "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], "
+                "Field(description='Retained')]"
             ),
             "list[Choice[StateAlias.READY, StateAlias.FAILED]]",
             "Choice[StateAlias.READY, StateAlias.FAILED] | None",
@@ -637,36 +654,62 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "declaration",
+        "source",
         [
-            "value: str = Field(description='Required input')",
-            "value: str = Field(..., min_length=2)",
-            "value: str = Field(default=..., alias='wire', description='Wire input')",
-            "value: 'str' = Field(min_length=2)",
+            *(
+                "from pydantic import BaseModel, Field, ValidationError\n"
+                "class Payload(BaseModel):\n"
+                f"    {declaration}\n"
+                "    optional: str | None = Field(default=None)\n"
+                "    generated: str = Field(default_factory=str)\n"
+                "first = Payload.model_validate({'value': 'valid', 'wire': 'valid'})\n"
+                "raw = first.model_dump_json(by_alias=True)\n"
+                "restored = Payload.model_validate_json(raw)\n"
+                "try:\n"
+                "    Payload.model_validate({})\n"
+                "except ValidationError as error:\n"
+                "    rejected = tuple((item['type'], item['loc']) "
+                "for item in error.errors())\n"
+                "evidence = (Payload.model_json_schema(), raw, "
+                "restored.model_dump_json(by_alias=True), rejected)\n"
+                for declaration in (
+                    "value: str = Field(description='Required input')",
+                    "value: str = Field(..., min_length=2)",
+                    "value: str = Field(default=..., alias='wire', "
+                    "description='Wire input')",
+                    "value: 'str' = Field(min_length=2)",
+                )
+            ),
+            *(
+                "from typing import Annotated\n"
+                "from pydantic import BaseModel, Field, ValidationError\n"
+                "class Payload(BaseModel):\n"
+                "    value: Annotated[str, Field(default_factory=str)] = "
+                f"Field({metadata})\n"
+                "try:\n"
+                "    omitted = Payload().model_dump_json()\n"
+                "except ValidationError as error:\n"
+                "    omitted = tuple(item['type'] for item in error.errors())\n"
+                "evidence = (omitted, Payload(value='supplied').model_dump_json(), "
+                "Payload.model_json_schema())\n"
+                for metadata in ("description='Value'", "default_factory=None")
+            ),
+            (
+                "from pydantic import BaseModel, Field\n"
+                "class Payload(BaseModel):\n"
+                "    first: tuple[str, ...] = Field((), description='First')\n"
+                "    second: str | None = Field(description='Second', "
+                "default=None, validate_default=True)\n"
+                "evidence = (Payload().model_dump_json(), "
+                "Payload.model_json_schema())\n"
+            ),
         ],
     )
-    def test_required_metadata_preserves_native_validation_and_schema(
+    def test_field_metadata_preserves_native_validation_and_schema(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        declaration: str,
+        source: str,
     ) -> None:
-        """Required fields retain metadata, aliases, failures and JSON behavior."""
-        source = (
-            "from pydantic import BaseModel, Field, ValidationError\n"
-            "class Payload(BaseModel):\n"
-            f"    {declaration}\n"
-            "    optional: str | None = Field(default=None)\n"
-            "    generated: str = Field(default_factory=str)\n"
-            "first = Payload.model_validate({'value': 'valid', 'wire': 'valid'})\n"
-            "raw = first.model_dump_json(by_alias=True)\n"
-            "restored = Payload.model_validate_json(raw)\n"
-            "try:\n"
-            "    Payload.model_validate({})\n"
-            "except ValidationError as error:\n"
-            "    rejected = tuple((item['type'], item['loc']) "
-            "for item in error.errors())\n"
-            "evidence = (Payload.model_json_schema(), raw, "
-            "restored.model_dump_json(by_alias=True), rejected)\n"
-        )
+        """Required, factory-precedence and composed fields retain native behavior."""
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
@@ -772,45 +815,6 @@ class TestsFlextInfraRopeContractBindings:
         if arguments in {"(), default=()", "default=(), default_factory=tuple"}:
             with pytest.raises(TypeError):
                 runpy.run_path(str(path))
-
-    @staticmethod
-    def test_defaulted_metadata_composes_distinct_shapes_in_one_native_epoch(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-    ) -> None:
-        """Native sequential shapes never overwrite another field's proposed edit."""
-        source = (
-            "from pydantic import BaseModel, Field\n"
-            "class Payload(BaseModel):\n"
-            "    first: tuple[str, ...] = Field((), description='First')\n"
-            "    second: str | None = Field(description='Second', "
-            "default=None, validate_default=True)\n"
-            "evidence = (Payload().model_dump_json(), Payload.model_json_schema())\n"
-        )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        "metadata", ["description='Value'", "default_factory=None"]
-    )
-    def test_required_metadata_preserves_annotation_factory_precedence(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        metadata: str,
-    ) -> None:
-        """Moving assignment metadata does not invent or revive a factory."""
-        source = (
-            "from typing import Annotated\n"
-            "from pydantic import BaseModel, Field, ValidationError\n"
-            "class Payload(BaseModel):\n"
-            "    value: Annotated[str, Field(default_factory=str)] = "
-            f"Field({metadata})\n"
-            "try:\n"
-            "    omitted = Payload().model_dump_json()\n"
-            "except ValidationError as error:\n"
-            "    omitted = tuple(item['type'] for item in error.errors())\n"
-            "evidence = (omitted, Payload(value='supplied').model_dump_json(), "
-            "Payload.model_json_schema())\n"
-        )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
     @pytest.mark.parametrize(

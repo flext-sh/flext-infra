@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import re
 import sys
 import time
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
@@ -774,6 +775,23 @@ class FlextInfraUtilitiesCodegenFacades(
             message = f"Subfacade has a noncanonical domain path: {directory}"
             raise ValueError(message)
         path = directory.parent / f"{directory.name.lstrip('_')}.py"
+        if not path.exists():
+            # The canonical singular does not exist: elect the existing
+            # sibling facade that already composes this family. Synthesizing
+            # a new name would fork the family publication and leave the real
+            # facade importing the dissolved part modules.
+            family_import = re.compile(
+                rf"from [\w.]*{re.escape(directory.name)} import\b"
+            )
+            for sibling in sorted(directory.parent.glob("*.py")):
+                if sibling.name == "__init__.py":
+                    continue
+                try:
+                    if family_import.search(sibling.read_text(encoding="utf-8")):
+                        path = sibling
+                        break
+                except OSError:
+                    continue
         owners = cls.family_subfacade_owners(project, directory)
         if len(owners) > 1:
             factory = FlextInfraUtilitiesRopeSourceBasesRuntime
