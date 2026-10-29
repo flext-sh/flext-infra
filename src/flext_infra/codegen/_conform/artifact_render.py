@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shlex
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
@@ -1050,25 +1049,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
-                setup_editable_sources=tuple(
-                    (
-                        shlex.quote(name).replace("$", "$$").replace("#", r"\#"),
-                        shlex
-                        .quote(
-                            f"{name} @ "
-                            + (
-                                source.expanduser()
-                                if source.expanduser().is_absolute()
-                                else target.root / source.expanduser()
-                            )
-                            .resolve()
-                            .as_uri()
-                        )
-                        .replace("$", "$$")
-                        .replace("#", r"\#"),
-                    )
-                    for name, source in codegen.toolchain.editable_sources.items()
-                ),
                 bootstrap_report_shell_literal=(
                     u.Infra.bootstrap_operation_report_shell_literal()
                 ),

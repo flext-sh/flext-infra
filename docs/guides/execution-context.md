@@ -2227,6 +2227,11 @@ declared through `toolchain.editable_sources` in the existing local codegen
 override layer. They must identify the same project name as their source
 manifest and cannot conflict with the selected FLEXT workspace. Production
 pins and locks remain unchanged; a plain setup restores the locked environment.
+The typed selection owner reads that override at setup time. Makefile rendering
+must not freeze its local paths or install a second projected selection before
+that owner validates the inputs. Bootstrapping the executor after frozen
+installation is a separate prerequisite: an older locked executor does not prove
+that the current override was consumed merely because setup exits successfully.
 
 For the operator-directed causal repair of 2026-10-29, the original Make/gen/mod
 plan remains active. Rope and the declared FLEXT suppliers are loaded editable

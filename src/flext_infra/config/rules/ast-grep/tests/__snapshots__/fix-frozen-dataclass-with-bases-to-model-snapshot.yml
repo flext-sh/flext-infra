@@ -14,30 +14,6 @@ snapshots:
       style: primary
       start: 26
       end: 79
-    - source: dataclass
-      style: secondary
-      start: 27
-      end: 36
-    - source: frozen
-      style: secondary
-      start: 37
-      end: 43
-    - source: "True"
-      style: secondary
-      start: 44
-      end: 48
-    - source: frozen=True
-      style: secondary
-      start: 37
-      end: 48
-    - source: (frozen=True)
-      style: secondary
-      start: 36
-      end: 49
-    - source: dataclass(frozen=True)
-      style: secondary
-      start: 27
-      end: 49
     - source: "@dataclass(frozen=True)"
       style: secondary
       start: 26

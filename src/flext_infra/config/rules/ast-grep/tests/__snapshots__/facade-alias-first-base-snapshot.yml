@@ -12,33 +12,6 @@ snapshots:
       style: secondary
       start: 6
       end: 24
-    - source: __all__
-      style: secondary
-      start: 54
-      end: 61
-    - source: FlextMeltanoModels
-      style: secondary
-      start: 66
-      end: 84
-    - source: FlextMeltanoModels
-      style: secondary
-      start: 66
-      end: 84
-    - source: __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 54
-      end: 86
-    - source: __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 54
-      end: 86
-    - source: |
-        class FlextMeltanoModels(FlextCliModels, m):
-            pass
-        __all__ = ["FlextMeltanoModels"]
-      style: secondary
-      start: 0
-      end: 87
     - source: m
       style: secondary
       start: 41
