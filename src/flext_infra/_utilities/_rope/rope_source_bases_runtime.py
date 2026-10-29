@@ -1097,11 +1097,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 source_path /= c.Infra.INIT_PY
             try:
                 source = source_path.read_text()
-                declared = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                    module_name,
-                    source_path,
-                    source,
-                    project=self._project,
+                declared = (
+                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                        module_name,
+                        source_path,
+                        source,
+                        project=self._project,
+                    )
                 )
             except (OSError, ValueError, TypeError):
                 return None
@@ -1660,6 +1662,62 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 depth + 1,
             )
 
+        def _moved_owner_module(
+            self,
+            target: str,
+            attributes: t.StrTuple,
+        ) -> p.Infra.RopeSemanticModule | None:
+            """Elect the parent facade module holding a moved provider class.
+
+            Owner moves dissolve part modules into their package facade; the
+            declared class keeps its attribute name there.
+
+            Returns:
+                The parent semantic module binding the attribute, or none.
+
+            """
+            parent, _, part = target.rpartition(".")
+            if not attributes or not part:
+                return None
+            # Owner moves publish the declaring class into the package facade
+            # module (the part stem without its ``_partN`` suffix and legacy
+            # spellings); the first candidate binding the attribute wins.
+            # Owner moves publish the declaring class into a sibling facade
+            # module of the same package; elect every sibling module resource
+            # deterministically and let the attribute binding decide.
+            candidates: tuple[str, ...] = (parent,)
+            parent_resource = self._project.find_module(parent)
+            if parent_resource is not None and parent_resource.is_folder():
+                candidates = (
+                    *tuple(
+                        f"{parent}.{child.name.removesuffix('.py')}"
+                        for child in sorted(
+                            parent_resource.get_children(), key=lambda item: item.name
+                        )
+                        if not child.is_folder()
+                        and child.name.endswith(".py")
+                        and not child.name.startswith("_")
+                    ),
+                    parent,
+                )
+            for candidate in candidates:
+                candidate_resource = self._project.find_module(candidate)
+                if candidate_resource is None:
+                    continue
+                try:
+                    candidate_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        self._project,
+                        candidate_resource,
+                    )
+                    binding = candidate_module.get_attribute(attributes[0]).get_object()
+                except Exception:
+                    continue
+                if FlextInfraUtilitiesRopeRuntime.py_class(binding):
+                    return FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                        candidate_module
+                    )
+            return None
+
         def _external_reference(
             self,
             target: str,
@@ -1681,7 +1739,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             resource = self._project.find_module(target)
-            module = self._project.get_module(target)
+            if resource is None:
+                # A dissolved move source (owner moved into a sibling facade
+                # module) no longer exists as a module; the declaring class
+                # lives in the parent package's facade module under the same
+                # attribute name.
+                module = self._moved_owner_module(target, attributes)
+                if module is None:
+                    # Interpreter-provided roots (``builtins`` and siblings)
+                    # resolve through the native project, never through the
+                    # captured source set.
+                    module = self._project.get_module(target)
+            else:
+                module = self._project.get_module(target)
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,

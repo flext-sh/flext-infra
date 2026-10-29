@@ -198,7 +198,7 @@ class FlextInfraUtilitiesGitAttestation(
 
         """
         root = request.repository_root.resolve()
-        phase = c.Infra.CheckPhase(request.phase)
+        phase = request.phase
         gates = request.gates or ",".join(
             FlextInfraUtilitiesBase.selected_check_gates(
                 inputs.spec.make, c.Infra.CheckGateSet.CHECK, phase=phase

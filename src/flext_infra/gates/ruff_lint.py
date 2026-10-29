@@ -11,14 +11,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates import FlextInfraGate
 from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
+from flext_infra.gates.ruff_base import FlextInfraRuffGate
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraRuffLintGate(FlextInfraGate):
+class FlextInfraRuffLintGate(FlextInfraRuffGate):
     """Ruff Lint quality gate."""
 
     gate_id: ClassVar[str] = c.Infra.LINT
@@ -27,25 +27,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     # can_fix=False made workspace_check_gates skip it, so `make fix`
     # never applied a single lint fix and the command below was dead code.
     can_fix: ClassVar[bool] = True
-
-    @override
-    def _check_env(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> Mapping[str, str]:
-        """Keep native cache writes outside authenticated source candidates.
-
-        Returns:
-            The resulting ``Mapping[str, str]``.
-
-        """
-        return {
-            **(super()._check_env(project_dir, ctx) or {}),
-            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
-                u.Infra.ruff_cache_directory(project_dir)
-            ),
-        }
 
     @override
     def _get_check_dirs(

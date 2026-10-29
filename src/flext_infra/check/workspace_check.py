@@ -161,7 +161,7 @@ class FlextInfraWorkspaceChecker(
             The complete native checker result.
 
         """
-        phase = c.Infra.CheckPhase(params.phase)
+        phase = params.phase
         selected_files_result = self._resolve_selected_files(params)
         if selected_files_result.failure:
             return r[m.Infra.CheckReportSummary].from_failure(selected_files_result)

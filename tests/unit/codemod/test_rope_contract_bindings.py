@@ -163,10 +163,12 @@ class TestsFlextInfraRopeContractBindings:
             "from pydantic import BaseModel, ConfigDict, Field\n"
             "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
             "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=False, validate_default=True)\n"
             f"    kind: Literal[State.READY, State.FAILED] = {default}\n"
-            "evidence = (Payload().model_dump_json(), Payload.model_fields['kind'].description, Payload.model_json_schema()['properties']['kind']['default'])\n"
-            "primitive = type(Payload().kind) is str\n"
+            "evidence = (Payload().model_dump_json(), Payload.model_fields['kind'].description, "
+            "Payload.model_json_schema()['properties']['kind']['default'])\n"
+            "preserved_member = Payload().kind is State.READY\n"
+            "preserved_dump_member = Payload().model_dump()['kind'] is State.READY\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
@@ -180,7 +182,8 @@ class TestsFlextInfraRopeContractBindings:
         path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
         after = runpy.run_path(str(path))
         tm.that(after["evidence"], eq=before)
-        tm.that(after["primitive"], eq=True)
+        tm.that(after["preserved_member"], eq=True)
+        tm.that(after["preserved_dump_member"], eq=True)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -201,10 +204,12 @@ class TestsFlextInfraRopeContractBindings:
         source = (
             "from enum import StrEnum, unique\nfrom typing import Literal\n"
             "from pydantic import BaseModel, ConfigDict, Field\n"
-            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
+            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n"
+            "    FAILED = 'failed'\n"
             "DEFAULT = 'ready'\ndef produce():\n    return 'ready'\n"
             "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=False, "
+            "validate_default=True)\n"
             f"    kind: Literal[State.READY, State.FAILED] = {default}\n"
             "evidence = Payload().model_dump_json()\n"
         )
@@ -224,7 +229,12 @@ class TestsFlextInfraRopeContractBindings:
         "annotation",
         [
             "Choice[StateAlias.READY, StateAlias.FAILED]",
-            "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], Field(description='Retained')]",
+            (
+                (
+                    "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], ",
+                    "Field(description='Retained')]",
+                ),
+            ),
             "list[Choice[StateAlias.READY, StateAlias.FAILED]]",
             "Choice[StateAlias.READY, StateAlias.FAILED] | None",
             "Choice[ready, failed]",
@@ -249,13 +259,20 @@ class TestsFlextInfraRopeContractBindings:
             "ready = State.READY\n"
             "failed = State.FAILED\n"
             "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=False, "
+            "validate_default=True)\n"
             f"    value: {annotation} = {value}\n"
             f"parsed = Payload.model_validate({{'value': {value}}})\n"
             "evidence = (parsed.model_dump_json(), Payload().model_dump_json(), "
             "Payload.model_fields['value'].description)\n"
-            "stored_primitive = (all(type(item) is str for item in parsed.value) "
-            "if isinstance(parsed.value, list) else type(parsed.value) is str)\n"
+            "stored_members = (all(item is State.READY for item in parsed.value) "
+            "if isinstance(parsed.value, list) else parsed.value is State.READY)\n"
+            "dumped = parsed.model_dump()['value']\n"
+            "dumped_members = (all(item is State.READY for item in dumped) "
+            "if isinstance(dumped, list) else dumped is State.READY)\n"
+            "decoded = Payload.model_validate_json(parsed.model_dump_json()).value\n"
+            "decoded_members = (all(item is State.READY for item in decoded) "
+            "if isinstance(decoded, list) else decoded is State.READY)\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
@@ -270,7 +287,9 @@ class TestsFlextInfraRopeContractBindings:
         path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
         after = runpy.run_path(str(path))
         tm.that(after["evidence"], eq=before)
-        tm.that(after["stored_primitive"], eq=True)
+        tm.that(after["stored_members"], eq=True)
+        tm.that(after["dumped_members"], eq=True)
+        tm.that(after["decoded_members"], eq=True)
         tm.that(
             tm.ok(
                 u.Infra.plan_contract_rules(
@@ -294,7 +313,8 @@ class TestsFlextInfraRopeContractBindings:
                     "class OtherPayload(BaseModel):\n"
                     "    kind: Literal['other']\n"
                     "Variants = Payload | OtherPayload\n"
-                    "DiscriminatorMetadata = Field(description='Retained', discriminator='kind')\n"
+                    "DiscriminatorMetadata = Field(description='Retained', "
+                    "discriminator='kind')\n"
                     "class Envelope(BaseModel):\n"
                     "    payload: Annotated[Variants, DiscriminatorMetadata]\n"
                 ),
@@ -386,7 +406,8 @@ class TestsFlextInfraRopeContractBindings:
             "from pydantic import BaseModel, ConfigDict\n"
             f"from {path.parent.name}.enum_owner import Ready, Waiting\n"
             "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            "    model_config = ConfigDict(strict=True, "
+            "use_enum_values=False, validate_default=True)\n"
             "    kind: Literal[Ready, Waiting] = Ready\n"
         )
         owner.write_text(provider, encoding=c.DEFAULT_ENCODING)
@@ -397,8 +418,11 @@ class TestsFlextInfraRopeContractBindings:
             (
                 f"from {path.parent.name}.consumer import Payload\n"
                 f"from {path.parent.name}.enum_owner import Ready\n"
-                "print(Payload.model_validate({'kind': Ready}).model_dump_json())\n"
+                "parsed = Payload.model_validate({'kind': Ready})\n"
+                "print(parsed.model_dump_json())\n"
                 "print(Payload().model_dump_json())\n"
+                "print(parsed.kind is Ready, Payload().kind is Ready, "
+                "parsed.model_dump()['kind'] is Ready)\n"
             ),
         )
         options = m.Cli.ProcessOptions(env={"PYTHONPATH": str(path.parent.parent)})

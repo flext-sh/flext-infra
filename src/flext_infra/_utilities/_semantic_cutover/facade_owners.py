@@ -77,9 +77,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             raise ValueError(msg)
         classes: MutableMapping[str, str] = {}
         with FlextInfraUtilitiesRopeCore.open_import_project(source_root) as project:
-            for name in cls._module_public_exports(
-                modules, package, project=project
-            ):
+            for name in cls._module_public_exports(modules, package, project=project):
                 owner = cls._facade_letter_class(
                     modules, package, name, project=project
                 )

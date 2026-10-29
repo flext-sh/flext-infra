@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates.ruff_base import FlextInfraRuffGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,32 +18,13 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraRuffFormatGate(FlextInfraGate):
+class FlextInfraRuffFormatGate(FlextInfraRuffGate):
     """Gate for Ruff formatter checks and fixes."""
 
     gate_id: ClassVar[str] = c.Infra.FORMAT
     gate_name: ClassVar[str] = "Ruff Format"
     can_fix: ClassVar[bool] = True
     union_capable: ClassVar[bool] = True
-
-    @override
-    def _check_env(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> Mapping[str, str]:
-        """Keep native cache writes outside authenticated source candidates.
-
-        Returns:
-            The resulting ``Mapping[str, str]``.
-
-        """
-        return {
-            **(super()._check_env(project_dir, ctx) or {}),
-            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
-                u.Infra.ruff_cache_directory(project_dir)
-            ),
-        }
 
     @override
     def _build_check_command(

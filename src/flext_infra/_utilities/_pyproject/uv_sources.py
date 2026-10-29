@@ -89,21 +89,40 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             for index, entry in enumerate(
                 cls.dependency_group_entries(u.Cli.toml_unwrap_item(original))
             ):
-                if not isinstance(entry, str):
-                    continue
-                parsed = Requirement(entry)
-                urls = sources.get(canonicalize_name(parsed.name))
-                if parsed.url is None or urls is None:
-                    continue
-                if len(urls) != 1:
-                    message = f"selected source URLs are ambiguous: {parsed.name}"
-                    raise ValueError(message)
-                selected_url = next(iter(urls))
-                if parsed.url != selected_url:
-                    parsed.url = selected_url
-                    original[index] = str(parsed)
+                replacement = cls._selected_source_requirement(entry, sources)
+                if replacement is not None:
+                    original[index] = replacement
                     changed = True
         return changed
+
+    @staticmethod
+    def _selected_source_requirement(
+        entry: str | m.Infra.DependencyGroupInclude,
+        sources: Mapping[str, set[str]],
+    ) -> str | None:
+        """Rewrite only the selected URL, preserving the native requirement grammar.
+
+        Returns:
+            The replacement, or no change for unchanged or unselected entries.
+
+        Raises:
+            ValueError: When selected overrides declare conflicting source URLs.
+
+        """
+        if not isinstance(entry, str):
+            return None
+        parsed = Requirement(entry)
+        urls = sources.get(canonicalize_name(parsed.name))
+        if parsed.url is None or urls is None:
+            return None
+        if len(urls) != 1:
+            message = f"selected source URLs are ambiguous: {parsed.name}"
+            raise ValueError(message)
+        selected_url = next(iter(urls))
+        if parsed.url == selected_url:
+            return None
+        parsed.url = selected_url
+        return str(parsed)
 
     @classmethod
     def document_requirement_lines(
