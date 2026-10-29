@@ -79,11 +79,13 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     *file.tracking_dependencies,
                 ))
             )
+            inputs = (*previous.inputs, *file.inputs)
             selected = file if ordered else previous
             files[file.path] = (
                 selected
                 if selected.before is previous.before
                 and dependencies == selected.tracking_dependencies
+                and inputs == selected.inputs
                 else m.Infra.CodegenFilePlan(
                     project=selected.project,
                     path=selected.path,
@@ -95,6 +97,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     tracking=selected.tracking,
                     index_before=selected.index_before,
                     tracking_dependencies=dependencies,
+                    inputs=inputs,
                 )
             )
         return tuple(files.values())

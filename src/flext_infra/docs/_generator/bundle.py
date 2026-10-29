@@ -25,6 +25,7 @@ class FlextInfraDocsGeneratorBundle:
     type _DocsPresentationInputs = tuple[
         m.Infra.CodegenBootstrapSource | None,
         tuple[m.Infra.CodegenFilePlan, ...],
+        tuple[m.Infra.CodegenFilePlan, ...],
     ]
     type _DocsRenderedInventory = tuple[
         list[_DocsScopeArtifacts], tuple[m.Infra.CodegenFilePlan, ...]
@@ -209,17 +210,27 @@ class FlextInfraDocsGeneratorBundle:
         metadata = cls._presentation_metadata(scopes.value[0], declared_files)
         if metadata.failure:
             return result_type.from_failure(metadata)
+        contract = u.Infra.docs_make_contract_plan(repository_root, declared_files)
+        if contract.failure:
+            return result_type.from_failure(contract)
+        contract_files = () if contract.value is None else (contract.value,)
+        presentation_files = (*metadata.value, *contract_files)
+        published_metadata = (
+            presentation_files
+            if any(scope.name == c.Infra.RK_ROOT for scope in scopes.value[0])
+            else metadata.value
+        )
         governance = cls._governance_source(repository_root)
         if governance.failure:
             return result_type.from_failure(governance)
         rendered = cls._rendered_scopes(
             repository_root,
             scopes.value,
-            (governance.value, metadata.value),
+            (governance.value, published_metadata, presentation_files),
         )
         if rendered.failure:
             return result_type.from_failure(rendered)
-        return result_type.ok((rendered.value, metadata.value))
+        return result_type.ok((rendered.value, published_metadata))
 
     @classmethod
     def _validated_scopes(
@@ -284,6 +295,7 @@ class FlextInfraDocsGeneratorBundle:
         presentation: FlextInfraDocsGeneratorBundle._DocsPresentationInputs = (
             None,
             (),
+            (),
         ),
     ) -> p.Result[list[_DocsScopeArtifacts]]:
         """Render one docs artifact set per selected scope.
@@ -293,20 +305,27 @@ class FlextInfraDocsGeneratorBundle:
 
         """
         selected, aggregate = scopes
-        governance_source, metadata_files = presentation
-        projections = {plan.project: plan for plan in metadata_files}
+        governance_source, metadata_files, declared_files = presentation
+        projections = {
+            plan.project: plan
+            for plan in metadata_files
+            if plan.path.name == c.PYPROJECT_FILENAME
+        }
         selected = tuple(
             u.Infra.docs_scope_from_sources(
                 scope,
                 metadata_projection=projections.get(scope.path),
                 governance_source=governance_source,
+                declared_files=declared_files,
             )
             for scope in selected
         )
         if any(scope.name == c.Infra.RK_ROOT for scope in selected):
             aggregate = tuple(
                 u.Infra.docs_scope_from_sources(
-                    scope, governance_source=governance_source
+                    scope,
+                    governance_source=governance_source,
+                    declared_files=declared_files,
                 )
                 for scope in aggregate
             )

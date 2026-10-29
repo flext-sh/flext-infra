@@ -2232,6 +2232,33 @@ must not freeze its local paths or install a second projected selection before
 that owner validates the inputs. Bootstrapping the executor after frozen
 installation is a separate prerequisite: an older locked executor does not prove
 that the current override was consumed merely because setup exits successfully.
+The executor's source-only bootstrap remains an implementation prerequisite,
+not a qualified capability. It must derive only the required local executor
+dependencies through the existing native declaration owners, retain the
+consumer's physical Python and preserve the original installer failure. A fresh
+process must then run the existing typed selection owner, validate the full
+graph and editable origins, and only then publish its receipt. CI rejects local
+binding. Neither step may write locks or qualify the dirty SDK. The native
+requirements artifact is declared once in the template catalog, where
+`bootstrap_distribution` identifies its executor and the destination key owns
+its path. Only a workspace that explicitly provides that distribution projects
+the artifact. The existing dependency owner derives its minimal local closure
+from `WorkspaceSpec` and PEP 621 declarations; the native DAG owner closes and
+orders it. Native pip reads the relative editable requirements with the supplier
+as its working directory and `--no-deps`, targeting the consumer's physical
+Python. Make derives the artifact location from the same declaration and never
+embeds a local override or its resolved directories. Read-only topology and
+manifest observations remain separate from effects through
+`CodegenFilePlan.inputs`; the existing publisher verifies them under its native
+file-change lock. Metadata ingress retains its original atomic source in
+`ProjectMetadataState`; repository and workspace elections retain those same
+observations and the configuration sources. The `.gitmodules` observation precedes
+native Git topology parsing and is verified before that election is accepted;
+capturing a newer file after deriving the workspace would not authenticate it.
+No Infra-authored manifest parser, second dependency graph or
+fake input destination is admitted. The original cold consumer setup and gates
+are required before acceptance. UV workspace-only export was rejected for this
+bootstrap because it cannot select the excluded path providers in ADR-030.
 
 For the operator-directed causal repair of 2026-10-29, the original Make/gen/mod
 plan remains active. Rope and the declared FLEXT suppliers are loaded editable
@@ -4127,15 +4154,14 @@ re-resolves third-party dependencies or replaces the consumer's locked SDK origi
 The setup composition must load this declared source owner in the same physical
 consumer environment, including on a cold installation, without Python-path shadows
 or borrowing another workspace's interpreter.
-After frozen provisioning, Make binds the explicitly declared
-`toolchain.editable_sources` with that environment's native pip before starting
-the source-selection process. That declaration includes the Infra executor and
-its required local suppliers; otherwise the frozen SDK would execute the local
-selection. CI rejects this local input before any binding. Each named distribution
-must already belong to the frozen environment. The existing FLEXT selector then
-binds only the remaining distributions, validates the entire selection and publishes
-its existing receipt. Already correct editable origins are observed through native
-PEP 610 metadata, without another installation or a separate inventory.
+After frozen provisioning, the executor bootstrap must satisfy the contract in
+[Generation Staging, Transaction Journals, and Modernization](#generation-staging-transaction-journals-and-modernization).
+The local `toolchain.editable_sources` declaration is consumed only by the fresh
+typed source-selection process, never captured in Makefile rendering. That owner
+validates the entire selection before publishing its existing receipt. Already
+correct editable origins are observed through native PEP 610 metadata, without
+another installation or a separate inventory. The bootstrap alone is not an
+editable-selection or dependency-qualification receipt.
 The bounded Make-bootstrap operation receives the same publication collaborators
 as generation; a missing publication capability is an error, never permission to
 edit the generated Makefile directly.
@@ -4380,8 +4406,19 @@ classes in different modules do not establish that relationship. Native scope,
 binding and ancestry queries own the proof. A missing or ambiguous required
 identity fails explicitly; no AST interpretation, physical `rglob` census,
 name-keyed ancestry reconstruction or fallback authorizes a composition result.
+Required declaration names filter native class scopes before binding inference:
+the selected namespace elects only its own name, and family modules elect only
+their explicit exports. Collect those final declaration identities before asking
+for ancestry. A known replacement does not retain the former class declaration;
+an unresolved final binding fails instead of silently emptying the required set.
+When the family exports no owned class, a unique valid namespace
+satisfies the composition contract without an MRO query; otherwise every native
+MRO witness must be valid before comparing the complete required set. This uses
+the same snapshot and adds no separate semantic index or cache. The native Make
+profile measured composition in the hot path; source changes alone do not prove
+an improvement or complete the public command.
 This is the active Rope-only cutover contract under ADR-028 Decision 17. At the
-2026-10-29 source inspection, `composes_family_package` still used the former
+initial 2026-10-29 source inspection, `composes_family_package` still used the former
 tree/class-info and name-traversal path. That implementation is migration input,
 not a permitted alternate engine, and this documentation update proves no runtime
 recovery or completed cutover. Qualification must rerun the public Make boundary

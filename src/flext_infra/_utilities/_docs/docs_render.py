@@ -29,6 +29,22 @@ from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
+    @staticmethod
+    def docs_make_contract(
+        make: m.Infra.MakeSpec,
+    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
+        """Render the typed command catalog with its original template observations.
+
+        Returns:
+            The rendered section and the exact template inputs.
+
+        """
+        return u.Cli.template_render_authenticated(
+            FlextInfraConfig.ssot_config_dir().parent
+            / "templates/docs/make_contract.md.j2",
+            make,
+        )
+
     _MIN_REPO_PARTS: ClassVar[int] = 2
 
     @staticmethod

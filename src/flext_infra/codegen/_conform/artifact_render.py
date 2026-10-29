@@ -492,6 +492,25 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ),
         )
 
+    def _candidate_manifests(
+        self,
+        planned: Sequence[m.Infra.CodegenFilePlan],
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Compose provider and current-phase manifests with original witnesses.
+
+        Returns:
+            The deduplicated pyproject manifests in render order.
+
+        """
+        return u.Infra.codegen_compose_file_plans(
+            tuple(
+                plan
+                for plan in (*(self.state.provider_plans or ()), *planned)
+                if plan.path.name == c.PYPROJECT_FILENAME
+            ),
+            ordered=True,
+        )
+
     def _rendered_artifact_source(
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
@@ -500,6 +519,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         destination: str,
         failure_prefix: str,
         project_context: m.Infra.ProjectRenderContext | None,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[str]:
         """Resolve one artifact render context and render its template source.
 
@@ -522,6 +542,18 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 render_inputs.codegen,
                 entry,
                 m.Infra.StaticTextRenderSpec(),
+            )
+        if entry.bootstrap_distribution is not None:
+            bootstrap = u.Infra.workspace_bootstrap_requirements(
+                render_inputs.target.root,
+                render_inputs.workspace,
+                entry.bootstrap_distribution,
+                planned_manifests=planned_manifests,
+            )
+            if bootstrap.failure:
+                return r[str].from_failure(bootstrap)
+            return self.render_artifact_source(
+                render_inputs.codegen, entry, bootstrap.value
             )
         artifact_context: p.Result[p.Model] = (
             self._release_policy_render_inputs(render_inputs.target.root)
@@ -1049,6 +1081,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
+                bootstrap_requirements=Path(
+                    codegen.templates.bootstrap_entry.destination
+                ),
                 bootstrap_report_shell_literal=(
                     u.Infra.bootstrap_operation_report_shell_literal()
                 ),

@@ -12,9 +12,7 @@ from contextvars import ContextVar
 from typing import ClassVar
 
 from flext_infra import p
-from flext_infra._utilities._rope.rope_runtime_base import (
-    FlextInfraUtilitiesRopeRuntimeBase,
-)
+from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase):

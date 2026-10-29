@@ -127,18 +127,14 @@ class FlextInfraUtilitiesCodemodProject(
         namespaces = tuple(
             nested.pyobject
             for top in cls.declared_class_scopes(module.get_scope())
-            for nested in cls.declared_class_scopes(top)
-            if nested.pyobject.get_name() == namespace
+            for nested in cls.declared_class_scopes(top, names=frozenset({namespace}))
         )
         if len(namespaces) != 1:
             msg = f"class {namespace} has no unique nested declaration in {facade_file}"
             raise ValueError(msg)
         types = FlextInfraUtilitiesTypesRopeRuntime
         owner = types.require_class_object(namespaces[0], str(facade_file))
-        reached = {
-            id(types.require_class_object(ancestor, f"ancestry of {namespace}"))
-            for ancestor in owner.get_mro()[1:]
-        }
+        required: set[int] = set()
         member = snapshots.workspace_source(snapshot, facade_file).member
         for path in snapshots.workspace_python_files(snapshot, member):
             if (
@@ -148,35 +144,60 @@ class FlextInfraUtilitiesCodemodProject(
             ):
                 continue
             declared = frozenset(snapshots.workspace_public_exports(snapshot, path))
+            if not declared:
+                continue
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 project, FlextInfraUtilitiesRopeRuntime.file_resource_at(project, path)
             )
-            if any(
-                id(scope.pyobject) not in reached
-                for scope in cls.declared_class_scopes(module.get_scope())
-                if scope.pyobject.get_name() in declared
-            ):
-                return False
-        return True
+            required.update(
+                id(scope.pyobject)
+                for scope in cls.declared_class_scopes(
+                    module.get_scope(), names=declared
+                )
+            )
+        if not required:
+            return True
+        reached = {
+            id(types.require_class_object(ancestor, f"ancestry of {namespace}"))
+            for ancestor in owner.get_mro()[1:]
+        }
+        return required <= reached
 
     @staticmethod
     def declared_class_scopes(
         scope: p.Infra.RopeScope,
+        *,
+        names: frozenset[str] | None = None,
     ) -> tuple[p.Infra.RopeScope, ...]:
         """Select direct class declarations retaining their final native binding.
+
+        Required names filter native scopes before resolving any binding object.
 
         Returns:
             Class scopes owned and still published under their declaring name.
 
+        Raises:
+            ValueError: A selected declaration has no resolved final binding.
+
         """
         bindings = scope.get_defined_names()
-        return tuple(
-            child
-            for child in scope.get_scopes()
-            if child.get_kind() == c.Infra.RopeScopeKind.CLASS
-            and (binding := bindings.get(child.pyobject.get_name())) is not None
-            and binding.get_object() is child.pyobject
-        )
+        unknown = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"
+        )()
+        selected: list[p.Infra.RopeScope] = []
+        for child in scope.get_scopes():
+            if child.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                continue
+            name = child.pyobject.get_name()
+            if names is not None and name not in names:
+                continue
+            binding = bindings.get(name)
+            if binding is None or (value := binding.get_object()) == unknown:
+                msg = f"class {name} has no resolved final native binding"
+                raise ValueError(msg)
+            if value is child.pyobject:
+                selected.append(child)
+        return tuple(selected)
 
     @staticmethod
     def codemod_source_path(root: Path, file_path: Path) -> Path:

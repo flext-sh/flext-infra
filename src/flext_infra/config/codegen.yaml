@@ -2011,6 +2011,13 @@ Infra:
     templates:
       root: project
       entries:
+        requirements-infra.txt:
+          source: base/requirements-infra.txt.j2
+          bootstrap_distribution: flext-infra
+          profiles: [ workspace ]
+          ownership:
+            owner: codegen
+            policy: full
         .github/ci-template/ci.yml:
           source: base/.github/ci-template/ci.yml.j2
           profiles: [ workspace ]

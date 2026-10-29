@@ -1386,8 +1386,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             (entry, path), present = resolved.value
             if not present or entry is None or path is None:
                 continue
-            if profile not in entry.profiles or (
-                entry.requires_release_protocol and not target.publishes_release
+            if (
+                profile not in entry.profiles
+                or (entry.requires_release_protocol and not target.publishes_release)
+                or not u.Infra.codegen_bootstrap_provider_available(entry, workspace)
             ):
                 if managed.policy != c.Infra.MANAGED_FILE_POLICY_FULL:
                     continue
@@ -1413,6 +1415,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     managed,
                     entry,
                     path,
+                    planned_manifests=self._candidate_manifests(planned),
                 )
             except (OSError, ValueError) as exception:
                 self._record_file_failure(
@@ -1551,8 +1554,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 f"artifact retirement requires full template ownership: {path}",
             )
         target = render_inputs.target
-        if target.make_profile in entry.profiles and (
-            not entry.requires_release_protocol or target.publishes_release
+        if (
+            target.make_profile in entry.profiles
+            and (not entry.requires_release_protocol or target.publishes_release)
+            and u.Infra.codegen_bootstrap_provider_available(
+                entry, render_inputs.workspace
+            )
         ):
             return result_type.fail(
                 f"applicable catalog artifact cannot be retired: {path}",
@@ -1571,6 +1578,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 desired_mode=None,
                 owner=managed.owner,
                 policy=managed.policy,
+                inputs=render_inputs.workspace.inputs,
             ),
         ))
 
@@ -1580,6 +1588,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         managed: m.Infra.ManagedFileSpec,
         entry: m.Infra.TemplateEntrySpec,
         path: Path,
+        *,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Render, compose, record, and plan one managed artifact.
 
@@ -1600,6 +1610,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 destination=entry.destination,
                 failure_prefix="",
                 project_context=None,
+                planned_manifests=planned_manifests,
             )
         )
         if rendered.failure:
@@ -1641,6 +1652,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             rendered_content,
             mode=managed.mode,
             ownership=managed,
+            inputs=(
+                ()
+                if entry.bootstrap_distribution is None
+                else (
+                    *render_inputs.workspace.inputs,
+                    *(
+                        state
+                        for plan in planned_manifests
+                        for state in (plan.before, *plan.inputs)
+                    ),
+                )
+            ),
         )
         if planned.success and names is not None:
             render_inputs.planned_direct_sources = names.value

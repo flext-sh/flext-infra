@@ -21,7 +21,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
-from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:

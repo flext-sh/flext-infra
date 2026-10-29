@@ -364,6 +364,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 tracking=file.tracking,
                 index_before=file.index_before,
                 tracking_dependencies=file.tracking_dependencies,
+                inputs=file.inputs,
             )
             for file in files
         )
@@ -406,7 +407,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             ),
             options=m.Infra.CodegenSourcePreviewOptions(
                 declared_files=files,
-                inputs=tuple(file.before for file in files),
+                inputs=tuple(
+                    state for file in files for state in (file.before, *file.inputs)
+                ),
             ),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:

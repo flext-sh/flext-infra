@@ -10,9 +10,7 @@ from pathlib import Path
 from typing import TypeGuard, TypeIs
 
 from flext_infra import c, p, t
-from flext_infra._utilities._rope.rope_runtime_base import (
-    FlextInfraUtilitiesRopeRuntimeBase,
-)
+from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):

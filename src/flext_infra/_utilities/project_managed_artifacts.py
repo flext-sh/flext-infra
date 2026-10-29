@@ -23,6 +23,23 @@ from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
 class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
 
+    @staticmethod
+    def codegen_bootstrap_provider_available(
+        entry: m.Infra.TemplateEntrySpec,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> bool:
+        """Apply a bootstrap artifact only where its executor is provided.
+
+        Returns:
+            True when the artifact applies to this workspace.
+
+        """
+        return entry.bootstrap_distribution is None or any(
+            t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(repository.distribution)
+            == entry.bootstrap_distribution
+            for repository in (workspace.repository, *workspace.subprojects)
+        )
+
     @classmethod
     def load_codegen_inputs(
         cls,

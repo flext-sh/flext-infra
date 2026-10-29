@@ -17,6 +17,9 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
@@ -974,6 +977,68 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 raise
 
+        def _unresolved_declared_reference(
+            self,
+            provider: p.Infra.RopeSourceModule,
+            attributes: t.StrTuple,
+            target: str,
+            *,
+            route: tuple[bool, frozenset[str], int],
+        ) -> str | None:
+            """Route a provider binding the captured inventory does not declare.
+
+            A package attribute may name a submodule (routed externally) or a
+            declaration that only the physical initializer still carries (a
+            proposed source swap dropped it from the candidate copy); the disk
+            literal is the same declaration SSOT the runtime imports.
+
+            Args:
+                provider: The owned source module that publishes the name; its
+                    module identity and resource drive every sub-resolution.
+                attributes: Remaining dotted attribute path of the reference.
+                target: Fully spelled provider reference being resolved.
+                route: Owned flag, visiting set and depth budget tuple.
+
+            Returns:
+                The declared class identity, or None for a native external import.
+
+            Raises:
+                ValueError: If the owned or planned source lacks the declaration.
+
+            """
+            owned, visiting, depth = route
+            module_name = self._provider_name(provider)
+            resource = provider.get_resource()
+            bindings = self._provider_source_bindings(module_name, provider, resource)
+            if (
+                attributes[0] not in bindings
+                and resource.is_folder()
+                and self._project.find_module(target) is not None
+            ):
+                return self._external_reference(
+                    target, attributes[1:], visiting | {target}, depth + 1
+                )
+            if attributes[0] in self._provider_source_bindings(
+                module_name, self._providers[module_name].get_module(), resource
+            ) or owned or module_name in self._sources:
+                physical = self._physical_declared_reference(
+                    module_name, resource, attributes[0]
+                )
+                if physical is not None:
+                    # A proposed source swap can drop the name from the
+                    # candidate initializer while the physical initializer
+                    # still declares it; the disk literal is the same
+                    # declaration SSOT the runtime imports.
+                    return self._external_reference(
+                        physical.target,
+                        (*physical.attributes, *attributes[1:]),
+                        visiting | {physical.target},
+                        depth + 1,
+                    )
+                message = f"Unresolved declared provider base: {target}"
+                raise ValueError(message)
+            return None
+
         def _declared_source_reference(
             self,
             module: t.Infra.RopeSemanticModule,
@@ -1015,18 +1080,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 module_name, resource, attributes[0]
             )
             if reference is None:
-                if (
-                    attributes[0] not in bindings
-                    and resource.is_folder()
-                    and self._project.find_module(target) is not None
-                ):
-                    return self._external_reference(
-                        target, attributes[1:], visiting | {target}, depth + 1
-                    )
-                if attributes[0] in bindings or owned or module_name in self._sources:
-                    message = f"Unresolved declared provider base: {target}"
-                    raise ValueError(message)
-                return None
+                return self._unresolved_declared_reference(
+                    provider,
+                    attributes,
+                    target,
+                    route=(owned, visiting, depth),
+                )
             binding = self._providers[module_name].get_attributes().get(attributes[0])
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._native_provider_reference(
@@ -1601,6 +1660,85 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 depth + 1,
             )
 
+        def _physical_declared_reference(
+            self,
+            module_name: str,
+            resource: p.Infra.RopeResource,
+            name: str,
+        ) -> m.Infra.SourceClassReference | None:
+            """Read one declared export from the physical initializer text.
+
+            Candidate initializers proposed by a move can temporarily omit a
+            name the physical file still declares; the disk literal is the
+            same declaration SSOT the runtime imports.
+
+            Returns:
+                The declared reference, or none when undeclared or unreadable.
+
+            """
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            try:
+                source = source_path.read_text()
+                declared = (
+                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                        module_name,
+                        source_path,
+                        source,
+                        project=self._project,
+                    )
+                )
+            except (OSError, ValueError, TypeError):
+                return None
+            return declared.get(name)
+
+        def _staged_owner_module(
+            self,
+            target: str,
+        ) -> p.Infra.RopeSemanticModule | None:
+            """Elect a staged sibling module holding a moved provider class.
+
+            Owner moves dissolve part modules into a sibling facade module of
+            the same package; the captured sources are the transaction's SSOT.
+
+            Returns:
+                The staged semantic module binding the target's leaf attribute,
+                or none when no staged sibling declares it.
+
+            """
+            parent = target.rpartition(".")[0]
+            leaf = target.rpartition(".")[2]
+            prefix = f"{parent}."
+            modules = FlextInfraUtilitiesRopeRuntimeModules
+            for candidate_name, (_, candidate_source) in sorted(self._sources.items()):
+                if (
+                    not candidate_name.startswith(prefix)
+                    or candidate_name == target
+                    or candidate_name.endswith((".__init__", ".__version__"))
+                ):
+                    continue
+                try:
+                    candidate = modules.build_string_module(
+                        self._project,
+                        candidate_source,
+                        resource=self._project.find_module(candidate_name),
+                    )
+                    binding = candidate.get_attribute(leaf).get_object()
+                except (
+                    *FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types(),
+                    ImportError,
+                ):
+                    # A staged sibling that does not declare the leaf is not a
+                    # candidate; only resolution failures skip, never real
+                    # engine defects.
+                    continue
+                if FlextInfraUtilitiesRopeRuntime.py_class(binding):
+                    return FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                        candidate
+                    )
+            return None
+
         def _external_reference(
             self,
             target: str,
@@ -1621,8 +1759,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ImportError: The native import owner cannot resolve the provider.
 
             """
-            module = self._project.get_module(target)
-            resource = module.get_resource()
+            try:
+                module = self._project.get_module(target)
+            except (
+                ModuleNotFoundError,
+                FlextInfraUtilitiesRopeRuntime.exception_type(
+                    "rope.base.exceptions", "ModuleNotFoundError"
+                ),
+            ):
+                # A dissolved move source no longer exists as a module; the
+                # declaring class lives in a staged sibling module of the same
+                # package (captured sources are the transaction's SSOT).
+                module = self._staged_owner_module(target)
+            resource = module.get_resource() if module is not None else None
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,

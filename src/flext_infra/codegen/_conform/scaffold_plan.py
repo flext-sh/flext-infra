@@ -73,6 +73,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             for entry in codegen.templates.entries
             if entry.source is not None
             and target.make_profile in entry.profiles
+            and u.Infra.codegen_bootstrap_provider_available(entry, workspace)
             and (entry.destination != c.PYPROJECT_FILENAME or contract.pyproject)
             and (
                 contract.delegates
@@ -206,6 +207,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 destination=destination,
                 render_inputs=render_inputs,
                 context=context,
+                planned_manifests=self._candidate_manifests(planned),
             )
             if entry_plan.failure:
                 return result_type.from_failure(entry_plan)
@@ -387,6 +389,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 destination=c.PYPROJECT_FILENAME,
                 render_inputs=render_inputs,
                 context=context.value,
+                planned_manifests=self._candidate_manifests(planned),
             )
             return final.map(
                 lambda rendered: tuple(
@@ -401,6 +404,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         destination: str,
         render_inputs: m.Infra.CodegenRenderInputs,
         context: m.Infra.ProjectRenderContext,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Render one scaffold entry into its file plan.
 
@@ -424,6 +428,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             ),
             project_context=context,
             entry=entry,
+            planned_manifests=planned_manifests,
         )
         if rendered.failure:
             return result_type.from_failure(rendered)
@@ -457,6 +462,18 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 else render_inputs.codegen.modes.file_default
             ),
             ownership=entry.ownership,
+            inputs=(
+                ()
+                if entry.bootstrap_distribution is None
+                else (
+                    *render_inputs.workspace.inputs,
+                    *(
+                        state
+                        for plan in planned_manifests
+                        for state in (plan.before, *plan.inputs)
+                    ),
+                )
+            ),
         )
         if planned.success and names is not None:
             render_inputs.planned_direct_sources = names.value

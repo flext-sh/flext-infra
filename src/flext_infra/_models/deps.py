@@ -84,6 +84,10 @@ class FlextInfraModelsDeps(
     class ProjectMetadataState(m.ArbitraryTypesModel):
         """One TOML ingress retaining metadata and its native packaging declaration."""
 
+        source: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(exclude=True, description="Original TOML observation parsed here"),
+        ]
         metadata: Annotated[
             t.Port[p.ProjectMetadata],
             m.Field(description="Original canonical PEP 621 and FLEXT metadata"),

@@ -72,12 +72,18 @@ class FlextInfraUtilitiesDocsGeneratePlan(
         """
         plans: list[m.Infra.CodegenFilePlan] = []
         for scoped in bundle.scopes:
+            presentation_inputs = tuple(
+                state
+                for declaration in scoped.scope.declared_files
+                for state in (declaration.before, *declaration.inputs)
+            )
             for artifact in scoped.artifacts:
                 planned = FlextInfraUtilitiesDocsContract.docs_file_plan(
                     scoped.scope.path,
                     scoped.scope.path / artifact.relative_path,
                     artifact.desired_content,
                     desired_mode=artifact.desired_mode,
+                    inputs=presentation_inputs,
                 )
                 if planned.failure:
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)

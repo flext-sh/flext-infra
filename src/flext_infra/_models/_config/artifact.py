@@ -1322,6 +1322,13 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
     class CodegenFilePlan(m.Cli.FileChange):
         """One managed file change plus its governed ownership metadata."""
 
+        inputs: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True,
+                description="Original read-only observations consumed by this effect",
+            ),
+        ] = ()
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         owner: Annotated[
             str,

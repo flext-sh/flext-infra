@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shlex
 from collections.abc import Mapping, MutableMapping, Sequence
 from json import dumps
 from pathlib import Path
@@ -504,22 +505,9 @@ class FlextInfraUtilitiesDependencies(
         if len(by_name) != len(repositories):
             msg = "workspace declares duplicate distribution identities"
             raise ValueError(msg)
-        manifests = {plan.path.resolve(): plan for plan in planned_manifests}
-        if len(manifests) != len(planned_manifests):
-            msg = "workspace declares duplicate planned manifest paths"
-            raise ValueError(msg)
-        graph = {
-            name: tuple(
-                dependency
-                for dependency in cls.project_dependency_names_from_payload(
-                    cls._workspace_manifest_payload(
-                        (root / repository.path).resolve(), manifests
-                    ),
-                )
-                if dependency in by_name
-            )
-            for name, repository in by_name.items()
-        }
+        graph = cls.workspace_dependency_graph(
+            root, repositories, planned_manifests=planned_manifests
+        )
         waves = u.Cli.dag_waves(graph)
         if waves.failure:
             raise ValueError(waves.error)
@@ -527,16 +515,123 @@ class FlextInfraUtilitiesDependencies(
             tuple(by_name[name].distribution for name in wave) for wave in waves.value
         )
 
+    @classmethod
+    def workspace_bootstrap_requirements(
+        cls,
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        distribution: str,
+        *,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+    ) -> p.Result[m.Infra.BootstrapRequirementsRenderSpec]:
+        """Project the candidate closure while retaining original observations.
+
+        Returns:
+            The bootstrap requirements render specification.
+
+        """
+        if not workspace.inputs:
+            return r.fail("bootstrap requires authenticated workspace inputs")
+        repositories = (workspace.repository, *workspace.subprojects)
+        graph = cls.workspace_dependency_graph(
+            root,
+            repositories,
+            planned_manifests=planned_manifests,
+            inputs=workspace.inputs,
+        )
+        by_name = {
+            canonicalize_name(repository.distribution): repository
+            for repository in repositories
+        }
+        if any(
+            "\n" in repository.path.as_posix() or "\r" in repository.path.as_posix()
+            for repository in repositories
+        ):
+            return r.fail("bootstrap source path is not a native requirement line")
+        return u.Cli.dag_closure(graph, frozenset((distribution,))).flat_map(
+            lambda closed: u.Cli.dag_order({name: graph[name] for name in closed}).map(
+                lambda names: m.Infra.BootstrapRequirementsRenderSpec(
+                    requirements=tuple(
+                        shlex.quote(f"./{by_name[name].path.as_posix()}")
+                        for name in names
+                    ),
+                    inputs=(
+                        *workspace.inputs,
+                        *(
+                            state
+                            for plan in planned_manifests
+                            for state in (plan.before, *plan.inputs)
+                        ),
+                    ),
+                )
+            )
+        )
+
+    @classmethod
+    def workspace_dependency_graph(
+        cls,
+        root: Path,
+        repositories: Sequence[p.Infra.RepositoryRef],
+        *,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        inputs: Sequence[m.Cli.AtomicFileState] = (),
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Read the declared local graph through the existing manifest owner.
+
+        Args:
+            root: Repository root that anchors every repository reference.
+            repositories: Declared repository references to inventory.
+            planned_manifests: Staged manifest plans that shadow the disk.
+            inputs: Authenticated atomic source states already captured.
+
+        Returns:
+            Canonical distribution identities and their local dependencies.
+
+        Raises:
+            ValueError: If distribution or planned manifest identities collide.
+
+        """
+        by_name = {
+            canonicalize_name(repository.distribution): repository
+            for repository in repositories
+        }
+        if len(by_name) != len(repositories):
+            msg = "workspace declares duplicate distribution identities"
+            raise ValueError(msg)
+        manifests = {plan.path.resolve(): plan for plan in planned_manifests}
+        if len(manifests) != len(planned_manifests):
+            msg = "workspace declares duplicate planned manifest paths"
+            raise ValueError(msg)
+        observations = {state.path: state for state in inputs}
+        return {
+            name: tuple(
+                dependency
+                for dependency in cls.project_dependency_names_from_payload(
+                    cls._workspace_manifest_payload(
+                        (root / repository.path).resolve(),
+                        manifests,
+                        observations=observations if inputs else None,
+                    ),
+                )
+                if dependency in by_name
+            )
+            for name, repository in by_name.items()
+        }
+
     @staticmethod
     def _workspace_manifest_payload(
         project: Path,
         manifests: Mapping[Path, m.Infra.CodegenFilePlan],
+        *,
+        observations: Mapping[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Read one project's dependency manifest, planned payload first.
 
         Args:
             project: The resolved project root.
             manifests: Planned manifests indexed by resolved path.
+            observations: Authenticated source states already captured, keyed
+                by resolved path.
 
         Returns:
             The planned manifest payload, or the physical one when unplanned.
@@ -549,6 +644,18 @@ class FlextInfraUtilitiesDependencies(
         path = project / c.PYPROJECT_FILENAME
         plan = manifests.get(path)
         if plan is None:
+            if observations is not None:
+                observed = observations.get(path)
+                if observed is None or observed.content is None:
+                    msg = f"workspace manifest has no captured input: {path}"
+                    raise ValueError(msg)
+                payload = u.Cli.toml_mapping_from_text(
+                    observed.content.decode(c.DEFAULT_ENCODING)
+                )
+                if payload is None:
+                    msg = f"invalid captured manifest: {path}"
+                    raise ValueError(msg)
+                return payload
             physical = u.Cli.toml_read_json(path)
             if physical.failure:
                 raise ValueError(physical.error) from physical.exception

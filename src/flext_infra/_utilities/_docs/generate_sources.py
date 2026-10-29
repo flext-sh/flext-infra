@@ -19,6 +19,7 @@ class FlextInfraUtilitiesDocsGenerateSources:
         *,
         metadata_projection: m.Infra.CodegenFilePlan | None = None,
         governance_source: m.Infra.CodegenBootstrapSource | None = None,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> m.Infra.DocScope:
         """Derive scope metadata, package identity and governance owner.
 
@@ -29,32 +30,35 @@ class FlextInfraUtilitiesDocsGenerateSources:
             ValueError: If docs scope is disabled in its metadata.
 
         """
-        if scope.name == c.Infra.RK_ROOT:
-            return scope.model_copy(update={"governance_source": governance_source})
-        state = FlextInfraUtilitiesDocsScope.project_state(
-            scope.path,
-            metadata_projection=metadata_projection,
-        )
-        if not FlextInfraUtilitiesDocsScope.docs_scope_enabled(state.docs_meta):
-            msg = f"docs scope is disabled in its metadata: {scope.path}"
-            raise ValueError(msg)
-        return scope.model_copy(
-            update={
-                "name": state.project_name,
-                "package_name": state.package_name,
-                "documentation_language": (
-                    FlextInfraUtilitiesDocsScope.docs_documentation_language(
-                        state.docs_meta
-                    )
-                ),
-                "project_class": (
-                    FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                        state.project_name,
-                        state.docs_meta,
-                    )
-                ),
-                "governance_source": governance_source,
-            }
+        name = scope.name
+        package_name = scope.package_name
+        language = scope.documentation_language
+        project_class = scope.project_class
+        if scope.name != c.Infra.RK_ROOT:
+            state = FlextInfraUtilitiesDocsScope.project_state(
+                scope.path, metadata_projection=metadata_projection
+            )
+            if not FlextInfraUtilitiesDocsScope.docs_scope_enabled(state.docs_meta):
+                msg = f"docs scope is disabled in its metadata: {scope.path}"
+                raise ValueError(msg)
+            name = state.project_name
+            package_name = state.package_name
+            language = FlextInfraUtilitiesDocsScope.docs_documentation_language(
+                state.docs_meta
+            )
+            project_class = FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                state.project_name, state.docs_meta
+            )
+        return m.Infra.DocScope(
+            name=name,
+            path=scope.path,
+            report_dir=scope.report_dir,
+            package_name=package_name,
+            project_class=project_class,
+            documentation_language=language,
+            governance_source=governance_source,
+            repository_root_override=scope.repository_root_override,
+            declared_files=declared_files,
         )
 
 

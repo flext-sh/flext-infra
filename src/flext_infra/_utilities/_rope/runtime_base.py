@@ -140,7 +140,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
             The generic Rope exception boundary.
 
         """
-        return (cls._exception_type("rope.base.exceptions", "RopeError"),)
+        return (cls.exception_type("rope.base.exceptions", "RopeError"),)
 
     @classmethod
     def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
@@ -152,7 +152,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         """
         return (
             SyntaxError,
-            cls._exception_type("rope.base.exceptions", "ModuleSyntaxError"),
+            cls.exception_type("rope.base.exceptions", "ModuleSyntaxError"),
         )
 
     @classmethod
@@ -164,11 +164,11 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
         """
         return (
-            cls._exception_type("rope.base.exceptions", "RefactoringError"),
-            cls._exception_type("rope.base.exceptions", "ResourceNotFoundError"),
+            cls.exception_type("rope.base.exceptions", "RefactoringError"),
+            cls.exception_type("rope.base.exceptions", "ResourceNotFoundError"),
             # Module probing (longest-prefix module/class split) treats a
             # missing module as "keep splitting", never as a hard failure.
-            cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
+            cls.exception_type("rope.base.exceptions", "ModuleNotFoundError"),
             AttributeError,
         )
 
@@ -200,7 +200,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
         """
         return (
-            cls._exception_type("rope.base.exceptions", "InconsistentHierarchyError"),
+            cls.exception_type("rope.base.exceptions", "InconsistentHierarchyError"),
         )
 
     @classmethod
@@ -212,7 +212,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
         """
         return tuple(
-            cls._exception_type("rope.base.exceptions", name)
+            cls.exception_type("rope.base.exceptions", name)
             for name in (
                 "ModuleNotFoundError",
                 "BadIdentifierError",
@@ -247,7 +247,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         return candidate
 
     @classmethod
-    def _exception_type(cls, module_name: str, attribute: str) -> type[BaseException]:
+    def exception_type(cls, module_name: str, attribute: str) -> type[BaseException]:
         candidate = cls.runtime_type(module_name, attribute)
         if not issubclass(candidate, BaseException):
             msg = f"rope attribute is not an exception type: {module_name}.{attribute}"

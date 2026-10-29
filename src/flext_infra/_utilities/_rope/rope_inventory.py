@@ -23,7 +23,7 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
