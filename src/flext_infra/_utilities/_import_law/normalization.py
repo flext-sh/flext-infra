@@ -672,7 +672,8 @@ class FlextInfraUtilitiesImportLawNormalization(
                 message = (
                     "Own-family facade-value reads require make mod: "
                     f"path={scope.file_path} binding={bound} "
-                    f"provider={module}.{name}"
+                    f"provider={module}.{name} "
+                    f"published_by={state.root_exports.get(name)}"
                 )
                 raise ValueError(message)
             for path in paths:
@@ -733,10 +734,10 @@ class FlextInfraUtilitiesImportLawNormalization(
                 continue
             for alias in node.names:
                 provider = state.root_exports.get(alias.name, "")
-                if not (
-                    alias.name == scope.family_letter
-                    or provider == f"{scope.namespace}.{family.module}"
-                ):
+                if provider not in {
+                    f"{scope.namespace}.{family.module}",
+                    f"{scope.namespace}.{scope.family_letter}",
+                }:
                     continue
                 bound = alias.asname or alias.name
                 if bound in imports:
@@ -925,9 +926,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 if provider not in {
                     f"{scope.namespace}.{family.module}",
                     f"{scope.namespace}.{scope.family_letter}",
-                } and not (
-                    target == scope.namespace and alias.name == scope.family_letter
-                ):
+                }:
                     continue
                 if (
                     isinstance(node, ast.ImportFrom)

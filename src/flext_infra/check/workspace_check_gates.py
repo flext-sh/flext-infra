@@ -400,8 +400,10 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         if (
             execution.issues or not execution.result.passed
         ) and execution.raw_receipt is not None:
+            # ToolOutcome is a StrEnum (or a plain str at raw edges): the
+            # f-string renders the value without a .value attribute access.
             u.Cli.info(
-                f"{gate_id}: {execution.outcome.value}; "
+                f"{gate_id}: {execution.outcome}; "
                 f"Native output receipt: {execution.raw_receipt}",
             )
 

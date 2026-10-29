@@ -1023,6 +1023,20 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         target, attributes[1:], visiting | {target}, depth + 1
                     )
                 if attributes[0] in bindings or owned or module_name in self._sources:
+                    physical = self._physical_declared_reference(
+                        module_name, resource, attributes[0]
+                    )
+                    if physical is not None:
+                        # A proposed source swap can drop the name from the
+                        # candidate initializer while the physical initializer
+                        # still declares it; the physical literal is the same
+                        # declaration SSOT the runtime imports.
+                        return self._external_reference(
+                            physical.target,
+                            (*physical.attributes, *attributes[1:]),
+                            visiting | {physical.target},
+                            depth + 1,
+                        )
                     message = f"Unresolved declared provider base: {target}"
                     raise ValueError(message)
                 return None
@@ -1061,6 +1075,37 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         f"name={binding.imported_name!r}"
                     )
                 raise
+
+        def _physical_declared_reference(
+            self,
+            module_name: str,
+            resource: p.Infra.RopeResource,
+            name: str,
+        ) -> m.Infra.SourceClassReference | None:
+            """Read one declared export from the physical initializer text.
+
+            Candidate initializers proposed by a move can temporarily omit a
+            name the physical file still declares; the disk literal is the
+            same declaration SSOT the runtime imports.
+
+            Returns:
+                The declared reference, or none when undeclared or unreadable.
+
+            """
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            try:
+                source = source_path.read_text()
+                declared = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                    module_name,
+                    source_path,
+                    source,
+                    project=self._project,
+                )
+            except (OSError, ValueError, TypeError):
+                return None
+            return declared.get(name)
 
         def _provider_source_bindings(
             self,

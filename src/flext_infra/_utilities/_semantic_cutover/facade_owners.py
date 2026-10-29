@@ -24,6 +24,9 @@ from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
@@ -74,10 +77,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             raise ValueError(msg)
         classes: MutableMapping[str, str] = {}
         with FlextInfraUtilitiesRopeCore.open_import_project(source_root) as project:
-            for name in FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                    project.get_module(package)
-                ),
+            for name in cls._module_public_exports(
+                modules, package, project=project
             ):
                 owner = cls._facade_letter_class(
                     modules, package, name, project=project
@@ -85,6 +86,32 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 if owner is not None:
                     classes[name] = owner
         return classes
+
+    @staticmethod
+    def _module_public_exports(
+        modules: Mapping[str, tuple[str, bool]],
+        name: str,
+        *,
+        project: p.Infra.RopeProject,
+    ) -> Sequence[str]:
+        """Read one indexed module's public exports from its captured source.
+
+        Package objects are not source modules. Read the exact source the
+        cutover indexes through the native string-module owner.
+
+        Returns:
+            The module's exported public names.
+
+        """
+        entry = modules.get(name)
+        if entry is None:
+            return ()
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project, entry[0]
+        )
+        return FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
+        )
 
     @classmethod
     def _facade_declared_owner(
@@ -109,15 +136,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         )
         if resolved is not None and resolved[1] == letter:
             owner_module, owner_name = resolved
-            exported_here = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                    project.get_module(module)
-                ),
-            )
-            exported_owner = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                    project.get_module(owner_module)
-                ),
+            exported_here = cls._module_public_exports(modules, module, project=project)
+            exported_owner = cls._module_public_exports(
+                modules, owner_module, project=project
             )
             owner = (
                 owner_name
@@ -161,16 +182,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         owner_module, owner = resolved
         if owner == letter:
             return None
-        owner_resource = project.find_module(owner_module)
-        if owner_resource is None:
-            # Namespace packages (no ``__init__``) resolve through their
-            # resource, never through ``get_module``'s importable-module law.
-            return None
-        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                FlextInfraUtilitiesRopeCore.resolve_pymodule(project, owner_resource)
-            ),
-        )
+        exports = cls._module_public_exports(modules, owner_module, project=project)
         if letter not in exports or owner not in exports:
             return None
         if (

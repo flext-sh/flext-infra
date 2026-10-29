@@ -1018,8 +1018,10 @@ class FlextInfraModGateEngine:
         evidence = receipt.evidence
         sys.stderr.write(f"mod: findings total={evidence.findings}\n")
         for finding_class, count in evidence.totals_by_class.items():
+            # ModScanFindingClass is a StrEnum: its str form IS the value, so
+            # the key prints correctly through JSON receipt round-trips too.
             sys.stderr.write(
-                f"mod: findings class={finding_class.value} count={count}\n",
+                f"mod: findings class={finding_class} count={count}\n",
             )
         for repository, count in evidence.totals_by_repository.items():
             sys.stderr.write(f"mod: findings repository={repository} count={count}\n")

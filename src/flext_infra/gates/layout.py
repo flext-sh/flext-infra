@@ -37,7 +37,7 @@ class FlextInfraLayoutGate(FlextInfraGate):
 
         """
         started = time.monotonic()
-        engine = FlextInfraCodegenLayout(repository_root=ctx.repository_root)
+        engine = FlextInfraCodegenLayout()
         report = engine.check_project(project_dir)
         report_findings: tuple[m.Infra.LayoutFinding, ...] = report.findings
         issues = tuple(

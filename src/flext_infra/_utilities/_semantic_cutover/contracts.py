@@ -560,10 +560,6 @@ class FlextInfraUtilitiesSemanticContracts(
         Returns:
             Transient rules retaining exact provider and argument identities.
 
-        Raises:
-            ValueError: The selector or captured declaration is incomplete.
-            TypeError: The elected provider is not a native source class.
-
         """
         identity, provider, module, _resource = cls._generic_history_provider(
             project, selection
@@ -1177,6 +1173,10 @@ class FlextInfraUtilitiesSemanticContracts(
         Returns:
             Classes named by the closure and its native source statements.
 
+        Raises:
+            ValueError: If Enum discriminator alias has unresolved native import
+                provenance.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         references = FlextInfraUtilitiesSemanticFamilyTypeReferences
@@ -1461,6 +1461,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
         Raises:
             ValueError: A default factory or authored producer lacks domain proof.
+            TypeError: If Enum default owner has no native source module.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1619,6 +1620,12 @@ class FlextInfraUtilitiesSemanticContracts(
 
         Returns:
             Native content changes limited to authenticated annotation regions.
+
+        Raises:
+            ValueError: If ``not isinstance(constraint, str)``; or if ``member_binding
+                is None``; or if ``not
+                FlextInfraUtilitiesCodemodProject.stable_binding_chain((project, module,
+                lexical), text, start, sources)``.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules

@@ -2189,6 +2189,14 @@ repository has only itself. The request model's default remains
 projections, Mise artifacts, lazy exports and docs participate in bounded
 dependency-complete transactions under campaign `flext-pipol`; see ADR-018
 [single-read, single-batch publication](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#single-read-single-batch-publication-amended-2026-10-28-campaign-flext-pipol).
+
+Native filesystem consumers that need both original bytes and a publication witness
+use the CLI reader's joint `atomic_read_binary_file_capture` operation. Its
+`AtomicFileState` and payload-free `AtomicFileReceipt` come from the same
+authenticated descriptor observation, including parent identity and exact absence.
+The receipt keeps the native version key and digest; it never stores original bytes.
+This reader capability does not materialize directories or authorize publication,
+and it does not replace the existing state-only or streaming receipt APIs.
 One native project retains unchanged observations and refreshes changed
 resources and dependent facts incrementally in the same engine. Candidate
 validation, publication, index/mode/directory effects and refresh share the
@@ -3426,7 +3434,10 @@ and incompatible member paths fail before publication; a matching letter or
 directory name never proves identity.
 
 Before boundary validation, normalization may repair an own-family facade import
-only when native member identity proves every consumed reference's declaring
+only when its published provider belongs to that namespace's family. A root
+publication that forwards an upstream facade retains the upstream identity;
+sharing the same facade letter does not make it an own-family dependency.
+Native member identity must also prove every consumed reference's declaring
 owner and its nearest published export. The semantic cutover owner preserves
 lexical bindings and the original import's typing-only placement. Same-module
 owners, unresolved identities, captured bindings and unsupported quoted annotations
@@ -3470,12 +3481,13 @@ Scanner JSON is parsed once with `AstGrepReport.model_validate_json`, which admi
 the native severity strings. Python construction requires enum instances: passing
 a raw Python severity string raises Pydantic's `is_instance_of` validation error.
 Owned-path findings therefore supply the enum directly, and the gate preserves
-their validated model instances. The shared preset uses `use_enum_values=True`:
-after validation, severity is the primitive string, including Python dumps.
-Those dumps are output data, not strict Python constructor input. Consumers pass
-the validated diagnostic by reference instead of reconstructing it from a dump.
+their validated model instances. The latest preset target uses
+`use_enum_values=False`: validation and Python dumps preserve the enum member;
+native JSON serialization emits its string value. JSON-compatible dumps are
+output data, not strict Python constructor input. Consumers pass the validated
+diagnostic by reference instead of reconstructing it from a dump.
 Invalid strings and Python bytes remain errors. ADR-005 and ADR-028 Decision 14
-own this newer enum-value contract; native validation remains required.
+own this newer enum-preservation contract; native validation remains required.
 
 The gate consumes the complete native `ast-grep scan --json=compact` array. The
 [documented scan contract](https://ast-grep.github.io/reference/cli/scan.html) and
@@ -4151,6 +4163,8 @@ captured text. A single-file export query reuses its current native module when
 the captured text already matches; otherwise it binds only that candidate through
 the existing source-view owner. It does not discover or copy the repository's
 complete source inventory for each queried provider.
+Facade-owner derivation reads package exports through its existing captured-source
+reader; a native package object is not passed to the source-module guard.
 Callback admission uses Rope's native restructuring hook once;
 the adapter counts observed/admitted matches there and leaves change computation
 to the native implementation. It does not filter the same occurrence again in a

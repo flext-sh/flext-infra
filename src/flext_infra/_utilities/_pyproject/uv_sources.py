@@ -42,6 +42,10 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         Returns:
             Whether the selected override publication changes the document.
 
+        Raises:
+            TypeError: If requirement field must be a native TOML array.
+            ValueError: If selected source URLs are ambiguous.
+
         """
         selected = frozenset(map(canonicalize_name, packages))
         desired = tuple(

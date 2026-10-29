@@ -161,6 +161,7 @@ class FlextInfraWorkspaceChecker(
             The complete native checker result.
 
         """
+        phase = c.Infra.CheckPhase(params.phase)
         selected_files_result = self._resolve_selected_files(params)
         if selected_files_result.failure:
             return r[m.Infra.CheckReportSummary].from_failure(selected_files_result)
@@ -171,7 +172,7 @@ class FlextInfraWorkspaceChecker(
         project_targets = project_targets_result.value
         # An omitted gate selection resolves the requested gate set from the
         # typed Make spec at runtime, never from a generated projection.
-        requested = self._resolve_requested_gates(params)
+        requested = self._resolve_requested_gates(params, phase=phase)
         if requested.failure:
             return r[m.Infra.CheckReportSummary].from_failure(requested)
         gates = requested.value
@@ -215,11 +216,13 @@ class FlextInfraWorkspaceChecker(
             gates,
             gate_ctx,
             report_output_state=before,
-            phase=params.phase,
+            phase=phase,
         )
 
     @staticmethod
-    def _resolve_requested_gates(params: m.Infra.RunCommand) -> p.Result[Sequence[str]]:
+    def _resolve_requested_gates(
+        params: m.Infra.RunCommand, *, phase: c.Infra.CheckPhase
+    ) -> p.Result[Sequence[str]]:
         """Bind primary admission to its exact unfiltered global policy.
 
         Returns:
@@ -229,9 +232,9 @@ class FlextInfraWorkspaceChecker(
         gates = u.Infra.selected_check_gates(
             u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make,
             params.gate_set,
-            phase=params.phase,
+            phase=phase,
         )
-        if params.phase == c.Infra.CheckPhase.PRIMARY:
+        if phase == c.Infra.CheckPhase.PRIMARY:
             if any((
                 params.file is not None,
                 params.projects,

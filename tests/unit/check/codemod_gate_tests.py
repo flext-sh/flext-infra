@@ -651,23 +651,18 @@ class TestsFlextInfraCodemodGate:
         )
         report = m.Infra.AstGrepReport.model_validate_json(payload)
         diagnostic = report.root[0]
-        tm.that(diagnostic.severity, eq=severity.value)
-        tm.that(type(diagnostic.severity), eq=str)
+        tm.that(diagnostic.severity is severity, eq=True)
+        tm.that(type(diagnostic.severity), eq=c.Infra.NativeRuleSeverity)
+        tm.that(diagnostic.model_dump()["severity"] is severity, eq=True)
         tm.that(diagnostic.model_dump(mode="json")["severity"], eq=severity.value)
-        for mode in ("python", "json"):
-            with pytest.raises(m.ValidationError, match="is_instance_of"):
-                m.Infra.AstGrepDiagnostic.model_validate(
-                    diagnostic.model_dump(mode=mode)
-                )
+        with pytest.raises(m.ValidationError, match="is_instance_of"):
+            m.Infra.AstGrepDiagnostic.model_validate(diagnostic.model_dump(mode="json"))
         tm.that(
             m.Infra.AstGrepDiagnostic.model_validate(diagnostic) is diagnostic,
             eq=True,
         )
         tm.that(
-            m.Infra.AstGrepDiagnostic.model_validate({
-                **diagnostic.model_dump(),
-                "severity": severity,
-            }).severity,
+            m.Infra.AstGrepDiagnostic.model_validate(diagnostic.model_dump()).severity,
             eq=diagnostic.severity,
         )
 
