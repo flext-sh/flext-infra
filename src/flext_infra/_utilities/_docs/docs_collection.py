@@ -130,7 +130,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                     f"{revision.identity}"
                 )
                 raise ValueError(msg)
-            self.current_revisions[(recorded.source_id, recorded.source_path)] = recorded
+            self.current_revisions[recorded.source_id, recorded.source_path] = recorded
 
         def record_private(
             self,
@@ -648,7 +648,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         current: dict[str, m.Infra.PlanCollectionRevision] = {}
         for coverage in manifest.coverage:
             for locator, digest in coverage.source_revisions:
-                revision = by_revision[(coverage.source_id, locator, digest)]
+                revision = by_revision[coverage.source_id, locator, digest]
                 current[revision.identity] = revision
         if states[canonical / "collection-index.md"].content != (
             cls._collection_index_text(tuple(current.values())).encode()
@@ -691,7 +691,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 raise ValueError(msg)
             if (source.id, locator, digest) not in by_locator:
                 msg = (
-                    f"collection coverage has no observed revision: {source.id}:{locator}"
+                    f"collection coverage has no observed revision: "
+                    f"{source.id}:{locator}"
                 )
                 raise ValueError(msg)
 

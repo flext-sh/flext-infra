@@ -49,8 +49,9 @@ class FlextInfraUtilitiesDeclarationPayload(
             project, name, module_name=module
         )
 
-    @staticmethod
+    @classmethod
     def class_ancestry(
+        cls,
         value: p.Infra.RopePyObject,
     ) -> Sequence[p.Infra.RopePyObject]:
         """Retain the native C3 order, including positioned unresolved witnesses.
@@ -61,13 +62,21 @@ class FlextInfraUtilitiesDeclarationPayload(
         declaration, so membership queries stay correct without rejecting
         classes the native rope already accepted.
 
+        A candidate overlay can present one class through two concurrent views
+        (in-memory move target and disk resource), which the native C3
+        linearization rejects as blocked heads. Such a class degrades to the
+        singleton ancestry for this pass, exactly like a non-class value.
+
         Returns:
             The SDK ancestry, or the unchanged non-class singleton.
 
         """
         # SDK ownership keeps classification and generation on one ancestry contract.
         if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
-            return tuple(value.get_mro())
+            try:
+                return tuple(value.get_mro())
+            except tuple(FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()):
+                return (value,)
         return (value,)
 
     @classmethod

@@ -207,7 +207,13 @@ class FlextInfraExtraPathsManager(
         if has_project_root:
             ordered.append(root_path)
         if has_source_root:
-            return (source_root, *ordered)
+            ordered.insert(0, source_root)
+        # The managed rope fork is installed editable: static analysis
+        # resolves it only through the distribution's real source root (the
+        # same root mypy uses below).
+        rope_root = self.editable_source_root("rope")
+        if rope_root is not None:
+            ordered.append(rope_root)
         return tuple(ordered)
 
     def mypy_search_paths(self, *, project_dir: Path) -> Sequence[str]:

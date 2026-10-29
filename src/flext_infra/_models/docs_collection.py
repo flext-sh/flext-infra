@@ -278,7 +278,8 @@ class FlextInfraModelsDocsCollection:
             description="Number of discovered source files",
         )
         source_revisions: tuple[tuple[Path, t.NonEmptyStr], ...] = m.Field(
-            description="Source-relative plans and revision digests observed in this run",
+            description="Source-relative plans and revision digests observed in this "
+                        "run",
         )
         status: Literal["collected", "private-inventory", "empty"] = m.Field(
             description="Observed collection coverage, not reconciliation status",

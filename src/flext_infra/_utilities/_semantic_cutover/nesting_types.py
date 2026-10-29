@@ -12,7 +12,6 @@ from pathlib import Path
 
 from flext_infra import c, m, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -42,9 +41,10 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         *,
         protected: tuple[int, int] | None = None,
     ) -> tuple[m.Infra.SourceRewrite, ...]:
-        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            source,
+            resource=FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )

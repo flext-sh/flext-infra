@@ -419,11 +419,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         *,
         mode: int = 0o644,
         ownership: m.Infra.ManagedFileOwnership | None = None,
+        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Snapshot one target and bind it to exact desired bytes and ownership.
 
-        The plan carries no pre-captured observations; callers authenticate
-        the captured inputs through the pipeline's own verification pass.
+        ``inputs`` retains the original read-only observations by reference;
+        the shared publisher verifies them before applying the desired effect.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
@@ -444,6 +445,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                 owner="" if ownership is None else ownership.owner,
                 policy=None if ownership is None else ownership.policy,
                 tracking="versioned" if ownership is None else ownership.tracking,
+                inputs=inputs,
             ),
         )
 

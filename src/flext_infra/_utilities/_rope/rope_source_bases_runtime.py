@@ -2023,18 +2023,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     ):
                         module = submodule
                         continue
-                    captures = getattr(self, "_raw_captures", {})
-                    if (
-                        submodule not in self._sources
-                        and submodule not in captures
-                        and self._capture_raw_module(submodule)
-                    ):
-                        # A retirement plan removes the part module from the
-                        # candidate while the raw filesystem still holds its
-                        # declaration; the disk bytes are the same lazy SSOT
-                        # the runtime imports.
-                        module = submodule
-                        continue
                     if self._project.find_module(submodule) is not None:
                         try:
                             external = self._external_reference(
@@ -2055,30 +2043,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         return module, name, remaining, external
                     return module, name, remaining, None
                 module = submodule
-
-        def _capture_raw_module(self, module: str) -> bool:
-            """Capture one uncaptured module's declaration from raw disk.
-
-            Returns:
-                True when the module file exists on disk and was captured.
-
-            """
-            parent = module.rpartition(".")[0]
-            parent_resource = self._project.find_module(parent)
-            if parent_resource is None or not parent_resource.is_folder():
-                return False
-            path = Path(parent_resource.real_path) / f"{module.rpartition('.')[2]}.py"
-            try:
-                source = path.read_text()
-            except OSError:
-                return False
-            captures = getattr(self, "_raw_captures", None)
-            if captures is None:
-                captures = {}
-                self._raw_captures = captures
-            captures[module] = (path, source)
-            self._modules[module] = self._inventory(module, captures[module])
-            return True
 
         def _planned_lazy_binding(
             self,
