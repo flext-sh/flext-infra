@@ -132,14 +132,13 @@ class FlextInfraCodemodGate(FlextInfraGate):
             return self._failure_gate_execution(project_dir, ctx, failure, started)
         failures: list[m.Infra.Issue] = []
         raw_output: list[str] = []
-        found = [
-            m.Infra.AstGrepDiagnostic.model_validate(finding)
-            for finding in u.Infra.codemod_path_findings(
+        found: list[m.Infra.AstGrepDiagnostic] = list(
+            u.Infra.codemod_path_findings(
                 project_dir,
                 tuple((project_dir / target).absolute() for target in targets),
                 planned.value.rules,
             )
-        ]
+        )
         u.Cli.ensure_dir(settings.work_dir).unwrap()
         with tempfile.TemporaryDirectory(
             prefix="check-codemod-", dir=settings.work_dir

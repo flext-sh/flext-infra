@@ -31,6 +31,29 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
     ] = ContextVar("rope_semantic_finders", default=None)
 
     @classmethod
+    def native_call_parameters(
+        cls, source: str, primary: tuple[int, int]
+    ) -> tuple[Sequence[str], Sequence[tuple[str, str]]] | None:
+        """Read an authored call's argument shape through native Rope Worder.
+
+        Returns:
+            Native call arguments, or None when the position is not a callee.
+
+        Raises:
+            TypeError: The installed Worder lacks the consumed native contract.
+
+        """
+        words = cls.runtime_callable("rope.base.worder", "Worder")(source)
+        if not isinstance(words, p.Infra.RopeWorder):
+            message = "Native Worder does not expose call parameter shapes"
+            raise TypeError(message)
+        offset, _last = words.get_word_range(primary[1] - 1)
+        if not words.is_a_function_being_called(offset):
+            return None
+        first, last = words.get_word_parens_range(offset)
+        return words.get_parameters(first, last - 1)
+
+    @classmethod
     @contextmanager
     def semantic_matching_context(cls) -> Generator[None]:
         """Retain native matchers only within one immutable semantic pass.
@@ -152,24 +175,6 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         )
         choices = (constraints,) if isinstance(constraints, str) else constraints
         return any(wildcard.matches(suspect, choice) for choice in choices)
-
-    @classmethod
-    def semantic_capture_region(
-        cls,
-        match: p.Infra.RopeContractMatch,
-        variable: str,
-    ) -> tuple[int, int]:
-        """Read a captured region through Rope's native match boundary.
-
-        Args:
-            match: The Rope match object containing captured variables.
-            variable: The name of the captured variable to retrieve the region for.
-
-        Returns:
-            The start and end character positions of the captured region.
-
-        """
-        return match.get_capture_region(variable)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeMatching"]

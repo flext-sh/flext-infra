@@ -123,7 +123,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             }:
                 bindings_by_name.setdefault(bound, []).append(node)
         letters: set[str] = set()
-        for name in FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
+        for (
+            name
+        ) in FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
             module,
             c.Infra.DUNDER_ALL,
         ):

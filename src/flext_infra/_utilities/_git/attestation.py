@@ -198,9 +198,10 @@ class FlextInfraUtilitiesGitAttestation(
 
         """
         root = request.repository_root.resolve()
+        phase = c.Infra.CheckPhase(request.phase)
         gates = request.gates or ",".join(
             FlextInfraUtilitiesBase.selected_check_gates(
-                inputs.spec.make, c.Infra.CheckGateSet.CHECK, phase=request.phase
+                inputs.spec.make, c.Infra.CheckGateSet.CHECK, phase=phase
             )
         )
         if not gates:
@@ -227,7 +228,7 @@ class FlextInfraUtilitiesGitAttestation(
             "--gates",
             gates,
             "--phase",
-            request.phase,
+            phase.value,
             "--scope",
             c.Infra.CodegenConformScope.ALL.value,
             "--reports-dir",
@@ -242,7 +243,7 @@ class FlextInfraUtilitiesGitAttestation(
             {
                 "repository_root": root,
                 "gates": gates,
-                "phase": request.phase,
+                "phase": phase,
                 "scope": c.Infra.CodegenConformScope.ALL,
             },
         )
@@ -252,7 +253,7 @@ class FlextInfraUtilitiesGitAttestation(
                 gate=c.Infra.VERB_CHECK,
                 command=command,
                 intent=m.Infra.GateExecutionIntent(
-                    phase=request.phase,
+                    phase=phase,
                     requested_gates=tuple(native_request.gates),
                 ),
                 runtime_identity=read_runtime_identity(native_request.gates).unwrap(),

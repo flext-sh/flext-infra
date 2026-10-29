@@ -12,6 +12,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
+from flext_infra import c
+
 if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
@@ -19,9 +21,9 @@ if TYPE_CHECKING:
     from flext_core import t
 
     from flext_infra import m
-    from flext_infra._protocols.base import FlextInfraProtocolsBase
-    from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
-    from flext_infra._protocols.workspace_snapshot import (
+    from flext_infra._protocols import (
+        FlextInfraProtocolsBase,
+        FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsWorkspaceSnapshot,
     )
 

@@ -175,6 +175,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeClassObject(RopeNamedObject, Protocol):
         """Superclass queries supplied by native abstract classes."""
 
+        def get_mro(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
+
         def get_superclasses(
             self,
         ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
@@ -447,6 +451,16 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     @runtime_checkable
     class RopeSourceBindingIndex(Protocol):
         """Native source binding index, including PEP 695 type parameters."""
+
+        def absolute_import_roots(self) -> frozenset[str]: ...
+
+        def assignment_string_sequence(
+            self,
+            name: str,
+            scope: FlextInfraProtocolsRopeRuntime.RopeScope | None = None,
+            *,
+            class_metadata: bool = False,
+        ) -> tuple[str, ...] | None: ...
 
         def context_at(
             self, offset: int
@@ -742,6 +756,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_word_parens_range(self, offset: int) -> tuple[int, int]: ...
 
+        def get_parameters(
+            self, first: int, last: int
+        ) -> tuple[Sequence[str], Sequence[tuple[str, str]]]: ...
+
         def get_word_range(self, offset: int) -> tuple[int, int]: ...
 
         def find_function_offset(self, offset: int) -> int: ...
@@ -786,9 +804,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_region(self) -> tuple[int, int]: ...
 
-        def get_capture_region(self, name: str) -> tuple[int, int]: ...
-
-        def get_ast(self, name: str) -> p.AttributeProbe | None: ...
+        def get_ast(
+            self, name: str
+        ) -> FlextInfraProtocolsRopeRuntime.RopeAstNode | None: ...
 
     @runtime_checkable
     class RopeSimilarFinder(Protocol):

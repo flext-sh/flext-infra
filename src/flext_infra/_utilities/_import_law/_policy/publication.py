@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Mapping, MutableMapping, Sequence
+from contextlib import nullcontext
 from pathlib import Path
 from time import monotonic
 from typing import ClassVar
@@ -157,6 +158,9 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         if directory is None:
             return None
         candidates: MutableMapping[str, str] = {}
+        declared_sources = (
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources
+        )
         cls._scan_lookups += 1
         cls._scan_consumers.add(scope.file_path)
         for source_path in sorted(
@@ -186,11 +190,20 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 if sources is None
                 else sources[source_path]
             )
-            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-                Path(source_project.root.real_path),
-                planned_sources={source_path: source},
-                source_project=source_project,
-            ) as (bound_project, _captured):
+            with (
+                nullcontext(source_project)
+                if source_project.source_query(source_path, "isfile")
+                and source_project.source_text(source_path) == source
+                else source_project.source_view(
+                    declared_files=declared_sources(
+                        Path(source_project.root.real_path),
+                        (),
+                        {source_path: source},
+                        source_project=source_project,
+                    ),
+                    additional_source_folders=None,
+                )
+            ) as bound_project:
                 native = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
                     bound_project.get_pymodule(
                         FlextInfraUtilitiesRopeRuntime.file_resource_at(

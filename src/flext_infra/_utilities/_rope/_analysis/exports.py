@@ -109,40 +109,11 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         """
         resolved_options = export_options or m.Infra.ExportOptions()
-        explicit_all = (
-            FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_region(
-                source_module, source_module.get_scope(), c.Infra.DUNDER_ALL, depth=1
-            )
-            is not None
+        declared = source_module.get_source_binding_index().assignment_string_sequence(
+            c.Infra.DUNDER_ALL, class_metadata=True
         )
-        if not explicit_all:
-            index = source_module.get_source_binding_index()
-            roots = tuple(
-                scope
-                for scope in source_module.get_scope().get_scopes()
-                if scope.get_kind() == "Class"
-                and any(
-                    fragment.depth == 1
-                    and source_module.lines.get_line_number(fragment.start)
-                    == scope.get_start()
-                    for fragment in index.fragments
-                )
-            )
-            explicit_all = len(roots) == 1 and (
-                FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_region(
-                    source_module, roots[0], c.Infra.DUNDER_ALL, depth=2
-                )
-                is not None
-            )
-        if explicit_all:
-            return tuple(
-                dict.fromkeys(
-                    FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
-                        source_module,
-                        c.Infra.DUNDER_ALL,
-                    ),
-                ),
-            )
+        if declared is not None:
+            return tuple(dict.fromkeys(declared))
         if resolved_options.require_explicit_all:
             return ()
         assignments, definitions, conditional_all = (

@@ -635,3 +635,57 @@ class TestsFlextInfraCodemodGate:
         """An empty stream or malformed finding cannot be a clean native scan."""
         with pytest.raises(m.ValidationError):
             m.Infra.AstGrepReport.model_validate_json(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize("severity", c.Infra.NativeRuleSeverity)
+    def test_native_severity_preserves_wire_literals(
+        severity: c.Infra.NativeRuleSeverity,
+    ) -> None:
+        """Native strings validate to the domain while JSON keeps native values."""
+        payload = (
+            '[{"file":"subject.py","ruleId":"native-wire","severity":"'
+            + severity.value
+            + '","message":"match","text":"x","lines":"x",'
+            '"range":{"start":{"line":0,"column":0},'
+            '"end":{"line":0,"column":1},"byteOffset":{"start":0,"end":1}}}]'
+        )
+        report = m.Infra.AstGrepReport.model_validate_json(payload)
+        diagnostic = report.root[0]
+        tm.that(diagnostic.severity, eq=severity.value)
+        tm.that(type(diagnostic.severity), eq=str)
+        tm.that(diagnostic.model_dump(mode="json")["severity"], eq=severity.value)
+        for mode in ("python", "json"):
+            with pytest.raises(m.ValidationError, match="is_instance_of"):
+                m.Infra.AstGrepDiagnostic.model_validate(
+                    diagnostic.model_dump(mode=mode)
+                )
+        tm.that(
+            m.Infra.AstGrepDiagnostic.model_validate(diagnostic) is diagnostic,
+            eq=True,
+        )
+        tm.that(
+            m.Infra.AstGrepDiagnostic.model_validate({
+                **diagnostic.model_dump(),
+                "severity": severity,
+            }).severity,
+            eq=diagnostic.severity,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("severity", ["fatal", "ERROR", "", b"error"])
+    def test_native_severity_rejects_non_wire_values(severity: str | bytes) -> None:
+        """Unknown values and Python bytes retain literal rejection semantics."""
+        with pytest.raises(m.ValidationError):
+            m.Infra.AstGrepDiagnostic.model_validate({
+                "file": "subject.py",
+                "ruleId": "native-wire",
+                "severity": severity,
+                "message": "match",
+                "text": "x",
+                "lines": "x",
+                "range": {
+                    "start": {"line": 0, "column": 0},
+                    "end": {"line": 0, "column": 1},
+                    "byteOffset": {"start": 0, "end": 1},
+                },
+            })

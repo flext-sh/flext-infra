@@ -15,34 +15,13 @@ from pathlib import Path
 from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_runtime_base import (
+    FlextInfraUtilitiesRopeRuntimeBase,
+)
 
 
-class FlextInfraUtilitiesRopeSource:
+class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
     """Text-oriented helpers shared by Rope-backed refactors."""
-
-    @staticmethod
-    def source_declaration_region(
-        module: p.Infra.RopeSourceModule,
-        node: p.Infra.RopeAstNode,
-    ) -> tuple[int, int]:
-        """Read an opaque native node's exact region through its SDK index.
-
-        Returns:
-            The original inclusive/exclusive character offsets.
-
-        Raises:
-            ValueError: The native declaration has no valid source region.
-
-        """
-        start, end = module.get_source_binding_index().lines[node]
-        if (
-            start is None
-            or end is None
-            or not 0 <= start < end <= len(module.source_code)
-        ):
-            message = "Native declaration has no valid source region"
-            raise ValueError(message)
-        return start, end
 
     @classmethod
     def source_class_fields(

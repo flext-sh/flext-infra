@@ -14,6 +14,8 @@ class FlextInfraConstantsCodegenRenderNames:
 
     TEMPLATE_ROOT_INIT: ClassVar[str] = "lazy_init_root.py.j2"
     "Public project-root ``__init__.py`` consuming owned lazy metadata."
+    TEMPLATE_DOCS_LLMS: ClassVar[str] = "docs/llms.txt.j2"
+    "Generated source-derived documentation reference index."
     TEMPLATE_VERSION_FILE: ClassVar[str] = "version_file.py.j2"
     "Per-project ``__version__.py`` template."
     TEMPLATE_MKDOCS_PROJECT: ClassVar[str] = "mkdocs_project.yml.j2"

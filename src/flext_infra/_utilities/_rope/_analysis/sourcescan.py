@@ -1,10 +1,9 @@
 """Source-level rope parsing, literal scanning, and reference extraction.
 
-Rope is the only Python interpreter here: every parse and tree walk runs
-through rope's own ``ast`` surface (``rope.base.ast``), and the node
-vocabulary exposed for ``u``-family consumers comes from that same surface
-under capability names, so no consumer names or drives the interpreter
-itself (ADR-028 Decision 15).
+Native source modules and their SDK binding indexes own migrated declaration
+queries. Remaining legacy AST readers still use Rope's AST surface pending their
+consumer cutover; that historical implementation is not an authorization for new
+FLEXT AST interpretation (ADR-028 Decision 15).
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT.
@@ -201,33 +200,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                     if isinstance(child, ast.stmt | ast.excepthandler | ast.match_case):
                         pending.append(child)
         return tuple(found)
-
-    @staticmethod
-    def module_absolute_import_roots(module: ast.Module) -> frozenset[str]:
-        """Read absolute import roots from an already parsed module.
-
-        Returns:
-            Top-level imported packages, including nested statement bodies.
-
-        """
-        found: set[str] = set()
-        pending: list[ast.AST] = [module]
-        while pending:
-            node = pending.pop()
-            for field in ("body", "orelse", "finalbody", "handlers", "cases"):
-                for child in getattr(node, field, ()):
-                    if isinstance(child, ast.Import):
-                        found.update(
-                            alias.name.partition(".")[0] for alias in child.names
-                        )
-                    elif isinstance(child, ast.ImportFrom):
-                        if child.level == 0 and child.module:
-                            found.add(child.module.partition(".")[0])
-                    elif isinstance(
-                        child, ast.stmt | ast.excepthandler | ast.match_case
-                    ):
-                        pending.append(child)
-        return frozenset(found)
 
     @classmethod
     def single_module_import_binding(cls, tree: ast.Module, name: str) -> bool:
@@ -436,214 +408,20 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 return node.value
         return None
 
-    @classmethod
+    @staticmethod
     def module_assignment_strings_source(
-        cls, source_module: p.Infra.RopeSourceModule, name: str
+        source_module: p.Infra.RopeSourceModule, name: str
     ) -> Sequence[str]:
-        """Read strings through the invocation's original native module and DSL.
+        """Read declared strings from the elected native binding index.
 
         Returns:
-            The resulting ``Sequence[str]``.
+            The declared strings, or an empty sequence when absent.
 
         """
-        return cls.module_assignment_strings(source_module, name)
-
-    @classmethod
-    @FlextInfraUtilitiesRopeRuntime.semantic_matching_context()
-    def module_assignment_strings(
-        cls, source_module: p.Infra.RopeSourceModule, name: str
-    ) -> Sequence[str]:
-        """Read literal/name-sequence declarations from the native binding index.
-
-        A direct module declaration wins over a single direct class's export
-        metadata. Named sequences and the declared sequence constructors retain
-        their original module ownership; no source-only parse project is opened.
-
-        Returns:
-            The declared strings using the source reader's export semantics.
-
-        Raises:
-            TypeError: The native assignment query has no word finder contract.
-            ValueError: If Cyclic native string-sequence declaration.
-
-        """
-        module_scope = source_module.get_scope()
-        scope = module_scope
-        region = cls.module_assignment_region(source_module, scope, name, depth=1)
-        if region is None and name == c.Infra.DUNDER_ALL:
-            index = source_module.get_source_binding_index()
-            word = FlextInfraUtilitiesRopeRuntime.runtime_callable(
-                "rope.base.worder", "Worder"
-            )(source_module.source_code)
-            if not isinstance(word, p.Infra.RopeWorder):
-                msg = "Native assignment query requires the word finder contract"
-                raise TypeError(msg)
-            if not any(
-                fragment.depth == c.Infra.DUUNDER_ASSIGNMENT_FRAGMENT_DEPTH
-                and word.get_word_at(fragment.start) == name
-                and word.get_word_range(fragment.start)
-                == (fragment.start, fragment.end)
-                for fragment in index.fragments
-            ):
-                return ()
-            roots = tuple(
-                child
-                for child in module_scope.get_scopes()
-                if child.get_kind() == "Class"
-                and any(
-                    fragment.depth == 1
-                    and source_module.lines.get_line_number(fragment.start)
-                    == child.get_start()
-                    for fragment in index.fragments
-                )
-            )
-            if len(roots) == 1:
-                scope = roots[0]
-                region = cls.module_assignment_region(
-                    source_module, scope, name, depth=2
-                )
-        visited: set[str] = set()
-        while region is not None:
-            if name in visited:
-                msg = f"Cyclic native string-sequence declaration: {name}"
-                raise ValueError(msg)
-            visited.add(name)
-            value = cls._native_assignment_capture(source_module, region)
-            if value is None:
-                return ()
-            values = cls._native_sequence_strings(source_module, value)
-            if values is not None:
-                return values
-            name = cls._native_sequence_reference(source_module, value)
-            if not name:
-                return ()
-            region = cls.module_assignment_region(
-                source_module, module_scope, name, depth=1
-            )
-        return ()
-
-    @staticmethod
-    def module_assignment_region(
-        module: p.Infra.RopeSourceModule,
-        scope: p.Infra.RopeScope,
-        name: str,
-        *,
-        depth: int,
-    ) -> tuple[int, int] | None:
-        """Select the first direct assignment that declares the requested name.
-
-        Returns:
-            The resulting ``tuple[int, int] | None``.
-
-        Raises:
-            TypeError: If Native assignment query requires the word finder contract.
-
-        """
-        runtime = FlextInfraUtilitiesRopeRuntime
-        index = module.get_source_binding_index()
-        word = runtime.runtime_callable("rope.base.worder", "Worder")(
-            module.source_code
+        values = source_module.get_source_binding_index().assignment_string_sequence(
+            name, class_metadata=name == c.Infra.DUNDER_ALL
         )
-        if not isinstance(word, p.Infra.RopeWorder):
-            msg = "Native assignment query requires the word finder contract"
-            raise TypeError(msg)
-        named = tuple(
-            child
-            for child in index.fragments
-            if child.depth == depth + 1
-            and word.get_word_at(child.start) == name
-            and word.get_word_range(child.start) == (child.start, child.end)
-        )
-        if not named:
-            return None
-        direct = tuple(
-            fragment
-            for fragment in index.fragments
-            if fragment.depth == depth
-            and any(
-                fragment.start <= child.start < child.end <= fragment.end
-                for child in named
-            )
-            and fragment.context.structural_scope.pyobject is scope.pyobject
-        )
-        for fragment in direct:
-            arity = sum(
-                child.depth == fragment.depth + 1
-                and fragment.start <= child.start < child.end <= fragment.end
-                for child in index.fragments
-            )
-            patterns = (
-                *(
-                    (
-                        " = ".join((
-                            *(
-                                name if index == selected else f"${{target{index}}}"
-                                for index in range(arity - 1)
-                            ),
-                            "${value}",
-                        ))
-                        for selected in range(arity - 1)
-                    )
-                    if arity > 1
-                    else ()
-                ),
-                f"{name}: ${{annotation}}",
-                f"{name}: ${{annotation}} = ${{value}}",
-            )
-            for pattern in patterns:
-                if (fragment.start, fragment.end) in runtime.semantic_regions(
-                    module,
-                    pattern,
-                    arguments={},
-                    start=fragment.start,
-                    end=fragment.end,
-                ):
-                    return fragment.start, fragment.end
-        return None
-
-    @staticmethod
-    def _native_assignment_capture(
-        module: p.Infra.RopeSourceModule, region: tuple[int, int]
-    ) -> tuple[int, int] | None:
-        """Capture an indexed assignment's value with the native DSL.
-
-        Returns:
-            The resulting ``tuple[int, int] | None``.
-
-        """
-        runtime = FlextInfraUtilitiesRopeRuntime
-        fragments = module.get_source_binding_index().fragments
-        statement = next(
-            fragment
-            for fragment in fragments
-            if (fragment.start, fragment.end) == region
-        )
-        arity = sum(
-            child.depth == statement.depth + 1
-            and statement.start <= child.start < child.end <= statement.end
-            for child in fragments
-        )
-        patterns = (
-            *(
-                (
-                    " = ".join((
-                        *(f"${{target{i}}}" for i in range(arity - 1)),
-                        "${value}",
-                    )),
-                )
-                if arity > 1
-                else ()
-            ),
-            "${target}: ${annotation} = ${value}",
-        )
-        finder = runtime.semantic_finder(module, arguments={})
-        for pattern in patterns:
-            for match in finder.get_matches(
-                pattern, {}, start=region[0], end=region[1]
-            ):
-                if match.get_region() == region:
-                    return runtime.semantic_capture_region(match, "value")
-        return None
+        return () if values is None else values
 
     @staticmethod
     def _native_sequence_items(
@@ -684,31 +462,10 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 if match.get_region() != region:
                     continue
                 return tuple(
-                    runtime.semantic_capture_region(match, f"item{index}")
+                    runtime.semantic_capture_region(module, match, f"item{index}")
                     for index in range(count)
                 )
         return None
-
-    @classmethod
-    def _native_sequence_strings(
-        cls, module: p.Infra.RopeSourceModule, region: tuple[int, int]
-    ) -> tuple[str, ...] | None:
-        """Decode only native constant-string items of a literal collection.
-
-        Returns:
-            The resulting ``tuple[str, ...] | None``.
-
-        """
-        items = cls._native_sequence_items(module, region)
-        if items is None:
-            return None
-        strings: list[str] = []
-        for begin, end in items:
-            item = cls.literal_string_region(module, (begin, end))
-            if item is None:
-                return ()
-            strings.append(item)
-        return tuple(strings)
 
     @staticmethod
     def literal_string_region(
@@ -819,7 +576,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                         for index in range(count)
                         for name in cls._declaration_target_names(
                             module,
-                            runtime.semantic_capture_region(match, f"target{index}"),
+                            runtime.semantic_capture_region(
+                                module, match, f"target{index}"
+                            ),
                             unpack_targets=unpack_targets,
                         )
                     )
@@ -867,41 +626,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             for item in items or ()
             for name in cls._declaration_target_names(module, item)
         )
-
-    @staticmethod
-    def _native_sequence_reference(
-        module: p.Infra.RopeSourceModule, region: tuple[int, int]
-    ) -> str:
-        """Read a sole native name or the supported one-name constructor call.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            TypeError: If Native string-sequence query requires the word finder
-                contract.
-
-        """
-        runtime = FlextInfraUtilitiesRopeRuntime
-        word = runtime.runtime_callable("rope.base.worder", "Worder")(
-            module.source_code
-        )
-        if not isinstance(word, p.Infra.RopeWorder):
-            msg = "Native string-sequence query requires the word finder contract"
-            raise TypeError(msg)
-        if word.get_word_range(region[0]) == region:
-            return word.get_word_at(region[0])
-        finder = runtime.semantic_finder(module, arguments={})
-        for constructor in ("tuple", "list", "frozenset", "set"):
-            for match in finder.get_matches(
-                f"{constructor}(${{reference}})", {}, start=region[0], end=region[1]
-            ):
-                if match.get_region() != region:
-                    continue
-                captured = runtime.semantic_capture_region(match, "reference")
-                if word.get_word_range(captured[0]) == captured:
-                    return word.get_word_at(captured[0])
-        return ""
 
     @classmethod
     def module_mapping_assignment_source(

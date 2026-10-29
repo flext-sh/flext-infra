@@ -550,7 +550,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         if path not in snapshot.exports:
             owner.workspace_source(snapshot, path)
             snapshot.exports[path] = (
-                FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
+                FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
                     FlextInfraUtilitiesRopeCore.resolve_pymodule(
                         snapshot.engine,
                         FlextInfraUtilitiesRopeRuntime.file_resource_at(

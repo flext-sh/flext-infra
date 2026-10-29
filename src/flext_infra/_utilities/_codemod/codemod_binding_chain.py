@@ -330,7 +330,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 else "${binding_target} = ${binding_value}"
             )
             regions = tuple(
-                    match.get_capture_region("binding_value")
+                FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
+                    holder, match, "binding_value"
+                )
                 for match in tuple(
                     FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
                         holder, arguments={}

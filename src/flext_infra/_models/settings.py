@@ -46,6 +46,11 @@ class FlextInfraModelsSettings:
             validation_alias="GITHUB_ACTIONS",
             description="Actual hosted-runner signal used before host-path election.",
         )
+        upgrade_packages: Annotated[tuple[t.NonEmptyStr, ...], m.ForceDecode] = m.Field(
+            default=(),
+            validation_alias="FLEXT_INFRA_UPGRADE_PACKAGES",
+            description="Explicit Python package upgrade scope; empty upgrades all.",
+        )
         profile: bool = m.Field(
             default=False,
             validation_alias="FLEXT_INFRA_PROFILE",

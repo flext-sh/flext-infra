@@ -96,7 +96,7 @@ class FlextInfraModelsCodemod:
             m.Field(alias="ruleId", min_length=1, description="Native rule ID"),
         ]
         severity: Annotated[
-            Literal["error", "warning", "info", "hint"],
+            c.Infra.NativeRuleSeverity,
             m.Field(description="Native rule severity"),
         ]
         message: Annotated[str, m.Field(description="Native rule diagnostic")]
@@ -154,8 +154,9 @@ class FlextInfraModelsCodemod:
     class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic):
         """A validated owned-path finding in the native scanner wire format."""
 
-        origin: Literal["owned-path"] = m.Field(
-            default="owned-path", description="Native owned-path rule provenance"
+        origin: Literal[c.Infra.ModFindingOrigin.OWNED_PATH] = m.Field(
+            default=c.Infra.ModFindingOrigin.OWNED_PATH,
+            description="Native owned-path rule provenance",
         )
 
         @m.model_serializer
@@ -189,11 +190,11 @@ class FlextInfraModelsCodemod:
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Exact rule receipt identity")]
         operation: Annotated[
-            Literal["flatten-single-wrapper"],
+            Literal[c.Infra.FamilyFlattenOperation.FLATTEN_SINGLE_WRAPPER],
             m.Field(description="Supported semantic family transformation"),
         ]
         collision: Annotated[
-            Literal["prefix-wrapper"],
+            Literal[c.Infra.FamilyCollisionPolicy.PREFIX_WRAPPER],
             m.Field(description="Member-name collision resolution policy"),
         ]
 

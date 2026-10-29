@@ -106,7 +106,8 @@ class FlextInfraUtilitiesCodegenFacades(
         """
         with (
             nullcontext(project)
-            if project.source_text(path) == source
+            if project.source_query(path, "isfile")
+            and project.source_text(path) == source
             else project.source_view(
                 declared_files=cls.workspace_declared_sources(
                     Path(project.root.real_path),
@@ -4200,8 +4201,10 @@ class FlextInfraUtilitiesCodegenFacades(
             for fragment in index.fragments
         ):
             return None
-        target_begin, target_end = match.semantic_capture_region("target")
-        value_begin, value_end = match.semantic_capture_region(", "value")
+        target_begin, target_end = runtime.semantic_capture_region(
+            module, match, "target"
+        )
+        value_begin, value_end = runtime.semantic_capture_region(module, match, "value")
         authentic = cls._facade_publication_reference(finder, value_begin, value_end)
         if finder.get_word_range(target_begin) != (target_begin, target_end) or not (
             authentic

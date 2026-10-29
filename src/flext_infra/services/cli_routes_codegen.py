@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import u
-
-from flext_infra import c, codegen, deps, infra, m, p
+from flext_infra import c, codegen, deps, infra, m, p, settings, u
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
@@ -23,7 +21,12 @@ class FlextInfraCodegenRoutes:
             The lock upgrade result, or its first native failure.
 
         """
-        return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(request, u.Cli)
+        return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(
+            request,
+            u.Cli,
+            file_publisher=u.Infra,
+            packages=settings.Infra.upgrade_packages,
+        )
 
     @staticmethod
     def check_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
@@ -191,7 +194,7 @@ class FlextInfraCodegenRoutes:
                 "Upgrade the elected native UV and Mise locks without installing",
                 m.Infra.WorkspaceRequest,
                 FlextInfraCodegenRoutes.execute_upgrade_lock,
-                "native UV and Mise locks upgraded and verified",
+                "native dependency resolution and lock verification completed",
             ),
             (
                 "detect",

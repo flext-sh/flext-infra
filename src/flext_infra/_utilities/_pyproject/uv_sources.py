@@ -7,10 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+from itertools import chain
 
 from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
+from tomlkit.items import Array
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -27,6 +29,77 @@ from flext_infra._utilities._pyproject.requirements import (
 
 class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirements):
     """Conform generated native UV leaves and preserve authored native policy."""
+
+    @classmethod
+    def sync_selected_uv_overrides(
+        cls,
+        document: t.Cli.TomlDocument,
+        declarations: Sequence[str | m.Infra.UvScopedOverride],
+        packages: Sequence[str],
+    ) -> bool:
+        """Project selected global resolver declarations into the native document.
+
+        Returns:
+            Whether the selected override publication changes the document.
+
+        """
+        selected = frozenset(map(canonicalize_name, packages))
+        desired = tuple(
+            entry
+            for entry in declarations
+            if isinstance(entry, str)
+            and canonicalize_name(Requirement(entry).name) in selected
+        )
+        if not desired:
+            return False
+        table = cls._resolved_uv_table(document)
+        current = u.Cli.toml_value(table, "override-dependencies")
+        existing = m.Infra.UvOverrideEntries.model_validate(
+            [] if current is None else current
+        )
+        changed = u.Cli.toml_sync_value(
+            table,
+            "override-dependencies",
+            cls._uv_override_wire((*existing.root, *desired)),
+        )
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        if project is None:
+            return changed
+        sources: dict[str, set[str]] = {}
+        for entry in desired:
+            parsed = Requirement(entry)
+            if parsed.url is not None:
+                sources.setdefault(canonicalize_name(parsed.name), set()).add(
+                    parsed.url
+                )
+        for section, key in chain(
+            ((project, str(c.Infra.DEPENDENCIES)),),
+            cls.requirement_group_fields(document, project),
+        ):
+            original = u.Cli.toml_item_child(section, key)
+            if original is None:
+                continue
+            if not isinstance(original, Array):
+                message = f"requirement field must be a native TOML array: {key}"
+                raise TypeError(message)
+            for index, entry in enumerate(
+                cls.dependency_group_entries(u.Cli.toml_unwrap_item(original))
+            ):
+                if not isinstance(entry, str):
+                    continue
+                parsed = Requirement(entry)
+                urls = sources.get(canonicalize_name(parsed.name))
+                if parsed.url is None or urls is None:
+                    continue
+                if len(urls) != 1:
+                    message = f"selected source URLs are ambiguous: {parsed.name}"
+                    raise ValueError(message)
+                selected_url = next(iter(urls))
+                if parsed.url != selected_url:
+                    parsed.url = selected_url
+                    original[index] = str(parsed)
+                    changed = True
+        return changed
 
     @classmethod
     def document_requirement_lines(

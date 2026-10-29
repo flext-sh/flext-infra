@@ -59,15 +59,6 @@ class FlextInfraModelsDocs(
         export_name: Annotated[str, m.Field(description="Public export name")]
         module_name: Annotated[str, m.Field(description="Defining module name")]
 
-    class DocsCatalogEntry(m.ContractModel):
-        """One project row in the generated workspace catalog."""
-
-        name: Annotated[str, m.Field(description="Project name")]
-        project_class: Annotated[str, m.Field(description="Project class")]
-        package_name: Annotated[str, m.Field(description="Import package name")]
-        description: Annotated[str, m.Field(description="Project description")]
-        api_page: Annotated[str, m.Field(description="Generated API page")]
-
     class DocsProjectIndexEntry(m.ContractModel):
         """One project row in the workspace module index."""
 

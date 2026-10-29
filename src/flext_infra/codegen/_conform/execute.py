@@ -232,11 +232,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if request.what in c.Infra.FILE_ONLY_SURFACES
             else self.plan(request)
         )
+        failed = planned.failure or (
+            planned.success
+            and (bool(planned.value.issues) or planned.value.exception is not None)
+        )
         u.Cli.info(
             f"stage=planning state=end root={request.root} "
             f"elapsed={time.monotonic() - started:.3f}s "
             f"files={len(planned.value.files) if planned.success else 0} "
-            f"failed={planned.failure}"
+            f"failed={failed}"
         )
         if (
             planned.success

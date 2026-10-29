@@ -18,10 +18,10 @@ from flext_infra import t
 
 if TYPE_CHECKING:
     from flext_infra import c, m
-    from flext_infra._protocols.check import FlextInfraProtocolsCheck
-    from flext_infra._protocols.rope import FlextInfraProtocolsRope
-    from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
-    from flext_infra._protocols.workspace_snapshot import (
+    from flext_infra._protocols import (
+        FlextInfraProtocolsCheck,
+        FlextInfraProtocolsRope,
+        FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsWorkspaceSnapshot,
     )
 

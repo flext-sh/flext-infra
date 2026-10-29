@@ -112,14 +112,11 @@ class FlextInfraInventoryService(s[bool]):
             The resulting ``p.Result[str]``.
 
         """
-        write_result = u.Cli.json_write(
+        return u.Cli.json_write(
             path,
             payload,
             m.Cli.JsonWriteOptions(sort_keys=True),
-        )
-        if write_result.failure:
-            return r[str].from_failure(write_result)
-        return r[str].ok(str(path))
+        ).map(lambda _written: str(path))
 
     def _write_inventory_reports(
         self,

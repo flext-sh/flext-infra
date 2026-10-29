@@ -32,6 +32,18 @@ class FlextInfraUtilitiesDocsRender:
     _MIN_REPO_PARTS: ClassVar[int] = 2
 
     @staticmethod
+    def docs_llms_index(context: m.Infra.DocsLlmsContext) -> str:
+        """Render official references without fetching upstream documentation.
+
+        Returns:
+            The generated llms.txt index.
+
+        """
+        return FlextInfraUtilitiesDocsRender._render_template(
+            c.Infra.TEMPLATE_DOCS_LLMS, context
+        )
+
+    @staticmethod
     def docs_rebase_patterns(
         patterns: Sequence[str], *, repository_root: Path, docs_root: Path
     ) -> Sequence[str]:

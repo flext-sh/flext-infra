@@ -244,7 +244,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         phases = config.Infra.tooling.mod.phases
         staged = [
             (stage, cls.codemod_native_stage(root, plan, stage))
-            if stage.kind is c.Infra.ModStageKind.NATIVE
+            if stage.kind == c.Infra.ModStageKind.NATIVE
             else (stage, None)
             for stage in phases.stages
         ]
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         if not originals or all(
             ruleset is None
             for stage, ruleset in staged
-            if stage.kind is c.Infra.ModStageKind.NATIVE
+            if stage.kind == c.Infra.ModStageKind.NATIVE
         ):
             return {}
         binary = cls.codemod_tool_binary(c.Infra.SG)
@@ -277,7 +277,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
                 for stage, ruleset in staged:
                     if ruleset is not None:
                         cls._run_native_stage(preview, binary, ruleset)
-                    elif stage.kind is c.Infra.ModStageKind.RUFF:
+                    elif stage.kind == c.Infra.ModStageKind.RUFF:
                         cls._run_ruff_stage(root, preview, stage, originals)
                 after = cls._preview_contents(preview)
                 if after == before:

@@ -32,11 +32,12 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
-)
-from flext_infra._utilities._rope._analysis.sourcescan import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 
 
@@ -712,11 +713,18 @@ class FlextInfraUtilitiesCodemodNativePackage:
         if root in snapshot.absolute_import_roots:
             return snapshot.absolute_import_roots[root]
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
-        roots = FlextInfraUtilitiesRopeAnalysisSourceScan.module_absolute_import_roots
         imported: set[str] = set()
         for path in snapshots.workspace_python_files(snapshot, root):
             snapshots.workspace_source(snapshot, path)
-            imported.update(roots(snapshots.workspace_module_tree(snapshot, path)))
+            module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    snapshot.engine,
+                    FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                        snapshot.engine, path
+                    ),
+                )
+            )
+            imported.update(module.get_source_binding_index().absolute_import_roots())
         snapshot.absolute_import_roots[root] = tuple(sorted(imported))
         return snapshot.absolute_import_roots[root]
 

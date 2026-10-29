@@ -28,6 +28,15 @@ if TYPE_CHECKING:
 class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
 
+    @unique
+    class NativeRuleSeverity(StrEnum):
+        """Severity values in the native scanner diagnostic wire protocol."""
+
+        ERROR = "error"
+        WARNING = "warning"
+        INFO = "info"
+        HINT = "hint"
+
     MOD_SCAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
         / "refactor"
@@ -145,6 +154,25 @@ class FlextInfraConstantsRefactor:
         "ast-grep applies the stage's rules with its own --update-all."
         RUFF = "ruff"
         "Ruff repairs the selected import codes on the changed sources."
+
+    @unique
+    class ModFindingOrigin(StrEnum):
+        """Native producer provenance retained by scan findings."""
+
+        AST_GREP = "ast-grep"
+        OWNED_PATH = "owned-path"
+
+    @unique
+    class FamilyFlattenOperation(StrEnum):
+        """Closed semantic operations admitted by installed family rules."""
+
+        FLATTEN_SINGLE_WRAPPER = "flatten-single-wrapper"
+
+    @unique
+    class FamilyCollisionPolicy(StrEnum):
+        """Closed member-name collision policies for family transformations."""
+
+        PREFIX_WRAPPER = "prefix-wrapper"
 
     @unique
     class ModScanFindingClass(StrEnum):
@@ -268,6 +296,7 @@ class FlextInfraConstantsRefactor:
         RESTRUCTURE = "restructure"
         MATERIALIZE_DELEGATIONS = "materialize-delegations"
         RETIRE_GENERIC_TYPING_WRAPPERS = "retire-generic-typing-wrappers"
+        NORMALIZE_EXHAUSTIVE_ENUM = "normalize-exhaustive-enum"
 
     @unique
     class SemanticCutoverPhase(StrEnum):

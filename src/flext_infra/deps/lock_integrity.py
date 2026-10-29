@@ -37,37 +37,123 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         cls,
         request: p.Infra.WorkspaceRequest,
         runner: p.Cli.CommandRunner,
+        *,
+        file_publisher: p.Infra.CodegenFilePublisher,
+        packages: Sequence[str] = (),
     ) -> p.Result[bool]:
         """Upgrade the elected native UV and Mise locks, the only lock writer.
 
         Native uv elects the runtime root: a workspace resolves every declared
         member together in its single root lock, and a standalone checkout
-        resolves its own lock. No member is resolved separately; uv's
-        ``--upgrade`` implies its own ``--refresh``. The composition root
-        injects the command runner every native call uses.
+        resolves its own lock. An explicit Python package selection uses native
+        ``--upgrade-package`` and leaves Mise resolutions untouched. The default
+        upgrades both complete declarations. The composition root supplies the
+        validated selection and runner.
 
         Returns:
             Native upgrade and freshness verification, or the first failure.
 
         """
-        return FlextInfraWorkspaceDetector.resolution_context(
-            request.repository_root,
+        resolved = FlextInfraWorkspaceDetector.resolution_context(
+            request.repository_root
+        )
+        if resolved.failure:
+            return r.from_failure(resolved)
+        root = resolved.value.runtime_root
+        if packages:
+            projected = cls._project_selected_overrides(root, packages, file_publisher)
+            if projected.failure:
+                return r.from_failure(projected)
+        arguments = (
+            (
+                "lock",
+                *(
+                    part
+                    for package in packages
+                    for part in ("--upgrade-package", package)
+                ),
+            )
+            if packages
+            else ("lock", "--upgrade")
+        )
+        locked = cls._native_uv(runner, root, arguments).flat_map(
+            lambda _: FlextInfraWorkspaceLockCompleteness.verify_lock(root)
+        )
+        return (
+            locked
+            if packages
+            else locked.flat_map(lambda _: cls._upgrade_mise_lock(runner, root))
+        )
+
+    @classmethod
+    def _project_selected_overrides(
+        cls,
+        root: Path,
+        packages: Sequence[str],
+        publisher: p.Infra.CodegenFilePublisher,
+    ) -> p.Result[tuple[Path, ...]]:
+        """Publish only selected resolver declarations with original file witnesses.
+
+        Returns:
+            Published input paths, or the original configuration/read failure.
+
+        """
+        return r.traverse(
+            u.Infra.governed_project_roots(root),
+            lambda owned: cls._selected_override_plan(owned, packages),
         ).flat_map(
-            lambda context: (
-                cls
-                ._native_uv(runner, context.runtime_root, ("lock", "--upgrade"))
-                .flat_map(
-                    lambda _locked: FlextInfraWorkspaceLockCompleteness.verify_lock(
-                        context.runtime_root,
+            lambda groups: publisher.publish_codegen_plans(
+                root, tuple(plan for group in groups for plan in group)
+            )
+        )
+
+    @staticmethod
+    def _selected_override_plan(
+        root: Path, packages: Sequence[str]
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Render selected resolution metadata while retaining the captured source.
+
+        Returns:
+            The owned file plan, or the original configuration/read failure.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(root)
+        if inputs.failure:
+            return r.from_failure(inputs)
+        captured = u.Cli.atomic_read_binary_file_state(
+            root / c.PYPROJECT_FILENAME, required=True
+        )
+        if captured.failure:
+            return r.from_failure(captured)
+        before = captured.value
+        if before.content is None:
+            return r.fail(f"required project document has no content: {before.path}")
+        parsed = u.Cli.toml_read_document(
+            before.path, source=before.content.decode(c.DEFAULT_ENCODING)
+        )
+        if parsed.failure:
+            return r.from_failure(parsed)
+        document = parsed.value
+        changed = u.Infra.sync_selected_uv_overrides(
+            document,
+            inputs.value.spec.toolchain.uv_override_dependencies,
+            packages,
+        )
+        return r.ok(
+            (
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=before.path,
+                    before=before,
+                    desired_content=u.Cli.toml_dumps(document).encode(
+                        c.DEFAULT_ENCODING
                     ),
-                )
-                .flat_map(
-                    lambda _verified: cls._upgrade_mise_lock(
-                        runner,
-                        context.runtime_root,
-                    ),
-                )
-            ),
+                    desired_mode=before.mode,
+                    owner=c.Infra.CLI_GROUP_DEPS,
+                ),
+            )
+            if changed
+            else (),
         )
 
     @classmethod

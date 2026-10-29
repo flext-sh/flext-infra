@@ -281,7 +281,9 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         calls = refactors.word_call_regions(module.source_code, match.get_region())
         if rule.defaulted_field and rule.value_default is not None:
-            begin, end = refactors.semantic_capture_region(match, rule.value_default)
+            begin, end = refactors.semantic_capture_region(
+                module, match, rule.value_default
+            )
             calls = tuple(
                 region for region in calls if not begin <= region[0] < region[1] <= end
             )

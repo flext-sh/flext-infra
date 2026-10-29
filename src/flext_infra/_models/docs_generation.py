@@ -23,6 +23,43 @@ from flext_infra._models._config import (
 class FlextInfraModelsDocsGeneration:
     """Declaration-only documentation generation contracts."""
 
+    class DocsCatalogEntry(m.ContractModel):
+        """One project row in the generated workspace catalog."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        project_class: Annotated[str, m.Field(description="Project class")]
+        package_name: Annotated[str, m.Field(description="Import package name")]
+        description: Annotated[str, m.Field(description="Project description")]
+        api_page: Annotated[str, m.Field(description="Generated API page")]
+
+    class DocsDependencyReference(m.FrozenModel):
+        """Official dependency documentation with separate version provenance."""
+
+        name: t.NonEmptyStr = m.Field(description="Normalized distribution name")
+        documentation_url: t.NonEmptyStr = m.Field(
+            description="Official publisher-declared or verified documentation URL"
+        )
+        installed_version: str | None = m.Field(
+            default=None, description="Observed installed distribution version"
+        )
+        locked_versions: tuple[str, ...] = m.Field(
+            default=(), description="Distinct versions declared by governed locks"
+        )
+        source: t.NonEmptyStr = m.Field(
+            description="Metadata or configured source establishing URL ownership"
+        )
+
+    class DocsLlmsContext(m.FrozenModel):
+        """Source-derived inputs of the llms.txt documentation index."""
+
+        title: t.NonEmptyStr = m.Field(description="Owning workspace title")
+        projects: tuple[FlextInfraModelsDocsGeneration.DocsCatalogEntry, ...] = m.Field(
+            description="Generated first-party project references"
+        )
+        dependencies: tuple[
+            FlextInfraModelsDocsGeneration.DocsDependencyReference, ...
+        ] = m.Field(description="Official external documentation references")
+
     class DocsRootInputs(m.FrozenModel):
         """Workspace-level inputs shared by the aggregate root page rendering."""
 

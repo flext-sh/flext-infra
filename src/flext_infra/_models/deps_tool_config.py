@@ -60,10 +60,10 @@ class FlextInfraModelsDepsToolConfig(
                     stage claims shapes or selects nothing.
 
             """
-            if self.kind is c.Infra.ModStageKind.NATIVE and self.select:
+            if self.kind == c.Infra.ModStageKind.NATIVE and self.select:
                 msg = f"native stage {self.name} cannot select Ruff codes"
                 raise ValueError(msg)
-            if self.kind is c.Infra.ModStageKind.RUFF and (
+            if self.kind == c.Infra.ModStageKind.RUFF and (
                 self.shapes or not self.select
             ):
                 msg = f"ruff stage {self.name} requires select and no shapes"
@@ -122,7 +122,7 @@ class FlextInfraModelsDepsToolConfig(
             native = [
                 stage
                 for stage in self.stages
-                if stage.kind is c.Infra.ModStageKind.NATIVE
+                if stage.kind == c.Infra.ModStageKind.NATIVE
             ]
             if sum(not stage.shapes for stage in native) != 1:
                 msg = "make mod requires exactly one native catalog stage"
@@ -132,7 +132,7 @@ class FlextInfraModelsDepsToolConfig(
                 msg = "make mod stage shapes must be claimed once"
                 raise ValueError(msg)
             if (
-                sum(stage.kind is c.Infra.ModStageKind.RUFF for stage in self.stages)
+                sum(stage.kind == c.Infra.ModStageKind.RUFF for stage in self.stages)
                 != 1
             ):
                 msg = "make mod requires exactly one ruff import-fix stage"

@@ -37,6 +37,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
 from flext_infra._utilities._rope.rope_runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
+from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -45,6 +46,9 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRetirement,
     FlextInfraUtilitiesSemanticDelegations,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
+from flext_infra._utilities._semantic_cutover.constant_sources import (
+    FlextInfraUtilitiesSemanticConstantSources,
 )
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.workspace_snapshot import (
@@ -203,7 +207,7 @@ class FlextInfraUtilitiesSemanticContracts(
         for selection in rules:
             if (
                 selection.operation
-                is c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
+                == c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
                 and selection.source_revision is not None
             ):
                 path, candidate, names = cls._generic_collection_history(
@@ -249,7 +253,7 @@ class FlextInfraUtilitiesSemanticContracts(
             for derived in (
                 cls._generic_collection_contract_rules(workspace.rope_project, rule)
                 if rule.operation
-                is c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
+                == c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
                 else (rule,)
             )
         )
@@ -1029,7 +1033,11 @@ class FlextInfraUtilitiesSemanticContracts(
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
-        if rule.operation is c.Infra.RopeContractOperation.MATERIALIZE_DELEGATIONS:
+        if rule.operation == c.Infra.RopeContractOperation.NORMALIZE_EXHAUSTIVE_ENUM:
+            return cls._exhaustive_enum_contracts(
+                project, rule, sources, tuple(context[1])
+            )
+        if rule.operation == c.Infra.RopeContractOperation.MATERIALIZE_DELEGATIONS:
             return FlextInfraUtilitiesSemanticDelegations.materialize_delegations(
                 project, sources, tuple(context[1]), rule.id
             )
@@ -1085,6 +1093,775 @@ class FlextInfraUtilitiesSemanticContracts(
                 ).unwrap()
             )
         return members
+
+    @classmethod
+    def _exhaustive_enum_members(
+        cls,
+        project: p.Infra.RopeProject,
+        owner: p.Infra.RopeSourceClass,
+    ) -> Mapping[str, p.Infra.RopePyName]:
+        """Admit plain unique StrEnums through a complete native class pattern.
+
+        Returns:
+            Owned members, or no admission for an unsupported declaration shape.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        strenum = runtime.qualified_name(project, "enum.StrEnum").get_object()
+        if tuple(owner.get_superclasses()) != (strenum,):
+            return {}
+        defined = owner.get_scope().get_defined_names()
+        if len(defined) < 2 or any(
+            name.startswith("_")
+            or not isinstance(binding, p.Infra.RopeAssignedName)
+            or len(binding.assignments) != 1
+            for name, binding in defined.items()
+        ):
+            return {}
+        module = owner.get_module()
+        if not isinstance(module, p.Infra.RopePyModule):
+            return {}
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        region = refactors.source_declaration_region(module, owner.get_ast())
+        members = dict(
+            sorted(
+                defined.items(),
+                key=lambda item: item[1].get_definition_location()[1] or 0,
+            )
+        )
+        body = [repr(owner.get_doc())] if owner.get_doc() is not None else []
+        body.extend(f"{name} = ${{value{index}}}" for index, name in enumerate(members))
+        pattern = (
+            f"@${{unique}}\nclass {owner.get_name()}(${{strenum}}):\n    "
+            + "\n    ".join(body)
+        )
+        arguments = {"unique": "name=enum.unique", "strenum": "name=enum.StrEnum"}
+        strings = {
+            (start, end)
+            for start, end, _metadata in refactors.ignored_regions(module.source_code)
+            if module.source_code[start:end].lstrip("rRuU").startswith(("'", '"'))
+        }
+        for match in refactors.semantic_finder(module).get_matches(pattern, arguments):
+            begin, end = match.get_region()
+            if not begin <= region[0] < end == region[1]:
+                continue
+            if all(
+                refactors.semantic_capture_region(module, match, f"value{index}")
+                in strings
+                for index in range(len(members))
+            ):
+                return members
+        return {}
+
+    @classmethod
+    def _enum_contract_dependencies(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        region: tuple[int, int],
+        reference_facts: MutableMapping[
+            p.Infra.RopePyModule, tuple[tuple[int, int], ...]
+        ],
+        statement_facts: MutableMapping[
+            p.Infra.RopePyModule, tuple[tuple[int, int], ...]
+        ],
+        quoted_facts: MutableMapping[
+            p.Infra.RopePyModule, tuple[tuple[str, p.Infra.RopeScope, int], ...]
+        ],
+    ) -> tuple[
+        frozenset[p.Infra.RopeSourceClass],
+        tuple[tuple[p.Infra.RopePyModule, tuple[int, int]], ...],
+    ]:
+        """Follow native assigned-name references, including type/metadata aliases.
+
+        Returns:
+            Classes named by the closure and its native source statements.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        references = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        pending = [(module, region)]
+        visited: set[tuple[str, int, int]] = set()
+        statements: list[tuple[p.Infra.RopePyModule, tuple[int, int]]] = []
+        models: set[p.Infra.RopeSourceClass] = set()
+        while pending:
+            current, (first, last) = pending.pop()
+            key = (current.get_name(), first, last)
+            if key in visited:
+                continue
+            visited.add(key)
+            statements.append((current, (first, last)))
+            if current not in reference_facts:
+                reference_facts[current] = references.reference_regions(
+                    current.source_code
+                )
+                statement_facts[current] = tuple(
+                    (statement.start_offset, statement.end_offset)
+                    for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                        current.source_code
+                    )
+                )
+            if current not in quoted_facts:
+                quoted_facts[current] = tuple(
+                    references.scoped_quoted_type_references(
+                        current.source_code, project, current
+                    )
+                )
+            primaries = (
+                (current.source_code[start:stop], runtime.scope_at(current, start))
+                for start, stop in reference_facts[current]
+                if first <= start < stop <= last
+            )
+            quoted = (
+                (expression[start:stop], scope)
+                for expression, scope, line in quoted_facts[current]
+                if first <= current.lines.get_line_start(line) < last
+                for start, stop in references.reference_regions(expression)
+            )
+            for expression, scope in (*primaries, *quoted):
+                binding = runtime.resolve_symbol(scope, expression)
+                if binding is None:
+                    continue
+                binding = runtime.source_import_binding(binding)
+                if binding is None:
+                    message = "Enum discriminator alias has unresolved native import provenance"
+                    raise ValueError(message)
+                target = binding.get_object()
+                if isinstance(target, p.Infra.RopeSourceClass):
+                    models.add(target)
+                    models.update(
+                        base
+                        for base in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
+                            target
+                        )
+                        if isinstance(base, p.Infra.RopeSourceClass)
+                    )
+                if not isinstance(binding, p.Infra.RopeAssignedName):
+                    continue
+                provider, line = runtime.definition_location(binding)
+                if not isinstance(provider, p.Infra.RopePyModule) or line is None:
+                    continue
+                offset = provider.lines.get_line_start(line)
+                if provider not in reference_facts:
+                    reference_facts[provider] = references.reference_regions(
+                        provider.source_code
+                    )
+                    statement_facts[provider] = tuple(
+                        (statement.start_offset, statement.end_offset)
+                        for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                            provider.source_code
+                        )
+                    )
+                pending.extend(
+                    (provider, statement)
+                    for statement in statement_facts[provider]
+                    if statement[0] <= offset < statement[1]
+                )
+        return frozenset(models), tuple(statements)
+
+    @classmethod
+    def _enum_discriminator_index(
+        cls,
+        project: p.Infra.RopeProject,
+        modules: Sequence[p.Infra.RopePyModule],
+        reference_facts: MutableMapping[
+            p.Infra.RopePyModule, tuple[tuple[int, int], ...]
+        ],
+        statement_facts: MutableMapping[
+            p.Infra.RopePyModule, tuple[tuple[int, int], ...]
+        ],
+    ) -> Mapping[
+        p.Infra.RopeSourceClass,
+        tuple[tuple[p.Infra.RopePyModule, int, int, str | None], ...],
+    ]:
+        """Index native discriminator consumers once per captured source epoch.
+
+        Returns:
+            Authored discriminator calls keyed by their proven model dependencies.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        field_factory = runtime.qualified_name(project, "pydantic.Field")
+        discriminator = runtime.qualified_name(project, "pydantic.Discriminator")
+        quoted_facts: dict[
+            p.Infra.RopePyModule, tuple[tuple[str, p.Infra.RopeScope, int], ...]
+        ] = {}
+        indexed: dict[
+            p.Infra.RopeSourceClass,
+            set[tuple[p.Infra.RopePyModule, int, int, str | None]],
+        ] = {}
+        call_facts: dict[
+            tuple[p.Infra.RopePyModule, int, int], tuple[bool, str | None]
+        ] = {}
+        for module in modules:
+            for statement in statement_facts[module]:
+                models, dependencies = cls._enum_contract_dependencies(
+                    project,
+                    module,
+                    statement,
+                    reference_facts,
+                    statement_facts,
+                    quoted_facts,
+                )
+                if not models:
+                    continue
+                for provider, region in dependencies:
+                    source = provider.source_code
+                    for start, stop in reference_facts[provider]:
+                        if not region[0] <= start < stop <= region[1]:
+                            continue
+                        key = provider, start, stop
+                        if key not in call_facts:
+                            binding = runtime.resolve_symbol(
+                                runtime.scope_at(provider, start), source[start:stop]
+                            )
+                            if binding is not None:
+                                binding = runtime.source_import_binding(binding)
+                            is_field = runtime.same_name(field_factory, binding)
+                            is_discriminator = runtime.same_name(discriminator, binding)
+                            parameters = (
+                                refactors.native_call_parameters(source, (start, stop))
+                                if is_field or is_discriminator
+                                else None
+                            )
+                            present = False
+                            marker: str | None = None
+                            if parameters is not None:
+                                arguments, keywords = parameters
+                                expanded = any(
+                                    argument.startswith("*") for argument in arguments
+                                )
+                                marker = next(
+                                    (
+                                        value
+                                        for name, value in keywords
+                                        if name == "discriminator"
+                                    ),
+                                    arguments[0]
+                                    if is_discriminator and arguments
+                                    else None,
+                                )
+                                present = expanded or marker is not None
+                                if expanded:
+                                    marker = None
+                            call_facts[key] = present, marker
+                        present, marker = call_facts[key]
+                        if present:
+                            for model in models:
+                                indexed.setdefault(model, set()).add((
+                                    provider,
+                                    start,
+                                    region[1],
+                                    marker,
+                                ))
+        return {model: tuple(calls) for model, calls in indexed.items()}
+
+    @staticmethod
+    def _enum_discriminator_contract(
+        index: Mapping[
+            p.Infra.RopeSourceClass,
+            tuple[tuple[p.Infra.RopePyModule, int, int, str | None], ...],
+        ],
+        model: p.Infra.RopeSourceClass,
+        field: str,
+    ) -> bool:
+        """Protect an indexed discriminator field without rescanning consumers.
+
+        Returns:
+            Whether an authored discriminator names the elected field.
+
+        Raises:
+            ValueError: Its associated discriminator is not a native string.
+
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        for provider, start, last, marker in index.get(model, ()):
+            if marker is None:
+                message = (
+                    "Enum discriminator admission requires explicit native arguments"
+                )
+                raise ValueError(message)
+            source = provider.source_code
+            matches = refactors.semantic_regions(
+                provider, repr(field), arguments={}, start=start, end=last
+            )
+            if any(source[begin:end] == marker for begin, end in matches):
+                return True
+            if marker not in {"None", "False"} and not any(
+                source[begin:end] == marker
+                for begin, end, _metadata in refactors.ignored_regions(source)
+                if source[begin:end].lstrip("rRuU").startswith(("'", '"'))
+            ):
+                message = "Enum discriminator admission requires a native string field identity"
+                raise ValueError(message)
+        return False
+
+    @classmethod
+    def _enum_owner_route(
+        cls,
+        scope: p.Infra.RopeScope,
+        owner: p.Infra.RopeSourceClass,
+        authored: str,
+    ) -> tuple[str, tuple[str, str] | None]:
+        """Elect a proven lexical route or its native declaring-class import.
+
+        Returns:
+            The enum route and an optional module/name import requirement.
+
+        Raises:
+            ValueError: A required declaring-class name is shadowed.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        prefix = authored.rpartition(".")[0]
+        if prefix:
+            binding = runtime.resolve_symbol(scope, prefix)
+            if binding is not None and binding.get_object() is owner:
+                return prefix, None
+        lexical: p.Infra.RopeScope | None = scope
+        while lexical is not None:
+            for name, binding in lexical.get_defined_names().items():
+                terminal = runtime.class_assignment_binding(binding)
+                if terminal is not None and terminal.get_object() is owner:
+                    resolved = runtime.resolve_symbol(scope, name)
+                    if resolved is not None and resolved.get_object() is owner:
+                        return name, None
+            lexical = lexical.parent
+        names = [owner.get_name()]
+        enclosing = owner.get_scope().parent
+        while (
+            enclosing is not None
+            and enclosing.get_kind() == c.Infra.RopeScopeKind.CLASS
+        ):
+            names.append(enclosing.pyobject.get_name())
+            enclosing = enclosing.parent
+        names.reverse()
+        if runtime.resolve_symbol(scope, names[0]) is not None:
+            message = f"Enum declaring-class import is shadowed: {names[0]}"
+            raise ValueError(message)
+        return ".".join(names), (owner.get_module().get_name(), names[0])
+
+    @classmethod
+    def _enum_default_rewrites(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+        owner: p.Infra.RopeSourceClass,
+        members: Mapping[str, p.Infra.RopePyName],
+        prefix: str,
+        contract: tuple[int, int],
+        references: Sequence[tuple[int, int]],
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
+        """Keep strict default producers in the enum domain before publication.
+
+        Returns:
+            Native default-value edits; unchanged producers retain their offsets.
+
+        Raises:
+            ValueError: A default factory or authored producer lacks domain proof.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        source = module.source_code
+        default = (
+            refactors.semantic_capture_region(module, match, "default")
+            if match.get_ast("default") is not None
+            else None
+        )
+        regions: list[tuple[int, int]] = []
+        field_defaults: list[tuple[int, int]] = []
+        factory = runtime.qualified_name(project, "pydantic.Field")
+        for start, stop in references:
+            if not (
+                contract[0] <= start < stop <= contract[1]
+                or (default is not None and default[0] <= start < stop <= default[1])
+            ):
+                continue
+            binding = runtime.resolve_symbol(
+                runtime.scope_at(module, start), source[start:stop]
+            )
+            if binding is not None:
+                binding = runtime.source_import_binding(binding)
+            if not runtime.same_name(factory, binding):
+                continue
+            parameters = refactors.native_call_parameters(source, (start, stop))
+            if parameters is None:
+                continue
+            positional, keywords = parameters
+            if any(argument.startswith("*") for argument in positional) or any(
+                not name.isidentifier() for name, _value in keywords
+            ):
+                message = (
+                    "Enum default admission requires explicit native Field arguments"
+                )
+                raise ValueError(message)
+            if any(name == "default_factory" for name, _value in keywords):
+                message = "Enum default factory requires a proven enum-domain producer before migration"
+                raise ValueError(message)
+            arguments = [f"${{pos{index}}}" for index in range(len(positional))]
+            arguments.extend(
+                f"{name}=${{kw{index}}}"
+                for index, (name, _value) in enumerate(keywords)
+            )
+            pattern = source[start:stop] + "(" + ", ".join(arguments) + ")"
+            for call in refactors.semantic_finder(module).get_matches(
+                pattern, {}, start=start, end=match.get_region()[1]
+            ):
+                field_defaults.append(call.get_region())
+                capture = next(
+                    (
+                        f"kw{index}"
+                        for index, (name, _value) in enumerate(keywords)
+                        if name == "default"
+                    ),
+                    "pos0" if positional else None,
+                )
+                if capture is not None:
+                    regions.append(
+                        refactors.semantic_capture_region(module, call, capture)
+                    )
+        if default is not None and default not in field_defaults:
+            regions.append(default)
+        strings = {
+            (start, stop)
+            for start, stop, _metadata in refactors.ignored_regions(source)
+            if source[start:stop].lstrip("rRuU").startswith(("'", '"'))
+        }
+        provider = owner.get_module()
+        if not isinstance(provider, p.Infra.RopePyModule):
+            message = "Enum default owner has no native source module"
+            raise TypeError(message)
+        owner_region = refactors.source_declaration_region(provider, owner.get_ast())
+        edits: list[p.Infra.SourceRewrite] = []
+        member_locations = {
+            member.get_definition_location() for member in members.values()
+        }
+        for start, stop in regions:
+            value = source[start:stop]
+            if value in {"None", "True", "False", "..."}:
+                continue
+            if (start, stop) in strings:
+                matched = tuple(
+                    name
+                    for name in members
+                    if refactors.semantic_regions(
+                        provider,
+                        f"{name} = {value}",
+                        arguments={},
+                        start=owner_region[0],
+                        end=owner_region[1],
+                    )
+                )
+                if len(matched) != 1:
+                    message = "Enum default string has no unique native member producer"
+                    raise ValueError(message)
+                edits.append(
+                    m.Infra.SourceRewrite(
+                        start=start, end=stop, text=f"{prefix}.{matched[0]}"
+                    )
+                )
+            elif refactors.word_call_regions(source, (start, stop)):
+                for first, last in references:
+                    if not start <= first < last <= stop:
+                        continue
+                    if refactors.native_call_parameters(source, (first, last)) is None:
+                        continue
+                    binding = runtime.resolve_symbol(
+                        runtime.scope_at(module, first), source[first:last]
+                    )
+                    if binding is None or binding.get_object() is not owner:
+                        message = "Enum default producer requires a proven enum-domain return before migration"
+                        raise ValueError(message)
+            else:
+                if any(start <= first < last <= stop for first, last in strings):
+                    message = "Enum container default requires proven enum-domain elements before migration"
+                    raise ValueError(message)
+                for first, last in references:
+                    if not start <= first < last <= stop:
+                        continue
+                    binding = runtime.resolve_symbol(
+                        runtime.scope_at(module, first), source[first:last]
+                    )
+                    if binding is None:
+                        message = "Enum default alias has unresolved native provenance"
+                        raise ValueError(message)
+                    binding = runtime.source_import_binding(binding)
+                    if binding is None:
+                        message = (
+                            "Enum default alias has unresolved native import provenance"
+                        )
+                        raise ValueError(message)
+                    if isinstance(binding, p.Infra.RopeAssignedName):
+                        terminal = runtime.class_assignment_binding(
+                            binding, classes_only=False
+                        )
+                        if (
+                            terminal is None
+                            or terminal.get_definition_location()
+                            not in member_locations
+                        ):
+                            message = "Enum default alias requires a proven enum-domain value before migration"
+                            raise ValueError(message)
+        return tuple(edits)
+
+    @classmethod
+    def _exhaustive_enum_contracts(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        sources: Mapping[Path, str],
+        paths: Sequence[Path],
+    ) -> list[p.Infra.RopeChangeContents]:
+        """Normalize complete direct model annotations using native identities.
+
+        Returns:
+            Native content changes limited to authenticated annotation regions.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        references = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        changes: list[p.Infra.RopeChangeContents] = []
+        modules = tuple(
+            FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                project.get_resource(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                ),
+            )
+            for path in paths
+        )
+        arguments: dict[str, str] = {}
+        for name, constraint in rule.arguments.items():
+            if not isinstance(constraint, str):
+                message = (
+                    f"{rule.id}: exhaustive enum requires scalar native constraints"
+                )
+                raise ValueError(message)
+            arguments[name] = constraint
+        discriminator_facts: dict[tuple[p.Infra.RopeSourceClass, str], bool] = {}
+        member_facts: dict[
+            p.Infra.RopeSourceClass, Mapping[str, p.Infra.RopePyName]
+        ] = {}
+        reference_facts = {
+            module: references.reference_regions(module.source_code)
+            for module in modules
+        }
+        statement_facts = {
+            module: tuple(
+                (statement.start_offset, statement.end_offset)
+                for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                    module.source_code
+                )
+            )
+            for module in modules
+        }
+        discriminator_index = cls._enum_discriminator_index(
+            project, modules, reference_facts, statement_facts
+        )
+        for path, module in zip(paths, modules, strict=True):
+            resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                project.get_resource(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                ),
+                path,
+            )
+            source = module.source_code
+            rewrites: dict[tuple[int, int], p.Infra.SourceRewrite] = {}
+            imports: set[tuple[str, str]] = set()
+            payloads = tuple(
+                refactors.semantic_capture_region(module, literal, "members")
+                for literal in refactors.semantic_finder(module).get_matches(
+                    rule.pattern, arguments
+                )
+            )
+            for begin, end in reference_facts[module]:
+                if not any(first <= begin < end <= last for first, last in payloads):
+                    continue
+                spelling = source[begin:end]
+                scope = runtime.scope_at(module, begin)
+                binding = runtime.resolve_symbol(scope, spelling)
+                if binding is None:
+                    continue
+                terminal = (
+                    FlextInfraUtilitiesSemanticConstantSources._constant_terminal(
+                        project, binding, spelling
+                    )
+                )
+                terminal = runtime.class_assignment_binding(
+                    terminal, classes_only=False
+                )
+                if terminal is None:
+                    continue
+                provider, line = runtime.definition_location(terminal)
+                if not isinstance(provider, p.Infra.RopePyModule) or line is None:
+                    continue
+                owner = runtime.scope_at(
+                    provider, provider.lines.get_line_start(line)
+                ).pyobject
+                if not isinstance(owner, p.Infra.RopeSourceClass):
+                    continue
+                if owner not in member_facts:
+                    member_facts[owner] = cls._exhaustive_enum_members(project, owner)
+                members = member_facts[owner]
+                if not members:
+                    continue
+                captures = tuple(f"member{index}" for index in range(len(members)))
+                annotation = (
+                    "${literal}[" + ", ".join(f"${{{name}}}" for name in captures) + "]"
+                )
+                expected = {
+                    member.get_definition_location() for member in members.values()
+                }
+                for pattern in (
+                    "${field}: ${contract}",
+                    "${field}: ${contract} = ${default}",
+                ):
+                    for match in refactors.semantic_finder(module).get_matches(
+                        pattern, {}
+                    ):
+                        first, _last = match.get_region()
+                        lexical = runtime.scope_at(module, first)
+                        if not cls._admit_contract_scope(
+                            project, rule, module, lexical
+                        ):
+                            continue
+                        contract = refactors.semantic_capture_region(
+                            module, match, "contract"
+                        )
+                        field_region = refactors.semantic_capture_region(
+                            module, match, "field"
+                        )
+                        field = source[field_region[0] : field_region[1]]
+                        if not field.isidentifier() or not isinstance(
+                            model := lexical.pyobject, p.Infra.RopeSourceClass
+                        ):
+                            continue
+                        for literal in refactors.semantic_finder(module).get_matches(
+                            annotation, arguments, start=contract[0], end=contract[1]
+                        ):
+                            literal_region = literal.get_region()
+                            protected = references.expression_payload_ranges(
+                                source[contract[0] : contract[1]], project, lexical
+                            )
+                            if any(
+                                contract[0] + start <= literal_region[0]
+                                and literal_region[1] <= contract[0] + stop
+                                for start, stop in protected
+                            ):
+                                continue
+                            captured: list[
+                                tuple[p.Infra.RopeParsedModule | None, int | None]
+                            ] = []
+                            for name in captures:
+                                start, stop = refactors.semantic_capture_region(
+                                    module, literal, name
+                                )
+                                text = source[start:stop]
+                                if not all(
+                                    part.isidentifier() for part in text.split(".")
+                                ):
+                                    break
+                                member_binding = runtime.resolve_symbol(lexical, text)
+                                if member_binding is None:
+                                    message = f"{rule.id}: enum annotation has an unresolved native binding"
+                                    raise ValueError(message)
+                                member_binding = FlextInfraUtilitiesSemanticConstantSources._constant_terminal(
+                                    project, member_binding, text
+                                )
+                                member_binding = runtime.class_assignment_binding(
+                                    member_binding, classes_only=False
+                                )
+                                if member_binding is None:
+                                    message = f"{rule.id}: enum member alias has no native terminal"
+                                    raise ValueError(message)
+                                if not FlextInfraUtilitiesCodemodProject.stable_binding_chain(
+                                    (project, module, lexical), text, start, sources
+                                ):
+                                    message = f"{rule.id}: enum annotation has an ambiguous native binding"
+                                    raise ValueError(message)
+                                captured.append(
+                                    member_binding.get_definition_location()
+                                )
+                            if (
+                                len(captured) != len(expected)
+                                or set(captured) != expected
+                            ):
+                                continue
+                            prefix, required_import = cls._enum_owner_route(
+                                lexical, owner, spelling
+                            )
+                            resolved = (
+                                runtime.resolve_symbol(lexical, prefix)
+                                if required_import is None
+                                else None
+                            )
+                            if required_import is None and (
+                                resolved is None or resolved.get_object() is not owner
+                            ):
+                                continue
+                            identity = (model, field)
+                            if identity not in discriminator_facts:
+                                discriminator_facts[identity] = (
+                                    cls._enum_discriminator_contract(
+                                        discriminator_index, model, field
+                                    )
+                                )
+                            if discriminator_facts[identity]:
+                                continue
+                            for default_edit in cls._enum_default_rewrites(
+                                project,
+                                module,
+                                match,
+                                owner,
+                                members,
+                                prefix,
+                                contract,
+                                reference_facts[module],
+                            ):
+                                rewrites[default_edit.start, default_edit.end] = (
+                                    default_edit
+                                )
+                            start, stop = literal_region
+                            rewrites[start, stop] = m.Infra.SourceRewrite(
+                                start=start, end=stop, text=prefix
+                            )
+                            if required_import is not None:
+                                imports.add(required_import)
+            if rewrites:
+                updated = refactors.content_change(
+                    resource, source, tuple(rewrites.values())
+                ).new_contents
+                for import_module, member in sorted(imports):
+                    with project.source_view(
+                        declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                            Path(project.root.real_path),
+                            (),
+                            {path: updated},
+                            source_project=project,
+                        ),
+                        additional_source_folders=None,
+                    ):
+                        imported = FlextInfraUtilitiesRopeImports.add_import(
+                            project, resource, import_module, (member,), apply=False
+                        )
+                        if imported is not None:
+                            updated = imported
+                changes.append(
+                    refactors.content_change(
+                        resource,
+                        source,
+                        (
+                            m.Infra.SourceRewrite(
+                                start=0, end=len(source), text=updated
+                            ),
+                        ),
+                    )
+                )
+        return changes
 
     @staticmethod
     def _admit_contract_restrictions(
@@ -1145,7 +1922,7 @@ class FlextInfraUtilitiesSemanticContracts(
         )
         working.update((path, retirement_sources[path]) for path in working)
         if any(
-            rule.operation is c.Infra.RopeContractOperation.MATERIALIZE_DELEGATIONS
+            rule.operation == c.Infra.RopeContractOperation.MATERIALIZE_DELEGATIONS
             for rule in rules
         ) and any(working[path] != source for path, source in items):
             FlextInfraUtilitiesSemanticDeclarationRelocation.preflight_semantic_import_graph(
@@ -1533,7 +2310,7 @@ class FlextInfraUtilitiesSemanticContracts(
             ):
                 raise ValueError(message)
             captures = tuple(
-                refactors.semantic_capture_region(match, name)
+                refactors.semantic_capture_region(module, match, name)
                 for name in ("predicate", "message")
                 if match.get_ast(name) is not None
             )
@@ -1572,7 +2349,7 @@ class FlextInfraUtilitiesSemanticContracts(
         # rest of the declaration (Annotated metadata, the field call) runs once.
         if rule.repeats is not None and refactors.word_call_regions(
             module.source_code,
-            refactors.semantic_capture_region(match, rule.repeats),
+            refactors.semantic_capture_region(module, match, rule.repeats),
         ):
             message = (
                 f"{rule.id}: annotation evaluation cannot repeat authored calls "

@@ -469,15 +469,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 TypeError: If a source provider has no module AST.
 
             """
-
-            def reject(identity: str, reason: str) -> bool:
-                u.Cli.debug(
-                    f"annotation deferral class={qualified.target}."
-                    f"{'.'.join(qualified.attributes)} ancestor={identity} "
-                    f"reason={reason}"
-                )
-                return False
-
             self._prepare_ordering()
             typing_module = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
                 self._project.get_module("typing")
@@ -492,7 +483,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 if identity in {self._object_id, protocol}:
                     continue
                 if identity not in self._definitions:
-                    return reject(identity, "uncaptured-source")
+                    return False
                 module_name, _name, line = identity.rsplit(":", 2)
                 tree = self._providers[module_name].get_ast()
                 if not isinstance(tree, ast.Module):
@@ -510,7 +501,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     .get_inner_scope_for_line(int(line))
                 )
                 if scope.parent is None:
-                    return reject(identity, "missing-parent-scope")
+                    return False
                 if any(
                     (
                         binding := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
@@ -521,11 +512,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     or binding.get_object() is not runtime_checkable
                     for decorator in declaration.decorator_list
                 ):
-                    return reject(identity, "evaluating-decorator")
+                    return False
                 if declaration.keywords:
-                    return reject(identity, "class-keywords")
+                    return False
                 if "__init_subclass__" in self._definitions[identity].members:
-                    return reject(identity, "subclass-hook")
+                    return False
             return True
 
         def _prepare_ordering(self) -> None:

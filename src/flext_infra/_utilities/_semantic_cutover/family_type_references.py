@@ -155,7 +155,9 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             "${declared}: ${annotation} = ${value}",
         ):
             for match in finder.get_matches(pattern):
-                begin, end = refactors.semantic_capture_region(match, "annotation")
+                begin, end = refactors.semantic_capture_region(
+                    module, match, "annotation"
+                )
                 regions.add((begin, end, None))
         return regions
 

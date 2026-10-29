@@ -946,20 +946,10 @@ class FlextInfraUtilitiesFacadeMembers:
                 letter: cls.facade_source_members(facade, source_project=source_project)
                 for letter, facade in facades.items()
             }
-            declarations: dict[str, dict[str, list[p.Infra.RopePyObject]]] = {}
-            for letter, facade in facades.items():
-                declared: dict[str, list[p.Infra.RopePyObject]] = {}
-                for ancestor in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
-                    facade
-                ):
-                    members = (
-                        ancestor.get_scope().get_defined_names()
-                        if FlextInfraUtilitiesTypesRopeRuntime.py_class(ancestor)
-                        else ancestor.get_attributes()
-                    )
-                    for member in members:
-                        declared.setdefault(member, []).append(ancestor)
-                declarations[letter] = declared
+            declarations = {
+                letter: cls.facade_member_declarations(facade)
+                for letter, facade in facades.items()
+            }
             for letter, members in bindings.items():
                 for member, value in members.items():
                     if (
@@ -1604,6 +1594,27 @@ class FlextInfraUtilitiesFacadeMembers:
         return "^(?:" + "|".join(re.escape(text) for text in texts) + ")$"
 
     @staticmethod
+    def facade_member_declarations(
+        facade: p.Infra.RopeClassObject,
+    ) -> Mapping[str, Sequence[p.Infra.RopePyObject]]:
+        """Collect each member's declaring ancestors in the current source view.
+
+        Returns:
+            The shared declaration inventory, retaining native object identities.
+
+        """
+        declared: dict[str, list[p.Infra.RopePyObject]] = {}
+        for ancestor in FlextInfraUtilitiesDeclarationPayload.class_ancestry(facade):
+            members = (
+                ancestor.get_scope().get_defined_names()
+                if FlextInfraUtilitiesTypesRopeRuntime.py_class(ancestor)
+                else ancestor.get_attributes()
+            )
+            for member in members:
+                declared.setdefault(member, []).append(ancestor)
+        return declared
+
+    @staticmethod
     def declared_by_package(
         facade: p.Infra.RopeClassObject,
         member: str,
@@ -1623,21 +1634,10 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         holders = (
-            declarations.get(member, ())
-            if declarations is not None
-            else [
-                ancestor
-                for ancestor in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
-                    facade
-                )
-                if member
-                in (
-                    ancestor.get_scope().get_defined_names()
-                    if FlextInfraUtilitiesTypesRopeRuntime.py_class(ancestor)
-                    else ancestor.get_attributes()
-                )
-            ]
-        )
+            FlextInfraUtilitiesFacadeMembers.facade_member_declarations(facade)
+            if declarations is None
+            else declarations
+        ).get(member, ())
         return bool(holders) and all(
             (module := ancestor.get_module()) is not None
             and (

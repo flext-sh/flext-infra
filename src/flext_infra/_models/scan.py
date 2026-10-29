@@ -181,8 +181,11 @@ class FlextInfraModelsScan:
         severity: Literal["error", "warning", "info", "hint"] = m.Field(
             description="Severity supplied by the native rule result"
         )
-        origin: Literal["ast-grep", "owned-path"] = m.Field(
-            default="ast-grep", description="Syntax scan or owned inventory admission"
+        origin: Literal[
+            c.Infra.ModFindingOrigin.AST_GREP, c.Infra.ModFindingOrigin.OWNED_PATH
+        ] = m.Field(
+            default=c.Infra.ModFindingOrigin.AST_GREP,
+            description="Syntax scan or owned inventory admission",
         )
         native_record: FlextInfraModelsScan.ModNativeRecord = m.Field(
             description="Authenticated range and digest of the complete finding record"

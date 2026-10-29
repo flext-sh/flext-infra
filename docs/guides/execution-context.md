@@ -481,6 +481,12 @@ Their existing admission covers simple assignment names; the native reader
 does not expand that documentation surface while replacing its parser.
 Assignment lookup elects matching native name spans before resolving lexical
 ownership, so unrelated declarations cannot trigger superclass inference.
+Absolute import roots come directly from the elected module's native binding
+index. That query retains guarded, nested, star and overwritten imports while
+excluding relative imports; Infra no longer traverses syntax nodes for this fact.
+Semantic capture regions come from the native match's public region query.
+The runtime boundary retains its module-range check without fetching captured
+syntax nodes or introducing a second interpretation of the match.
 
 Documentation reads module, class and function docstrings from their elected
 native objects' `get_doc()` methods. Local declaration admission still excludes
@@ -489,6 +495,12 @@ Inherited class documentation follows the elected class's native superclass
 identities, not a second parse of class headers and imported base spellings.
 The rendered summary keeps its existing whitespace normalization at the docs
 rendering owner. Source-only wrappers for those three SDK capabilities are retired.
+
+String-sequence declarations use the elected module's native binding-index query.
+Its nullable result distinguishes absent declarations from explicit empty or
+invalid declarations. Direct module declarations win; `__all__` alone may use a
+single direct class's metadata when the module declaration is absent. Export
+consumers preserve that presence boundary before considering implicit exports.
 The unused source-only class-base parsing wrapper is also retired; active
 declaration readers retain their own elected native source boundary.
 Unused source-only import-root and sequence-constructor parsing helpers are
@@ -2464,6 +2476,9 @@ A separately parsed AST has no native node-identity context and must not replace
 that lookup. Every declared base must resolve; an omitted native superclass is
 an error, not permission to drop a base. Same-name class publications inside the
 namespace remain authored bindings and do not change header lookup semantics.
+Ancestor traversal admits both source and builtin SDK classes through the existing
+native-class contract. A genuine builtin may have no ancestors; an unresolved
+object is rejected rather than treated as that builtin leaf.
 Upstream import collision checks use that same declaration-time binding for
 every nested class header. A preceding enclosing-class binding still reserves
 its name; an already imported alias for the same captured owner does not.
@@ -3450,6 +3465,18 @@ Every codemod policy finding blocks the gate, whatever its rule severity. Failed
 discovery, failed scanner execution, incomplete output, and invalid diagnostic payloads
 block as native failures with their own diagnostics.
 
+The strict `AstGrepDiagnostic` model owns severity as `NativeRuleSeverity`.
+Scanner JSON is parsed once with `AstGrepReport.model_validate_json`, which admits
+the native severity strings. Python construction requires enum instances: passing
+a raw Python severity string raises Pydantic's `is_instance_of` validation error.
+Owned-path findings therefore supply the enum directly, and the gate preserves
+their validated model instances. The shared preset uses `use_enum_values=True`:
+after validation, severity is the primitive string, including Python dumps.
+Those dumps are output data, not strict Python constructor input. Consumers pass
+the validated diagnostic by reference instead of reconstructing it from a dump.
+Invalid strings and Python bytes remain errors. ADR-005 and ADR-028 Decision 14
+own this newer enum-value contract; native validation remains required.
+
 The gate consumes the complete native `ast-grep scan --json=compact` array. The
 [documented scan contract](https://ast-grep.github.io/reference/cli/scan.html) and
 [native diagnostic schema](https://ast-grep.github.io/guide/tools/json) distinguish a
@@ -3894,11 +3921,27 @@ project's elected package resources, including the consumer's admitted editable
 suppliers. They remain read-only inputs, never additional plan targets. Namespace
 spelling does not establish a sibling directory; do not construct substitute
 paths or run another ambient-import election beside the native source model.
-Native match capture regions use the SDK's `get_capture_region(name)` boundary:
-half-open character coordinates, with a missing capture remaining its native
-failure. Infra does not expose or traverse captured Python AST nodes to obtain
-those regions. The selected SDK artifact must provide that capability before
-consumer qualification; no site-package patch or old-API fallback supplies it.
+Local FLEXT setup binds only the selected distributions after frozen installation.
+That source-binding step uses native no-dependency installation and then native
+dependency compatibility checks before publishing its selection receipt; it never
+re-resolves third-party dependencies or replaces the consumer's locked SDK origin.
+The setup composition must load this declared source owner in the same physical
+consumer environment, including on a cold installation, without Python-path shadows
+or borrowing another workspace's interpreter.
+Native scalar match captures use the SDK's `get_capture_region(name)` boundary.
+Infra's `semantic_capture_region(module, match, name)` validates the returned
+half-open offsets against that same module's source. It does not obtain an AST
+node or reconstruct its region. An absent capture raises explicitly; the selected
+SDK must supply this capability without an Infra parser or fallback.
+
+The native-query cutover is not complete: snapshot import classification and
+remaining source transformation consumers still require migration and runtime
+proof. Reusing one project does not prove incremental refresh. Creation, movement,
+removal and export changes must invalidate the affected native and derived facts
+before readers resume. Source, built wheel, installed SDK and the original public
+Make invocation require separate receipts. A source-derived MRO failure belongs
+to the native SDK owner; its repair must preserve the installed capture and
+source-binding query capabilities rather than replacing them with an older SDK.
 
 The codemod generic-specialization fact is declaration-only, before migration:
 it passes the injected `snapshot.engine` to the facade-member owner, resolves
@@ -4057,6 +4100,10 @@ renderer before invocation and on exit, with its wall duration and a completion
 flag. A failed producer remains incomplete and its original exception escapes.
 A timeout therefore identifies the unfinished producer without
 mistaking an earlier completed log line for the current work.
+Routine negative annotation-deferral predicates do not emit per-class debug
+messages; phase summaries and original exceptions carry actionable feedback.
+Import-boundary failures identify the consumer path, imported binding and
+provider so a structural-repair request locates the actual source owner.
 The reverse-import producer receives the same snapshot inventory and native
 trees for syntactic service pre-election and layer ranking. It retains its
 member-scoped ancestry resolver; sharing syntax does not change import
@@ -4082,7 +4129,11 @@ Read-only member ancestry passes use the existing native project's frozen
 layout context, reusing folder and module elections for that pass without
 changing its consumer root. Facade component discovery obtains each holder's
 member inventory once before comparing component bindings; it does not repeat
-the same directory query for every member. Owned-member reference election also
+the same directory query for every member. The same facade-member owner builds
+its declaration inventory once per class and passes it by reference to package
+ownership checks, rather than rebuilding ancestry for each method. The inventory
+belongs to that source view and is never retained across candidate transitions.
+Owned-member reference election also
 captures each facade's member names once per census, rather than enumerating
 the facade again for every owner/member/receiver combination.
 Family-composition checks consume the same snapshot's native trees and shared
@@ -4096,7 +4147,11 @@ resource bytes and that module's source both equal the captured source. Proposed
 or changed text keeps its existing native string-module path. This does not
 combine member projects or change resolution of homonymous packages.
 Source-module reads require the native source-bearing capability before using its
-captured text. Callback admission uses Rope's native restructuring hook once;
+captured text. A single-file export query reuses its current native module when
+the captured text already matches; otherwise it binds only that candidate through
+the existing source-view owner. It does not discover or copy the repository's
+complete source inventory for each queried provider.
+Callback admission uses Rope's native restructuring hook once;
 the adapter counts observed/admitted matches there and leaves change computation
 to the native implementation. It does not filter the same occurrence again in a
 second change-computer override. Snapshot consumers use the shared source ports,

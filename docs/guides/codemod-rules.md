@@ -103,6 +103,9 @@ exports its named captures through ast-grep's native argument mechanism. Relatio
 context stays inside that native predicate instead of repeating whole enclosing
 classes in every diagnostic. Primary match ranges, binding equality, messages and
 severity remain owned by the original rule; the complete native output is retained.
+The native diagnostic wire vocabulary (`error`, `warning`, `info`, `hint`) belongs
+to `c.Infra.NativeRuleSeverity`; `m` validates those same four literals under its
+strict scanner contract without changing any rule's severity policy.
 
 The producers and renderers registered in `Infra.codegen.ast_grep` render each
 governed project's generated utilities and rules (`codemod_native_generated`).
@@ -323,6 +326,11 @@ Artifact declarations marked
 source scans ignore them; environment, installed dependency, foreign Git and
 unmanaged submodule boundaries remain excluded. Reports distinguish `owned-path`
 evidence from `ast-grep` evidence and retain authenticated source states.
+
+Finding provenance, family transformation and member-collision policy are distinct
+closed domains owned by the refactor constants. Their typed models retain the
+exact accepted wire values: `owned-path`, `flatten-single-wrapper` and
+`prefix-wrapper` respectively; naming those domains does not admit new operations.
 
 The typed tooling document rejects stub options and producers in native pairs and
 derived declarations. Its canonical loader checks rooted native/topology search paths

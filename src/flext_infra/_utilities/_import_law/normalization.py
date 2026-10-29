@@ -72,9 +72,8 @@ class FlextInfraUtilitiesImportLawNormalization(
     ``import-outside-top-level``, so both verbs converge on one fixed point.
     """
 
-    # Shared annotation-classification totals for one pass. Every class
-    # detail emits at debug level; deferred (anomaly) classes keep one info
-    # row each, and the pass owner emits one aggregate summary row.
+    # Shared totals for one pass. Deferred classes keep one diagnostic row;
+    # the pass owner emits the aggregate without repeating every class.
     _annotation_classified: ClassVar[t.Infra.MutableSetOf[tuple[str, str, int]]] = set()
     _annotation_deferred: ClassVar[t.Infra.MutableSetOf[tuple[str, str, int]]] = set()
 
@@ -511,12 +510,6 @@ class FlextInfraUtilitiesImportLawNormalization(
                 node.lineno,
             )
             cls._annotation_classified.add(classification)
-            u.Cli.debug(
-                f"annotation classification module={module} "
-                f"class={'.'.join(qualified.attributes)} line={node.lineno} "
-                f"module_parent={parent is tree} deferred={deferred} "
-                f"owner={__file__}"
-            )
             if deferred:
                 cls._annotation_deferred.add(classification)
                 u.Cli.info(
@@ -676,7 +669,11 @@ class FlextInfraUtilitiesImportLawNormalization(
         for bound, (module, name) in elected.items():
             paths = cls._import_law_consumed_facade_paths(state, bound)
             if not paths:
-                message = "Own-family facade-value reads require make mod"
+                message = (
+                    "Own-family facade-value reads require make mod: "
+                    f"path={scope.file_path} binding={bound} "
+                    f"provider={module}.{name}"
+                )
                 raise ValueError(message)
             for path in paths:
                 route = cls._import_law_own_family_route(
@@ -1052,10 +1049,15 @@ class FlextInfraUtilitiesImportLawNormalization(
                         state.source_project.get_module(dependency)
                     )
                 )
+                if native is None:
+                    return None
+                identity = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                    native, source_project=state.source_project
+                )
                 if (
-                    native is None
-                    or cls.import_module_role(native.get_name()) == "family"
-                ):
+                    identity == state.scope.namespace
+                    or identity.startswith(f"{state.scope.namespace}.")
+                ) and cls.import_module_role(identity) == "family":
                     return None
                 if dependency == state.scope.namespace or dependency.startswith(
                     f"{state.scope.namespace}."

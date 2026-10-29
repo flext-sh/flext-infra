@@ -24,6 +24,410 @@ class TestsFlextInfraRopeContractBindings:
     """Prove lexical identity and execution order without publishing unsafe edits."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("imports", "metadata", "variant"),
+        [
+            (
+                "import pydantic as m",
+                "m.Field(discriminator='kind')",
+                "Payload | OtherPayload",
+            ),
+            (
+                "import pydantic",
+                "pydantic.Field(discriminator='kind')",
+                "Payload | OtherPayload",
+            ),
+            (
+                "import pydantic as m",
+                "m.Discriminator('kind')",
+                "Payload | OtherPayload",
+            ),
+            (
+                "from pydantic import Field as Tag",
+                "Tag(discriminator='kind')",
+                "Payload | OtherPayload",
+            ),
+            (
+                "import pydantic as m",
+                "m.Field(discriminator='kind')",
+                "'Payload | OtherPayload'",
+            ),
+            (
+                "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from pydantic import Field as Tag\nelse:\n    from pydantic import Field as Tag",
+                "Tag(discriminator='kind')",
+                "Payload | OtherPayload",
+            ),
+        ],
+    )
+    def test_qualified_and_forward_discriminator_consumers_retain_literal_contract(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        imports: str,
+        metadata: str,
+        variant: str,
+    ) -> None:
+        """Real Pydantic consumes qualified, aliased and quoted discriminators."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from enum import StrEnum, unique\n"
+            "from typing import Annotated, Literal\n"
+            "from pydantic import BaseModel\n"
+            f"{imports}\n"
+            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
+            "class Payload(BaseModel):\n    kind: Literal[State.READY, State.FAILED]\n"
+            "class OtherPayload(BaseModel):\n    kind: Literal['other']\n"
+            f"class Envelope(BaseModel):\n    payload: Annotated[{variant}, {metadata}]\n"
+            "evidence = Envelope.model_validate({'payload': {'kind': 'ready'}}).model_dump_json()\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(edits, empty=True)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+
+    @staticmethod
+    def test_imported_type_and_metadata_aliases_protect_discriminator(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        infra_subprocess: p.Cli.CommandRunner,
+    ) -> None:
+        """Native import provenance connects foreign union and metadata aliases."""
+        workspace, path = rope_contract_consumer
+        models = path.parent / "variant_models.py"
+        metadata = path.parent / "discriminator_metadata.py"
+        package = path.parent.name
+        sources = {
+            models: (
+                "from enum import StrEnum, unique\nfrom typing import Literal\nfrom pydantic import BaseModel\n"
+                "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
+                "class Payload(BaseModel):\n    kind: Literal[State.READY, State.FAILED]\n"
+                "class OtherPayload(BaseModel):\n    kind: Literal['other']\n"
+                "type Variants = Payload | OtherPayload\n"
+            ),
+            metadata: "import pydantic as pd\nDiscriminatorMetadata = pd.Field(discriminator='kind')\n",
+            path: (
+                "from typing import Annotated\nfrom pydantic import BaseModel\n"
+                f"from {package}.variant_models import Variants\n"
+                f"from {package}.discriminator_metadata import DiscriminatorMetadata\n"
+                "class Envelope(BaseModel):\n    payload: Annotated[Variants, DiscriminatorMetadata]\n"
+            ),
+        }
+        for target, source in sources.items():
+            target.write_text(source, encoding=c.DEFAULT_ENCODING)
+        command = (
+            sys.executable,
+            "-c",
+            f"from {package}.consumer import Envelope\nprint(Envelope.model_validate({{'payload': {{'kind': 'ready'}}}}).model_dump_json())\n",
+        )
+        options = m.Cli.ProcessOptions(env={"PYTHONPATH": str(path.parent.parent)})
+        before = tm.ok(
+            infra_subprocess.capture(
+                command, cwd=workspace.repository_root, options=options
+            )
+        )
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, sources, rules)), empty=True
+        )
+        after = tm.ok(
+            infra_subprocess.capture(
+                command, cwd=workspace.repository_root, options=options
+            )
+        )
+        tm.that(after.stdout, eq=before.stdout)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "default",
+        [
+            "'ready'",
+            "Field(default='ready', description='Retained')",
+            "Field('ready', validate_default=True)",
+        ],
+    )
+    def test_exhaustive_enum_string_defaults_keep_strict_pydantic_contract(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        default: str,
+    ) -> None:
+        """A valid Literal string default becomes its native enum member producer."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from enum import StrEnum, unique\nfrom typing import Literal\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            f"    kind: Literal[State.READY, State.FAILED] = {default}\n"
+            "evidence = (Payload().model_dump_json(), Payload.model_fields['kind'].description, Payload.model_json_schema()['properties']['kind']['default'])\n"
+            "primitive = type(Payload().kind) is str\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(len(edits), eq=1)
+        path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
+        after = runpy.run_path(str(path))
+        tm.that(after["evidence"], eq=before)
+        tm.that(after["primitive"], eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("default", "error"),
+        [
+            ("Field(default_factory=produce)", "default factory"),
+            ("produce()", "default producer"),
+            ("DEFAULT", "default alias"),
+        ],
+    )
+    def test_exhaustive_enum_unproven_default_producers_fail_before_effects(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        default: str,
+        error: str,
+    ) -> None:
+        """Valid old defaults remain authored when their enum producer is unproven."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from enum import StrEnum, unique\nfrom typing import Literal\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n    FAILED = 'failed'\n"
+            "DEFAULT = 'ready'\ndef produce():\n    return 'ready'\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            f"    kind: Literal[State.READY, State.FAILED] = {default}\n"
+            "evidence = Payload().model_dump_json()\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        with pytest.raises(ValueError, match=error):
+            u.Infra.plan_contract_rules(workspace, {path: source}, rules)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "annotation",
+        [
+            "Choice[StateAlias.READY, StateAlias.FAILED]",
+            "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], Field(description='Retained')]",
+            "list[Choice[StateAlias.READY, StateAlias.FAILED]]",
+            "Choice[StateAlias.READY, StateAlias.FAILED] | None",
+            "Choice[ready, failed]",
+        ],
+    )
+    def test_exhaustive_enum_contract_preserves_real_pydantic_wire_values(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        annotation: str,
+    ) -> None:
+        """The native action retains metadata/defaults and enum wire domains."""
+        workspace, path = rope_contract_consumer
+        value = "[State.READY]" if annotation.startswith("list[") else "State.READY"
+        source = (
+            "from enum import StrEnum, unique\n"
+            "from typing import Annotated, Literal as Choice\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            "@unique\n"
+            "class State(StrEnum):\n"
+            "    READY = 'ready'\n"
+            "    FAILED = 'failed'\n"
+            "StateAlias = State\n"
+            "ready = State.READY\n"
+            "failed = State.FAILED\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            f"    value: {annotation} = {value}\n"
+            f"parsed = Payload.model_validate({{'value': {value}}})\n"
+            "evidence = (parsed.model_dump_json(), Payload().model_dump_json(), "
+            "Payload.model_fields['value'].description)\n"
+            "stored_primitive = (all(type(item) is str for item in parsed.value) "
+            "if isinstance(parsed.value, list) else type(parsed.value) is str)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        tm.that(len(rules), eq=1)
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(len(edits), eq=1)
+        path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
+        after = runpy.run_path(str(path))
+        tm.that(after["evidence"], eq=before)
+        tm.that(after["stored_primitive"], eq=True)
+        tm.that(
+            tm.ok(
+                u.Infra.plan_contract_rules(
+                    workspace, {path: edits[0].updated_source}, rules
+                )
+            ),
+            empty=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("annotation", "consumer"),
+        [
+            ("Literal[State.READY]", ""),
+            ("Literal[State.READY, State.READY]", ""),
+            ("Literal[State.READY, Other.FAILED]", ""),
+            ("Annotated[str, Literal[State.READY, State.FAILED]]", ""),
+            (
+                "Literal[State.READY, State.FAILED]",
+                (
+                    "class OtherPayload(BaseModel):\n"
+                    "    kind: Literal['other']\n"
+                    "Variants = Payload | OtherPayload\n"
+                    "DiscriminatorMetadata = Field(description='Retained', discriminator='kind')\n"
+                    "class Envelope(BaseModel):\n"
+                    "    payload: Annotated[Variants, DiscriminatorMetadata]\n"
+                ),
+            ),
+        ],
+    )
+    def test_exhaustive_enum_contract_retains_narrowed_and_discriminator_contracts(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        annotation: str,
+        consumer: str,
+    ) -> None:
+        """Subset, duplicate, mixed, metadata and alias discriminators stay intact."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from enum import StrEnum, unique\n"
+            "from typing import Annotated, Literal\n"
+            "from pydantic import BaseModel, Field\n"
+            "@unique\n"
+            "class State(StrEnum):\n"
+            "    READY = 'ready'\n"
+            "    FAILED = 'failed'\n"
+            "@unique\n"
+            "class Other(StrEnum):\n"
+            "    READY = 'other-ready'\n"
+            "    FAILED = 'other-failed'\n"
+            "class Payload(BaseModel):\n"
+            f"    kind: {annotation}\n" + consumer
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules)),
+            empty=True,
+        )
+
+    @staticmethod
+    def test_exhaustive_enum_contract_refuses_opaque_discriminator_before_effects(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """A callable discriminator requires explicit proof before any preview."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from enum import StrEnum, unique\n"
+            "from typing import Annotated, Literal\n"
+            "from pydantic import BaseModel, Field\n"
+            "@unique\n"
+            "class State(StrEnum):\n"
+            "    READY = 'ready'\n"
+            "    FAILED = 'failed'\n"
+            "class Payload(BaseModel):\n"
+            "    kind: Literal[State.READY, State.FAILED]\n"
+            "def classify(value):\n"
+            "    return value['kind']\n"
+            "class Envelope(BaseModel):\n"
+            "    payload: Annotated[Payload, Field(discriminator=classify)]\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        with pytest.raises(ValueError, match="native string field identity"):
+            u.Infra.plan_contract_rules(workspace, {path: source}, rules)
+
+    @staticmethod
+    def test_exhaustive_enum_contract_imports_owner_for_foreign_member_aliases(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        infra_subprocess: p.Cli.CommandRunner,
+    ) -> None:
+        """Bare imported member aliases acquire their proven native enum import."""
+        workspace, path = rope_contract_consumer
+        owner = path.parent / "enum_owner.py"
+        provider = (
+            "from enum import StrEnum, unique\n"
+            "@unique\n"
+            "class State(StrEnum):\n"
+            "    READY = 'ready'\n"
+            "    WAITING = 'waiting'\n"
+            "Ready = State.READY\n"
+            "Waiting = State.WAITING\n"
+        )
+        source = (
+            "from typing import Literal\n"
+            "from pydantic import BaseModel, ConfigDict\n"
+            f"from {path.parent.name}.enum_owner import Ready, Waiting\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(strict=True, use_enum_values=True, validate_default=True)\n"
+            "    kind: Literal[Ready, Waiting] = Ready\n"
+        )
+        owner.write_text(provider, encoding=c.DEFAULT_ENCODING)
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        command = (
+            sys.executable,
+            "-c",
+            (
+                f"from {path.parent.name}.consumer import Payload\n"
+                f"from {path.parent.name}.enum_owner import Ready\n"
+                "print(Payload.model_validate({'kind': Ready}).model_dump_json())\n"
+                "print(Payload().model_dump_json())\n"
+            ),
+        )
+        options = m.Cli.ProcessOptions(env={"PYTHONPATH": str(path.parent.parent)})
+        before = tm.ok(
+            infra_subprocess.capture(
+                command, cwd=workspace.repository_root, options=options
+            )
+        )
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-exhaustive-strenum-annotation"
+        )
+        edits = tm.ok(
+            u.Infra.plan_contract_rules(
+                workspace, {owner: provider, path: source}, rules
+            )
+        )
+        tm.that(len(edits), eq=1)
+        for edit in edits:
+            edit.file_path.write_text(edit.updated_source, encoding=c.DEFAULT_ENCODING)
+        after = tm.ok(
+            infra_subprocess.capture(
+                command, cwd=workspace.repository_root, options=options
+            )
+        )
+        tm.that(after.stdout, eq=before.stdout)
+
+    @staticmethod
     def _assertion_rules() -> Sequence[p.Infra.RopeContractRule]:
         """Declare the Python statement contract consumed by the native writer.
 

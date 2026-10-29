@@ -210,7 +210,7 @@ class FlextInfraUtilitiesCodemodProject(
             m.Infra.AstGrepOwnedPathDiagnostic.model_validate({
                 "file": path.relative_to(root.resolve()).as_posix(),
                 "ruleId": rule.id,
-                "severity": "error",
+                "severity": c.Infra.NativeRuleSeverity.ERROR,
                 "message": rule.message,
                 "origin": "owned-path",
                 "text": "",

@@ -168,9 +168,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             return None
         exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
             FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    project, owner_resource
-                )
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(project, owner_resource)
             ),
         )
         if letter not in exports or owner not in exports:

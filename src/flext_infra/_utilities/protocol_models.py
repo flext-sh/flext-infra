@@ -24,7 +24,6 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -365,7 +364,8 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             fields: dict[str, t.Infra.AstStatement] = {}
-            definition = self._source_class(binding).get_ast()
+            source = self._source_class(binding)
+            definition = source.get_ast()
             if not isinstance(
                 definition, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef
             ):
@@ -381,7 +381,10 @@ class FlextInfraUtilitiesModelsProtocol:
                     | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVarTuple,
                 )
             }
-            for ancestor in reversed(self._lineage(binding.get_object(), ())):
+            for native_ancestor in reversed(source.get_mro()):
+                ancestor = FlextInfraUtilitiesRopeRuntime.require_class_object(
+                    native_ancestor, "model protocol ancestor"
+                )
                 if not self.py_class(ancestor):
                     continue
                 node, lexical = ancestor.get_ast(), ancestor.get_scope()
@@ -519,40 +522,6 @@ class FlextInfraUtilitiesModelsProtocol:
                         )
                     )
             return parameters
-
-        def _lineage(
-            self,
-            value: p.Infra.RopePyObject,
-            visiting: tuple[p.Infra.RopePyObject, ...],
-        ) -> tuple[p.Infra.RopePyObject, ...]:
-            """Use the canonical C3 merger for the native declared bases.
-
-            Returns:
-                The model's authenticated C3 declaration order.
-
-            Raises:
-                ValueError: If native model ancestry is cyclic.
-
-            """
-            if value in visiting:
-                message = "cyclic native model ancestry"
-                raise ValueError(message)
-            bases = tuple(self.direct_bases(value))
-            owners = {str(id(item)): item for item in self.class_ancestry(value)}
-            merged = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
-                (
-                    *(
-                        tuple(
-                            str(id(item))
-                            for item in self._lineage(base, (*visiting, value))
-                        )
-                        for base in bases
-                    ),
-                    tuple(str(id(base)) for base in bases),
-                ),
-                message="inconsistent native model ancestry",
-            )
-            return (value, *(owners[identity] for identity in merged))
 
         def _annotation(
             self,
@@ -829,7 +798,13 @@ class FlextInfraUtilitiesModelsProtocol:
                 The nearest inherited public reference, or no upstream owner.
 
             """
-            for ancestor in self._lineage(self.facades["p"].get_object(), ()):
+            facade = FlextInfraUtilitiesRopeRuntime.require_class_object(
+                self.facades["p"].get_object(), "protocol facade"
+            )
+            for native_ancestor in facade.get_mro():
+                ancestor = FlextInfraUtilitiesRopeRuntime.require_class_object(
+                    native_ancestor, "protocol facade ancestor"
+                )
                 module = ancestor.get_module()
                 if not self.source_module(module):
                     continue

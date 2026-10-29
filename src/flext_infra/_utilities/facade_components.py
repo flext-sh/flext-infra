@@ -331,13 +331,9 @@ class FlextInfraUtilitiesFacadeComponents:
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
         while pending:
-            candidate = pending.pop()
-            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(candidate):
-                # Library and unresolved bases (captured-source mode cannot
-                # infer every external root) contribute no owned lineage;
-                # they are traversal leaves, not ancestry errors.
-                continue
-            base = candidate
+            base = FlextInfraUtilitiesRopeRuntimeModules.require_class_object(
+                pending.pop(), "component ancestry"
+            )
             if base in seen:
                 continue
             seen.add(base)
@@ -369,31 +365,36 @@ class FlextInfraUtilitiesFacadeComponents:
         holder_members = members.facade_source_members(
             holder, source_project=source_project
         )
-        return tuple(
-            (base, member)
-            for base in cls._component_ancestors(holder)
-            if (module := base.get_module()) is not None
-            and (
-                (
-                    name
-                    := FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-                        module, source_project=source_project
-                    )
+        composed: list[tuple[p.Infra.RopeClassObject, str]] = []
+        for base in cls._component_ancestors(holder):
+            module = base.get_module()
+            if module is None or base in facades:
+                continue
+            name = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                module, source_project=source_project
+            )
+            if name != root and not name.startswith(f"{root}."):
+                continue
+            declarations = members.facade_member_declarations(base)
+            composed.extend(
+                (base, member)
+                for member, binding in members.facade_source_members(
+                    base, source_project=source_project
+                ).items()
+                if members.declared_by_package(
+                    base,
+                    member,
+                    root,
+                    source_project=source_project,
+                    declarations=declarations,
                 )
-                == root
-                or name.startswith(f"{root}.")
+                and FlextInfraUtilitiesTypesRopeRuntime.py_function(
+                    binding.get_object()
+                )
+                and member in holder_members
+                and holder_members[member].get_object() is binding.get_object()
             )
-            and base not in facades
-            for member, binding in members.facade_source_members(
-                base, source_project=source_project
-            ).items()
-            if members.declared_by_package(
-                base, member, root, source_project=source_project
-            )
-            and FlextInfraUtilitiesTypesRopeRuntime.py_function(binding.get_object())
-            and member in holder_members
-            and holder_members[member].get_object() is binding.get_object()
-        )
+        return tuple(composed)
 
     @classmethod
     def _component_claims(

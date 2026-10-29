@@ -85,16 +85,20 @@ class FlextInfraWorkspaceFlextEditable:
         uv = u.Infra.managed_mise_binary("uv", runtime_root)
         if uv.failure:
             return r[int].from_failure(uv)
+        python = str(u.Infra.runtime_python(runtime_root, runtime_root=runtime_root))
         # --no-config keeps the consumer's own override-dependencies (its
         # pinned Git sources) from replacing the editable requirements.
+        # Frozen installation already owns dependencies; source binding must
+        # preserve that installed graph rather than resolve it a second time.
         installed = u.Cli.run_live(
             (
                 str(uv.value),
                 "pip",
                 "install",
                 "--no-config",
+                "--no-deps",
                 "--python",
-                str(u.Infra.runtime_python(runtime_root, runtime_root=runtime_root)),
+                python,
                 *(
                     argument
                     for source in selection.distributions.values()
@@ -106,6 +110,13 @@ class FlextInfraWorkspaceFlextEditable:
         )
         if installed.failure:
             return r[int].from_failure(installed)
+        checked = u.Cli.run_live(
+            (str(uv.value), "pip", "check", "--python", python),
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
+        if checked.failure:
+            return r[int].from_failure(checked)
         receipt = cls.receipt_path(runtime_root)
         u.Cli.ensure_dir(receipt.parent).unwrap()
         return u.Cli.atomic_write_text_file(
