@@ -397,7 +397,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         if binding is None or options.child_scope is None:
             return ""
         bases = tuple(
-            cls._native_object_identity(base)
+            FlextInfraUtilitiesRopeRuntimeModules.native_object_identity(base)
             for base in payloads.direct_bases(binding.get_object())
         )
         if any(not base for base in bases):
@@ -496,26 +496,11 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
                     references.append((start, stop, f"<native:{identity}>"))
         return references
 
-    @staticmethod
-    def _native_object_identity(value: p.Infra.RopePyObject) -> str:
-        runtime = FlextInfraUtilitiesRopeRuntime
-        if runtime.py_class(value) or runtime.py_function(value):
-            module = value.get_module()
-            scope = value.get_scope()
-            names: list[str] = []
-            while scope.parent is not None:
-                names.append(scope.pyobject.get_name())
-                scope = scope.parent
-            return f"{module.get_name()}::{'.'.join(reversed(names))}"
-        if runtime.abstract_class(value) and isinstance(
-            value, p.Infra.RopeBuiltinClass
-        ):
-            return f"{value.builtin.__module__}::{value.builtin.__qualname__}"
-        return ""
-
     @classmethod
     def _native_binding_identity(cls, value: p.Infra.RopePyName) -> str:
-        identity = cls._native_object_identity(value.get_object())
+        identity = FlextInfraUtilitiesRopeRuntimeModules.native_object_identity(
+            value.get_object()
+        )
         if identity:
             return identity
         supplier, line = value.get_definition_location()

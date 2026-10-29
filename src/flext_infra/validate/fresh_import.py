@@ -16,10 +16,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, get_type_hints, override
 
-from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
+from flext_infra import c, config, m, p, r, s, settings, t, u
 
 
-class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
+class FlextInfraValidateFreshImport(s[bool]):
     """Verify consumers and publication contracts without inherited import state."""
 
     packages: Annotated[

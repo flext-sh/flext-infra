@@ -70,6 +70,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
     class MakefileRenderSpec(MakeCommandContext):
         """Typed render input for an existing repository Makefile."""
 
+        setup_editable_sources: Annotated[
+            tuple[tuple[str, str], ...],
+            m.Field(description="Shell-quoted distribution/source pairs for setup"),
+        ] = ()
         bootstrap_report_shell_literal: Annotated[
             t.NonEmptyStr,
             m.Field(

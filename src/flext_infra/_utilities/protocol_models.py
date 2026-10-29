@@ -28,7 +28,6 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -395,16 +394,6 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
             }
             native_ancestors = source.get_mro()
-            if not all(
-                FlextInfraUtilitiesTypesRopeRuntime.abstract_class(native_ancestor)
-                for native_ancestor in native_ancestors
-            ):
-                # Uma primeira leitura pelo índice fonte lazy pode observar
-                # transientes de construção: a própria avaliação completa os
-                # módulos envolvidos só depois de sua pilha desenrolar, então
-                # uma re-leitura settled segue; um ancestral não resolvido
-                # persistente mantém sua falha de admissão.
-                native_ancestors = source.get_mro()
             for native_ancestor in reversed(native_ancestors):
                 ancestor = FlextInfraUtilitiesRopeRuntime.require_class_object(
                     native_ancestor,

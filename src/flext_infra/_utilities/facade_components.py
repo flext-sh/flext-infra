@@ -324,16 +324,12 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @staticmethod
     def _component_ancestors(
-        holder: p.Infra.RopeClassObject,
+        holder: p.Infra.RopeSourceClass,
     ) -> tuple[p.Infra.RopeClassObject, ...]:
         """Require every ancestor in the holder's native method resolution order.
 
         Every native entry passes through the strict class guard. An unresolved
         declared base retains its admission failure instead of partial ancestry.
-        A first read through the lazy source index can observe construction
-        transients: the read's own evaluation completes the involved modules
-        only after its stack unwinds, so one settled re-read follows, and a
-        persistent unresolved base keeps its admission failure.
 
         Returns:
             Every native ancestor once, in method resolution order.
@@ -341,8 +337,6 @@ class FlextInfraUtilitiesFacadeComponents:
         """
         runtime = FlextInfraUtilitiesTypesRopeRuntime
         ancestors = holder.get_mro()[1:]
-        if not all(runtime.abstract_class(ancestor) for ancestor in ancestors):
-            ancestors = holder.get_mro()[1:]
         return tuple(
             runtime.require_class_object(ancestor, holder.get_name())
             for ancestor in ancestors

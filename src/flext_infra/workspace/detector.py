@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, settings, u
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra.base import s
 from flext_infra.workspace import FlextInfraWorkspaceGovernance
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class FlextInfraWorkspaceDetector(
     FlextInfraWorkspaceGovernance,
-    FlextInfraServiceBase[c.Infra.MakeProfile],
+    s[c.Infra.MakeProfile],
 ):
     """Classify a repository only from files and Git facts inside that checkout."""
 

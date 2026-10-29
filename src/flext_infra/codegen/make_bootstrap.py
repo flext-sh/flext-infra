@@ -68,7 +68,7 @@ class FlextInfraCodegenMakeBootstrap(
                 ),
                 declaration_kind=self.kind,
             ),
-            execution_context=None,
+            execution_context=self,
         )
 
     @override

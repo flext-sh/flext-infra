@@ -309,6 +309,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 sources={},
                 packages={},
                 import_edges={},
+                bootstrap_dependencies={},
                 absolute_import_roots={},
                 import_namespaces={},
                 class_ancestors={},

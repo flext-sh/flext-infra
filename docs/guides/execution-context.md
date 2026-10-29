@@ -2610,9 +2610,27 @@ A separately parsed AST has no native node-identity context and must not replace
 that lookup. Every declared base must resolve; an omitted native superclass is
 an error, not permission to drop a base. Same-name class publications inside the
 namespace remain authored bindings and do not change header lookup semantics.
+Metaclass source bases such as `type(Protocol)` use that captured module's native
+source-binding context at the original expression offset. The SDK evaluates the
+complete expression and supplies the actual metaclass object; Infra admits it
+through the existing native-class contract and retains its declaring module and
+complete nested class path. Resolving this source fact never imports the target
+module or reflects on a target runtime class. Local and external source owners
+follow the same native identity contract. Missing inference, class identity or
+declaring provenance remains a failure, without a package-name exception.
+The existing native object identity conversion is owned by the runtime module
+utilities as `native_object_identity`. Source inventory and metaclass base
+resolution consume that same conversion. It preserves the original native scope
+path and builtin class metadata; the former private inventory helper is retired
+with its callers rather than retained as a second route.
 Ancestor traversal admits both source and builtin SDK classes through the existing
 native-class contract. A genuine builtin may have no ancestors; an unresolved
 object is rejected rather than treated as that builtin leaf.
+The class query protocol requires native superclass and MRO queries, without a
+source-only mutation capability. Component and model-protocol ancestry consume
+one native MRO result and admit every entry through the strict class guard.
+Read-only ancestry queries never invalidate bases, retry resolution or filter an
+unresolved witness; the original admission failure escapes unchanged.
 Upstream import collision checks use that same declaration-time binding for
 every nested class header. A preceding enclosing-class binding still reserves
 its name; an already imported alias for the same captured owner does not.
@@ -4102,6 +4120,18 @@ re-resolves third-party dependencies or replaces the consumer's locked SDK origi
 The setup composition must load this declared source owner in the same physical
 consumer environment, including on a cold installation, without Python-path shadows
 or borrowing another workspace's interpreter.
+After frozen provisioning, Make binds the explicitly declared
+`toolchain.editable_sources` with that environment's native pip before starting
+the source-selection process. That declaration includes the Infra executor and
+its required local suppliers; otherwise the frozen SDK would execute the local
+selection. CI rejects this local input before any binding. Each named distribution
+must already belong to the frozen environment. The existing FLEXT selector then
+binds only the remaining distributions, validates the entire selection and publishes
+its existing receipt. Already correct editable origins are observed through native
+PEP 610 metadata, without another installation or a separate inventory.
+The bounded Make-bootstrap operation receives the same publication collaborators
+as generation; a missing publication capability is an error, never permission to
+edit the generated Makefile directly.
 Native scalar match captures use the SDK's `get_capture_region(name)` boundary.
 Infra's `semantic_capture_region(module, match, name)` validates the returned
 half-open offsets against that same module's source. It does not obtain an AST

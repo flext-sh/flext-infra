@@ -387,7 +387,12 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 		exit 2; \
 	fi; \
 	UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $(SETUP_SYNC_ARGS); \
-	$(FLEXT_EDITABLE_RECIPE)
+{% if setup_editable_sources %}	if [ -n "$(strip $(FLEXT))" ]; then \
+		if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
+{% for name, source in setup_editable_sources %}		"$(RUNTIME_PYTHON)" -m pip show {{ name }} >/dev/null; \
+{% endfor %}		"$(RUNTIME_PYTHON)" -m pip install --no-deps{% for name, source in setup_editable_sources %} --editable {{ source }}{% endfor %}; \
+	fi; \
+{% endif %}	$(FLEXT_EDITABLE_RECIPE)
 
 # `make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
 # operator-ruling-2026-10-24-setup-flext-editable-param): after the frozen

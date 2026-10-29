@@ -9,11 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraServiceBase, m
+from flext_infra import m, s
 
 
 class FlextInfraCodegenExecution[TResult](
-    FlextInfraServiceBase[TResult],
+    s[TResult],
 ):
     """Own explicit repository execution state shared by codegen services."""
 

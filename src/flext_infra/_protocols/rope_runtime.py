@@ -205,6 +205,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeSourceClass(RopeSourceObject, RopeClassObject, Protocol):
         """A source-defined class retaining its native superclass graph."""
 
+        def invalidate_bases(self) -> None:
+            """Drop the cached bases and MRO for one settled re-read."""
+
     @runtime_checkable
     class RopeSourceFunction(RopeSourceObject, Protocol):
         """A source-defined function retaining its native callable role."""

@@ -12,7 +12,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.check import (
     FlextInfraCheckWorkspace,
     FlextInfraGateRegistry,
@@ -25,7 +25,7 @@ from flext_infra.workspace import (
 
 
 class FlextInfraWorkspaceChecker(
-    FlextInfraServiceBase[bool],
+    s[bool],
     FlextInfraWorkspaceCheckGates,
     FlextInfraCheckWorkspace,
 ):

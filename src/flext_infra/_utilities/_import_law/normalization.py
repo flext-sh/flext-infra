@@ -974,11 +974,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             module = pending.pop()
             if module in graph:
                 continue
-            if (
-                module == state.scope.namespace
-                or cls.import_module_role(module, namespace=state.scope.namespace)
-                == "family"
-            ):
+            if module == state.scope.namespace:
                 return False
             parsed = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
                 state.source_project.get_module(module)
@@ -990,12 +986,22 @@ class FlextInfraUtilitiesImportLawNormalization(
             ):
                 message = f"layer-zero helper is absent from the candidate: {module}"
                 raise ValueError(message)
+            family_base = (
+                cls.import_module_role(module, namespace=state.scope.namespace)
+                == "family"
+            )
+            if family_base and not cls.import_direct_module(
+                state.scope.namespace_dir,
+                Path(resource.real_path),
+                namespace=state.scope.namespace,
+            ):
+                return False
             tree = state.tree if module == state.scope.module else parsed.get_ast()
             if not isinstance(tree, ast.Module):
                 message = f"layer-zero helper has no native module tree: {module}"
                 raise TypeError(message)
             edges = cls._import_law_layer_zero_edges(state, module, tree)
-            if edges is None:
+            if edges is None or (family_base and edges):
                 return False
             if module in edges:
                 message = f"layer-zero helper has a self dependency: {module}"

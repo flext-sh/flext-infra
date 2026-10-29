@@ -210,11 +210,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         # no source declaration and no superclasses of their own.
         if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             return ()
-        bases = list(
-            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
-                value, "declaration ancestry"
-            ).get_superclasses()
-        )
+        bases = list(value.get_superclasses())
         if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             return bases
         scope, module = value.get_scope(), value.get_module()

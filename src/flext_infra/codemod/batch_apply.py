@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import (
     FlextInfraCodemodLoopPhaseImportNormalization,
@@ -22,7 +22,7 @@ from flext_infra.codemod import (
 from flext_infra.refactor import FlextInfraRefactorCensus
 
 
-class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
+class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     """Apply guarded rewrites and retain accepted progress for fix-forward."""
 
     workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (

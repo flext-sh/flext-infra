@@ -930,6 +930,10 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         """
         for folder in folders:
             relative = Path(folder)
+            folder = relative.as_posix() if relative.parts else ""
+            if folder == ".":
+                # The repository root spelled as ``.`` is canonical ``''``.
+                folder = ""
             candidate = root / relative
             if (
                 folder != (relative.as_posix() if relative.parts else "")

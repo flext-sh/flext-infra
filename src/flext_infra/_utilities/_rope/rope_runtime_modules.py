@@ -30,6 +30,31 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 ):
     """Resolve lexical identities and construct Rope module/import objects."""
 
+    @staticmethod
+    def native_object_identity(value: p.Infra.RopePyObject) -> str:
+        """Retain a native object's declaring module and complete scope path.
+
+        Returns:
+            The module and qualified path separated by ``::``, or an empty
+            identity when the native object has no supported declaration.
+
+        """
+        if FlextInfraUtilitiesTypesRopeRuntime.py_class(
+            value
+        ) or FlextInfraUtilitiesTypesRopeRuntime.py_function(value):
+            module = value.get_module()
+            scope = value.get_scope()
+            names: list[str] = []
+            while scope.parent is not None:
+                names.append(scope.pyobject.get_name())
+                scope = scope.parent
+            return f"{module.get_name()}::{'.'.join(reversed(names))}"
+        if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value) and isinstance(
+            value, p.Infra.RopeBuiltinClass
+        ):
+            return f"{value.builtin.__module__}::{value.builtin.__qualname__}"
+        return ""
+
     @classmethod
     def annotation_alias_definition(
         cls,

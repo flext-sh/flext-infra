@@ -171,6 +171,25 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
+    def unresolved_witness(cls, value: p.AttributeProbe) -> bool:
+        """Return whether ``value`` is an unresolved base witness.
+
+        Rope dc15 keeps an ``UnresolvedBase`` in its MRO position by policy
+        (TypedDict synthetic bases, staged renames): the witness occupies
+        its slot, contributes no ancestors and never matches a first-party
+        declaration. Classification consumers skip witnesses instead of
+        rejecting the class that carries them.
+
+        Returns:
+            Whether ``value`` is an unresolved base witness.
+
+        """
+        return isinstance(
+            value,
+            cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "UnresolvedBase"),
+        )
+
+    @classmethod
     def instance_object(
         cls,
         value: p.AttributeProbe,

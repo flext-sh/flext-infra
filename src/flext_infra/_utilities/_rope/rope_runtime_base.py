@@ -78,7 +78,9 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         if not isinstance(
             value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass")
         ) or not isinstance(value, p.Infra.RopeClassObject):
-            msg = f"expected a native Rope class: {label}"
+            msg = (
+                f"expected a native Rope class: {label} (found {type(value).__name__})"
+            )
             raise TypeError(msg)
         return value
 

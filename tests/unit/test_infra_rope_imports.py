@@ -239,4 +239,4 @@ class TestsFlextInfraRopeImports:
     ) -> None:
         """Only a sole module-level import binds every load of the name."""
         tree = ast.parse(module_source)
-        tm.that(u.Infra.single_module_import_binding(tree, "p"), eq=expected)
+        tm.that(u.Infra.single_reaching_binding(tree, "p"), eq=expected)
