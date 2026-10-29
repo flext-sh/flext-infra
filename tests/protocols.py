@@ -48,8 +48,8 @@ class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
                 ...
 
             @property
-            def testmon_db(self) -> Path:
-                """Persistent testmon database used by the runner."""
+            def testmon_db(self) -> Path | None:
+                """Incremental database, absent for modes that do not use Testmon."""
                 ...
 
             @property

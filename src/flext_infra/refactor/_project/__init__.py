@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._project.classifier_deps import (
+    from flext_infra.refactor._project.classifier_deps import (
         FlextInfraRefactorProjectClassifierDeps,
     )
-    from flext_infra._project.classifier_family import (
+    from flext_infra.refactor._project.classifier_family import (
         FlextInfraRefactorProjectClassifierFamily,
     )
 

@@ -24,6 +24,7 @@ class TestsFlextInfraRopeContractBindings:
     """Prove lexical identity and execution order without publishing unsafe edits."""
 
     @staticmethod
+    @pytest.mark.parametrize("carrier", ["model", "function"])
     @pytest.mark.parametrize(
         ("imports", "metadata", "variant"),
         [
@@ -53,9 +54,11 @@ class TestsFlextInfraRopeContractBindings:
                 "'Payload | OtherPayload'",
             ),
             (
-                "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n"
-                "    from pydantic import Field as Tag\nelse:\n"
-                "    from pydantic import Field as Tag",
+                (
+                    "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n"
+                    "    from pydantic import Field as Tag\nelse:\n"
+                    "    from pydantic import Field as Tag"
+                ),
                 "Tag(discriminator='kind')",
                 "Payload | OtherPayload",
             ),
@@ -66,22 +69,38 @@ class TestsFlextInfraRopeContractBindings:
         imports: str,
         metadata: str,
         variant: str,
+        carrier: str,
     ) -> None:
         """Real Pydantic consumes qualified, aliased and quoted discriminators."""
         workspace, path = rope_contract_consumer
+        consumer = (
+            "class Envelope(BaseModel):\n"
+            f"    payload: Annotated[{variant}, {metadata}]\n"
+            "evidence = Envelope.model_validate({'payload': "
+            "{'kind': 'ready'}}).model_dump_json()\n"
+            if carrier == "model"
+            else (
+                f"def consume[T](value: Annotated[{variant}, {metadata}]):\n"
+                "    Annotated = list\n"
+                "    m = list\n"
+                "    pydantic = list\n"
+                "    Tag = list\n"
+                "    return value\n"
+                "evidence = TypeAdapter(get_type_hints(consume, "
+                "include_extras=True)['value']).validate_python("
+                "{'kind': 'ready'}).model_dump_json()\n"
+            )
+        )
         source = (
             "from enum import StrEnum, unique\n"
-            "from typing import Annotated, Literal\n"
-            "from pydantic import BaseModel\n"
+            "from typing import Annotated, Literal, get_type_hints\n"
+            "from pydantic import BaseModel, TypeAdapter\n"
             f"{imports}\n"
             "@unique\nclass State(StrEnum):\n    READY = 'ready'\n"
             "    FAILED = 'failed'\n"
             "class Payload(BaseModel):\n    kind: Literal[State.READY, State.FAILED]\n"
             "class OtherPayload(BaseModel):\n    kind: Literal['other']\n"
-            "class Envelope(BaseModel):\n"
-            f"    payload: Annotated[{variant}, {metadata}]\n"
-            "evidence = Envelope.model_validate({'payload': "
-            "{'kind': 'ready'}}).model_dump_json()\n"
+            f"{consumer}"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
@@ -157,7 +176,7 @@ class TestsFlextInfraRopeContractBindings:
                 command, cwd=workspace.repository_root, options=options
             )
         )
-        tm.that(after.stdout, eq=before.stdout)
+        tm.that(after, eq=before)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -245,28 +264,36 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "annotation",
+        ("annotation", "defaulted"),
         [
-            "Choice[StateAlias.READY, StateAlias.FAILED]",
+            ("Choice[StateAlias.READY, StateAlias.FAILED]", True),
             (
-                "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], "
-                "Field(description='Retained')]"
+                (
+                    "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], "
+                    "Field(description='Retained')]"
+                ),
+                True,
             ),
-            "list[Choice[StateAlias.READY, StateAlias.FAILED]]",
-            "Choice[StateAlias.READY, StateAlias.FAILED] | None",
-            "Choice[ready, failed]",
+            ("list[Choice[StateAlias.READY, StateAlias.FAILED]]", True),
+            ("Choice[StateAlias.READY, StateAlias.FAILED] | None", True),
+            ("Choice[ready, failed]", True),
+            ("Final[Choice[StateAlias.READY, StateAlias.FAILED]]", False),
         ],
     )
     def test_exhaustive_enum_contract_preserves_real_pydantic_wire_values(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         annotation: str,
+        *,
+        defaulted: bool,
     ) -> None:
         """The native action retains metadata/defaults and enum wire domains."""
         workspace, path = rope_contract_consumer
         value = "[State.READY]" if annotation.startswith("list[") else "State.READY"
+        suffix = f" = {value}" if defaulted else ""
+        default = "Payload()" if defaulted else "parsed"
         source = (
             "from enum import StrEnum, unique\n"
-            "from typing import Annotated, Literal as Choice\n"
+            "from typing import Annotated, Final, Literal as Choice\n"
             "from pydantic import BaseModel, ConfigDict, Field\n"
             "@unique\n"
             "class State(StrEnum):\n"
@@ -278,10 +305,13 @@ class TestsFlextInfraRopeContractBindings:
             "class Payload(BaseModel):\n"
             "    model_config = ConfigDict(strict=True, use_enum_values=False, "
             "validate_default=True)\n"
-            f"    value: {annotation} = {value}\n"
+            f"    value: {annotation}{suffix}\n"
             f"parsed = Payload.model_validate({{'value': {value}}})\n"
-            "evidence = (parsed.model_dump_json(), Payload().model_dump_json(), "
-            "Payload.model_fields['value'].description)\n"
+            f"default_value = {default}\n"
+            "evidence = (parsed.model_dump_json(), default_value.model_dump_json(), "
+            "Payload.model_fields['value'].description, "
+            "Payload.model_fields['value'].is_required(), "
+            "Payload.model_fields['value'].frozen)\n"
             "stored_members = (all(item is State.READY for item in parsed.value) "
             "if isinstance(parsed.value, list) else parsed.value is State.READY)\n"
             "dumped = parsed.model_dump()['value']\n"
@@ -318,12 +348,16 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("annotation", "consumer"),
+        ("annotation", "consumer", "evidence"),
         [
-            ("Literal[State.READY]", ""),
-            ("Literal[State.READY, State.READY]", ""),
-            ("Literal[State.READY, Other.FAILED]", ""),
-            ("Annotated[str, Literal[State.READY, State.FAILED]]", ""),
+            ("Literal[State.READY]", "", "Payload.model_json_schema()"),
+            ("Literal[State.READY, State.READY]", "", "Payload.model_json_schema()"),
+            ("Literal[State.READY, Other.FAILED]", "", "Payload.model_json_schema()"),
+            (
+                "Annotated[str, Literal[State.READY, State.FAILED]]",
+                "",
+                "Payload.model_json_schema()",
+            ),
             (
                 "Literal[State.READY, State.FAILED]",
                 (
@@ -335,6 +369,28 @@ class TestsFlextInfraRopeContractBindings:
                     "class Envelope(BaseModel):\n"
                     "    payload: Annotated[Variants, DiscriminatorMetadata]\n"
                 ),
+                "Envelope.model_json_schema()",
+            ),
+            *(
+                (
+                    f"{qualifier}[Literal[State.READY, State.FAILED]] = 'ready'",
+                    "",
+                    "(Payload.model_json_schema(), Payload.kind, type(Payload.kind))",
+                )
+                for qualifier in ("ClassVar", "CV", "AliasCV")
+            ),
+            (
+                "'ClassVar[Literal[State.READY, State.FAILED]]' = 'ready'",
+                "",
+                "(Payload.model_json_schema(), Payload.kind, type(Payload.kind))",
+            ),
+            (
+                (
+                    "Annotated[ClassVar[Literal[State.READY, State.FAILED]], "
+                    "'class-data'] = 'ready'"
+                ),
+                "",
+                "(Payload.model_json_schema(), Payload.kind, type(Payload.kind))",
             ),
         ],
     )
@@ -342,12 +398,13 @@ class TestsFlextInfraRopeContractBindings:
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         annotation: str,
         consumer: str,
+        evidence: str,
     ) -> None:
         """Subset, duplicate, mixed, metadata and alias discriminators stay intact."""
         workspace, path = rope_contract_consumer
         source = (
             "from enum import StrEnum, unique\n"
-            "from typing import Annotated, Literal\n"
+            "from typing import Annotated, ClassVar, ClassVar as CV, Literal\n"
             "from pydantic import BaseModel, Field\n"
             "@unique\n"
             "class State(StrEnum):\n"
@@ -357,10 +414,12 @@ class TestsFlextInfraRopeContractBindings:
             "class Other(StrEnum):\n"
             "    READY = 'other-ready'\n"
             "    FAILED = 'other-failed'\n"
+            "AliasCV = ClassVar\n"
             "class Payload(BaseModel):\n"
-            f"    kind: {annotation}\n" + consumer
+            f"    kind: {annotation}\n" + consumer + f"evidence = {evidence}\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
         rules = tuple(
             rule
             for rule in u.Infra.declared_contract_rules(workspace.repository_root)
@@ -370,6 +429,7 @@ class TestsFlextInfraRopeContractBindings:
             tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules)),
             empty=True,
         )
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
     def test_exhaustive_enum_contract_refuses_opaque_discriminator_before_effects(
@@ -466,7 +526,7 @@ class TestsFlextInfraRopeContractBindings:
                 command, cwd=workspace.repository_root, options=options
             )
         )
-        tm.that(after.stdout, eq=before.stdout)
+        tm.that(after, eq=before)
 
     @staticmethod
     def _assertion_rules() -> Sequence[p.Infra.RopeContractRule]:
@@ -675,8 +735,10 @@ class TestsFlextInfraRopeContractBindings:
                 for declaration in (
                     "value: str = Field(description='Required input')",
                     "value: str = Field(..., min_length=2)",
-                    "value: str = Field(default=..., alias='wire', "
-                    "description='Wire input')",
+                    (
+                        "value: str = Field(default=..., alias='wire', "
+                        "description='Wire input')"
+                    ),
                     "value: 'str' = Field(min_length=2)",
                 )
             ),

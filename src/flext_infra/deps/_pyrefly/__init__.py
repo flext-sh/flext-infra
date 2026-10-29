@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._pyrefly.fix_steps import FlextInfraDepsPyreflyFixSteps
+    from flext_infra.deps._pyrefly.fix_steps import FlextInfraDepsPyreflyFixSteps
 
 
 __all__: tuple[str, ...] = ("FlextInfraDepsPyreflyFixSteps",)

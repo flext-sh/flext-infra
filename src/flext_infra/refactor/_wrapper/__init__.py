@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._wrapper.rewrite import FlextInfraRefactorWrapperRewrite
+    from flext_infra.refactor._wrapper.rewrite import FlextInfraRefactorWrapperRewrite
 
 
 __all__: tuple[str, ...] = ("FlextInfraRefactorWrapperRewrite",)

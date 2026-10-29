@@ -300,7 +300,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
         members: MutableMapping[str, MutableMapping[str, str]] = {}
         for statement in tree.body:
             module_name = cls._mergeable_import(statement)
-            if module_name is None:
+            if not isinstance(statement, ast.ImportFrom) or module_name is None:
                 continue
             bucket = members.setdefault(module_name, {})
             for alias in statement.names:
@@ -312,7 +312,11 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
             if module_name is None:
                 continue
             if module_name in emitted:
-                plans.append((statement.lineno, statement.end_lineno, None))
+                plans.append((
+                    statement.lineno,
+                    statement.end_lineno or statement.lineno,
+                    None,
+                ))
                 continue
             emitted.add(module_name)
             ordered = sorted(
@@ -325,7 +329,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
             rendered = ", ".join(alias for alias, _name in ordered)
             plans.append((
                 statement.lineno,
-                statement.end_lineno,
+                statement.end_lineno or statement.lineno,
                 f"from {module_name} import {rendered}\n",
             ))
         lines = source.splitlines(keepends=True)
@@ -364,7 +368,11 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
                 + "".join(f"    {member},\n" for member in members)
                 + ")"
             )
-            plans.append((statement.lineno, statement.end_lineno, wrapped))
+            plans.append((
+                statement.lineno,
+                statement.end_lineno or statement.lineno,
+                wrapped,
+            ))
         lines = source.splitlines(keepends=True)
         for start, end, replacement in sorted(plans, reverse=True):
             lines[start - 1 : end] = [f"{replacement}\n"]

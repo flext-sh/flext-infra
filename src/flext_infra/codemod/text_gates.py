@@ -293,21 +293,21 @@ class FlextInfraModTextGateEngine:
         )
         unknown_flags = set(flag_names).difference(c.Infra.CODEMOD_TEXT_FLAG_NAMES)
         if unknown_flags:
-            return r[tuple[str, tuple[str], re.Pattern[str], ...]].fail(
+            return r[tuple[str, tuple[str, ...], re.Pattern[str]]].fail(
                 f"unknown regex flag names {sorted(unknown_flags)} in {source}",
             )
         find = entry.get(c.Infra.CODEMOD_TEXT_KEY_FIND)
         if not isinstance(find, str) or not find:
-            return r[tuple[str, tuple[str], re.Pattern[str], ...]].fail(
+            return r[tuple[str, tuple[str, ...], re.Pattern[str]]].fail(
                 f"text rule requires a non-empty find regex in {source}",
             )
         try:
             compiled = re.compile(find)
         except re.error as error:
-            return r[tuple[str, tuple[str], re.Pattern[str], ...]].fail(
+            return r[tuple[str, tuple[str, ...], re.Pattern[str]]].fail(
                 f"invalid find regex in {source}: {error}",
             )
-        return r[tuple[str, tuple[str], re.Pattern[str], ...]].ok(
+        return r[tuple[str, tuple[str, ...], re.Pattern[str]]].ok(
             (find, flag_names, compiled),
         )
 
@@ -370,16 +370,16 @@ class FlextInfraModTextGateEngine:
         )
         if captures.failure:
             return r[
-                tuple[tuple[str], Mapping[str, str], int | None, ...]
+                tuple[tuple[str, ...], Mapping[str, str], int | None]
             ].from_failure(captures)
         expected = entry.get(c.Infra.CODEMOD_TEXT_KEY_EXPECTED)
         if expected is not None and (
             not isinstance(expected, int) or isinstance(expected, bool) or expected < 0
         ):
-            return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].fail(
+            return r[tuple[tuple[str, ...], Mapping[str, str], int | None]].fail(
                 f"text rule expected receipt must be non-negative in {source}",
             )
-        return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].ok((
+        return r[tuple[tuple[str, ...], Mapping[str, str], int | None]].ok((
             distributions,
             captures.value,
             expected,
@@ -395,7 +395,7 @@ class FlextInfraModTextGateEngine:
             The resulting failure for one invalid distributions declaration.
 
         """
-        return r[tuple[tuple[str], Mapping[str, str], int | None, ...]].fail(
+        return r[tuple[tuple[str, ...], Mapping[str, str], int | None]].fail(
             f"text rule distributions must be unique non-empty names in {source}",
         )
 

@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
     @classmethod
     def semantic_capture_region(
         cls,
-        module: p.Infra.RopeSourceModule,
+        module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
         name: str,
     ) -> tuple[int, int]:
@@ -139,6 +139,53 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
         """
         return (cls._exception_type("rope.base.exceptions", "RopeError"),)
+
+    @classmethod
+    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return exceptions that signal unparseable Python source.
+
+        Returns:
+            Exceptions that signal unparseable Python source.
+
+        """
+        return (
+            SyntaxError,
+            cls._exception_type("rope.base.exceptions", "ModuleSyntaxError"),
+        )
+
+    @classmethod
+    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return recoverable exceptions raised by Rope operations.
+
+        Returns:
+            Recoverable exceptions raised by Rope operations.
+
+        """
+        return (
+            cls._exception_type("rope.base.exceptions", "RefactoringError"),
+            cls._exception_type("rope.base.exceptions", "ResourceNotFoundError"),
+            # Module probing (longest-prefix module/class split) treats a
+            # missing module as "keep splitting", never as a hard failure.
+            cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
+            AttributeError,
+        )
+
+    @classmethod
+    def rope_unresolved_error_types(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for statically unresolved modules or attributes.
+
+        Returns:
+            Rope exceptions raised when a native lookup resolves nothing.
+
+        """
+        return tuple(
+            cls._exception_type("rope.base.exceptions", name)
+            for name in (
+                "ModuleNotFoundError",
+                "BadIdentifierError",
+                "AttributeNotFoundError",
+            )
+        )
 
     @classmethod
     def runtime_type(cls, module_name: str, attribute: str) -> type[p.AttributeProbe]:

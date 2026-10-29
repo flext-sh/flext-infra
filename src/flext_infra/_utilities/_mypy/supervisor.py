@@ -30,6 +30,9 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
+__all__: list[str] = ["FlextInfraUtilitiesMypySupervisor"]
+
+
 class FlextInfraUtilitiesMypySupervisor:
     """Own the checker process group and stop it on resource-control failure."""
 

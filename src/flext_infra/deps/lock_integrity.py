@@ -80,7 +80,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
             lambda _: FlextInfraWorkspaceLockCompleteness.verify_lock(root)
         )
         return (
-            locked
+            locked.map(lambda _verified: True)
             if packages
             else locked.flat_map(lambda _: cls._upgrade_mise_lock(runner, root))
         )

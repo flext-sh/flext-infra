@@ -35,8 +35,11 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
 
     type FacadeMemberScope = tuple[
         Callable[[], FlextInfraProtocolsRopeRuntime.RopeSourceMemberResolver],
-        RopeProject,
-        Mapping[str, Mapping[str, Sequence[RopePyObject]]] | None,
+        FlextInfraProtocolsRopeRuntime.RopeProject,
+        Mapping[
+            str, Mapping[str, Sequence[FlextInfraProtocolsRopeRuntime.RopePyObject]]
+        ]
+        | None,
     ]
 
     class Cst:
@@ -124,6 +127,7 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
         RopeImportLookup, MutableMapping[str, CodemodImportWalkNode]
     ]
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
+    type RopeRoot = FlextInfraProtocolsRopeRuntime.RopeRoot
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
     type RopeSemanticModule = FlextInfraProtocolsRopeRuntime.RopeSemanticModule
     type RopeParsedModule = FlextInfraProtocolsRopeRuntime.RopeParsedModule

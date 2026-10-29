@@ -820,7 +820,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
         Raises:
             TypeError: If Singleton model owner requires a native source module.
-            ValueError: A pure model namespace still has actual entity consumers.
+            ValueError: A pure model namespace still has entity consumers or its
+                native ancestry cannot be established.
 
         """
         if (

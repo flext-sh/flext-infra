@@ -314,7 +314,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
     def _assert_candidate_receipt_prefixes(
         parent: Path,
         observed: Sequence[t.Pair[Path, Path]],
-        source: t.Triple[str, str, ...],
+        source: tuple[str, str, str],
     ) -> None:
         """Require each receipt to record the locked source and its environment."""
         for name, project in observed:
@@ -327,7 +327,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
     @staticmethod
     def _assert_lock_floor_preserved(
-        root: Path, checkout: Path, source: t.Triple[str, str, ...]
+        root: Path, checkout: Path, source: tuple[str, str, str]
     ) -> None:
         """Require the checkout's locks to match the resolved root exactly."""
         manifest = Path(c.PYPROJECT_FILENAME)

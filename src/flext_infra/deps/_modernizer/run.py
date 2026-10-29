@@ -224,6 +224,7 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
         for note in FlextInfraLintConfigFreezeGate.refresh_catalog(
             self.root,
             states,
+            invalid_paths=invalid_paths,
         ):
             u.Cli.info(note)
         return self._run_build_check(states, invalid_paths=invalid_paths)

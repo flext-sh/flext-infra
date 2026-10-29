@@ -699,7 +699,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 root, syntax, working
             )
         )
-        semantic = FlextInfraCodemodSemanticApply.plan(
+        semantic = FlextInfraCodemodSemanticApply.plan_semantic_edits(
             root,
             FlextInfraModGateEngine.authored(semantic_preflight),
             graph,

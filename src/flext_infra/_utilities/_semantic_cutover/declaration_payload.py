@@ -31,7 +31,7 @@ class FlextInfraUtilitiesDeclarationPayload(
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesTypesRopeRuntime,
 ):
-    """Identify inherited declarations without parsing or spelling heuristics."""
+    """Resolve declaration roles, specialization facts and native identities."""
 
     @staticmethod
     def identity_name(
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesDeclarationPayload(
     def class_ancestry(
         value: p.Infra.RopePyObject,
     ) -> Sequence[p.Infra.RopePyObject]:
-        """Retain native C3 order, unresolved witnesses and hierarchy failures.
+        """Retain complete native C3 order and reject unresolved witnesses.
 
         Returns:
             The SDK ancestry, or the unchanged non-class singleton.
@@ -61,16 +61,25 @@ class FlextInfraUtilitiesDeclarationPayload(
         """
         # SDK ownership keeps classification and generation on one ancestry contract.
         if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
-            try:
-                return value.get_mro()
-            except tuple(
-                FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()
+            ancestry = tuple(value.get_mro())
+            if any(
+                not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(ancestor)
+                for ancestor in ancestry
             ):
-                # A candidate-overlay base chain through lazy cross-package
-                # letters may not linearize in this view; the class itself
-                # remains the ancestry witness (the base project's own pass
-                # owns the true on-disk linearization).
-                return (value,)
+                # Preserve the SDK failure; local reconstruction cannot prove C3.
+                owner = value.get_module()
+                owner_prefix = f"{owner.get_name()}." if owner is not None else ""
+                msg = (
+                    "native SDK class ancestry is incomplete: "
+                    f"{owner_prefix}{value.get_name()}"
+                )
+                failure = ValueError(msg)
+                failure.add_note(f"native MRO witnesses: {ancestry!r}")
+                failure.add_note(
+                    f"native immediate bases: {value.get_superclasses()!r}"
+                )
+                raise failure
+            return ancestry
         return (value,)
 
     @classmethod

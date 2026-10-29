@@ -10,6 +10,7 @@ import ast
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from keyword import iskeyword
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import c, p, t
 from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
@@ -466,6 +467,57 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 )
         return binding
 
+    @staticmethod
+    def _class_alias_primary(
+        declaration: ast.Assign | ast.AnnAssign,
+    ) -> ast.expr | None:
+        """Return the root name behind one alias declaration value.
+
+        Returns:
+            The referenced name expression, or None when the declaration
+            value is not a bare name reference.
+
+        """
+        if isinstance(declaration, ast.Assign):
+            primary: ast.expr | None = declaration.value
+        elif isinstance(declaration, ast.AnnAssign):
+            primary = declaration.value
+        else:
+            return None
+        if primary is None or not isinstance(primary, c.Infra.AST_NAME_REFERENCE_TYPES):
+            return None
+        while isinstance(primary, ast.Attribute):
+            primary = primary.value
+        return primary
+
+    @staticmethod
+    def _class_alias_declaration(
+        holder: p.Infra.RopeParsedModule,
+        tree_index: dict[int, ast.AST | None],
+        rhs_offset: int,
+    ) -> ast.AST | None:
+        """Return the unique statement at the alias RHS offset, if any.
+
+        Returns:
+            The unique assignment declaration, or None when the offset has
+            no statement under the class alias policy.
+
+        Raises:
+            ValueError: The offset is shared by more than one statement.
+
+        """
+        declaration = tree_index.get(rhs_offset)
+        if declaration is not None:
+            return declaration
+        if rhs_offset in tree_index:
+            msg = (
+                "native class alias RHS has no unique statement: "
+                f"{holder.get_name()}:{rhs_offset}"
+            )
+            raise ValueError(msg)
+        # Native loop/context/pattern bindings are outside class alias policy.
+        return None
+
     @classmethod
     def _class_alias_statement(
         cls,
@@ -497,30 +549,22 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         # identity; rope rebuilds the tree on change, so a rebuilt module
         # naturally becomes a new index and never serves stale offsets.
         tree_index = cls._tree_assignment_index(tree, source)
-        declaration = tree_index.get(rhs_offset)
-        if declaration is None:
-            if rhs_offset in tree_index:
-                msg = (
-                    "native class alias RHS has no unique statement: "
-                    f"{holder.get_name()}:{rhs_offset}"
-                )
-                raise ValueError(msg)
-            # Native loop/context/pattern bindings are outside class alias policy.
-            return None
-        if not isinstance(declaration.value, c.Infra.AST_NAME_REFERENCE_TYPES):
+        declaration = cls._class_alias_declaration(holder, tree_index, rhs_offset)
+        if (
+            declaration is None
+            or not isinstance(declaration, ast.Assign | ast.AnnAssign)
+            or (primary := cls._class_alias_primary(declaration)) is None
+        ):
             return None
         offset = cls.source_offset(source, declaration)
         scope = cls.scope_at(holder, offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
             return None
-        primary = declaration.value
-        while isinstance(primary, ast.Attribute):
-            primary = primary.value
         return holder, declaration, scope, offset, primary
 
     # Pass-scoped memo (single-invocation lifecycle): tree identity keys
     # keep entries fresh; the process boundary is the cache boundary.
-    _TREE_ASSIGNMENT_INDEXES: t.ClassVar[
+    _TREE_ASSIGNMENT_INDEXES: ClassVar[
         dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None
     ] = None
 
@@ -541,7 +585,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             or None where the offset is ambiguous.
 
         """
-        indexes = cls._TREE_ASSIGNMENT_INDEXES
+        indexes: dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None = (
+            cls._TREE_ASSIGNMENT_INDEXES
+        )
         if indexes is None:
             indexes = {}
             cls._TREE_ASSIGNMENT_INDEXES = indexes

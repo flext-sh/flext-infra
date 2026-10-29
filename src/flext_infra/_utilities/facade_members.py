@@ -19,7 +19,7 @@ import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, config, p, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
@@ -27,7 +27,6 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodNative
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -410,11 +409,36 @@ class FlextInfraUtilitiesFacadeMembers:
         Returns:
             The class's owner kind, preserving direct protocol declarations.
 
+        Raises:
+            ValueError: If the native class ancestry is incomplete.
+
         """
+        ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(origin)
+        return FlextInfraUtilitiesFacadeMembers._class_kind_classified(
+            origin,
+            ancestry,
+            resolver_factory=resolver_factory,
+            source_project=source_project,
+        )
+
+    @classmethod
+    def _class_kind_classified(
+        cls,
+        origin: p.Infra.RopePyObject,
+        ancestry: Sequence[p.Infra.RopePyObject],
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        source_project: p.Infra.RopeProject,
+    ) -> c.Infra.FacadeMemberKind:
+        """Classify from the already-linearized native ancestry.
+
+        Returns:
+            The facade member kind for the native member.
+
+        """
+        kind = c.Infra.FacadeMemberKind
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesTypesRopeRuntime
-        kind = c.Infra.FacadeMemberKind
-        ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(origin)
         if any(
             isinstance(ancestor, p.Infra.RopeBuiltinClass)
             and isinstance(ancestor.builtin, type)
@@ -454,7 +478,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @staticmethod
     def _model_class(
-        origin: p.Infra.RopeClassObject,
+        origin: p.Infra.RopePyObject,
         ancestry: Sequence[p.Infra.RopePyObject],
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
@@ -561,12 +585,16 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @classmethod
     def library_members_owned_by(
-        cls, library: str, letter: str, *, source_project: p.Infra.RopeProject
-    ) -> t.StrTuple:
-        """Name a library's public native bindings owned by the selected letter.
+        cls,
+        library: str,
+        letters: Sequence[str],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> Mapping[str, t.StrTuple]:
+        """Classify a library's public bindings once for the selected letters.
 
         Returns:
-            The sorted public member names the letter owns.
+            Each selected letter's sorted public member names.
 
         Raises:
             ValueError: If the member's owner cannot be determined.
@@ -580,25 +608,23 @@ class FlextInfraUtilitiesFacadeMembers:
         module = FlextInfraUtilitiesTypesRopeRuntime.require_parsed_module(
             source_project.get_module(library)
         )
-        owned: list[str] = []
+        # One native classification serves every requested owner letter.
+        owned: dict[str, list[str]] = {letter: [] for letter in letters}
         for name, binding in module.get_attributes().items():
             if name.startswith("_"):
                 continue
             try:
-                if (
-                    cls.facade_member_owner(
-                        binding,
-                        resolver_factory=resolver_factory,
-                        source_project=source_project,
-                    )
-                    != letter
-                ):
-                    continue
+                owner = cls.facade_member_owner(
+                    binding,
+                    resolver_factory=resolver_factory,
+                    source_project=source_project,
+                )
             except ValueError as failure:
                 failure.add_note(f"library-member-owner: {library}.{name}")
                 raise
-            owned.append(name)
-        return tuple(sorted(owned))
+            if owner in owned:
+                owned[owner].append(name)
+        return {letter: tuple(sorted(names)) for letter, names in owned.items()}
 
     @staticmethod
     def specialized_aliases(
@@ -691,9 +717,9 @@ class FlextInfraUtilitiesFacadeMembers:
         view: tuple[
             p.Infra.RopeProject,
             str,
-            p.Infra.RopePyModule,
+            p.Infra.RopeParsedModule,
             p.Infra.RopeSourceModule,
-            Mapping[str, object],
+            Mapping[str, m.Infra.SourceClassReference],
             frozenset[str],
         ],
         letter: str,
@@ -810,20 +836,10 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         del cls, source_project
-        try:
-            attributes = facade.get_attributes()
-        except tuple(FlextInfraUtilitiesRopeRuntime.rope_hierarchy_errors()) + tuple(
-            FlextInfraUtilitiesRopeRuntime.rope_runtime_errors()
-        ):
-            # A candidate facade whose base chain crosses lazy package
-            # letters may have an MRO that is not computable in this view;
-            # its inherited members are then unknown, and the composition
-            # treats the facade as contributing none (the base project's
-            # own pass owns the on-disk resolution).
-            return {}
+        attributes = facade.get_attributes()
         return {
-            name: facade.get_attribute(name)
-            for name in attributes
+            name: binding
+            for name, binding in attributes.items()
             if not name.startswith("_")
         }
 

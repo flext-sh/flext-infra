@@ -25,6 +25,7 @@ from flext_infra.deps.phases import (
     FlextInfraInjectCommentsPhase,
     FlextInfraToolTablesPhase,
 )
+from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
 from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
@@ -123,11 +124,16 @@ class FlextInfraPyprojectModernizerDocument(
 
         """
         result_type = r[m.Infra.PyprojectDocumentState]
+        before: m.Cli.AtomicFileState | None = None
         if source is None:
-            read = u.Cli.files_read_text(path)
+            read = u.Cli.atomic_read_binary_file_state(path, required=True)
             if read.failure:
                 return result_type.from_failure(read)
-            source = read.value
+            before = read.value
+            if before.content is None:
+                message = f"required project document has no captured content: {path}"
+                raise ValueError(message)
+            source = before.content.decode(c.DEFAULT_ENCODING)
         recovered = u.Infra.recover_live_pyproject_text(source)
         if recovered.failure:
             return result_type.from_failure(recovered)
@@ -144,6 +150,7 @@ class FlextInfraPyprojectModernizerDocument(
         return result_type.ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,
+                before=before,
                 original_rendered=source,
                 payload=validated.value,
                 document=document,
@@ -236,9 +243,31 @@ class FlextInfraPyprojectModernizerDocument(
         if state.rendered == state.original_rendered:
             return r[Sequence[str]].ok(())
         if not dry_run:
-            u.write_file(
-                state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
+            if state.before is None:
+                message = (
+                    "project publication has no original capture: "
+                    f"{state.pyproject_path}"
+                )
+                raise ValueError(message)
+            catalog = FlextInfraLintConfigFreezeGate.require_projection(
+                self.root, state
             )
+            published = u.Infra.publish_codegen_plans(
+                self.root,
+                (
+                    m.Infra.CodegenFilePlan(
+                        project=state.pyproject_path.parent,
+                        path=state.pyproject_path,
+                        before=state.before,
+                        desired_content=state.rendered.encode(c.DEFAULT_ENCODING),
+                        desired_mode=state.before.mode,
+                        owner=c.Infra.CLI_GROUP_DEPS,
+                    ),
+                    catalog,
+                ),
+            )
+            if published.failure:
+                return r.from_failure(published)
         if not rendered.value:
             return r[Sequence[str]].ok(("canonical pyproject rendering changed bytes",))
         return rendered

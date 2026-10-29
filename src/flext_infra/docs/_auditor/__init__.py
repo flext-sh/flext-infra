@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._auditor.checks import FlextInfraDocsAuditorChecks
-    from flext_infra._auditor.report import FlextInfraDocsAuditorReport
+    from flext_infra.docs._auditor.checks import FlextInfraDocsAuditorChecks
+    from flext_infra.docs._auditor.report import FlextInfraDocsAuditorReport
 
 
 __all__: tuple[str, ...] = (

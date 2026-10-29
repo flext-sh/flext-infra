@@ -8,13 +8,16 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraModelsCodemod:
@@ -198,6 +201,13 @@ class FlextInfraModelsCodemod:
             m.Field(description="Member-name collision resolution policy"),
         ]
 
+    class RopeContractOrigin(m.ContractModel):
+        """Operational ownership elected independently of catalog document data."""
+
+        owner_root: Path | None = m.Field(
+            description="Elected repository root, or None for packaged policy"
+        )
+
     class RopeContractRule(m.ContractModel):
         """Identity-constrained native Rope restructuring of a Python contract."""
 
@@ -209,6 +219,37 @@ class FlextInfraModelsCodemod:
                 "packaged universal policy"
             ),
         )
+
+        @m.field_validator("owner_root", mode="before")
+        @classmethod
+        def _document_origin(
+            cls,
+            value: t.ValidationInput[p.Model],
+            info: p.ValidationInfo,
+        ) -> t.ValidationInput[p.Model]:
+            """Bind operational ownership without modifying the document mapping.
+
+            Returns:
+                The original Python value, or the elected document origin.
+
+            Raises:
+                TypeError: A Rope document has no validated operational origin.
+                ValueError: A document attempts to declare its own origin.
+
+            """
+            context = info.context
+            if not isinstance(context, Mapping) or (
+                context.get("kind") is not c.ValidationInputKind.DOCUMENT
+            ):
+                return value
+            origin = context.get("metadata")
+            if not isinstance(origin, FlextInfraModelsCodemod.RopeContractOrigin):
+                message = "Rope document input requires a validated catalog origin"
+                raise TypeError(message)
+            if value is not None:
+                message = "A Rope document cannot declare its operational owner root"
+                raise ValueError(message)
+            return origin.owner_root
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
         operation: t.DocumentInput[c.Infra.RopeContractOperation] = m.Field(

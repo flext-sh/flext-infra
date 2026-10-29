@@ -16,12 +16,14 @@ from types import FrameType
 
 from mypy import api
 
+__all__: list[str] = ["FlextInfraUtilitiesMypyProfile"]
+
 
 class FlextInfraUtilitiesMypyProfile:
     """Preserve native reports and status while recording the checker profile."""
 
     @staticmethod
-    def run(destination: Path, arguments: tuple[str, ...]) -> int:
+    def run_profiled(destination: Path, arguments: tuple[str, ...]) -> int:
         """Run the public checker API, whose clean exit lets cProfile save data.
 
         Returns:
@@ -78,5 +80,8 @@ class FlextInfraUtilitiesMypyProfile:
 
 if __name__ == "__main__":
     raise SystemExit(
-        FlextInfraUtilitiesMypyProfile.run(Path(sys.argv[1]), tuple(sys.argv[2:])),
+        FlextInfraUtilitiesMypyProfile.run_profiled(
+            Path(sys.argv[1]),
+            tuple(sys.argv[2:]),
+        ),
     )

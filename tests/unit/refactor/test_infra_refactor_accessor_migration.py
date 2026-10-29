@@ -249,7 +249,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tmp_path: Path,
         session_runtime: p.Tests.SessionRuntime,
     ) -> None:
-        """Owned accesses migrate; real fields and literal payloads keep behavior."""
+        """Owned accesses keep behavior and converge in a fresh native session."""
         rules = tuple(
             rule
             for rule in FlextInfraAccessorMigrationOrchestrator.migration_rules()
@@ -323,7 +323,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraCodemodLoopPhaseAccessorRename()
+            phase = FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project)
             states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in u.Infra.iter_python_files(
@@ -371,6 +371,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             eq="consumer_verified\n",
         )
         with u.Tests.authenticated_rope_workspace(project) as rope:
+            phase = FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project)
             tm.fail(phase.apply(project, preflight, rope).unwrap())
         planned = (
             FlextInfraAccessorMigrationOrchestrator(
@@ -401,7 +402,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraCodemodLoopPhaseAccessorRename()
+            phase = FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project)
             with pytest.raises(ValueError, match="accessor receiver"):
                 phase.apply(project, preflight, rope)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
@@ -442,7 +443,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             u.Cli.run((sys.executable, "-c", program, str(package.parent))).unwrap()
             with u.Tests.authenticated_rope_workspace(project) as rope:
                 preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-                phase = FlextInfraCodemodLoopPhaseAccessorRename()
+                phase = FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project)
                 with pytest.raises(ValueError, match="accessor backing field"):
                     phase.apply(project, preflight, rope)
             tm.that(consumer.read_text(encoding="utf-8"), eq=source)

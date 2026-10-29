@@ -809,6 +809,10 @@ class FlextInfraModelsConfigMake(
             Path,
             m.Field(description="Repository-relative immutable execution receipts"),
         ] = Path(".reports/gates")
+        lint_freeze_catalog: Annotated[
+            Path,
+            m.Field(description="Repository-relative frozen lint-policy catalog"),
+        ]
         generation_profile_path: Annotated[
             Path,
             m.Field(description="Repository-relative canonical generation profile"),
@@ -1210,6 +1214,7 @@ class FlextInfraModelsConfigMake(
                 raise ValueError(msg)
             for name, path in (
                 ("docs.reports_dir", self.docs.reports_dir),
+                ("lint_freeze_catalog", self.lint_freeze_catalog),
                 ("generation_profile_path", self.generation_profile_path),
                 ("modification_profile_path", self.modification_profile_path),
                 ("check_profile_path", self.check_profile_path),

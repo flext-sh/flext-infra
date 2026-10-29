@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 import pytest
@@ -237,5 +238,5 @@ class TestsFlextInfraRopeImports:
         expected: bool,
     ) -> None:
         """Only a sole module-level import binds every load of the name."""
-        tree = u.Infra.parsed_module(module_source)
+        tree = ast.parse(module_source)
         tm.that(u.Infra.single_module_import_binding(tree, "p"), eq=expected)

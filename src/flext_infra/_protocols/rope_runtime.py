@@ -189,9 +189,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
-        def get_module(
-            self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeParsedModule: ...
+        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
     @runtime_checkable
     class RopeSourceDefinition(Protocol):
@@ -547,6 +545,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
         ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingIndex: ...
 
+        @property
+        def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
+
     @runtime_checkable
     class RopeSourceModule(RopePyModule, Protocol):
         """Source-module capability retaining its native semantic graph."""
@@ -612,6 +613,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         @property
         def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+
+        @property
+        def fscommands(self) -> FlextInfraProtocolsRopeRuntime.RopeProjectFiles: ...
 
         def get_resource(
             self,
@@ -803,6 +807,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Native Rope match coordinates without exposing syntax trees."""
 
         def get_region(self) -> tuple[int, int]: ...
+
+        def get_capture_region(self, name: str) -> tuple[int, int]: ...
 
         def get_ast(
             self, name: str

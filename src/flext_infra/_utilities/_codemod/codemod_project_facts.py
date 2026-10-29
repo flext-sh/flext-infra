@@ -673,16 +673,28 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         utilities: dict[str, t.JsonMapping] = {}
         prefix = c.Infra.CODEMOD_LIBRARY_MEMBER_OWNER_UTILITY_PREFIX
-        for identity in cls._catalog_references(prefix):
+        specialization = c.Infra.CODEMOD_GENERIC_SPECIALIZATION_UTILITY
+        # Both request families share one catalog read.
+        references = cls._catalog_references((prefix, specialization))
+        requested: dict[str, list[str]] = {}
+        selectors: list[tuple[str, str, str]] = []
+        for identity in references:
+            if not identity.startswith(prefix):
+                continue
             library, _separator, letter = identity.removeprefix(prefix).rpartition("-")
-            utilities[identity] = cls._fact_exact_names(
-                FlextInfraUtilitiesFacadeMembers.library_members_owned_by(
-                    library, letter, source_project=snapshot.engine
-                )
+            requested.setdefault(library, []).append(letter)
+            selectors.append((identity, library, letter))
+        members = {
+            library: FlextInfraUtilitiesFacadeMembers.library_members_owned_by(
+                library, letters, source_project=snapshot.engine
             )
-        if cls._catalog_references(c.Infra.CODEMOD_GENERIC_SPECIALIZATION_UTILITY):
-            utilities[c.Infra.CODEMOD_GENERIC_SPECIALIZATION_UTILITY] = (
-                cls._fact_exact_names(cls._specialized_aliases(snapshot, project))
+            for library, letters in requested.items()
+        }
+        for identity, library, letter in selectors:
+            utilities[identity] = cls._fact_exact_names(members[library][letter])
+        if any(identity.startswith(specialization) for identity in references):
+            utilities[specialization] = cls._fact_exact_names(
+                cls._specialized_aliases(snapshot, project)
             )
         artifact_roots = config.Infra.codegen.exclusions.scenario_data_roots
         alternatives = "|".join(
@@ -763,7 +775,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         )
 
     @staticmethod
-    def _catalog_references(prefix: str) -> Sequence[str]:
+    def _catalog_references(prefix: str | tuple[str, ...]) -> Sequence[str]:
         """Collect the parametrized identities the packaged catalog references.
 
         A ``matches`` utility identity or a ``metadata.scope`` selector that

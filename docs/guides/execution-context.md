@@ -469,6 +469,14 @@ its private declaration model and its unused operation enums are retired; they
 had no Make entry point or configured consumers. New rules extend the active
 owner instead of creating another execution pipeline.
 
+Catalog document values remain a JSON-compatible mapping after their single YAML
+parse. The loader validates its elected `RopeContractOrigin` separately and passes
+that same operational metadata through `config_decode`'s typed document context.
+Pydantic binds `owner_root` from that origin before its strict Path schema; no
+Path is inserted into the parsed document. A textual rule cannot select its own
+owner root, and a Rope document missing its required origin fails before effects.
+Ordinary Python/JSON rule construction remains independent of document context.
+
 Private-import export discovery receives the active workspace project through
 its planner. Documentation contract extraction opens its existing native project
 once for export assignments and symbol validation, passing that project through
@@ -495,6 +503,14 @@ Inherited class documentation follows the elected class's native superclass
 identities, not a second parse of class headers and imported base spellings.
 The rendered summary keeps its existing whitespace normalization at the docs
 rendering owner. Source-only wrappers for those three SDK capabilities are retired.
+
+Subfacade composition elects a source class's native member kind before visiting
+its nested declarations or assignments. Entity roles remain declaration leaves;
+their fields, members and bases are not flattened into namespace-supplier
+evidence. Ordinary type holders retain recursive namespace discovery, including
+empty holders and nested type declarations. This boundary does not remove an
+entity or any model/protocol field from its owning projection. Unresolved native
+ancestry still fails classification with its original cause.
 
 String-sequence declarations use the elected module's native binding-index query.
 Its nullable result distinguishes absent declarations from explicit empty or
@@ -1108,6 +1124,11 @@ An authenticated composition already published at the canonical sibling takes
 precedence over broader compositions that reuse its capabilities. Otherwise a
 consumer's larger MRO could displace the domain's actual owner. Canonical location
 does not waive the native declaration and supplier proofs above.
+Once elected, an authored sibling keeps its declared path and class identity.
+Only an owner inside the private child domain relocates to the canonical sibling;
+without an owner, the declared project and family naming rules derive the seed.
+Scanning sibling import text or ignoring read errors cannot elect an alternative
+publication. Root-family `base.py` still cannot relocate to another domain.
 An ambiguous election reports each candidate's native bases, declaration-member
 suppliers and callable receivers separately, with bounded identities and total
 counts. Only declaration-time bases and published members establish namespace
@@ -1185,7 +1206,10 @@ the complete applicable population ([ADR-029](../../../docs/architecture/adr/029
 forced complete-run behavior: unchanged tests are not rerun merely because the
 verb was invoked again. Selection and execution share one persistent database and
 aggregate deadline, with no second execution pass. The common catalog has no manual
-file selector or separate complete-suite alias. The 2026-10-26 operator priority
+file selector. The explicitly requested `make tests-full` executes the complete
+applicable population once without Testmon or an incremental pre-run, preserving
+the persistent database untouched. It is a distinct operation, not an alias for
+incremental execution. The 2026-10-26 operator priority
 requires global Ruff and Pyrefly admission before native incremental pytest and
 global pytest success before later phases (ADR-029). Produce original global
 source-admission evidence with
@@ -1201,6 +1225,9 @@ consume the newest primary-phase receipt before executing native engines in
 dependency order. Every test mode requires this admission. A direct diagnostic
 `check run` report is not captured evidence. Missing, incomplete, red or stale
 same-phase evidence refuses execution without electing an older success.
+Admission diagnostics identify the required phase and direct recovery to that
+same declared check phase. A bare complete check does not repair missing primary
+evidence, and diagnostics must not suggest that it does.
 Original invocation, policy, report digests, global topology and per-repository
 source identities remain mandatory; primary evidence never proves complete
 check or publication acceptance. Initial admission does not replace the final
@@ -2180,6 +2207,28 @@ includes.
 
 ### Generation Staging, Transaction Journals, and Modernization
 
+The lint-freeze catalog retains entries outside a modernizer invocation's
+observed project scope. It may replace the complete inventory only when the
+observed project roots equal the declared operation roots, retaining missing
+managed checkouts in that comparison, and the scan has no invalid paths. An existing digest
+must not be changed or removed merely because the scanned document differs;
+that drift requires the operator's rule-change authorization. Existing catalog bytes are
+validated before use and retained as the original publication preimage; the
+shared codegen publisher owns the update. This does not authorize changing any
+frozen rule, scope, severity or tool setting. Missing or malformed evidence
+remains a failure, and a partial refresh never proves fleet coverage.
+The catalog location is declared by `make.lint_freeze_catalog`; the checker
+uses its explicit repository execution root, never a search through neighboring
+catalog files. The modernizer validates each rendered candidate against that
+original catalog before writing the document. It cannot initialize a missing
+baseline or admit a new entry from the current working tree. Initial baseline
+materialization belongs to the generator's explicitly declared project inputs;
+that bootstrap path still requires implementation and runtime verification.
+Live document reads retain their original atomic file state by reference.
+Publication includes the unchanged catalog observation in the same existing
+publisher call as the candidate document, so both preimages are verified before
+effects. Pure in-memory rendering has no physical witness and cannot publish.
+
 The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
 with `all` scope locally and `self` scope in its declared CI context. A local
 workspace invocation covers its root and declared members, while a standalone
@@ -2202,6 +2251,32 @@ abstract classes, including builtins. Its C3 order, unresolved-base witnesses an
 original hierarchy errors are preserved without a local walk or cache. The separate
 direct-base query retains authenticated specialization facts; generic inheritance
 must be qualified through consumers before this cutover is accepted.
+Consumers requiring complete ancestry reject unresolved native entries before
+classification or publication, identifying the source class. Missing SDK coverage
+keeps those scenarios unqualified; a local parser or partial ancestry cannot replace
+the native result or authorize publication.
+Source-cut state (2026-10-29): the unused Infra generic-base ancestry helpers
+and unresolved-base predicate are removed without a replacement walk. Component
+ancestry admits every native MRO entry through the strict class guard; an unresolved
+entry propagates its admission failure. SDK completeness and the original public
+Make runtime remain pending acceptance under `flext-u9h2i`.
+An incomplete-ancestry error includes the native MRO and immediate base witnesses
+from the failing class itself. Those diagnostic observations neither filter the
+witnesses nor supply an alternative ancestry calculation.
+Facade-supplier diagnosis retains the nested owner's native binding, declaration
+role, source project and ancestry identities from the same view. An unknown member
+keeps its original exception and receives those observations as notes; names or
+paths alone never justify treating a model field as a composition supplier.
+Candidate overlays do not authorize converting hierarchy failures into a singleton,
+empty bindings or unchanged source. A later pass in another project cannot attest
+the current candidate's ownership or import-retirement proof.
+Codemod utility requests sharing a library use one complete native classification
+within their existing workspace snapshot. Requested facade letters select from that
+classification; they do not trigger independent scans or omit unknown public members.
+The same producer collects its catalog prefixes together, preserving every requested
+identity and the original classification failure. This operation-local sharing adds
+no cache or secondary index. Its performance and document equivalence require the
+same public `make mod` reproduction; source consolidation alone proves neither.
 One native project retains unchanged observations and refreshes changed
 resources and dependent facts incrementally in the same engine. Candidate
 validation, publication, index/mode/directory effects and refresh share the
@@ -2482,6 +2557,14 @@ The declaration's import spelling indexes that captured map; it is not a fresh
 global module election. Separate packages may share an import spelling without
 sharing a physical provider. Neither basename matching, reconstructed module paths
 nor fallback lookup may replace the captured resource identity.
+Lazy aliases use the captured alias inventory and the provider's native source
+bindings. A missing indexed provider or declaration remains a resolution error;
+walking physical ancestors or rereading an initializer cannot repair that epoch.
+An authenticated final local class declaration is elected before evaluating an
+earlier import that the candidate replaces. Native lookup is performed only
+when that election still requires it, and its failure is never normalized.
+The resolver propagates the original failure instead of reporting a skipped
+binding and returning an unresolved placeholder.
 Namespace bases are read through the native source class's `get_superclasses()`
 on the authenticated candidate module. Rope evaluates its original header AST
 in the defining parent's lexical environment, before namespace-body bindings.
@@ -2538,6 +2621,15 @@ before dependent base projections run. The external-reference owner reads the
 module elected by the injected project and retains its resource identity; a
 missing provider or failed binding escapes unchanged. Captured file contents and
 lazy-export aliases are not evidence of an old-to-new declaration relationship.
+The same epoch rule applies to ancestry and initializer bindings. A candidate
+cannot borrow a physical initializer's old export or a physical class's old
+superclasses after its own resolution fails. Native hierarchy errors propagate;
+an unresolved ancestry witness blocks decisions requiring complete ancestry.
+Component ancestry follows native C3 order rather than a separate superclass
+walk, and a failed member lookup never means an empty public surface.
+An ancestry failure cannot reclassify a class as a function or another role.
+Repair the candidate's declarations and consumer rewires, then recompute its affected
+native facts before publication.
 Restructuring overrides use the SDK's native input types. The existing module
 admission exposes semantic capabilities to filters, and identity alternatives
 share one injected default matcher.
@@ -2828,6 +2920,13 @@ open. Type narrowing and redundant conversions are not transport mechanisms.
 Conflicting observations still fail.
 
 ### Candidate File-Effect Composition and Constant/Model Normalization
+
+The exhaustive-enum contract action resolves each reference through the installed
+Rope source-binding index's token context, including class headers and shadowed
+aliases. Structural class scopes establish field ownership; they do not replace
+the token's binding environment. Annotation payload protection uses absolute spans
+from the authenticated complete module, observed once per invocation alongside
+references and statements. All domain/default proofs precede candidate import views.
 
 Candidate file-effect admission reports duplicate destination paths with bounded
 producer ownership, original and desired byte digests, modes and tracking metadata,
@@ -3908,6 +4007,19 @@ invalidation; do not add another versioned cache or counter merely to preserve
 that stale memo. Physical before-images remain authenticated separately and are
 never rebaselined by a candidate transition.
 
+Source-base lazy declarations read the bound candidate through the injected
+project's authenticated source access. A captured module path identifies its
+declared owner and takes precedence over native election by import spelling;
+only modules without a captured owner use the native elected resource. Earlier
+captured text never replaces missing candidate bytes. The
+resolver retains a lazy declaration inventory for that binding, including an
+absent name, rather than discarding it and rereading live files. Namespace
+descent uses captured module identities and native module election; it never
+constructs a sibling filename from a namespace segment. Physical publication
+witnesses remain owned by `source_state`, separate from candidate `source_text`.
+This correction still requires the original public runtime and native gates;
+source changes alone provide no acceptance receipt.
+
 Every derived fact is a lazy memo on the snapshot, computed on first query and
 reused for the rest of the run:
 
@@ -4126,6 +4238,11 @@ A timeout therefore identifies the unfinished producer without
 mistaking an earlier completed log line for the current work.
 Routine negative annotation-deferral predicates do not emit per-class debug
 messages; phase summaries and original exceptions carry actionable feedback.
+Singleton-model classification propagates the original native ancestry failure.
+An incomplete hierarchy is not a no-op and cannot be deferred to a later
+fixed-point pass as proof that no model transformation is needed.
+Facade-member classification also preserves that failure; an unresolved class
+cannot be reclassified as a function to continue library-owner discovery.
 Import-boundary failures identify the consumer path, imported binding and
 provider so a structural-repair request locates the actual source owner.
 The reverse-import producer receives the same snapshot inventory and native
@@ -4160,6 +4277,12 @@ belongs to that source view and is never retained across candidate transitions.
 Owned-member reference election also
 captures each facade's member names once per census, rather than enumerating
 the facade again for every owner/member/receiver combination.
+Protocol-member consumption resolves every receiver through Rope's lexical
+scope and original imported identity. It does not infer a module-wide binding
+from a FLEXT AST census: repeated imports, shadowing and nested scopes remain
+the native resolver's responsibility. Removing that shortcut adds no alternate
+index or cache and does not establish a performance improvement; the full
+generator and its invocation-owned profile remain the validation boundary.
 Family-composition checks consume the same snapshot's native trees and shared
 public-export reader. The source-text class-info reader delegates to its
 parsed-module reader; composition does not reread and reparse each family member.

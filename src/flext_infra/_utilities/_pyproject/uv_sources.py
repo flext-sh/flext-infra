@@ -39,12 +39,14 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     ) -> bool:
         """Project selected global resolver declarations into the native document.
 
+        The per-requirement URL owner rejects conflicting selected sources
+        before publication.
+
         Returns:
             Whether the selected override publication changes the document.
 
         Raises:
             TypeError: If requirement field must be a native TOML array.
-            ValueError: If selected source URLs are ambiguous.
 
         """
         selected = frozenset(map(canonicalize_name, packages))
@@ -77,7 +79,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
                     parsed.url
                 )
         for section, key in chain(
-            ((project, str(c.Infra.DEPENDENCIES)),),
+            ((project, c.Infra.DEPENDENCIES),),
             cls.requirement_group_fields(document, project),
         ):
             original = u.Cli.toml_item_child(section, key)

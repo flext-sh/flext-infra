@@ -56,7 +56,7 @@ class TestsFlextInfraPytestRunnerCoverage:
             (reports_root / latest_name / "testmon-inventory.json").is_file(),
             eq=True,
         )
-        tm.fail(runner.testmon_db.exists())
+        tm.fail(tm.not_none(runner.testmon_db).exists())
 
     @staticmethod
     @pytest.mark.slow
@@ -103,4 +103,4 @@ class TestsFlextInfraPytestRunnerCoverage:
             u.Tests.PytestRunner.summary(reports_root),
             has=["failed=1", "accounting_complete=True", f"exit={exit_code}"],
         )
-        tm.fail(runner.testmon_db.exists())
+        tm.fail(tm.not_none(runner.testmon_db).exists())

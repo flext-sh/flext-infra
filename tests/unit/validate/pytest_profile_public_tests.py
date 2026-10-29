@@ -537,7 +537,9 @@ class TestsFlextInfraPytestProfile:
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                            cache.database_environment_variable: str(runner.testmon_db),
+                            cache.database_environment_variable: str(
+                                tm.not_none(runner.testmon_db)
+                            ),
                         },
                     ),
                 ),
@@ -653,7 +655,9 @@ class TestsFlextInfraPytestProfile:
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                            cache.database_environment_variable: str(runner.testmon_db),
+                            cache.database_environment_variable: str(
+                                tm.not_none(runner.testmon_db)
+                            ),
                         },
                     ),
                 ),
@@ -726,7 +730,7 @@ class TestsFlextInfraPytestProfile:
         command = (contexts[0].parent / "command.txt").read_text(encoding="utf-8")
         tm.that(command, has=str(target))
         tm.that(command, lacks="test_unselected.py")
-        tm.ok(runner.testmon_db.is_file())
+        tm.ok(tm.not_none(runner.testmon_db).is_file())
         stats = pstats.Stats(str(output)).get_stats_profile().func_profiles
         tm.ok(validate.FlextInfraPytestRunner.__name__ in stats)
         tm.ok("FlextInfraPytestProfile" in stats)

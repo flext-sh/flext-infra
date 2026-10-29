@@ -13,7 +13,7 @@ import time
 import traceback
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from typing_extensions import TypeForm
 
@@ -753,6 +753,7 @@ class FlextInfraPytestRunnerExecution(
             f"{phase}_warnings={item.warning_count}\n" for phase, item in phases
         )
 
+    @override
     def execute(self) -> p.Result[int]:
         """Admit the global check before applicable Testmon impact selection.
 

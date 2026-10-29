@@ -173,7 +173,7 @@ class FlextInfraModelsRope:
 
         target: Annotated[str, m.Field(description="Dotted target the binding names")]
         attributes: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(description="Attribute path read off the binding target"),
         ] = ()
         qualified_base: Annotated[

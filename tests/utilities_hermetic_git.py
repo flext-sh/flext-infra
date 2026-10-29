@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -109,7 +109,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
     @staticmethod
     def locked_git_sources(
         project_root: Path,
-    ) -> tuple[t.Triple[str, str, str], ...]:
+    ) -> tuple[tuple[str, str, str], ...]:
         """Return every ``(url, rev, sha)`` Git source the checkout lock pins.
 
         The checkout itself is not in its lock; it joins as the infrastructure
@@ -133,7 +133,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
                 for member in workspace.subprojects
             },
         }
-        sources: t.MutableMappingKV[str, t.Triple[str, str, str]] = {}
+        sources: MutableMapping[str, tuple[str, str, str]] = {}
         for package in TestsFlextInfraUtilitiesTomlMixin.toml_tables_at(
             lock, "package"
         ):
@@ -225,7 +225,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
     def build_git_mirrors(
         project_root: Path,
         mirrors: Path,
-        sources: Sequence[t.Triple[str, str, str]],
+        sources: Sequence[tuple[str, str, str]],
     ) -> Sequence[str]:
         """Mirror each locked source's exact commit under its host and path.
 
@@ -306,7 +306,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             )
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}", ...],
+                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}"],
                     cwd=mirror,
                 ),
             )

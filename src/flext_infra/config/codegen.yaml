@@ -262,7 +262,7 @@ Infra:
       # The selected fork preserves region coverage and resolves opaque source
       # bindings lazily; stale transitive metadata must not select an older source.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@e90bbe65ecc719e5cdfda9e644bb2ee42338de9a
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@becece05c27c3189b12a06f3fbfa28ad62a98a96
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -602,6 +602,7 @@ Infra:
       # findings. The receipt never converts the native command status to green.
       gate_acceptance_policy: complete_execution
       gate_receipts_directory: .reports/gates
+      lint_freeze_catalog: config/lint_freeze_catalog.json
       check_report_output_environment_variable: FLEXT_CHECK_REPORT_OUTPUT
       generation_profile_path: .reports/codegen/gen.pstats
       modification_profile_path: .reports/refactor/mod.pstats

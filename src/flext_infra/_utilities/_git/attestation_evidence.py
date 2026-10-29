@@ -131,7 +131,10 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         *,
         plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
     ) -> p.Result[Path]:
-        refuse = f"tests run only on a green check: {receipt.parent.name} "
+        refuse = (
+            f"tests run only on a green check: {evidence.intent.phase} phase: "
+            f"{receipt.parent.name} "
+        )
         if (
             capture.issues
             or capture.process.raw_return_code != 0
@@ -139,7 +142,8 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         ):
             return r[Path].fail(
                 f"{refuse}is red (exit {capture.process.raw_return_code}, "
-                f"outcome {evidence.native_outcome}); fix it and rerun make check",
+                f"outcome {evidence.native_outcome}); fix it and rerun the same "
+                "declared check phase",
             )
         accepted = cls._accepted_gate_evidence(
             repo_root, evidence, phase=evidence.intent.phase

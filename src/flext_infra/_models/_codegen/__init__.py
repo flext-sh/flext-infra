@@ -13,12 +13,14 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._codegen.base import FlextInfraCodegen
-    from flext_infra._codegen.fix import FlextInfraModelsCodegenFix
-    from flext_infra._codegen.lazy_init import FlextInfraModelsCodegenLazyInit
-    from flext_infra._codegen.pipeline import FlextInfraModelsCodegenPipeline
-    from flext_infra._codegen.scaffold import FlextInfraModelsCodegenScaffold
-    from flext_infra._codegen.transaction import FlextInfraModelsCodegenTransaction
+    from flext_infra._models._codegen.base import FlextInfraCodegen
+    from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFix
+    from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInit
+    from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipeline
+    from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffold
+    from flext_infra._models._codegen.transaction import (
+        FlextInfraModelsCodegenTransaction,
+    )
 
 
 __all__: tuple[str, ...] = (

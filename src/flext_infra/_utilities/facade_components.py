@@ -33,7 +33,6 @@ from flext_infra._utilities._codemod import (
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeCorePyModule,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesTypesRopeRuntime,
@@ -125,8 +124,8 @@ class FlextInfraUtilitiesFacadeComponents:
                 (
                     node.lineno,
                     node.col_offset,
-                    node.end_lineno,
-                    node.end_col_offset,
+                    node.end_lineno or node.lineno,
+                    node.end_col_offset or node.col_offset,
                 ): destination
                 for node, _original, destination in calls
             }
@@ -136,7 +135,12 @@ class FlextInfraUtilitiesFacadeComponents:
                 msg = f"component rewrite lost its source module: {path}"
                 raise TypeError(msg)
             present = {
-                (node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+                (
+                    node.lineno,
+                    node.col_offset,
+                    node.end_lineno or node.lineno,
+                    node.end_col_offset or node.col_offset,
+                )
                 for node in ast.walk(tree)
                 if isinstance(node, ast.Attribute)
             }
@@ -319,81 +323,24 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(holders)
 
     @staticmethod
-    def _candidate_scope_path(holder: p.Infra.RopeClassObject) -> t.StrSequence:
-        """Return the outermost-to-holder name path via candidate scope parents.
-
-        Returns:
-            The qualifying name segments of the candidate class.
-
-        """
-        segments: list[str] = [holder.get_name()]
-        scope = holder.get_scope()
-        while getattr(scope, "parent", None) is not None:
-            scope = scope.parent
-            name = getattr(getattr(scope, "pyobject", None), "get_name", lambda: "")()
-            if not name or name == holder.get_module().get_name():
-                break
-            segments.append(name)
-        segments.reverse()
-        # The module itself resolves as the root; drop its name segment.
-        return tuple(segments[1:]) if len(segments) > 1 else tuple(segments)
-
-    @staticmethod
     def _component_ancestors(
         holder: p.Infra.RopeClassObject,
     ) -> tuple[p.Infra.RopeClassObject, ...]:
-        """Traverse source and builtin superclass identities through native Rope.
+        """Require every ancestor in the holder's native method resolution order.
+
+        Every native entry passes through the strict class guard. An unresolved
+        declared base retains its admission failure instead of partial ancestry.
 
         Returns:
-            Every native ancestor once, in superclass traversal order.
+            Every native ancestor once, in method resolution order.
 
         """
-        runtime = FlextInfraUtilitiesTypesRopeRuntime
-        try:
-            pending = list(holder.get_superclasses())
-        except tuple(runtime.rope_hierarchy_errors()):
-            # The candidate view may hold base chains crossing lazy package
-            # letters whose MRO is not computable there; the base project's
-            # on-disk module computes the true linearization, and the owner
-            # (rope_class_move) re-resolves after publishing the move.
-            source = holder.get_module()
-            real = source.pycore.project.find_module(source.get_name())
-            if real is None:
-                raise
-            on_disk = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-                source.pycore.project, real
+        return tuple(
+            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+                ancestor, holder.get_name()
             )
-            # Nested classes carry a one-word name; walk the scope parents
-            # on the candidate to build the qualified path and read each
-            # segment from the on-disk module's own attribute tree.
-            binding: p.AttributeProbe | None = on_disk
-            for segment in FlextInfraUtilitiesFacadeComponents._candidate_scope_path(holder):
-                next_binding = (
-                    binding.get_attribute(segment).get_object()
-                    if binding is not None
-                    else None
-                )
-                if next_binding is None:
-                    raise
-                binding = next_binding
-            pending = list(binding.get_superclasses())
-        seen: set[p.Infra.RopeClassObject] = set()
-        ancestors: list[p.Infra.RopeClassObject] = []
-        while pending:
-            base = FlextInfraUtilitiesRopeRuntimeModules.require_class_object(
-                pending.pop(), "component ancestry"
-            )
-            if base in seen:
-                continue
-            seen.add(base)
-            ancestors.append(base)
-            try:
-                pending.extend(base.get_superclasses())
-            except tuple(runtime.rope_hierarchy_errors()):
-                # Deeper levels of an uncomputable candidate chain resolve
-                # through the same on-disk fallback at their own hop.
-                continue
-        return tuple(ancestors)
+            for ancestor in holder.get_mro()[1:]
+        )
 
     @classmethod
     def _composed_methods(

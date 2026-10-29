@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._generator.bundle import FlextInfraDocsGeneratorBundle
+    from flext_infra.docs._generator.bundle import FlextInfraDocsGeneratorBundle
 
 
 __all__: tuple[str, ...] = ("FlextInfraDocsGeneratorBundle",)

@@ -13,8 +13,6 @@ from functools import cache, partial
 from pathlib import Path
 from types import MappingProxyType
 
-from flext_cli import u
-
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
@@ -714,7 +712,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             bindings = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
                 request,
                 self._definitions,
-                provider=provider,
+                # The elected provider above may be a string-built module the
+                # restricted view cannot re-address; the inner election
+                # re-derives its provider from the same authenticated request.
+                provider=None,
             )
             self._providers[module] = provider
             return bindings
@@ -1011,7 +1012,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             # A lexical collector may shadow an initializer export with None;
             # the installer literal remains the declaration SSOT for that name.
             reference = bindings.get(attributes[0]) or self._lazy_declared_reference(
-                module_name, provider, resource, attributes[0]
+                module_name, resource, attributes[0]
             )
             if reference is None:
                 if (
@@ -1023,20 +1024,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         target, attributes[1:], visiting | {target}, depth + 1
                     )
                 if attributes[0] in bindings or owned or module_name in self._sources:
-                    physical = self._physical_declared_reference(
-                        module_name, resource, attributes[0]
-                    )
-                    if physical is not None:
-                        # A proposed source swap can drop the name from the
-                        # candidate initializer while the physical initializer
-                        # still declares it; the physical literal is the same
-                        # declaration SSOT the runtime imports.
-                        return self._external_reference(
-                            physical.target,
-                            (*physical.attributes, *attributes[1:]),
-                            visiting | {physical.target},
-                            depth + 1,
-                        )
                     message = f"Unresolved declared provider base: {target}"
                     raise ValueError(message)
                 return None
@@ -1076,39 +1063,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     )
                 raise
 
-        def _physical_declared_reference(
-            self,
-            module_name: str,
-            resource: p.Infra.RopeResource,
-            name: str,
-        ) -> m.Infra.SourceClassReference | None:
-            """Read one declared export from the physical initializer text.
-
-            Candidate initializers proposed by a move can temporarily omit a
-            name the physical file still declares; the disk literal is the
-            same declaration SSOT the runtime imports.
-
-            Returns:
-                The declared reference, or none when undeclared or unreadable.
-
-            """
-            source_path = Path(resource.real_path)
-            if resource.is_folder():
-                source_path /= c.Infra.INIT_PY
-            try:
-                source = source_path.read_text()
-                declared = (
-                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                        module_name,
-                        source_path,
-                        source,
-                        project=self._project,
-                    )
-                )
-            except (OSError, ValueError, TypeError):
-                return None
-            return declared.get(name)
-
         def _provider_source_bindings(
             self,
             module_name: str,
@@ -1146,7 +1100,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _lazy_declared_reference(
             self,
             module_name: str,
-            provider: p.Infra.RopeSourceModule,
             resource: p.Infra.RopeResource,
             name: str,
         ) -> m.Infra.SourceClassReference | None:
@@ -1162,19 +1115,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             if module_name in self._lazy_declarations:
                 return self._lazy_declarations[module_name].get(name)
-            if resource is None or not resource.exists():
-                return None
-            source_path = Path(resource.real_path)
-            if resource.is_folder():
-                source_path /= c.Infra.INIT_PY
-            source = self._sources.get(
-                module_name, (source_path, provider.source_code)
-            )[1]
+            captured = self._sources.get(module_name)
+            if captured is not None:
+                source_path = captured[0]
+            else:
+                source_path = Path(resource.real_path)
+                if resource.is_folder():
+                    source_path /= c.Infra.INIT_PY
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module_name,
                 path=source_path,
-                source=source,
+                source=self._project.source_text(source_path),
                 required_line=None,
                 allow_conditional=False,
             )
@@ -1428,9 +1380,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Captured providers retain their planned bytes; uncaptured providers
             retain their elected native source. Both completed inventories own
             assignments that replace earlier imports. Unchanged imports retain
-            their native imported-name provenance. An import Rope cannot resolve
-            elects no native provider, so the completed source declaration is
-            authoritative for that name.
+            their native imported-name provenance. An authenticated final local
+            declaration is elected before evaluating a replaced import. A required
+            native lookup propagates its original failure.
 
             Returns:
                 The completed source override, or no override of the native import.
@@ -1455,19 +1407,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return None
                 message = f"Unresolved provider base: {module_name}.{name}"
                 raise ValueError(message)
-            native_target: str | None
-            try:
-                native_target = self._provider_name(
-                    self._provider_module(binding.imported_module)
-                )
-            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
-                # An import Rope cannot resolve elects no native provider; the
-                # completed source declaration is the authority for that name.
-                native_target = None
             if (
                 reference.target in self._definitions
-                or reference.target != native_target
                 or reference.attributes != (binding.imported_name,)
+                or reference.target
+                != self._provider_name(self._provider_module(binding.imported_module))
             ):
                 return m.Infra.SourceClassReference(
                     target=reference.target,
@@ -1541,8 +1485,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             Returns:
                 The first star-imported module that binds ``name``, or ``None``
-                when no star re-export of the provider binds it. Star targets
-                Rope cannot resolve are skipped.
+                when no star re-export of the provider binds it. A required star
+                target that Rope cannot resolve propagates its original failure.
 
             Raises:
                 TypeError: A source provider has no native parsed module.
@@ -1575,14 +1519,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     "." * node.level + (node.module or ""),
                     package,
                 )
-                try:
-                    provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
-                        self._project.get_module(target)
-                    )
-                except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
-                    # Rope dropped this star import because the module does not
-                    # resolve; that node cannot bind the requested name.
-                    continue
+                provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                    self._project.get_module(target)
+                )
                 if name in provider.get_attributes():
                     return provider
             return None
@@ -1860,38 +1799,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             )
             module = ".".join(parts[:index])
             remaining = [*parts[index:], *attributes]
-            while True:
-                if not remaining:
-                    message = f"Module used as a class base: {module}"
-                    raise ValueError(message)
-                name = remaining.pop(0)
-                if module not in self._modules and module in self._sources:
-                    self._modules[module] = self._inventory(
-                        module, self._sources[module]
-                    )
-                submodule = f"{module}.{name}"
-                if name in self._modules.get(module, {}):
-                    break
-                if submodule not in self._namespaces:
-                    if self._project.find_module(submodule) is not None:
-                        try:
-                            return self._external_reference(
-                                submodule, tuple(remaining), visiting, depth + 1
-                            ), []
-                        except (ValueError, ImportError) as failure:
-                            resource = self._project.find_module(".".join(parts))
-                            origin = (
-                                resource.real_path if resource is not None else None
-                            )
-                            failure.add_note(
-                                f"Uncaptured namespace descent: module={module!r}; "
-                                f"selected={submodule!r}; remaining={remaining!r}; "
-                                f"full_target={'.'.join(parts)!r}; native_origin="
-                                f"{origin!r}"
-                            )
-                            raise
-                    break
-                module = submodule
+            module, name, remaining, external = self._descend_planned_namespace(
+                module, remaining, parts, visiting, depth
+            )
+            if external is not None:
+                return external, []
             bindings = self._modules.get(module)
             binding = (
                 bindings.get(name) if bindings is not None else None
@@ -1921,6 +1833,66 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 raise
 
+        def _descend_planned_namespace(
+            self,
+            module: str,
+            remaining: list[str],
+            parts: Sequence[str],
+            visiting: frozenset[str],
+            depth: int,
+        ) -> tuple[str, str, list[str], str | None]:
+            """Walk planned namespace segments down to the binding owner.
+
+            Captured module identities and the injected native module election
+            determine the next owner within the bound source view.
+
+            Returns:
+                The owner module, its binding name, the remaining attribute
+                path and an already-resolved external identity when the
+                descent leaves the captured epoch.
+
+            Raises:
+                ValueError: If a module is used as a class base.
+                ImportError: If the native import binding fails to resolve.
+
+            """
+            while True:
+                if not remaining:
+                    message = f"Module used as a class base: {module}"
+                    raise ValueError(message)
+                name = remaining.pop(0)
+                if module not in self._modules and module in self._sources:
+                    self._modules[module] = self._inventory(
+                        module, self._sources[module]
+                    )
+                submodule = f"{module}.{name}"
+                if name in self._modules.get(module, {}):
+                    return module, name, remaining, None
+                if submodule not in self._namespaces:
+                    if submodule in self._sources:
+                        module = submodule
+                        continue
+                    if self._project.find_module(submodule) is not None:
+                        try:
+                            external = self._external_reference(
+                                submodule, tuple(remaining), visiting, depth + 1
+                            )
+                        except (ValueError, ImportError) as failure:
+                            resource = self._project.find_module(".".join(parts))
+                            origin = (
+                                resource.real_path if resource is not None else None
+                            )
+                            failure.add_note(
+                                f"Uncaptured namespace descent: module={module!r}; "
+                                f"selected={submodule!r}; remaining={remaining!r}; "
+                                f"full_target={'.'.join(parts)!r}; native_origin="
+                                f"{origin!r}"
+                            )
+                            raise
+                        return module, name, remaining, external
+                    return module, name, remaining, None
+                module = submodule
+
         def _planned_lazy_binding(
             self,
             module: str,
@@ -1928,33 +1900,38 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> m.Infra.SourceClassReference | None:
             """Resolve one planned base through the initializer's lazy SSOT.
 
+            The literal ``install_lazy_exports`` mapping is read from the
+            injected project's authenticated candidate. Captured paths elect
+            their declared owners before native import lookup; captured text
+            never replaces the candidate's source bytes.
+
             Returns:
                 The declared reference, or None when nothing is declared.
 
             """
-            resource = self._project.find_module(module)
-            if resource is None:
-                return None
-            source_path = Path(resource.real_path)
-            if resource.is_folder():
-                source_path /= c.Infra.INIT_PY
-            captured = self._sources.get(module, (source_path, ""))
+            captured = self._sources.get(module)
+            if captured is not None:
+                source_path = captured[0]
+            else:
+                resource = self._project.find_module(module)
+                if resource is None:
+                    return None
+                source_path = Path(resource.real_path)
+                if resource.is_folder():
+                    source_path /= c.Infra.INIT_PY
+                if not self._project.source_query(source_path, "isfile"):
+                    return None
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module,
                 path=source_path,
-                source=captured[1],
+                source=self._project.source_text(source_path),
                 required_line=None,
                 allow_conditional=False,
             )
-            declared = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+            return FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
                 request, self._definitions, provider=None
             ).get(name)
-            u.Cli.info(
-                "planned lazy probe "
-                f"module={module} name={name} declared={declared is not None}"
-            )
-            return declared
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.

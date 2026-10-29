@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._codegen.vscode import FlextInfraCodegenVscode
+    from flext_infra.services._codegen.vscode import FlextInfraCodegenVscode
 
 
 __all__: tuple[str, ...] = ("FlextInfraCodegenVscode",)

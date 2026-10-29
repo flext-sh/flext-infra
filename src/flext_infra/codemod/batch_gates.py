@@ -923,9 +923,11 @@ class FlextInfraModGateEngine:
                 actionable=actionable,
                 classification=classification,
                 severity=severity,
-                origin="owned-path"
-                if finding.get("origin") == "owned-path"
-                else "ast-grep",
+                origin=(
+                    c.Infra.ModFindingOrigin.OWNED_PATH
+                    if finding.get("origin") == "owned-path"
+                    else c.Infra.ModFindingOrigin.AST_GREP
+                ),
                 replacement_offsets=(
                     m.Infra.ModReplacementOffsets.model_validate(
                         finding["replacementOffsets"]

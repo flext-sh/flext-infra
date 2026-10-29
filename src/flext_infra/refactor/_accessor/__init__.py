@@ -13,11 +13,15 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._accessor.expression import FlextInfraRefactorAccessorExpression
-    from flext_infra._accessor.origin import FlextInfraRefactorAccessorOrigin
-    from flext_infra._accessor.report import FlextInfraRefactorAccessorReport
-    from flext_infra._accessor.rewrite import FlextInfraRefactorAccessorRewrite
-    from flext_infra._accessor.warnings import FlextInfraRefactorAccessorWarnings
+    from flext_infra.refactor._accessor.expression import (
+        FlextInfraRefactorAccessorExpression,
+    )
+    from flext_infra.refactor._accessor.origin import FlextInfraRefactorAccessorOrigin
+    from flext_infra.refactor._accessor.report import FlextInfraRefactorAccessorReport
+    from flext_infra.refactor._accessor.rewrite import FlextInfraRefactorAccessorRewrite
+    from flext_infra.refactor._accessor.warnings import (
+        FlextInfraRefactorAccessorWarnings,
+    )
 
 
 __all__: tuple[str, ...] = (

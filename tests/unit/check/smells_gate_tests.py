@@ -283,9 +283,9 @@ class TestsFlextInfraSmellsGate:
     ) -> None:
         """Test finding states the concrete problem and the fix."""
         self._configure(tmp_path)
-        params = ", ".join(
-            f"p{index}" for index in range(c.SMELL_THRESHOLDS["params"] * 2)
-        )
+        # qlty's built-in method-shape smell caps parameters at five; a
+        # 16-parameter declaration sits far outside that external contract.
+        params = ", ".join(f"p{index}" for index in range(16))
         (self._package(smells_project) / "wide.py").write_text(
             f"def wide({params}):\n    return p0\n",
             encoding=c.DEFAULT_ENCODING,

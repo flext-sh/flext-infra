@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._extract.duplicate import FlextInfraCodemodExtractDuplicate
+    from flext_infra.codemod._extract.duplicate import FlextInfraCodemodExtractDuplicate
 
 
 __all__: tuple[str, ...] = ("FlextInfraCodemodExtractDuplicate",)

@@ -312,7 +312,10 @@ class FlextInfraCodemodDuplicateApply(
                 "a definition lives in a generated export sidecar",
             ),
             (
-                cls._is_published_export(definition.item),
+                cls._is_published_export(
+                    definition.item,
+                    source_project=workspace.rope_project,
+                ),
                 "a definition is a published package export",
             ),
             (

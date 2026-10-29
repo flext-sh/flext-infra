@@ -321,6 +321,14 @@ class FlextInfraModelsDeps(
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
+        before: Annotated[
+            m.Cli.AtomicFileState | None,
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Original physical read; absent for pure source rendering",
+            ),
+        ] = None
         original_rendered: Annotated[
             str,
             m.Field(description="Original TOML source text"),
