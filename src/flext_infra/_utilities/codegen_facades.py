@@ -2876,12 +2876,21 @@ class FlextInfraUtilitiesCodegenFacades(
                 candidate.get_pymodule(cls.file_resource_at(candidate, path))
             )
             imports = cls.module_imports_for_pymodule(candidate, module)
-            used = {
-                (info.module_name, name, alias)
-                for info in imports.get_used_imports(module)
-                if cls.from_import_info(info)
-                for name, alias in info.names_and_aliases
-            }
+            try:
+                used = {
+                    (info.module_name, name, alias)
+                    for info in imports.get_used_imports(module)
+                    if cls.from_import_info(info)
+                    for name, alias in info.names_and_aliases
+                }
+            except (*FlextInfraUtilitiesRopeRuntime.rope_hierarchy_errors(),):
+                # The candidate overlay cannot prove non-usage when a base
+                # chain resolves through lazy cross-package letters (its MRO
+                # is not computable in this view). Retirement requires that
+                # proof, so the imports are retained — never removed on an
+                # unprovable candidate (rope-class-move owns the on-disk
+                # recomputation after the move publishes).
+                return source
             removable: set[tuple[str, str, str | None]] = set()
             for original in sorted(
                 retired - used, key=lambda item: (item[0], item[1], item[2] or "")

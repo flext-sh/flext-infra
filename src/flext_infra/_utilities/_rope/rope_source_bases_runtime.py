@@ -19,6 +19,9 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
@@ -1667,24 +1670,44 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             target: str,
             attributes: t.StrTuple,
         ) -> p.Infra.RopeSemanticModule | None:
-            """Elect the parent facade module holding a moved provider class.
+            """Elect the module holding a provider class after an owner move.
 
-            Owner moves dissolve part modules into their package facade; the
-            declared class keeps its attribute name there.
+            Owner moves publish the declaring class into a sibling facade
+            module of the same package. The captured-source set is the
+            transaction's SSOT, so staged siblings are elected first; the
+            parent package's facade modules are then read through the native
+            project resources, and the first binding of the attribute wins.
 
             Returns:
                 The parent semantic module binding the attribute, or none.
 
             """
-            parent, _, part = target.rpartition(".")
-            if not attributes or not part:
-                return None
-            # Owner moves publish the declaring class into the package facade
-            # module (the part stem without its ``_partN`` suffix and legacy
-            # spellings); the first candidate binding the attribute wins.
-            # Owner moves publish the declaring class into a sibling facade
-            # module of the same package; elect every sibling module resource
-            # deterministically and let the attribute binding decide.
+            parent = target.rpartition(".")[0]
+            prefix = f"{parent}."
+            for candidate_name, (candidate_path, candidate_source) in sorted(
+                self._sources.items()
+            ):
+                if (
+                    not candidate_name.startswith(prefix)
+                    or candidate_name == target
+                    or candidate_path.name == c.Infra.INIT_PY
+                ):
+                    continue
+                try:
+                    candidate_module = (
+                        FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                            self._project,
+                            candidate_source,
+                            resource=self._project.find_module(candidate_name),
+                        )
+                    )
+                    binding = candidate_module.get_attribute(attributes[0]).get_object()
+                except Exception:
+                    continue
+                if FlextInfraUtilitiesRopeRuntime.py_class(binding):
+                    return FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                        candidate_module
+                    )
             candidates: tuple[str, ...] = (parent,)
             parent_resource = self._project.find_module(parent)
             if parent_resource is not None and parent_resource.is_folder():
@@ -1704,11 +1727,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 candidate_resource = self._project.find_module(candidate)
                 if candidate_resource is None:
                     continue
+                candidate_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    self._project, candidate_resource
+                )
                 try:
-                    candidate_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                        self._project,
-                        candidate_resource,
-                    )
                     binding = candidate_module.get_attribute(attributes[0]).get_object()
                 except Exception:
                     continue

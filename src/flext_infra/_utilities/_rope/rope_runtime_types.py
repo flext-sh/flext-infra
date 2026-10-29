@@ -304,5 +304,21 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
             )
         )
 
+    @classmethod
+    def rope_hierarchy_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for hierarchies that fail to linearize.
+
+        A candidate overlay may hold base chains whose MRO is not computable
+        in that view (lazy cross-package letters); optimization owners treat
+        these as "proof unavailable" and retain the prior state.
+
+        Returns:
+            The hierarchy-failure exception types.
+
+        """
+        return (
+            cls._exception_type("rope.base.exceptions", "InconsistentHierarchyError"),
+        )
+
 
 __all__: list[str] = ["FlextInfraUtilitiesTypesRopeRuntime"]
