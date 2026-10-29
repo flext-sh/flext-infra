@@ -84,10 +84,37 @@ class TestsFlextInfraRopeContractCatalog:
             restored = m.Infra.RopeContractRule.model_validate_json(
                 rule.model_dump_json(round_trip=True)
             )
-            tm.that(restored.phase, eq=c.Infra.SemanticCutoverPhase(rule.phase))
+            tm.ok(restored.phase is rule.phase)
+            tm.that(type(rule.phase), eq=c.Infra.SemanticCutoverPhase)
+            tm.that(type(rule.operation), eq=c.Infra.RopeContractOperation)
+            tm.ok(
+                all(isinstance(kind, c.Infra.RopeScopeKind) for kind in rule.scope_kinds)
+            )
             payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
             with pytest.raises(ValueError, match="phase"):
                 m.Infra.RopeContractRule.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize("field", ["operation", "phase", "scope_kinds"])
+    def test_python_rules_reject_document_tokens_without_ingress_context(
+        field: str,
+    ) -> None:
+        """The source codec never relaxes an ordinary strict Python constructor."""
+        rule = m.Infra.RopeContractRule(
+            id="strict-python-contract",
+            pattern="${value}",
+            goal="${value}",
+            arguments={},
+            scope_kinds=(c.Infra.RopeScopeKind.CLASS,),
+        )
+        payload = rule.model_dump()
+        serialized = rule.model_dump(mode="json")
+        payload[field] = (
+            tuple(serialized[field]) if field == "scope_kinds" else serialized[field]
+        )
+
+        with pytest.raises(m.ValidationError):
+            m.Infra.RopeContractRule.model_validate(payload)
 
     @staticmethod
     def test_repository_overlay_composes_after_packaged_rules(

@@ -49,21 +49,29 @@ class FlextInfraUtilitiesDeclarationPayload(
             project, name, module_name=module
         )
 
-    @classmethod
+    @staticmethod
     def class_ancestry(
-        cls,
         value: p.Infra.RopePyObject,
     ) -> Sequence[p.Infra.RopePyObject]:
-        pending = [value]
-        found: list[p.Infra.RopePyObject] = []
-        while pending:
-            current = pending.pop()
-            if current in found:
-                continue
-            found.append(current)
-            if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(current):
-                pending.extend(cls.direct_bases(current))
-        return found
+        """Retain native C3 order, unresolved witnesses and hierarchy failures.
+
+        Returns:
+            The SDK ancestry, or the unchanged non-class singleton.
+
+        """
+        # SDK ownership keeps classification and generation on one ancestry contract.
+        if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
+            try:
+                return value.get_mro()
+            except tuple(
+                FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()
+            ):
+                # A candidate-overlay base chain through lazy cross-package
+                # letters may not linearize in this view; the class itself
+                # remains the ancestry witness (the base project's own pass
+                # owns the true on-disk linearization).
+                return (value,)
+        return (value,)
 
     @classmethod
     def utility_behavior_provider(

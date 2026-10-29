@@ -837,6 +837,45 @@ class FlextInfraUtilitiesCodegenFacades(
             )
             raise ValueError(message)
         if owners:
+            # The elected destination owns its own composed class; an owner
+            # entry naming a class declared in a dissolved part module is the
+            # move's SOURCE, not the destination identity.
+            local = tuple(
+                entry for entry in owners if entry[0] == path
+            ) or tuple(
+                entry
+                for entry in owners
+                if (cls.file_resource_at(project, entry[0]) and entry[0].exists())
+                and entry[1]
+                in cls.public_export_names_source(
+                    cls.require_source_module(
+                        cls.require_semantic_module(
+                            project.get_pymodule(
+                                cls.file_resource_at(project, entry[0])
+                            )
+                        )
+                    )
+                )
+            )
+            if local:
+                owners = local
+            else:
+                # The elected facade composes the family under its own
+                # canonical class; the part class is the move's source, not
+                # the destination identity.
+                canonical = (
+                    f"{cls.project_prefix(path, source_project=project)}"
+                    f"{declared.suffix}"
+                    f"{u.derive_class_stem('-'.join(name.lstrip('_').replace('_', '-') for name in domains))}"
+                )
+                if canonical in cls.public_export_names_source(
+                    cls.require_source_module(
+                        cls.require_semantic_module(
+                            project.get_pymodule(cls.file_resource_at(project, path))
+                        )
+                    )
+                ):
+                    return path, canonical
             if (
                 owners[0][0] == family_root / c.Infra.IMPORT_LAW_FAMILY_BASE_FILE
                 and owners[0][0] != path

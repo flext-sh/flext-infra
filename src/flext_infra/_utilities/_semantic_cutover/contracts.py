@@ -166,15 +166,18 @@ class FlextInfraUtilitiesSemanticContracts(
                 message = f"Rope contract catalogue disappeared: {catalogue}"
                 raise ValueError(message)
             parsed = u.Cli.yaml_parse(state.content.decode(c.DEFAULT_ENCODING)).unwrap()
-            declared = m.Infra.RopeContractRules.model_validate({
-                **parsed,
-                "rules": [
-                    {**rule, "owner_root": owner_root}
-                    for rule in u.json_mapping_sequence_adapter().validate_python(
-                        parsed.get("rules")
-                    )
-                ],
-            })
+            declared = u.Cli.config_decode(
+                {
+                    **parsed,
+                    "rules": [
+                        {**rule, "owner_root": owner_root}
+                        for rule in u.json_mapping_sequence_adapter().validate_python(
+                            parsed.get("rules")
+                        )
+                    ],
+                },
+                m.Infra.RopeContractRules,
+            )
             for rule in declared.rules:
                 if rule.ownership_transfer is not None and owner_root is None:
                     message = (
@@ -1150,7 +1153,8 @@ class FlextInfraUtilitiesSemanticContracts(
                 p.Infra.RopeSourceClass, Mapping[str, p.Infra.RopePyName]
             ] = {}
             self.calls: dict[
-                tuple[p.Infra.RopeSourceModule, int, int], tuple[bool, str | None]
+                tuple[p.Infra.RopeSourceModule, int, int],
+                tuple[bool, tuple[Sequence[str], Sequence[tuple[str, str]]]] | None,
             ] = {}
             self.discriminators: dict[
                 p.Infra.RopeSourceClass,
@@ -1271,15 +1275,20 @@ class FlextInfraUtilitiesSemanticContracts(
                     pending.extend(self._assigned_statements(binding))
             return models, tuple(statements)
 
-        def _call_marker(
+        def _native_call(
             self, module: p.Infra.RopeSourceModule, primary: tuple[int, int]
-        ) -> tuple[bool, str | None]:
-            """Read a Field or Discriminator call through native callee identity.
+        ) -> tuple[
+            bool, tuple[Sequence[str], Sequence[tuple[str, str]]]
+        ] | None:
+            """Observe a Field or Discriminator call once through native identity.
 
             Returns:
-                Whether a marker is present and its authored native argument.
+                Its discriminator role and native arguments, or no relevant call.
 
             """
+            key = module, *primary
+            if key in self.calls:
+                return self.calls[key]
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
             binding = runtime.resolve_symbol(
@@ -1288,24 +1297,15 @@ class FlextInfraUtilitiesSemanticContracts(
             )
             if binding is not None:
                 binding = runtime.source_import_binding(binding)
-            if not (
-                runtime.same_name(self.field_factory, binding)
-                or runtime.same_name(self.discriminator, binding)
-            ):
-                return False, None
-            parameters = refactors.native_call_parameters(module.source_code, primary)
-            if parameters is None:
-                return False, None
-            positional, keywords = parameters
-            if any(value.startswith("*") for value in positional):
-                return True, None
-            marker = next(
-                (value for name, value in keywords if name == "discriminator"),
-                positional[0]
-                if runtime.same_name(self.discriminator, binding) and positional
-                else None,
+            discriminator = runtime.same_name(self.discriminator, binding)
+            parameters = (
+                refactors.native_call_parameters(module.source_code, primary)
+                if discriminator or runtime.same_name(self.field_factory, binding)
+                else None
             )
-            return marker is not None, marker
+            observed = (discriminator, parameters) if parameters is not None else None
+            self.calls[key] = observed
+            return observed
 
         def _statement_calls(
             self, module: p.Infra.RopeSourceModule, region: tuple[int, int]
@@ -1320,11 +1320,17 @@ class FlextInfraUtilitiesSemanticContracts(
             for first, last in self.references[module]:
                 if not region[0] <= first < last <= region[1]:
                     continue
-                key = module, first, last
-                if key not in self.calls:
-                    self.calls[key] = self._call_marker(module, (first, last))
-                present, marker = self.calls[key]
-                if present:
+                call = self._native_call(module, (first, last))
+                if call is None:
+                    continue
+                positional, keywords = call[1]
+                marker = next(
+                    (value for name, value in keywords if name == "discriminator"),
+                    positional[0] if call[0] and positional else None,
+                )
+                if any(value.startswith("*") for value in positional):
+                    yield module, first, region[1], None
+                elif marker is not None:
                     yield module, first, region[1], marker
 
         def _index_discriminators(self) -> None:
@@ -1595,23 +1601,12 @@ class FlextInfraUtilitiesSemanticContracts(
                 Callee regions with their native positional and keyword arguments.
 
             """
-            runtime = FlextInfraUtilitiesRopeRuntimeModules
-            refactors = FlextInfraUtilitiesRopeRuntimeRefactors
             for first, last in self.references[module]:
                 if not any(start <= first < last <= stop for start, stop in regions):
                     continue
-                binding = runtime.resolve_symbol(
-                    runtime.scope_at(module, first), module.source_code[first:last]
-                )
-                if binding is not None:
-                    binding = runtime.source_import_binding(binding)
-                if not runtime.same_name(self.field_factory, binding):
-                    continue
-                parameters = refactors.native_call_parameters(
-                    module.source_code, (first, last)
-                )
-                if parameters is not None:
-                    yield (first, last), parameters
+                call = self._native_call(module, (first, last))
+                if call is not None and not call[0]:
+                    yield (first, last), call[1]
 
         def _default_regions(
             self, module: p.Infra.RopeSourceModule,
@@ -1871,13 +1866,13 @@ class FlextInfraUtilitiesSemanticContracts(
                         imports.add(required)
             return tuple(edits.values()), imports
 
-        def _module_change(
-            self, path: Path, module: p.Infra.RopeSourceModule,
-        ) -> p.Infra.RopeChangeContents | None:
-            """Compose annotation, default and import changes for one module.
+        def _module_rewrites(
+            self, module: p.Infra.RopeSourceModule,
+        ) -> tuple[tuple[p.Infra.SourceRewrite, ...], set[tuple[str, str]]]:
+            """Complete domain proofs before entering any import candidate view.
 
             Returns:
-                Its native content change, or no effect for an unchanged module.
+                Annotation/default edits and native import requirements.
 
             """
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -1890,15 +1885,26 @@ class FlextInfraUtilitiesSemanticContracts(
                     changes, required = self._field_rewrites(module, match)
                     edits.update(((edit.start, edit.end), edit) for edit in changes)
                     imports.update(required)
-            if not edits:
-                return None
+            return tuple(edits.values()), imports
+
+        def _module_change(
+            self, path: Path, module: p.Infra.RopeSourceModule,
+            planned: tuple[tuple[p.Infra.SourceRewrite, ...], set[tuple[str, str]]],
+        ) -> p.Infra.RopeChangeContents:
+            """Compose already-proven edits through native import candidate views.
+
+            Returns:
+                A native content change with its original source preimage.
+
+            """
+            refactors = FlextInfraUtilitiesRopeRuntimeRefactors
             resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 module.get_resource(), path
             )
             updated = refactors.content_change(
-                resource, module.source_code, tuple(edits.values())
+                resource, module.source_code, planned[0]
             ).new_contents
-            for package, name in sorted(imports):
+            for package, name in sorted(planned[1]):
                 with self.project.source_view(
                     declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
                         Path(self.project.root.real_path), (), {path: updated},
@@ -1926,9 +1932,14 @@ class FlextInfraUtilitiesSemanticContracts(
 
             """
             self._index_discriminators()
+            planned = {
+                path: self._module_rewrites(module)
+                for path, module in self.modules.items()
+            }
             return [
-                change for path, module in self.modules.items()
-                if (change := self._module_change(path, module)) is not None
+                self._module_change(path, module, planned[path])
+                for path, module in self.modules.items()
+                if planned[path][0]
             ]
 
     @classmethod

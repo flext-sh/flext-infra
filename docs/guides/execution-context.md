@@ -2197,6 +2197,11 @@ authenticated descriptor observation, including parent identity and exact absenc
 The receipt keeps the native version key and digest; it never stores original bytes.
 This reader capability does not materialize directories or authorize publication,
 and it does not replace the existing state-only or streaming receipt APIs.
+Semantic class ancestry delegates to the installed SDK's native `get_mro` on
+abstract classes, including builtins. Its C3 order, unresolved-base witnesses and
+original hierarchy errors are preserved without a local walk or cache. The separate
+direct-base query retains authenticated specialization facts; generic inheritance
+must be qualified through consumers before this cutover is accepted.
 One native project retains unchanged observations and refreshes changed
 resources and dependent facts incrementally in the same engine. Candidate
 validation, publication, index/mode/directory effects and refresh share the

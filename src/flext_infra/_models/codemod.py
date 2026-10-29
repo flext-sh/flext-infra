@@ -211,9 +211,8 @@ class FlextInfraModelsCodemod:
         )
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
-        operation: c.Infra.RopeContractOperation = m.Field(
+        operation: t.DocumentInput[c.Infra.RopeContractOperation] = m.Field(
             default=c.Infra.RopeContractOperation.RESTRUCTURE,
-            strict=False,
             description="Native contract operation executed in the shared source epoch",
         )
         source_revision: t.NonEmptyStr | None = m.Field(
@@ -221,9 +220,8 @@ class FlextInfraModelsCodemod:
             description="Explicit Git revision authenticating retired provider "
             "declarations",
         )
-        phase: c.Infra.SemanticCutoverPhase = m.Field(
+        phase: t.DocumentInput[c.Infra.SemanticCutoverPhase] = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-            strict=False,
             description="Existing semantic phase owning this rule's execution",
         )
         pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
@@ -242,11 +240,11 @@ class FlextInfraModelsCodemod:
             default_factory=u.empty(TypeForm(Mapping[str, str])),
             description="Destination expressions and their required Rope identities",
         )
-        model_bases: tuple[str, ...] = m.Field(
+        model_bases: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
         )
-        unshadowed_builtins: tuple[str, ...] = m.Field(
+        unshadowed_builtins: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Native lexical names required to be interpreter builtins",
         )
@@ -267,11 +265,11 @@ class FlextInfraModelsCodemod:
                 "Capture resolved by a canonical typed factory after declaration"
             ),
         )
-        readonly_origins: tuple[str, ...] = m.Field(
+        readonly_origins: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Native read-only collection identities admitting the capture",
         )
-        drops: tuple[str, ...] = m.Field(
+        drops: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Discarded captures that must be inert native constants",
         )
@@ -279,21 +277,23 @@ class FlextInfraModelsCodemod:
             default=False,
             description="Whether the replacement changes annotation evaluation order",
         )
-        families: tuple[str, ...] = m.Field(
+        families: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Declared facade families admitting the source module",
         )
-        scope_kinds: tuple[
-            Annotated[c.Infra.RopeScopeKind, m.Field(strict=False)], ...
+        scope_kinds: t.DocumentInput[
+            tuple[t.DocumentInput[c.Infra.RopeScopeKind], ...]
         ] = m.Field(
             default=(),
             description="Native Rope lexical scopes admitting a match",
         )
-        implementation_owner: tuple[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+        implementation_owner: (
+            t.DocumentInput[tuple[t.NonEmptyStr, t.NonEmptyStr]] | None
+        ) = m.Field(
             default=None,
             description="Native module and primitive whose backend stays native",
         )
-        receiver_methods: tuple[str, ...] = m.Field(
+        receiver_methods: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Discarded-call interface required of a factory product",
         )
@@ -327,11 +327,13 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Factory capture that must not denote an absent factory",
         )
-        missing_keywords: tuple[str, ...] = m.Field(
+        missing_keywords: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Injected keywords whose presence preserves a composition",
         )
-        ownership_transfer: tuple[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+        ownership_transfer: (
+            t.DocumentInput[tuple[t.NonEmptyStr, t.NonEmptyStr]] | None
+        ) = m.Field(
             default=None,
             description="Native module/member retired after receiver transfer",
         )

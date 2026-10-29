@@ -319,6 +319,26 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(holders)
 
     @staticmethod
+    def _candidate_scope_path(holder: p.Infra.RopeClassObject) -> t.StrSequence:
+        """Return the outermost-to-holder name path via candidate scope parents.
+
+        Returns:
+            The qualifying name segments of the candidate class.
+
+        """
+        segments: list[str] = [holder.get_name()]
+        scope = holder.get_scope()
+        while getattr(scope, "parent", None) is not None:
+            scope = scope.parent
+            name = getattr(getattr(scope, "pyobject", None), "get_name", lambda: "")()
+            if not name or name == holder.get_module().get_name():
+                break
+            segments.append(name)
+        segments.reverse()
+        # The module itself resolves as the root; drop its name segment.
+        return tuple(segments[1:]) if len(segments) > 1 else tuple(segments)
+
+    @staticmethod
     def _component_ancestors(
         holder: p.Infra.RopeClassObject,
     ) -> tuple[p.Infra.RopeClassObject, ...]:
@@ -343,8 +363,20 @@ class FlextInfraUtilitiesFacadeComponents:
             on_disk = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 source.pycore.project, real
             )
-            declared = on_disk.get_attribute(holder.get_name()).get_object()
-            pending = list(declared.get_superclasses())
+            # Nested classes carry a one-word name; walk the scope parents
+            # on the candidate to build the qualified path and read each
+            # segment from the on-disk module's own attribute tree.
+            binding: p.AttributeProbe | None = on_disk
+            for segment in FlextInfraUtilitiesFacadeComponents._candidate_scope_path(holder):
+                next_binding = (
+                    binding.get_attribute(segment).get_object()
+                    if binding is not None
+                    else None
+                )
+                if next_binding is None:
+                    raise
+                binding = next_binding
+            pending = list(binding.get_superclasses())
         seen: set[p.Infra.RopeClassObject] = set()
         ancestors: list[p.Infra.RopeClassObject] = []
         while pending:
