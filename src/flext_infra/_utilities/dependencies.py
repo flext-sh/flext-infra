@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from json import dumps
 from pathlib import Path
 from types import MappingProxyType
+from urllib.parse import quote
 
 from flext_cli import u
 from packaging.requirements import Requirement
@@ -543,16 +544,14 @@ class FlextInfraUtilitiesDependencies(
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
-        if any(
-            "\n" in repository.path.as_posix() or "\r" in repository.path.as_posix()
-            for repository in repositories
-        ):
-            return r.fail("bootstrap source path is not a native requirement line")
         return u.Cli.dag_closure(graph, frozenset((distribution,))).flat_map(
             lambda closed: u.Cli.dag_order({name: graph[name] for name in closed}).map(
                 lambda names: m.Infra.BootstrapRequirementsRenderSpec(
                     requirements=tuple(
-                        shlex.quote(f"./{by_name[name].path.as_posix()}")
+                        shlex.quote(
+                            f"{name} @ file:"
+                            + quote(f"./{by_name[name].path.as_posix()}", safe="/")
+                        )
                         for name in names
                     ),
                     inputs=(

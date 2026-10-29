@@ -15,6 +15,8 @@ Infra:
         author_name: FLEXT Team
         author_email: team@flext.sh
         upstream: flext_cli
+        runtime_dependency_overlay:
+        - pip
         namespace_scan_dirs: []
         homepage: https://github.com/flext-sh/flext-infra
         documentation: https://github.com/flext-sh/flext-infra/blob/main/README.md
